@@ -265,7 +265,7 @@ Nothing in the Rust touched `baz` yet, so there were no compiler errors, but the
 
 ### Raw pointers
 
-Rust has two reference types: `&T`: a shared reference or `&mut T`: an exclusive (or mutable) reference. A Rust reference is a pointer with several other invariants.One of the invariants is that a Rust reference can never be null and the value pointed to must be fully initialized and valid.
+Rust has two reference types: `&T`: a shared reference or `&mut T`: an exclusive (or mutable) reference. A Rust reference is a pointer with several other invariants. One of the invariants is that a Rust reference can never be null and the value pointed to must be fully initialized and valid.
 
 The natural mapping of pointers in a C program would be a reference in Rust, either exclusive or shared depending if it's modified in the code. The problem is, often times some of the invariants required by references in Rust cannot always be upheld if we do a straight one-to-one mapping of the source from C to Rust. That means we can't use Rust references in our port yet. We have to use another type, raw pointers: `*mut T` and `*const T`. Semantically raw pointers are the same as C pointers, but because you don't really use them outside of unsafe Rust they are extremely unergonomic to use.
 

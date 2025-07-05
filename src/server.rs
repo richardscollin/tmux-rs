@@ -31,7 +31,6 @@ use crate::compat::{
     tree::{rb_empty, rb_foreach, rb_init},
 };
 
-
 pub static mut clients: clients = unsafe { zeroed() };
 
 pub static server_proc: atomic::AtomicPtr<tmuxproc> = atomic::AtomicPtr::new(null_mut());

@@ -452,7 +452,7 @@ pub unsafe fn proc_flush_peer(peer: *mut tmuxpeer) {
 }
 
 pub fn proc_toggle_log(tp: &tmuxproc) {
-        log_toggle(&tp.name);
+    log_toggle(&tp.name);
 }
 
 #[cfg_attr(target_os = "macos", expect(deprecated))]

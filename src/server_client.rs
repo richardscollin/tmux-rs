@@ -254,7 +254,12 @@ pub unsafe fn server_client_create(fd: i32) -> *mut client {
 
         let c: *mut client = xcalloc1();
         (*c).references = 1;
-        (*c).peer = proc_add_peer(&mut *server_proc.load(atomic::Ordering::Relaxed), fd, Some(server_client_dispatch), c.cast());
+        (*c).peer = proc_add_peer(
+            &mut *server_proc.load(atomic::Ordering::Relaxed),
+            fd,
+            Some(server_client_dispatch),
+            c.cast(),
+        );
 
         if libc::gettimeofday(&raw mut (*c).creation_time, null_mut()) != 0 {
             fatal("gettimeofday failed");

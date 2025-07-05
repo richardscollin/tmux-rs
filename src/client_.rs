@@ -175,7 +175,13 @@ pub unsafe fn client_connect(
                         close(lockfd);
                         return -1;
                     }
-                    fd = server_start(&mut *client_proc.load(atomic::Ordering::Relaxed), flags, base, lockfd, lockfile);
+                    fd = server_start(
+                        &mut *client_proc.load(atomic::Ordering::Relaxed),
+                        flags,
+                        base,
+                        lockfd,
+                        lockfile,
+                    );
                 }
 
                 break 'retry;
@@ -301,7 +307,10 @@ pub unsafe extern "C-unwind" fn client_main(
         }
 
         client_proc.store(proc_start("client"), atomic::Ordering::Release);
-        proc_set_signals(&mut *client_proc.load(atomic::Ordering::Relaxed), Some(client_signal));
+        proc_set_signals(
+            &mut *client_proc.load(atomic::Ordering::Relaxed),
+            Some(client_signal),
+        );
 
         client_flags = flags;
         log_debug!(
@@ -338,7 +347,12 @@ pub unsafe extern "C-unwind" fn client_main(
             }
             return 1;
         }
-        client_peer = proc_add_peer(&mut *client_proc.load(atomic::Ordering::Relaxed), fd, Some(client_dispatch), null_mut());
+        client_peer = proc_add_peer(
+            &mut *client_proc.load(atomic::Ordering::Relaxed),
+            fd,
+            Some(client_dispatch),
+            null_mut(),
+        );
 
         cwd = find_cwd();
         if cwd.is_null()

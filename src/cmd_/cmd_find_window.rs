@@ -14,18 +14,18 @@
 
 use crate::*;
 
-pub static mut cmd_find_window_entry: cmd_entry = cmd_entry {
-    name: c"find-window".as_ptr(),
-    alias: c"findw".as_ptr(),
+pub static cmd_find_window_entry: cmd_entry = cmd_entry {
+    name: SyncCharPtr::new(c"find-window"),
+    alias: SyncCharPtr::new(c"findw"),
 
     args: args_parse::new(c"CiNrt:TZ", 1, 1, None),
-    usage: c"[-CiNrTZ] [-t target-pane] match-string".as_ptr(),
+    usage: SyncCharPtr::new(c"[-CiNrTZ] [-t target-pane] match-string"),
 
     target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_PANE, 0),
 
     flags: cmd_flag::empty(),
-    exec: Some(cmd_find_window_exec),
-    ..unsafe { zeroed() }
+    exec: cmd_find_window_exec,
+    source: cmd_entry_flag::zeroed(),
 };
 
 unsafe fn cmd_find_window_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retval {

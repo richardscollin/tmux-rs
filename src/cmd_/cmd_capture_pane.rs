@@ -16,28 +16,30 @@ use libc::{INT_MIN, strcmp, strlen};
 
 use crate::*;
 
-pub static mut cmd_capture_pane_entry: cmd_entry = cmd_entry {
-    name: c"capture-pane".as_ptr(),
-    alias: c"capturep".as_ptr(),
+pub static cmd_capture_pane_entry: cmd_entry = cmd_entry {
+    name: SyncCharPtr::new(c"capture-pane"),
+    alias: SyncCharPtr::new(c"capturep"),
 
     args: args_parse::new(c"ab:CeE:JNpPqS:Tt:", 0, 0, None),
-    usage: c"[-aCeJNpPqT] [-b buffer-name] [-E end-line] [-S start-line] [-t target-pane]".as_ptr(),
+    usage: SyncCharPtr::new(
+        c"[-aCeJNpPqT] [-b buffer-name] [-E end-line] [-S start-line] [-t target-pane]",
+    ),
 
-    source: unsafe { zeroed() },
+    source: cmd_entry_flag::zeroed(),
     target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_PANE, 0),
 
     flags: cmd_flag::CMD_AFTERHOOK,
-    exec: Some(cmd_capture_pane_exec),
+    exec: cmd_capture_pane_exec,
 };
 
-pub static mut cmd_clear_history_entry: cmd_entry = cmd_entry {
-    name: c"clear-history".as_ptr(),
-    alias: c"clearhist".as_ptr(),
+pub static cmd_clear_history_entry: cmd_entry = cmd_entry {
+    name: SyncCharPtr::new(c"clear-history"),
+    alias: SyncCharPtr::new(c"clearhist"),
 
     args: args_parse::new(c"Ht:", 0, 0, None),
-    usage: c"[-H] [-t target-pane]".as_ptr(),
+    usage: SyncCharPtr::new(c"[-H] [-t target-pane]"),
 
-    source: unsafe { zeroed() },
+    source: cmd_entry_flag::zeroed(),
     target: cmd_entry_flag {
         flag: b't' as _,
         type_: cmd_find_type::CMD_FIND_PANE,
@@ -45,7 +47,7 @@ pub static mut cmd_clear_history_entry: cmd_entry = cmd_entry {
     },
 
     flags: cmd_flag::CMD_AFTERHOOK,
-    exec: Some(cmd_capture_pane_exec),
+    exec: cmd_capture_pane_exec,
 };
 
 unsafe fn cmd_capture_pane_append(
@@ -234,7 +236,7 @@ unsafe fn cmd_capture_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
         let c = cmdq_get_client(item);
         let wp = (*cmdq_get_target(item)).wp;
 
-        if cmd_get_entry(self_) == &raw mut cmd_clear_history_entry {
+        if std::ptr::eq(cmd_get_entry(self_), &cmd_clear_history_entry) {
             window_pane_reset_mode_all(wp);
             grid_clear_history((*wp).base.grid);
             if args_has(args, b'H') != 0 {

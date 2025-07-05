@@ -1930,16 +1930,16 @@ enum args_parse_type {
 type args_parse_cb = Option<unsafe fn(*mut args, u32, *mut *mut c_char) -> args_parse_type>;
 #[repr(C)]
 struct args_parse {
-    template: *const c_char,
+    template: SyncCharPtr,
     lower: i32,
     upper: i32,
     cb: args_parse_cb,
 }
 
 impl args_parse {
-    const fn new(template: &CStr, lower: i32, upper: i32, cb: args_parse_cb) -> Self {
+    const fn new(template: &'static CStr, lower: i32, upper: i32, cb: args_parse_cb) -> Self {
         Self {
-            template: template.as_ptr(),
+            template: SyncCharPtr::new(template),
             lower,
             upper,
             cb,
@@ -1949,8 +1949,9 @@ impl args_parse {
 
 /// Command find structures.
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Default)]
 enum cmd_find_type {
+    #[default]
     CMD_FIND_PANE,
     CMD_FIND_WINDOW,
     CMD_FIND_SESSION,
@@ -2074,7 +2075,7 @@ type cmdq_cb = Option<unsafe fn(*mut cmdq_item, *mut c_void) -> cmd_retval>;
 
 // Command definition flag.
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Default)]
 struct cmd_entry_flag {
     flag: c_char,
     type_: cmd_find_type,
@@ -2087,6 +2088,14 @@ impl cmd_entry_flag {
             flag: flag as c_char,
             type_,
             flags,
+        }
+    }
+
+    const fn zeroed() -> Self {
+        Self {
+            flag: b'\0' as i8,
+            type_: cmd_find_type::CMD_FIND_PANE,
+            flags: 0,
         }
     }
 }
@@ -2107,18 +2116,18 @@ bitflags::bitflags! {
 // Command definition.
 #[repr(C)]
 struct cmd_entry {
-    name: *const c_char,
-    alias: *const c_char,
+    name: SyncCharPtr,
+    alias: SyncCharPtr,
 
     args: args_parse,
-    usage: *const c_char,
+    usage: SyncCharPtr,
 
     source: cmd_entry_flag,
     target: cmd_entry_flag,
 
     flags: cmd_flag,
 
-    exec: Option<unsafe fn(*mut cmd, *mut cmdq_item) -> cmd_retval>,
+    exec: unsafe fn(*mut cmd, *mut cmdq_item) -> cmd_retval,
 }
 
 /* Status line. */
@@ -3130,6 +3139,9 @@ impl SyncCharPtr {
     }
     const fn as_ptr(&self) -> *const c_char {
         self.0
+    }
+    const fn is_null(&self) -> bool {
+        self.0.is_null()
     }
 }
 

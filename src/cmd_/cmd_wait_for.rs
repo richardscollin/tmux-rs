@@ -20,16 +20,17 @@ use crate::compat::{
     tree::{rb_find, rb_foreach, rb_initializer, rb_insert, rb_remove},
 };
 
-pub static mut cmd_wait_for_entry: cmd_entry = cmd_entry {
-    name: c"wait-for".as_ptr(),
-    alias: c"wait".as_ptr(),
+pub static cmd_wait_for_entry: cmd_entry = cmd_entry {
+    name: SyncCharPtr::new(c"wait-for"),
+    alias: SyncCharPtr::new(c"wait"),
 
     args: args_parse::new(c"LSU", 1, 1, None),
-    usage: c"[-L|-S|-U] channel".as_ptr(),
+    usage: SyncCharPtr::new(c"[-L|-S|-U] channel"),
 
     flags: cmd_flag::empty(),
-    exec: Some(cmd_wait_for_exec),
-    ..unsafe { zeroed() }
+    exec: cmd_wait_for_exec,
+    source: cmd_entry_flag::zeroed(),
+    target: cmd_entry_flag::zeroed(),
 };
 
 crate::compat::impl_tailq_entry!(wait_item, entry, tailq_entry<wait_item>);

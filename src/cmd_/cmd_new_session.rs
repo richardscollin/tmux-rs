@@ -19,33 +19,33 @@ use crate::compat::tree::rb_min;
 
 const NEW_SESSION_TEMPLATE: &CStr = c"#{session_name}:";
 
-pub static mut cmd_new_session_entry: cmd_entry = cmd_entry {
-    name: c"new-session".as_ptr(),
-    alias: c"new".as_ptr(),
+pub static cmd_new_session_entry: cmd_entry = cmd_entry {
+    name: SyncCharPtr::new(c"new-session"),
+    alias: SyncCharPtr::new(c"new"),
 
     args: args_parse::new(c"Ac:dDe:EF:f:n:Ps:t:x:Xy:", 0, -1, None),
-    usage: c"[-AdDEPX] [-c start-directory] [-e environment] [-F format] [-f flags] [-n window-name] [-s session-name] [-t target-session] [-x width] [-y height] [shell-command]".as_ptr(),
+    usage: SyncCharPtr::new(c"[-AdDEPX] [-c start-directory] [-e environment] [-F format] [-f flags] [-n window-name] [-s session-name] [-t target-session] [-x width] [-y height] [shell-command]"),
 
     target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_SESSION, CMD_FIND_CANFAIL),
 
     flags: cmd_flag::CMD_STARTSERVER,
-    exec: Some(cmd_new_session_exec),
-    ..unsafe { zeroed() }
+    exec: cmd_new_session_exec,
+    source: cmd_entry_flag::zeroed(),
 };
 
-pub static mut cmd_has_session_entry: cmd_entry = cmd_entry {
-    name: c"has-session".as_ptr(),
-    alias: c"has".as_ptr(),
+pub static cmd_has_session_entry: cmd_entry = cmd_entry {
+    name: SyncCharPtr::new(c"has-session"),
+    alias: SyncCharPtr::new(c"has"),
 
     args: args_parse::new(c"t:", 0, 0, None),
-    usage: c"[-t target-session]".as_ptr(),
+    usage: SyncCharPtr::new(c"[-t target-session]"),
 
     target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_SESSION, 0),
 
     flags: cmd_flag::empty(),
-    exec: Some(cmd_new_session_exec),
+    exec: cmd_new_session_exec,
 
-    ..unsafe { zeroed() }
+    source: cmd_entry_flag::zeroed(),
 };
 
 unsafe fn cmd_new_session_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retval {
@@ -86,7 +86,7 @@ unsafe fn cmd_new_session_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
         let mut av: *mut args_value;
 
         'fail: {
-            if cmd_get_entry(self_) == &raw mut cmd_has_session_entry {
+            if std::ptr::eq(cmd_get_entry(self_), &cmd_has_session_entry) {
                 /*
                  * cmd_find_target() will fail if the session cannot be found,
                  * so always return success here.

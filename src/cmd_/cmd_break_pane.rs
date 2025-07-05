@@ -16,18 +16,18 @@ use crate::*;
 
 use crate::compat::{queue::tailq_remove, tailq_insert_head};
 
-pub static mut cmd_break_pane_entry: cmd_entry = cmd_entry {
-    name: c"break-pane".as_ptr(),
-    alias: c"breakp".as_ptr(),
+pub static cmd_break_pane_entry: cmd_entry = cmd_entry {
+    name: SyncCharPtr::new(c"break-pane"),
+    alias: SyncCharPtr::new(c"breakp"),
 
     args: args_parse::new(c"abdPF:n:s:t:", 0, 0, None),
-    usage: c"[-abdP] [-F format] [-n window-name] [-s src-pane] [-t dst-window]".as_ptr(),
+    usage: SyncCharPtr::new(c"[-abdP] [-F format] [-n window-name] [-s src-pane] [-t dst-window]"),
 
     source: cmd_entry_flag::new(b's', cmd_find_type::CMD_FIND_PANE, 0),
     target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_WINDOW, CMD_FIND_WINDOW_INDEX),
 
     flags: cmd_flag::empty(),
-    exec: Some(cmd_break_pane_exec),
+    exec: cmd_break_pane_exec,
 };
 
 pub unsafe fn cmd_break_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retval {

@@ -18,30 +18,30 @@ use libc::strtol;
 use crate::compat::queue::tailq_foreach;
 use crate::options_::options_find_choice;
 
-pub static mut cmd_display_menu_entry: cmd_entry = cmd_entry {
-    name: c"display-menu".as_ptr(),
-    alias: c"menu".as_ptr(),
+pub static cmd_display_menu_entry: cmd_entry = cmd_entry {
+    name: SyncCharPtr::new(c"display-menu"),
+    alias: SyncCharPtr::new(c"menu"),
 
     args: args_parse::new(c"b:c:C:H:s:S:MOt:T:x:y:", 1, -1, Some(cmd_display_menu_args_parse)),
-    usage: c"[-MO] [-b border-lines] [-c target-client] [-C starting-choice] [-H selected-style] [-s style] [-S border-style] [-t target-pane][-T title] [-x position] [-y position] name key command ...".as_ptr(),
+    usage: SyncCharPtr::new(c"[-MO] [-b border-lines] [-c target-client] [-C starting-choice] [-H selected-style] [-s style] [-S border-style] [-t target-pane][-T title] [-x position] [-y position] name key command ..."),
     target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_PANE, 0),
 
     flags: cmd_flag::CMD_AFTERHOOK.union(cmd_flag::CMD_CLIENT_CFLAG),
-    exec: Some(cmd_display_menu_exec),
-    ..unsafe { zeroed() }
+    exec: cmd_display_menu_exec,
+    source: cmd_entry_flag::zeroed(),
 };
 
-pub static mut cmd_display_popup_entry: cmd_entry = cmd_entry {
-    name: c"display-popup".as_ptr(),
-    alias: c"popup".as_ptr(),
+pub static cmd_display_popup_entry: cmd_entry = cmd_entry {
+    name: SyncCharPtr::new(c"display-popup"),
+    alias: SyncCharPtr::new(c"popup"),
 
     args: args_parse::new(c"Bb:Cc:d:e:Eh:s:S:t:T:w:x:y:", 0, -1, None),
-    usage: c"[-BCE] [-b border-lines] [-c target-client] [-d start-directory] [-e environment] [-h height] [-s style] [-S border-style] [-t target-pane][-T title] [-w width] [-x position] [-y position] [shell-command]".as_ptr(),
+    usage: SyncCharPtr::new(c"[-BCE] [-b border-lines] [-c target-client] [-d start-directory] [-e environment] [-h height] [-s style] [-S border-style] [-t target-pane][-T title] [-w width] [-x position] [-y position] [shell-command]"),
     target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_PANE, 0),
 
     flags: cmd_flag::CMD_AFTERHOOK.union(cmd_flag::CMD_CLIENT_CFLAG),
-    exec: Some(cmd_display_popup_exec),
-    ..unsafe { zeroed() }
+    exec: cmd_display_popup_exec,
+    source: cmd_entry_flag::zeroed(),
 };
 
 unsafe fn cmd_display_menu_args_parse(
@@ -99,18 +99,12 @@ unsafe fn cmd_display_menu_get_position(
         let wp = (*target).wp;
         let mut ranges = null_mut();
         let mut sr = null_mut();
-        //const char		*xp, *yp;
-        //char			*p;
-        //int			 top;
-        //u_int			 line, ox, oy, sx, sy, lines, position;
         let mut line: u32 = 0;
         let mut ox: u32 = 0;
         let mut oy: u32 = 0;
         let mut sx: u32 = 0;
         let mut sy: u32 = 0;
-        //long			 n;
         let mut n: c_long = 0;
-        //struct format_tree	*ft;
 
         /*
          * Work out the position from the -x and -y arguments. This is the

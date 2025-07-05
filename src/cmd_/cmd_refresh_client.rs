@@ -16,16 +16,17 @@ use crate::*;
 
 use libc::{sscanf, strchr, strcmp};
 
-pub static mut cmd_refresh_client_entry: cmd_entry = cmd_entry {
-    name: c"refresh-client".as_ptr(),
-    alias: c"refresh".as_ptr(),
+pub static cmd_refresh_client_entry: cmd_entry = cmd_entry {
+    name: SyncCharPtr::new(c"refresh-client"),
+    alias: SyncCharPtr::new(c"refresh"),
 
     args: args_parse::new(c"A:B:cC:Df:r:F:l::LRSt:U", 0, 1, None),
-    usage: c"[-cDlLRSU] [-A pane:state] [-B name:what:format] [-C XxY] [-f flags] [-r pane:report] [-t target-client] [adjustment]".as_ptr(),
+    usage: SyncCharPtr::new(c"[-cDlLRSU] [-A pane:state] [-B name:what:format] [-C XxY] [-f flags] [-r pane:report] [-t target-client] [adjustment]"),
 
     flags: cmd_flag::CMD_AFTERHOOK.union(cmd_flag::CMD_CLIENT_TFLAG),
-    exec: Some(cmd_refresh_client_exec),
-    ..unsafe { zeroed() }
+    exec: cmd_refresh_client_exec,
+    source: cmd_entry_flag::zeroed(),
+    target: cmd_entry_flag::zeroed(),
 };
 
 pub unsafe fn cmd_refresh_client_update_subscription(tc: *mut client, value: *const c_char) {

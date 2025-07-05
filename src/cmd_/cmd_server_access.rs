@@ -17,16 +17,17 @@ use libc::{getpwnam, getuid};
 
 use crate::compat::queue::tailq_foreach;
 
-pub static mut cmd_server_access_entry: cmd_entry = cmd_entry {
-    name: c"server-access".as_ptr(),
-    alias: null(),
+pub static cmd_server_access_entry: cmd_entry = cmd_entry {
+    name: SyncCharPtr::new(c"server-access"),
+    alias: SyncCharPtr::null(),
 
     args: args_parse::new(c"adlrw", 0, 1, None),
-    usage: c"[-adlrw] [-t target-pane] [user]".as_ptr(),
+    usage: SyncCharPtr::new(c"[-adlrw] [-t target-pane] [user]"),
 
     flags: cmd_flag::CMD_CLIENT_CANFAIL,
-    exec: Some(cmd_server_access_exec),
-    ..unsafe { zeroed() }
+    exec: cmd_server_access_exec,
+    source: cmd_entry_flag::zeroed(),
+    target: cmd_entry_flag::zeroed(),
 };
 
 unsafe fn cmd_server_access_deny(item: *mut cmdq_item, pw: *mut libc::passwd) -> cmd_retval {

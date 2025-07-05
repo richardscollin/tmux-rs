@@ -13,46 +13,46 @@
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 use crate::*;
 
-pub static mut cmd_select_layout_entry: cmd_entry = cmd_entry {
-    name: c"select-layout".as_ptr(),
-    alias: c"selectl".as_ptr(),
+pub static cmd_select_layout_entry: cmd_entry = cmd_entry {
+    name: SyncCharPtr::new(c"select-layout"),
+    alias: SyncCharPtr::new(c"selectl"),
 
     args: args_parse::new(c"Enopt:", 0, 1, None),
-    usage: c"[-Enop] [-t target-pane] [layout-name]".as_ptr(),
+    usage: SyncCharPtr::new(c"[-Enop] [-t target-pane] [layout-name]"),
 
     target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_PANE, 0),
 
     flags: cmd_flag::CMD_AFTERHOOK,
-    exec: Some(cmd_select_layout_exec),
-    ..unsafe { zeroed() }
+    exec: cmd_select_layout_exec,
+    source: cmd_entry_flag::zeroed(),
 };
 
-pub static mut cmd_next_layout_entry: cmd_entry = cmd_entry {
-    name: c"next-layout".as_ptr(),
-    alias: c"nextl".as_ptr(),
+pub static cmd_next_layout_entry: cmd_entry = cmd_entry {
+    name: SyncCharPtr::new(c"next-layout"),
+    alias: SyncCharPtr::new(c"nextl"),
 
     args: args_parse::new(c"t:", 0, 0, None),
-    usage: CMD_TARGET_WINDOW_USAGE.as_ptr(),
+    usage: SyncCharPtr::new(CMD_TARGET_WINDOW_USAGE),
 
     target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_WINDOW, 0),
 
     flags: cmd_flag::CMD_AFTERHOOK,
-    exec: Some(cmd_select_layout_exec),
-    ..unsafe { zeroed() }
+    exec: cmd_select_layout_exec,
+    source: cmd_entry_flag::zeroed(),
 };
 
-pub static mut cmd_previous_layout_entry: cmd_entry = cmd_entry {
-    name: c"previous-layout".as_ptr(),
-    alias: c"prevl".as_ptr(),
+pub static cmd_previous_layout_entry: cmd_entry = cmd_entry {
+    name: SyncCharPtr::new(c"previous-layout"),
+    alias: SyncCharPtr::new(c"prevl"),
 
     args: args_parse::new(c"t:", 0, 0, None),
-    usage: CMD_TARGET_WINDOW_USAGE.as_ptr(),
+    usage: SyncCharPtr::new(CMD_TARGET_WINDOW_USAGE),
 
     target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_WINDOW, 0),
 
     flags: cmd_flag::CMD_AFTERHOOK,
-    exec: Some(cmd_select_layout_exec),
-    ..unsafe { zeroed() }
+    exec: cmd_select_layout_exec,
+    source: cmd_entry_flag::zeroed(),
 };
 
 unsafe fn cmd_select_layout_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retval {
@@ -69,11 +69,11 @@ unsafe fn cmd_select_layout_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
 
         'error: {
             'changed: {
-                let mut next = cmd_get_entry(self_) == &raw mut cmd_next_layout_entry;
+                let mut next = std::ptr::eq(cmd_get_entry(self_), &cmd_next_layout_entry);
                 if args_has_(args, 'n') {
                     next = true;
                 }
-                let mut previous = cmd_get_entry(self_) == &raw mut cmd_previous_layout_entry;
+                let mut previous = std::ptr::eq(cmd_get_entry(self_), &cmd_previous_layout_entry);
                 if args_has_(args, 'p') {
                     previous = true;
                 }

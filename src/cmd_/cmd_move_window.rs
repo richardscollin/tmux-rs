@@ -13,32 +13,32 @@
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 use crate::*;
 
-pub static mut cmd_move_window_entry: cmd_entry = cmd_entry {
-    name: c"move-window".as_ptr(),
-    alias: c"movew".as_ptr(),
+pub static cmd_move_window_entry: cmd_entry = cmd_entry {
+    name: SyncCharPtr::new(c"move-window"),
+    alias: SyncCharPtr::new(c"movew"),
 
     args: args_parse::new(c"abdkrs:t:", 0, 0, None),
-    usage: c"[-abdkr] [-s src-window] [-t dst-window]".as_ptr(),
+    usage: SyncCharPtr::new(c"[-abdkr] [-s src-window] [-t dst-window]"),
 
     source: cmd_entry_flag::new(b's', cmd_find_type::CMD_FIND_WINDOW, 0),
 
     flags: cmd_flag::empty(),
-    exec: Some(cmd_move_window_exec),
-    ..unsafe { zeroed() }
+    exec: cmd_move_window_exec,
+    target: cmd_entry_flag::zeroed(),
 };
 
-pub static mut cmd_link_window_entry: cmd_entry = cmd_entry {
-    name: c"link-window".as_ptr(),
-    alias: c"linkw".as_ptr(),
+pub static cmd_link_window_entry: cmd_entry = cmd_entry {
+    name: SyncCharPtr::new(c"link-window"),
+    alias: SyncCharPtr::new(c"linkw"),
 
     args: args_parse::new(c"abdks:t:", 0, 0, None),
-    usage: c"[-abdk] [-s src-window] [-t dst-window]".as_ptr(),
+    usage: SyncCharPtr::new(c"[-abdk] [-s src-window] [-t dst-window]"),
 
     source: cmd_entry_flag::new(b's', cmd_find_type::CMD_FIND_WINDOW, 0),
 
     flags: cmd_flag::empty(),
-    exec: Some(cmd_move_window_exec),
-    ..unsafe { zeroed() }
+    exec: cmd_move_window_exec,
+    target: cmd_entry_flag::zeroed(),
 };
 
 unsafe fn cmd_move_window_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retval {
@@ -103,7 +103,7 @@ unsafe fn cmd_move_window_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
             free_(cause);
             return cmd_retval::CMD_RETURN_ERROR;
         }
-        if cmd_get_entry(self_) == &raw mut cmd_move_window_entry {
+        if std::ptr::eq(cmd_get_entry(self_), &cmd_move_window_entry) {
             server_unlink_window(src, wl);
         }
 

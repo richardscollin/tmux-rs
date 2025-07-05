@@ -18,18 +18,18 @@ use crate::compat::queue::tailq_foreach;
 
 const LIST_CLIENTS_TEMPLATE: &CStr = c"#{client_name}: #{session_name} [#{client_width}x#{client_height} #{client_termname}] #{?#{!=:#{client_uid},#{uid}},[user #{?client_user,#{client_user},#{client_uid},}] ,}#{?client_flags,(,}#{client_flags}#{?client_flags,),}";
 
-pub static mut cmd_list_clients_entry: cmd_entry = cmd_entry {
-    name: c"list-clients".as_ptr(),
-    alias: c"lsc".as_ptr(),
+pub static cmd_list_clients_entry: cmd_entry = cmd_entry {
+    name: SyncCharPtr::new(c"list-clients"),
+    alias: SyncCharPtr::new(c"lsc"),
 
     args: args_parse::new(c"F:f:t:", 0, 0, None),
-    usage: c"[-F format] [-f filter] [-t target-session]".as_ptr(),
+    usage: SyncCharPtr::new(c"[-F format] [-f filter] [-t target-session]"),
 
     target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_SESSION, 0),
 
     flags: cmd_flag::CMD_READONLY.union(cmd_flag::CMD_AFTERHOOK),
-    exec: Some(cmd_list_clients_exec),
-    ..unsafe { zeroed() }
+    exec: cmd_list_clients_exec,
+    source: cmd_entry_flag::zeroed(),
 };
 
 unsafe fn cmd_list_clients_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retval {

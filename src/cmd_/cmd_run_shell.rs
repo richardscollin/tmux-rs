@@ -19,18 +19,20 @@ use libc::{WEXITSTATUS, WIFEXITED, WIFSIGNALED, WTERMSIG, memcpy, strtod, touppe
 
 use crate::compat::queue::tailq_first;
 
-pub static mut cmd_run_shell_entry: cmd_entry = cmd_entry {
-    name: c"run-shell".as_ptr(),
-    alias: c"run".as_ptr(),
+pub static cmd_run_shell_entry: cmd_entry = cmd_entry {
+    name: SyncCharPtr::new(c"run-shell"),
+    alias: SyncCharPtr::new(c"run"),
 
     args: args_parse::new(c"bd:Ct:c:", 0, 2, Some(cmd_run_shell_args_parse)),
-    usage: c"[-bC] [-c start-directory] [-d delay] [-t target-pane] [shell-command]".as_ptr(),
+    usage: SyncCharPtr::new(
+        c"[-bC] [-c start-directory] [-d delay] [-t target-pane] [shell-command]",
+    ),
 
     target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_PANE, CMD_FIND_CANFAIL),
 
     flags: cmd_flag::empty(),
-    exec: Some(cmd_run_shell_exec),
-    ..unsafe { zeroed() }
+    exec: cmd_run_shell_exec,
+    source: cmd_entry_flag::zeroed(),
 };
 
 #[repr(C)]

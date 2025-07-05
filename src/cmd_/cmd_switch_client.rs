@@ -16,16 +16,17 @@ use libc::strcspn;
 
 use crate::*;
 
-pub static mut cmd_switch_client_entry: cmd_entry = cmd_entry {
-    name: c"switch-client".as_ptr(),
-    alias: c"switchc".as_ptr(),
+pub static cmd_switch_client_entry: cmd_entry = cmd_entry {
+    name: SyncCharPtr::new(c"switch-client"),
+    alias: SyncCharPtr::new(c"switchc"),
 
     args: args_parse::new(c"lc:EFnpt:rT:Z", 0, 0, None),
-    usage: c"[-ElnprZ] [-c target-client] [-t target-session] [-T key-table]".as_ptr(),
+    usage: SyncCharPtr::new(c"[-ElnprZ] [-c target-client] [-t target-session] [-T key-table]"),
 
     flags: cmd_flag::CMD_READONLY.union(cmd_flag::CMD_CLIENT_CFLAG),
-    exec: Some(cmd_switch_client_exec),
-    ..unsafe { zeroed() }
+    exec: cmd_switch_client_exec,
+    source: cmd_entry_flag::zeroed(),
+    target: cmd_entry_flag::zeroed(),
 };
 
 unsafe fn cmd_switch_client_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retval {

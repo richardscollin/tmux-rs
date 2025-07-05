@@ -13,18 +13,18 @@
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 use crate::*;
 
-pub static mut cmd_paste_buffer_entry: cmd_entry = cmd_entry {
-    name: c"paste-buffer".as_ptr(),
-    alias: c"pasteb".as_ptr(),
+pub static cmd_paste_buffer_entry: cmd_entry = cmd_entry {
+    name: SyncCharPtr::new(c"paste-buffer"),
+    alias: SyncCharPtr::new(c"pasteb"),
 
     args: args_parse::new(c"db:prs:t:", 0, 0, None),
-    usage: c"[-dpr] [-s separator] [-b buffer-name] [-t target-pane]".as_ptr(),
+    usage: SyncCharPtr::new(c"[-dpr] [-s separator] [-b buffer-name] [-t target-pane]"),
 
     target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_PANE, 0),
 
     flags: cmd_flag::CMD_AFTERHOOK,
-    exec: Some(cmd_paste_buffer_exec),
-    ..unsafe { zeroed() }
+    exec: cmd_paste_buffer_exec,
+    source: cmd_entry_flag::zeroed(),
 };
 
 unsafe fn cmd_paste_buffer_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retval {

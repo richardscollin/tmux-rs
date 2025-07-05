@@ -14,16 +14,17 @@
 
 use crate::*;
 
-pub static mut cmd_unbind_key_entry: cmd_entry = cmd_entry {
-    name: c"unbind-key".as_ptr(),
-    alias: c"unbind".as_ptr(),
+pub static cmd_unbind_key_entry: cmd_entry = cmd_entry {
+    name: SyncCharPtr::new(c"unbind-key"),
+    alias: SyncCharPtr::new(c"unbind"),
 
     args: args_parse::new(c"anqT:", 0, 1, None),
-    usage: c"[-anq] [-T key-table] key".as_ptr(),
+    usage: SyncCharPtr::new(c"[-anq] [-T key-table] key"),
 
     flags: cmd_flag::CMD_AFTERHOOK,
-    exec: Some(cmd_unbind_key_exec),
-    ..unsafe { zeroed() }
+    exec: cmd_unbind_key_exec,
+    source: cmd_entry_flag::zeroed(),
+    target: cmd_entry_flag::zeroed(),
 };
 
 unsafe fn cmd_unbind_key_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retval {

@@ -14,16 +14,17 @@
 
 use crate::*;
 
-pub static mut cmd_bind_key_entry: cmd_entry = cmd_entry {
-    name: c"bind-key".as_ptr(),
-    alias: c"bind".as_ptr(),
+pub static cmd_bind_key_entry: cmd_entry = cmd_entry {
+    name: SyncCharPtr::new(c"bind-key"),
+    alias: SyncCharPtr::new(c"bind"),
 
     args: args_parse::new(c"nrN:T:", 1, -1, Some(cmd_bind_key_args_parse)),
-    usage: c"[-nr] [-T key-table] [-N note] key [command [arguments]]".as_ptr(),
+    usage: SyncCharPtr::new(c"[-nr] [-T key-table] [-N note] key [command [arguments]]"),
 
     flags: cmd_flag::CMD_AFTERHOOK,
-    exec: Some(cmd_bind_key_exec),
-    ..unsafe { zeroed() }
+    exec: cmd_bind_key_exec,
+    source: cmd_entry_flag::zeroed(),
+    target: cmd_entry_flag::zeroed(),
 };
 
 unsafe fn cmd_bind_key_args_parse(

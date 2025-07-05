@@ -14,16 +14,17 @@
 
 use crate::*;
 
-pub static mut cmd_list_buffers_entry: cmd_entry = cmd_entry {
-    name: c"list-buffers".as_ptr(),
-    alias: c"lsb".as_ptr(),
+pub static cmd_list_buffers_entry: cmd_entry = cmd_entry {
+    name: SyncCharPtr::new(c"list-buffers"),
+    alias: SyncCharPtr::new(c"lsb"),
 
     args: args_parse::new(c"F:f:", 0, 0, None),
-    usage: c"[-F format] [-f filter]".as_ptr(),
+    usage: SyncCharPtr::new(c"[-F format] [-f filter]"),
 
     flags: cmd_flag::CMD_AFTERHOOK,
-    exec: Some(cmd_list_buffers_exec),
-    ..unsafe { zeroed() }
+    exec: cmd_list_buffers_exec,
+    source: cmd_entry_flag::zeroed(),
+    target: cmd_entry_flag::zeroed(),
 };
 
 unsafe fn cmd_list_buffers_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retval {

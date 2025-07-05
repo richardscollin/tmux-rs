@@ -14,18 +14,20 @@
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 use crate::*;
 
-pub static mut cmd_respawn_pane_entry: cmd_entry = cmd_entry {
-    name: c"respawn-pane".as_ptr(),
-    alias: c"respawnp".as_ptr(),
+pub static cmd_respawn_pane_entry: cmd_entry = cmd_entry {
+    name: SyncCharPtr::new(c"respawn-pane"),
+    alias: SyncCharPtr::new(c"respawnp"),
 
     args: args_parse::new(c"c:e:kt:", 0, -1, None),
-    usage: c"[-k] [-c start-directory] [-e environment] [-t target-pane] [shell-command]".as_ptr(),
+    usage: SyncCharPtr::new(
+        c"[-k] [-c start-directory] [-e environment] [-t target-pane] [shell-command]",
+    ),
 
     target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_PANE, 0),
 
     flags: cmd_flag::empty(),
-    exec: Some(cmd_respawn_pane_exec),
-    source: unsafe { zeroed() },
+    exec: cmd_respawn_pane_exec,
+    source: cmd_entry_flag::zeroed(),
 };
 
 unsafe fn cmd_respawn_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retval {

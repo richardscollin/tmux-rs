@@ -16,28 +16,30 @@ use libc::{O_APPEND, O_TRUNC};
 
 use crate::*;
 
-pub static mut cmd_save_buffer_entry: cmd_entry = cmd_entry {
-    name: c"save-buffer".as_ptr(),
-    alias: c"saveb".as_ptr(),
+pub static cmd_save_buffer_entry: cmd_entry = cmd_entry {
+    name: SyncCharPtr::new(c"save-buffer"),
+    alias: SyncCharPtr::new(c"saveb"),
 
     args: args_parse::new(c"ab:", 1, 1, None),
-    usage: c"[-a] [-b buffer-name] path".as_ptr(),
+    usage: SyncCharPtr::new(c"[-a] [-b buffer-name] path"),
 
     flags: cmd_flag::CMD_AFTERHOOK,
-    exec: Some(cmd_save_buffer_exec),
-    ..unsafe { zeroed() }
+    exec: cmd_save_buffer_exec,
+    source: cmd_entry_flag::zeroed(),
+    target: cmd_entry_flag::zeroed(),
 };
 
-pub static mut cmd_show_buffer_entry: cmd_entry = cmd_entry {
-    name: c"show-buffer".as_ptr(),
-    alias: c"showb".as_ptr(),
+pub static cmd_show_buffer_entry: cmd_entry = cmd_entry {
+    name: SyncCharPtr::new(c"show-buffer"),
+    alias: SyncCharPtr::new(c"showb"),
 
     args: args_parse::new(c"b:", 0, 0, None),
-    usage: c"[-b buffer-name]".as_ptr(),
+    usage: SyncCharPtr::new(c"[-b buffer-name]"),
 
     flags: cmd_flag::CMD_AFTERHOOK,
-    exec: Some(cmd_save_buffer_exec),
-    ..unsafe { zeroed() }
+    exec: cmd_save_buffer_exec,
+    source: cmd_entry_flag::zeroed(),
+    target: cmd_entry_flag::zeroed(),
 };
 
 unsafe fn cmd_save_buffer_done(
@@ -87,7 +89,7 @@ unsafe fn cmd_save_buffer_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
         let mut bufsize: usize = 0;
         let bufdata = paste_buffer_data_(pb, &mut bufsize);
 
-        if cmd_get_entry(self_) == &raw mut cmd_show_buffer_entry {
+        if std::ptr::eq(cmd_get_entry(self_), &cmd_show_buffer_entry) {
             if !(*c).session.is_null() || (*c).flags.intersects(client_flag::CONTROL) {
                 evb = evbuffer_new();
                 if evb.is_null() {

@@ -16,18 +16,18 @@ use crate::*;
 
 use crate::compat::tree::{rb_insert, rb_remove};
 
-pub static mut cmd_rename_session_entry: cmd_entry = cmd_entry {
-    name: c"rename-session".as_ptr(),
-    alias: c"rename".as_ptr(),
+pub static cmd_rename_session_entry: cmd_entry = cmd_entry {
+    name: SyncCharPtr::new(c"rename-session"),
+    alias: SyncCharPtr::new(c"rename"),
 
     args: args_parse::new(c"t:", 1, 1, None),
-    usage: c"[-t target-session] new-name".as_ptr(),
+    usage: SyncCharPtr::new(c"[-t target-session] new-name"),
 
     target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_SESSION, 0),
-    source: unsafe { zeroed() },
+    source: cmd_entry_flag::zeroed(),
 
     flags: cmd_flag::CMD_AFTERHOOK,
-    exec: Some(cmd_rename_session_exec),
+    exec: cmd_rename_session_exec,
 };
 
 unsafe fn cmd_rename_session_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retval {

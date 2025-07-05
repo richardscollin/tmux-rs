@@ -17,32 +17,32 @@ use crate::*;
 
 use crate::compat::queue::{tailq_insert_after, tailq_insert_before, tailq_remove};
 
-pub static mut cmd_join_pane_entry: cmd_entry = cmd_entry {
-    name: c"join-pane".as_ptr(),
-    alias: c"joinp".as_ptr(),
+pub static cmd_join_pane_entry: cmd_entry = cmd_entry {
+    name: SyncCharPtr::new(c"join-pane"),
+    alias: SyncCharPtr::new(c"joinp"),
 
     args: args_parse::new(c"bdfhvp:l:s:t:", 0, 0, None),
-    usage: c"[-bdfhv] [-l size] [-s src-pane] [-t dst-pane]".as_ptr(),
+    usage: SyncCharPtr::new(c"[-bdfhv] [-l size] [-s src-pane] [-t dst-pane]"),
 
     source: cmd_entry_flag::new(b's', cmd_find_type::CMD_FIND_PANE, CMD_FIND_DEFAULT_MARKED),
     target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_PANE, 0),
 
     flags: cmd_flag::empty(),
-    exec: Some(cmd_join_pane_exec),
+    exec: cmd_join_pane_exec,
 };
 
-pub static mut cmd_move_pane_entry: cmd_entry = cmd_entry {
-    name: c"move-pane".as_ptr(),
-    alias: c"movep".as_ptr(),
+pub static cmd_move_pane_entry: cmd_entry = cmd_entry {
+    name: SyncCharPtr::new(c"move-pane"),
+    alias: SyncCharPtr::new(c"movep"),
 
     args: args_parse::new(c"bdfhvp:l:s:t:", 0, 0, None),
-    usage: c"[-bdfhv] [-l size] [-s src-pane] [-t dst-pane]".as_ptr(),
+    usage: SyncCharPtr::new(c"[-bdfhv] [-l size] [-s src-pane] [-t dst-pane]"),
 
     source: cmd_entry_flag::new(b's', cmd_find_type::CMD_FIND_PANE, CMD_FIND_DEFAULT_MARKED),
     target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_PANE, 0),
 
     flags: cmd_flag::empty(),
-    exec: Some(cmd_join_pane_exec),
+    exec: cmd_join_pane_exec,
 };
 
 unsafe fn cmd_join_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retval {

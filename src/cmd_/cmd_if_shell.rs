@@ -17,18 +17,18 @@ use libc::{WEXITSTATUS, WIFEXITED, toupper};
 
 use crate::*;
 
-pub static mut cmd_if_shell_entry: cmd_entry = cmd_entry {
-    name: c"if-shell".as_ptr(),
-    alias: c"if".as_ptr(),
+pub static cmd_if_shell_entry: cmd_entry = cmd_entry {
+    name: SyncCharPtr::new(c"if-shell"),
+    alias: SyncCharPtr::new(c"if"),
 
     args: args_parse::new(c"bFt:", 2, 3, Some(cmd_if_shell_args_parse)),
-    usage: c"[-bF] [-t target-pane] shell-command command [command]".as_ptr(),
+    usage: SyncCharPtr::new(c"[-bF] [-t target-pane] shell-command command [command]"),
 
     target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_PANE, CMD_FIND_CANFAIL),
 
     flags: cmd_flag::empty(),
-    exec: Some(cmd_if_shell_exec),
-    ..unsafe { zeroed() }
+    exec: cmd_if_shell_exec,
+    source: cmd_entry_flag::zeroed(),
 };
 
 #[repr(C)]

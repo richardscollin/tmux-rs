@@ -16,16 +16,17 @@ use super::*;
 use crate::compat::queue::tailq_foreach;
 use crate::compat::tree::rb_empty;
 
-pub static mut cmd_attach_session_entry: cmd_entry = cmd_entry {
-    name: c"attach-session".as_ptr(),
-    alias: c"attach".as_ptr(),
+pub static cmd_attach_session_entry: cmd_entry = cmd_entry {
+    name: SyncCharPtr::new(c"attach-session"),
+    alias: SyncCharPtr::new(c"attach"),
 
     args: args_parse::new(c"c:dEf:rt:x", 0, 0, None),
-    usage: c"[-dErx] [-c working-directory] [-f flags] [-t target-session]".as_ptr(),
+    usage: SyncCharPtr::new(c"[-dErx] [-c working-directory] [-f flags] [-t target-session]"),
 
     flags: cmd_flag::CMD_STARTSERVER.union(cmd_flag::CMD_READONLY),
-    exec: Some(cmd_attach_session_exec),
-    ..unsafe { zeroed() }
+    exec: cmd_attach_session_exec,
+    source: cmd_entry_flag::zeroed(),
+    target: cmd_entry_flag::zeroed(),
 };
 
 pub unsafe fn cmd_attach_session(

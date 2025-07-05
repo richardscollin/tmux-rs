@@ -15,18 +15,18 @@ use crate::*;
 
 use crate::compat::tree::rb_foreach;
 
-pub static mut cmd_kill_session_entry: cmd_entry = cmd_entry {
-    name: c"kill-session".as_ptr(),
-    alias: null_mut(),
+pub static cmd_kill_session_entry: cmd_entry = cmd_entry {
+    name: SyncCharPtr::new(c"kill-session"),
+    alias: SyncCharPtr::null(),
 
     args: args_parse::new(c"aCt:", 0, 0, None),
-    usage: c"[-aC] [-t target-session]".as_ptr(),
+    usage: SyncCharPtr::new(c"[-aC] [-t target-session]"),
 
     target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_SESSION, 0),
-    source: unsafe { zeroed() },
+    source: cmd_entry_flag::zeroed(),
 
     flags: cmd_flag::empty(),
-    exec: Some(cmd_kill_session_exec),
+    exec: cmd_kill_session_exec,
 };
 
 unsafe fn cmd_kill_session_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retval {

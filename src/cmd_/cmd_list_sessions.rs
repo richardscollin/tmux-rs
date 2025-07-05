@@ -15,16 +15,17 @@ use crate::*;
 
 use crate::compat::tree::rb_foreach;
 
-pub static mut cmd_list_sessions_entry: cmd_entry = cmd_entry {
-    name: c"list-sessions".as_ptr(),
-    alias: c"ls".as_ptr(),
+pub static cmd_list_sessions_entry: cmd_entry = cmd_entry {
+    name: SyncCharPtr::new(c"list-sessions"),
+    alias: SyncCharPtr::new(c"ls"),
 
     args: args_parse::new(c"F:f:", 0, 0, None),
-    usage: c"[-F format] [-f filter]".as_ptr(),
+    usage: SyncCharPtr::new(c"[-F format] [-f filter]"),
 
     flags: cmd_flag::CMD_AFTERHOOK,
-    exec: Some(cmd_list_sessions_exec),
-    ..unsafe { zeroed() }
+    exec: cmd_list_sessions_exec,
+    source: cmd_entry_flag::zeroed(),
+    target: cmd_entry_flag::zeroed(),
 };
 
 const LIST_SESSIONS_TEMPLATE: *const i8 = c"#{session_name}: #{session_windows} windows (created #{t:session_created})#{?session_grouped, (group ,}#{session_group}#{?session_grouped,),}#{?session_attached, (attached),}".as_ptr();

@@ -180,7 +180,7 @@ pub unsafe fn args_parse_flag_argument(
 }
 
 pub unsafe fn args_parse_flags(
-    parse: *mut args_parse,
+    parse: *const args_parse,
     values: *mut args_value,
     count: u32,
     cause: *mut *mut c_char,
@@ -223,7 +223,7 @@ pub unsafe fn args_parse_flags(
                 return -1;
             }
 
-            let found = libc::strchr((*parse).template, flag as i32);
+            let found = libc::strchr((*parse).template.as_ptr(), flag as i32);
             if found.is_null() {
                 *cause = format_nul!("unknown flag -{}", flag as char);
                 return -1;
@@ -250,7 +250,7 @@ pub unsafe fn args_parse_flags(
 
 /// Parse arguments into a new argument set.
 pub unsafe fn args_parse(
-    parse: *mut args_parse,
+    parse: *const args_parse,
     values: *mut args_value,
     count: u32,
     cause: *mut *mut c_char,
@@ -884,7 +884,7 @@ pub unsafe fn args_make_commands_get_command(state: *mut args_command_state) -> 
             if first.is_null() {
                 return xstrdup_(c"").as_ptr();
             }
-            return xstrdup((*cmd_get_entry(first)).name).as_ptr();
+            return xstrdup(cmd_get_entry(first).name.as_ptr()).as_ptr();
         }
         let n = libc::strcspn((*state).cmd, c" ,".as_ptr());
         format_nul!("{1:0$}", n, _s((*state).cmd))

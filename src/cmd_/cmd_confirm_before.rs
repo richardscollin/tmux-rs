@@ -13,16 +13,17 @@
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 use crate::*;
 
-pub static mut cmd_confirm_before_entry: cmd_entry = cmd_entry {
-    name: c"confirm-before".as_ptr(),
-    alias: c"confirm".as_ptr(),
+pub static cmd_confirm_before_entry: cmd_entry = cmd_entry {
+    name: SyncCharPtr::new(c"confirm-before"),
+    alias: SyncCharPtr::new(c"confirm"),
 
     args: args_parse::new(c"bc:p:t:y", 1, 1, Some(cmd_confirm_before_args_parse)),
-    usage: c"[-by] [-c confirm_key] [-p prompt] [-t target-pane] command".as_ptr(),
+    usage: SyncCharPtr::new(c"[-by] [-c confirm_key] [-p prompt] [-t target-pane] command"),
 
     flags: cmd_flag::CMD_CLIENT_TFLAG,
-    exec: Some(cmd_confirm_before_exec),
-    ..unsafe { zeroed() }
+    exec: cmd_confirm_before_exec,
+    source: cmd_entry_flag::zeroed(),
+    target: cmd_entry_flag::zeroed(),
 };
 
 pub struct cmd_confirm_before_data {
@@ -77,7 +78,9 @@ unsafe fn cmd_confirm_before_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
         if !prompt.is_null() {
             new_prompt = format_nul!("{} ", _s(prompt));
         } else {
-            let cmd = (*cmd_get_entry(cmd_list_first((*cdata).cmdlist))).name;
+            let cmd = cmd_get_entry(cmd_list_first((*cdata).cmdlist))
+                .name
+                .as_ptr();
             new_prompt = format_nul!(
                 "Confirm '{}'? ({}/n) ",
                 _s(cmd),

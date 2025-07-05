@@ -13,16 +13,19 @@
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 use crate::*;
 
-pub static mut cmd_command_prompt_entry: cmd_entry = cmd_entry {
-    name: c"command-prompt".as_ptr(),
-    alias: null_mut(),
+pub static cmd_command_prompt_entry: cmd_entry = cmd_entry {
+    name: SyncCharPtr::new(c"command-prompt"),
+    alias: SyncCharPtr::null(),
 
     args: args_parse::new(c"1bFkiI:Np:t:T:", 0, 1, Some(cmd_command_prompt_args_parse)),
-    usage: c"[-1bFkiN] [-I inputs] [-p prompts] [-t target-pane] [-T type] [template]".as_ptr(),
+    usage: SyncCharPtr::new(
+        c"[-1bFkiN] [-I inputs] [-p prompts] [-t target-pane] [-T type] [template]",
+    ),
 
     flags: cmd_flag::CMD_CLIENT_TFLAG,
-    exec: Some(cmd_command_prompt_exec),
-    ..unsafe { zeroed() }
+    exec: cmd_command_prompt_exec,
+    source: cmd_entry_flag::zeroed(),
+    target: cmd_entry_flag::zeroed(),
 };
 
 struct cmd_command_prompt_prompt {
@@ -58,14 +61,10 @@ unsafe fn cmd_command_prompt_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
         let args = cmd_get_args(self_);
         let tc = cmdq_get_target_client(item);
         let target = cmdq_get_target(item);
-        // const char			*type, *s, *input;
-        // struct cmd_command_prompt_cdata	*cdata;
         let mut prompts = null_mut();
         let mut prompt: *const i8 = null();
         let mut next_prompt = null_mut();
         let mut tmp = null_mut();
-        // char				*tmp, *prompts, *prompt, *next_prompt;
-        // char				*inputs = NULL, *next_input;
         let mut inputs = null_mut();
         let mut next_input = null_mut();
         let count = args_count(args);
@@ -190,13 +189,7 @@ unsafe fn cmd_command_prompt_callback(
         let cdata: NonNull<cmd_command_prompt_cdata> = data.cast();
         let cdata = cdata.as_ptr();
         let mut error: *mut c_char = null_mut();
-
         let item: *mut cmdq_item = (*cdata).item;
-        //struct cmdq_item			 *item = cdata->item, *new_item;
-        //struct cmd_list				 *cmdlist;
-        //struct cmd_command_prompt_prompt	 *prompt;
-        //int					  argc = 0;
-        //char					**argv = NULL;
 
         'out: {
             if s.is_null() {

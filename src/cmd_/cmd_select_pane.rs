@@ -15,33 +15,32 @@ use crate::*;
 
 use crate::compat::queue::{tailq_first, tailq_foreach, tailq_next, tailq_prev};
 
-pub static mut cmd_select_pane_entry: cmd_entry = cmd_entry {
-    name: c"select-pane".as_ptr(),
-    alias: c"selectp".as_ptr(),
+pub static cmd_select_pane_entry: cmd_entry = cmd_entry {
+    name: SyncCharPtr::new(c"select-pane"),
+    alias: SyncCharPtr::new(c"selectp"),
 
     args: args_parse::new(c"DdegLlMmP:RT:t:UZ", 0, 0, None), /* -P and -g deprecated */
-    usage: c"[-DdeLlMmRUZ] [-T title] [-t target-pane]".as_ptr(),
+    usage: SyncCharPtr::new(c"[-DdeLlMmRUZ] [-T title] [-t target-pane]"),
 
     target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_PANE, 0),
 
     flags: cmd_flag::empty(),
-    exec: Some(cmd_select_pane_exec),
-
-    ..unsafe { zeroed() }
+    exec: cmd_select_pane_exec,
+    source: cmd_entry_flag::zeroed(),
 };
 
-pub static mut cmd_last_pane_entry: cmd_entry = cmd_entry {
-    name: c"last-pane".as_ptr(),
-    alias: c"lastp".as_ptr(),
+pub static cmd_last_pane_entry: cmd_entry = cmd_entry {
+    name: SyncCharPtr::new(c"last-pane"),
+    alias: SyncCharPtr::new(c"lastp"),
 
     args: args_parse::new(c"det:Z", 0, 0, None),
-    usage: c"[-deZ] [-t target-window]".as_ptr(),
+    usage: SyncCharPtr::new(c"[-deZ] [-t target-window]"),
 
     target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_WINDOW, 0),
 
     flags: cmd_flag::empty(),
-    exec: Some(cmd_select_pane_exec),
-    ..unsafe { zeroed() }
+    exec: cmd_select_pane_exec,
+    source: cmd_entry_flag::zeroed(),
 };
 
 pub unsafe fn cmd_select_pane_redraw(w: *mut window) {
@@ -86,7 +85,7 @@ pub unsafe fn cmd_select_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd
         let mut lastwp: *mut window_pane = null_mut();
         let mut markedwp = null_mut();
 
-        if entry == &raw mut cmd_last_pane_entry || args_has_(args, 'l') {
+        if std::ptr::eq(entry, &cmd_last_pane_entry) || args_has_(args, 'l') {
             /*
              * Check for no last pane found in case the other pane was
              * spawned without being visited (for example split-window -d).

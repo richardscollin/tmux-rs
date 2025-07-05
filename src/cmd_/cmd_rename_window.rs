@@ -13,18 +13,18 @@
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 use crate::*;
 
-pub static mut cmd_rename_window_entry: cmd_entry = cmd_entry {
-    name: c"rename-window".as_ptr(),
-    alias: c"renamew".as_ptr(),
+pub static cmd_rename_window_entry: cmd_entry = cmd_entry {
+    name: SyncCharPtr::new(c"rename-window"),
+    alias: SyncCharPtr::new(c"renamew"),
 
     args: args_parse::new(c"t:", 1, 1, None),
-    usage: c"[-t target-window] new-name".as_ptr(),
+    usage: SyncCharPtr::new(c"[-t target-window] new-name"),
 
     target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_WINDOW, 0),
-    source: unsafe { zeroed() },
+    source: cmd_entry_flag::zeroed(),
 
     flags: cmd_flag::CMD_AFTERHOOK,
-    exec: Some(cmd_rename_window_exec),
+    exec: cmd_rename_window_exec,
 };
 
 unsafe fn cmd_rename_window_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retval {

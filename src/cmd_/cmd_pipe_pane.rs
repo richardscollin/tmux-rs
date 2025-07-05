@@ -21,18 +21,18 @@ use libc::{
 
 use crate::compat::closefrom;
 
-pub static mut cmd_pipe_pane_entry: cmd_entry = cmd_entry {
-    name: c"pipe-pane".as_ptr(),
-    alias: c"pipep".as_ptr(),
+pub static cmd_pipe_pane_entry: cmd_entry = cmd_entry {
+    name: SyncCharPtr::new(c"pipe-pane"),
+    alias: SyncCharPtr::new(c"pipep"),
 
     args: args_parse::new(c"IOot:", 0, 1, None),
-    usage: c"[-IOo] [-t target-pane] [shell-command]".as_ptr(),
+    usage: SyncCharPtr::new(c"[-IOo] [-t target-pane] [shell-command]"),
 
     target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_PANE, 0),
-    source: unsafe { zeroed() },
+    source: cmd_entry_flag::zeroed(),
 
     flags: cmd_flag::CMD_AFTERHOOK,
-    exec: Some(cmd_pipe_pane_exec),
+    exec: cmd_pipe_pane_exec,
 };
 
 pub unsafe fn cmd_pipe_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retval {
@@ -44,14 +44,10 @@ pub unsafe fn cmd_pipe_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
         let s = (*target).s;
         let wl = (*target).wl;
         let wpo = &raw mut (*wp).pipe_offset;
-        // char *cmd;
-        // int old_fd, pipe_fd[2], null_fd, in, out;
         let old_fd = 0;
         let mut pipe_fd: [i32; 2] = [0; 2];
         let mut in_: i32 = 0;
         let mut out: i32 = 0;
-        // struct format_tree *ft;
-        // sigset_t set, oldset;
         let mut set: sigset_t = zeroed(); // TODO uninit
         let mut oldset: sigset_t = zeroed(); // TODO uninit
 

@@ -18,18 +18,18 @@ use crate::compat::queue::{
     tailq_last, tailq_next, tailq_prev, tailq_remove,
 };
 
-pub static mut cmd_rotate_window_entry: cmd_entry = cmd_entry {
-    name: c"rotate-window".as_ptr(),
-    alias: c"rotatew".as_ptr(),
+pub static cmd_rotate_window_entry: cmd_entry = cmd_entry {
+    name: SyncCharPtr::new(c"rotate-window"),
+    alias: SyncCharPtr::new(c"rotatew"),
 
     args: args_parse::new(c"Dt:UZ", 0, 0, None),
-    usage: c"[-DUZ] [-t target-window]".as_ptr(),
+    usage: SyncCharPtr::new(c"[-DUZ] [-t target-window]"),
 
     target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_WINDOW, 0),
 
     flags: cmd_flag::empty(),
-    exec: Some(cmd_rotate_window_exec),
-    ..unsafe { zeroed() }
+    exec: cmd_rotate_window_exec,
+    source: cmd_entry_flag::zeroed(),
 };
 
 unsafe fn cmd_rotate_window_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retval {

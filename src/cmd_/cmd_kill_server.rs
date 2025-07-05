@@ -16,33 +16,35 @@ use core::ptr::null;
 
 use libc::{SIGTERM, kill, pid_t};
 
-use crate::{args_parse, cmd, cmd_entry, cmd_flag, cmd_get_entry, cmd_retval, cmdq_item};
+use crate::{args_parse, cmd, cmd_entry, cmd_flag, cmd_get_entry, cmd_retval, cmdq_item, *};
 
-pub static mut cmd_kill_server_entry: cmd_entry = cmd_entry {
-    name: c"kill-server".as_ptr(),
-    alias: null(),
+pub static cmd_kill_server_entry: cmd_entry = cmd_entry {
+    name: SyncCharPtr::new(c"kill-server"),
+    alias: SyncCharPtr::null(),
 
     args: args_parse::new(c"", 0, 0, None),
-    usage: c"".as_ptr(),
+    usage: SyncCharPtr::new(c""),
 
     flags: cmd_flag::empty(),
-    exec: Some(cmd_kill_server_exec),
-    ..unsafe { zeroed() }
+    exec: cmd_kill_server_exec,
+    source: cmd_entry_flag::zeroed(),
+    target: cmd_entry_flag::zeroed(),
 };
 
-pub static mut cmd_start_server_entry: cmd_entry = cmd_entry {
-    name: c"start-server".as_ptr(),
-    alias: c"start".as_ptr(),
+pub static cmd_start_server_entry: cmd_entry = cmd_entry {
+    name: SyncCharPtr::new(c"start-server"),
+    alias: SyncCharPtr::new(c"start"),
     args: args_parse::new(c"", 0, 0, None),
-    usage: c"".as_ptr(),
+    usage: SyncCharPtr::new(c""),
     flags: cmd_flag::CMD_STARTSERVER,
-    exec: Some(cmd_kill_server_exec),
-    ..unsafe { zeroed() }
+    exec: cmd_kill_server_exec,
+    source: cmd_entry_flag::zeroed(),
+    target: cmd_entry_flag::zeroed(),
 };
 
 unsafe fn cmd_kill_server_exec(self_: *mut cmd, _: *mut cmdq_item) -> cmd_retval {
     unsafe {
-        if cmd_get_entry(self_) == &raw mut cmd_kill_server_entry {
+        if std::ptr::eq(cmd_get_entry(self_), &cmd_kill_server_entry) {
             kill(std::process::id() as pid_t, SIGTERM);
         }
     }

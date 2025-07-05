@@ -16,28 +16,30 @@ use crate::*;
 use crate::compat::strlcat;
 use libc::strcmp;
 
-pub static mut cmd_list_keys_entry: cmd_entry = cmd_entry {
-    name: c"list-keys".as_ptr(),
-    alias: c"lsk".as_ptr(),
+pub static cmd_list_keys_entry: cmd_entry = cmd_entry {
+    name: SyncCharPtr::new(c"list-keys"),
+    alias: SyncCharPtr::new(c"lsk"),
 
     args: args_parse::new(c"1aNP:T:", 0, 1, None),
-    usage: c"[-1aN] [-P prefix-string] [-T key-table] [key]".as_ptr(),
+    usage: SyncCharPtr::new(c"[-1aN] [-P prefix-string] [-T key-table] [key]"),
 
     flags: cmd_flag::CMD_STARTSERVER.union(cmd_flag::CMD_AFTERHOOK),
-    exec: Some(cmd_list_keys_exec),
-    ..unsafe { zeroed() }
+    exec: cmd_list_keys_exec,
+    source: cmd_entry_flag::zeroed(),
+    target: cmd_entry_flag::zeroed(),
 };
 
-pub static mut cmd_list_commands_entry: cmd_entry = cmd_entry {
-    name: c"list-commands".as_ptr(),
-    alias: c"lscm".as_ptr(),
+pub static cmd_list_commands_entry: cmd_entry = cmd_entry {
+    name: SyncCharPtr::new(c"list-commands"),
+    alias: SyncCharPtr::new(c"lscm"),
 
     args: args_parse::new(c"F:", 0, 1, None),
-    usage: c"[-F format] [command]".as_ptr(),
+    usage: SyncCharPtr::new(c"[-F format] [command]"),
 
     flags: cmd_flag::CMD_STARTSERVER.union(cmd_flag::CMD_AFTERHOOK),
-    exec: Some(cmd_list_keys_exec),
-    ..unsafe { zeroed() }
+    exec: cmd_list_keys_exec,
+    source: cmd_entry_flag::zeroed(),
+    target: cmd_entry_flag::zeroed(),
 };
 
 unsafe fn cmd_list_keys_get_width(tablename: *const c_char, only: key_code) -> u32 {
@@ -149,7 +151,7 @@ unsafe fn cmd_list_keys_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retva
         let mut found = 0;
         let mut only: key_code = KEYC_UNKNOWN;
 
-        if cmd_get_entry(self_) == &raw mut cmd_list_commands_entry {
+        if std::ptr::eq(cmd_get_entry(self_), &cmd_list_commands_entry) {
             return cmd_list_keys_commands(self_, item);
         }
 
@@ -349,11 +351,6 @@ unsafe fn cmd_list_keys_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retva
 unsafe fn cmd_list_keys_commands(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retval {
     unsafe {
         let args = cmd_get_args(self_);
-        //const struct cmd_entry **entryp;
-        //const struct cmd_entry *entry;
-        //struct format_tree *ft;
-        //const char *template, *s, *command;
-        //char *line;
 
         let mut template = args_get_(args, 'F');
         if template.is_null() {
@@ -379,22 +376,27 @@ unsafe fn cmd_list_keys_commands(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
         while !(*entryp).is_null() {
             let entry = *entryp;
             if !command.is_null()
-                && (strcmp((*entry).name, command) != 0
-                    && ((*entry).alias.is_null() || strcmp((*entry).alias, command) != 0))
+                && (strcmp((*entry).name.as_ptr(), command) != 0
+                    && ((*entry).alias.is_null() || strcmp((*entry).alias.as_ptr(), command) != 0))
             {
                 entryp = entryp.add(1);
                 continue;
             }
 
-            format_add!(ft, c"command_list_name".as_ptr(), "{}", _s((*entry).name),);
+            format_add!(
+                ft,
+                c"command_list_name".as_ptr(),
+                "{}",
+                _s((*entry).name.as_ptr()),
+            );
             let s = if !(*entry).alias.is_null() {
-                (*entry).alias
+                (*entry).alias.as_ptr()
             } else {
                 c"".as_ptr()
             };
             format_add!(ft, c"command_list_alias".as_ptr(), "{}", _s(s));
             let s = if !(*entry).usage.is_null() {
-                (*entry).usage
+                (*entry).usage.as_ptr()
             } else {
                 c"".as_ptr()
             };

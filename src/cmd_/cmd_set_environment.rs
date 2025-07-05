@@ -13,18 +13,18 @@
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 use crate::*;
 
-pub static mut cmd_set_environment_entry: cmd_entry = cmd_entry {
-    name: c"set-environment".as_ptr(),
-    alias: c"setenv".as_ptr(),
+pub static cmd_set_environment_entry: cmd_entry = cmd_entry {
+    name: SyncCharPtr::new(c"set-environment"),
+    alias: SyncCharPtr::new(c"setenv"),
 
     args: args_parse::new(c"Fhgrt:u", 1, 2, None),
-    usage: c"[-Fhgru] [-t target-session] name [value]".as_ptr(),
+    usage: SyncCharPtr::new(c"[-Fhgru] [-t target-session] name [value]"),
 
     target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_SESSION, CMD_FIND_CANFAIL),
 
     flags: cmd_flag::CMD_AFTERHOOK,
-    exec: Some(cmd_set_environment_exec),
-    ..unsafe { zeroed() }
+    exec: cmd_set_environment_exec,
+    source: cmd_entry_flag::zeroed(),
 };
 
 unsafe fn cmd_set_environment_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retval {

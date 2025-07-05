@@ -15,16 +15,17 @@ use crate::*;
 
 use crate::compat::queue::tailq_foreach;
 
-pub static mut cmd_display_panes_entry: cmd_entry = cmd_entry {
-    name: c"display-panes".as_ptr(),
-    alias: c"displayp".as_ptr(),
+pub static cmd_display_panes_entry: cmd_entry = cmd_entry {
+    name: SyncCharPtr::new(c"display-panes"),
+    alias: SyncCharPtr::new(c"displayp"),
 
     args: args_parse::new(c"bd:Nt:", 0, 1, Some(cmd_display_panes_args_parse)),
-    usage: c"[-bN] [-d duration] [-t target-client] [template]".as_ptr(),
+    usage: SyncCharPtr::new(c"[-bN] [-d duration] [-t target-client] [template]"),
 
     flags: cmd_flag::CMD_AFTERHOOK.union(cmd_flag::CMD_CLIENT_TFLAG),
-    exec: Some(cmd_display_panes_exec),
-    ..unsafe { zeroed() }
+    exec: cmd_display_panes_exec,
+    source: cmd_entry_flag::zeroed(),
+    target: cmd_entry_flag::zeroed(),
 };
 
 #[repr(C)]

@@ -18,35 +18,37 @@ use libc::strtol;
 
 use crate::compat::queue::tailq_first;
 
-pub static mut cmd_send_keys_entry: cmd_entry = cmd_entry {
-    name: c"send-keys".as_ptr(),
-    alias: c"send".as_ptr(),
+pub static cmd_send_keys_entry: cmd_entry = cmd_entry {
+    name: SyncCharPtr::new(c"send-keys"),
+    alias: SyncCharPtr::new(c"send"),
 
     args: args_parse::new(c"c:FHKlMN:Rt:X", 0, -1, None),
-    usage: c"[-FHKlMRX] [-c target-client] [-N repeat-count] -t target-pane key ...".as_ptr(),
+    usage: SyncCharPtr::new(
+        c"[-FHKlMRX] [-c target-client] [-N repeat-count] -t target-pane key ...",
+    ),
 
     target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_PANE, 0),
 
     flags: cmd_flag::CMD_AFTERHOOK
         .union(cmd_flag::CMD_CLIENT_CFLAG)
         .union(cmd_flag::CMD_CLIENT_CANFAIL),
-    exec: Some(cmd_send_keys_exec),
+    exec: cmd_send_keys_exec,
 
-    ..unsafe { zeroed() }
+    source: cmd_entry_flag::zeroed(),
 };
 
-pub static mut cmd_send_prefix_entry: cmd_entry = cmd_entry {
-    name: c"send-prefix".as_ptr(),
-    alias: null(),
+pub static cmd_send_prefix_entry: cmd_entry = cmd_entry {
+    name: SyncCharPtr::new(c"send-prefix"),
+    alias: SyncCharPtr::null(),
 
     args: args_parse::new(c"2t:", 0, 0, None),
-    usage: c"[-2] -t target-pane".as_ptr(),
+    usage: SyncCharPtr::new(c"[-2] -t target-pane"),
 
     target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_PANE, 0),
 
     flags: cmd_flag::CMD_AFTERHOOK,
-    exec: Some(cmd_send_keys_exec),
-    ..unsafe { zeroed() }
+    exec: cmd_send_keys_exec,
+    source: cmd_entry_flag::zeroed(),
 };
 
 pub unsafe fn cmd_send_keys_inject_key(
@@ -61,9 +63,6 @@ pub unsafe fn cmd_send_keys_inject_key(
         let s = (*target).s;
         let wl = (*target).wl;
         let wp = (*target).wp;
-        //struct window_mode_entry *wme;
-        // struct key_binding *bd;
-        // struct *event;
 
         if args_has_(args, 'K') {
             if tc.is_null() {
@@ -112,12 +111,6 @@ pub unsafe fn cmd_send_keys_inject_string(
         let mut key: key_code;
         let mut endptr: *mut c_char = null_mut();
         let n: c_long = 0;
-        // struct utf8_data *ud, *loop_;
-        // utf8_char uc;
-        // key_code key;
-        // char *endptr;
-        // long n;
-        // int literal;
 
         if args_has_(args, 'H') {
             let n = strtol(s, &raw mut endptr, 16);
@@ -173,7 +166,6 @@ pub unsafe fn cmd_send_keys_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
         let wme = tailq_first(&raw mut (*wp).modes);
         let mut after: *mut cmdq_item = item;
         let mut key: key_code = 0;
-        // u_int i, np = 1;
         let mut np: u32 = 1;
         let count = args_count(args);
         let mut cause: *mut c_char = null_mut();
@@ -217,7 +209,7 @@ pub unsafe fn cmd_send_keys_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
             return cmd_retval::CMD_RETURN_NORMAL;
         }
 
-        if cmd_get_entry(self_) == &raw mut cmd_send_prefix_entry {
+        if std::ptr::eq(cmd_get_entry(self_), &cmd_send_prefix_entry) {
             key = if args_has_(args, '2') {
                 options_get_number_((*s).options, c"prefix2") as u64
             } else {

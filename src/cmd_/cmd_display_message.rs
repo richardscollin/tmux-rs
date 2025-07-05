@@ -16,21 +16,22 @@ use crate::*;
 
 const DISPLAY_MESSAGE_TEMPLATE: &CStr = c"[#{session_name}] #{window_index}:#{window_name}, current pane #{pane_index} - (%H:%M %d-%b-%y)";
 
-pub static mut cmd_display_message_entry: cmd_entry = cmd_entry {
-    name: c"display-message".as_ptr(),
-    alias: c"display".as_ptr(),
+pub static cmd_display_message_entry: cmd_entry = cmd_entry {
+    name: SyncCharPtr::new(c"display-message"),
+    alias: SyncCharPtr::new(c"display"),
 
     args: args_parse::new(c"ac:d:lINpt:F:v", 0, 1, None),
-    usage: c"[-aIlNpv] [-c target-client] [-d delay] [-F format] [-t target-pane] [message]"
-        .as_ptr(),
+    usage: SyncCharPtr::new(
+        c"[-aIlNpv] [-c target-client] [-d delay] [-F format] [-t target-pane] [message]",
+    ),
 
     target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_PANE, CMD_FIND_CANFAIL),
 
     flags: cmd_flag::CMD_AFTERHOOK
         .union(cmd_flag::CMD_CLIENT_CFLAG)
         .union(cmd_flag::CMD_CLIENT_CANFAIL),
-    exec: Some(cmd_display_message_exec),
-    ..unsafe { zeroed() }
+    exec: cmd_display_message_exec,
+    source: cmd_entry_flag::zeroed(),
 };
 
 unsafe fn cmd_display_message_each(key: *const c_char, value: *const c_char, arg: *mut c_void) {

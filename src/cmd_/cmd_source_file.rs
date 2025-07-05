@@ -15,18 +15,18 @@ use crate::*;
 
 use libc::{EINVAL, ENOENT, ENOMEM, GLOB_NOMATCH, GLOB_NOSPACE, glob, glob_t, globfree};
 
-pub static mut cmd_source_file_entry: cmd_entry = cmd_entry {
-    name: c"source-file".as_ptr(),
-    alias: c"source".as_ptr(),
+pub static cmd_source_file_entry: cmd_entry = cmd_entry {
+    name: SyncCharPtr::new(c"source-file"),
+    alias: SyncCharPtr::new(c"source"),
 
     args: args_parse::new(c"t:Fnqv", 1, -1, None),
-    usage: c"[-Fnqv] [-t target-pane] path ...".as_ptr(),
+    usage: SyncCharPtr::new(c"[-Fnqv] [-t target-pane] path ..."),
 
     target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_PANE, CMD_FIND_CANFAIL),
 
     flags: cmd_flag::empty(),
-    exec: Some(cmd_source_file_exec),
-    ..unsafe { zeroed() }
+    exec: cmd_source_file_exec,
+    source: cmd_entry_flag::zeroed(),
 };
 
 #[repr(C)]

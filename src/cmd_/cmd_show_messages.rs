@@ -17,16 +17,17 @@ use crate::compat::queue::{list_foreach, tailq_foreach_reverse};
 
 const SHOW_MESSAGES_TEMPLATE: &CStr = c"#{t/p:message_time}: #{message_text}";
 
-pub static mut cmd_show_messages_entry: cmd_entry = cmd_entry {
-    name: c"show-messages".as_ptr(),
-    alias: c"showmsgs".as_ptr(),
+pub static cmd_show_messages_entry: cmd_entry = cmd_entry {
+    name: SyncCharPtr::new(c"show-messages"),
+    alias: SyncCharPtr::new(c"showmsgs"),
 
     args: args_parse::new(c"JTt:", 0, 0, None),
-    usage: c"[-JT] [-t target-client]".as_ptr(),
+    usage: SyncCharPtr::new(c"[-JT] [-t target-client]"),
 
     flags: cmd_flag::CMD_AFTERHOOK.union(cmd_flag::CMD_CLIENT_TFLAG),
-    exec: Some(cmd_show_messages_exec),
-    ..unsafe { zeroed() }
+    exec: cmd_show_messages_exec,
+    source: cmd_entry_flag::zeroed(),
+    target: cmd_entry_flag::zeroed(),
 };
 
 unsafe fn cmd_show_messages_terminals(

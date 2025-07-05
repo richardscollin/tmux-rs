@@ -15,46 +15,46 @@ use crate::*;
 
 use crate::compat::queue::tailq_foreach;
 
-pub static mut cmd_set_option_entry: cmd_entry = cmd_entry {
-    name: c"set-option".as_ptr(),
-    alias: c"set".as_ptr(),
+pub static cmd_set_option_entry: cmd_entry = cmd_entry {
+    name: SyncCharPtr::new(c"set-option"),
+    alias: SyncCharPtr::new(c"set"),
 
     args: args_parse::new(c"aFgopqst:uUw", 1, 2, Some(cmd_set_option_args_parse)),
-    usage: c"[-aFgopqsuUw] [-t target-pane] option [value]".as_ptr(),
+    usage: SyncCharPtr::new(c"[-aFgopqsuUw] [-t target-pane] option [value]"),
 
     target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_PANE, CMD_FIND_CANFAIL),
 
     flags: cmd_flag::CMD_AFTERHOOK,
-    exec: Some(cmd_set_option_exec),
-    ..unsafe { zeroed() }
+    exec: cmd_set_option_exec,
+    source: cmd_entry_flag::zeroed(),
 };
 
-pub static mut cmd_set_window_option_entry: cmd_entry = cmd_entry {
-    name: c"set-window-option".as_ptr(),
-    alias: c"setw".as_ptr(),
+pub static cmd_set_window_option_entry: cmd_entry = cmd_entry {
+    name: SyncCharPtr::new(c"set-window-option"),
+    alias: SyncCharPtr::new(c"setw"),
 
     args: args_parse::new(c"aFgoqt:u", 1, 2, Some(cmd_set_option_args_parse)),
-    usage: c"[-aFgoqu] [-t target-window] option [value]".as_ptr(),
+    usage: SyncCharPtr::new(c"[-aFgoqu] [-t target-window] option [value]"),
 
     target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_WINDOW, CMD_FIND_CANFAIL),
 
     flags: cmd_flag::CMD_AFTERHOOK,
-    exec: Some(cmd_set_option_exec),
-    ..unsafe { zeroed() }
+    exec: cmd_set_option_exec,
+    source: cmd_entry_flag::zeroed(),
 };
 
-pub static mut cmd_set_hook_entry: cmd_entry = cmd_entry {
-    name: c"set-hook".as_ptr(),
-    alias: null(),
+pub static cmd_set_hook_entry: cmd_entry = cmd_entry {
+    name: SyncCharPtr::new(c"set-hook"),
+    alias: SyncCharPtr::null(),
 
     args: args_parse::new(c"agpRt:uw", 1, 2, Some(cmd_set_option_args_parse)),
-    usage: c"[-agpRuw] [-t target-pane] hook [command]".as_ptr(),
+    usage: SyncCharPtr::new(c"[-agpRuw] [-t target-pane] hook [command]"),
 
     target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_PANE, CMD_FIND_CANFAIL),
 
     flags: cmd_flag::CMD_AFTERHOOK,
-    exec: Some(cmd_set_option_exec),
-    ..unsafe { zeroed() }
+    exec: cmd_set_option_exec,
+    source: cmd_entry_flag::zeroed(),
 };
 
 pub unsafe fn cmd_set_option_args_parse(
@@ -91,13 +91,14 @@ pub unsafe fn cmd_set_option_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
 
         'fail: {
             'out: {
-                let window = (cmd_get_entry(self_) == &raw mut cmd_set_window_option_entry) as i32;
+                let window =
+                    std::ptr::eq(cmd_get_entry(self_), &cmd_set_window_option_entry) as i32;
 
                 /* Expand argument. */
                 argument = format_single_from_target(item, args_string(args, 0));
 
                 /* If set-hook -R, fire the hook straight away. */
-                if cmd_get_entry(self_) == &raw mut cmd_set_hook_entry && args_has_(args, 'R') {
+                if std::ptr::eq(cmd_get_entry(self_), &cmd_set_hook_entry) && args_has_(args, 'R') {
                     notify_hook(item, argument);
                     free_(argument);
                     return cmd_retval::CMD_RETURN_NORMAL;

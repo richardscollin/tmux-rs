@@ -14,18 +14,18 @@
 
 use crate::*;
 
-pub static mut cmd_show_environment_entry: cmd_entry = cmd_entry {
-    name: c"show-environment".as_ptr(),
-    alias: c"showenv".as_ptr(),
+pub static cmd_show_environment_entry: cmd_entry = cmd_entry {
+    name: SyncCharPtr::new(c"show-environment"),
+    alias: SyncCharPtr::new(c"showenv"),
 
     args: args_parse::new(c"hgst:", 0, 1, None),
-    usage: c"[-hgs] [-t target-session] [name]".as_ptr(),
+    usage: SyncCharPtr::new(c"[-hgs] [-t target-session] [name]"),
 
     target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_SESSION, CMD_FIND_CANFAIL),
 
     flags: cmd_flag::CMD_AFTERHOOK,
-    exec: Some(cmd_show_environment_exec),
-    ..unsafe { zeroed() }
+    exec: cmd_show_environment_exec,
+    source: cmd_entry_flag::zeroed(),
 };
 
 unsafe fn cmd_show_environment_escape(envent: *mut environ_entry) -> *mut c_char {

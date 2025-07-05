@@ -15,18 +15,18 @@ use crate::*;
 
 use crate::compat::queue::tailq_empty;
 
-pub static mut cmd_resize_pane_entry: cmd_entry = cmd_entry {
-    name: c"resize-pane".as_ptr(),
-    alias: c"resizep".as_ptr(),
+pub static cmd_resize_pane_entry: cmd_entry = cmd_entry {
+    name: SyncCharPtr::new(c"resize-pane"),
+    alias: SyncCharPtr::new(c"resizep"),
 
     args: args_parse::new(c"DLMRTt:Ux:y:Z", 0, 1, None),
-    usage: c"[-DLMRTUZ] [-x width] [-y height] [-t target-pane] [adjustment]".as_ptr(),
+    usage: SyncCharPtr::new(c"[-DLMRTUZ] [-x width] [-y height] [-t target-pane] [adjustment]"),
 
     target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_PANE, 0),
 
     flags: cmd_flag::CMD_AFTERHOOK,
-    exec: Some(cmd_resize_pane_exec),
-    ..unsafe { zeroed() }
+    exec: cmd_resize_pane_exec,
+    source: cmd_entry_flag::zeroed(),
 };
 
 unsafe fn cmd_resize_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retval {

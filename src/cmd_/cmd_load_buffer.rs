@@ -13,18 +13,19 @@
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 use crate::*;
 
-pub static mut cmd_load_buffer_entry: cmd_entry = cmd_entry {
-    name: c"load-buffer".as_ptr(),
-    alias: c"loadb".as_ptr(),
+pub static cmd_load_buffer_entry: cmd_entry = cmd_entry {
+    name: SyncCharPtr::new(c"load-buffer"),
+    alias: SyncCharPtr::new(c"loadb"),
 
     args: args_parse::new(c"b:t:w", 1, 1, None),
-    usage: c"[-b buffer-name] [-t target-client] path".as_ptr(),
+    usage: SyncCharPtr::new(c"[-b buffer-name] [-t target-client] path"),
 
     flags: cmd_flag::CMD_AFTERHOOK
         .union(cmd_flag::CMD_CLIENT_TFLAG)
         .union(cmd_flag::CMD_CLIENT_CANFAIL),
-    exec: Some(cmd_load_buffer_exec),
-    ..unsafe { zeroed() }
+    exec: cmd_load_buffer_exec,
+    source: cmd_entry_flag::zeroed(),
+    target: cmd_entry_flag::zeroed(),
 };
 
 #[repr(C)]

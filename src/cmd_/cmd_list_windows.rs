@@ -18,18 +18,18 @@ use crate::compat::tree::rb_foreach;
 const LIST_WINDOWS_TEMPLATE: &CStr = c"#{window_index}: #{window_name}#{window_raw_flags} (#{window_panes} panes) [#{window_width}x#{window_height}] [layout #{window_layout}] #{window_id}#{?window_active, (active),}";
 const LIST_WINDOWS_WITH_SESSION_TEMPLATE: &CStr = c"#{session_name}:#{window_index}: #{window_name}#{window_raw_flags} (#{window_panes} panes) [#{window_width}x#{window_height}] ";
 
-pub static mut cmd_list_windows_entry: cmd_entry = cmd_entry {
-    name: c"list-windows".as_ptr(),
-    alias: c"lsw".as_ptr(),
+pub static cmd_list_windows_entry: cmd_entry = cmd_entry {
+    name: SyncCharPtr::new(c"list-windows"),
+    alias: SyncCharPtr::new(c"lsw"),
 
     args: args_parse::new(c"F:f:at:", 0, 0, None),
-    usage: c"[-a] [-F format] [-f filter] [-t target-session]".as_ptr(),
+    usage: SyncCharPtr::new(c"[-a] [-F format] [-f filter] [-t target-session]"),
 
     target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_SESSION, 0),
 
     flags: cmd_flag::CMD_AFTERHOOK,
-    exec: Some(cmd_list_windows_exec),
-    ..unsafe { zeroed() }
+    exec: cmd_list_windows_exec,
+    source: cmd_entry_flag::zeroed(),
 };
 
 unsafe fn cmd_list_windows_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retval {

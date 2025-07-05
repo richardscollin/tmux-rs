@@ -1949,11 +1949,11 @@ unsafe fn status_prompt_complete_list(
         *size = 0;
         let mut cmdent: *const *const cmd_entry = (&raw const cmd_table) as *const *const cmd_entry;
         while !(*cmdent).is_null() {
-            if strncmp((*(*cmdent)).name, s, slen) == 0 {
-                status_prompt_add_list(&raw mut list, size, (*(*cmdent)).name);
+            if strncmp((*(*cmdent)).name.as_ptr(), s, slen) == 0 {
+                status_prompt_add_list(&raw mut list, size, (*(*cmdent)).name.as_ptr());
             }
-            if !(*(*cmdent)).alias.is_null() && strncmp((*(*cmdent)).alias, s, slen) == 0 {
-                status_prompt_add_list(&raw mut list, size, (*(*cmdent)).alias);
+            if !(*(*cmdent)).alias.is_null() && strncmp((*(*cmdent)).alias.as_ptr(), s, slen) == 0 {
+                status_prompt_add_list(&raw mut list, size, (*(*cmdent)).alias.as_ptr());
             }
             cmdent = cmdent.add(1);
         }

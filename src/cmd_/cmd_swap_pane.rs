@@ -19,18 +19,18 @@ use crate::compat::queue::{
     tailq_remove, tailq_replace,
 };
 
-pub static mut cmd_swap_pane_entry: cmd_entry = cmd_entry {
-    name: c"swap-pane".as_ptr(),
-    alias: c"swapp".as_ptr(),
+pub static cmd_swap_pane_entry: cmd_entry = cmd_entry {
+    name: SyncCharPtr::new(c"swap-pane"),
+    alias: SyncCharPtr::new(c"swapp"),
 
     args: args_parse::new(c"dDs:t:UZ", 0, 0, None),
-    usage: c"[-dDUZ] [-s src-window] [-t dst-window]".as_ptr(),
+    usage: SyncCharPtr::new(c"[-dDUZ] [-s src-window] [-t dst-window]"),
 
     source: cmd_entry_flag::new(b's', cmd_find_type::CMD_FIND_PANE, CMD_FIND_DEFAULT_MARKED),
     target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_PANE, 0),
 
     flags: cmd_flag::empty(),
-    exec: Some(cmd_swap_pane_exec),
+    exec: cmd_swap_pane_exec,
 };
 
 unsafe fn cmd_swap_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retval {

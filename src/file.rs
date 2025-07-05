@@ -24,7 +24,9 @@ use libc::{
     memcpy, open, strcmp,
 };
 
-pub static mut file_next_stream: i32 = 3;
+use std::sync::atomic;
+
+pub static file_next_stream: atomic::AtomicI32 = atomic::AtomicI32::new(3);
 
 pub unsafe fn file_get_path(c: *mut client, file: *const c_char) -> NonNull<c_char> {
     unsafe {
@@ -312,8 +314,7 @@ pub unsafe fn file_write(
         let mut msg: *mut msg_write_open = null_mut();
         let mut msglen: usize = 0;
         let mut fd = -1;
-        let stream: u32 = file_next_stream as u32;
-        file_next_stream += 1;
+        let stream: u32 = file_next_stream.fetch_add(1, atomic::Ordering::Relaxed) as u32;
         let mut f: *mut FILE = null_mut();
         let mut mode: *const c_char = null();
 
@@ -400,8 +401,7 @@ pub unsafe fn file_read(
         let mut msg: *mut msg_read_open = null_mut();
         let mut msglen: usize = 0;
         let mut fd: i32 = -1;
-        let stream: u32 = file_next_stream as u32;
-        file_next_stream += 1;
+        let stream: u32 = file_next_stream.fetch_add(1, atomic::Ordering::Relaxed) as u32;
         let mut f: *mut FILE = null_mut();
         let mut size: usize = 0;
         let mut buffer = MaybeUninit::<[c_char; BUFSIZ as usize]>::uninit();

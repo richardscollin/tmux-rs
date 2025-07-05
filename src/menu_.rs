@@ -39,16 +39,14 @@ pub struct menu_data {
 
 pub unsafe fn menu_add_items(
     menu: *mut menu,
-    items: *const menu_item,
+    items: &[menu_item],
     qitem: *mut cmdq_item,
     c: *mut client,
     fs: *mut cmd_find_state,
 ) {
-    let mut loop_ = items;
-    unsafe {
-        while !(*loop_).name.as_ptr().is_null() {
+    for loop_ in items {
+        unsafe {
             menu_add_item(menu, loop_, qitem, c, fs);
-            loop_ = loop_.add(1);
         }
     }
 }

@@ -35,19 +35,18 @@ const WINDOW_BUFFER_DEFAULT_KEY_FORMAT: *const i8 = concat!(
 .as_ptr()
 .cast();
 
-static mut window_buffer_menu_items: [menu_item; 12] = [
-    menu_item::new(Some(c"Paste"), 'p' as u64, null_mut()),
-    menu_item::new(Some(c"Paste Tagged"), 'P' as u64, null_mut()),
-    menu_item::new(Some(c""), KEYC_NONE, null_mut()),
-    menu_item::new(Some(c"Tag"), 't' as u64, null_mut()),
-    menu_item::new(Some(c"Tag All"), '\x14' as u64, null_mut()),
-    menu_item::new(Some(c"Tag None"), 'T' as u64, null_mut()),
-    menu_item::new(Some(c""), KEYC_NONE, null_mut()),
-    menu_item::new(Some(c"Delete"), 'd' as u64, null_mut()),
-    menu_item::new(Some(c"Delete Tagged"), 'D' as u64, null_mut()),
-    menu_item::new(Some(c""), KEYC_NONE, null_mut()),
-    menu_item::new(Some(c"Cancel"), 'q' as u64, null_mut()),
-    menu_item::new(None, KEYC_NONE, null_mut()),
+static window_buffer_menu_items: [menu_item; 11] = [
+    menu_item::new(c"Paste", 'p' as u64, null_mut()),
+    menu_item::new(c"Paste Tagged", 'P' as u64, null_mut()),
+    menu_item::new(c"", KEYC_NONE, null_mut()),
+    menu_item::new(c"Tag", 't' as u64, null_mut()),
+    menu_item::new(c"Tag All", '\x14' as u64, null_mut()),
+    menu_item::new(c"Tag None", 'T' as u64, null_mut()),
+    menu_item::new(c"", KEYC_NONE, null_mut()),
+    menu_item::new(c"Delete", 'd' as u64, null_mut()),
+    menu_item::new(c"Delete Tagged", 'D' as u64, null_mut()),
+    menu_item::new(c"", KEYC_NONE, null_mut()),
+    menu_item::new(c"Cancel", 'q' as u64, null_mut()),
 ];
 
 pub static window_buffer_mode: window_mode = window_mode {
@@ -396,7 +395,7 @@ pub unsafe fn window_buffer_init(
             None,
             Some(window_buffer_get_key),
             data as *mut window_buffer_modedata as *mut c_void,
-            &raw const window_buffer_menu_items as *const menu_item,
+            window_buffer_menu_items.as_slice(),
             &raw mut window_buffer_sort_list as *mut *const c_char,
             window_buffer_sort_list_len,
             &raw mut s,

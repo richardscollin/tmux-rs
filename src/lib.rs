@@ -1183,12 +1183,9 @@ struct menu_item {
     command: SyncCharPtr,
 }
 impl menu_item {
-    const fn new(name: Option<&'static CStr>, key: key_code, command: *const c_char) -> Self {
+    const fn new(name: &'static CStr, key: key_code, command: *const c_char) -> Self {
         Self {
-            name: match name {
-                Some(n) => SyncCharPtr::new(n),
-                None => SyncCharPtr::null(),
-            },
+            name: SyncCharPtr::new(name),
             key,
             command: SyncCharPtr(command),
         }

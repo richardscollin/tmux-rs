@@ -52,20 +52,19 @@ const WINDOW_TREE_DEFAULT_KEY_FORMAT: &str = concat!(
     "}\0"
 );
 
-static window_tree_menu_items: [menu_item; 13] = [
-    menu_item::new(Some(c"Select"), b'\r' as key_code, null()),
-    menu_item::new(Some(c"Expand"), keyc::KEYC_RIGHT as key_code, null()),
-    menu_item::new(Some(c"Mark"), 'm' as key_code, null()),
-    menu_item::new(Some(c""), KEYC_NONE, null()),
-    menu_item::new(Some(c"Tag"), b't' as key_code, null()),
-    menu_item::new(Some(c"Tag All"), b'\x14' as key_code, null()),
-    menu_item::new(Some(c"Tag None"), b'T' as key_code, null()),
-    menu_item::new(Some(c""), KEYC_NONE, null()),
-    menu_item::new(Some(c"Kill"), b'x' as key_code, null()),
-    menu_item::new(Some(c"Kill Tagged"), b'X' as key_code, null()),
-    menu_item::new(Some(c""), KEYC_NONE, null()),
-    menu_item::new(Some(c"Cancel"), b'q' as key_code, null()),
-    menu_item::new(None, KEYC_NONE, null()),
+static window_tree_menu_items: [menu_item; 12] = [
+    menu_item::new(c"Select", b'\r' as key_code, null()),
+    menu_item::new(c"Expand", keyc::KEYC_RIGHT as key_code, null()),
+    menu_item::new(c"Mark", 'm' as key_code, null()),
+    menu_item::new(c"", KEYC_NONE, null()),
+    menu_item::new(c"Tag", b't' as key_code, null()),
+    menu_item::new(c"Tag All", b'\x14' as key_code, null()),
+    menu_item::new(c"Tag None", b'T' as key_code, null()),
+    menu_item::new(c"", KEYC_NONE, null()),
+    menu_item::new(c"Kill", b'x' as key_code, null()),
+    menu_item::new(c"Kill Tagged", b'X' as key_code, null()),
+    menu_item::new(c"", KEYC_NONE, null()),
+    menu_item::new(c"Cancel", b'q' as key_code, null()),
 ];
 
 pub static window_tree_mode: window_mode = window_mode {
@@ -1169,7 +1168,7 @@ unsafe fn window_tree_init(
             None,
             Some(window_tree_get_key),
             data.cast(),
-            (&raw const window_tree_menu_items).cast(),
+            window_tree_menu_items.as_slice(),
             (&raw mut window_tree_sort_list).cast(),
             window_tree_sort_list_len as u32,
             &raw mut s,

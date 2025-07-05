@@ -23,16 +23,15 @@ static WINDOW_CLIENT_DEFAULT_FORMAT: &CStr = c"#{t/p:client_activity}: session #
 static WINDOW_CLIENT_DEFAULT_KEY_FORMAT: &CStr =
     c"#{?#{e|<:#{line},10},#{line},#{?#{e|<:#{line},36},M-#{a:#{e|+:97,#{e|-:#{line},10}}},}}";
 
-static window_client_menu_items: [menu_item; 9] = [
-    menu_item::new(Some(c"Detach"), b'd' as _, null()),
-    menu_item::new(Some(c"Detach Tagged"), b'D' as _, null()),
-    menu_item::new(Some(c""), KEYC_NONE, null()),
-    menu_item::new(Some(c"Tag"), b't' as _, null()),
-    menu_item::new(Some(c"Tag All"), b'\x14' as _, null()),
-    menu_item::new(Some(c"Tag None"), b'T' as _, null()),
-    menu_item::new(Some(c""), KEYC_NONE, null()),
-    menu_item::new(Some(c"Cancel"), b'q' as _, null()),
-    menu_item::new(None, KEYC_NONE, null()),
+static window_client_menu_items: [menu_item; 8] = [
+    menu_item::new(c"Detach", b'd' as _, null()),
+    menu_item::new(c"Detach Tagged", b'D' as _, null()),
+    menu_item::new(c"", KEYC_NONE, null()),
+    menu_item::new(c"Tag", b't' as _, null()),
+    menu_item::new(c"Tag All", b'\x14' as _, null()),
+    menu_item::new(c"Tag None", b'T' as _, null()),
+    menu_item::new(c"", KEYC_NONE, null()),
+    menu_item::new(c"Cancel", b'q' as _, null()),
 ];
 
 pub static window_client_mode: window_mode = window_mode {
@@ -352,7 +351,7 @@ pub unsafe fn window_client_init(
             None,
             Some(window_client_get_key),
             data.cast(),
-            &raw const window_client_menu_items as *const menu_item,
+            window_client_menu_items.as_slice(),
             &raw mut window_client_sort_list as *mut *const i8,
             WINDOW_CLIENT_SORT_LIST_LEN,
             &raw mut s,

@@ -26,16 +26,15 @@ static WINDOW_CUSTOMIZE_DEFAULT_FORMAT: &str = concat!(
     "}\0"
 );
 
-static window_customize_menu_items: [menu_item; 9] = [
-    menu_item::new(Some(c"Select"), '\r' as key_code, null_mut()),
-    menu_item::new(Some(c"Expand"), keyc::KEYC_RIGHT as key_code, null_mut()),
-    menu_item::new(Some(c""), KEYC_NONE, null_mut()),
-    menu_item::new(Some(c"Tag"), 't' as key_code, null_mut()),
-    menu_item::new(Some(c"Tag All"), '\x14' as key_code, null_mut()),
-    menu_item::new(Some(c"Tag None"), 'T' as key_code, null_mut()),
-    menu_item::new(Some(c""), KEYC_NONE, null_mut()),
-    menu_item::new(Some(c"Cancel"), 'q' as key_code, null_mut()),
-    menu_item::new(None, KEYC_NONE, null_mut()),
+static window_customize_menu_items: [menu_item; 8] = [
+    menu_item::new(c"Select", '\r' as key_code, null_mut()),
+    menu_item::new(c"Expand", keyc::KEYC_RIGHT as key_code, null_mut()),
+    menu_item::new(c"", KEYC_NONE, null_mut()),
+    menu_item::new(c"Tag", 't' as key_code, null_mut()),
+    menu_item::new(c"Tag All", '\x14' as key_code, null_mut()),
+    menu_item::new(c"Tag None", 'T' as key_code, null_mut()),
+    menu_item::new(c"", KEYC_NONE, null_mut()),
+    menu_item::new(c"Cancel", 'q' as key_code, null_mut()),
 ];
 
 pub static window_customize_mode: window_mode = window_mode {
@@ -1217,7 +1216,7 @@ pub unsafe fn window_customize_init(
             Some(window_customize_height),
             None,
             data.cast(),
-            (&raw const window_customize_menu_items).cast(),
+            window_customize_menu_items.as_slice(),
             null_mut(),
             0,
             &raw mut s,

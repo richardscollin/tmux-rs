@@ -63,7 +63,7 @@ pub struct mode_tree_data {
 
     wp: *mut window_pane,
     modedata: *mut c_void,
-    menu: *const menu_item,
+    menu: &'static [menu_item],
 
     sort_list: *const *const c_char,
     sort_size: u32,
@@ -139,12 +139,11 @@ struct mode_tree_menu {
     line: u32,
 }
 
-static mode_tree_menu_items: [menu_item; 5] = [
-    menu_item::new(Some(c"Scroll Left"), '<' as u64, null_mut()),
-    menu_item::new(Some(c"Scroll Right"), '>' as u64, null_mut()),
-    menu_item::new(Some(c""), KEYC_NONE, null_mut()),
-    menu_item::new(Some(c"Cancel"), 'q' as u64, null_mut()),
-    menu_item::new(None, KEYC_NONE, null_mut()),
+static mode_tree_menu_items: [menu_item; 4] = [
+    menu_item::new(c"Scroll Left", '<' as u64, null_mut()),
+    menu_item::new(c"Scroll Right", '>' as u64, null_mut()),
+    menu_item::new(c"", KEYC_NONE, null_mut()),
+    menu_item::new(c"Cancel", 'q' as u64, null_mut()),
 ];
 
 unsafe fn mode_tree_find_item(mtl: *mut mode_tree_list, tag: u64) -> *mut mode_tree_item {
@@ -441,15 +440,12 @@ pub unsafe fn mode_tree_start(
     heightcb: mode_tree_height_cb,
     keycb: mode_tree_key_cb,
     modedata: *mut c_void,
-    menu: *const menu_item,
+    menu: &'static [menu_item],
     sort_list: *const *const c_char,
     sort_size: u32,
     s: *mut *mut screen,
 ) -> *mut mode_tree_data {
     unsafe {
-        // const char *sort;
-        // u_int i;
-
         let mtd: *mut mode_tree_data = xcalloc1::<mode_tree_data>() as *mut mode_tree_data;
         (*mtd).references = 1;
 
@@ -1179,10 +1175,7 @@ pub unsafe fn mode_tree_display_menu(
                 format_nul!("#[align=centre]{}", _s((*mti).name)),
             )
         } else {
-            (
-                (&raw const mode_tree_menu_items) as *const menu_item,
-                xstrdup_(c"").as_ptr(),
-            )
+            (mode_tree_menu_items.as_slice(), xstrdup_(c"").as_ptr())
         };
         let menu = menu_create(title);
         menu_add_items(menu, items, null_mut(), c, null_mut());

@@ -76,28 +76,26 @@ pub struct popup_editor {
     pub arg: *mut c_void,
 }
 
-static mut popup_menu_items: [menu_item; 9] = [
-    menu_item::new(Some(c"Close"), 'q' as u64, null_mut()),
+static popup_menu_items: [menu_item; 8] = [
+    menu_item::new(c"Close", 'q' as u64, null_mut()),
     menu_item::new(
-        Some(c"#{?buffer_name,Paste #[underscore]#{buffer_name},}"),
+        c"#{?buffer_name,Paste #[underscore]#{buffer_name},}",
         'p' as u64,
         null_mut(),
     ),
-    menu_item::new(Some(c""), KEYC_NONE, null_mut()),
-    menu_item::new(Some(c"Fill Space"), 'F' as u64, null_mut()),
-    menu_item::new(Some(c"Centre"), 'C' as u64, null_mut()),
-    menu_item::new(Some(c""), KEYC_NONE, null_mut()),
-    menu_item::new(Some(c"To Horizontal Pane"), 'h' as u64, null_mut()),
-    menu_item::new(Some(c"To Vertical Pane"), 'v' as u64, null_mut()),
-    menu_item::new(None, KEYC_NONE, null_mut()),
+    menu_item::new(c"", KEYC_NONE, null_mut()),
+    menu_item::new(c"Fill Space", 'F' as u64, null_mut()),
+    menu_item::new(c"Centre", 'C' as u64, null_mut()),
+    menu_item::new(c"", KEYC_NONE, null_mut()),
+    menu_item::new(c"To Horizontal Pane", 'h' as u64, null_mut()),
+    menu_item::new(c"To Vertical Pane", 'v' as u64, null_mut()),
 ];
 
-static mut popup_internal_menu_items: [menu_item; 5] = [
-    menu_item::new(Some(c"Close"), 'q' as u64, null_mut()),
-    menu_item::new(Some(c""), KEYC_NONE, null_mut()),
-    menu_item::new(Some(c"Fill Space"), 'F' as u64, null_mut()),
-    menu_item::new(Some(c"Centre"), 'C' as u64, null_mut()),
-    menu_item::new(None, KEYC_NONE, null_mut()),
+static popup_internal_menu_items: [menu_item; 4] = [
+    menu_item::new(c"Close", 'q' as u64, null_mut()),
+    menu_item::new(c"", KEYC_NONE, null_mut()),
+    menu_item::new(c"Fill Space", 'F' as u64, null_mut()),
+    menu_item::new(c"Centre", 'C' as u64, null_mut()),
 ];
 
 // #[cfg(disabled)]
@@ -681,19 +679,13 @@ pub unsafe fn popup_key_cb(c: *mut client, data: *mut c_void, event: *mut key_ev
             if (*pd).flags & POPUP_INTERNAL != 0 {
                 menu_add_items(
                     (*pd).menu,
-                    &raw mut popup_internal_menu_items as *mut menu_item,
+                    popup_internal_menu_items.as_slice(),
                     null_mut(),
                     c,
                     null_mut(),
                 );
             } else {
-                menu_add_items(
-                    (*pd).menu,
-                    &raw mut popup_menu_items as *mut menu_item,
-                    null_mut(),
-                    c,
-                    null_mut(),
-                );
+                menu_add_items((*pd).menu, &popup_menu_items, null_mut(), c, null_mut());
             }
             let x = (*m).x.saturating_sub(((*(*pd).menu).width + 4) / 2);
             (*pd).md = menu_prepare(

@@ -186,7 +186,7 @@ pub unsafe fn server_start(
         let mut set: sigset_t = zeroed();
         let mut oldset: sigset_t = zeroed();
 
-        let mut c: *mut client = null_mut();
+        let mut c = None;
         let mut cause: *mut c_char = null_mut();
         let tv: timeval = timeval {
             tv_sec: 3600,
@@ -255,7 +255,7 @@ pub unsafe fn server_start(
             server_update_socket();
         }
         if !flags.intersects(client_flag::NOFORK) {
-            c = server_client_create(fd);
+            c = Some(server_client_create(fd));
         } else {
             options_set_number(global_options, c"exit-empty".as_ptr(), 0);
         }
@@ -267,9 +267,9 @@ pub unsafe fn server_start(
         }
 
         if !cause.is_null() {
-            if !c.is_null() {
-                (*c).exit_message = cause;
-                (*c).flags |= client_flag::EXIT;
+            if let Some(mut c) = c {
+                c.exit_message = cause;
+                c.flags |= client_flag::EXIT;
             } else {
                 fprintf(stderr, c"%s\n".as_ptr(), cause);
                 libc::exit(1);
@@ -431,12 +431,12 @@ unsafe extern "C" fn server_accept(fd: i32, events: i16, _data: *mut c_void) {
             close(newfd);
             return;
         }
-        let c = server_client_create(newfd);
-        if server_acl_join(c) == 0 {
-            (*c).exit_message = xmalloc::xstrdup(c"access not allowed".as_ptr())
+        let mut c = server_client_create(newfd);
+        if server_acl_join(&mut c) == 0 {
+            c.exit_message = xmalloc::xstrdup(c"access not allowed".as_ptr())
                 .cast()
                 .as_ptr();
-            (*c).flags |= client_flag::EXIT;
+            c.flags |= client_flag::EXIT;
         }
     }
 }

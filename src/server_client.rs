@@ -248,7 +248,7 @@ pub unsafe fn server_client_is_default_key_table(c: *mut client, table: *mut key
 }
 
 /// Create a new client.
-pub unsafe fn server_client_create(fd: i32) -> *mut client {
+pub fn server_client_create(fd: i32) -> client {
     unsafe {
         setblocking(fd, 0);
 
@@ -297,7 +297,7 @@ pub unsafe fn server_client_create(fd: i32) -> *mut client {
 
         tailq_insert_tail(&raw mut clients, c);
         log_debug!("new client {:p}", c);
-        c
+        std::ptr::read(c)
     }
 }
 

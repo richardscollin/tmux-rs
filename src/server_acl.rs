@@ -155,9 +155,9 @@ pub unsafe fn server_acl_user_deny_write(mut uid: uid_t) {
     }
 }
 
-pub unsafe fn server_acl_join(c: *mut client) -> c_int {
+pub fn server_acl_join(c: &mut client) -> c_int {
     unsafe {
-        let uid = proc_get_peer_uid(&*(*c).peer);
+        let uid = proc_get_peer_uid(&*c.peer);
         if uid == -1i32 as uid_t {
             return 0;
         }
@@ -170,7 +170,7 @@ pub unsafe fn server_acl_join(c: *mut client) -> c_int {
             .flags
             .contains(server_acl_user_flags::SERVER_ACL_READONLY)
         {
-            (*c).flags |= client_flag::READONLY;
+            c.flags |= client_flag::READONLY;
         }
         1
     }

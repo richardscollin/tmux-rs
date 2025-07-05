@@ -109,7 +109,7 @@ unsafe fn cmd_display_panes_draw_pane(ctx: *mut screen_redraw_ctx, wp: *mut wind
 
             let mut pane = 0;
             if window_pane_index(wp, &raw mut pane) != 0 {
-                fatalx(c"index not found");
+                fatalx("index not found");
             }
             let mut buf = [0i8; 16];
             let bufsize = 16;

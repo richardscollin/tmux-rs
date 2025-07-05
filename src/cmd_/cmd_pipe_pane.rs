@@ -186,7 +186,7 @@ pub unsafe fn cmd_pipe_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
                     wp.cast(),
                 );
                 if (*wp).pipe_event.is_null() {
-                    fatalx(c"out of memory");
+                    fatalx("out of memory");
                 }
                 if out != 0 {
                     bufferevent_enable((*wp).pipe_event, EV_WRITE);

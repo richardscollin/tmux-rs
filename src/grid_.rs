@@ -140,7 +140,7 @@ pub unsafe fn grid_extended_cell(
         if !(*gce).flags.contains(grid_flag::EXTENDED) {
             grid_get_extended_cell(gl, gce, flags);
         } else if (*gce).union_.offset >= (*gl).extdsize {
-            fatalx(c"offset too big");
+            fatalx("offset too big");
         }
         (*gl).flags |= grid_line_flag::EXTENDED;
 

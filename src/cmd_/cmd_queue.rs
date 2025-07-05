@@ -139,7 +139,7 @@ pub unsafe fn cmdq_new() -> NonNull<cmdq_list> {
 pub unsafe fn cmdq_free(queue: *mut cmdq_list) {
     unsafe {
         if !tailq_empty(&raw mut (*queue).list) {
-            fatalx(c"queue not empty");
+            fatalx("queue not empty");
         }
         free_(queue);
     }
@@ -878,7 +878,7 @@ pub unsafe fn cmdq_print_(item: *mut cmdq_item, args: std::fmt::Arguments) {
     unsafe {
         let evb = evbuffer_new();
         if evb.is_null() {
-            fatalx(c"out of memory");
+            fatalx("out of memory");
         }
 
         evbuffer_add_vprintf(evb, args);

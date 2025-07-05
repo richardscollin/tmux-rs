@@ -106,11 +106,11 @@ pub unsafe fn xreallocarray(ptr: *mut c_void, nmemb: usize, size: usize) -> NonN
 pub unsafe fn xreallocarray_old<T>(ptr: *mut T, nmemb: usize, size: usize) -> NonNull<T> {
     unsafe {
         if nmemb == 0 || size == 0 {
-            fatalx(c"xreallocarray: zero size");
+            fatalx("xreallocarray: zero size");
         }
 
         match NonNull::new(reallocarray(ptr as _, nmemb, size)) {
-            None => fatalx(c"xreallocarray: allocating "),
+            None => fatalx("xreallocarray: allocating "),
             Some(new_ptr) => new_ptr.cast(),
         }
     }
@@ -120,11 +120,11 @@ pub unsafe fn xreallocarray_<T>(ptr: *mut T, nmemb: usize) -> NonNull<T> {
     let size = size_of::<T>();
     unsafe {
         if nmemb == 0 || size == 0 {
-            fatalx(c"xreallocarray: zero size");
+            fatalx("xreallocarray: zero size");
         }
 
         match NonNull::new(reallocarray(ptr as _, nmemb, size)) {
-            None => fatalx(c"xreallocarray: allocating"),
+            None => fatalx("xreallocarray: allocating"),
             Some(new_ptr) => new_ptr.cast(),
         }
     }

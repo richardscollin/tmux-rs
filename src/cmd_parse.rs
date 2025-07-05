@@ -619,7 +619,7 @@ pub unsafe fn cmd_parse_from_arguments(
                 (*arg).type_ = cmd_parse_argument_type::ParsedCommands(cmdlist);
                 tailq_insert_tail(&raw mut (*cmd).arguments, arg);
             } else {
-                fatalx(c"unknown argument type");
+                fatalx("unknown argument type");
             }
             if end != 0 {
                 tailq_insert_tail(cmds, cmd);
@@ -744,7 +744,7 @@ fn yylex_is_var(ch: c_char, first: bool) -> bool {
 unsafe fn yylex_append(buf: *mut *mut c_char, len: *mut usize, add: *const c_char, addlen: usize) {
     unsafe {
         if (addlen > usize::MAX - 1 || *len > usize::MAX - 1 - addlen) {
-            fatalx(c"buffer is too big");
+            fatalx("buffer is too big");
         }
         *buf = xrealloc_(*buf, (*len) + 1 + addlen).as_ptr();
         libc::memcpy((*buf).add(*len).cast(), add.cast(), addlen);

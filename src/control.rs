@@ -631,7 +631,7 @@ pub unsafe fn control_append_data(
         if message.is_null() {
             message = evbuffer_new();
             if message.is_null() {
-                fatalx(c"out of memory");
+                fatalx("out of memory");
             }
             if (*c).flags.intersects(client_flag::CONTROL_PAUSEAFTER) {
                 evbuffer_add_printf!(message, "%extended-output %{} {} : ", (*wp).id, age);
@@ -818,7 +818,7 @@ pub unsafe fn control_start(c: *mut client) {
             c.cast(),
         );
         if (*cs).read_event.is_null() {
-            fatalx(c"out of memory");
+            fatalx("out of memory");
         }
 
         if (*c).flags.intersects(client_flag::CONTROLCONTROL) {
@@ -832,7 +832,7 @@ pub unsafe fn control_start(c: *mut client) {
                 c.cast(),
             );
             if (*cs).write_event.is_null() {
-                fatalx(c"out of memory");
+                fatalx("out of memory");
             }
         }
         bufferevent_setwatermark((*cs).write_event, EV_WRITE, CONTROL_BUFFER_LOW as usize, 0);

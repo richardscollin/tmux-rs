@@ -958,7 +958,7 @@ pub unsafe fn input_init(
 
         (*ictx).since_ground = evbuffer_new();
         if (*ictx).since_ground.is_null() {
-            fatalx(c"out of memory");
+            fatalx("out of memory");
         }
 
         evtimer_set(
@@ -1062,7 +1062,7 @@ fn input_parse(ictx: *mut input_ctx, buf: *mut u8, len: usize) {
                     itr = itr.add(1);
                 }
                 if (*itr).first == -1 || (*itr).last == -1 {
-                    fatalx(c"no transition from state");
+                    fatalx("no transition from state");
                 } /* No transition? Eh? */
             }
             state = (*ictx).state;

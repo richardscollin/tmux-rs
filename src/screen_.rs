@@ -386,7 +386,7 @@ unsafe fn screen_resize_y(s: *mut screen, sy: u32, eat_empty: i32, cy: *mut u32)
         let gd = (*s).grid;
 
         if sy == 0 {
-            fatalx(c"zero size");
+            fatalx("zero size");
         }
         let oldy = screen_size_y(s);
 

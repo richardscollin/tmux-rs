@@ -583,7 +583,7 @@ pub unsafe fn format_cb_session_attached_list(ft: *mut format_tree) -> *mut c_vo
 
         let buffer = evbuffer_new();
         if buffer.is_null() {
-            fatalx(c"out of memory");
+            fatalx("out of memory");
         }
 
         for loop_ in tailq_foreach(&raw mut clients).map(NonNull::as_ptr) {
@@ -711,7 +711,7 @@ pub unsafe fn format_cb_window_linked_sessions_list(ft: *mut format_tree) -> *mu
 
         let buffer = evbuffer_new();
         if buffer.is_null() {
-            fatalx(c"out of memory");
+            fatalx("out of memory");
         }
 
         for wl in tailq_foreach::<_, discr_wentry>(&raw mut (*w).winlinks).map(NonNull::as_ptr) {
@@ -756,7 +756,7 @@ pub unsafe fn format_cb_window_active_sessions_list(ft: *mut format_tree) -> *mu
 
         let buffer = evbuffer_new();
         if buffer.is_null() {
-            fatalx(c"out of memory");
+            fatalx("out of memory");
         }
 
         for wl in tailq_foreach::<_, discr_wentry>(&raw mut (*w).winlinks).map(NonNull::as_ptr) {
@@ -812,7 +812,7 @@ pub unsafe fn format_cb_window_active_clients_list(ft: *mut format_tree) -> *mut
 
         let buffer = evbuffer_new();
         if buffer.is_null() {
-            fatalx(c"out of memory");
+            fatalx("out of memory");
         }
 
         for loop_ in tailq_foreach(&raw mut clients).map(NonNull::as_ptr) {
@@ -1005,7 +1005,7 @@ pub unsafe fn format_cb_pane_tabs(ft: *mut format_tree) -> *mut c_void {
 
         let buffer = evbuffer_new();
         if buffer.is_null() {
-            fatalx(c"out of memory");
+            fatalx("out of memory");
         }
 
         let mut first = true;
@@ -1076,7 +1076,7 @@ pub unsafe fn format_cb_session_group_list(ft: *mut format_tree) -> *mut c_void 
 
         let buffer = evbuffer_new();
         if buffer.is_null() {
-            fatalx(c"out of memory");
+            fatalx("out of memory");
         }
 
         for loop_ in tailq_foreach(&raw mut (*sg).sessions).map(NonNull::as_ptr) {
@@ -1111,7 +1111,7 @@ pub unsafe fn format_cb_session_group_attached_list(ft: *mut format_tree) -> *mu
 
         let buffer = evbuffer_new();
         if buffer.is_null() {
-            fatalx(c"out of memory");
+            fatalx("out of memory");
         }
 
         let first = true;

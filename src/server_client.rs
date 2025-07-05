@@ -2897,7 +2897,7 @@ pub unsafe fn server_client_dispatch(imsg: *mut imsg, arg: *mut c_void) {
             msgtype::MSG_COMMAND => server_client_dispatch_command(c, imsg),
             msgtype::MSG_RESIZE => {
                 if datalen != 0 {
-                    fatalx(c"bad MSG_RESIZE size");
+                    fatalx("bad MSG_RESIZE size");
                 }
 
                 if !(*c).flags.intersects(client_flag::CONTROL) {
@@ -2918,7 +2918,7 @@ pub unsafe fn server_client_dispatch(imsg: *mut imsg, arg: *mut c_void) {
             }
             msgtype::MSG_EXITING => {
                 if datalen != 0 {
-                    fatalx(c"bad MSG_EXITING size");
+                    fatalx("bad MSG_EXITING size");
                 }
                 server_client_set_session(c, null_mut());
                 recalculate_sizes();
@@ -2927,7 +2927,7 @@ pub unsafe fn server_client_dispatch(imsg: *mut imsg, arg: *mut c_void) {
             }
             msgtype::MSG_WAKEUP | msgtype::MSG_UNLOCK => {
                 if datalen != 0 {
-                    fatalx(c"bad MSG_WAKEUP size");
+                    fatalx("bad MSG_WAKEUP size");
                 }
 
                 if !(*c).flags.intersects(client_flag::SUSPENDED) {
@@ -2954,7 +2954,7 @@ pub unsafe fn server_client_dispatch(imsg: *mut imsg, arg: *mut c_void) {
             }
             msgtype::MSG_SHELL => {
                 if datalen != 0 {
-                    fatalx(c"bad MSG_SHELL size");
+                    fatalx("bad MSG_SHELL size");
                 }
 
                 server_client_dispatch_shell(c);
@@ -3010,14 +3010,14 @@ pub unsafe fn server_client_dispatch_command(c: *mut client, imsg: *mut imsg) {
             }
 
             if (*imsg).hdr.len as usize - IMSG_HEADER_SIZE < size_of::<msg_command>() {
-                fatalx(c"bad MSG_COMMAND size");
+                fatalx("bad MSG_COMMAND size");
             }
             memcpy__(&raw mut data, (*imsg).data.cast());
 
             buf = (*imsg).data.cast::<c_char>().add(size_of::<msg_command>());
             len = (*imsg).hdr.len as usize - IMSG_HEADER_SIZE - size_of::<msg_command>();
             if len > 0 && *buf.add(len - 1) != b'\0' as i8 {
-                fatalx(c"bad MSG_COMMAND string");
+                fatalx("bad MSG_COMMAND string");
             }
 
             argc = data.argc;
@@ -3078,7 +3078,7 @@ pub unsafe fn server_client_dispatch_identify(c: *mut client, imsg: *mut imsg) {
         let mut longflags: u64 = 0;
 
         if (*c).flags.intersects(client_flag::IDENTIFIED) {
-            fatalx(c"out-of-order identify message");
+            fatalx("out-of-order identify message");
         }
 
         let data = (*imsg).data;
@@ -3087,7 +3087,7 @@ pub unsafe fn server_client_dispatch_identify(c: *mut client, imsg: *mut imsg) {
         match msgtype::try_from((*imsg).hdr.type_).expect("unexpectd msgtype") {
             msgtype::MSG_IDENTIFY_FEATURES => {
                 if datalen != size_of::<i32>() as u16 {
-                    fatalx(c"bad MSG_IDENTIFY_FEATURES size");
+                    fatalx("bad MSG_IDENTIFY_FEATURES size");
                 }
                 memcpy__(&raw mut feat, data.cast());
                 (*c).term_features |= feat;
@@ -3095,7 +3095,7 @@ pub unsafe fn server_client_dispatch_identify(c: *mut client, imsg: *mut imsg) {
             }
             msgtype::MSG_IDENTIFY_FLAGS => {
                 if datalen != size_of::<i32>() as u16 {
-                    fatalx(c"bad MSG_IDENTIFY_FLAGS size");
+                    fatalx("bad MSG_IDENTIFY_FLAGS size");
                 }
                 memcpy__(&raw mut flags, data.cast());
                 (*c).flags |= client_flag::from_bits(flags as u64).expect("invalid identify flags");
@@ -3103,7 +3103,7 @@ pub unsafe fn server_client_dispatch_identify(c: *mut client, imsg: *mut imsg) {
             }
             msgtype::MSG_IDENTIFY_LONGFLAGS => {
                 if datalen != size_of::<u64>() as u16 {
-                    fatalx(c"bad MSG_IDENTIFY_LONGFLAGS size");
+                    fatalx("bad MSG_IDENTIFY_LONGFLAGS size");
                 }
                 memcpy__(&raw mut longflags, data.cast());
                 (*c).flags |=
@@ -3114,7 +3114,7 @@ pub unsafe fn server_client_dispatch_identify(c: *mut client, imsg: *mut imsg) {
                 if datalen == 0
                     || *data.cast::<c_char>().add((datalen - 1) as usize) != b'\0' as c_char
                 {
-                    fatalx(c"bad MSG_IDENTIFY_TERM string");
+                    fatalx("bad MSG_IDENTIFY_TERM string");
                 }
                 if *data.cast::<c_char>() == b'\0' as c_char {
                     (*c).term_name = xstrdup(c"unknown".as_ptr()).as_ptr();
@@ -3127,7 +3127,7 @@ pub unsafe fn server_client_dispatch_identify(c: *mut client, imsg: *mut imsg) {
                 if datalen == 0
                     || *data.cast::<c_char>().add((datalen - 1) as usize) != b'\0' as c_char
                 {
-                    fatalx(c"bad MSG_IDENTIFY_TERMINFO string");
+                    fatalx("bad MSG_IDENTIFY_TERMINFO string");
                 }
                 (*c).term_caps =
                     xreallocarray_((*c).term_caps, (*c).term_ncaps as usize + 1).as_ptr();
@@ -3139,7 +3139,7 @@ pub unsafe fn server_client_dispatch_identify(c: *mut client, imsg: *mut imsg) {
                 if datalen == 0
                     || *data.cast::<c_char>().add((datalen - 1) as usize) != b'\0' as c_char
                 {
-                    fatalx(c"bad MSG_IDENTIFY_TTYNAME string");
+                    fatalx("bad MSG_IDENTIFY_TTYNAME string");
                 }
                 (*c).ttyname = xstrdup(data.cast()).as_ptr();
                 // log_debug("client %p IDENTIFY_TTYNAME %s", c, data);
@@ -3161,14 +3161,14 @@ pub unsafe fn server_client_dispatch_identify(c: *mut client, imsg: *mut imsg) {
             }
             msgtype::MSG_IDENTIFY_STDIN => {
                 if datalen != 0 {
-                    fatalx(c"bad MSG_IDENTIFY_STDIN size");
+                    fatalx("bad MSG_IDENTIFY_STDIN size");
                 }
                 (*c).fd = imsg_get_fd(imsg);
                 // log_debug("client %p IDENTIFY_STDIN %d", c, (*c).fd);
             }
             msgtype::MSG_IDENTIFY_STDOUT => {
                 if datalen != 0 {
-                    fatalx(c"bad MSG_IDENTIFY_STDOUT size");
+                    fatalx("bad MSG_IDENTIFY_STDOUT size");
                 }
                 (*c).out_fd = imsg_get_fd(imsg);
                 // log_debug("client %p IDENTIFY_STDOUT %d", c, (*c).out_fd);
@@ -3176,7 +3176,7 @@ pub unsafe fn server_client_dispatch_identify(c: *mut client, imsg: *mut imsg) {
             msgtype::MSG_IDENTIFY_ENVIRON => {
                 if datalen == 0 || *data.cast::<c_char>().add((datalen - 1) as usize) != b'\0' as i8
                 {
-                    fatalx(c"bad MSG_IDENTIFY_ENVIRON string");
+                    fatalx("bad MSG_IDENTIFY_ENVIRON string");
                 }
                 if !libc::strchr(data.cast(), b'=' as i32).is_null() {
                     environ_put((*c).environ, data.cast(), 0);
@@ -3185,7 +3185,7 @@ pub unsafe fn server_client_dispatch_identify(c: *mut client, imsg: *mut imsg) {
             }
             msgtype::MSG_IDENTIFY_CLIENTPID => {
                 if datalen != size_of::<i32>() as u16 {
-                    fatalx(c"bad MSG_IDENTIFY_CLIENTPID size");
+                    fatalx("bad MSG_IDENTIFY_CLIENTPID size");
                 }
                 memcpy__(&raw mut (*c).pid, data.cast());
                 // log_debug("client %p IDENTIFY_CLIENTPID %ld", c, (long)(*c).pid);

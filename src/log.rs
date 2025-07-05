@@ -180,15 +180,13 @@ macro_rules! fatalx_ {
     };
 }
 pub(crate) use fatalx_;
-pub unsafe fn fatalx_c(args: std::fmt::Arguments) -> ! {
+pub fn fatalx_c(args: std::fmt::Arguments) -> ! {
     log_vwrite_rs(args, "fatal: ");
     std::process::exit(1)
 }
 
 #[track_caller]
-pub fn fatalx(msg: &CStr) -> ! {
-    let msg = msg.to_str().unwrap();
-
+pub fn fatalx(msg: &str) -> ! {
     let location = std::panic::Location::caller();
     let file = location.file();
     let line = location.line();

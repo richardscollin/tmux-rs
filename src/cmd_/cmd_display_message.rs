@@ -137,7 +137,7 @@ unsafe fn cmd_display_message_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd
         } else if !tc.is_null() && (*tc).flags.intersects(client_flag::CONTROL) {
             let evb = evbuffer_new();
             if evb.is_null() {
-                fatalx(c"out of memory");
+                fatalx("out of memory");
             }
             evbuffer_add_printf!(evb, "%message {}", _s(msg));
             server_client_print(tc, 0, evb);

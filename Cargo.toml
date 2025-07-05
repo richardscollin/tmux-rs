@@ -8,7 +8,7 @@ repository = "https://github.com/richardscollin/tmux-rs"
 description = "A Rust port of tmux"
 license = "ISC"
 rust-version = "1.88" # let chains
-exclude = ["/docs", "/.cargo"]
+exclude = ["/docs", "/.cargo", "/tools"]
 
 [dependencies]
 bitflags     = { version = "2.9.1"   }

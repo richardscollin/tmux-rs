@@ -11,6 +11,9 @@
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+
+use std::sync::atomic;
+
 use crate::*;
 
 use libc::{
@@ -30,7 +33,8 @@ use crate::compat::{
 
 pub static mut clients: clients = unsafe { zeroed() };
 
-pub static mut server_proc: *mut tmuxproc = null_mut();
+pub static server_proc: atomic::AtomicPtr<tmuxproc> = atomic::AtomicPtr::new(null_mut());
+
 // TODO remove
 pub static mut server_fd: c_int = -1;
 // TODO remove
@@ -171,7 +175,7 @@ unsafe extern "C" fn server_tidy_event(_fd: i32, _events: i16, _data: *mut c_voi
 }
 
 pub unsafe fn server_start(
-    client: *mut tmuxproc,
+    client: &mut tmuxproc,
     flags: client_flag,
     base: *mut event_base,
     lockfd: c_int,
@@ -182,7 +186,7 @@ pub unsafe fn server_start(
         let mut set: sigset_t = zeroed();
         let mut oldset: sigset_t = zeroed();
 
-        let mut c: *mut client = null_mut();
+        let mut c = None;
         let mut cause: *mut c_char = null_mut();
         let tv: timeval = timeval {
             tv_sec: 3600,
@@ -217,9 +221,12 @@ pub unsafe fn server_start(
         if event_reinit(base) != 0 {
             fatalx("event_reinit failed");
         }
-        server_proc = proc_start(c"server");
+        server_proc.store(proc_start("server"), atomic::Ordering::Release);
 
-        proc_set_signals(server_proc, Some(server_signal));
+        proc_set_signals(
+            &mut *server_proc.load(atomic::Ordering::Relaxed),
+            Some(server_signal),
+        );
         sigprocmask(SIG_SETMASK, &raw mut oldset, null_mut());
 
         if log_get_level() > 1 {
@@ -248,7 +255,7 @@ pub unsafe fn server_start(
             server_update_socket();
         }
         if !flags.intersects(client_flag::NOFORK) {
-            c = server_client_create(fd);
+            c = Some(server_client_create(fd));
         } else {
             options_set_number(global_options, c"exit-empty".as_ptr(), 0);
         }
@@ -260,9 +267,9 @@ pub unsafe fn server_start(
         }
 
         if !cause.is_null() {
-            if !c.is_null() {
-                (*c).exit_message = cause;
-                (*c).flags |= client_flag::EXIT;
+            if let Some(mut c) = c {
+                c.exit_message = cause;
+                c.flags |= client_flag::EXIT;
             } else {
                 fprintf(stderr, c"%s\n".as_ptr(), cause);
                 libc::exit(1);
@@ -275,7 +282,10 @@ pub unsafe fn server_start(
         server_acl_init();
 
         server_add_accept(0);
-        proc_loop(server_proc, Some(server_loop));
+        proc_loop(
+            &mut *server_proc.load(atomic::Ordering::Relaxed),
+            Some(server_loop),
+        );
 
         job_kill_all();
         status_prompt_save_history();
@@ -421,12 +431,12 @@ unsafe extern "C" fn server_accept(fd: i32, events: i16, _data: *mut c_void) {
             close(newfd);
             return;
         }
-        let c = server_client_create(newfd);
-        if server_acl_join(c) == 0 {
-            (*c).exit_message = xmalloc::xstrdup(c"access not allowed".as_ptr())
+        let mut c = server_client_create(newfd);
+        if server_acl_join(&mut c) == 0 {
+            c.exit_message = xmalloc::xstrdup(c"access not allowed".as_ptr())
                 .cast()
                 .as_ptr();
-            (*c).flags |= client_flag::EXIT;
+            c.flags |= client_flag::EXIT;
         }
     }
 }
@@ -489,7 +499,7 @@ unsafe fn server_signal(sig: i32) {
                 }
                 server_add_accept(0);
             }
-            libc::SIGUSR2 => proc_toggle_log(server_proc),
+            libc::SIGUSR2 => proc_toggle_log(&*server_proc.load(atomic::Ordering::Relaxed)),
             _ => {
                 // nop
             }

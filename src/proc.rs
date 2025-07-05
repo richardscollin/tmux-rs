@@ -33,7 +33,7 @@ use crate::event_::{signal_add, signal_set};
 
 #[repr(C)]
 pub struct tmuxproc {
-    pub name: *const c_char,
+    pub name: String,
     pub exit: i32,
 
     pub signalcb: Option<unsafe fn(i32)>,
@@ -193,11 +193,11 @@ pub unsafe fn proc_send(
     }
 }
 
-pub unsafe fn proc_start(name: &CStr) -> *mut tmuxproc {
+pub unsafe fn proc_start(name: &str) -> *mut tmuxproc {
     unsafe {
         log_open(name);
-        let name = name.as_ptr();
-        setproctitle_(c"%s (%s)".as_ptr(), name, socket_path);
+        // TODO: Modify setproctitle_ to use &str
+        setproctitle_(c"%s (%s)".as_ptr(), name.as_ptr() as *const i8, socket_path);
 
         let mut u = MaybeUninit::<utsname>::uninit();
         if uname(u.as_mut_ptr()) < 0 {
@@ -207,7 +207,7 @@ pub unsafe fn proc_start(name: &CStr) -> *mut tmuxproc {
 
         log_debug!(
             "{} started ({}): version {}, socket {}, protocol {}",
-            _s(name),
+            name,
             std::process::id(),
             getversion(),
             _s(socket_path),
@@ -238,7 +238,7 @@ pub unsafe fn proc_start(name: &CStr) -> *mut tmuxproc {
         }
 
         let tp = xcalloc1::<tmuxproc>();
-        tp.name = xstrdup(name.cast()).as_ptr();
+        tp.name = name.to_string();
         tailq_init(&raw mut tp.peers);
 
         tp
@@ -247,7 +247,7 @@ pub unsafe fn proc_start(name: &CStr) -> *mut tmuxproc {
 
 pub unsafe fn proc_loop(tp: *mut tmuxproc, loopcb: Option<unsafe fn() -> i32>) {
     unsafe {
-        log_debug!("{} loop enter", _s((*tp).name));
+        log_debug!("{} loop enter", (*tp).name);
         match loopcb {
             None => loop {
                 event_loop(EVLOOP_ONCE);
@@ -268,7 +268,7 @@ pub unsafe fn proc_loop(tp: *mut tmuxproc, loopcb: Option<unsafe fn() -> i32>) {
                 }
             },
         }
-        log_debug!("{} loop exit", _s((*tp).name));
+        log_debug!("{} loop exit", (*tp).name);
     }
 }
 
@@ -452,7 +452,7 @@ pub unsafe fn proc_flush_peer(peer: *mut tmuxpeer) {
 
 pub unsafe fn proc_toggle_log(tp: *mut tmuxproc) {
     unsafe {
-        log_toggle(CStr::from_ptr((*tp).name));
+        log_toggle(&(*tp).name);
     }
 }
 

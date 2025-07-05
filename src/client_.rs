@@ -298,7 +298,7 @@ pub unsafe extern "C-unwind" fn client_main(
             free_(values);
         }
 
-        client_proc = proc_start(c"client");
+        client_proc = proc_start("client");
         proc_set_signals(client_proc, Some(client_signal));
 
         client_flags = flags;

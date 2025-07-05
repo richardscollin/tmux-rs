@@ -6,6 +6,16 @@ on:
     branches: [main]
 name: build
 jobs:
+  unsafe-report:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          sudo apt-get update
+          sudo apt-get install -y libncurses-dev libevent-dev
+      - uses: dtolnay/rust-toolchain@nightly
+      - uses: actions/checkout@v4
+      - run: ./tools/unsafe_usage_analyzer.rs .
+
   lint:
     runs-on: ubuntu-latest
     steps:

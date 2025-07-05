@@ -11,6 +11,9 @@
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+
+use std::sync::atomic;
+
 use crate::*;
 
 use libc::{
@@ -33,7 +36,7 @@ use crate::event_::{signal_add, signal_set};
 
 #[repr(C)]
 pub struct tmuxproc {
-    pub name: *const c_char,
+    pub name: String,
     pub exit: i32,
 
     pub signalcb: Option<unsafe fn(i32)>,
@@ -193,11 +196,11 @@ pub unsafe fn proc_send(
     }
 }
 
-pub unsafe fn proc_start(name: &CStr) -> *mut tmuxproc {
+pub unsafe fn proc_start(name: &str) -> *mut tmuxproc {
     unsafe {
         log_open(name);
-        let name = name.as_ptr();
-        setproctitle_(c"%s (%s)".as_ptr(), name, socket_path);
+        // TODO: Modify setproctitle_ to use &str
+        setproctitle_(c"%s (%s)".as_ptr(), name.as_ptr() as *const i8, socket_path);
 
         let mut u = MaybeUninit::<utsname>::uninit();
         if uname(u.as_mut_ptr()) < 0 {
@@ -207,7 +210,7 @@ pub unsafe fn proc_start(name: &CStr) -> *mut tmuxproc {
 
         log_debug!(
             "{} started ({}): version {}, socket {}, protocol {}",
-            _s(name),
+            name,
             std::process::id(),
             getversion(),
             _s(socket_path),
@@ -238,28 +241,28 @@ pub unsafe fn proc_start(name: &CStr) -> *mut tmuxproc {
         }
 
         let tp = xcalloc1::<tmuxproc>();
-        tp.name = xstrdup(name.cast()).as_ptr();
+        tp.name = name.to_string();
         tailq_init(&raw mut tp.peers);
 
         tp
     }
 }
 
-pub unsafe fn proc_loop(tp: *mut tmuxproc, loopcb: Option<unsafe fn() -> i32>) {
+pub fn proc_loop(tp: &mut tmuxproc, loopcb: Option<unsafe fn() -> i32>) {
     unsafe {
-        log_debug!("{} loop enter", _s((*tp).name));
+        log_debug!("{} loop enter", tp.name);
         match loopcb {
             None => loop {
                 event_loop(EVLOOP_ONCE);
 
-                if (*tp).exit != 0 {
+                if tp.exit != 0 {
                     break;
                 }
             },
             Some(loopcb) => loop {
                 event_loop(EVLOOP_ONCE);
 
-                if (*tp).exit != 0 {
+                if tp.exit != 0 {
                     break;
                 }
 
@@ -268,24 +271,24 @@ pub unsafe fn proc_loop(tp: *mut tmuxproc, loopcb: Option<unsafe fn() -> i32>) {
                 }
             },
         }
-        log_debug!("{} loop exit", _s((*tp).name));
+        log_debug!("{} loop exit", tp.name);
     }
 }
 
-pub unsafe fn proc_exit(tp: *mut tmuxproc) {
+pub fn proc_exit(tp: &mut tmuxproc) {
     unsafe {
-        for peer in tailq_foreach(&raw mut (*tp).peers).map(NonNull::as_ptr) {
+        for peer in tailq_foreach(&raw mut tp.peers).map(NonNull::as_ptr) {
             imsg_flush(&raw mut (*peer).ibuf);
         }
-        (*tp).exit = 1;
+        tp.exit = 1;
     }
 }
 
-pub unsafe fn proc_set_signals(tp: *mut tmuxproc, signalcb: Option<unsafe fn(i32)>) {
+pub fn proc_set_signals(tp: &mut tmuxproc, signalcb: Option<unsafe fn(i32)>) {
     unsafe {
         let mut sa: sigaction = zeroed();
 
-        (*tp).signalcb = signalcb;
+        tp.signalcb = signalcb;
 
         sigemptyset(&raw mut sa.sa_mask);
         sa.sa_flags = SA_RESTART;
@@ -298,65 +301,65 @@ pub unsafe fn proc_set_signals(tp: *mut tmuxproc, signalcb: Option<unsafe fn(i32
         sigaction(SIGQUIT, &sa, null_mut());
 
         signal_set(
-            &raw mut (*tp).ev_sigint,
+            &raw mut tp.ev_sigint,
             SIGINT,
             Some(proc_signal_cb),
-            tp.cast(),
+            (tp as *mut tmuxproc).cast(),
         );
-        signal_add(&raw mut (*tp).ev_sigint, null_mut());
+        signal_add(&raw mut tp.ev_sigint, null_mut());
         signal_set(
-            &raw mut (*tp).ev_sighup,
+            &raw mut tp.ev_sighup,
             SIGHUP,
             Some(proc_signal_cb),
-            tp.cast(),
+            (tp as *mut tmuxproc).cast(),
         );
-        signal_add(&raw mut (*tp).ev_sighup, null_mut());
+        signal_add(&raw mut tp.ev_sighup, null_mut());
         signal_set(
-            &raw mut (*tp).ev_sigchld,
+            &raw mut tp.ev_sigchld,
             SIGCHLD,
             Some(proc_signal_cb),
-            tp.cast(),
+            (tp as *mut tmuxproc).cast(),
         );
-        signal_add(&raw mut (*tp).ev_sigchld, null_mut());
+        signal_add(&raw mut tp.ev_sigchld, null_mut());
         signal_set(
-            &raw mut (*tp).ev_sigcont,
+            &raw mut tp.ev_sigcont,
             SIGCONT,
             Some(proc_signal_cb),
-            tp.cast(),
+            (tp as *mut tmuxproc).cast(),
         );
-        signal_add(&raw mut (*tp).ev_sigcont, null_mut());
+        signal_add(&raw mut tp.ev_sigcont, null_mut());
         signal_set(
-            &raw mut (*tp).ev_sigterm,
+            &raw mut tp.ev_sigterm,
             SIGTERM,
             Some(proc_signal_cb),
-            tp.cast(),
+            (tp as *mut tmuxproc).cast(),
         );
-        signal_add(&raw mut (*tp).ev_sigterm, null_mut());
+        signal_add(&raw mut tp.ev_sigterm, null_mut());
         signal_set(
-            &raw mut (*tp).ev_sigusr1,
+            &raw mut tp.ev_sigusr1,
             SIGUSR1,
             Some(proc_signal_cb),
-            tp.cast(),
+            (tp as *mut tmuxproc).cast(),
         );
-        signal_add(&raw mut (*tp).ev_sigusr1, null_mut());
+        signal_add(&raw mut tp.ev_sigusr1, null_mut());
         signal_set(
-            &raw mut (*tp).ev_sigusr2,
+            &raw mut tp.ev_sigusr2,
             SIGUSR2,
             Some(proc_signal_cb),
-            tp.cast(),
+            (tp as *mut tmuxproc).cast(),
         );
-        signal_add(&raw mut (*tp).ev_sigusr2, null_mut());
+        signal_add(&raw mut tp.ev_sigusr2, null_mut());
         signal_set(
-            &raw mut (*tp).ev_sigwinch,
+            &raw mut tp.ev_sigwinch,
             SIGWINCH,
             Some(proc_signal_cb),
-            tp.cast(),
+            (tp as *mut tmuxproc).cast(),
         );
-        signal_add(&raw mut (*tp).ev_sigwinch, null_mut());
+        signal_add(&raw mut tp.ev_sigwinch, null_mut());
     }
 }
 
-pub unsafe fn proc_clear_signals(tp: *mut tmuxproc, defaults: i32) {
+pub fn proc_clear_signals(tp: &mut tmuxproc, defaults: i32) {
     unsafe {
         let mut sa: sigaction = zeroed();
 
@@ -367,14 +370,14 @@ pub unsafe fn proc_clear_signals(tp: *mut tmuxproc, defaults: i32) {
         sigaction(SIGPIPE, &raw mut sa, null_mut());
         sigaction(SIGTSTP, &raw mut sa, null_mut());
 
-        event_del(&raw mut (*tp).ev_sigint);
-        event_del(&raw mut (*tp).ev_sighup);
-        event_del(&raw mut (*tp).ev_sigchld);
-        event_del(&raw mut (*tp).ev_sigcont);
-        event_del(&raw mut (*tp).ev_sigterm);
-        event_del(&raw mut (*tp).ev_sigusr1);
-        event_del(&raw mut (*tp).ev_sigusr2);
-        event_del(&raw mut (*tp).ev_sigwinch);
+        event_del(&raw mut tp.ev_sigint);
+        event_del(&raw mut tp.ev_sighup);
+        event_del(&raw mut tp.ev_sigchld);
+        event_del(&raw mut tp.ev_sigcont);
+        event_del(&raw mut tp.ev_sigterm);
+        event_del(&raw mut tp.ev_sigusr1);
+        event_del(&raw mut tp.ev_sigusr2);
+        event_del(&raw mut tp.ev_sigwinch);
 
         if defaults != 0 {
             sigaction(SIGINT, &sa, null_mut());
@@ -391,7 +394,7 @@ pub unsafe fn proc_clear_signals(tp: *mut tmuxproc, defaults: i32) {
 }
 
 pub unsafe fn proc_add_peer(
-    tp: *mut tmuxproc,
+    tp: &mut tmuxproc,
     fd: i32,
     dispatchcb: Option<unsafe fn(*mut imsg, *mut c_void)>,
     arg: *mut c_void,
@@ -418,7 +421,7 @@ pub unsafe fn proc_add_peer(
         }
 
         log_debug!("add peer {:p}: {} ({:p})", peer, fd, arg);
-        tailq_insert_tail(&raw mut (*tp).peers, peer);
+        tailq_insert_tail(&raw mut tp.peers, peer);
 
         proc_update_event(peer);
         peer
@@ -438,10 +441,8 @@ pub unsafe fn proc_remove_peer(peer: *mut tmuxpeer) {
     }
 }
 
-pub unsafe fn proc_kill_peer(peer: *mut tmuxpeer) {
-    unsafe {
-        (*peer).flags |= PEER_BAD;
-    }
+pub fn proc_kill_peer(peer: &mut tmuxpeer) {
+    peer.flags |= PEER_BAD;
 }
 
 pub unsafe fn proc_flush_peer(peer: *mut tmuxpeer) {
@@ -450,10 +451,8 @@ pub unsafe fn proc_flush_peer(peer: *mut tmuxpeer) {
     }
 }
 
-pub unsafe fn proc_toggle_log(tp: *mut tmuxproc) {
-    unsafe {
-        log_toggle(CStr::from_ptr((*tp).name));
-    }
+pub fn proc_toggle_log(tp: &tmuxproc) {
+    log_toggle(&tp.name);
 }
 
 #[cfg_attr(target_os = "macos", expect(deprecated))]
@@ -491,6 +490,6 @@ pub unsafe fn proc_fork_and_daemon(fd: *mut i32) -> pid_t {
     }
 }
 
-pub unsafe fn proc_get_peer_uid(peer: *const tmuxpeer) -> uid_t {
-    unsafe { (*peer).uid }
+pub fn proc_get_peer_uid(peer: &tmuxpeer) -> uid_t {
+    peer.uid
 }

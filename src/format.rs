@@ -1601,7 +1601,7 @@ pub unsafe fn format_cb_client_tty(ft: *mut format_tree) -> *mut c_void {
 pub unsafe fn format_cb_client_uid(ft: *mut format_tree) -> *mut c_void {
     unsafe {
         if !(*ft).c.is_null() {
-            let uid = proc_get_peer_uid((*(*ft).c).peer);
+            let uid = proc_get_peer_uid(&*(*(*ft).c).peer);
             if uid != -1_i32 as uid_t {
                 return format_printf!("{}", uid as c_long).cast();
             }
@@ -1613,7 +1613,7 @@ pub unsafe fn format_cb_client_uid(ft: *mut format_tree) -> *mut c_void {
 pub unsafe fn format_cb_client_user(ft: *mut format_tree) -> *mut c_void {
     unsafe {
         if !(*ft).c.is_null() {
-            let uid = proc_get_peer_uid((*(*ft).c).peer);
+            let uid = proc_get_peer_uid(&*(*(*ft).c).peer);
             if uid != -1_i32 as uid_t
                 && let Some(pw) = NonNull::new(libc::getpwuid(uid))
             {

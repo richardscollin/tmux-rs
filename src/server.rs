@@ -215,7 +215,7 @@ pub unsafe fn server_start(
         server_client_flags = flags;
 
         if event_reinit(base) != 0 {
-            fatalx(c"event_reinit failed");
+            fatalx("event_reinit failed");
         }
         server_proc = proc_start(c"server");
 

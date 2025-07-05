@@ -990,7 +990,7 @@ pub unsafe fn tty_term_read_list(
                         s = c"0".as_ptr();
                     }
                 }
-                _ => fatalx(c"unknown capability type"),
+                _ => fatalx("unknown capability type"),
             }
             *caps = xreallocarray(
                 (*caps).cast(),

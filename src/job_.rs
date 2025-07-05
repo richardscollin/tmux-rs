@@ -270,7 +270,7 @@ pub unsafe fn job_run(
                 job as *mut c_void,
             );
             if (*job).event.is_null() {
-                fatalx(c"out of memory");
+                fatalx("out of memory");
             }
             bufferevent_enable((*job).event, EV_READ | EV_WRITE);
 

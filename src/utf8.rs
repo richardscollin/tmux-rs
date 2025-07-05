@@ -417,10 +417,10 @@ pub unsafe fn utf8_append(ud: *mut utf8_data, ch: c_uchar) -> utf8_state {
         let mut width: i32 = 0;
 
         if (*ud).have >= (*ud).size {
-            fatalx(c"UTF-8 character overflow");
+            fatalx("UTF-8 character overflow");
         }
         if (*ud).size > UTF8_SIZE as u8 {
-            fatalx(c"UTF-8 character size too large");
+            fatalx("UTF-8 character size too large");
         }
 
         if (*ud).have != 0 && (ch & 0xc0) != 0x80 {

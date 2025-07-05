@@ -91,7 +91,7 @@ unsafe fn cmd_save_buffer_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
             if !(*c).session.is_null() || (*c).flags.intersects(client_flag::CONTROL) {
                 evb = evbuffer_new();
                 if evb.is_null() {
-                    fatalx(c"out of memory");
+                    fatalx("out of memory");
                 }
                 evbuffer_add(evb, bufdata as _, bufsize);
                 cmdq_print_data(item, 1, evb);

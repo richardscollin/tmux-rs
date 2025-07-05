@@ -312,7 +312,7 @@ pub unsafe fn args_parse(
                 args.count += 1;
 
                 match type_ {
-                    args_parse_type::ARGS_PARSE_INVALID => fatalx(c"unexpected argument type"),
+                    args_parse_type::ARGS_PARSE_INVALID => fatalx("unexpected argument type"),
                     args_parse_type::ARGS_PARSE_STRING => {
                         if (*value).type_ != args_type::ARGS_STRING {
                             *cause = format_nul!("argument {} must be \"string\"", args.count);
@@ -778,7 +778,7 @@ pub unsafe fn args_make_commands_prepare<'a>(
             (*value).union_.string
         } else {
             if default_command.is_null() {
-                fatalx(c"argument out of range");
+                fatalx("argument out of range");
             }
             default_command
         };

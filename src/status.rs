@@ -405,7 +405,7 @@ pub unsafe fn status_redraw(c: *mut client) -> i32 {
 
         // Shouldn't get here if not the active screen.
         if (*sl).active != &raw mut (*sl).screen {
-            fatalx(c"not the active screen");
+            fatalx("not the active screen");
         }
 
         // No status line?

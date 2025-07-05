@@ -730,7 +730,7 @@ unsafe fn client_dispatch_exit_message(mut data: *const c_char, mut datalen: usi
         const size_of_retval: usize = size_of::<i32>();
 
         if datalen < size_of_retval && datalen != 0 {
-            fatalx(c"bad MSG_EXIT size");
+            fatalx("bad MSG_EXIT size");
         }
 
         if datalen >= size_of_retval {
@@ -778,7 +778,7 @@ unsafe fn client_dispatch_wait(imsg: *mut imsg) {
             }
             msgtype::MSG_READY => {
                 if datalen != 0 {
-                    fatalx(c"bad MSG_READY size");
+                    fatalx("bad MSG_READY size");
                 }
 
                 client_attached = 1;
@@ -786,7 +786,7 @@ unsafe fn client_dispatch_wait(imsg: *mut imsg) {
             }
             msgtype::MSG_VERSION => {
                 if datalen != 0 {
-                    fatalx(c"bad MSG_VERSION size");
+                    fatalx("bad MSG_VERSION size");
                 }
 
                 fprintf(
@@ -800,7 +800,7 @@ unsafe fn client_dispatch_wait(imsg: *mut imsg) {
             }
             msgtype::MSG_FLAGS => {
                 if datalen != size_of::<u64>() {
-                    fatalx(c"bad MSG_FLAGS string");
+                    fatalx("bad MSG_FLAGS string");
                 }
 
                 memcpy(
@@ -815,7 +815,7 @@ unsafe fn client_dispatch_wait(imsg: *mut imsg) {
             }
             msgtype::MSG_SHELL => {
                 if datalen == 0 || *data.add(datalen - 1) != b'\0' as c_char {
-                    fatalx(c"bad MSG_SHELL string");
+                    fatalx("bad MSG_SHELL string");
                 }
 
                 client_exec(data, shell_command);
@@ -870,7 +870,7 @@ unsafe fn client_dispatch_attached(imsg: *mut imsg) {
             msgtype::MSG_FLAGS => {
                 if datalen != size_of::<u64>() {
                     // TODO use size_of_val_raw
-                    fatalx(c"bad MSG_FLAGS string");
+                    fatalx("bad MSG_FLAGS string");
                 }
 
                 memcpy(
@@ -885,7 +885,7 @@ unsafe fn client_dispatch_attached(imsg: *mut imsg) {
             }
             msgtype::MSG_DETACH | msgtype::MSG_DETACHKILL => {
                 if datalen == 0 || *data.add(datalen - 1) != b'\0' as c_char {
-                    fatalx(c"bad MSG_DETACH string");
+                    fatalx("bad MSG_DETACH string");
                 }
 
                 client_exitsession = xstrdup(data).as_ptr();
@@ -902,7 +902,7 @@ unsafe fn client_dispatch_attached(imsg: *mut imsg) {
                     || *data.add(datalen - 1) != b'\0' as c_char
                     || strlen(data) + 1 == datalen
                 {
-                    fatalx(c"bad MSG_EXEC string");
+                    fatalx("bad MSG_EXEC string");
                 }
                 client_execcmd = xstrdup(data).as_ptr();
                 client_execshell = xstrdup(data.add(strlen(data) + 1)).as_ptr();
@@ -919,14 +919,14 @@ unsafe fn client_dispatch_attached(imsg: *mut imsg) {
             }
             msgtype::MSG_EXITED => {
                 if datalen != 0 {
-                    fatalx(c"bad MSG_EXITED size");
+                    fatalx("bad MSG_EXITED size");
                 }
 
                 proc_exit(client_proc);
             }
             msgtype::MSG_SHUTDOWN => {
                 if datalen != 0 {
-                    fatalx(c"bad MSG_SHUTDOWN size");
+                    fatalx("bad MSG_SHUTDOWN size");
                 }
 
                 proc_send(client_peer, msgtype::MSG_EXITING, -1, null_mut(), 0);
@@ -935,7 +935,7 @@ unsafe fn client_dispatch_attached(imsg: *mut imsg) {
             }
             msgtype::MSG_SUSPEND => {
                 if datalen != 0 {
-                    fatalx(c"bad MSG_SUSPEND size");
+                    fatalx("bad MSG_SUSPEND size");
                 }
 
                 memset(&raw mut sigact as _, 0, size_of::<sigaction>());
@@ -950,7 +950,7 @@ unsafe fn client_dispatch_attached(imsg: *mut imsg) {
             }
             msgtype::MSG_LOCK => {
                 if datalen == 0 || *data.add(datalen - 1) != b'\0' as c_char {
-                    fatalx(c"bad MSG_LOCK string");
+                    fatalx("bad MSG_LOCK string");
                 }
 
                 system(data);

@@ -191,7 +191,7 @@ pub unsafe fn options_value_to_string(
                     xstrdup(*(*(*o).tableentry).choices.add((*ov).number as usize)).as_ptr()
                 }
                 _ => {
-                    fatalx(c"not a number option type");
+                    fatalx("not a number option type");
                 }
             };
             return s;

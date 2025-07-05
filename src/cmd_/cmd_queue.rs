@@ -588,7 +588,7 @@ pub unsafe fn cmdq_add_message(item: *mut cmdq_item) {
 
         let tmp = cmd_print((*item).cmd);
         if !c.is_null() {
-            let uid = proc_get_peer_uid((*c).peer);
+            let uid = proc_get_peer_uid(&*(*c).peer);
             if uid != -1i32 as uid_t && uid != getuid() {
                 let pw = getpwuid(uid);
                 if !pw.is_null() {

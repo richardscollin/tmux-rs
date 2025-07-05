@@ -12,6 +12,8 @@
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
+use std::sync::atomic;
+
 use crate::*;
 
 use crate::compat::{
@@ -512,7 +514,7 @@ pub unsafe fn spawn_pane(sc: *mut spawn_context, cause: *mut *mut c_char) -> *mu
             }
 
             /* Clean up file descriptors and signals and update the environment. */
-            proc_clear_signals(server_proc, 1);
+            proc_clear_signals(&mut *server_proc.load(atomic::Ordering::Relaxed), 1);
             closefrom(STDERR_FILENO + 1);
             sigprocmask(SIG_SETMASK, &raw mut oldset, null_mut());
             log_close();

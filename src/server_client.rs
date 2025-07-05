@@ -11,6 +11,8 @@
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+use std::sync::atomic;
+
 use crate::*;
 
 use crate::{
@@ -252,7 +254,7 @@ pub unsafe fn server_client_create(fd: i32) -> *mut client {
 
         let c: *mut client = xcalloc1();
         (*c).references = 1;
-        (*c).peer = proc_add_peer(server_proc, fd, Some(server_client_dispatch), c.cast());
+        (*c).peer = proc_add_peer(&mut *server_proc.load(atomic::Ordering::Relaxed), fd, Some(server_client_dispatch), c.cast());
 
         if libc::gettimeofday(&raw mut (*c).creation_time, null_mut()) != 0 {
             fatal("gettimeofday failed");
@@ -3254,7 +3256,7 @@ pub unsafe fn server_client_dispatch_shell(c: *mut client) {
             strlen(shell) + 1,
         );
 
-        proc_kill_peer((*c).peer);
+        proc_kill_peer(&mut *(*c).peer);
     }
 }
 

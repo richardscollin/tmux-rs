@@ -360,7 +360,7 @@ pub unsafe fn server_destroy_pane(wp: *mut window_pane, notify: i32) {
                     }
 
                     let s = options_get_string_((*wp).options, c"remain-on-exit-format");
-                    if *s != '\0' as u8 {
+                    if *s != b'\0' {
                         screen_write_start_pane(ctx, wp, &raw mut (*wp).base);
                         screen_write_scrollregion(ctx, 0, sy - 1);
                         screen_write_cursormove(ctx, 0, sy as i32 - 1, 0);

@@ -13,8 +13,8 @@
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 use crate::*;
 
-const START_ISOLATE: *const u8 = b"\xe2\x81\xa6\0".as_ptr().cast();
-const END_ISOLATE: *const u8 = b"\xe2\x81\xa9\0".as_ptr().cast();
+const START_ISOLATE: *const u8 = c"\xe2\x81\xa6".as_ptr().cast();
+const END_ISOLATE: *const u8 = c"\xe2\x81\xa9".as_ptr().cast();
 
 /* Border in relation to a pane. */
 #[repr(i32)]

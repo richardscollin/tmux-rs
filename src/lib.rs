@@ -29,12 +29,7 @@
 #![allow(clippy::shadow_unrelated)] // TODO, 134 instances probably some latent bugs
 #![allow(clippy::shadow_reuse)] // 145 instances
 #![allow(clippy::manual_is_multiple_of)]
-
-#![allow(clippy::manual_c_str_literals)]
-#![allow(clippy::assign_op_pattern)]
-#![allow(clippy::char_lit_as_u8)]
-#![allow(clippy::wrong_self_convention)]
-
+//
 #![warn(clippy::unnecessary_cast)]
 
 mod compat;
@@ -3138,29 +3133,29 @@ impl SyncCharPtr {
     }
 }
 
-fn _s(ptr: impl AsU8Ptr) -> DisplayCStrPtr {
-    DisplayCStrPtr(ptr.as_u8_ptr())
+fn _s(ptr: impl ToU8Ptr) -> DisplayCStrPtr {
+    DisplayCStrPtr(ptr.to_u8_ptr())
 }
-trait AsU8Ptr {
-    fn as_u8_ptr(self) -> *const u8;
+trait ToU8Ptr {
+    fn to_u8_ptr(self) -> *const u8;
 }
-impl AsU8Ptr for *mut u8 {
-    fn as_u8_ptr(self) -> *const u8 {
+impl ToU8Ptr for *mut u8 {
+    fn to_u8_ptr(self) -> *const u8 {
         self.cast()
     }
 }
-impl AsU8Ptr for *const u8 {
-    fn as_u8_ptr(self) -> *const u8 {
+impl ToU8Ptr for *const u8 {
+    fn to_u8_ptr(self) -> *const u8 {
         self
     }
 }
-impl AsU8Ptr for *mut i8 {
-    fn as_u8_ptr(self) -> *const u8 {
+impl ToU8Ptr for *mut i8 {
+    fn to_u8_ptr(self) -> *const u8 {
         self.cast()
     }
 }
-impl AsU8Ptr for *const i8 {
-    fn as_u8_ptr(self) -> *const u8 {
+impl ToU8Ptr for *const i8 {
+    fn to_u8_ptr(self) -> *const u8 {
         self.cast()
     }
 }

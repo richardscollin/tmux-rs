@@ -3805,7 +3805,7 @@ pub unsafe fn format_build_modifiers(
         let mut end: *const u8 = null();
         let mut list: *mut format_modifier = null_mut();
 
-        let mut last: [u8; 4] = [b'X' as u8, b';' as u8, b':' as u8, '\0' as u8];
+        let mut last: [u8; 4] = [b'X', b';', b':', b'\0'];
         let last: *mut u8 = last.as_mut_ptr();
 
         // char c, last[] = "X;:", **argv, *value;

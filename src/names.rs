@@ -11,10 +11,10 @@
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-use ::libc::{gettimeofday, memcpy, strchr, strcmp, strcspn, strlen, strncmp};
+use crate::*;
 
 use crate::event_::{event_add, event_initialized};
-use crate::*;
+use crate::libc::{gettimeofday, memcpy, strchr, strcmp, strcspn, strlen, strncmp};
 
 pub unsafe extern "C" fn name_time_callback(_fd: c_int, _events: c_short, arg: *mut c_void) {
     let w = arg as *mut window;
@@ -101,10 +101,10 @@ pub unsafe fn check_window_name(w: *mut window) {
     }
 }
 
-pub unsafe fn default_window_name(w: *mut window) -> *mut c_char {
+pub unsafe fn default_window_name(w: *mut window) -> *mut u8 {
     unsafe {
         if (*w).active.is_null() {
-            return xstrdup(c"".as_ptr()).cast().as_ptr();
+            return xstrdup(c!("")).cast().as_ptr();
         }
 
         let cmd = cmd_stringify_argv((*(*w).active).argc, (*(*w).active).argv);
@@ -118,7 +118,7 @@ pub unsafe fn default_window_name(w: *mut window) -> *mut c_char {
     }
 }
 
-unsafe fn format_window_name(w: *mut window) -> *const c_char {
+unsafe fn format_window_name(w: *mut window) -> *const u8 {
     unsafe {
         let ft = format_create(
             null_mut(),
@@ -137,21 +137,21 @@ unsafe fn format_window_name(w: *mut window) -> *const c_char {
     }
 }
 
-pub unsafe fn parse_window_name(in_: *const c_char) -> *mut c_char {
+pub unsafe fn parse_window_name(in_: *const u8) -> *mut u8 {
     unsafe {
         let sizeof_exec: usize = 6; // sizeof "exec "
-        let copy: *mut c_char = xstrdup(in_).cast().as_ptr();
+        let copy: *mut u8 = xstrdup(in_).cast().as_ptr();
         let mut name = copy;
         if *name == b'"' as _ {
             name = name.wrapping_add(1);
         }
-        *name.add(strcspn(name, c"\"".as_ptr())) = b'\0' as c_char;
+        *name.add(strcspn(name, c!("\""))) = b'\0' as u8;
 
-        if strncmp(name, c"exec ".as_ptr(), sizeof_exec - 1) == 0 {
+        if strncmp(name, c!("exec "), sizeof_exec - 1) == 0 {
             name = name.wrapping_add(sizeof_exec - 1);
         }
 
-        while *name == b' ' as c_char || *name == b'-' as c_char {
+        while *name == b' ' as u8 || *name == b'-' as u8 {
             name = name.wrapping_add(1);
         }
 
@@ -160,18 +160,18 @@ pub unsafe fn parse_window_name(in_: *const c_char) -> *mut c_char {
             *ptr = b'\0' as _;
         }
 
-        if *name != b'\0' as c_char {
+        if *name != b'\0' as u8 {
             ptr = name.add(strlen(name) - 1);
             while ptr > name
                 && !(*ptr as u8).is_ascii_alphanumeric()
                 && !(*ptr as u8).is_ascii_punctuation()
             {
-                *ptr = b'\0' as c_char;
+                *ptr = b'\0';
                 *ptr -= 1;
             }
         }
 
-        if *name == b'/' as c_char {
+        if *name == b'/' as u8 {
             name = basename(name);
         }
         name = xstrdup(name).cast().as_ptr();

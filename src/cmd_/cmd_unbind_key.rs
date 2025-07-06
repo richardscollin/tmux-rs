@@ -30,7 +30,7 @@ pub static cmd_unbind_key_entry: cmd_entry = cmd_entry {
 unsafe fn cmd_unbind_key_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retval {
     unsafe {
         let args = cmd_get_args(self_);
-        let mut tablename: *const c_char = null_mut();
+        let mut tablename: *const u8 = null_mut();
         let keystr = args_string(args, 0);
         let quiet = args_has(args, b'q');
 
@@ -45,9 +45,9 @@ unsafe fn cmd_unbind_key_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retv
             tablename = args_get(args, b'T');
             if tablename.is_null() {
                 if args_has(args, b'n') != 0 {
-                    tablename = c"root".as_ptr();
+                    tablename = c!("root");
                 } else {
-                    tablename = c"prefix".as_ptr();
+                    tablename = c!("prefix");
                 }
             }
             if key_bindings_get_table(tablename, 0).is_null() {
@@ -85,9 +85,9 @@ unsafe fn cmd_unbind_key_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retv
                 return cmd_retval::CMD_RETURN_ERROR;
             }
         } else if args_has(args, b'n') != 0 {
-            tablename = c"root".as_ptr();
+            tablename = c!("root");
         } else {
-            tablename = c"prefix".as_ptr();
+            tablename = c!("prefix");
         }
         key_bindings_remove(tablename, key);
         cmd_retval::CMD_RETURN_NORMAL

@@ -45,12 +45,12 @@ unsafe fn cmd_kill_session_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
             for sloop in rb_foreach(&raw mut sessions).map(NonNull::as_ptr) {
                 if sloop != s {
                     server_destroy_session(sloop);
-                    session_destroy(sloop, 1, c"cmd_kill_session_exec".as_ptr());
+                    session_destroy(sloop, 1, c!("cmd_kill_session_exec"));
                 }
             }
         } else {
             server_destroy_session(s);
-            session_destroy(s, 1, c"cmd_kill_session_exec".as_ptr());
+            session_destroy(s, 1, c!("cmd_kill_session_exec"));
         }
         cmd_retval::CMD_RETURN_NORMAL
     }

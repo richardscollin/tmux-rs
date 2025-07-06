@@ -13,7 +13,7 @@
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 use crate::*;
 
-use libc::{getpwnam, getuid};
+use crate::libc::{getpwnam, getuid};
 
 use crate::compat::queue::tailq_foreach;
 
@@ -74,7 +74,7 @@ unsafe fn cmd_server_access_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
         );
         let mut pw = null_mut();
         if *name != b'\0' as _ {
-            pw = getpwnam(name);
+            pw = getpwnam(name.cast());
         }
         if pw.is_null() {
             cmdq_error!(item, "unknown user: {}", _s(name));

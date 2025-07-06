@@ -13,8 +13,8 @@
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 use crate::*;
 
-const START_ISOLATE: &CStr = c"\xe2\x81\xa6";
-const END_ISOLATE: &CStr = c"\xe2\x81\xa9";
+const START_ISOLATE: *const u8 = b"\xe2\x81\xa6\0".as_ptr().cast();
+const END_ISOLATE: *const u8 = b"\xe2\x81\xa9\0".as_ptr().cast();
 
 /* Border in relation to a pane. */
 #[repr(i32)]
@@ -446,14 +446,9 @@ pub unsafe fn screen_redraw_make_pane_status(
         );
 
         if wp.as_ptr() == server_client_get_pane(c) {
-            style_apply(
-                &mut gc,
-                (*w).options,
-                c"pane-active-border-style".as_ptr(),
-                ft,
-            );
+            style_apply(&mut gc, (*w).options, c!("pane-active-border-style"), ft);
         } else {
-            style_apply(&mut gc, (*w).options, c"pane-border-style".as_ptr(), ft);
+            style_apply(&mut gc, (*w).options, c!("pane-border-style"), ft);
         }
         let wp = wp.as_ptr();
         let fmt = options_get_string_((*wp).options, c"pane-border-format");
@@ -600,7 +595,7 @@ unsafe fn screen_redraw_update(c: *mut client, mut flags: client_flag) -> client
             flags |= client_flag::REDRAWOVERLAY;
         }
 
-        if options_get_number(wo, c"pane-border-status".as_ptr()) as i32
+        if options_get_number(wo, c!("pane-border-status")) as i32
             != pane_status::PANE_STATUS_OFF as i32
         {
             screen_redraw_set_context(c, ctx.as_mut_ptr());
@@ -772,16 +767,11 @@ pub unsafe fn screen_redraw_draw_borders_style(
             style_apply(
                 &raw mut (*wp).border_gc,
                 oo,
-                c"pane-active-border-style".as_ptr(),
+                c!("pane-active-border-style"),
                 ft,
             );
         } else {
-            style_apply(
-                &raw mut (*wp).border_gc,
-                oo,
-                c"pane-border-style".as_ptr(),
-                ft,
-            );
+            style_apply(&raw mut (*wp).border_gc, oo, c!("pane-border-style"), ft);
         }
         format_free(ft);
 
@@ -822,12 +812,7 @@ pub unsafe fn screen_redraw_draw_borders_cell(ctx: *mut screen_redraw_ctx, i: u3
             if (*ctx).no_pane_gc_set == 0 {
                 let ft = format_create_defaults(null_mut(), c, s, (*s).curw, null_mut());
                 memcpy__(&raw mut (*ctx).no_pane_gc, &raw const grid_default_cell);
-                style_add(
-                    &raw mut (*ctx).no_pane_gc,
-                    oo,
-                    c"pane-border-style".as_ptr(),
-                    ft,
-                );
+                style_add(&raw mut (*ctx).no_pane_gc, oo, c!("pane-border-style"), ft);
                 format_free(ft);
                 (*ctx).no_pane_gc_set = 1;
             }
@@ -857,7 +842,7 @@ pub unsafe fn screen_redraw_draw_borders_cell(ctx: *mut screen_redraw_ctx, i: u3
             tty_cursor(tty, i, j);
         }
         if isolates {
-            tty_puts(tty, END_ISOLATE.as_ptr());
+            tty_puts(tty, END_ISOLATE);
         }
 
         match pane_border_indicator::try_from(
@@ -891,7 +876,7 @@ pub unsafe fn screen_redraw_draw_borders_cell(ctx: *mut screen_redraw_ctx, i: u3
 
         tty_cell(tty, &raw mut gc, &grid_default_cell, null_mut(), null_mut());
         if isolates {
-            tty_puts(tty, START_ISOLATE.as_ptr());
+            tty_puts(tty, START_ISOLATE);
         }
     }
 }

@@ -38,7 +38,7 @@ pub struct window_clock_mode_data {
 }
 
 #[rustfmt::skip]
-pub static mut window_clock_table: [[[c_char; 5]; 5]; 14] = [
+pub static mut window_clock_table: [[[u8; 5]; 5]; 14] = [
     [
         [1, 1, 1, 1, 1], /* 0 */
         [1, 0, 0, 0, 1],
@@ -252,7 +252,7 @@ pub unsafe fn window_clock_draw_screen(wme: NonNull<window_mode_entry>) {
         let mut style: i32;
         let s = &raw mut (*data).screen;
         const sizeof_tim: usize = 64;
-        let mut tim: [c_char; 64] = [0; 64];
+        let mut tim: [u8; 64] = [0; 64];
         let mut x: u32 = 0;
         let mut y: u32 = 0;
         let mut idx: u32 = 0;
@@ -268,16 +268,16 @@ pub unsafe fn window_clock_draw_screen(wme: NonNull<window_mode_entry>) {
             libc::strftime(
                 &raw mut tim as _,
                 sizeof_tim,
-                c"%l:%M ".as_ptr(),
+                c!("%l:%M "),
                 libc::localtime(&raw mut t),
             );
             if (*tm).tm_hour >= 12 {
-                strlcat(&raw mut tim as _, c"PM".as_ptr(), sizeof_tim);
+                strlcat(&raw mut tim as _, c!("PM"), sizeof_tim);
             } else {
-                strlcat(&raw mut tim as _, c"AM".as_ptr(), sizeof_tim);
+                strlcat(&raw mut tim as _, c!("AM"), sizeof_tim);
             }
         } else {
-            libc::strftime(&raw mut tim as _, sizeof_tim, c"%H:%M".as_ptr(), tm);
+            libc::strftime(&raw mut tim as _, sizeof_tim, c!("%H:%M"), tm);
         }
 
         screen_write_clearscreen(&raw mut ctx, 8);
@@ -297,7 +297,7 @@ pub unsafe fn window_clock_draw_screen(wme: NonNull<window_mode_entry>) {
                     &raw mut ctx,
                     gc.as_mut_ptr(),
                     "{}",
-                    _s((&raw const tim).cast())
+                    _s((&raw const tim).cast::<u8>())
                 );
             }
 
@@ -311,17 +311,17 @@ pub unsafe fn window_clock_draw_screen(wme: NonNull<window_mode_entry>) {
         gc.write(grid_default_cell);
         (*gc.as_mut_ptr()).flags |= grid_flag::NOPALETTE;
         (*gc.as_mut_ptr()).bg = colour as i32;
-        let mut ptr = &raw mut tim as *mut i8;
-        while *ptr != b'\0' as c_char {
-            if *ptr >= b'0' as c_char && *ptr <= b'9' as c_char {
-                idx = (*ptr - b'0' as i8) as u32;
-            } else if *ptr == b':' as c_char {
+        let mut ptr = &raw mut tim as *mut u8;
+        while *ptr != b'\0' {
+            if *ptr >= b'0' && *ptr <= b'9' {
+                idx = (*ptr - b'0') as u32;
+            } else if *ptr == b':' {
                 idx = 10;
-            } else if *ptr == b'A' as c_char {
+            } else if *ptr == b'A' {
                 idx = 11;
-            } else if *ptr == b'P' as c_char {
+            } else if *ptr == b'P' {
                 idx = 12;
-            } else if *ptr == b'M' as c_char {
+            } else if *ptr == b'M' {
                 idx = 13;
             } else {
                 x += 6;

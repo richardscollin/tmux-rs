@@ -26,10 +26,10 @@ use crate::xmalloc::xreallocarray;
 
 #[repr(C)]
 pub struct paste_buffer {
-    pub data: *mut c_char,
+    pub data: *mut u8,
     pub size: usize,
 
-    pub name: *mut c_char,
+    pub name: *mut u8,
     pub created: time_t,
     pub automatic: i32,
     pub order: u32,
@@ -75,7 +75,7 @@ fn paste_cmp_times(a: *const paste_buffer, b: *const paste_buffer) -> Ordering {
     }
 }
 
-pub unsafe fn paste_buffer_name(pb: NonNull<paste_buffer>) -> *const c_char {
+pub unsafe fn paste_buffer_name(pb: NonNull<paste_buffer>) -> *const u8 {
     unsafe { (*pb.as_ptr()).name }
 }
 
@@ -87,7 +87,7 @@ pub unsafe fn paste_buffer_created(pb: NonNull<paste_buffer>) -> time_t {
     unsafe { (*pb.as_ptr()).created }
 }
 
-pub unsafe fn paste_buffer_data(pb: *mut paste_buffer, size: *mut usize) -> *const c_char {
+pub unsafe fn paste_buffer_data(pb: *mut paste_buffer, size: *mut usize) -> *const u8 {
     unsafe {
         if !size.is_null() {
             *size = (*pb).size;
@@ -96,7 +96,7 @@ pub unsafe fn paste_buffer_data(pb: *mut paste_buffer, size: *mut usize) -> *con
     }
 }
 // all usages seen pass in a param and don't use null, so we can remove the check
-pub unsafe fn paste_buffer_data_(pb: NonNull<paste_buffer>, size: &mut usize) -> *const c_char {
+pub unsafe fn paste_buffer_data_(pb: NonNull<paste_buffer>, size: &mut usize) -> *const u8 {
     unsafe {
         *size = (*pb.as_ptr()).size;
         (*pb.as_ptr()).data
@@ -116,7 +116,7 @@ pub unsafe fn paste_is_empty() -> i32 {
     unsafe { rb_root(&raw mut paste_by_time).is_null() as i32 }
 }
 
-pub unsafe fn paste_get_top(name: *mut *const c_char) -> *mut paste_buffer {
+pub unsafe fn paste_get_top(name: *mut *const u8) -> *mut paste_buffer {
     unsafe {
         let mut pb = rb_min::<_, discr_time_entry>(&raw mut paste_by_time);
         while !pb.is_null() && (*pb).automatic == 0 {
@@ -133,11 +133,11 @@ pub unsafe fn paste_get_top(name: *mut *const c_char) -> *mut paste_buffer {
     }
 }
 
-pub unsafe fn paste_get_name(name: *const c_char) -> *mut paste_buffer {
+pub unsafe fn paste_get_name(name: *const u8) -> *mut paste_buffer {
     unsafe {
         let mut pbfind = MaybeUninit::<paste_buffer>::uninit();
 
-        if name.is_null() || *name == b'\0' as c_char {
+        if name.is_null() || *name == b'\0' as u8 {
             return null_mut();
         }
 
@@ -163,10 +163,10 @@ pub unsafe fn paste_free(pb: NonNull<paste_buffer>) {
     }
 }
 
-pub unsafe fn paste_add(mut prefix: *const c_char, data: *mut c_char, size: usize) {
+pub unsafe fn paste_add(mut prefix: *const u8, data: *mut u8, size: usize) {
     unsafe {
         if prefix.is_null() {
-            prefix = c"buffer".as_ptr();
+            prefix = c!("buffer");
         }
 
         if size == 0 {
@@ -214,23 +214,19 @@ pub unsafe fn paste_add(mut prefix: *const c_char, data: *mut c_char, size: usiz
     }
 }
 
-pub unsafe fn paste_rename(
-    oldname: *const c_char,
-    newname: *const c_char,
-    cause: *mut *mut c_char,
-) -> i32 {
+pub unsafe fn paste_rename(oldname: *const u8, newname: *const u8, cause: *mut *mut u8) -> i32 {
     unsafe {
         if !cause.is_null() {
             *cause = null_mut();
         }
 
-        if oldname.is_null() || *oldname == b'\0' as c_char {
+        if oldname.is_null() || *oldname == b'\0' as u8 {
             if !cause.is_null() {
                 *cause = xstrdup_(c"no buffer").as_ptr();
             }
             return -1;
         }
-        if newname.is_null() || *newname == b'\0' as c_char {
+        if newname.is_null() || *newname == b'\0' as u8 {
             if !cause.is_null() {
                 *cause = xstrdup_(c"new name is empty").as_ptr();
             }
@@ -267,12 +263,7 @@ pub unsafe fn paste_rename(
     0
 }
 
-pub unsafe fn paste_set(
-    data: *mut c_char,
-    size: usize,
-    name: *const c_char,
-    cause: *mut *mut c_char,
-) -> i32 {
+pub unsafe fn paste_set(data: *mut u8, size: usize, name: *const u8, cause: *mut *mut u8) -> i32 {
     unsafe {
         if !cause.is_null() {
             *cause = null_mut();
@@ -319,7 +310,7 @@ pub unsafe fn paste_set(
     0
 }
 
-pub unsafe fn paste_replace(pb: NonNull<paste_buffer>, data: *mut c_char, size: usize) {
+pub unsafe fn paste_replace(pb: NonNull<paste_buffer>, data: *mut u8, size: usize) {
     unsafe {
         free_((*pb.as_ptr()).data);
         (*pb.as_ptr()).data = data;
@@ -329,7 +320,7 @@ pub unsafe fn paste_replace(pb: NonNull<paste_buffer>, data: *mut c_char, size: 
     }
 }
 
-pub unsafe fn paste_make_sample(pb: *mut paste_buffer) -> *mut c_char {
+pub unsafe fn paste_make_sample(pb: *mut paste_buffer) -> *mut u8 {
     unsafe {
         let width = 200;
 
@@ -337,7 +328,7 @@ pub unsafe fn paste_make_sample(pb: *mut paste_buffer) -> *mut c_char {
         if len > width {
             len = width;
         }
-        let buf: *mut c_char = xreallocarray(null_mut(), len, 4 + 4).cast().as_ptr();
+        let buf: *mut u8 = xreallocarray(null_mut(), len, 4 + 4).cast().as_ptr();
 
         let used = utf8_strvis(
             buf,
@@ -346,7 +337,7 @@ pub unsafe fn paste_make_sample(pb: *mut paste_buffer) -> *mut c_char {
             vis_flags::VIS_OCTAL | vis_flags::VIS_CSTYLE | vis_flags::VIS_TAB | vis_flags::VIS_NL,
         );
         if (*pb).size > width || used > width as i32 {
-            strlcpy(buf.add(width), c"...".as_ptr(), 4);
+            strlcpy(buf.add(width), c!("..."), 4);
         }
         buf
     }

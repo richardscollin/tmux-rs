@@ -14,7 +14,7 @@
 
 use crate::*;
 
-use libc::{strchr, strcmp, strlen, strncmp};
+use crate::libc::{strchr, strcmp, strlen, strncmp};
 
 use crate::compat::{
     queue::{
@@ -271,7 +271,7 @@ pub struct cmd {
     pub entry: &'static cmd_entry,
     pub args: *mut args,
     pub group: u32,
-    pub file: *mut c_char,
+    pub file: *mut u8,
     pub line: u32,
 
     pub qentry: tailq_entry<cmd>,
@@ -296,7 +296,7 @@ macro_rules! cmd_log_argv {
 pub(crate) use cmd_log_argv;
 
 // Log an argument vector.
-pub unsafe fn cmd_log_argv_(argc: i32, argv: *mut *mut c_char, args: std::fmt::Arguments) {
+pub unsafe fn cmd_log_argv_(argc: i32, argv: *mut *mut u8, args: std::fmt::Arguments) {
     unsafe {
         let prefix = args.to_string();
         for i in 0..argc {
@@ -305,9 +305,9 @@ pub unsafe fn cmd_log_argv_(argc: i32, argv: *mut *mut c_char, args: std::fmt::A
     }
 }
 
-pub unsafe fn cmd_append_argv(argc: *mut c_int, argv: *mut *mut *mut c_char, arg: *const c_char) {
+pub unsafe fn cmd_append_argv(argc: *mut c_int, argv: *mut *mut *mut u8, arg: *const u8) {
     unsafe {
-        *argv = xreallocarray_::<*mut c_char>(*argv, (*argc) as usize + 1).as_ptr();
+        *argv = xreallocarray_::<*mut u8>(*argv, (*argc) as usize + 1).as_ptr();
         *(*argv).add((*argc) as usize) = xstrdup(arg).as_ptr();
         *argc += 1;
     }
@@ -315,8 +315,8 @@ pub unsafe fn cmd_append_argv(argc: *mut c_int, argv: *mut *mut *mut c_char, arg
 
 pub unsafe fn cmd_pack_argv(
     argc: c_int,
-    argv: *mut *mut c_char,
-    mut buf: *mut c_char,
+    argv: *mut *mut u8,
+    mut buf: *mut u8,
     mut len: usize,
 ) -> c_int {
     unsafe {
@@ -326,7 +326,7 @@ pub unsafe fn cmd_pack_argv(
         }
         cmd_log_argv!(argc, argv, "cmd_pack_argv");
 
-        *buf = b'\0' as c_char;
+        *buf = b'\0' as u8;
         for i in 0..argc {
             if strlcpy(buf, *argv.add(i as usize), len) >= len {
                 return -1;
@@ -341,18 +341,18 @@ pub unsafe fn cmd_pack_argv(
 }
 
 pub unsafe fn cmd_unpack_argv(
-    mut buf: *mut c_char,
+    mut buf: *mut u8,
     mut len: usize,
     argc: c_int,
-    argv: *mut *mut *mut c_char,
+    argv: *mut *mut *mut u8,
 ) -> c_int {
     unsafe {
         if argc == 0 {
             return 0;
         }
-        *argv = xcalloc_::<*mut c_char>(argc as usize).as_ptr();
+        *argv = xcalloc_::<*mut u8>(argc as usize).as_ptr();
 
-        *buf.add(len - 1) = b'\0' as c_char;
+        *buf.add(len - 1) = b'\0' as u8;
         for i in 0..argc {
             if len == 0 {
                 cmd_free_argv(argc, *argv);
@@ -371,12 +371,12 @@ pub unsafe fn cmd_unpack_argv(
     }
 }
 
-pub unsafe fn cmd_copy_argv(argc: c_int, argv: *mut *mut c_char) -> *mut *mut c_char {
+pub unsafe fn cmd_copy_argv(argc: c_int, argv: *mut *mut u8) -> *mut *mut u8 {
     unsafe {
         if argc == 0 {
             return null_mut();
         }
-        let new_argv: *mut *mut c_char = xcalloc(argc as usize + 1, size_of::<*mut c_char>())
+        let new_argv: *mut *mut u8 = xcalloc(argc as usize + 1, size_of::<*mut u8>())
             .cast()
             .as_ptr();
         for i in 0..argc {
@@ -388,7 +388,7 @@ pub unsafe fn cmd_copy_argv(argc: c_int, argv: *mut *mut c_char) -> *mut *mut c_
     }
 }
 
-pub unsafe fn cmd_free_argv(argc: c_int, argv: *mut *mut c_char) {
+pub unsafe fn cmd_free_argv(argc: c_int, argv: *mut *mut u8) {
     unsafe {
         if argc == 0 {
             return;
@@ -400,13 +400,13 @@ pub unsafe fn cmd_free_argv(argc: c_int, argv: *mut *mut c_char) {
     }
 }
 
-pub unsafe fn cmd_stringify_argv(argc: c_int, argv: *mut *mut c_char) -> *mut c_char {
+pub unsafe fn cmd_stringify_argv(argc: c_int, argv: *mut *mut u8) -> *mut u8 {
     unsafe {
-        let mut buf: *mut c_char = null_mut();
+        let mut buf: *mut u8 = null_mut();
         let mut len: usize = 0;
 
         if argc == 0 {
-            return xstrdup(c"".as_ptr()).as_ptr();
+            return xstrdup(c!("")).as_ptr();
         }
 
         for i in 0..argc {
@@ -423,9 +423,9 @@ pub unsafe fn cmd_stringify_argv(argc: c_int, argv: *mut *mut c_char) -> *mut c_
             buf = xrealloc_(buf, len).as_ptr();
 
             if i == 0 {
-                *buf = b'\0' as c_char;
+                *buf = b'\0' as u8;
             } else {
-                strlcat(buf, c" ".as_ptr(), len);
+                strlcat(buf, c!(" "), len);
             }
             strlcat(buf, s, len);
 
@@ -447,7 +447,7 @@ pub unsafe fn cmd_get_group(cmd: *mut cmd) -> c_uint {
     unsafe { (*cmd).group }
 }
 
-pub unsafe fn cmd_get_source(cmd: *mut cmd, file: *mut *const c_char, line: &AtomicU32) {
+pub unsafe fn cmd_get_source(cmd: *mut cmd, file: *mut *const u8, line: &AtomicU32) {
     unsafe {
         if !file.is_null() {
             *file = (*cmd).file;
@@ -456,9 +456,9 @@ pub unsafe fn cmd_get_source(cmd: *mut cmd, file: *mut *const c_char, line: &Ato
     }
 }
 
-pub unsafe fn cmd_get_alias(name: *const c_char) -> *mut c_char {
+pub unsafe fn cmd_get_alias(name: *const u8) -> *mut u8 {
     unsafe {
-        let o = options_get_only(global_options, c"command-alias".as_ptr());
+        let o = options_get_only(global_options, c!("command-alias"));
         if o.is_null() {
             return null_mut();
         }
@@ -482,13 +482,13 @@ pub unsafe fn cmd_get_alias(name: *const c_char) -> *mut c_char {
     }
 }
 
-pub unsafe fn cmd_find(name: *const c_char) -> Result<&'static cmd_entry, *mut c_char> {
+pub unsafe fn cmd_find(name: *const u8) -> Result<&'static cmd_entry, *mut u8> {
     let mut loop_: *mut *mut cmd_entry;
     let mut entry: *mut cmd_entry;
     let mut found = None;
 
     let mut ambiguous: i32 = 0;
-    type s_buf = [c_char; 8192];
+    type s_buf = [u8; 8192];
     let mut s: s_buf = [0; 8192];
 
     unsafe {
@@ -523,7 +523,7 @@ pub unsafe fn cmd_find(name: *const c_char) -> Result<&'static cmd_entry, *mut c
         }
 
         // ambiguous:
-        s[0] = b'\0' as c_char;
+        s[0] = b'\0' as u8;
         for entry in cmd_table {
             if strncmp(entry.name.as_ptr(), name, strlen(name)) != 0 {
                 continue;
@@ -533,16 +533,16 @@ pub unsafe fn cmd_find(name: *const c_char) -> Result<&'static cmd_entry, *mut c
             {
                 break;
             }
-            if strlcat(&raw mut s as _, c", ".as_ptr(), size_of::<s_buf>()) >= size_of::<s_buf>() {
+            if strlcat(&raw mut s as _, c!(", "), size_of::<s_buf>()) >= size_of::<s_buf>() {
                 break;
             }
         }
-        s[strlen(&raw mut s as _) - 2] = b'\0' as c_char;
+        s[strlen(&raw mut s as _) - 2] = b'\0' as u8;
 
         Err(format_nul!(
             "ambiguous command: {}, could be: {}",
             _s(name),
-            _s((&raw const s).cast()),
+            _s((&raw const s).cast::<u8>()),
         ))
     }
 }
@@ -552,9 +552,9 @@ pub unsafe fn cmd_parse(
     count: c_uint,
     file: Option<&str>,
     line: c_uint,
-) -> Result<*mut cmd, *mut c_char> {
+) -> Result<*mut cmd, *mut u8> {
     unsafe {
-        let mut error: *mut c_char = null_mut();
+        let mut error: *mut u8 = null_mut();
 
         if count == 0 || (*values).type_ != args_type::ARGS_STRING {
             return Err(format_nul!("no command"));
@@ -608,7 +608,7 @@ pub unsafe fn cmd_free(cmd: *mut cmd) {
     }
 }
 
-pub unsafe fn cmd_copy(cmd: *mut cmd, argc: c_int, argv: *mut *mut c_char) -> *mut cmd {
+pub unsafe fn cmd_copy(cmd: *mut cmd, argc: c_int, argv: *mut *mut u8) -> *mut cmd {
     unsafe {
         let new_cmd: *mut cmd = Box::leak(Box::new(cmd {
             entry: (*cmd).entry,
@@ -631,10 +631,10 @@ pub unsafe fn cmd_copy(cmd: *mut cmd, argc: c_int, argv: *mut *mut c_char) -> *m
     }
 }
 
-pub unsafe fn cmd_print(cmd: *mut cmd) -> *mut c_char {
+pub unsafe fn cmd_print(cmd: *mut cmd) -> *mut u8 {
     unsafe {
         let s = args_print((*cmd).args);
-        let out = if *s != b'\0' as c_char {
+        let out = if *s != b'\0' as u8 {
             format_nul!("{} {}", _s((*cmd).entry.name.as_ptr()), _s(s))
         } else {
             xstrdup((*cmd).entry.name.as_ptr()).as_ptr()
@@ -702,7 +702,7 @@ pub unsafe fn cmd_list_free(cmdlist: *mut cmd_list) {
 pub unsafe fn cmd_list_copy(
     cmdlist: &mut cmd_list,
     argc: c_int,
-    argv: *mut *mut c_char,
+    argv: *mut *mut u8,
 ) -> *mut cmd_list {
     unsafe {
         let mut group: u32 = cmdlist.group;
@@ -729,10 +729,10 @@ pub unsafe fn cmd_list_copy(
     }
 }
 
-pub fn cmd_list_print(cmdlist: &mut cmd_list, escaped: c_int) -> *mut c_char {
+pub fn cmd_list_print(cmdlist: &mut cmd_list, escaped: c_int) -> *mut u8 {
     unsafe {
         let mut len = 1;
-        let mut buf: *mut c_char = xcalloc(1, len).cast().as_ptr();
+        let mut buf: *mut u8 = xcalloc(1, len).cast().as_ptr();
 
         for cmd in tailq_foreach::<_, qentry>(cmdlist.list).map(NonNull::as_ptr) {
             let this = cmd_print(cmd);
@@ -746,16 +746,16 @@ pub fn cmd_list_print(cmdlist: &mut cmd_list, escaped: c_int) -> *mut c_char {
             if !next.is_null() {
                 if (*cmd).group != (*next).group {
                     if escaped != 0 {
-                        strlcat(buf, c" \\;\\; ".as_ptr(), len);
+                        strlcat(buf, c!(" \\;\\; "), len);
                     } else {
-                        strlcat(buf, c" ;; ".as_ptr(), len);
+                        strlcat(buf, c!(" ;; "), len);
                     }
                 } else {
                     #[allow(clippy::collapsible_else_if)]
                     if escaped != 0 {
-                        strlcat(buf, c" \\; ".as_ptr(), len);
+                        strlcat(buf, c!(" \\; "), len);
                     } else {
-                        strlcat(buf, c" ; ".as_ptr(), len);
+                        strlcat(buf, c!(" ; "), len);
                     }
                 }
             }
@@ -894,62 +894,55 @@ pub unsafe fn cmd_mouse_pane(
     }
 }
 
-pub unsafe fn cmd_template_replace(
-    template: *const c_char,
-    s: *const c_char,
-    idx: c_int,
-) -> *mut c_char {
+pub unsafe fn cmd_template_replace(template: *const u8, s: *const u8, idx: c_int) -> *mut u8 {
     unsafe {
-        let quote = c"\"\\$;~";
+        let quote = c!("\"\\$;~");
 
         if strchr(template, b'%' as i32).is_null() {
             return xstrdup(template).cast().as_ptr();
         }
 
-        let mut buf: *mut c_char = xmalloc(1).cast().as_ptr();
-        *buf = b'\0' as c_char;
+        let mut buf: *mut u8 = xmalloc(1).cast().as_ptr();
+        *buf = b'\0' as u8;
         let mut len = 0;
         let mut replaced = 0;
 
         let mut ptr = template;
-        while *ptr != b'\0' as c_char {
+        while *ptr != b'\0' as u8 {
             let ch = *ptr;
             ptr = ptr.add(1);
             if matches!(ch as c_uchar, b'%') {
-                if *ptr < b'1' as c_char
-                    || *ptr > b'9' as c_char
-                    || *ptr as i32 - b'0' as i32 != idx
-                {
-                    if *ptr != b'%' as c_char || replaced != 0 {
+                if *ptr < b'1' as u8 || *ptr > b'9' as u8 || *ptr as i32 - b'0' as i32 != idx {
+                    if *ptr != b'%' as u8 || replaced != 0 {
                         break;
                     }
                     replaced = 1;
                 }
                 ptr = ptr.add(1);
 
-                let quoted = *ptr == b'%' as c_char;
+                let quoted = *ptr == b'%' as u8;
                 if !quoted {
                     ptr = ptr.add(1);
                 }
 
                 buf = xrealloc_(buf, len + (strlen(s) * 3) + 1).as_ptr();
                 let mut cp = s;
-                while *cp != b'\0' as c_char {
-                    if quoted && !strchr(quote.as_ptr(), *cp as i32).is_null() {
-                        *buf.add(len) = b'\\' as c_char;
+                while *cp != b'\0' as u8 {
+                    if quoted && !strchr(quote, *cp as i32).is_null() {
+                        *buf.add(len) = b'\\' as u8;
                         len += 1;
                     }
                     *buf.add(len) = *cp;
                     len += 1;
                     cp = cp.add(1);
                 }
-                *buf.add(len) = b'\0' as c_char;
+                *buf.add(len) = b'\0' as u8;
                 continue;
             }
             buf = xrealloc_(buf, len + 2).as_ptr();
             *buf.add(len) = ch;
             len += 1;
-            *buf.add(len) = b'\0' as c_char;
+            *buf.add(len) = b'\0' as u8;
         }
 
         buf

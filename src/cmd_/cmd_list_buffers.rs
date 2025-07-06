@@ -32,9 +32,9 @@ unsafe fn cmd_list_buffers_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
         let args = cmd_get_args(self_);
         let mut flag = 0;
 
-        let mut template: *const c_char = args_get(args, b'F');
+        let mut template: *const u8 = args_get(args, b'F');
         if template.is_null() {
-            template = c"#{buffer_name}: #{buffer_size} bytes: \"#{buffer_sample}\"".as_ptr();
+            template = c!("#{buffer_name}: #{buffer_size} bytes: \"#{buffer_sample}\"");
         }
         let filter = args_get(args, b'f');
 

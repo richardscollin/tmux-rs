@@ -33,11 +33,7 @@ pub struct cmd_confirm_before_data {
     default_yes: i32,
 }
 
-unsafe fn cmd_confirm_before_args_parse(
-    _: *mut args,
-    _: u32,
-    _: *mut *mut c_char,
-) -> args_parse_type {
+unsafe fn cmd_confirm_before_args_parse(_: *mut args, _: u32, _: *mut *mut u8) -> args_parse_type {
     args_parse_type::ARGS_PARSE_COMMANDS_OR_STRING
 }
 
@@ -111,7 +107,7 @@ unsafe fn cmd_confirm_before_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
 unsafe fn cmd_confirm_before_callback(
     c: *mut client,
     data: NonNull<c_void>,
-    s: *const c_char,
+    s: *const u8,
     _done: i32,
 ) -> i32 {
     unsafe {

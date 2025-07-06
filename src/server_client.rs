@@ -182,13 +182,13 @@ pub unsafe fn server_client_overlay_range(
 /// Check if this client is inside this server.
 pub unsafe fn server_client_check_nested(c: *mut client) -> i32 {
     unsafe {
-        let envent = environ_find((*c).environ, c"TMUX".as_ptr());
-        if envent.is_null() || *transmute_ptr((*envent).value) == b'\0' as i8 {
+        let envent = environ_find((*c).environ, c!("TMUX"));
+        if envent.is_null() || *transmute_ptr((*envent).value) == b'\0' {
             return 0;
         }
 
         for wp in rb_foreach(&raw mut all_window_panes) {
-            if libc::strcmp((&raw const (*wp.as_ptr()).tty) as *const i8, (*c).ttyname) == 0 {
+            if libc::strcmp((&raw const (*wp.as_ptr()).tty) as _, (*c).ttyname) == 0 {
                 return 1;
             }
         }
@@ -197,7 +197,7 @@ pub unsafe fn server_client_check_nested(c: *mut client) -> i32 {
 }
 
 /// Set client key table.
-pub unsafe fn server_client_set_key_table(c: *mut client, mut name: *const c_char) {
+pub unsafe fn server_client_set_key_table(c: *mut client, mut name: *const u8) {
     unsafe {
         if name.is_null() {
             name = server_client_get_key_table(c);
@@ -225,16 +225,16 @@ pub unsafe fn server_client_key_table_activity_diff(c: *mut client) -> u64 {
 }
 
 /// Get default key table.
-pub unsafe fn server_client_get_key_table(c: *mut client) -> *const c_char {
+pub unsafe fn server_client_get_key_table(c: *mut client) -> *const u8 {
     unsafe {
         let s = (*c).session;
         if s.is_null() {
-            return c"root".as_ptr();
+            return c!("root");
         }
 
         let name = options_get_string_((*s).options, c"key-table");
-        if *name == b'\0' as i8 {
-            return c"root".as_ptr();
+        if *name == b'\0' {
+            return c!("root");
         }
         name
     }
@@ -274,7 +274,7 @@ pub unsafe fn server_client_create(fd: i32) -> *mut client {
         status_init(c);
         (*c).flags |= client_flag::FOCUSED;
 
-        (*c).keytable = key_bindings_get_table(c"root".as_ptr(), 1);
+        (*c).keytable = key_bindings_get_table(c!("root"), 1);
         (*(*c).keytable).references += 1;
 
         evtimer_set(
@@ -295,7 +295,7 @@ pub unsafe fn server_client_create(fd: i32) -> *mut client {
 }
 
 /// Open client terminal if needed.
-pub unsafe fn server_client_open(c: *mut client, cause: *mut *mut c_char) -> i32 {
+pub unsafe fn server_client_open(c: *mut client, cause: *mut *mut u8) -> i32 {
     unsafe {
         let mut ttynam = _PATH_TTY;
 
@@ -328,7 +328,7 @@ pub unsafe fn server_client_open(c: *mut client, cause: *mut *mut c_char) -> i32
         }
 
         if !(*c).flags.intersects(client_flag::TERMINAL) {
-            *cause = xstrdup(c"not a terminal".as_ptr()).as_ptr();
+            *cause = xstrdup(c!("not a terminal")).as_ptr();
             return -1;
         }
 
@@ -554,10 +554,10 @@ pub unsafe fn server_client_detach(c: *mut client, msgtype: msgtype) {
 }
 
 /// Execute command to replace a client.
-pub unsafe fn server_client_exec(c: *mut client, cmd: *const c_char) {
+pub unsafe fn server_client_exec(c: *mut client, cmd: *const u8) {
     unsafe {
         let s = (*c).session;
-        if *cmd == b'\0' as i8 {
+        if *cmd == b'\0' {
             return;
         }
         let cmdsize = strlen(cmd) + 1;
@@ -572,7 +572,7 @@ pub unsafe fn server_client_exec(c: *mut client, cmd: *const c_char) {
         }
         let shellsize = strlen(shell) + 1;
 
-        let msg: *mut c_char = xmalloc(cmdsize + shellsize).as_ptr().cast();
+        let msg: *mut u8 = xmalloc(cmdsize + shellsize).as_ptr().cast();
         libc::memcpy(msg.cast(), cmd.cast(), cmdsize);
         libc::memcpy(msg.add(cmdsize).cast(), shell.cast(), shellsize);
 
@@ -1915,7 +1915,7 @@ pub unsafe fn server_client_key_callback(item: *mut cmdq_item, data: *mut c_void
                         || key0 == (prefix2 & (KEYC_MASK_KEY | KEYC_MASK_MODIFIERS)))
                         && !streq_((*table).name, "prefix")
                     {
-                        server_client_set_key_table(c, c"prefix".as_ptr());
+                        server_client_set_key_table(c, c!("prefix"));
                         server_status_client(c);
                         break 'out;
                     }
@@ -2853,7 +2853,7 @@ pub unsafe fn server_client_set_path(c: *mut client) {
             return;
         }
         let path = if (*(*(*(*s).curw).window).active).base.path.is_null() {
-            c"".as_ptr()
+            c!("")
         } else {
             (*(*(*(*s).curw).window).active).base.path
         };
@@ -2999,8 +2999,8 @@ pub unsafe fn server_client_dispatch_command(c: *mut client, imsg: *mut imsg) {
         let mut buf = null_mut();
         let mut len: usize = 0;
         let mut argc = 0;
-        let mut argv: *mut *mut c_char = null_mut();
-        let mut cause: *mut c_char = null_mut();
+        let mut argv: *mut *mut u8 = null_mut();
+        let mut cause: *mut u8 = null_mut();
         let mut values = null_mut();
         let mut new_item = null_mut();
 
@@ -3014,22 +3014,22 @@ pub unsafe fn server_client_dispatch_command(c: *mut client, imsg: *mut imsg) {
             }
             memcpy__(&raw mut data, (*imsg).data.cast());
 
-            buf = (*imsg).data.cast::<c_char>().add(size_of::<msg_command>());
+            buf = (*imsg).data.cast::<u8>().add(size_of::<msg_command>());
             len = (*imsg).hdr.len as usize - IMSG_HEADER_SIZE - size_of::<msg_command>();
-            if len > 0 && *buf.add(len - 1) != b'\0' as i8 {
+            if len > 0 && *buf.add(len - 1) != b'\0' {
                 fatalx("bad MSG_COMMAND string");
             }
 
             argc = data.argc;
             if cmd_unpack_argv(buf, len, argc, &raw mut argv) != 0 {
-                cause = xstrdup(c"command too long".as_ptr()).as_ptr();
+                cause = xstrdup(c!("command too long")).as_ptr();
                 break 'error;
             }
 
             if argc == 0 {
                 argc = 1;
                 argv = xcalloc1();
-                *argv = xstrdup(c"new-session".as_ptr()).as_ptr();
+                *argv = xstrdup(c!("new-session")).as_ptr();
             }
 
             values = args_from_vector(argc, argv);
@@ -3111,22 +3111,18 @@ pub unsafe fn server_client_dispatch_identify(c: *mut client, imsg: *mut imsg) {
                 // log_debug("client %p IDENTIFY_LONGFLAGS %#llx", c, (unsigned long long)longflags);
             }
             msgtype::MSG_IDENTIFY_TERM => {
-                if datalen == 0
-                    || *data.cast::<c_char>().add((datalen - 1) as usize) != b'\0' as c_char
-                {
+                if datalen == 0 || *data.cast::<u8>().add((datalen - 1) as usize) != b'\0' as u8 {
                     fatalx("bad MSG_IDENTIFY_TERM string");
                 }
-                if *data.cast::<c_char>() == b'\0' as c_char {
-                    (*c).term_name = xstrdup(c"unknown".as_ptr()).as_ptr();
+                if *data.cast::<u8>() == b'\0' as u8 {
+                    (*c).term_name = xstrdup(c!("unknown")).as_ptr();
                 } else {
                     (*c).term_name = xstrdup(data.cast()).as_ptr();
                 }
                 // log_debug("client %p IDENTIFY_TERM %s", c, data);
             }
             msgtype::MSG_IDENTIFY_TERMINFO => {
-                if datalen == 0
-                    || *data.cast::<c_char>().add((datalen - 1) as usize) != b'\0' as c_char
-                {
+                if datalen == 0 || *data.cast::<u8>().add((datalen - 1) as usize) != b'\0' as u8 {
                     fatalx("bad MSG_IDENTIFY_TERMINFO string");
                 }
                 (*c).term_caps =
@@ -3136,18 +3132,14 @@ pub unsafe fn server_client_dispatch_identify(c: *mut client, imsg: *mut imsg) {
                 // log_debug("client %p IDENTIFY_TERMINFO %s", c, data);
             }
             msgtype::MSG_IDENTIFY_TTYNAME => {
-                if datalen == 0
-                    || *data.cast::<c_char>().add((datalen - 1) as usize) != b'\0' as c_char
-                {
+                if datalen == 0 || *data.cast::<u8>().add((datalen - 1) as usize) != b'\0' as u8 {
                     fatalx("bad MSG_IDENTIFY_TTYNAME string");
                 }
                 (*c).ttyname = xstrdup(data.cast()).as_ptr();
                 // log_debug("client %p IDENTIFY_TTYNAME %s", c, data);
             }
             msgtype::MSG_IDENTIFY_CWD => {
-                if datalen == 0
-                    || *data.cast::<c_char>().add((datalen - 1) as usize) != b'\0' as c_char
-                {
+                if datalen == 0 || *data.cast::<u8>().add((datalen - 1) as usize) != b'\0' as u8 {
                     // fatalx("bad MSG_IDENTIFY_CWD string");
                 }
                 if libc::access(data.cast(), libc::X_OK) == 0 {
@@ -3155,7 +3147,7 @@ pub unsafe fn server_client_dispatch_identify(c: *mut client, imsg: *mut imsg) {
                 } else if let Some(home) = NonNull::new(find_home()) {
                     (*c).cwd = xstrdup(home.as_ptr()).as_ptr();
                 } else {
-                    (*c).cwd = xstrdup(c"/".as_ptr()).as_ptr();
+                    (*c).cwd = xstrdup(c!("/")).as_ptr();
                 }
                 // log_debug("client %p IDENTIFY_CWD %s", c, data);
             }
@@ -3174,8 +3166,7 @@ pub unsafe fn server_client_dispatch_identify(c: *mut client, imsg: *mut imsg) {
                 // log_debug("client %p IDENTIFY_STDOUT %d", c, (*c).out_fd);
             }
             msgtype::MSG_IDENTIFY_ENVIRON => {
-                if datalen == 0 || *data.cast::<c_char>().add((datalen - 1) as usize) != b'\0' as i8
-                {
+                if datalen == 0 || *data.cast::<u8>().add((datalen - 1) as usize) != b'\0' {
                     fatalx("bad MSG_IDENTIFY_ENVIRON string");
                 }
                 if !libc::strchr(data.cast(), b'=' as i32).is_null() {
@@ -3198,7 +3189,7 @@ pub unsafe fn server_client_dispatch_identify(c: *mut client, imsg: *mut imsg) {
         }
         (*c).flags |= client_flag::IDENTIFIED;
 
-        let mut name = if *(*c).ttyname != b'\0' as i8 {
+        let mut name = if *(*c).ttyname != b'\0' {
             xstrdup((*c).ttyname).as_ptr()
         } else {
             format_nul!("client-{}", (*c).pid)
@@ -3259,7 +3250,7 @@ pub unsafe fn server_client_dispatch_shell(c: *mut client) {
 }
 
 /// Get client working directory.
-pub unsafe fn server_client_get_cwd(c: *mut client, mut s: *mut session) -> *const c_char {
+pub unsafe fn server_client_get_cwd(c: *mut client, mut s: *mut session) -> *const u8 {
     unsafe {
         if cfg_finished == 0 && !cfg_client.is_null() {
             (*cfg_client).cwd
@@ -3278,18 +3269,23 @@ pub unsafe fn server_client_get_cwd(c: *mut client, mut s: *mut session) -> *con
         } else if let Some(home) = NonNull::new(find_home()) {
             home.as_ptr()
         } else {
-            c"/".as_ptr()
+            c!("/")
         }
     }
 }
 
 /// Get control client flags.
-pub unsafe fn server_client_control_flags(c: *mut client, next: *const c_char) -> client_flag {
+pub unsafe fn server_client_control_flags(c: *mut client, next: *const u8) -> client_flag {
     unsafe {
         if streq_(next, "pause-after") {
             (*c).pause_age = 0;
             client_flag::CONTROL_PAUSEAFTER
-        } else if libc::sscanf(next, c"pause-after=%u".as_ptr(), &raw mut (*c).pause_age) == 1 {
+        } else if libc::sscanf(
+            next.cast(),
+            c"pause-after=%u".as_ptr(),
+            &raw mut (*c).pause_age,
+        ) == 1
+        {
             (*c).pause_age *= 1000;
             client_flag::CONTROL_PAUSEAFTER
         } else if streq_(next, "no-output") {
@@ -3303,7 +3299,7 @@ pub unsafe fn server_client_control_flags(c: *mut client, next: *const c_char) -
 }
 
 /// Set client flags.
-pub unsafe fn server_client_set_flags(c: *mut client, flags: *const c_char) {
+pub unsafe fn server_client_set_flags(c: *mut client, flags: *const u8) {
     unsafe {
         let mut next = null_mut();
         let mut flag: client_flag = client_flag::empty();
@@ -3312,10 +3308,10 @@ pub unsafe fn server_client_set_flags(c: *mut client, flags: *const c_char) {
         let copy = xstrdup(flags).as_ptr();
         let mut s = copy;
         while {
-            next = strsep(&raw mut s, c",".as_ptr());
+            next = strsep(&raw mut s, c!(","));
             next.is_null()
         } {
-            not = *next == b'!' as i8;
+            not = *next == b'!';
             if not {
                 next = next.add(1);
             }
@@ -3361,31 +3357,31 @@ pub unsafe fn server_client_set_flags(c: *mut client, flags: *const c_char) {
 }
 
 /// Get client flags. This is only flags useful to show to users.
-pub unsafe fn server_client_get_flags(c: *mut client) -> *const c_char {
+pub unsafe fn server_client_get_flags(c: *mut client) -> *const u8 {
     unsafe {
         const sizeof_s: usize = 256;
         const sizeof_tmp: usize = 32;
-        static mut s: [c_char; sizeof_s] = [0; sizeof_s];
-        static mut tmp: [c_char; sizeof_tmp] = [0; sizeof_tmp];
+        static mut s: [u8; sizeof_s] = [0; sizeof_s];
+        static mut tmp: [u8; sizeof_tmp] = [0; sizeof_tmp];
 
-        s[0] = b'\0' as i8;
+        s[0] = b'\0';
         if (*c).flags.intersects(client_flag::ATTACHED) {
-            strlcat((&raw mut s).cast(), c"attached,".as_ptr(), sizeof_s);
+            strlcat((&raw mut s).cast(), c!("attached,"), sizeof_s);
         }
         if (*c).flags.intersects(client_flag::FOCUSED) {
-            strlcat((&raw mut s).cast(), c"focused,".as_ptr(), sizeof_s);
+            strlcat((&raw mut s).cast(), c!("focused,"), sizeof_s);
         }
         if (*c).flags.intersects(client_flag::CONTROL) {
-            strlcat((&raw mut s).cast(), c"control-mode,".as_ptr(), sizeof_s);
+            strlcat((&raw mut s).cast(), c!("control-mode,"), sizeof_s);
         }
         if (*c).flags.intersects(client_flag::IGNORESIZE) {
-            strlcat((&raw mut s).cast(), c"ignore-size,".as_ptr(), sizeof_s);
+            strlcat((&raw mut s).cast(), c!("ignore-size,"), sizeof_s);
         }
         if (*c).flags.intersects(client_flag::CONTROL_NOOUTPUT) {
-            strlcat((&raw mut s).cast(), c"no-output,".as_ptr(), sizeof_s);
+            strlcat((&raw mut s).cast(), c!("no-output,"), sizeof_s);
         }
         if (*c).flags.intersects(client_flag::CONTROL_WAITEXIT) {
-            strlcat((&raw mut s).cast(), c"wait-exit,".as_ptr(), sizeof_s);
+            strlcat((&raw mut s).cast(), c!("wait-exit,"), sizeof_s);
         }
         if (*c).flags.intersects(client_flag::CONTROL_PAUSEAFTER) {
             xsnprintf_!(
@@ -3397,21 +3393,21 @@ pub unsafe fn server_client_get_flags(c: *mut client) -> *const c_char {
             strlcat((&raw mut s).cast(), (&raw mut tmp).cast(), sizeof_s);
         }
         if (*c).flags.intersects(client_flag::READONLY) {
-            strlcat((&raw mut s).cast(), c"read-only,".as_ptr(), sizeof_s);
+            strlcat((&raw mut s).cast(), c!("read-only,"), sizeof_s);
         }
         if (*c).flags.intersects(client_flag::ACTIVEPANE) {
-            strlcat((&raw mut s).cast(), c"active-pane,".as_ptr(), sizeof_s);
+            strlcat((&raw mut s).cast(), c!("active-pane,"), sizeof_s);
         }
         if (*c).flags.intersects(client_flag::SUSPENDED) {
-            strlcat((&raw mut s).cast(), c"suspended,".as_ptr(), sizeof_s);
+            strlcat((&raw mut s).cast(), c!("suspended,"), sizeof_s);
         }
         if (*c).flags.intersects(client_flag::UTF8) {
-            strlcat((&raw mut s).cast(), c"UTF-8,".as_ptr(), sizeof_s);
+            strlcat((&raw mut s).cast(), c!("UTF-8,"), sizeof_s);
         }
-        if s[0] != b'\0' as i8 {
-            s[strlen((&raw const s).cast()) - 1] = b'\0' as i8;
+        if s[0] != b'\0' {
+            s[strlen((&raw const s).cast()) - 1] = b'\0';
         }
-        (&raw const s) as *const i8
+        (&raw const s) as *const u8
     }
 }
 
@@ -3510,8 +3506,8 @@ pub unsafe fn server_client_print(c: *mut client, parse: i32, evb: *mut evbuffer
                 // log_debug("%s: %s", __func__, msg);
             } else {
                 msg = EVBUFFER_DATA(evb).cast();
-                if *msg.add(size - 1) != b'\0' as i8 {
-                    evbuffer_add(evb, c"".as_ptr().cast(), 1);
+                if *msg.add(size - 1) != b'\0' {
+                    evbuffer_add(evb, c!("").cast(), 1);
                 }
             }
 

@@ -360,7 +360,7 @@ static tty_features: [&tty_feature; 20] = [
     &tty_feature_usstyle,
 ];
 
-pub unsafe fn tty_add_features(feat: *mut i32, s: *const c_char, separators: *const c_char) {
+pub unsafe fn tty_add_features(feat: *mut i32, s: *const u8, separators: *const u8) {
     unsafe {
         log_debug!("adding terminal features {}", _s(s));
 
@@ -391,23 +391,23 @@ pub unsafe fn tty_add_features(feat: *mut i32, s: *const c_char, separators: *co
     }
 }
 
-pub unsafe fn tty_get_features(feat: i32) -> *const c_char {
-    static mut s_buf: [MaybeUninit<c_char>; 512] = [MaybeUninit::uninit(); 512];
+pub unsafe fn tty_get_features(feat: i32) -> *const u8 {
+    static mut s_buf: [MaybeUninit<u8>; 512] = [MaybeUninit::uninit(); 512];
     unsafe {
-        let s: *mut c_char = (&raw mut s_buf).cast();
+        let s: *mut u8 = (&raw mut s_buf).cast();
         // const struct tty_feature *tf;
 
-        *s = b'\0' as c_char;
+        *s = b'\0' as u8;
         for (i, tf) in tty_features.iter().cloned().enumerate() {
             if (!feat & (1 << i)) != 0 {
                 continue;
             }
 
             strlcat(s, tf.name.as_ptr(), 512);
-            strlcat(s, c",".as_ptr(), 512);
+            strlcat(s, c!(","), 512);
         }
-        if *s != b'\0' as c_char {
-            *s.add(strlen(s) - 1) = b'\0' as c_char;
+        if *s != b'\0' as u8 {
+            *s.add(strlen(s) - 1) = b'\0' as u8;
         }
 
         s
@@ -447,7 +447,7 @@ pub unsafe fn tty_apply_features(term: *mut tty_term, feat: i32) -> bool {
     true
 }
 
-pub unsafe fn tty_default_features(feat: *mut i32, name: *const c_char, version: u32) {
+pub unsafe fn tty_default_features(feat: *mut i32, name: *const u8, version: u32) {
     struct entry {
         name: &'static CStr,
         version: u32,
@@ -474,13 +474,13 @@ pub unsafe fn tty_default_features(feat: *mut i32, name: *const c_char, version:
 
     unsafe {
         for e in table {
-            if libc::strcmp(e.name.as_ptr(), name) != 0 {
+            if libc::strcmp(e.name.as_ptr().cast(), name) != 0 {
                 continue;
             }
             if version != 0 && version < e.version {
                 continue;
             }
-            tty_add_features(feat, e.features.as_ptr().cast(), c",".as_ptr());
+            tty_add_features(feat, e.features.as_ptr().cast(), c!(","));
         }
     }
 }

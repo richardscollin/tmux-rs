@@ -1,6 +1,6 @@
 // Copyright (c) 2008 Nicholas Marriott <nicholas.marriott@gmail.com>
 //
-// Permission to use, copy, modify, and distribute this software for any
+// Permission u8, copy, modify, and distribute this software for any
 // purpose with or without fee is hereby granted, provided that the above
 // copyright notice and this permission notice appear in all copies.
 //
@@ -14,7 +14,7 @@
 
 use crate::*;
 
-use libc::{memcpy, memset};
+use crate::libc::{memcpy, memset};
 
 use crate::compat::{
     tree::{rb_find, rb_initializer, rb_insert},
@@ -25,7 +25,7 @@ use crate::xmalloc::xreallocarray;
 #[cfg(feature = "utf8proc")]
 unsafe extern "C" {
     fn utf8proc_wcwidth(_: wchar_t) -> i32;
-    fn utf8proc_mbtowc(_: *mut wchar_t, _: *const c_char, _: usize) -> i32;
+    fn utf8proc_mbtowc(_: *mut wchar_t, _: *const u8, _: usize) -> i32;
     fn utf8proc_wctomb(_: *mut char, _: wchar_t) -> i32;
 }
 
@@ -55,7 +55,7 @@ pub struct utf8_item {
     pub index: u32,
 
     pub data_entry: rb_entry<utf8_item>,
-    pub data: [c_char; UTF8_SIZE],
+    pub data: [u8; UTF8_SIZE],
     pub size: c_uchar,
 }
 
@@ -102,7 +102,7 @@ fn utf8_set_width(width: u8) -> utf8_char {
     (width as utf8_char + 1) << 29
 }
 
-pub unsafe fn utf8_item_by_data(data: *const [i8; UTF8_SIZE], size: usize) -> *mut utf8_item {
+pub unsafe fn utf8_item_by_data(data: *const [u8; UTF8_SIZE], size: usize) -> *mut utf8_item {
     unsafe {
         let mut ui = MaybeUninit::<utf8_item>::uninit();
         let ui = ui.as_mut_ptr();
@@ -129,7 +129,7 @@ pub unsafe fn utf8_item_by_index(index: u32) -> *mut utf8_item {
     }
 }
 
-pub unsafe fn utf8_put_item(data: *const [c_char; UTF8_SIZE], size: usize, index: *mut u32) -> i32 {
+pub unsafe fn utf8_put_item(data: *const [u8; UTF8_SIZE], size: usize, index: *mut u32) -> i32 {
     unsafe {
         let ui = utf8_item_by_data(data, size);
         if !ui.is_null() {
@@ -137,7 +137,7 @@ pub unsafe fn utf8_put_item(data: *const [c_char; UTF8_SIZE], size: usize, index
             log_debug!(
                 "utf8_put_item: found {1:0$} = {2}",
                 size,
-                _s((&raw const data) as *const c_char),
+                _s((&raw const data).cast::<u8>()),
                 *index,
             );
             return 0;
@@ -160,7 +160,7 @@ pub unsafe fn utf8_put_item(data: *const [c_char; UTF8_SIZE], size: usize, index
         log_debug!(
             "utf8_put_item: added {1:0$} = {2}",
             size,
-            _s((&raw const data).cast()),
+            _s((&raw const data).cast::<u8>()),
             *index,
         );
         0
@@ -215,7 +215,7 @@ pub unsafe fn utf8_from_data(ud: *const utf8_data, uc: *mut utf8_char) -> utf8_s
                 (*ud).width,
                 (*ud).size,
                 (*ud).size as usize,
-                _s((&raw const (*ud).data).cast()),
+                _s((&raw const (*ud).data).cast::<u8>()),
                 *uc,
             );
             return utf8_state::UTF8_DONE;
@@ -268,7 +268,7 @@ pub unsafe fn utf8_to_data(uc: utf8_char, ud: *mut utf8_data) {
             (*ud).width,
             (*ud).size,
             (*ud).size as usize,
-            _s((&raw const (*ud).data).cast()),
+            _s((&raw const (*ud).data).cast::<u8>()),
         );
     }
 }
@@ -316,11 +316,7 @@ pub unsafe fn utf8_width(ud: *mut utf8_data, width: *mut i32) -> utf8_state {
             #[cfg(feature = "utf8proc")]
             {
                 *width = utf8proc_wcwidth(wc);
-                log_debug_c(
-                    c"utf8proc_wcwidth(%05X) returned %d".as_ptr(),
-                    wc as u32,
-                    *width,
-                );
+                log_debug!("utf8proc_wcwidth({:05X}) returned {}", wc, *width);
             }
         } else {
             *width = wcwidth(wc);
@@ -348,7 +344,7 @@ pub unsafe fn utf8_towc(ud: *const utf8_data, wc: *mut wchar_t) -> utf8_state {
                 log_debug!(
                     "UTF-8 {1:0$}, mbtowc() {2}",
                     (*ud).size as usize,
-                    _s((&raw const (*ud).data).cast()),
+                    _s((&raw const (*ud).data).cast::<u8>()),
                     errno!(),
                 );
                 mbtowc(null_mut(), null(), MB_CUR_MAX());
@@ -360,7 +356,7 @@ pub unsafe fn utf8_towc(ud: *const utf8_data, wc: *mut wchar_t) -> utf8_state {
         log_debug!(
             "UTF-8 {1:0$} is {2:5X}",
             (*ud).size as usize,
-            _s((&raw const (*ud).data).cast()),
+            _s((&raw const (*ud).data).cast::<u8>()),
             *wc as u32,
         );
     }
@@ -445,8 +441,8 @@ pub unsafe fn utf8_append(ud: *mut utf8_data, ch: c_uchar) -> utf8_state {
 }
 
 pub unsafe fn utf8_strvis(
-    mut dst: *mut c_char,
-    mut src: *const c_char,
+    mut dst: *mut u8,
+    mut src: *const u8,
     len: usize,
     flag: vis_flags,
 ) -> i32 {
@@ -466,7 +462,7 @@ pub unsafe fn utf8_strvis(
                 if more == utf8_state::UTF8_DONE {
                     /* UTF-8 character finished. */
                     for i in 0..ud.size {
-                        *dst = ud.data[i as usize] as i8;
+                        *dst = ud.data[i as usize];
                         dst = dst.add(1);
                     }
                     continue;
@@ -474,15 +470,15 @@ pub unsafe fn utf8_strvis(
                 /* Not a complete, valid UTF-8 character. */
                 src = src.sub(ud.have as usize);
             }
-            if flag.intersects(vis_flags::VIS_DQ) && *src == b'$' as c_char && src < end.sub(1) {
+            if flag.intersects(vis_flags::VIS_DQ) && *src == b'$' as u8 && src < end.sub(1) {
                 if (*src.add(1) as u8).is_ascii_alphabetic()
-                    || *src.add(1) == b'_' as c_char
-                    || *src.add(1) == b'{' as c_char
+                    || *src.add(1) == b'_' as u8
+                    || *src.add(1) == b'{' as u8
                 {
-                    *dst = b'\\' as c_char;
+                    *dst = b'\\' as u8;
                     dst = dst.add(1);
                 }
-                *dst = b'$' as c_char;
+                *dst = b'$' as u8;
                 dst = dst.add(1);
             } else if src < end.sub(1) {
                 dst = vis(dst, *src as i32, flag, *src.add(1) as i32);
@@ -491,12 +487,12 @@ pub unsafe fn utf8_strvis(
             }
             src = src.add(1);
         }
-        *dst = b'\0' as c_char;
+        *dst = b'\0' as u8;
         (dst.addr() - start.addr()) as i32
     }
 }
 
-pub unsafe fn utf8_stravis(dst: *mut *mut c_char, src: *const c_char, flag: vis_flags) -> i32 {
+pub unsafe fn utf8_stravis(dst: *mut *mut u8, src: *const u8, flag: vis_flags) -> i32 {
     unsafe {
         let buf = xreallocarray(null_mut(), 4, strlen(src) + 1);
         let len = utf8_strvis(buf.as_ptr().cast(), src, strlen(src), flag);
@@ -507,8 +503,8 @@ pub unsafe fn utf8_stravis(dst: *mut *mut c_char, src: *const c_char, flag: vis_
 }
 
 pub unsafe fn utf8_stravisx(
-    dst: *mut *mut c_char,
-    src: *const c_char,
+    dst: *mut *mut u8,
+    src: *const u8,
     srclen: usize,
     flag: vis_flags,
 ) -> i32 {
@@ -521,7 +517,7 @@ pub unsafe fn utf8_stravisx(
     }
 }
 
-pub unsafe fn utf8_isvalid(mut s: *const c_char) -> bool {
+pub unsafe fn utf8_isvalid(mut s: *const u8) -> bool {
     unsafe {
         let mut ud: utf8_data = zeroed();
 
@@ -550,26 +546,26 @@ pub unsafe fn utf8_isvalid(mut s: *const c_char) -> bool {
     true
 }
 
-pub unsafe fn utf8_sanitize(mut src: *const c_char) -> *mut c_char {
+pub unsafe fn utf8_sanitize(mut src: *const u8) -> *mut u8 {
     unsafe {
-        let mut dst: *mut c_char = null_mut();
+        let mut dst: *mut u8 = null_mut();
         let mut n: usize = 0;
         let mut ud: utf8_data = zeroed();
 
-        while *src != b'\0' as c_char {
+        while *src != b'\0' as u8 {
             dst = xreallocarray_(dst, n + 1).as_ptr();
             let mut more = utf8_open(&raw mut ud, *src as u8);
             if more == utf8_state::UTF8_MORE {
                 while {
                     src = src.add(1);
-                    *src != b'\0' as c_char && more == utf8_state::UTF8_MORE
+                    *src != b'\0' as u8 && more == utf8_state::UTF8_MORE
                 } {
                     more = utf8_append(&raw mut ud, *src as u8);
                 }
                 if more == utf8_state::UTF8_DONE {
                     dst = xreallocarray_(dst, n + ud.width as usize).as_ptr();
                     for _ in 0..ud.width {
-                        *dst.add(n) = b'_' as c_char;
+                        *dst.add(n) = b'_' as u8;
                         n += 1;
                     }
                     continue;
@@ -580,13 +576,13 @@ pub unsafe fn utf8_sanitize(mut src: *const c_char) -> *mut c_char {
                 *dst.add(n) = *src;
                 n += 1;
             } else {
-                *dst.add(n) = b'_' as c_char;
+                *dst.add(n) = b'_' as u8;
                 n += 1;
             }
             src = src.add(1);
         }
         dst = xreallocarray_(dst, n + 1).as_ptr();
-        *dst.add(n) = b'\0' as c_char;
+        *dst.add(n) = b'\0' as u8;
         dst
     }
 }
@@ -620,18 +616,18 @@ pub unsafe fn utf8_strwidth(s: *const utf8_data, n: isize) -> u32 {
     }
 }
 
-pub unsafe fn utf8_fromcstr(mut src: *const c_char) -> *mut utf8_data {
+pub unsafe fn utf8_fromcstr(mut src: *const u8) -> *mut utf8_data {
     unsafe {
         let mut dst: *mut utf8_data = null_mut();
         let mut n = 0;
 
-        while *src != b'\0' as c_char {
+        while *src != b'\0' as u8 {
             dst = xreallocarray_(dst, n + 1).as_ptr();
             let mut more = utf8_open(dst.add(n), *src as u8);
             if more == utf8_state::UTF8_MORE {
                 while {
                     src = src.add(1);
-                    *src != b'\0' as c_char && more == utf8_state::UTF8_MORE
+                    *src != b'\0' as u8 && more == utf8_state::UTF8_MORE
                 } {
                     more = utf8_append(dst.add(n), *src as u8);
                 }
@@ -652,9 +648,9 @@ pub unsafe fn utf8_fromcstr(mut src: *const c_char) -> *mut utf8_data {
     }
 }
 
-pub unsafe fn utf8_tocstr(mut src: *mut utf8_data) -> *mut c_char {
+pub unsafe fn utf8_tocstr(mut src: *mut utf8_data) -> *mut u8 {
     unsafe {
-        let mut dst = null_mut::<c_char>();
+        let mut dst = null_mut::<u8>();
         let mut n: usize = 0;
 
         while (*src).size != 0 {
@@ -668,22 +664,22 @@ pub unsafe fn utf8_tocstr(mut src: *mut utf8_data) -> *mut c_char {
             src = src.add(1);
         }
         dst = xreallocarray_(dst, n + 1).as_ptr();
-        *dst.add(n) = b'\0' as c_char;
+        *dst.add(n) = b'\0' as u8;
         dst
     }
 }
 
-pub unsafe fn utf8_cstrwidth(mut s: *const c_char) -> u32 {
+pub unsafe fn utf8_cstrwidth(mut s: *const u8) -> u32 {
     unsafe {
         let mut tmp: utf8_data = zeroed();
 
         let mut width: u32 = 0;
-        while *s != b'\0' as c_char {
+        while *s != b'\0' as u8 {
             let mut more = utf8_open(&raw mut tmp, *s as u8);
             if more == utf8_state::UTF8_MORE {
                 while {
                     s = s.add(1);
-                    *s != b'\0' as c_char && more == utf8_state::UTF8_MORE
+                    *s != b'\0' as u8 && more == utf8_state::UTF8_MORE
                 } {
                     more = utf8_append(&raw mut tmp, *s as u8);
                 }
@@ -702,7 +698,7 @@ pub unsafe fn utf8_cstrwidth(mut s: *const c_char) -> u32 {
     }
 }
 
-pub unsafe fn utf8_padcstr(s: *const c_char, width: u32) -> *mut c_char {
+pub unsafe fn utf8_padcstr(s: *const u8, width: u32) -> *mut u8 {
     unsafe {
         let n = utf8_cstrwidth(s);
         if n >= width {
@@ -710,20 +706,20 @@ pub unsafe fn utf8_padcstr(s: *const c_char, width: u32) -> *mut c_char {
         }
 
         let mut slen = strlen(s);
-        let out: *mut c_char = xmalloc(slen + 1 + (width - n) as usize).as_ptr().cast();
+        let out: *mut u8 = xmalloc(slen + 1 + (width - n) as usize).as_ptr().cast();
         memcpy(out.cast(), s.cast(), slen);
         let mut i = n;
         while i < width {
-            *out.add(slen) = b' ' as c_char;
+            *out.add(slen) = b' ' as u8;
             slen += 1;
             i += 1;
         }
-        *out.add(slen) = b'\0' as c_char;
+        *out.add(slen) = b'\0' as u8;
         out
     }
 }
 
-pub unsafe fn utf8_rpadcstr(s: *const c_char, width: u32) -> *mut c_char {
+pub unsafe fn utf8_rpadcstr(s: *const u8, width: u32) -> *mut u8 {
     unsafe {
         let n = utf8_cstrwidth(s);
         if n >= width {
@@ -731,19 +727,19 @@ pub unsafe fn utf8_rpadcstr(s: *const c_char, width: u32) -> *mut c_char {
         }
 
         let slen = strlen(s);
-        let out: *mut c_char = xmalloc(slen + 1 + (width - n) as usize).as_ptr().cast();
+        let out: *mut u8 = xmalloc(slen + 1 + (width - n) as usize).as_ptr().cast();
         let mut i = 0;
         while i < width {
-            *out.add(i as usize) = b' ' as c_char;
+            *out.add(i as usize) = b' ' as u8;
             i += 1;
         }
         memcpy(out.add(i as usize).cast(), s.cast(), slen);
-        *out.add(i as usize + slen) = b'\0' as c_char;
+        *out.add(i as usize + slen) = b'\0' as u8;
         out
     }
 }
 
-pub unsafe fn utf8_cstrhas(s: *const c_char, ud: *const utf8_data) -> i32 {
+pub unsafe fn utf8_cstrhas(s: *const u8, ud: *const utf8_data) -> i32 {
     let mut found: i32 = 0;
 
     unsafe {

@@ -30,7 +30,7 @@ pub static cmd_bind_key_entry: cmd_entry = cmd_entry {
 unsafe fn cmd_bind_key_args_parse(
     _args: *mut args,
     _idx: u32,
-    _cause: *mut *mut c_char,
+    _cause: *mut *mut u8,
 ) -> args_parse_type {
     args_parse_type::ARGS_PARSE_COMMANDS_OR_STRING
 }
@@ -50,12 +50,12 @@ unsafe fn cmd_bind_key_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retval
             return cmd_retval::CMD_RETURN_ERROR;
         }
 
-        let tablename: *const c_char = if args_has(args, b'T') != 0 {
+        let tablename: *const u8 = if args_has(args, b'T') != 0 {
             args_get(args, b'T')
         } else if args_has(args, b'n') != 0 {
-            c"root".as_ptr()
+            c!("root")
         } else {
-            c"prefix".as_ptr()
+            c!("prefix")
         };
         repeat = args_has(args, b'r');
 

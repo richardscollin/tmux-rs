@@ -14,7 +14,7 @@
 
 use crate::*;
 
-use libc::{qsort, strcmp};
+use crate::libc::{qsort, strcmp};
 
 use crate::compat::queue::tailq_first;
 
@@ -57,12 +57,8 @@ pub enum window_client_sort_type {
     WINDOW_CLIENT_BY_ACTIVITY_TIME,
 }
 const WINDOW_CLIENT_SORT_LIST_LEN: u32 = 4;
-static mut window_client_sort_list: [*const c_char; 4] = [
-    c"name".as_ptr(),
-    c"size".as_ptr(),
-    c"creation".as_ptr(),
-    c"activity".as_ptr(),
-];
+static mut window_client_sort_list: [*const u8; 4] =
+    [c!("name"), c!("size"), c!("creation"), c!("activity")];
 
 static mut window_client_sort: *mut mode_tree_sort_criteria = null_mut();
 
@@ -76,9 +72,9 @@ pub struct window_client_modedata {
     wp: *mut window_pane,
 
     data: *mut mode_tree_data,
-    format: *mut c_char,
-    key_format: *mut c_char,
-    command: *mut c_char,
+    format: *mut u8,
+    key_format: *mut u8,
+    command: *mut u8,
 
     item_list: *mut *mut window_client_itemdata,
     item_size: u32,
@@ -164,7 +160,7 @@ pub unsafe fn window_client_build(
     modedata: NonNull<c_void>,
     sort_crit: *mut mode_tree_sort_criteria,
     _tag: *mut u64,
-    filter: *const c_char,
+    filter: *const u8,
 ) {
     unsafe {
         let data: NonNull<window_client_modedata> = modedata.cast();
@@ -301,7 +297,7 @@ pub unsafe fn window_client_get_key(
 
         let ft = format_create(null_mut(), null_mut(), FORMAT_NONE, format_flags::empty());
         format_defaults(ft, (*item.as_ptr()).c, None, None, None);
-        format_add!(ft, c"line".as_ptr(), "{line}");
+        format_add!(ft, c!("line"), "{line}");
 
         let expanded = format_expand(ft, (*data.as_ptr()).key_format);
         let key = key_string_lookup_string(expanded);
@@ -352,7 +348,7 @@ pub unsafe fn window_client_init(
             Some(window_client_get_key),
             data.cast(),
             window_client_menu_items.as_slice(),
-            &raw mut window_client_sort_list as *mut *const i8,
+            &raw mut window_client_sort_list as *mut *const u8,
             WINDOW_CLIENT_SORT_LIST_LEN,
             &raw mut s,
         );

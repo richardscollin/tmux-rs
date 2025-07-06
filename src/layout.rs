@@ -60,7 +60,7 @@ pub unsafe fn layout_free_cell(lc: *mut layout_cell) {
     }
 }
 
-pub unsafe fn layout_print_cell(lc: *mut layout_cell, hdr: *const c_char, n: u32) {
+pub unsafe fn layout_print_cell(lc: *mut layout_cell, hdr: *const u8, n: u32) {
     unsafe {
         let type_str = match (*lc).type_ {
             layout_type::LAYOUT_LEFTRIGHT => c"LEFTRIGHT",

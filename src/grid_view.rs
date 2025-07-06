@@ -12,7 +12,7 @@
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use ::core::{ffi::c_char, ptr::null_mut};
+use ::core::ptr::null_mut;
 
 use crate::{
     GRID_HISTORY, grid, grid_cell, grid_clear, grid_collect_history, grid_get_cell, grid_get_line,
@@ -50,7 +50,7 @@ pub unsafe fn grid_view_set_cells(
     px: u32,
     py: u32,
     gc: *const grid_cell,
-    s: *const c_char,
+    s: *const u8,
     slen: usize,
 ) {
     unsafe {
@@ -232,12 +232,7 @@ pub unsafe fn grid_view_delete_cells(gd: *mut grid, mut px: u32, mut py: u32, nx
 }
 
 /// Convert cells into a string.
-pub unsafe fn grid_view_string_cells(
-    gd: *mut grid,
-    mut px: u32,
-    mut py: u32,
-    nx: u32,
-) -> *mut c_char {
+pub unsafe fn grid_view_string_cells(gd: *mut grid, mut px: u32, mut py: u32, nx: u32) -> *mut u8 {
     unsafe {
         px = grid_view_x(gd, px);
         py = grid_view_y(gd, py);

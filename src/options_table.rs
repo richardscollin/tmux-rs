@@ -11,8 +11,7 @@
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-
-use super::*;
+use crate::*;
 
 //This file has a tables with all the server, session and window
 //options. These tables are the master copy of the options with their real
@@ -22,139 +21,112 @@ use super::*;
 //user sets an option or its value needs to be shown.
 
 // Choice option type lists.
-static mut options_table_mode_keys_list: [*const c_char; 3] =
-    [c"emacs".as_ptr(), c"vi".as_ptr(), null()];
-static mut options_table_clock_mode_style_list: [*const c_char; 3] =
-    [c"12".as_ptr(), c"24".as_ptr(), null()];
-static mut options_table_status_list: [*const c_char; 7] = [
-    c"off".as_ptr(),
-    c"on".as_ptr(),
-    c"2".as_ptr(),
-    c"3".as_ptr(),
-    c"4".as_ptr(),
-    c"5".as_ptr(),
+static mut options_table_mode_keys_list: [*const u8; 3] = [c!("emacs"), c!("vi"), null()];
+static mut options_table_clock_mode_style_list: [*const u8; 3] = [c!("12"), c!("24"), null()];
+static mut options_table_status_list: [*const u8; 7] = [
+    c!("off"),
+    c!("on"),
+    c!("2"),
+    c!("3"),
+    c!("4"),
+    c!("5"),
     null(),
 ];
-static mut options_table_message_line_list: [*const c_char; 6] = [
-    c"0".as_ptr(),
-    c"1".as_ptr(),
-    c"2".as_ptr(),
-    c"3".as_ptr(),
-    c"4".as_ptr(),
+static mut options_table_message_line_list: [*const u8; 6] =
+    [c!("0"), c!("1"), c!("2"), c!("3"), c!("4"), null()];
+static mut options_table_status_keys_list: [*const u8; 3] = [c!("emacs"), c!("vi"), null()];
+static mut options_table_status_justify_list: [*const u8; 5] = [
+    c!("left"),
+    c!("centre"),
+    c!("right"),
+    c!("absolute-centre"),
     null(),
 ];
-static mut options_table_status_keys_list: [*const c_char; 3] =
-    [c"emacs".as_ptr(), c"vi".as_ptr(), null()];
-static mut options_table_status_justify_list: [*const c_char; 5] = [
-    c"left".as_ptr(),
-    c"centre".as_ptr(),
-    c"right".as_ptr(),
-    c"absolute-centre".as_ptr(),
+static mut options_table_status_position_list: [*const u8; 3] = [c!("top"), c!("bottom"), null()];
+static mut options_table_bell_action_list: [*const u8; 5] =
+    [c!("none"), c!("any"), c!("current"), c!("other"), null()];
+static mut options_table_visual_bell_list: [*const u8; 4] =
+    [c!("off"), c!("on"), c!("both"), null()];
+static mut options_table_cursor_style_list: [*const u8; 8] = [
+    c!("default"),
+    c!("blinking-block"),
+    c!("block"),
+    c!("blinking-underline"),
+    c!("underline"),
+    c!("blinking-bar"),
+    c!("bar"),
     null(),
 ];
-static mut options_table_status_position_list: [*const c_char; 3] =
-    [c"top".as_ptr(), c"bottom".as_ptr(), null()];
-static mut options_table_bell_action_list: [*const c_char; 5] = [
-    c"none".as_ptr(),
-    c"any".as_ptr(),
-    c"current".as_ptr(),
-    c"other".as_ptr(),
+static mut options_table_pane_status_list: [*const u8; 4] =
+    [c!("off"), c!("top"), c!("bottom"), null()];
+static mut options_table_pane_border_indicators_list: [*const u8; 5] =
+    [c!("off"), c!("colour"), c!("arrows"), c!("both"), null()];
+static mut options_table_pane_border_lines_list: [*const u8; 6] = [
+    c!("single"),
+    c!("double"),
+    c!("heavy"),
+    c!("simple"),
+    c!("number"),
     null(),
 ];
-static mut options_table_visual_bell_list: [*const c_char; 4] =
-    [c"off".as_ptr(), c"on".as_ptr(), c"both".as_ptr(), null()];
-static mut options_table_cursor_style_list: [*const c_char; 8] = [
-    c"default".as_ptr(),
-    c"blinking-block".as_ptr(),
-    c"block".as_ptr(),
-    c"blinking-underline".as_ptr(),
-    c"underline".as_ptr(),
-    c"blinking-bar".as_ptr(),
-    c"bar".as_ptr(),
+static mut options_table_popup_border_lines_list: [*const u8; 8] = [
+    c!("single"),
+    c!("double"),
+    c!("heavy"),
+    c!("simple"),
+    c!("rounded"),
+    c!("padded"),
+    c!("none"),
     null(),
 ];
-static mut options_table_pane_status_list: [*const c_char; 4] =
-    [c"off".as_ptr(), c"top".as_ptr(), c"bottom".as_ptr(), null()];
-static mut options_table_pane_border_indicators_list: [*const c_char; 5] = [
-    c"off".as_ptr(),
-    c"colour".as_ptr(),
-    c"arrows".as_ptr(),
-    c"both".as_ptr(),
+static mut options_table_set_clipboard_list: [*const u8; 4] =
+    [c!("off"), c!("external"), c!("on"), null()];
+static mut options_table_window_size_list: [*const u8; 5] = [
+    c!("largest"),
+    c!("smallest"),
+    c!("manual"),
+    c!("latest"),
     null(),
 ];
-static mut options_table_pane_border_lines_list: [*const c_char; 6] = [
-    c"single".as_ptr(),
-    c"double".as_ptr(),
-    c"heavy".as_ptr(),
-    c"simple".as_ptr(),
-    c"number".as_ptr(),
+static mut options_table_remain_on_exit_list: [*const u8; 4] =
+    [c!("off"), c!("on"), c!("failed"), null()];
+static mut options_table_destroy_unattached_list: [*const u8; 5] = [
+    c!("off"),
+    c!("on"),
+    c!("keep-last"),
+    c!("keep-group"),
     null(),
 ];
-static mut options_table_popup_border_lines_list: [*const c_char; 8] = [
-    c"single".as_ptr(),
-    c"double".as_ptr(),
-    c"heavy".as_ptr(),
-    c"simple".as_ptr(),
-    c"rounded".as_ptr(),
-    c"padded".as_ptr(),
-    c"none".as_ptr(),
+static mut options_table_detach_on_destroy_list: [*const u8; 6] = [
+    c!("off"),
+    c!("on"),
+    c!("no-detached"),
+    c!("previous"),
+    c!("next"),
     null(),
 ];
-static mut options_table_set_clipboard_list: [*const c_char; 4] = [
-    c"off".as_ptr(),
-    c"external".as_ptr(),
-    c"on".as_ptr(),
-    null(),
-];
-static mut options_table_window_size_list: [*const c_char; 5] = [
-    c"largest".as_ptr(),
-    c"smallest".as_ptr(),
-    c"manual".as_ptr(),
-    c"latest".as_ptr(),
-    null(),
-];
-static mut options_table_remain_on_exit_list: [*const c_char; 4] =
-    [c"off".as_ptr(), c"on".as_ptr(), c"failed".as_ptr(), null()];
-static mut options_table_destroy_unattached_list: [*const c_char; 5] = [
-    c"off".as_ptr(),
-    c"on".as_ptr(),
-    c"keep-last".as_ptr(),
-    c"keep-group".as_ptr(),
-    null(),
-];
-static mut options_table_detach_on_destroy_list: [*const c_char; 6] = [
-    c"off".as_ptr(),
-    c"on".as_ptr(),
-    c"no-detached".as_ptr(),
-    c"previous".as_ptr(),
-    c"next".as_ptr(),
-    null(),
-];
-static mut options_table_extended_keys_list: [*const c_char; 4] =
-    [c"off".as_ptr(), c"on".as_ptr(), c"always".as_ptr(), null()];
-static mut options_table_extended_keys_format_list: [*const c_char; 3] =
-    [c"csi-u".as_ptr(), c"xterm".as_ptr(), null()];
-static mut options_table_allow_passthrough_list: [*const c_char; 4] =
-    [c"off".as_ptr(), c"on".as_ptr(), c"all".as_ptr(), null()];
+static mut options_table_extended_keys_list: [*const u8; 4] =
+    [c!("off"), c!("on"), c!("always"), null()];
+static mut options_table_extended_keys_format_list: [*const u8; 3] =
+    [c!("csi-u"), c!("xterm"), null()];
+static mut options_table_allow_passthrough_list: [*const u8; 4] =
+    [c!("off"), c!("on"), c!("all"), null()];
 
 /// Map of name conversions.
 pub static mut options_other_names: [options_name_map; 6] = [
+    options_name_map::new(c!("display-panes-color"), c!("display-panes-colour")),
     options_name_map::new(
-        c"display-panes-color".as_ptr(),
-        c"display-panes-colour".as_ptr(),
+        c!("display-panes-active-color"),
+        c!("display-panes-active-colour"),
     ),
-    options_name_map::new(
-        c"display-panes-active-color".as_ptr(),
-        c"display-panes-active-colour".as_ptr(),
-    ),
-    options_name_map::new(c"clock-mode-color".as_ptr(), c"clock-mode-colour".as_ptr()),
-    options_name_map::new(c"cursor-color".as_ptr(), c"cursor-colour".as_ptr()),
-    options_name_map::new(c"pane-colors".as_ptr(), c"pane-colours".as_ptr()),
+    options_name_map::new(c!("clock-mode-color"), c!("clock-mode-colour")),
+    options_name_map::new(c!("cursor-color"), c!("cursor-colour")),
+    options_name_map::new(c!("pane-colors"), c!("pane-colours")),
     options_name_map::new(null(), null()),
 ];
 
 /// Status line format.
-pub const OPTIONS_TABLE_STATUS_FORMAT1: *const c_char = concat!(
+pub const OPTIONS_TABLE_STATUS_FORMAT1: *const u8 = concat!(
     "#[align=left range=left #{E:status-left-style}]",
     "#[push-default]",
     "#{T;=/#{status-left-length}:status-left}",
@@ -223,14 +195,14 @@ pub const OPTIONS_TABLE_STATUS_FORMAT1: *const c_char = concat!(
 .as_ptr()
 .cast();
 
-pub const OPTIONS_TABLE_STATUS_FORMAT2: *const c_char = concat!(
+pub const OPTIONS_TABLE_STATUS_FORMAT2: *const u8 = concat!(
     "#[align=centre]#{P:#{?pane_active,#[reverse],}",
     "#{pane_index}[#{pane_width}x#{pane_height}]#[default] }\0"
 )
 .as_ptr()
 .cast();
 
-pub static mut options_table_status_format_default: [*const c_char; 3] = [
+pub static mut options_table_status_format_default: [*const u8; 3] = [
     OPTIONS_TABLE_STATUS_FORMAT1,
     OPTIONS_TABLE_STATUS_FORMAT2,
     null(),
@@ -240,12 +212,12 @@ pub static mut options_table_status_format_default: [*const c_char; 3] = [
 macro_rules! options_table_hook {
     ($hook_name:expr, $default_value:expr) => {
         options_table_entry {
-            name: $hook_name.as_ptr(),
+            name: $hook_name.as_ptr().cast(),
             type_: options_table_type::OPTIONS_TABLE_COMMAND,
             scope: OPTIONS_TABLE_SESSION,
             flags: OPTIONS_TABLE_IS_ARRAY | OPTIONS_TABLE_IS_HOOK,
-            default_str: $default_value.as_ptr(),
-            separator: c"".as_ptr(),
+            default_str: $default_value.as_ptr().cast(),
+            separator: c!(""),
             ..unsafe { zeroed() }
         }
     };
@@ -254,12 +226,12 @@ macro_rules! options_table_hook {
 macro_rules! options_table_pane_hook {
     ($hook_name:expr, $default_value:expr) => {
         options_table_entry {
-            name: $hook_name.as_ptr(),
+            name: $hook_name.as_ptr().cast(),
             type_: options_table_type::OPTIONS_TABLE_COMMAND,
             scope: OPTIONS_TABLE_WINDOW | OPTIONS_TABLE_PANE,
             flags: OPTIONS_TABLE_IS_ARRAY | OPTIONS_TABLE_IS_HOOK,
-            default_str: $default_value.as_ptr(),
-            separator: c"".as_ptr(),
+            default_str: $default_value.as_ptr().cast(),
+            separator: c!(""),
             ..unsafe { zeroed() }
         }
     };
@@ -268,12 +240,12 @@ macro_rules! options_table_pane_hook {
 macro_rules! options_table_window_hook {
     ($hook_name:expr, $default_value:expr) => {
         options_table_entry {
-            name: $hook_name.as_ptr(),
+            name: $hook_name.as_ptr().cast(),
             type_: options_table_type::OPTIONS_TABLE_COMMAND,
             scope: OPTIONS_TABLE_WINDOW,
             flags: OPTIONS_TABLE_IS_ARRAY | OPTIONS_TABLE_IS_HOOK,
-            default_str: $default_value.as_ptr(),
-            separator: c"".as_ptr(),
+            default_str: $default_value.as_ptr().cast(),
+            separator: c!(""),
             ..unsafe { zeroed() }
         }
     };
@@ -281,1125 +253,1203 @@ macro_rules! options_table_window_hook {
 
 pub static mut options_table: [options_table_entry; 191] = [
     options_table_entry {
-        name: c"backspace".as_ptr(),
+        name: c!("backspace"),
         type_: options_table_type::OPTIONS_TABLE_KEY,
         scope: OPTIONS_TABLE_SERVER,
         default_num: b'\x7f' as i64,
-        text: c"The key to send for backspace.".as_ptr(),
+        text: c!("The key to send for backspace."),
         ..unsafe { zeroed() }
     },
     options_table_entry {
-        name: c"buffer-limit".as_ptr(),
+        name: c!("buffer-limit"),
         type_: options_table_type::OPTIONS_TABLE_NUMBER,
         scope: OPTIONS_TABLE_SERVER,
         minimum: 1,
         maximum: i32::MAX as u32,
         default_num: 50,
-        text: c"The maximum number of automatic buffers. When this is reached, the oldest buffer is deleted.".as_ptr(),
+        text: c!(
+            "The maximum number of automatic buffers. When this is reached, the oldest buffer is deleted."
+        ),
         ..unsafe { zeroed() }
     },
     options_table_entry {
-        name: c"command-alias".as_ptr(),
+        name: c!("command-alias"),
         type_: options_table_type::OPTIONS_TABLE_STRING,
         scope: OPTIONS_TABLE_SERVER,
         flags: OPTIONS_TABLE_IS_ARRAY,
-        default_str: c"split-pane=split-window,splitp=split-window,server-info=show-messages -JT,info=show-messages -JT,choose-window=choose-tree -w,choose-session=choose-tree -s".as_ptr(),
-        separator: c",".as_ptr(),
-        text: c"Array of command aliases. Each entry is an alias and a command separated by '='.".as_ptr(),
+        default_str: c!(
+            "split-pane=split-window,splitp=split-window,server-info=show-messages -JT,info=show-messages -JT,choose-window=choose-tree -w,choose-session=choose-tree -s"
+        ),
+        separator: c!(","),
+        text: c!(
+            "Array of command aliases. Each entry is an alias and a command separated by '='."
+        ),
         ..unsafe { zeroed() }
     },
     options_table_entry {
-        name: c"copy-command".as_ptr(),
+        name: c!("copy-command"),
         type_: options_table_type::OPTIONS_TABLE_STRING,
         scope: OPTIONS_TABLE_SERVER,
-        default_str: c"".as_ptr(),
-        text: c"Shell command run when text is copied. If empty, no command is run.".as_ptr(),
+        default_str: c!(""),
+        text: c!("Shell command run when text is copied. If empty, no command is run."),
         ..unsafe { zeroed() }
     },
     options_table_entry {
-        name: c"cursor-colour".as_ptr(),
+        name: c!("cursor-colour"),
         type_: options_table_type::OPTIONS_TABLE_COLOUR,
         scope: OPTIONS_TABLE_WINDOW | OPTIONS_TABLE_PANE,
         default_num: -1,
-        text: c"Colour of the cursor.".as_ptr(),
+        text: c!("Colour of the cursor."),
         ..unsafe { zeroed() }
     },
     options_table_entry {
-        name: c"cursor-style".as_ptr(),
+        name: c!("cursor-style"),
         type_: options_table_type::OPTIONS_TABLE_CHOICE,
         scope: OPTIONS_TABLE_WINDOW | OPTIONS_TABLE_PANE,
-        choices: &raw const options_table_cursor_style_list as *const *const c_char,
+        choices: &raw const options_table_cursor_style_list as *const *const u8,
         default_num: 0,
-        text: c"Style of the cursor.".as_ptr(),
+        text: c!("Style of the cursor."),
         ..unsafe { zeroed() }
     },
     options_table_entry {
-        name: c"default-terminal".as_ptr(),
+        name: c!("default-terminal"),
         type_: options_table_type::OPTIONS_TABLE_STRING,
         scope: OPTIONS_TABLE_SERVER,
-        default_str: TMUX_TERM.as_ptr(),
-        text: c"Default for the 'TERM' environment variable.".as_ptr(),
+        default_str: TMUX_TERM.as_ptr().cast(),
+        text: c!("Default for the 'TERM' environment variable."),
         ..unsafe { zeroed() }
     },
     options_table_entry {
-        name: c"editor".as_ptr(),
+        name: c!("editor"),
         type_: options_table_type::OPTIONS_TABLE_STRING,
         scope: OPTIONS_TABLE_SERVER,
         default_str: _PATH_VI,
-        text: c"Editor run to edit files.".as_ptr(),
+        text: c!("Editor run to edit files."),
         ..unsafe { zeroed() }
     },
     options_table_entry {
-        name: c"escape-time".as_ptr(),
+        name: c!("escape-time"),
         type_: options_table_type::OPTIONS_TABLE_NUMBER,
         scope: OPTIONS_TABLE_SERVER,
         minimum: 0,
         maximum: i32::MAX as u32,
         default_num: 10,
-        unit: c"milliseconds".as_ptr(),
-        text: c"Time to wait before assuming a key is Escape.".as_ptr(),
+        unit: c!("milliseconds"),
+        text: c!("Time to wait before assuming a key is Escape."),
         ..unsafe { zeroed() }
     },
     options_table_entry {
-        name: c"exit-empty".as_ptr(),
+        name: c!("exit-empty"),
         type_: options_table_type::OPTIONS_TABLE_FLAG,
         scope: OPTIONS_TABLE_SERVER,
         default_num: 1,
-        text: c"Whether the server should exit if there are no sessions.".as_ptr(),
+        text: c!("Whether the server should exit if there are no sessions."),
         ..unsafe { zeroed() }
     },
     options_table_entry {
-        name: c"exit-unattached".as_ptr(),
+        name: c!("exit-unattached"),
         type_: options_table_type::OPTIONS_TABLE_FLAG,
         scope: OPTIONS_TABLE_SERVER,
         default_num: 0,
-        text: c"Whether the server should exit if there are no attached clients.".as_ptr(),
+        text: c!("Whether the server should exit if there are no attached clients."),
         ..unsafe { zeroed() }
     },
     options_table_entry {
-        name: c"extended-keys".as_ptr(),
+        name: c!("extended-keys"),
         type_: options_table_type::OPTIONS_TABLE_CHOICE,
         scope: OPTIONS_TABLE_SERVER,
-        choices: &raw const options_table_extended_keys_list as *const *const c_char,
+        choices: &raw const options_table_extended_keys_list as *const *const u8,
         default_num: 0,
-        text: c"Whether to request extended key sequences from terminals that support it.".as_ptr(),
+        text: c!("Whether to request extended key sequences from terminals that support it."),
         ..unsafe { zeroed() }
     },
     options_table_entry {
-        name: c"extended-keys-format".as_ptr(),
+        name: c!("extended-keys-format"),
         type_: options_table_type::OPTIONS_TABLE_CHOICE,
         scope: OPTIONS_TABLE_SERVER,
-        choices: &raw const options_table_extended_keys_format_list as *const *const c_char,
+        choices: &raw const options_table_extended_keys_format_list as *const *const u8,
         default_num: 1,
-        text: c"The format of emitted extended key sequences.".as_ptr(),
+        text: c!("The format of emitted extended key sequences."),
         ..unsafe { zeroed() }
     },
     options_table_entry {
-        name: c"focus-events".as_ptr(),
+        name: c!("focus-events"),
         type_: options_table_type::OPTIONS_TABLE_FLAG,
         scope: OPTIONS_TABLE_SERVER,
         default_num: 0,
-        text: c"Whether to send focus events to applications.".as_ptr(),
+        text: c!("Whether to send focus events to applications."),
         ..unsafe { zeroed() }
     },
     options_table_entry {
-        name: c"history-file".as_ptr(),
+        name: c!("history-file"),
         type_: options_table_type::OPTIONS_TABLE_STRING,
         scope: OPTIONS_TABLE_SERVER,
-        default_str: c"".as_ptr(),
-        text: c"Location of the command prompt history file. Empty does not write a history file.".as_ptr(),
+        default_str: c!(""),
+        text: c!(
+            "Location of the command prompt history file. Empty does not write a history file."
+        ),
         ..unsafe { zeroed() }
     },
     options_table_entry {
-        name: c"menu-style".as_ptr(),
+        name: c!("menu-style"),
         type_: options_table_type::OPTIONS_TABLE_STRING,
         scope: OPTIONS_TABLE_WINDOW,
         flags: OPTIONS_TABLE_IS_STYLE,
-        default_str: c"default".as_ptr(),
-        separator: c",".as_ptr(),
-        text: c"Default style of menu.".as_ptr(),
+        default_str: c!("default"),
+        separator: c!(","),
+        text: c!("Default style of menu."),
         ..unsafe { zeroed() }
     },
     options_table_entry {
-        name: c"menu-selected-style".as_ptr(),
+        name: c!("menu-selected-style"),
         type_: options_table_type::OPTIONS_TABLE_STRING,
         scope: OPTIONS_TABLE_WINDOW,
         flags: OPTIONS_TABLE_IS_STYLE,
-        default_str: c"bg=yellow,fg=black".as_ptr(),
-        separator: c",".as_ptr(),
-        text: c"Default style of selected menu item.".as_ptr(),
+        default_str: c!("bg=yellow,fg=black"),
+        separator: c!(","),
+        text: c!("Default style of selected menu item."),
         ..unsafe { zeroed() }
     },
     options_table_entry {
-        name: c"menu-border-style".as_ptr(),
+        name: c!("menu-border-style"),
         type_: options_table_type::OPTIONS_TABLE_STRING,
         scope: OPTIONS_TABLE_WINDOW,
-        default_str: c"default".as_ptr(),
+        default_str: c!("default"),
         flags: OPTIONS_TABLE_IS_STYLE,
-        separator: c",".as_ptr(),
-        text: c"Default style of menu borders.".as_ptr(),
+        separator: c!(","),
+        text: c!("Default style of menu borders."),
         ..unsafe { zeroed() }
     },
     options_table_entry {
-        name: c"menu-border-lines".as_ptr(),
+        name: c!("menu-border-lines"),
         type_: options_table_type::OPTIONS_TABLE_CHOICE,
         scope: OPTIONS_TABLE_WINDOW,
-        choices: &raw const options_table_popup_border_lines_list as *const *const c_char,
+        choices: &raw const options_table_popup_border_lines_list as *const *const u8,
         default_num: box_lines::BOX_LINES_SINGLE as i64,
-        text: c"Type of characters used to draw menu border lines. Some of these are only supported on terminals with UTF-8 support.".as_ptr(),
+        text: c!(
+            "Type of characters used to draw menu border lines. Some of these are only supported on terminals with UTF-8 support."
+        ),
         ..unsafe { zeroed() }
     },
     options_table_entry {
-        name: c"message-limit".as_ptr(),
+        name: c!("message-limit"),
         type_: options_table_type::OPTIONS_TABLE_NUMBER,
         scope: OPTIONS_TABLE_SERVER,
         minimum: 0,
         maximum: i32::MAX as u32,
         default_num: 1000,
-        text: c"Maximum number of server messages to keep.".as_ptr(),
+        text: c!("Maximum number of server messages to keep."),
         ..unsafe { zeroed() }
     },
     options_table_entry {
-        name: c"prefix-timeout".as_ptr(),
+        name: c!("prefix-timeout"),
         type_: options_table_type::OPTIONS_TABLE_NUMBER,
         scope: OPTIONS_TABLE_SERVER,
         minimum: 0,
         maximum: i32::MAX as u32,
         default_num: 0,
-        unit: c"milliseconds".as_ptr(),
-        text: c"The timeout for the prefix key if no subsequent key is pressed. Zero means disabled.".as_ptr(),
+        unit: c!("milliseconds"),
+        text: c!(
+            "The timeout for the prefix key if no subsequent key is pressed. Zero means disabled."
+        ),
         ..unsafe { zeroed() }
     },
     options_table_entry {
-        name: c"prompt-history-limit".as_ptr(),
+        name: c!("prompt-history-limit"),
         type_: options_table_type::OPTIONS_TABLE_NUMBER,
         scope: OPTIONS_TABLE_SERVER,
         minimum: 0,
         maximum: i32::MAX as u32,
         default_num: 100,
-        text: c"Maximum number of commands to keep in history.".as_ptr(),
+        text: c!("Maximum number of commands to keep in history."),
         ..unsafe { zeroed() }
     },
     options_table_entry {
-        name: c"set-clipboard".as_ptr(),
+        name: c!("set-clipboard"),
         type_: options_table_type::OPTIONS_TABLE_CHOICE,
         scope: OPTIONS_TABLE_SERVER,
-        choices: &raw const options_table_set_clipboard_list as *const *const c_char,
+        choices: &raw const options_table_set_clipboard_list as *const *const u8,
         default_num: 1,
-        text: c"Whether to attempt to set the system clipboard ('on' or 'external') and whether to allow applications to create paste buffers with an escape sequence ('on' only).".as_ptr(),
+        text: c!(
+            "Whether to attempt to set the system clipboard ('on' or 'external') and whether to allow applications to create paste buffers with an escape sequence ('on' only)."
+        ),
         ..unsafe { zeroed() }
     },
     options_table_entry {
-        name: c"terminal-overrides".as_ptr(),
+        name: c!("terminal-overrides"),
         type_: options_table_type::OPTIONS_TABLE_STRING,
         scope: OPTIONS_TABLE_SERVER,
         flags: OPTIONS_TABLE_IS_ARRAY,
-        default_str: c"linux*:AX@".as_ptr(),
-        separator: c",".as_ptr(),
-        text: c"List of terminal capabilities overrides.".as_ptr(),
+        default_str: c!("linux*:AX@"),
+        separator: c!(","),
+        text: c!("List of terminal capabilities overrides."),
         ..unsafe { zeroed() }
     },
     options_table_entry {
-        name: c"terminal-features".as_ptr(),
+        name: c!("terminal-features"),
         type_: options_table_type::OPTIONS_TABLE_STRING,
         scope: OPTIONS_TABLE_SERVER,
         flags: OPTIONS_TABLE_IS_ARRAY,
-        default_str: c"xterm*:clipboard:ccolour:cstyle:focus:title,screen*:title,rxvt*:ignorefkeys".as_ptr(),
-        separator: c",".as_ptr(),
-        text: c"List of terminal features, used if they cannot be automatically detected.".as_ptr(),
+        default_str: c!(
+            "xterm*:clipboard:ccolour:cstyle:focus:title,screen*:title,rxvt*:ignorefkeys"
+        ),
+        separator: c!(","),
+        text: c!("List of terminal features, used if they cannot be automatically detected."),
         ..unsafe { zeroed() }
     },
     options_table_entry {
-        name: c"user-keys".as_ptr(),
+        name: c!("user-keys"),
         type_: options_table_type::OPTIONS_TABLE_STRING,
         scope: OPTIONS_TABLE_SERVER,
         flags: OPTIONS_TABLE_IS_ARRAY,
-        default_str: c"".as_ptr(),
-        separator: c",".as_ptr(),
-        text: c"User key assignments. Each sequence in the list is translated into a key: 'User0', 'User1' and so on.".as_ptr(),
+        default_str: c!(""),
+        separator: c!(","),
+        text: c!(
+            "User key assignments. Each sequence in the list is translated into a key: 'User0', 'User1' and so on."
+        ),
         ..unsafe { zeroed() }
     },
     /* Session options. */
     options_table_entry {
-        name: c"activity-action".as_ptr(),
+        name: c!("activity-action"),
         type_: options_table_type::OPTIONS_TABLE_CHOICE,
         scope: OPTIONS_TABLE_SESSION,
-        choices: &raw const options_table_bell_action_list as *const *const c_char,
+        choices: &raw const options_table_bell_action_list as *const *const u8,
         default_num: alert_option::ALERT_OTHER as i64,
-        text: c"Action to take on an activity alert.".as_ptr(),
+        text: c!("Action to take on an activity alert."),
         ..unsafe { zeroed() }
     },
     options_table_entry {
-        name: c"assume-paste-time".as_ptr(),
+        name: c!("assume-paste-time"),
         type_: options_table_type::OPTIONS_TABLE_NUMBER,
         scope: OPTIONS_TABLE_SESSION,
         minimum: 0,
         maximum: i32::MAX as u32,
         default_num: 1,
-        unit: c"milliseconds".as_ptr(),
-        text: c"Maximum time between input to assume it is pasting rather than typing.".as_ptr(),
+        unit: c!("milliseconds"),
+        text: c!("Maximum time between input to assume it is pasting rather than typing."),
         ..unsafe { zeroed() }
     },
     options_table_entry {
-        name: c"base-index".as_ptr(),
+        name: c!("base-index"),
         type_: options_table_type::OPTIONS_TABLE_NUMBER,
         scope: OPTIONS_TABLE_SESSION,
         minimum: 0,
         maximum: i32::MAX as u32,
         default_num: 0,
-        text: c"Default index of the first window in each session.".as_ptr(),
+        text: c!("Default index of the first window in each session."),
         ..unsafe { zeroed() }
     },
     options_table_entry {
-        name: c"bell-action".as_ptr(),
+        name: c!("bell-action"),
         type_: options_table_type::OPTIONS_TABLE_CHOICE,
         scope: OPTIONS_TABLE_SESSION,
-        choices: &raw const options_table_bell_action_list as *const *const c_char,
+        choices: &raw const options_table_bell_action_list as *const *const u8,
         default_num: alert_option::ALERT_ANY as i64,
-        text: c"Action to take on a bell alert.".as_ptr(),
+        text: c!("Action to take on a bell alert."),
         ..unsafe { zeroed() }
     },
     options_table_entry {
-        name: c"default-command".as_ptr(),
+        name: c!("default-command"),
         type_: options_table_type::OPTIONS_TABLE_STRING,
         scope: OPTIONS_TABLE_SESSION,
-        default_str: c"".as_ptr(),
-        text: c"Default command to run in new panes. If empty, a shell is started.".as_ptr(),
+        default_str: c!(""),
+        text: c!("Default command to run in new panes. If empty, a shell is started."),
         ..unsafe { zeroed() }
     },
     options_table_entry {
-        name: c"default-shell".as_ptr(),
+        name: c!("default-shell"),
         type_: options_table_type::OPTIONS_TABLE_STRING,
         scope: OPTIONS_TABLE_SESSION,
         default_str: _PATH_BSHELL,
-        text: c"Location of default shell.".as_ptr(),
+        text: c!("Location of default shell."),
         ..unsafe { zeroed() }
     },
     options_table_entry {
-        name: c"default-size".as_ptr(),
+        name: c!("default-size"),
         type_: options_table_type::OPTIONS_TABLE_STRING,
         scope: OPTIONS_TABLE_SESSION,
-        pattern: c"[0-9]*x[0-9]*".as_ptr(),
-        default_str: c"80x24".as_ptr(),
-        text: c"Initial size of new sessions.".as_ptr(),
+        pattern: c!("[0-9]*x[0-9]*"),
+        default_str: c!("80x24"),
+        text: c!("Initial size of new sessions."),
         ..unsafe { zeroed() }
     },
     options_table_entry {
-        name: c"destroy-unattached".as_ptr(),
+        name: c!("destroy-unattached"),
         type_: options_table_type::OPTIONS_TABLE_CHOICE,
         scope: OPTIONS_TABLE_SESSION,
-        choices: &raw const options_table_destroy_unattached_list as *const *const c_char,
+        choices: &raw const options_table_destroy_unattached_list as *const *const u8,
         default_num: 0,
-        text: c"Whether to destroy sessions when they have no attached clients, or keep the last session whether in the group.".as_ptr(),
+        text: c!(
+            "Whether to destroy sessions when they have no attached clients, or keep the last session whether in the group."
+        ),
         ..unsafe { zeroed() }
     },
     options_table_entry {
-        name: c"detach-on-destroy".as_ptr(),
+        name: c!("detach-on-destroy"),
         type_: options_table_type::OPTIONS_TABLE_CHOICE,
         scope: OPTIONS_TABLE_SESSION,
-        choices: &raw const options_table_detach_on_destroy_list as *const *const c_char,
+        choices: &raw const options_table_detach_on_destroy_list as *const *const u8,
         default_num: 1,
-        text: c"Whether to detach when a session is destroyed, or switch the client to another session if any exist.".as_ptr(),
+        text: c!(
+            "Whether to detach when a session is destroyed, or switch the client to another session if any exist."
+        ),
         ..unsafe { zeroed() }
     },
     options_table_entry {
-        name: c"display-panes-active-colour".as_ptr(),
+        name: c!("display-panes-active-colour"),
         type_: options_table_type::OPTIONS_TABLE_COLOUR,
         scope: OPTIONS_TABLE_SESSION,
         default_num: 1,
-        text: c"Colour of the active pane for 'display-panes'.".as_ptr(),
+        text: c!("Colour of the active pane for 'display-panes'."),
         ..unsafe { zeroed() }
     },
     options_table_entry {
-        name: c"display-panes-colour".as_ptr(),
+        name: c!("display-panes-colour"),
         type_: options_table_type::OPTIONS_TABLE_COLOUR,
         scope: OPTIONS_TABLE_SESSION,
         default_num: 4,
-        text: c"Colour of not active panes for 'display-panes'.".as_ptr(),
+        text: c!("Colour of not active panes for 'display-panes'."),
         ..unsafe { zeroed() }
     },
     options_table_entry {
-        name: c"display-panes-time".as_ptr(),
+        name: c!("display-panes-time"),
         type_: options_table_type::OPTIONS_TABLE_NUMBER,
         scope: OPTIONS_TABLE_SESSION,
         minimum: 1,
         maximum: i32::MAX as u32,
         default_num: 1000,
-        unit: c"milliseconds".as_ptr(),
-        text: c"Time for which 'display-panes' should show pane numbers.".as_ptr(),
+        unit: c!("milliseconds"),
+        text: c!("Time for which 'display-panes' should show pane numbers."),
         ..unsafe { zeroed() }
     },
     options_table_entry {
-        name: c"display-time".as_ptr(),
+        name: c!("display-time"),
         type_: options_table_type::OPTIONS_TABLE_NUMBER,
         scope: OPTIONS_TABLE_SESSION,
         minimum: 0,
         maximum: i32::MAX as u32,
         default_num: 750,
-        unit: c"milliseconds".as_ptr(),
-        text: c"Time for which status line messages should appear.".as_ptr(),
+        unit: c!("milliseconds"),
+        text: c!("Time for which status line messages should appear."),
         ..unsafe { zeroed() }
     },
     options_table_entry {
-        name: c"history-limit".as_ptr(),
+        name: c!("history-limit"),
         type_: options_table_type::OPTIONS_TABLE_NUMBER,
         scope: OPTIONS_TABLE_SESSION,
         minimum: 0,
         maximum: i32::MAX as u32,
         default_num: 2000,
-        unit: c"lines".as_ptr(),
-        text: c"Maximum number of lines to keep in the history for each pane. If changed, the new value applies only to new panes.".as_ptr(),
+        unit: c!("lines"),
+        text: c!(
+            "Maximum number of lines to keep in the history for each pane. If changed, the new value applies only to new panes."
+        ),
         ..unsafe { zeroed() }
     },
     options_table_entry {
-        name: c"key-table".as_ptr(),
+        name: c!("key-table"),
         type_: options_table_type::OPTIONS_TABLE_STRING,
         scope: OPTIONS_TABLE_SESSION,
-        default_str: c"root".as_ptr(),
-        text: c"Default key table. Key presses are first looked up in this table.".as_ptr(),
+        default_str: c!("root"),
+        text: c!("Default key table. Key presses are first looked up in this table."),
         ..unsafe { zeroed() }
     },
     options_table_entry {
-        name: c"lock-after-time".as_ptr(),
+        name: c!("lock-after-time"),
         type_: options_table_type::OPTIONS_TABLE_NUMBER,
         scope: OPTIONS_TABLE_SESSION,
         minimum: 0,
         maximum: i32::MAX as u32,
         default_num: 0,
-        unit: c"seconds".as_ptr(),
-        text: c"Time after which a client is locked if not used.".as_ptr(),
+        unit: c!("seconds"),
+        text: c!("Time after which a client is locked if not used."),
         ..unsafe { zeroed() }
     },
     options_table_entry {
-        name: c"lock-command".as_ptr(),
+        name: c!("lock-command"),
         type_: options_table_type::OPTIONS_TABLE_STRING,
         scope: OPTIONS_TABLE_SESSION,
-        default_str: TMUX_LOCK_CMD.as_ptr(),
-        text: c"Shell command to run to lock a client.".as_ptr(),
+        default_str: TMUX_LOCK_CMD.as_ptr().cast(),
+        text: c!("Shell command to run to lock a client."),
         ..unsafe { zeroed() }
     },
     options_table_entry {
-        name: c"message-command-style".as_ptr(),
+        name: c!("message-command-style"),
         type_: options_table_type::OPTIONS_TABLE_STRING,
         scope: OPTIONS_TABLE_SESSION,
-        default_str: c"bg=black,fg=yellow".as_ptr(),
+        default_str: c!("bg=black,fg=yellow"),
         flags: OPTIONS_TABLE_IS_STYLE,
-        separator: c",".as_ptr(),
-        text: c"Style of the command prompt when in command mode, if 'mode-keys' is set to 'vi'.".as_ptr(),
+        separator: c!(","),
+        text: c!(
+            "Style of the command prompt when in command mode, if 'mode-keys' is set to 'vi'."
+        ),
         ..unsafe { zeroed() }
     },
     options_table_entry {
-        name: c"message-line".as_ptr(),
+        name: c!("message-line"),
         type_: options_table_type::OPTIONS_TABLE_CHOICE,
         scope: OPTIONS_TABLE_SESSION,
-        choices: &raw const options_table_message_line_list as *const *const c_char,
+        choices: &raw const options_table_message_line_list as *const *const u8,
         default_num: 0,
-        text: c"Position (line) of messages and the command prompt.".as_ptr(),
+        text: c!("Position (line) of messages and the command prompt."),
         ..unsafe { zeroed() }
     },
     options_table_entry {
-        name: c"message-style".as_ptr(),
+        name: c!("message-style"),
         type_: options_table_type::OPTIONS_TABLE_STRING,
         scope: OPTIONS_TABLE_SESSION,
-        default_str: c"bg=yellow,fg=black".as_ptr(),
+        default_str: c!("bg=yellow,fg=black"),
         flags: OPTIONS_TABLE_IS_STYLE,
-        separator: c",".as_ptr(),
-        text: c"Style of messages and the command prompt.".as_ptr(),
+        separator: c!(","),
+        text: c!("Style of messages and the command prompt."),
         ..unsafe { zeroed() }
     },
     options_table_entry {
-        name: c"mouse".as_ptr(),
+        name: c!("mouse"),
         type_: options_table_type::OPTIONS_TABLE_FLAG,
         scope: OPTIONS_TABLE_SESSION,
         default_num: 0,
-        text: c"Whether the mouse is recognised and mouse key bindings are executed. Applications inside panes can use the mouse even when 'off'.".as_ptr(),
+        text: c!(
+            "Whether the mouse is recognised and mouse key bindings are executed. Applications inside panes can use the mouse even when 'off'."
+        ),
         ..unsafe { zeroed() }
     },
     options_table_entry {
-        name: c"prefix".as_ptr(),
+        name: c!("prefix"),
         type_: options_table_type::OPTIONS_TABLE_KEY,
         scope: OPTIONS_TABLE_SESSION,
         default_num: b'b' as i64 | KEYC_CTRL as i64,
-        text: c"The prefix key.".as_ptr(),
+        text: c!("The prefix key."),
         ..unsafe { zeroed() }
     },
     options_table_entry {
-        name: c"prefix2".as_ptr(),
+        name: c!("prefix2"),
         type_: options_table_type::OPTIONS_TABLE_KEY,
         scope: OPTIONS_TABLE_SESSION,
         default_num: KEYC_NONE as i64,
-        text: c"A second prefix key.".as_ptr(),
+        text: c!("A second prefix key."),
         ..unsafe { zeroed() }
     },
     options_table_entry {
-        name: c"renumber-windows".as_ptr(),
+        name: c!("renumber-windows"),
         type_: options_table_type::OPTIONS_TABLE_FLAG,
         scope: OPTIONS_TABLE_SESSION,
         default_num: 0,
-        text: c"Whether windows are automatically renumbered rather than leaving gaps.".as_ptr(),
+        text: c!("Whether windows are automatically renumbered rather than leaving gaps."),
         ..unsafe { zeroed() }
     },
     options_table_entry {
-        name: c"repeat-time".as_ptr(),
+        name: c!("repeat-time"),
         type_: options_table_type::OPTIONS_TABLE_NUMBER,
         scope: OPTIONS_TABLE_SESSION,
         minimum: 0,
         maximum: i16::MAX as u32,
         default_num: 500,
-        unit: c"milliseconds".as_ptr(),
-        text: c"Time to wait for a key binding to repeat, if it is bound with the '-r' flag.".as_ptr(),
+        unit: c!("milliseconds"),
+        text: c!("Time to wait for a key binding to repeat, if it is bound with the '-r' flag."),
         ..unsafe { zeroed() }
     },
     options_table_entry {
-        name: c"set-titles".as_ptr(),
+        name: c!("set-titles"),
         type_: options_table_type::OPTIONS_TABLE_FLAG,
         scope: OPTIONS_TABLE_SESSION,
         default_num: 0,
-        text: c"Whether to set the terminal title, if supported.".as_ptr(),
+        text: c!("Whether to set the terminal title, if supported."),
         ..unsafe { zeroed() }
     },
     options_table_entry {
-        name: c"set-titles-string".as_ptr(),
+        name: c!("set-titles-string"),
         type_: options_table_type::OPTIONS_TABLE_STRING,
         scope: OPTIONS_TABLE_SESSION,
-        default_str: c"#S:#I:#W - \"#T\" #{session_alerts}".as_ptr(),
-        text: c"Format of the terminal title to set.".as_ptr(),
+        default_str: c!("#S:#I:#W - \"#T\" #{session_alerts}"),
+        text: c!("Format of the terminal title to set."),
         ..unsafe { zeroed() }
     },
     options_table_entry {
-        name: c"silence-action".as_ptr(),
+        name: c!("silence-action"),
         type_: options_table_type::OPTIONS_TABLE_CHOICE,
         scope: OPTIONS_TABLE_SESSION,
-        choices: &raw const options_table_bell_action_list as *const *const c_char,
+        choices: &raw const options_table_bell_action_list as *const *const u8,
         default_num: alert_option::ALERT_OTHER as i64,
-        text: c"Action to take on a silence alert.".as_ptr(),
+        text: c!("Action to take on a silence alert."),
         ..unsafe { zeroed() }
     },
     options_table_entry {
-        name: c"status".as_ptr(),
+        name: c!("status"),
         type_: options_table_type::OPTIONS_TABLE_CHOICE,
         scope: OPTIONS_TABLE_SESSION,
-        choices: &raw const options_table_status_list as *const *const c_char,
+        choices: &raw const options_table_status_list as *const *const u8,
         default_num: 1,
-        text: c"Number of lines in the status line.".as_ptr(),
+        text: c!("Number of lines in the status line."),
         ..unsafe { zeroed() }
     },
     options_table_entry {
-        name: c"status-bg".as_ptr(),
+        name: c!("status-bg"),
         type_: options_table_type::OPTIONS_TABLE_COLOUR,
         scope: OPTIONS_TABLE_SESSION,
         default_num: 8,
-        text: c"Background colour of the status line. This option is deprecated, use 'status-style' instead.".as_ptr(),
+        text: c!(
+            "Background colour of the status line. This option is deprecated, use 'status-style' instead."
+        ),
         ..unsafe { zeroed() }
     },
     options_table_entry {
-        name: c"status-fg".as_ptr(),
+        name: c!("status-fg"),
         type_: options_table_type::OPTIONS_TABLE_COLOUR,
         scope: OPTIONS_TABLE_SESSION,
         default_num: 8,
-        text: c"Foreground colour of the status line. This option is deprecated, use 'status-style' instead.".as_ptr(),
+        text: c!(
+            "Foreground colour of the status line. This option is deprecated, use 'status-style' instead."
+        ),
         ..unsafe { zeroed() }
     },
     options_table_entry {
-        name: c"status-format".as_ptr(),
+        name: c!("status-format"),
         type_: options_table_type::OPTIONS_TABLE_STRING,
         scope: OPTIONS_TABLE_SESSION,
         flags: OPTIONS_TABLE_IS_ARRAY,
-        default_arr: &raw const options_table_status_format_default as *const *const c_char,
-        text: c"Formats for the status lines. Each array member is the format for one status line. The default status line is made up of several components which may be configured individually with other options such as 'status-left'.".as_ptr(),
+        default_arr: &raw const options_table_status_format_default as *const *const u8,
+        text: c!(
+            "Formats for the status lines. Each array member is the format for one status line. The default status line is made up of several components which may be configured individually with other options such as 'status-left'."
+        ),
         ..unsafe { zeroed() }
     },
     options_table_entry {
-        name: c"status-interval".as_ptr(),
+        name: c!("status-interval"),
         type_: options_table_type::OPTIONS_TABLE_NUMBER,
         scope: OPTIONS_TABLE_SESSION,
         minimum: 0,
         maximum: i32::MAX as u32,
         default_num: 15,
-        unit: c"seconds".as_ptr(),
-        text: c"Number of seconds between status line updates.".as_ptr(),
+        unit: c!("seconds"),
+        text: c!("Number of seconds between status line updates."),
         ..unsafe { zeroed() }
     },
     options_table_entry {
-        name: c"status-justify".as_ptr(),
+        name: c!("status-justify"),
         type_: options_table_type::OPTIONS_TABLE_CHOICE,
         scope: OPTIONS_TABLE_SESSION,
-        choices: &raw const options_table_status_justify_list as *const *const c_char,
+        choices: &raw const options_table_status_justify_list as *const *const u8,
         default_num: 0,
-        text: c"Position of the window list in the status line.".as_ptr(),
+        text: c!("Position of the window list in the status line."),
         ..unsafe { zeroed() }
     },
     options_table_entry {
-        name: c"status-keys".as_ptr(),
+        name: c!("status-keys"),
         type_: options_table_type::OPTIONS_TABLE_CHOICE,
         scope: OPTIONS_TABLE_SESSION,
-        choices: &raw const options_table_status_keys_list as *const *const c_char,
+        choices: &raw const options_table_status_keys_list as *const *const u8,
         default_num: modekey::MODEKEY_EMACS as i64,
-        text: c"Key set to use at the command prompt.".as_ptr(),
+        text: c!("Key set to use at the command prompt."),
         ..unsafe { zeroed() }
     },
     options_table_entry {
-        name: c"status-left".as_ptr(),
+        name: c!("status-left"),
         type_: options_table_type::OPTIONS_TABLE_STRING,
         scope: OPTIONS_TABLE_SESSION,
-        default_str: c"[#{session_name}] ".as_ptr(),
-        text: c"Contents of the left side of the status line.".as_ptr(),
+        default_str: c!("[#{session_name}] "),
+        text: c!("Contents of the left side of the status line."),
         ..unsafe { zeroed() }
     },
     options_table_entry {
-        name: c"status-left-length".as_ptr(),
+        name: c!("status-left-length"),
         type_: options_table_type::OPTIONS_TABLE_NUMBER,
         scope: OPTIONS_TABLE_SESSION,
         minimum: 0,
         maximum: i16::MAX as u32,
         default_num: 10,
-        text: c"Maximum width of the left side of the status line.".as_ptr(),
+        text: c!("Maximum width of the left side of the status line."),
         ..unsafe { zeroed() }
     },
     options_table_entry {
-        name: c"status-left-style".as_ptr(),
+        name: c!("status-left-style"),
         type_: options_table_type::OPTIONS_TABLE_STRING,
         scope: OPTIONS_TABLE_SESSION,
-        default_str: c"default".as_ptr(),
+        default_str: c!("default"),
         flags: OPTIONS_TABLE_IS_STYLE,
-        separator: c",".as_ptr(),
-        text: c"Style of the left side of the status line.".as_ptr(),
+        separator: c!(","),
+        text: c!("Style of the left side of the status line."),
         ..unsafe { zeroed() }
     },
     options_table_entry {
-        name: c"status-position".as_ptr(),
+        name: c!("status-position"),
         type_: options_table_type::OPTIONS_TABLE_CHOICE,
         scope: OPTIONS_TABLE_SESSION,
-        choices: &raw const options_table_status_position_list as *const *const c_char,
+        choices: &raw const options_table_status_position_list as *const *const u8,
         default_num: 1,
-        text: c"Position of the status line.".as_ptr(),
+        text: c!("Position of the status line."),
         ..unsafe { zeroed() }
     },
     options_table_entry {
-        name: c"status-right".as_ptr(),
+        name: c!("status-right"),
         type_: options_table_type::OPTIONS_TABLE_STRING,
         scope: OPTIONS_TABLE_SESSION,
-        default_str: c"#{?window_bigger,[#{window_offset_x}#,#{window_offset_y}] ,}\"#{=21:pane_title}\" %H:%M %d-%b-%y".as_ptr(),
-        text: c"Contents of the right side of the status line.".as_ptr(),
+        default_str: c!(
+            "#{?window_bigger,[#{window_offset_x}#,#{window_offset_y}] ,}\"#{=21:pane_title}\" %H:%M %d-%b-%y"
+        ),
+        text: c!("Contents of the right side of the status line."),
         ..unsafe { zeroed() }
     },
     options_table_entry {
-        name: c"status-right-length".as_ptr(),
+        name: c!("status-right-length"),
         type_: options_table_type::OPTIONS_TABLE_NUMBER,
         scope: OPTIONS_TABLE_SESSION,
         minimum: 0,
         maximum: i16::MAX as u32,
         default_num: 40,
-        text: c"Maximum width of the right side of the status line.".as_ptr(),
+        text: c!("Maximum width of the right side of the status line."),
         ..unsafe { zeroed() }
     },
     options_table_entry {
-        name: c"status-right-style".as_ptr(),
+        name: c!("status-right-style"),
         type_: options_table_type::OPTIONS_TABLE_STRING,
         scope: OPTIONS_TABLE_SESSION,
-        default_str: c"default".as_ptr(),
+        default_str: c!("default"),
         flags: OPTIONS_TABLE_IS_STYLE,
-        separator: c",".as_ptr(),
-        text: c"Style of the right side of the status line.".as_ptr(),
+        separator: c!(","),
+        text: c!("Style of the right side of the status line."),
         ..unsafe { zeroed() }
     },
     options_table_entry {
-        name: c"status-style".as_ptr(),
+        name: c!("status-style"),
         type_: options_table_type::OPTIONS_TABLE_STRING,
         scope: OPTIONS_TABLE_SESSION,
-        default_str: c"bg=green,fg=black".as_ptr(),
+        default_str: c!("bg=green,fg=black"),
         flags: OPTIONS_TABLE_IS_STYLE,
-        separator: c",".as_ptr(),
-        text: c"Style of the status line.".as_ptr(),
+        separator: c!(","),
+        text: c!("Style of the status line."),
         ..unsafe { zeroed() }
     },
     options_table_entry {
-        name: c"update-environment".as_ptr(),
+        name: c!("update-environment"),
         type_: options_table_type::OPTIONS_TABLE_STRING,
         scope: OPTIONS_TABLE_SESSION,
         flags: OPTIONS_TABLE_IS_ARRAY,
-        default_str: c"DISPLAY KRB5CCNAME SSH_ASKPASS SSH_AUTH_SOCK SSH_AGENT_PID SSH_CONNECTION WINDOWID XAUTHORITY".as_ptr(),
-        text: c"List of environment variables to update in the session environment when a client is attached.".as_ptr(),
+        default_str: c!(
+            "DISPLAY KRB5CCNAME SSH_ASKPASS SSH_AUTH_SOCK SSH_AGENT_PID SSH_CONNECTION WINDOWID XAUTHORITY"
+        ),
+        text: c!(
+            "List of environment variables to update in the session environment when a client is attached."
+        ),
         ..unsafe { zeroed() }
     },
     options_table_entry {
-        name: c"visual-activity".as_ptr(),
+        name: c!("visual-activity"),
         type_: options_table_type::OPTIONS_TABLE_CHOICE,
         scope: OPTIONS_TABLE_SESSION,
-        choices: &raw const options_table_visual_bell_list as *const *const c_char,
+        choices: &raw const options_table_visual_bell_list as *const *const u8,
         default_num: visual_option::VISUAL_OFF as i64,
-        text: c"How activity alerts should be shown: a message ('on'), a message and a bell ('both') or nothing ('off').".as_ptr(),
+        text: c!(
+            "How activity alerts should be shown: a message ('on'), a message and a bell ('both') or nothing ('off')."
+        ),
         ..unsafe { zeroed() }
     },
     options_table_entry {
-        name: c"visual-bell".as_ptr(),
+        name: c!("visual-bell"),
         type_: options_table_type::OPTIONS_TABLE_CHOICE,
         scope: OPTIONS_TABLE_SESSION,
-        choices: &raw const options_table_visual_bell_list as *const *const c_char,
+        choices: &raw const options_table_visual_bell_list as *const *const u8,
         default_num: visual_option::VISUAL_OFF as i64,
-        text: c"How bell alerts should be shown: a message ('on'), a message and a bell ('both') or nothing ('off').".as_ptr(),
+        text: c!(
+            "How bell alerts should be shown: a message ('on'), a message and a bell ('both') or nothing ('off')."
+        ),
         ..unsafe { zeroed() }
     },
     options_table_entry {
-        name: c"visual-silence".as_ptr(),
+        name: c!("visual-silence"),
         type_: options_table_type::OPTIONS_TABLE_CHOICE,
         scope: OPTIONS_TABLE_SESSION,
-        choices: &raw const options_table_visual_bell_list as *const *const c_char,
+        choices: &raw const options_table_visual_bell_list as *const *const u8,
         default_num: visual_option::VISUAL_OFF as i64,
-        text: c"How silence alerts should be shown: a message ('on'), a message and a bell ('both') or nothing ('off').".as_ptr(),
+        text: c!(
+            "How silence alerts should be shown: a message ('on'), a message and a bell ('both') or nothing ('off')."
+        ),
         ..unsafe { zeroed() }
     },
     options_table_entry {
-        name: c"word-separators".as_ptr(),
+        name: c!("word-separators"),
         type_: options_table_type::OPTIONS_TABLE_STRING,
         scope: OPTIONS_TABLE_SESSION,
-        default_str: c"!\"#$%&'()*+,-./:;<=>?@[\\]^`{|}~".as_ptr(),
-        text: c"Characters considered to separate words.".as_ptr(),
+        default_str: c!("!\"#$%&'()*+,-./:;<=>?@[\\]^`{|}~"),
+        text: c!("Characters considered to separate words."),
         ..unsafe { zeroed() }
     },
     /* Window options */
     options_table_entry {
-        name: c"aggressive-resize".as_ptr(),
+        name: c!("aggressive-resize"),
         type_: options_table_type::OPTIONS_TABLE_FLAG,
         scope: OPTIONS_TABLE_WINDOW,
         default_num: 0,
-        text: c"When 'window-size' is 'smallest', whether the maximum size of a window is the smallest attached session where it is the current window ('on') or the smallest session it is linked to ('off').".as_ptr(),
+        text: c!(
+            "When 'window-size' is 'smallest', whether the maximum size of a window is the smallest attached session where it is the current window ('on') or the smallest session it is linked to ('off')."
+        ),
         ..unsafe { zeroed() }
     },
     options_table_entry {
-        name: c"allow-passthrough".as_ptr(),
+        name: c!("allow-passthrough"),
         type_: options_table_type::OPTIONS_TABLE_CHOICE,
         scope: OPTIONS_TABLE_WINDOW | OPTIONS_TABLE_PANE,
-        choices: &raw const options_table_allow_passthrough_list as *const *const c_char,
+        choices: &raw const options_table_allow_passthrough_list as *const *const u8,
         default_num: 0,
-        text: c"Whether applications are allowed to use the escape sequence to bypass tmux. Can be 'off' (disallowed), 'on' (allowed if the pane is visible), or 'all' (allowed even if the pane is invisible).".as_ptr(),
+        text: c!(
+            "Whether applications are allowed to use the escape sequence to bypass tmux. Can be 'off' (disallowed), 'on' (allowed if the pane is visible), or 'all' (allowed even if the pane is invisible)."
+        ),
         ..unsafe { zeroed() }
     },
     options_table_entry {
-        name: c"allow-rename".as_ptr(),
+        name: c!("allow-rename"),
         type_: options_table_type::OPTIONS_TABLE_FLAG,
         scope: OPTIONS_TABLE_WINDOW | OPTIONS_TABLE_PANE,
         default_num: 0,
-        text: c"Whether applications are allowed to use the escape sequence to rename windows.".as_ptr(),
+        text: c!("Whether applications are allowed to use the escape sequence to rename windows."),
         ..unsafe { zeroed() }
     },
     options_table_entry {
-        name: c"allow-set-title".as_ptr(),
+        name: c!("allow-set-title"),
         type_: options_table_type::OPTIONS_TABLE_FLAG,
         scope: OPTIONS_TABLE_WINDOW | OPTIONS_TABLE_PANE,
         default_num: 1,
-        text: c"Whether applications are allowed to use the escape sequence to set the pane title.".as_ptr(),
+        text: c!(
+            "Whether applications are allowed to use the escape sequence to set the pane title."
+        ),
         ..unsafe { zeroed() }
     },
     options_table_entry {
-        name: c"alternate-screen".as_ptr(),
+        name: c!("alternate-screen"),
         type_: options_table_type::OPTIONS_TABLE_FLAG,
         scope: OPTIONS_TABLE_WINDOW | OPTIONS_TABLE_PANE,
         default_num: 1,
-        text: c"Whether applications are allowed to use the alternate screen.".as_ptr(),
+        text: c!("Whether applications are allowed to use the alternate screen."),
         ..unsafe { zeroed() }
     },
     options_table_entry {
-        name: c"automatic-rename".as_ptr(),
+        name: c!("automatic-rename"),
         type_: options_table_type::OPTIONS_TABLE_FLAG,
         scope: OPTIONS_TABLE_WINDOW,
         default_num: 1,
-        text: c"Whether windows are automatically renamed.".as_ptr(),
+        text: c!("Whether windows are automatically renamed."),
         ..unsafe { zeroed() }
     },
     options_table_entry {
-        name: c"automatic-rename-format".as_ptr(),
+        name: c!("automatic-rename-format"),
         type_: options_table_type::OPTIONS_TABLE_STRING,
         scope: OPTIONS_TABLE_WINDOW,
-        default_str: c"#{?pane_in_mode,[tmux],#{pane_current_command}}#{?pane_dead,[dead],}".as_ptr(),
-        text: c"Format used to automatically rename windows.".as_ptr(),
+        default_str: c!("#{?pane_in_mode,[tmux],#{pane_current_command}}#{?pane_dead,[dead],}"),
+        text: c!("Format used to automatically rename windows."),
         ..unsafe { zeroed() }
     },
     options_table_entry {
-        name: c"clock-mode-colour".as_ptr(),
+        name: c!("clock-mode-colour"),
         type_: options_table_type::OPTIONS_TABLE_COLOUR,
         scope: OPTIONS_TABLE_WINDOW,
         default_num: 4,
-        text: c"Colour of the clock in clock mode.".as_ptr(),
+        text: c!("Colour of the clock in clock mode."),
         ..unsafe { zeroed() }
     },
     options_table_entry {
-        name: c"clock-mode-style".as_ptr(),
+        name: c!("clock-mode-style"),
         type_: options_table_type::OPTIONS_TABLE_CHOICE,
         scope: OPTIONS_TABLE_WINDOW,
-        choices: &raw const options_table_clock_mode_style_list as *const *const c_char,
+        choices: &raw const options_table_clock_mode_style_list as *const *const u8,
         default_num: 1,
-        text: c"Time format of the clock in clock mode.".as_ptr(),
+        text: c!("Time format of the clock in clock mode."),
         ..unsafe { zeroed() }
     },
     options_table_entry {
-        name: c"copy-mode-match-style".as_ptr(),
+        name: c!("copy-mode-match-style"),
         type_: options_table_type::OPTIONS_TABLE_STRING,
         scope: OPTIONS_TABLE_WINDOW,
-        default_str: c"bg=cyan,fg=black".as_ptr(),
+        default_str: c!("bg=cyan,fg=black"),
         flags: OPTIONS_TABLE_IS_STYLE,
-        separator: c",".as_ptr(),
-        text: c"Style of search matches in copy mode.".as_ptr(),
+        separator: c!(","),
+        text: c!("Style of search matches in copy mode."),
         ..unsafe { zeroed() }
     },
     options_table_entry {
-        name: c"copy-mode-current-match-style".as_ptr(),
+        name: c!("copy-mode-current-match-style"),
         type_: options_table_type::OPTIONS_TABLE_STRING,
         scope: OPTIONS_TABLE_WINDOW,
-        default_str: c"bg=magenta,fg=black".as_ptr(),
+        default_str: c!("bg=magenta,fg=black"),
         flags: OPTIONS_TABLE_IS_STYLE,
-        separator: c",".as_ptr(),
-        text: c"Style of the current search match in copy mode.".as_ptr(),
+        separator: c!(","),
+        text: c!("Style of the current search match in copy mode."),
         ..unsafe { zeroed() }
     },
     options_table_entry {
-        name: c"copy-mode-mark-style".as_ptr(),
+        name: c!("copy-mode-mark-style"),
         type_: options_table_type::OPTIONS_TABLE_STRING,
         scope: OPTIONS_TABLE_WINDOW,
-        default_str: c"bg=red,fg=black".as_ptr(),
+        default_str: c!("bg=red,fg=black"),
         flags: OPTIONS_TABLE_IS_STYLE,
-        separator: c",".as_ptr(),
-        text: c"Style of the marked line in copy mode.".as_ptr(),
+        separator: c!(","),
+        text: c!("Style of the marked line in copy mode."),
         ..unsafe { zeroed() }
     },
     options_table_entry {
-        name: c"fill-character".as_ptr(),
+        name: c!("fill-character"),
         type_: options_table_type::OPTIONS_TABLE_STRING,
         scope: OPTIONS_TABLE_WINDOW,
-        default_str: c"".as_ptr(),
-        text: c"Character used to fill unused parts of window.".as_ptr(),
+        default_str: c!(""),
+        text: c!("Character used to fill unused parts of window."),
         ..unsafe { zeroed() }
     },
     options_table_entry {
-        name: c"main-pane-height".as_ptr(),
+        name: c!("main-pane-height"),
         type_: options_table_type::OPTIONS_TABLE_STRING,
         scope: OPTIONS_TABLE_WINDOW,
-        default_str: c"24".as_ptr(),
-        text: c"Height of the main pane in the 'main-horizontal' layout. This may be a percentage, for example '10%'.".as_ptr(),
+        default_str: c!("24"),
+        text: c!(
+            "Height of the main pane in the 'main-horizontal' layout. This may be a percentage, for example '10%'."
+        ),
         ..unsafe { zeroed() }
     },
     options_table_entry {
-        name: c"main-pane-width".as_ptr(),
+        name: c!("main-pane-width"),
         type_: options_table_type::OPTIONS_TABLE_STRING,
         scope: OPTIONS_TABLE_WINDOW,
-        default_str: c"80".as_ptr(),
-        text: c"Width of the main pane in the 'main-vertical' layout. This may be a percentage, for example '10%'.".as_ptr(),
+        default_str: c!("80"),
+        text: c!(
+            "Width of the main pane in the 'main-vertical' layout. This may be a percentage, for example '10%'."
+        ),
         ..unsafe { zeroed() }
     },
     options_table_entry {
-        name: c"mode-keys".as_ptr(),
+        name: c!("mode-keys"),
         type_: options_table_type::OPTIONS_TABLE_CHOICE,
         scope: OPTIONS_TABLE_WINDOW,
-        choices: &raw const options_table_mode_keys_list as *const *const c_char,
+        choices: &raw const options_table_mode_keys_list as *const *const u8,
         default_num: modekey::MODEKEY_EMACS as i64,
-        text: c"Key set used in copy mode.".as_ptr(),
+        text: c!("Key set used in copy mode."),
         ..unsafe { zeroed() }
     },
     options_table_entry {
-        name: c"mode-style".as_ptr(),
+        name: c!("mode-style"),
         type_: options_table_type::OPTIONS_TABLE_STRING,
         scope: OPTIONS_TABLE_WINDOW,
         flags: OPTIONS_TABLE_IS_STYLE,
-        default_str: c"bg=yellow,fg=black".as_ptr(),
-        separator: c",".as_ptr(),
-        text: c"Style of indicators and highlighting in modes.".as_ptr(),
+        default_str: c!("bg=yellow,fg=black"),
+        separator: c!(","),
+        text: c!("Style of indicators and highlighting in modes."),
         ..unsafe { zeroed() }
     },
     options_table_entry {
-        name: c"monitor-activity".as_ptr(),
+        name: c!("monitor-activity"),
         type_: options_table_type::OPTIONS_TABLE_FLAG,
         scope: OPTIONS_TABLE_WINDOW,
         default_num: 0,
-        text: c"Whether an alert is triggered by activity.".as_ptr(),
+        text: c!("Whether an alert is triggered by activity."),
         ..unsafe { zeroed() }
     },
     options_table_entry {
-        name: c"monitor-bell".as_ptr(),
+        name: c!("monitor-bell"),
         type_: options_table_type::OPTIONS_TABLE_FLAG,
         scope: OPTIONS_TABLE_WINDOW,
         default_num: 1,
-        text: c"Whether an alert is triggered by a bell.".as_ptr(),
+        text: c!("Whether an alert is triggered by a bell."),
         ..unsafe { zeroed() }
     },
     options_table_entry {
-        name: c"monitor-silence".as_ptr(),
+        name: c!("monitor-silence"),
         type_: options_table_type::OPTIONS_TABLE_NUMBER,
         scope: OPTIONS_TABLE_WINDOW,
         minimum: 0,
         maximum: i32::MAX as u32,
         default_num: 0,
-        text: c"Time after which an alert is triggered by silence. Zero means no alert.".as_ptr(),
+        text: c!("Time after which an alert is triggered by silence. Zero means no alert."),
         ..unsafe { zeroed() }
     },
     options_table_entry {
-        name: c"other-pane-height".as_ptr(),
+        name: c!("other-pane-height"),
         type_: options_table_type::OPTIONS_TABLE_STRING,
         scope: OPTIONS_TABLE_WINDOW,
-        default_str: c"0".as_ptr(),
-        text: c"Height of the other panes in the 'main-horizontal' layout. This may be a percentage, for example '10%'.".as_ptr(),
+        default_str: c!("0"),
+        text: c!(
+            "Height of the other panes in the 'main-horizontal' layout. This may be a percentage, for example '10%'."
+        ),
         ..unsafe { zeroed() }
     },
     options_table_entry {
-        name: c"other-pane-width".as_ptr(),
+        name: c!("other-pane-width"),
         type_: options_table_type::OPTIONS_TABLE_STRING,
         scope: OPTIONS_TABLE_WINDOW,
-        default_str: c"0".as_ptr(),
-        text: c"Height of the other panes in the 'main-vertical' layout. This may be a percentage, for example '10%'.".as_ptr(),
+        default_str: c!("0"),
+        text: c!(
+            "Height of the other panes in the 'main-vertical' layout. This may be a percentage, for example '10%'."
+        ),
         ..unsafe { zeroed() }
     },
     options_table_entry {
-        name: c"pane-active-border-style".as_ptr(),
+        name: c!("pane-active-border-style"),
         type_: options_table_type::OPTIONS_TABLE_STRING,
         scope: OPTIONS_TABLE_WINDOW,
-        default_str: c"#{?pane_in_mode,fg=yellow,#{?synchronize-panes,fg=red,fg=green}}".as_ptr(),
+        default_str: c!("#{?pane_in_mode,fg=yellow,#{?synchronize-panes,fg=red,fg=green}}"),
         flags: OPTIONS_TABLE_IS_STYLE,
-        separator: c",".as_ptr(),
-        text: c"Style of the active pane border.".as_ptr(),
+        separator: c!(","),
+        text: c!("Style of the active pane border."),
         ..unsafe { zeroed() }
     },
     options_table_entry {
-        name: c"pane-base-index".as_ptr(),
+        name: c!("pane-base-index"),
         type_: options_table_type::OPTIONS_TABLE_NUMBER,
         scope: OPTIONS_TABLE_WINDOW,
         minimum: 0,
         maximum: u16::MAX as u32,
         default_num: 0,
-        text: c"Index of the first pane in each window.".as_ptr(),
+        text: c!("Index of the first pane in each window."),
         ..unsafe { zeroed() }
     },
     options_table_entry {
-        name: c"pane-border-format".as_ptr(),
+        name: c!("pane-border-format"),
         type_: options_table_type::OPTIONS_TABLE_STRING,
         scope: OPTIONS_TABLE_WINDOW | OPTIONS_TABLE_PANE,
-        default_str: c"#{?pane_active,#[reverse],}#{pane_index}#[default] \"#{pane_title}\"".as_ptr(),
-        text: c"Format of text in the pane status lines.".as_ptr(),
+        default_str: c!("#{?pane_active,#[reverse],}#{pane_index}#[default] \"#{pane_title}\""),
+        text: c!("Format of text in the pane status lines."),
         ..unsafe { zeroed() }
     },
     options_table_entry {
-        name: c"pane-border-indicators".as_ptr(),
+        name: c!("pane-border-indicators"),
         type_: options_table_type::OPTIONS_TABLE_CHOICE,
         scope: OPTIONS_TABLE_WINDOW,
-        choices: &raw const options_table_pane_border_indicators_list as *const *const c_char,
+        choices: &raw const options_table_pane_border_indicators_list as *const *const u8,
         default_num: pane_border_indicator::PANE_BORDER_COLOUR as i64,
-        text: c"Whether to indicate the active pane by colouring border or displaying arrow markers.".as_ptr(),
+        text: c!(
+            "Whether to indicate the active pane by colouring border or displaying arrow markers."
+        ),
         ..unsafe { zeroed() }
     },
     options_table_entry {
-        name: c"pane-border-lines".as_ptr(),
+        name: c!("pane-border-lines"),
         type_: options_table_type::OPTIONS_TABLE_CHOICE,
         scope: OPTIONS_TABLE_WINDOW,
-        choices: &raw const options_table_pane_border_lines_list as *const *const c_char,
+        choices: &raw const options_table_pane_border_lines_list as *const *const u8,
         default_num: pane_lines::PANE_LINES_SINGLE as i64,
-        text: c"Type of characters used to draw pane border lines. Some of these are only supported on terminals with UTF-8 support.".as_ptr(),
+        text: c!(
+            "Type of characters used to draw pane border lines. Some of these are only supported on terminals with UTF-8 support."
+        ),
         ..unsafe { zeroed() }
     },
     options_table_entry {
-        name: c"pane-border-status".as_ptr(),
+        name: c!("pane-border-status"),
         type_: options_table_type::OPTIONS_TABLE_CHOICE,
         scope: OPTIONS_TABLE_WINDOW,
-        choices: &raw const options_table_pane_status_list as *const *const c_char,
+        choices: &raw const options_table_pane_status_list as *const *const u8,
         default_num: pane_status::PANE_STATUS_OFF as i64,
-        text: c"Position of the pane status lines.".as_ptr(),
+        text: c!("Position of the pane status lines."),
         ..unsafe { zeroed() }
     },
     options_table_entry {
-        name: c"pane-border-style".as_ptr(),
+        name: c!("pane-border-style"),
         type_: options_table_type::OPTIONS_TABLE_STRING,
         scope: OPTIONS_TABLE_WINDOW,
-        default_str: c"default".as_ptr(),
+        default_str: c!("default"),
         flags: OPTIONS_TABLE_IS_STYLE,
-        separator: c",".as_ptr(),
-        text: c"Style of the pane status lines.".as_ptr(),
+        separator: c!(","),
+        text: c!("Style of the pane status lines."),
         ..unsafe { zeroed() }
     },
     options_table_entry {
-        name: c"pane-colours".as_ptr(),
+        name: c!("pane-colours"),
         type_: options_table_type::OPTIONS_TABLE_COLOUR,
         scope: OPTIONS_TABLE_WINDOW | OPTIONS_TABLE_PANE,
-        default_str: c"".as_ptr(),
+        default_str: c!(""),
         flags: OPTIONS_TABLE_IS_ARRAY,
-        text: c"The default colour palette for colours zero to 255.".as_ptr(),
+        text: c!("The default colour palette for colours zero to 255."),
         ..unsafe { zeroed() }
     },
     options_table_entry {
-        name: c"popup-style".as_ptr(),
+        name: c!("popup-style"),
         type_: options_table_type::OPTIONS_TABLE_STRING,
         scope: OPTIONS_TABLE_WINDOW,
-        default_str: c"default".as_ptr(),
+        default_str: c!("default"),
         flags: OPTIONS_TABLE_IS_STYLE,
-        separator: c",".as_ptr(),
-        text: c"Default style of popups.".as_ptr(),
+        separator: c!(","),
+        text: c!("Default style of popups."),
         ..unsafe { zeroed() }
     },
     options_table_entry {
-        name: c"popup-border-style".as_ptr(),
+        name: c!("popup-border-style"),
         type_: options_table_type::OPTIONS_TABLE_STRING,
         scope: OPTIONS_TABLE_WINDOW,
-        default_str: c"default".as_ptr(),
+        default_str: c!("default"),
         flags: OPTIONS_TABLE_IS_STYLE,
-        separator: c",".as_ptr(),
-        text: c"Default style of popup borders.".as_ptr(),
+        separator: c!(","),
+        text: c!("Default style of popup borders."),
         ..unsafe { zeroed() }
     },
     options_table_entry {
-        name: c"popup-border-lines".as_ptr(),
+        name: c!("popup-border-lines"),
         type_: options_table_type::OPTIONS_TABLE_CHOICE,
         scope: OPTIONS_TABLE_WINDOW,
-        choices: &raw const options_table_popup_border_lines_list as *const *const c_char,
+        choices: &raw const options_table_popup_border_lines_list as *const *const u8,
         default_num: box_lines::BOX_LINES_SINGLE as i64,
-        text: c"Type of characters used to draw popup border lines. Some of these are only supported on terminals with UTF-8 support.".as_ptr(),
+        text: c!(
+            "Type of characters used to draw popup border lines. Some of these are only supported on terminals with UTF-8 support."
+        ),
         ..unsafe { zeroed() }
     },
     options_table_entry {
-        name: c"remain-on-exit".as_ptr(),
+        name: c!("remain-on-exit"),
         type_: options_table_type::OPTIONS_TABLE_CHOICE,
         scope: OPTIONS_TABLE_WINDOW | OPTIONS_TABLE_PANE,
-        choices: &raw const options_table_remain_on_exit_list as *const *const c_char,
+        choices: &raw const options_table_remain_on_exit_list as *const *const u8,
         default_num: 0,
-        text: c"Whether panes should remain ('on') or be automatically killed ('off' or 'failed') when the program inside exits.".as_ptr(),
+        text: c!(
+            "Whether panes should remain ('on') or be automatically killed ('off' or 'failed') when the program inside exits."
+        ),
         ..unsafe { zeroed() }
     },
     options_table_entry {
-        name: c"remain-on-exit-format".as_ptr(),
+        name: c!("remain-on-exit-format"),
         type_: options_table_type::OPTIONS_TABLE_STRING,
         scope: OPTIONS_TABLE_WINDOW | OPTIONS_TABLE_PANE,
-        default_str: c"Pane is dead (#{?#{!=:#{pane_dead_status},},status #{pane_dead_status},}#{?#{!=:#{pane_dead_signal},},signal #{pane_dead_signal},}, #{t:pane_dead_time})".as_ptr(),
-        text: c"Message shown after the program in a pane has exited, if remain-on-exit is enabled.".as_ptr(),
+        default_str: c!(
+            "Pane is dead (#{?#{!=:#{pane_dead_status},},status #{pane_dead_status},}#{?#{!=:#{pane_dead_signal},},signal #{pane_dead_signal},}, #{t:pane_dead_time})"
+        ),
+        text: c!(
+            "Message shown after the program in a pane has exited, if remain-on-exit is enabled."
+        ),
         ..unsafe { zeroed() }
     },
     options_table_entry {
-        name: c"scroll-on-clear".as_ptr(),
+        name: c!("scroll-on-clear"),
         type_: options_table_type::OPTIONS_TABLE_FLAG,
         scope: OPTIONS_TABLE_WINDOW | OPTIONS_TABLE_PANE,
         default_num: 1,
-        text: c"Whether the contents of the screen should be scrolled into history when clearing the whole screen.".as_ptr(),
+        text: c!(
+            "Whether the contents of the screen should be scrolled into history when clearing the whole screen."
+        ),
         ..unsafe { zeroed() }
     },
     options_table_entry {
-        name: c"synchronize-panes".as_ptr(),
+        name: c!("synchronize-panes"),
         type_: options_table_type::OPTIONS_TABLE_FLAG,
         scope: OPTIONS_TABLE_WINDOW | OPTIONS_TABLE_PANE,
         default_num: 0,
-        text: c"Whether typing should be sent to all panes simultaneously.".as_ptr(),
+        text: c!("Whether typing should be sent to all panes simultaneously."),
         ..unsafe { zeroed() }
     },
     options_table_entry {
-        name: c"window-active-style".as_ptr(),
+        name: c!("window-active-style"),
         type_: options_table_type::OPTIONS_TABLE_STRING,
         scope: OPTIONS_TABLE_WINDOW | OPTIONS_TABLE_PANE,
-        default_str: c"default".as_ptr(),
+        default_str: c!("default"),
         flags: OPTIONS_TABLE_IS_STYLE,
-        separator: c",".as_ptr(),
-        text: c"Default style of the active pane.".as_ptr(),
+        separator: c!(","),
+        text: c!("Default style of the active pane."),
         ..unsafe { zeroed() }
     },
     options_table_entry {
-        name: c"window-size".as_ptr(),
+        name: c!("window-size"),
         type_: options_table_type::OPTIONS_TABLE_CHOICE,
         scope: OPTIONS_TABLE_WINDOW,
-        choices: &raw const options_table_window_size_list as *const *const c_char,
+        choices: &raw const options_table_window_size_list as *const *const u8,
         default_num: window_size_option::WINDOW_SIZE_LATEST as i64,
-        text: c"How window size is calculated. 'latest' uses the size of the most recently used client, 'largest' the largest client, 'smallest' the smallest client and 'manual' a size set by the 'resize-window' command.".as_ptr(),
+        text: c!(
+            "How window size is calculated. 'latest' uses the size of the most recently used client, 'largest' the largest client, 'smallest' the smallest client and 'manual' a size set by the 'resize-window' command."
+        ),
         ..unsafe { zeroed() }
     },
     options_table_entry {
-        name: c"window-style".as_ptr(),
+        name: c!("window-style"),
         type_: options_table_type::OPTIONS_TABLE_STRING,
         scope: OPTIONS_TABLE_WINDOW | OPTIONS_TABLE_PANE,
-        default_str: c"default".as_ptr(),
+        default_str: c!("default"),
         flags: OPTIONS_TABLE_IS_STYLE,
-        separator: c",".as_ptr(),
-        text: c"Default style of panes that are not the active pane.".as_ptr(),
+        separator: c!(","),
+        text: c!("Default style of panes that are not the active pane."),
         ..unsafe { zeroed() }
     },
     options_table_entry {
-        name: c"window-status-activity-style".as_ptr(),
+        name: c!("window-status-activity-style"),
         type_: options_table_type::OPTIONS_TABLE_STRING,
         scope: OPTIONS_TABLE_WINDOW,
-        default_str: c"reverse".as_ptr(),
+        default_str: c!("reverse"),
         flags: OPTIONS_TABLE_IS_STYLE,
-        separator: c",".as_ptr(),
-        text: c"Style of windows in the status line with an activity alert.".as_ptr(),
+        separator: c!(","),
+        text: c!("Style of windows in the status line with an activity alert."),
         ..unsafe { zeroed() }
     },
     options_table_entry {
-        name: c"window-status-bell-style".as_ptr(),
+        name: c!("window-status-bell-style"),
         type_: options_table_type::OPTIONS_TABLE_STRING,
         scope: OPTIONS_TABLE_WINDOW,
-        default_str: c"reverse".as_ptr(),
+        default_str: c!("reverse"),
         flags: OPTIONS_TABLE_IS_STYLE,
-        separator: c",".as_ptr(),
-        text: c"Style of windows in the status line with a bell alert.".as_ptr(),
+        separator: c!(","),
+        text: c!("Style of windows in the status line with a bell alert."),
         ..unsafe { zeroed() }
     },
     options_table_entry {
-        name: c"window-status-current-format".as_ptr(),
+        name: c!("window-status-current-format"),
         type_: options_table_type::OPTIONS_TABLE_STRING,
         scope: OPTIONS_TABLE_WINDOW,
-        default_str: c"#I:#W#{?window_flags,#{window_flags}, }".as_ptr(),
-        text: c"Format of the current window in the status line.".as_ptr(),
+        default_str: c!("#I:#W#{?window_flags,#{window_flags}, }"),
+        text: c!("Format of the current window in the status line."),
         ..unsafe { zeroed() }
     },
     options_table_entry {
-        name: c"window-status-current-style".as_ptr(),
+        name: c!("window-status-current-style"),
         type_: options_table_type::OPTIONS_TABLE_STRING,
         scope: OPTIONS_TABLE_WINDOW,
-        default_str: c"default".as_ptr(),
+        default_str: c!("default"),
         flags: OPTIONS_TABLE_IS_STYLE,
-        separator: c",".as_ptr(),
-        text: c"Style of the current window in the status line.".as_ptr(),
+        separator: c!(","),
+        text: c!("Style of the current window in the status line."),
         ..unsafe { zeroed() }
     },
     options_table_entry {
-        name: c"window-status-format".as_ptr(),
+        name: c!("window-status-format"),
         type_: options_table_type::OPTIONS_TABLE_STRING,
         scope: OPTIONS_TABLE_WINDOW,
-        default_str: c"#I:#W#{?window_flags,#{window_flags}, }".as_ptr(),
-        text: c"Format of windows in the status line, except the current window.".as_ptr(),
+        default_str: c!("#I:#W#{?window_flags,#{window_flags}, }"),
+        text: c!("Format of windows in the status line, except the current window."),
         ..unsafe { zeroed() }
     },
     options_table_entry {
-        name: c"window-status-last-style".as_ptr(),
+        name: c!("window-status-last-style"),
         type_: options_table_type::OPTIONS_TABLE_STRING,
         scope: OPTIONS_TABLE_WINDOW,
-        default_str: c"default".as_ptr(),
+        default_str: c!("default"),
         flags: OPTIONS_TABLE_IS_STYLE,
-        separator: c",".as_ptr(),
-        text: c"Style of the last window in the status line.".as_ptr(),
+        separator: c!(","),
+        text: c!("Style of the last window in the status line."),
         ..unsafe { zeroed() }
     },
     options_table_entry {
-        name: c"window-status-separator".as_ptr(),
+        name: c!("window-status-separator"),
         type_: options_table_type::OPTIONS_TABLE_STRING,
         scope: OPTIONS_TABLE_WINDOW,
-        default_str: c" ".as_ptr(),
-        text: c"Separator between windows in the status line.".as_ptr(),
+        default_str: c!(" "),
+        text: c!("Separator between windows in the status line."),
         ..unsafe { zeroed() }
     },
     options_table_entry {
-        name: c"window-status-style".as_ptr(),
+        name: c!("window-status-style"),
         type_: options_table_type::OPTIONS_TABLE_STRING,
         scope: OPTIONS_TABLE_WINDOW,
-        default_str: c"default".as_ptr(),
+        default_str: c!("default"),
         flags: OPTIONS_TABLE_IS_STYLE,
-        separator: c",".as_ptr(),
-        text: c"Style of windows in the status line, except the current and last windows.".as_ptr(),
+        separator: c!(","),
+        text: c!("Style of windows in the status line, except the current and last windows."),
         ..unsafe { zeroed() }
     },
     options_table_entry {
-        name: c"wrap-search".as_ptr(),
+        name: c!("wrap-search"),
         type_: options_table_type::OPTIONS_TABLE_FLAG,
         scope: OPTIONS_TABLE_WINDOW,
         default_num: 1,
-        text: c"Whether searching in copy mode should wrap at the top or bottom.".as_ptr(),
+        text: c!("Whether searching in copy mode should wrap at the top or bottom."),
         ..unsafe { zeroed() }
     },
     options_table_entry {
-        name: c"xterm-keys".as_ptr(),
+        name: c!("xterm-keys"),
         type_: options_table_type::OPTIONS_TABLE_FLAG,
         scope: OPTIONS_TABLE_WINDOW,
         default_num: 1,
-        text: c"Whether xterm-style function key sequences should be sent. This option is no longer used.".as_ptr(),
+        text: c!(
+            "Whether xterm-style function key sequences should be sent. This option is no longer used."
+        ),
         ..unsafe { zeroed() }
     },
     /* Hook options. */
@@ -1469,5 +1519,8 @@ pub static mut options_table: [options_table_entry; 191] = [
     options_table_window_hook!(c"window-renamed", c""),
     options_table_window_hook!(c"window-resized", c""),
     options_table_hook!(c"window-unlinked", c""),
-    options_table_entry { name: null(), ..unsafe { zeroed() } },
+    options_table_entry {
+        name: null(),
+        ..unsafe { zeroed() }
+    },
 ];

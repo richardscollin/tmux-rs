@@ -17,7 +17,7 @@ use std::cmp::Ordering;
 
 use crate::*;
 
-use libc::{getpwuid, getuid};
+use crate::libc::{getpwuid, getuid};
 
 use crate::compat::{
     queue::tailq_foreach,
@@ -82,10 +82,10 @@ pub unsafe fn server_acl_display(item: *mut cmdq_item) {
                 continue;
             }
             let pw = getpwuid((*loop_).uid);
-            let name = if !pw.is_null() {
-                (*pw).pw_name
+            let name: *const u8 = if !pw.is_null() {
+                (*pw).pw_name.cast()
             } else {
-                c"unknown".as_ptr()
+                c!("unknown")
             };
             if (*loop_).flags == server_acl_user_flags::SERVER_ACL_READONLY {
                 cmdq_print!(item, "{} (R)", _s(name));

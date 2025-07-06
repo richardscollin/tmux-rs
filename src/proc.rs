@@ -13,7 +13,7 @@
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 use crate::*;
 
-use libc::{
+use crate::libc::{
     AF_UNIX, EAGAIN, PF_UNSPEC, SA_RESTART, SIG_DFL, SIG_IGN, SIGCHLD, SIGCONT, SIGHUP, SIGINT,
     SIGPIPE, SIGQUIT, SIGTERM, SIGTSTP, SIGTTIN, SIGTTOU, SIGUSR1, SIGUSR2, SIGWINCH, close, gid_t,
     sigaction, sigemptyset, socketpair, uname, utsname,
@@ -33,7 +33,7 @@ use crate::event_::{signal_add, signal_set};
 
 #[repr(C)]
 pub struct tmuxproc {
-    pub name: *const c_char,
+    pub name: *const u8,
     pub exit: i32,
 
     pub signalcb: Option<unsafe fn(i32)>,
@@ -452,7 +452,7 @@ pub unsafe fn proc_flush_peer(peer: *mut tmuxpeer) {
 
 pub unsafe fn proc_toggle_log(tp: *mut tmuxproc) {
     unsafe {
-        log_toggle(CStr::from_ptr((*tp).name));
+        log_toggle(CStr::from_ptr((*tp).name.cast::<c_char>()));
     }
 }
 

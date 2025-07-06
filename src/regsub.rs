@@ -11,17 +11,17 @@
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+use crate::*;
 
-use core::ffi::{c_char, c_int};
-use libc::{memcpy, regcomp, regex_t, regexec, regfree, regmatch_t, strlen};
+use crate::libc::{memcpy, regcomp, regex_t, regexec, regfree, regmatch_t, strlen};
+
+use core::ffi::c_int;
 use xmalloc::xrealloc_;
 
-use super::*;
-
 unsafe fn regsub_copy(
-    buf: *mut *mut c_char,
+    buf: *mut *mut u8,
     len: *mut isize,
-    text: *const c_char,
+    text: *const u8,
     start: usize,
     end: usize,
 ) {
@@ -34,23 +34,23 @@ unsafe fn regsub_copy(
 }
 
 pub unsafe fn regsub_expand(
-    buf: *mut *mut c_char,
+    buf: *mut *mut u8,
     len: *mut isize,
-    with: *const c_char,
-    text: *const c_char,
+    with: *const u8,
+    text: *const u8,
     m: *mut regmatch_t,
     n: c_uint,
 ) {
     unsafe {
-        let mut cp: *const c_char = null();
+        let mut cp: *const u8 = null();
         let mut i: u32 = 0;
 
         cp = with;
-        while *cp != b'\0' as c_char {
-            if *cp == b'\\' as c_char {
+        while *cp != b'\0' {
+            if *cp == b'\\' {
                 cp = cp.add(1);
                 if *cp >= b'0' as _ && *cp <= b'9' as _ {
-                    i = (*cp - b'0' as c_char) as u32;
+                    i = (*cp - b'0') as u32;
                     if i < n && (*m.add(i as _)).rm_so != (*m.add(i as _)).rm_eo {
                         regsub_copy(
                             buf,
@@ -73,11 +73,11 @@ pub unsafe fn regsub_expand(
 }
 
 pub unsafe fn regsub(
-    pattern: *const c_char,
-    with: *const c_char,
-    text: *const c_char,
+    pattern: *const u8,
+    with: *const u8,
+    text: *const u8,
     flags: c_int,
-) -> *mut c_char {
+) -> *mut u8 {
     unsafe {
         let mut r: regex_t = zeroed();
         let mut m: [regmatch_t; 10] = zeroed(); // TODO can use uninit
@@ -85,8 +85,8 @@ pub unsafe fn regsub(
         let mut empty = 0;
         let mut buf = null_mut();
 
-        if *text == b'\0' as c_char {
-            return xstrdup(c"".as_ptr()).cast().as_ptr();
+        if *text == b'\0' {
+            return xstrdup(c!("")).cast().as_ptr();
         }
         if regcomp(&raw mut r, pattern, flags) != 0 {
             return null_mut();

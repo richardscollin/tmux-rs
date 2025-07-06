@@ -11,10 +11,9 @@
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-
 use crate::*;
 
-use libc::{
+use crate::libc::{
     _IOLBF, AF_UNIX, CREAD, CS8, EAGAIN, ECHILD, ECONNREFUSED, EINTR, ENAMETOOLONG, ENOENT, HUPCL,
     ICRNL, IXANY, LOCK_EX, LOCK_NB, O_CREAT, O_WRONLY, ONLCR, OPOST, SA_RESTART, SIG_DFL, SIG_IGN,
     SIGCHLD, SIGCONT, SIGHUP, SIGTERM, SIGTSTP, SIGWINCH, SOCK_STREAM, STDERR_FILENO, STDIN_FILENO,
@@ -33,7 +32,7 @@ use crate::compat::{
 };
 
 unsafe extern "C" {
-    fn ttyname(fd: i32) -> *mut c_char;
+    fn ttyname(fd: i32) -> *mut u8;
 }
 
 pub static mut client_proc: *mut tmuxproc = null_mut();
@@ -66,19 +65,19 @@ pub static mut client_exitval: i32 = 0;
 
 static mut client_exittype: msgtype = msgtype::MSG_ZERO; // TODO
 
-static mut client_exitsession: *mut c_char = null_mut();
+static mut client_exitsession: *mut u8 = null_mut();
 
-static mut client_exitmessage: *mut c_char = null_mut();
+static mut client_exitmessage: *mut u8 = null_mut();
 
-static mut client_execshell: *mut c_char = null_mut();
+static mut client_execshell: *mut u8 = null_mut();
 
-static mut client_execcmd: *mut c_char = null_mut();
+static mut client_execcmd: *mut u8 = null_mut();
 
 static mut client_attached: i32 = 0;
 
 static mut client_files: client_files = rb_initializer();
 
-pub unsafe fn client_get_lock(lockfile: *mut c_char) -> i32 {
+pub unsafe fn client_get_lock(lockfile: *mut u8) -> i32 {
     unsafe {
         log_debug!("lock file is {}", _s(lockfile));
 
@@ -103,17 +102,13 @@ pub unsafe fn client_get_lock(lockfile: *mut c_char) -> i32 {
     }
 }
 
-pub unsafe fn client_connect(
-    base: *mut event_base,
-    path: *const c_char,
-    flags: client_flag,
-) -> i32 {
+pub unsafe fn client_connect(base: *mut event_base, path: *const u8, flags: client_flag) -> i32 {
     unsafe {
         let mut sa: sockaddr_un = zeroed();
         let mut fd = 0;
         let mut lockfd = -1;
         let mut locked: i32 = 0;
-        let mut lockfile: *mut c_char = null_mut();
+        let mut lockfile: *mut u8 = null_mut();
 
         sa.sun_family = AF_UNIX as libc::sa_family_t;
         let size = strlcpy(&raw mut sa.sun_path as _, path, size_of_val(&sa.sun_path));
@@ -197,8 +192,8 @@ pub unsafe fn client_connect(
     }
 }
 
-pub unsafe fn client_exit_message() -> *const c_char {
-    type msgbuf = [c_char; 256];
+pub unsafe fn client_exit_message() -> *const u8 {
+    type msgbuf = [u8; 256];
     static mut msg: msgbuf = [0; 256];
 
     match unsafe { client_exitreason } {
@@ -214,7 +209,7 @@ pub unsafe fn client_exit_message() -> *const c_char {
                     return &raw mut msg as _;
                 }
             }
-            c"detached".as_ptr()
+            c!("detached")
         }
         client_exitreason::CLIENT_EXIT_DETACHED_HUP => {
             unsafe {
@@ -229,15 +224,15 @@ pub unsafe fn client_exit_message() -> *const c_char {
                     return &raw mut msg as _;
                 }
             }
-            c"detached and SIGHUP".as_ptr()
+            c!("detached and SIGHUP")
         }
-        client_exitreason::CLIENT_EXIT_LOST_TTY => c"lost tty".as_ptr(),
-        client_exitreason::CLIENT_EXIT_TERMINATED => c"terminated".as_ptr(),
-        client_exitreason::CLIENT_EXIT_LOST_SERVER => c"server exited unexpectedly".as_ptr(),
-        client_exitreason::CLIENT_EXIT_EXITED => c"exited".as_ptr(),
-        client_exitreason::CLIENT_EXIT_SERVER_EXITED => c"server exited".as_ptr(),
+        client_exitreason::CLIENT_EXIT_LOST_TTY => c!("lost tty"),
+        client_exitreason::CLIENT_EXIT_TERMINATED => c!("terminated"),
+        client_exitreason::CLIENT_EXIT_LOST_SERVER => c!("server exited unexpectedly"),
+        client_exitreason::CLIENT_EXIT_EXITED => c!("exited"),
+        client_exitreason::CLIENT_EXIT_SERVER_EXITED => c!("server exited"),
         client_exitreason::CLIENT_EXIT_MESSAGE_PROVIDED => unsafe { client_exitmessage },
-        client_exitreason::CLIENT_EXIT_NONE => c"unknown reason".as_ptr(),
+        client_exitreason::CLIENT_EXIT_NONE => c!("unknown reason"),
     }
 }
 
@@ -253,23 +248,23 @@ unsafe fn client_exit() {
 pub unsafe extern "C-unwind" fn client_main(
     base: *mut event_base,
     argc: i32,
-    argv: *mut *mut c_char,
+    argv: *mut *mut u8,
     mut flags: client_flag,
     feat: i32,
 ) -> i32 {
     unsafe {
         let mut data: *mut msg_command = null_mut();
         let mut fd = 0;
-        let mut cwd: *const c_char = null_mut();
-        let mut ttynam: *const c_char = null_mut();
-        let mut termname: *const c_char = null_mut();
+        let mut cwd: *const u8 = null_mut();
+        let mut ttynam: *const u8 = null_mut();
+        let mut termname: *const u8 = null_mut();
         let msg: msgtype;
         let mut tio: termios = zeroed();
         let mut saved_tio: termios = zeroed();
         let mut linesize = 0;
-        let mut line: *mut c_char = null_mut();
-        let mut caps: *mut *mut c_char = null_mut();
-        let mut cause: *mut c_char = null_mut();
+        let mut line: *mut u8 = null_mut();
+        let mut caps: *mut *mut u8 = null_mut();
+        let mut cause: *mut u8 = null_mut();
         let mut ncaps: u32 = 0;
         let mut values: *mut args_value = null_mut();
 
@@ -345,26 +340,26 @@ pub unsafe extern "C-unwind" fn client_main(
                 cwd.is_null()
             })
         {
-            cwd = c"/".as_ptr();
+            cwd = c!("/");
         }
         ttynam = ttyname(STDIN_FILENO);
         if ttynam.is_null() {
-            ttynam = c"".as_ptr();
+            ttynam = c!("");
         }
-        termname = getenv(c"TERM".as_ptr());
+        termname = getenv(c!("TERM"));
         if termname.is_null() {
-            termname = c"".as_ptr();
+            termname = c!("");
         }
 
         /*
             // TODO no pledge
-            if pledge(c"stdio rpath wpath cpath unix sendfd proc exec tty".as_ptr(), null_mut()) != 0 {
-                fatal(c"pledge failed".as_ptr());
+            if pledge( c!("stdio rpath wpath cpath unix sendfd proc exec tty"), null_mut()) != 0 {
+                fatal( c!("pledge failed"));
             }
         */
 
         if isatty(STDIN_FILENO) != 0
-            && *termname != b'\0' as c_char
+            && *termname != b'\0' as u8
             && tty_term_read_list(
                 termname,
                 STDIN_FILENO,
@@ -476,7 +471,7 @@ pub unsafe extern "C-unwind" fn client_main(
             if (*&raw const client_flags).intersects(client_flag::CONTROL_WAITEXIT) {
                 setvbuf(stdin, null_mut(), _IOLBF, 0);
                 loop {
-                    let linelen = getline(&raw mut line, &raw mut linesize, stdin);
+                    let linelen = getline(&raw mut line as _, &raw mut linesize, stdin);
                     if linelen <= 1 {
                         break;
                     }
@@ -498,11 +493,11 @@ pub unsafe extern "C-unwind" fn client_main(
 }
 
 unsafe fn client_send_identify(
-    ttynam: *const c_char,
-    termname: *const c_char,
-    caps: *mut *mut c_char,
+    ttynam: *const u8,
+    termname: *const u8,
+    caps: *mut *mut u8,
     ncaps: u32,
-    cwd: *const c_char,
+    cwd: *const u8,
     mut feat: i32,
 ) {
     unsafe {
@@ -611,14 +606,14 @@ unsafe fn client_send_identify(
 }
 
 #[expect(clippy::deref_addrof)]
-unsafe fn client_exec(shell: *mut c_char, shellcmd: *mut c_char) {
+unsafe fn client_exec(shell: *mut u8, shellcmd: *mut u8) {
     unsafe {
         log_debug!("shell {}, command {}", _s(shell), _s(shellcmd));
         let argv0 = shell_argv0(
             shell,
             (*&raw const client_flags).intersects(client_flag::LOGIN) as c_int,
         );
-        setenv(c"SHELL".as_ptr(), shell, 1);
+        setenv(c!("SHELL"), shell, 1);
 
         proc_clear_signals(client_proc, 1);
 
@@ -627,7 +622,13 @@ unsafe fn client_exec(shell: *mut c_char, shellcmd: *mut c_char) {
         setblocking(STDERR_FILENO, 1);
         closefrom(STDERR_FILENO + 1);
 
-        execl(shell, argv0, c"-c".as_ptr(), shellcmd, null_mut::<c_void>());
+        execl(
+            shell.cast(),
+            argv0.cast(),
+            c"-c".as_ptr(),
+            shellcmd,
+            null_mut::<c_void>(),
+        );
         fatal("execl failed");
     }
 }
@@ -638,7 +639,7 @@ unsafe fn client_signal(sig: i32) {
         let mut status: i32 = 0;
         let mut pid: pid_t = 0;
 
-        log_debug!("{}: {}", "client_signal", _s(strsignal(sig)));
+        log_debug!("{}: {}", "client_signal", _s(strsignal(sig).cast::<u8>()));
         if sig == SIGCHLD {
             loop {
                 pid = waitpid(WAIT_ANY, &raw mut status, WNOHANG);
@@ -692,7 +693,7 @@ unsafe fn client_signal(sig: i32) {
 
 unsafe fn client_file_check_cb(
     _c: *mut client,
-    _path: *mut c_char,
+    _path: *mut u8,
     _error: i32,
     _closed: i32,
     _buffer: *mut evbuffer,
@@ -724,7 +725,7 @@ unsafe fn client_dispatch(imsg: *mut imsg, _arg: *mut c_void) {
     }
 }
 
-unsafe fn client_dispatch_exit_message(mut data: *const c_char, mut datalen: usize) {
+unsafe fn client_dispatch_exit_message(mut data: *const u8, mut datalen: usize) {
     unsafe {
         let mut retval = 0;
         const size_of_retval: usize = size_of::<i32>();
@@ -744,7 +745,7 @@ unsafe fn client_dispatch_exit_message(mut data: *const c_char, mut datalen: usi
 
             client_exitmessage = xmalloc(datalen).cast().as_ptr();
             memcpy(client_exitmessage as _, data as _, datalen);
-            *client_exitmessage.add(datalen - 1) = b'\0' as c_char;
+            *client_exitmessage.add(datalen - 1) = b'\0' as u8;
 
             client_exitreason = client_exitreason::CLIENT_EXIT_MESSAGE_PROVIDED;
         }
@@ -760,13 +761,13 @@ unsafe fn client_dispatch_wait(imsg: *mut imsg) {
         // TODO no pledge
         if pledge_applied == 0 {
             if pledge("stdio rpath wpath cpath unix proc exec tty", null_mut()) != 0 {
-                fatal(c"pledge failed".as_ptr());
+                fatal( c!("pledge failed"));
             }
             pledge_applied = 1;
         }
         */
 
-        let data: *mut c_char = (*imsg).data as _;
+        let data: *mut u8 = (*imsg).data as _;
         let datalen = (*imsg).hdr.len as usize - IMSG_HEADER_SIZE;
 
         let msg_hdr_type: msgtype = (*imsg).hdr.type_.try_into().expect("invalid enum variant"); // TODO
@@ -814,7 +815,7 @@ unsafe fn client_dispatch_wait(imsg: *mut imsg) {
                 );
             }
             msgtype::MSG_SHELL => {
-                if datalen == 0 || *data.add(datalen - 1) != b'\0' as c_char {
+                if datalen == 0 || *data.add(datalen - 1) != b'\0' as u8 {
                     fatalx("bad MSG_SHELL string");
                 }
 
@@ -862,7 +863,7 @@ unsafe fn client_dispatch_wait(imsg: *mut imsg) {
 unsafe fn client_dispatch_attached(imsg: *mut imsg) {
     unsafe {
         let mut sigact: sigaction = zeroed();
-        let data: *mut c_char = (*imsg).data as _;
+        let data: *mut u8 = (*imsg).data as _;
         let datalen = (*imsg).hdr.len as usize - IMSG_HEADER_SIZE;
 
         let mht: msgtype = (*imsg).hdr.type_.try_into().expect("invalid enum variant"); // TODO
@@ -884,7 +885,7 @@ unsafe fn client_dispatch_attached(imsg: *mut imsg) {
                 );
             }
             msgtype::MSG_DETACH | msgtype::MSG_DETACHKILL => {
-                if datalen == 0 || *data.add(datalen - 1) != b'\0' as c_char {
+                if datalen == 0 || *data.add(datalen - 1) != b'\0' as u8 {
                     fatalx("bad MSG_DETACH string");
                 }
 
@@ -899,7 +900,7 @@ unsafe fn client_dispatch_attached(imsg: *mut imsg) {
             }
             msgtype::MSG_EXEC => {
                 if datalen == 0
-                    || *data.add(datalen - 1) != b'\0' as c_char
+                    || *data.add(datalen - 1) != b'\0' as u8
                     || strlen(data) + 1 == datalen
                 {
                     fatalx("bad MSG_EXEC string");
@@ -949,11 +950,11 @@ unsafe fn client_dispatch_attached(imsg: *mut imsg) {
                 kill(std::process::id() as i32, SIGTSTP);
             }
             msgtype::MSG_LOCK => {
-                if datalen == 0 || *data.add(datalen - 1) != b'\0' as c_char {
+                if datalen == 0 || *data.add(datalen - 1) != b'\0' as u8 {
                     fatalx("bad MSG_LOCK string");
                 }
 
-                system(data);
+                system(data.cast());
                 proc_send(client_peer, msgtype::MSG_UNLOCK, -1, null_mut(), 0);
             }
             _ => (),

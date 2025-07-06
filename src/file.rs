@@ -18,7 +18,7 @@ use crate::compat::{
     tree::{rb_find, rb_foreach, rb_insert, rb_remove},
 };
 use crate::errno;
-use libc::{
+use crate::libc::{
     BUFSIZ, E2BIG, EBADF, EINVAL, EIO, ENOMEM, O_APPEND, O_CREAT, O_NONBLOCK, O_RDONLY, O_WRONLY,
     STDERR_FILENO, STDIN_FILENO, STDOUT_FILENO, close, dup, fclose, ferror, fopen, fread, fwrite,
     memcpy, open, strcmp,
@@ -28,9 +28,9 @@ use std::sync::atomic;
 
 pub static file_next_stream: atomic::AtomicI32 = atomic::AtomicI32::new(3);
 
-pub unsafe fn file_get_path(c: *mut client, file: *const c_char) -> NonNull<c_char> {
+pub unsafe fn file_get_path(c: *mut client, file: *const u8) -> NonNull<u8> {
     unsafe {
-        if *file == b'/' as c_char {
+        if *file == b'/' as u8 {
             xstrdup(file)
         } else {
             NonNull::new(format_nul!(
@@ -201,7 +201,7 @@ pub unsafe fn file_vprint(c: *mut client, args: std::fmt::Arguments) {
         let mut cf = rb_find(&raw mut (*c).files, &raw mut find);
         if cf.is_null() {
             cf = file_create_with_client(c, 1, None, null_mut());
-            (*cf).path = xstrdup(c"-".as_ptr()).as_ptr();
+            (*cf).path = xstrdup(c!("-")).as_ptr();
 
             // TODO
             evbuffer_add_vprintf((*cf).buffer, args);
@@ -238,7 +238,7 @@ pub unsafe fn file_print_buffer(c: *mut client, data: *mut c_void, size: usize) 
         let mut cf = rb_find(&raw mut (*c).files, &raw mut find);
         if cf.is_null() {
             cf = file_create_with_client(c, 1, None, null_mut());
-            (*cf).path = xstrdup(c"-".as_ptr()).as_ptr();
+            (*cf).path = xstrdup(c!("-")).as_ptr();
 
             evbuffer_add((*cf).buffer, data, size);
 
@@ -279,7 +279,7 @@ pub unsafe fn file_error_(c: *mut client, args: std::fmt::Arguments) {
         cf = rb_find(&raw mut (*c).files, &raw mut find);
         if cf.is_null() {
             cf = file_create_with_client(c, 2, None, null_mut());
-            (*cf).path = xstrdup(c"-".as_ptr()).as_ptr();
+            (*cf).path = xstrdup(c!("-")).as_ptr();
 
             evbuffer_add_vprintf((*cf).buffer, args);
 
@@ -302,7 +302,7 @@ pub unsafe fn file_error_(c: *mut client, args: std::fmt::Arguments) {
 
 pub unsafe fn file_write(
     c: *mut client,
-    path: *const c_char,
+    path: *const u8,
     flags: c_int,
     bdata: *const c_void,
     bsize: usize,
@@ -316,7 +316,7 @@ pub unsafe fn file_write(
         let mut fd = -1;
         let stream: u32 = file_next_stream.fetch_add(1, atomic::Ordering::Relaxed) as u32;
         let mut f: *mut FILE = null_mut();
-        let mut mode: *const c_char = null();
+        let mut mode: *const u8 = null();
 
         'done: {
             'skip: {
@@ -340,9 +340,9 @@ pub unsafe fn file_write(
 
                 if c.is_null() || (*c).flags.intersects(client_flag::ATTACHED) {
                     if flags & O_APPEND != 0 {
-                        mode = c"ab".as_ptr();
+                        mode = c!("ab");
                     } else {
-                        mode = c"wb".as_ptr();
+                        mode = c!("wb");
                     }
                     f = fopen((*cf).path, mode);
                     if f.is_null() {
@@ -392,7 +392,7 @@ pub unsafe fn file_write(
 
 pub unsafe fn file_read(
     c: *mut client,
-    path: *const c_char,
+    path: *const u8,
     cb: client_file_cb,
     cbdata: *mut c_void,
 ) -> *mut client_file {
@@ -404,7 +404,7 @@ pub unsafe fn file_read(
         let stream: u32 = file_next_stream.fetch_add(1, atomic::Ordering::Relaxed) as u32;
         let mut f: *mut FILE = null_mut();
         let mut size: usize = 0;
-        let mut buffer = MaybeUninit::<[c_char; BUFSIZ as usize]>::uninit();
+        let mut buffer = MaybeUninit::<[u8; BUFSIZ as usize]>::uninit();
         'done: {
             'skip: {
                 if streq_(path, "-") {
@@ -426,7 +426,7 @@ pub unsafe fn file_read(
                 (*cf).path = file_get_path(c, path).as_ptr();
 
                 if c.is_null() || (*c).flags.intersects(client_flag::ATTACHED) {
-                    f = fopen((*cf).path, c"rb".as_ptr());
+                    f = fopen((*cf).path, c!("rb"));
                     if f.is_null() {
                         (*cf).error = errno!();
                         break 'done;
@@ -641,7 +641,7 @@ pub unsafe fn file_write_open(
     unsafe {
         let msg = (*imsg).data as *mut msg_write_open;
         let msglen = (*imsg).hdr.len as usize - IMSG_HEADER_SIZE;
-        let mut path: *const c_char = null();
+        let mut path: *const u8 = null();
         let mut find: client_file = zeroed();
         let flags = O_NONBLOCK | O_WRONLY | O_CREAT;
         let mut error: i32 = 0;
@@ -650,7 +650,7 @@ pub unsafe fn file_write_open(
                 fatalx("bad MSG_WRITE_OPEN size");
             }
             if msglen == size_of::<msg_write_open>() {
-                path = c"-".as_ptr();
+                path = c!("-");
             } else {
                 path = msg.add(1).cast();
             }
@@ -857,7 +857,7 @@ pub unsafe fn file_read_open(
                 fatalx("bad MSG_READ_OPEN size");
             }
             if msglen == size_of::<msg_read_done>() {
-                path = c"-".as_ptr();
+                path = c!("-");
             } else {
                 path = msg.add(1).cast();
             }
@@ -876,7 +876,7 @@ pub unsafe fn file_read_open(
 
             (*cf).fd = -1;
             if (*msg).fd == -1 {
-                (*cf).fd = open(path, flags);
+                (*cf).fd = open(path, flags, 0);
             } else if allow_streams != 0 {
                 if (*msg).fd != STDIN_FILENO {
                     errno!() = EBADF;

@@ -15,8 +15,8 @@ use crate::*;
 
 use crate::compat::tree::rb_foreach;
 
-const LIST_WINDOWS_TEMPLATE: &CStr = c"#{window_index}: #{window_name}#{window_raw_flags} (#{window_panes} panes) [#{window_width}x#{window_height}] [layout #{window_layout}] #{window_id}#{?window_active, (active),}";
-const LIST_WINDOWS_WITH_SESSION_TEMPLATE: &CStr = c"#{session_name}:#{window_index}: #{window_name}#{window_raw_flags} (#{window_panes} panes) [#{window_width}x#{window_height}] ";
+const LIST_WINDOWS_TEMPLATE: *const u8 = c!("#{window_index}: #{window_name}#{window_raw_flags} (#{window_panes} panes) [#{window_width}x#{window_height}] [layout #{window_layout}] #{window_id}#{?window_active, (active),}");
+const LIST_WINDOWS_WITH_SESSION_TEMPLATE: *const u8 = c!("#{session_name}:#{window_index}: #{window_name}#{window_raw_flags} (#{window_panes} panes) [#{window_width}x#{window_height}] ");
 
 pub static cmd_list_windows_entry: cmd_entry = cmd_entry {
     name: SyncCharPtr::new(c"list-windows"),
@@ -69,10 +69,10 @@ unsafe fn cmd_list_windows_session(
         if template.is_null() {
             match type_ {
                 0 => {
-                    template = LIST_WINDOWS_TEMPLATE.as_ptr();
+                    template = LIST_WINDOWS_TEMPLATE;
                 }
                 1 => {
-                    template = LIST_WINDOWS_WITH_SESSION_TEMPLATE.as_ptr();
+                    template = LIST_WINDOWS_WITH_SESSION_TEMPLATE;
                 }
                 _ => (),
             }
@@ -86,7 +86,7 @@ unsafe fn cmd_list_windows_session(
                 FORMAT_NONE,
                 format_flags::empty(),
             );
-            format_add!(ft, c"line".as_ptr(), "{n}");
+            format_add!(ft, c!("line"), "{n}");
             format_defaults(ft, null_mut(), Some(s), Some(wl), None);
 
             if !filter.is_null() {

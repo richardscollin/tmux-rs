@@ -34,22 +34,22 @@ unsafe fn cmd_find_window_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
         let target = cmdq_get_target(item);
         let wp = (*target).wp;
         let s = args_string(args, 0);
-        let mut suffix = c"".as_ptr();
-        let mut star = c"*".as_ptr();
+        let mut suffix = c!("");
+        let mut star = c!("*");
 
         let mut c = args_has_(args, 'C');
         let mut n = args_has_(args, 'N');
         let mut t = args_has_(args, 'T');
 
         if args_has(args, b'r') != 0 {
-            star = c"".as_ptr();
+            star = c!("");
         }
         if args_has(args, b'r') != 0 && args_has(args, b'i') != 0 {
-            suffix = c"/ri".as_ptr();
+            suffix = c!("/ri");
         } else if args_has(args, b'r') != 0 {
-            suffix = c"/r".as_ptr();
+            suffix = c!("/r");
         } else if args_has(args, b'i') != 0 {
-            suffix = c"/i".as_ptr();
+            suffix = c!("/i");
         }
 
         if !c && !n && !t {

@@ -11,13 +11,11 @@
 // called by a name other than "ssh" or "Secure Shell".
 
 use ::core::{
-    ffi::{CStr, c_char, c_int, c_void},
+    ffi::{CStr, c_int, c_void},
     mem::MaybeUninit,
     num::NonZero,
     ptr::NonNull,
 };
-
-use ::libc::{calloc, malloc, strdup, strndup};
 
 use crate::{
     compat::{reallocarray, recallocarray},
@@ -27,13 +25,14 @@ use crate::{
 pub extern "C" fn xmalloc(size: usize) -> NonNull<c_void> {
     debug_assert!(size != 0, "xmalloc: zero size");
 
-    NonNull::new(unsafe { malloc(size) }).unwrap_or_else(|| panic!("xmalloc: allocating {size}"))
+    NonNull::new(unsafe { libc::malloc(size) })
+        .unwrap_or_else(|| panic!("xmalloc: allocating {size}"))
 }
 
 // note this function definition is safe
 #[inline]
 fn malloc_(size: NonZero<usize>) -> *mut c_void {
-    unsafe { malloc(size.get()) }
+    unsafe { ::libc::malloc(size.get()) }
 }
 
 pub fn xmalloc_<T>() -> NonNull<T> {
@@ -58,15 +57,10 @@ pub fn xmalloc__<'a, T>() -> &'a mut MaybeUninit<T> {
     unsafe { &mut *ptr.cast().as_ptr() }
 }
 
-#[inline]
-pub fn calloc_(nmemb: usize, size: usize) -> *mut c_void {
-    unsafe { calloc(nmemb, size) }
-}
-
 pub extern "C" fn xcalloc(nmemb: usize, size: usize) -> NonNull<c_void> {
     debug_assert!(size != 0 && nmemb != 0, "xcalloc: zero size");
 
-    NonNull::new(calloc_(nmemb, size))
+    NonNull::new(unsafe { ::libc::calloc(nmemb, size) })
         .unwrap_or_else(|| panic!("xcalloc: allocating {nmemb} * {size}"))
 }
 
@@ -83,7 +77,7 @@ pub fn xcalloc1__<'a, T>() -> &'a mut MaybeUninit<T> {
     let size = size_of::<T>();
     debug_assert!(size != 0, "xcalloc: zero size");
 
-    let ptr: *mut T = unsafe { calloc(1, size).cast() };
+    let ptr: *mut T = unsafe { ::libc::calloc(1, size).cast() };
     if ptr.is_null() {
         panic!("bad xcalloc1_: out of memory");
     }
@@ -165,24 +159,21 @@ pub unsafe fn xrecallocarray__<T>(ptr: *mut T, oldnmemb: usize, nmemb: usize) ->
         .cast()
 }
 
-pub unsafe fn xstrdup(str: *const c_char) -> NonNull<c_char> {
-    NonNull::new(unsafe { strdup(str) }).unwrap()
+pub unsafe fn xstrdup(str: *const u8) -> NonNull<u8> {
+    NonNull::new(unsafe { crate::libc::strdup(str) }).unwrap()
 }
 
-pub fn xstrdup_(str: &CStr) -> NonNull<c_char> {
-    unsafe { xstrdup(str.as_ptr()) }
+pub fn xstrdup_(str: &CStr) -> NonNull<u8> {
+    unsafe { xstrdup(str.as_ptr().cast()) }
 }
 
 pub fn xstrdup__<'a>(str: &CStr) -> &'a CStr {
-    unsafe { CStr::from_ptr(xstrdup(str.as_ptr()).as_ptr()) }
+    unsafe { CStr::from_ptr(xstrdup(str.as_ptr().cast()).as_ptr().cast()) }
 }
 
-pub unsafe fn xstrndup(str: *const c_char, maxlen: usize) -> NonNull<c_char> {
-    NonNull::new(unsafe { strndup(str, maxlen) }).unwrap()
+pub unsafe fn xstrndup(str: *const u8, maxlen: usize) -> NonNull<u8> {
+    NonNull::new(unsafe { crate::libc::strndup(str, maxlen) }).unwrap()
 }
-
-// #[allow(improper_ctypes_definitions, reason = "must be extern C to use c variadics")]
-// pub unsafe fn xasprintf__(args: std::fmt::Arguments<'_>) -> NonNull<c_char> {}
 
 macro_rules! format_nul {
    ($fmt:literal $(, $args:expr)* $(,)?) => {
@@ -190,10 +181,10 @@ macro_rules! format_nul {
     };
 }
 pub(crate) use format_nul;
-pub(crate) fn format_nul_(args: std::fmt::Arguments) -> *mut c_char {
+pub(crate) fn format_nul_(args: std::fmt::Arguments) -> *mut u8 {
     let mut s = args.to_string();
     s.push('\0');
-    s.leak().as_mut_ptr().cast()
+    s.leak().as_mut_ptr()
 }
 
 macro_rules! xsnprintf_ {
@@ -203,19 +194,19 @@ macro_rules! xsnprintf_ {
 }
 pub(crate) use xsnprintf_;
 pub(crate) unsafe fn xsnprintf__(
-    out: *mut c_char,
+    out: *mut u8,
     len: usize,
     args: std::fmt::Arguments,
 ) -> std::io::Result<usize> {
     use std::io::Write;
 
     struct WriteAdapter {
-        buffer: *mut c_char,
+        buffer: *mut u8,
         length: usize,
         written: usize,
     }
     impl WriteAdapter {
-        fn new(buffer: *mut c_char, length: usize) -> Self {
+        fn new(buffer: *mut u8, length: usize) -> Self {
             Self {
                 buffer,
                 length,
@@ -253,16 +244,4 @@ pub(crate) unsafe fn xsnprintf__(
     }
 
     Ok(adapter.written)
-}
-
-pub unsafe fn free_<T>(p: *mut T) {
-    unsafe { libc::free(p as *mut c_void) }
-}
-
-pub unsafe fn memcpy_<T>(dest: *mut T, src: *const T, n: usize) -> *mut T {
-    unsafe { libc::memcpy(dest as *mut c_void, src as *const c_void, n).cast() }
-}
-
-pub unsafe fn memcpy__<T>(dest: *mut T, src: *const T) -> *mut T {
-    unsafe { libc::memcpy(dest as *mut c_void, src as *const c_void, size_of::<T>()).cast() }
 }

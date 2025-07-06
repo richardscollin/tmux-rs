@@ -14,7 +14,7 @@
 
 use crate::*;
 
-const DISPLAY_MESSAGE_TEMPLATE: &CStr = c"[#{session_name}] #{window_index}:#{window_name}, current pane #{pane_index} - (%H:%M %d-%b-%y)";
+const DISPLAY_MESSAGE_TEMPLATE: *const u8 = c!("[#{session_name}] #{window_index}:#{window_name}, current pane #{pane_index} - (%H:%M %d-%b-%y)");
 
 pub static cmd_display_message_entry: cmd_entry = cmd_entry {
     name: SyncCharPtr::new(c"display-message"),
@@ -34,7 +34,7 @@ pub static cmd_display_message_entry: cmd_entry = cmd_entry {
     source: cmd_entry_flag::zeroed(),
 };
 
-unsafe fn cmd_display_message_each(key: *const c_char, value: *const c_char, arg: *mut c_void) {
+unsafe fn cmd_display_message_each(key: *const u8, value: *const u8, arg: *mut c_void) {
     let item = arg as *mut cmdq_item;
 
     unsafe {
@@ -50,7 +50,7 @@ unsafe fn cmd_display_message_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd
         let s = (*target).s;
         let wl = (*target).wl;
         let wp = (*target).wp;
-        let mut cause: *mut c_char = null_mut();
+        let mut cause: *mut u8 = null_mut();
         let mut delay = -1;
         let nflag = args_has(args, b'N');
         let count = args_count(args);
@@ -95,7 +95,7 @@ unsafe fn cmd_display_message_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd
             args_get_(args, 'F')
         };
         if template.is_null() {
-            template = DISPLAY_MESSAGE_TEMPLATE.as_ptr();
+            template = DISPLAY_MESSAGE_TEMPLATE;
         }
 
         /*

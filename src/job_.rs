@@ -11,10 +11,9 @@
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-
 use crate::*;
 
-use libc::{
+use crate::libc::{
     AF_UNIX, O_RDWR, PF_UNSPEC, SHUT_WR, SIG_BLOCK, SIG_SETMASK, SIGCONT, SIGTERM, SIGTTIN,
     SIGTTOU, SOCK_STREAM, STDERR_FILENO, STDIN_FILENO, STDOUT_FILENO, TIOCSWINSZ, WIFSTOPPED,
     WSTOPSIG, chdir, close, dup2, execl, execvp, fork, ioctl, kill, killpg, memset, open, setenv,
@@ -49,9 +48,9 @@ pub struct job {
 
     pub flags: job_flag,
 
-    pub cmd: *mut c_char,
+    pub cmd: *mut u8,
     pub pid: pid_t,
-    pub tty: [c_char; TTY_NAME_MAX],
+    pub tty: [u8; TTY_NAME_MAX],
     pub status: i32,
 
     pub fd: c_int,
@@ -74,12 +73,12 @@ type joblist = list_head<job>;
 static mut all_jobs: joblist = list_head_initializer();
 
 pub unsafe fn job_run(
-    cmd: *const c_char,
+    cmd: *const u8,
     argc: c_int,
-    argv: *mut *mut c_char,
+    argv: *mut *mut u8,
     e: *mut environ,
     s: *mut session,
-    cwd: *const c_char,
+    cwd: *const u8,
     updatecb: job_update_cb,
     completecb: job_complete_cb,
     freecb: job_free_cb,
@@ -96,15 +95,15 @@ pub unsafe fn job_run(
         let nullfd: i32;
         let mut out: [i32; 2] = [0; 2];
         let mut master: i32 = 0;
-        let mut home: *mut c_char = null_mut();
-        let mut shell: *const c_char = null_mut();
+        let mut home: *mut u8 = null_mut();
+        let mut shell: *const u8 = null_mut();
         let mut set = MaybeUninit::<sigset_t>::uninit();
         let mut oldset = MaybeUninit::<sigset_t>::uninit();
         let mut ws = MaybeUninit::<winsize>::uninit();
-        let mut argvp: *mut *mut c_char = null_mut();
+        let mut argvp: *mut *mut u8 = null_mut();
         // let mut tty = MaybeUninit::<[c_char; TTY_NAME_MAX]>::uninit();
         let mut tty = [0i8; 64];
-        let mut argv0: *mut c_char = null_mut();
+        let mut argv0: *mut u8 = null_mut();
         let mut oo: *mut options = null_mut();
 
         'fail: {
@@ -138,7 +137,7 @@ pub unsafe fn job_run(
                 pid = fdforkpty(
                     ptm_fd,
                     &raw mut master,
-                    (&raw mut tty) as *mut i8,
+                    (&raw mut tty) as *mut u8,
                     null_mut(),
                     ws.as_mut_ptr(),
                 );
@@ -154,7 +153,7 @@ pub unsafe fn job_run(
                 log_debug!(
                     "{} cwd={} shell={}",
                     __func__,
-                    _s(if cwd.is_null() { c"".as_ptr() } else { cwd }),
+                    _s(if cwd.is_null() { c!("") } else { cwd }),
                     _s(shell),
                 );
             } else {
@@ -162,7 +161,7 @@ pub unsafe fn job_run(
                     "{} cmd={} cwd={} shell={}",
                     __func__,
                     _s(cmd),
-                    _s(if cwd.is_null() { c"".as_ptr() } else { cwd }),
+                    _s(if cwd.is_null() { c!("") } else { cwd }),
                     _s(shell),
                 );
             }
@@ -184,7 +183,7 @@ pub unsafe fn job_run(
                             home = find_home();
                             home.is_null()
                         }) || chdir(home) != 0)
-                        && chdir(c"/".as_ptr()) != 0
+                        && chdir(c!("/")) != 0
                     {
                         fatal("chdir failed");
                     }
@@ -204,7 +203,7 @@ pub unsafe fn job_run(
                         }
                         close(out[0]);
 
-                        nullfd = open(_PATH_DEVNULL, O_RDWR);
+                        nullfd = open(_PATH_DEVNULL, O_RDWR, 0);
                         if nullfd == -1 {
                             fatal("open failed");
                         }
@@ -218,12 +217,12 @@ pub unsafe fn job_run(
                     closefrom(STDERR_FILENO + 1);
 
                     if !cmd.is_null() {
-                        setenv(c"SHELL".as_ptr(), shell, 1);
-                        execl(shell, argv0, c"-c".as_ptr(), cmd, null_mut::<c_void>());
+                        setenv(c!("SHELL"), shell, 1);
+                        execl(shell.cast(), argv0.cast(), c!("-c"), cmd, null_mut::<c_void>());
                         fatal("execl failed");
                     } else {
                         argvp = cmd_copy_argv(argc, argv);
-                        execvp(*argvp, argvp as *const *const i8);
+                        execvp((*argvp).cast(), argvp as *const *const i8);
                         fatal("execvp failed");
                     }
                 }
@@ -285,12 +284,7 @@ pub unsafe fn job_run(
     }
 }
 
-pub unsafe fn job_transfer(
-    job: *mut job,
-    pid: *mut pid_t,
-    tty: *mut c_char,
-    ttylen: usize,
-) -> c_int {
+pub unsafe fn job_transfer(job: *mut job, pid: *mut pid_t, tty: *mut u8, ttylen: usize) -> c_int {
     unsafe {
         let fd = (*job).fd;
 
@@ -364,7 +358,7 @@ pub unsafe fn job_resize(job: *mut job, sx: c_uint, sy: c_uint) {
     }
 }
 
-unsafe extern "C" fn job_read_callback(bufev: *mut bufferevent, data: *mut libc::c_void) {
+unsafe extern "C" fn job_read_callback(bufev: *mut bufferevent, data: *mut c_void) {
     let job = data as *mut job;
 
     unsafe {
@@ -373,7 +367,7 @@ unsafe extern "C" fn job_read_callback(bufev: *mut bufferevent, data: *mut libc:
         }
     }
 }
-unsafe extern "C" fn job_write_callback(bufev: *mut bufferevent, data: *mut libc::c_void) {
+unsafe extern "C" fn job_write_callback(bufev: *mut bufferevent, data: *mut c_void) {
     unsafe {
         let job = data as *mut job;
         let len = EVBUFFER_LENGTH(EVBUFFER_OUTPUT((*job).event));
@@ -396,7 +390,7 @@ unsafe extern "C" fn job_write_callback(bufev: *mut bufferevent, data: *mut libc
 unsafe extern "C" fn job_error_callback(
     bufev: *mut bufferevent,
     events: libc::c_short,
-    data: *mut libc::c_void,
+    data: *mut c_void,
 ) {
     let job: *mut job = data.cast();
 

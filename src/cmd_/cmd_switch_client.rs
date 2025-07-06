@@ -11,10 +11,9 @@
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-
-use libc::strcspn;
-
 use crate::*;
+
+use crate::libc::strcspn;
 
 pub static cmd_switch_client_entry: cmd_entry = cmd_entry {
     name: SyncCharPtr::new(c"switch-client"),
@@ -39,7 +38,7 @@ unsafe fn cmd_switch_client_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
         let mut flags: i32 = 0;
         let tc = cmdq_get_target_client(item);
 
-        if !tflag.is_null() && *tflag.add(strcspn(tflag, c":.%".as_ptr())) != b'\0' as c_char {
+        if !tflag.is_null() && *tflag.add(strcspn(tflag, c!(":.%"))) != b'\0' as u8 {
             type_ = cmd_find_type::CMD_FIND_PANE;
             flags = 0;
         } else {

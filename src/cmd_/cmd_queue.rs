@@ -11,7 +11,6 @@
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-
 use crate::*;
 
 use crate::cfg_::cfg_add_cause;
@@ -28,7 +27,7 @@ macro_rules! cmdq_get_callback {
     };
 }
 pub(crate) use cmdq_get_callback;
-use libc::{getpwuid, getuid, toupper};
+use crate::libc::{getpwuid, getuid, toupper};
 
 /* Command queue flags. */
 pub const CMDQ_FIRED: i32 = 0x1;
@@ -46,7 +45,7 @@ pub enum cmdq_type {
 crate::compat::impl_tailq_entry!(cmdq_item, entry, tailq_entry<cmdq_item>);
 #[repr(C)]
 pub struct cmdq_item {
-    pub name: *mut c_char,
+    pub name: *mut u8,
     pub queue: *mut cmdq_list,
     pub next: *mut cmdq_item,
 
@@ -94,12 +93,12 @@ pub struct cmdq_list {
     pub list: cmdq_item_list,
 }
 
-pub unsafe fn cmdq_name(c: *const client) -> *const c_char {
-    static mut buf: [c_char; 256] = [0; 256];
-    let s = &raw mut buf as *mut i8;
+pub unsafe fn cmdq_name(c: *const client) -> *const u8 {
+    static mut buf: [u8; 256] = [0; 256];
+    let s = &raw mut buf as *mut u8;
 
     if c.is_null() {
-        return c"<global>".as_ptr();
+        return c!("<global>");
     }
 
     unsafe {
@@ -145,7 +144,7 @@ pub unsafe fn cmdq_free(queue: *mut cmdq_list) {
     }
 }
 
-pub unsafe fn cmdq_get_name(item: *mut cmdq_item) -> *mut c_char {
+pub unsafe fn cmdq_get_name(item: *mut cmdq_item) -> *mut u8 {
     unsafe { (*item).name }
 }
 
@@ -251,11 +250,7 @@ macro_rules! cmdq_add_format {
 }
 pub(crate) use cmdq_add_format;
 
-pub unsafe fn cmdq_add_format_(
-    state: *mut cmdq_state,
-    key: *const c_char,
-    args: std::fmt::Arguments,
-) {
+pub unsafe fn cmdq_add_format_(state: *mut cmdq_state, key: *const u8, args: std::fmt::Arguments) {
     unsafe {
         let value = args.to_string();
 
@@ -281,7 +276,7 @@ pub unsafe fn cmdq_merge_formats(item: *mut cmdq_item, ft: *mut format_tree) {
     unsafe {
         if !(*item).cmd.is_null() {
             let entry = cmd_get_entry((*item).cmd);
-            format_add!(ft, c"command".as_ptr(), "{}", _s(entry.name.as_ptr()));
+            format_add!(ft, c!("command"), "{}", _s(entry.name.as_ptr()));
         }
 
         if !(*(*item).state).formats.is_null() {
@@ -379,8 +374,8 @@ pub unsafe fn cmdq_insert_hook_(
         let mut ae: *mut args_entry = null_mut();
         let mut flag: c_uchar = 0;
         const sizeof_tmp: usize = 32;
-        let mut buf: [c_char; 32] = zeroed();
-        let tmp = &raw mut buf as *mut c_char;
+        let mut buf: [u8; 32] = zeroed();
+        let tmp = &raw mut buf as *mut u8;
 
         if (*(*item).state)
             .flags
@@ -412,10 +407,10 @@ pub unsafe fn cmdq_insert_hook_(
             &raw mut (*state).event,
             cmdq_state_flags::CMDQ_STATE_NOHOOKS,
         );
-        cmdq_add_format!(new_state, c"hook".as_ptr(), "{}", name);
+        cmdq_add_format!(new_state, c!("hook"), "{}", name);
 
         let arguments = args_print(args);
-        cmdq_add_format!(new_state, c"hook_arguments".as_ptr(), "{}", _s(arguments),);
+        cmdq_add_format!(new_state, c!("hook_arguments"), "{}", _s(arguments),);
         free_(arguments);
 
         for i in 0..args_count(args) {
@@ -594,10 +589,10 @@ pub unsafe fn cmdq_add_message(item: *mut cmdq_item) {
                 if !pw.is_null() {
                     user = format_nul!("[{}]", _s((*pw).pw_name));
                 } else {
-                    user = xstrdup(c"[unknown]".as_ptr()).as_ptr();
+                    user = xstrdup(c!("[unknown]")).as_ptr();
                 }
             } else {
-                user = xstrdup(c"".as_ptr()).as_ptr();
+                user = xstrdup(c!("")).as_ptr();
             }
             if !(*c).session.is_null() && (*state).event.key != KEYC_NONE {
                 let key = key_string_lookup_key((*state).event.key, 0);
@@ -643,7 +638,7 @@ pub unsafe fn cmdq_fire_command(item: *mut cmdq_item) -> cmd_retval {
             flags = (*state)
                 .flags
                 .intersects(cmdq_state_flags::CMDQ_STATE_CONTROL);
-            cmdq_guard(item, c"begin".as_ptr(), flags);
+            cmdq_guard(item, c!("begin"), flags);
 
             if (*item).client.is_null() {
                 (*item).client = cmd_find_client(item, null_mut(), 1);
@@ -715,15 +710,15 @@ pub unsafe fn cmdq_fire_command(item: *mut cmdq_item) -> cmd_retval {
                 fsp,
                 "command-error"
             );
-            cmdq_guard(item, c"error".as_ptr(), flags);
+            cmdq_guard(item, c!("error"), flags);
         } else {
-            cmdq_guard(item, c"end".as_ptr(), flags);
+            cmdq_guard(item, c!("end"), flags);
         }
         retval
     }
 }
 
-pub unsafe fn cmdq_get_callback1(name: &str, cb: cmdq_cb, data: *mut c_char) -> NonNull<cmdq_item> {
+pub unsafe fn cmdq_get_callback1(name: &str, cb: cmdq_cb, data: *mut u8) -> NonNull<cmdq_item> {
     let item = xcalloc_::<cmdq_item>(1).as_ptr();
 
     unsafe {
@@ -741,7 +736,7 @@ pub unsafe fn cmdq_get_callback1(name: &str, cb: cmdq_cb, data: *mut c_char) -> 
 }
 
 pub unsafe fn cmdq_error_callback(item: *mut cmdq_item, data: *mut c_void) -> cmd_retval {
-    let error = data as *mut c_char;
+    let error = data as *mut u8;
 
     unsafe {
         cmdq_error!(item, "{}", _s(error));
@@ -751,7 +746,7 @@ pub unsafe fn cmdq_error_callback(item: *mut cmdq_item, data: *mut c_void) -> cm
     cmd_retval::CMD_RETURN_NORMAL
 }
 
-pub unsafe fn cmdq_get_error(error: *const c_char) -> NonNull<cmdq_item> {
+pub unsafe fn cmdq_get_error(error: *const u8) -> NonNull<cmdq_item> {
     unsafe { cmdq_get_callback!(cmdq_error_callback, xstrdup(error).as_ptr()) }
 }
 
@@ -850,7 +845,7 @@ pub unsafe fn cmdq_running(c: *mut client) -> *mut cmdq_item {
     }
 }
 
-pub unsafe fn cmdq_guard(item: *mut cmdq_item, guard: *const c_char, flags: bool) {
+pub unsafe fn cmdq_guard(item: *mut cmdq_item, guard: *const u8, flags: bool) {
     unsafe {
         let c = (*item).client;
         let t = (*item).time;

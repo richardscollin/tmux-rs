@@ -28,7 +28,9 @@ pub static cmd_list_sessions_entry: cmd_entry = cmd_entry {
     target: cmd_entry_flag::zeroed(),
 };
 
-const LIST_SESSIONS_TEMPLATE: *const i8 = c"#{session_name}: #{session_windows} windows (created #{t:session_created})#{?session_grouped, (group ,}#{session_group}#{?session_grouped,),}#{?session_attached, (attached),}".as_ptr();
+const LIST_SESSIONS_TEMPLATE: *const u8 = c!(
+    "#{session_name}: #{session_windows} windows (created #{t:session_created})#{?session_grouped, (group ,}#{session_group}#{?session_grouped,),}#{?session_attached, (attached),}"
+);
 
 unsafe fn cmd_list_sessions_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retval {
     unsafe {
@@ -47,7 +49,7 @@ unsafe fn cmd_list_sessions_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
                 FORMAT_NONE,
                 format_flags::empty(),
             );
-            format_add!(ft, c"line".as_ptr(), "{n}");
+            format_add!(ft, c!("line"), "{n}");
             format_defaults(ft, null_mut(), Some(s), None, None);
 
             let mut flag = 0;

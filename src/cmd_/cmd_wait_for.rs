@@ -43,7 +43,7 @@ pub struct wait_item {
 
 #[repr(C)]
 pub struct wait_channel {
-    pub name: *mut c_char,
+    pub name: *mut u8,
     pub locked: i32,
     pub woken: i32,
 
@@ -69,7 +69,7 @@ pub fn wait_channel_cmp(wc1: &wait_channel, wc2: &wait_channel) -> Ordering {
     unsafe { i32_to_ordering(libc::strcmp(wc1.name, wc2.name)) }
 }
 
-pub unsafe fn cmd_wait_for_add(name: *const c_char) -> *mut wait_channel {
+pub unsafe fn cmd_wait_for_add(name: *const u8) -> *mut wait_channel {
     let wc: *mut wait_channel = xmalloc_().as_ptr();
     unsafe {
         (*wc).name = xstrdup(name).as_ptr();
@@ -112,7 +112,7 @@ pub unsafe fn cmd_wait_for_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
         // struct wait_channel *wc, find;
 
         let mut find: wait_channel = zeroed();
-        find.name = name as *mut c_char; // TODO casting away const
+        find.name = name as *mut u8; // TODO casting away const
         let wc = rb_find(&raw mut wait_channels, &raw mut find);
 
         if args_has_(args, 'S') {
@@ -131,7 +131,7 @@ pub unsafe fn cmd_wait_for_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
 
 pub unsafe fn cmd_wait_for_signal(
     _item: *mut cmdq_item,
-    name: *const c_char,
+    name: *const u8,
     mut wc: *mut wait_channel,
 ) -> cmd_retval {
     unsafe {
@@ -161,7 +161,7 @@ pub unsafe fn cmd_wait_for_signal(
 
 pub unsafe fn cmd_wait_for_wait(
     item: *mut cmdq_item,
-    name: *const c_char,
+    name: *const u8,
     mut wc: *mut wait_channel,
 ) -> cmd_retval {
     unsafe {
@@ -192,7 +192,7 @@ pub unsafe fn cmd_wait_for_wait(
 
 pub unsafe fn cmd_wait_for_lock(
     item: *mut cmdq_item,
-    name: *const c_char,
+    name: *const u8,
     mut wc: *mut wait_channel,
 ) -> cmd_retval {
     unsafe {
@@ -218,7 +218,7 @@ pub unsafe fn cmd_wait_for_lock(
 
 pub unsafe fn cmd_wait_for_unlock(
     item: *mut cmdq_item,
-    name: *const c_char,
+    name: *const u8,
     wc: *mut wait_channel,
 ) -> cmd_retval {
     unsafe {

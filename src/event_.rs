@@ -1,8 +1,10 @@
 use ::core::{
-    ffi::{c_char, c_int, c_short, c_uchar, c_void},
+    ffi::{c_int, c_short, c_void},
     option::Option,
 };
 use ::libc::timeval;
+
+type c_char = u8;
 
 macro_rules! evbuffer_add_printf {
    ($buf:expr, $fmt:literal $(, $args:expr)* $(,)?) => {
@@ -89,7 +91,7 @@ pub unsafe fn EVBUFFER_LENGTH(x: *mut evbuffer) -> usize {
 
 #[allow(non_snake_case)]
 #[inline]
-pub unsafe fn EVBUFFER_DATA(x: *mut evbuffer) -> *mut c_uchar {
+pub unsafe fn EVBUFFER_DATA(x: *mut evbuffer) -> *mut u8 {
     unsafe { evbuffer_pullup(x, -1) }
 }
 
@@ -286,7 +288,7 @@ unsafe extern "C" {
         eol_style: evbuffer_eol_style,
     ) -> *mut c_char;
     pub fn evbuffer_drain(buf: *mut evbuffer, len: usize) -> c_int;
-    pub fn evbuffer_pullup(buf: *mut evbuffer, size: isize) -> *mut ::core::ffi::c_uchar;
+    pub fn evbuffer_pullup(buf: *mut evbuffer, size: isize) -> *mut u8;
     pub fn bufferevent_free(bufev: *mut bufferevent);
     pub fn bufferevent_write(bufev: *mut bufferevent, data: *const c_void, size: usize) -> c_int;
     pub fn bufferevent_write_buffer(bufev: *mut bufferevent, buf: *mut evbuffer) -> c_int;

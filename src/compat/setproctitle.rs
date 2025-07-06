@@ -14,9 +14,9 @@
 use core::ffi::c_char;
 
 // a custom version of setproctitle which just supports our usage:
-// setproctitle(c"%s (%s)".as_ptr(), name, socket_path);
+// setproctitle( c!("%s (%s)"), name, socket_path);
 #[cfg(target_os = "linux")]
-pub unsafe fn setproctitle_(_fmt: *const c_char, name: *const c_char, socket_path: *const c_char) {
+pub unsafe fn setproctitle_(_fmt: *const c_char, name: *const c_char, socket_path: *const u8) {
     unsafe {
         let mut name: [c_char; 16] = [0; 16];
 
@@ -31,7 +31,7 @@ pub unsafe fn setproctitle_(_fmt: *const c_char, name: *const c_char, socket_pat
         if used >= name.len() as i32 {
             let cp = libc::strrchr(&raw const name as *const c_char, b' ' as i32);
             if !cp.is_null() {
-                *cp = b'\0' as i8;
+                *cp = b'\0' as c_char;
             }
         }
         libc::prctl(libc::PR_SET_NAME, &raw const name as *const c_char);

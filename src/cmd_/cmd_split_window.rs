@@ -13,7 +13,7 @@
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 use crate::*;
 
-const SPLIT_WINDOW_TEMPLATE: &CStr = c"#{session_name}:#{window_index}.#{pane_index}";
+const SPLIT_WINDOW_TEMPLATE: *const u8 = c!("#{session_name}:#{window_index}.#{pane_index}");
 
 pub static cmd_split_window_entry: cmd_entry = cmd_entry {
     name: SyncCharPtr::new(c"split-window"),
@@ -177,7 +177,7 @@ unsafe fn cmd_split_window_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
         if args_has_(args, 'P') {
             let mut template = args_get_(args, 'F');
             if template.is_null() {
-                template = SPLIT_WINDOW_TEMPLATE.as_ptr();
+                template = SPLIT_WINDOW_TEMPLATE;
             }
             let cp = format_single(item, template, tc, s, wl, new_wp);
             cmdq_print!(item, "{}", _s(cp));

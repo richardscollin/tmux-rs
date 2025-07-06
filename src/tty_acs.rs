@@ -194,7 +194,7 @@ pub unsafe extern "C" fn tty_acs_cmp(key: *const c_void, value: *const c_void) -
 pub unsafe extern "C" fn tty_acs_reverse_cmp(key: *const c_void, value: *const c_void) -> i32 {
     unsafe {
         let entry = value as *const tty_acs_reverse_entry;
-        let test = key as *const c_char;
+        let test = key as *const u8;
 
         libc::strcmp(test, (*entry).string.as_ptr().cast())
     }
@@ -223,7 +223,7 @@ pub unsafe fn tty_acs_needed(tty: *const tty) -> i32 {
 
 /* Retrieve ACS to output as UTF-8. */
 
-pub unsafe fn tty_acs_get(tty: *mut tty, ch: u8) -> *const c_char {
+pub unsafe fn tty_acs_get(tty: *mut tty, ch: u8) -> *const u8 {
     unsafe {
         // const struct tty_acs_entry	*entry;
 
@@ -253,7 +253,7 @@ pub unsafe fn tty_acs_get(tty: *mut tty, ch: u8) -> *const c_char {
 
 /* Reverse UTF-8 into ACS. */
 
-pub unsafe fn tty_acs_reverse_get(tty: *const tty, s: *const c_char, slen: usize) -> i32 {
+pub unsafe fn tty_acs_reverse_get(tty: *const tty, s: *const u8, slen: usize) -> i32 {
     unsafe {
         let table;
         let items;

@@ -124,7 +124,7 @@ unsafe fn cmd_set_buffer_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retv
             return cmd_retval::CMD_RETURN_ERROR;
         }
         if args_has_(args, 'w') && !tc.is_null() {
-            tty_set_selection(&raw mut (*tc).tty, c"".as_ptr(), bufdata, bufsize);
+            tty_set_selection(&raw mut (*tc).tty, c!(""), bufdata, bufsize);
         }
 
         cmd_retval::CMD_RETURN_NORMAL

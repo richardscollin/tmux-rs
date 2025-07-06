@@ -1,14 +1,8 @@
-use core::ffi::c_char;
 use core::mem::MaybeUninit;
 
 // https://www.rfc-editor.org/rfc/rfc4648
 
-pub unsafe fn b64_ntop(
-    src: *const u8,
-    srclength: usize,
-    target: *mut c_char,
-    targsize: usize,
-) -> i32 {
+pub unsafe fn b64_ntop(src: *const u8, srclength: usize, target: *mut u8, targsize: usize) -> i32 {
     let src = unsafe { std::slice::from_raw_parts(src, srclength) };
     let dst = unsafe { std::slice::from_raw_parts_mut(target.cast::<MaybeUninit<u8>>(), targsize) };
 
@@ -22,8 +16,8 @@ pub unsafe fn b64_ntop(
 /// converts characters, four at a time, starting at (or after)
 /// src from base - 64 numbers into three 8 bit bytes in the target area.
 /// it returns the number of data bytes stored at the target, or -1 on error.
-pub unsafe fn b64_pton(src: *const c_char, target: *mut u8, targsize: usize) -> i32 {
-    let srclength: usize = unsafe { libc::strlen(src) };
+pub unsafe fn b64_pton(src: *const u8, target: *mut u8, targsize: usize) -> i32 {
+    let srclength: usize = unsafe { crate::libc::strlen(src) };
     let src = unsafe { std::slice::from_raw_parts(src.cast::<u8>(), srclength) };
     let dst = unsafe { std::slice::from_raw_parts_mut(target.cast::<MaybeUninit<u8>>(), targsize) };
 
@@ -145,12 +139,12 @@ mod tests {
 
     #[test]
     fn test_b64_pton_valid() {
-        let input = c"TWFu";
+        let input = crate::c!("TWFu");
         let mut output = [0u8; 4];
         let expected = [b'M', b'a', b'n', 0];
 
         unsafe {
-            let result = b64_pton(input.as_ptr(), output.as_mut_ptr(), output.len());
+            let result = b64_pton(input, output.as_mut_ptr(), output.len());
             assert_eq!(&output, &expected);
             assert_eq!(result, 3);
         }
@@ -158,23 +152,23 @@ mod tests {
 
     #[test]
     fn test_b64_pton_invalid() {
-        let input = c"****";
+        let input = crate::c!("****");
         let mut output = [0u8; 3];
 
         unsafe {
-            let result = b64_pton(input.as_ptr(), output.as_mut_ptr(), output.len());
+            let result = b64_pton(input, output.as_mut_ptr(), output.len());
             assert_eq!(result, -1);
         }
     }
 
     #[test]
     fn test_b64_pton_partial() {
-        let input = c"TWE=";
+        let input = crate::c!("TWE=");
         let mut output = [0u8; 2];
         // TODO currently not supporting missing =, but we could
 
         unsafe {
-            let result = b64_pton(input.as_ptr(), output.as_mut_ptr(), output.len());
+            let result = b64_pton(input, output.as_mut_ptr(), output.len());
             assert_eq!(result, -1);
         }
     }

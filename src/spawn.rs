@@ -20,7 +20,7 @@ use crate::compat::{
     queue::{tailq_first, tailq_foreach, tailq_remove},
     tailq_insert_head,
 };
-use libc::{
+use crate::libc::{
     _exit, SIG_BLOCK, SIG_SETMASK, STDERR_FILENO, STDIN_FILENO, TCSANOW, VERASE, chdir, close,
     execl, execvp, sigfillset, sigprocmask, strrchr, tcgetattr, tcsetattr,
 };
@@ -28,13 +28,13 @@ use libc::{
 #[cfg(feature = "utempter")]
 use crate::utempter::utempter_add_record;
 
-pub unsafe fn spawn_log(from: *const c_char, sc: *mut spawn_context) {
+pub unsafe fn spawn_log(from: *const u8, sc: *mut spawn_context) {
     unsafe {
         let s = (*sc).s;
         let wl = (*sc).wl;
         let wp0 = (*sc).wp0;
         let name = cmdq_get_name((*sc).item);
-        type tmp_type = [c_char; 128];
+        type tmp_type = [u8; 128];
         let mut tmp = MaybeUninit::<tmp_type>::uninit();
 
         log_debug!("{}: {}, flags={:#x}", _s(from), _s(name), (*sc).flags);
@@ -72,14 +72,14 @@ pub unsafe fn spawn_log(from: *const c_char, sc: *mut spawn_context) {
             "{}: s=${} {} idx={}",
             _s(from),
             (*s).id,
-            _s(tmp.as_ptr().cast()),
+            _s(tmp.as_ptr().cast::<i8>()),
             (*sc).idx
         );
         log_debug!(
             "{}: name={}",
             _s(from),
             _s(if (*sc).name.is_null() {
-                c"none".as_ptr()
+                c!("none")
             } else {
                 (*sc).name
             }),
@@ -87,8 +87,8 @@ pub unsafe fn spawn_log(from: *const c_char, sc: *mut spawn_context) {
     }
 }
 
-pub unsafe fn spawn_window(sc: *mut spawn_context, cause: *mut *mut c_char) -> *mut winlink {
-    let __func__ = c"spawn_window".as_ptr();
+pub unsafe fn spawn_window(sc: *mut spawn_context, cause: *mut *mut u8) -> *mut winlink {
+    let __func__ = c!("spawn_window");
     unsafe {
         let item = (*sc).item;
         let c = cmdq_get_client(item);
@@ -219,7 +219,7 @@ pub unsafe fn spawn_window(sc: *mut spawn_context, cause: *mut *mut c_char) -> *
             free_((*w).name);
             if !(*sc).name.is_null() {
                 (*w).name = format_single(item, (*sc).name, c, s, null_mut(), null_mut());
-                options_set_number((*w).options, c"automatic-rename".as_ptr(), 0);
+                options_set_number((*w).options, c!("automatic-rename"), 0);
             } else {
                 (*w).name = default_window_name(w);
             }
@@ -240,8 +240,8 @@ pub unsafe fn spawn_window(sc: *mut spawn_context, cause: *mut *mut c_char) -> *
     }
 }
 
-pub unsafe fn spawn_pane(sc: *mut spawn_context, cause: *mut *mut c_char) -> *mut window_pane {
-    let __func__ = c"spawn_pane".as_ptr();
+pub unsafe fn spawn_pane(sc: *mut spawn_context, cause: *mut *mut u8) -> *mut window_pane {
+    let __func__ = c!("spawn_pane");
     unsafe {
         let item = (*sc).item;
         let target = cmdq_get_target(item);
@@ -251,14 +251,14 @@ pub unsafe fn spawn_pane(sc: *mut spawn_context, cause: *mut *mut c_char) -> *mu
         let mut new_wp: *mut window_pane = null_mut();
         let mut child: *mut environ = null_mut();
         let mut ee: *mut environ_entry = null_mut();
-        let mut argv: *mut *mut c_char = null_mut();
-        let mut cp: *mut c_char = null_mut();
-        let mut argvp: *mut *mut c_char = null_mut();
-        let mut argv0: *mut c_char = null_mut();
-        let mut cwd: *mut c_char = null_mut();
-        let mut new_cwd: *mut c_char = null_mut();
-        let mut cmd: *const c_char = null();
-        let mut tmp: *const c_char = null();
+        let mut argv: *mut *mut u8 = null_mut();
+        let mut cp: *mut u8 = null_mut();
+        let mut argvp: *mut *mut u8 = null_mut();
+        let mut argv0: *mut u8 = null_mut();
+        let mut cwd: *mut u8 = null_mut();
+        let mut new_cwd: *mut u8 = null_mut();
+        let mut cmd: *const u8 = null();
+        let mut tmp: *const u8 = null();
         let mut argc = 0;
         let mut idx: u32 = 0;
         let mut now: libc::termios = zeroed();
@@ -332,9 +332,9 @@ pub unsafe fn spawn_pane(sc: *mut spawn_context, cause: *mut *mut c_char) -> *mu
              */
             if (*sc).argc == 0 && (!(*sc).flags & SPAWN_RESPAWN != 0) {
                 cmd = options_get_string_((*s).options, c"default-command");
-                if !cmd.is_null() && *cmd != b'\0' as c_char {
+                if !cmd.is_null() && *cmd != b'\0' as u8 {
                     argc = 1;
-                    argv = &raw mut cmd as *mut *mut c_char;
+                    argv = &raw mut cmd as *mut *mut u8;
                 } else {
                     argc = 0;
                     argv = null_mut();
@@ -363,7 +363,7 @@ pub unsafe fn spawn_pane(sc: *mut spawn_context, cause: *mut *mut c_char) -> *mu
             if !(*sc).environ.is_null() {
                 environ_copy((*sc).environ, child);
             }
-            environ_set!(child, c"TMUX_PANE".as_ptr(), 0, "%{}", (*new_wp).id,);
+            environ_set!(child, c!("TMUX_PANE"), 0, "%{}", (*new_wp).id,);
 
             /*
              * Then the PATH environment variable. The session one is replaced from
@@ -372,19 +372,13 @@ pub unsafe fn spawn_pane(sc: *mut spawn_context, cause: *mut *mut c_char) -> *mu
              */
             if !c.is_null() && (*c).session.is_null() {
                 /* only unattached clients */
-                ee = environ_find((*c).environ, c"PATH".as_ptr());
+                ee = environ_find((*c).environ, c!("PATH"));
                 if !ee.is_null() {
-                    environ_set!(
-                        child,
-                        c"PATH".as_ptr(),
-                        0,
-                        "{}",
-                        _s(transmute_ptr((*ee).value))
-                    );
+                    environ_set!(child, c!("PATH"), 0, "{}", _s(transmute_ptr((*ee).value)));
                 }
             }
-            if environ_find(child, c"PATH".as_ptr()).is_null() {
-                environ_set!(child, c"PATH".as_ptr(), 0, "{}", _s(_PATH_DEFPATH));
+            if environ_find(child, c!("PATH")).is_null() {
+                environ_set!(child, c!("PATH"), 0, "{}", _s(_PATH_DEFPATH));
             }
 
             /* Then the shell. If respawning, use the old one. */
@@ -396,7 +390,7 @@ pub unsafe fn spawn_pane(sc: *mut spawn_context, cause: *mut *mut c_char) -> *mu
                 free_((*new_wp).shell);
                 (*new_wp).shell = xstrdup(tmp).as_ptr();
             }
-            environ_set!(child, c"SHELL".as_ptr(), 0, "{}", _s((*new_wp).shell));
+            environ_set!(child, c!("SHELL"), 0, "{}", _s((*new_wp).shell));
 
             /* Log the arguments we are going to use. */
             log_debug!("{}: shell={}", _s(__func__), _s((*new_wp).shell));
@@ -474,15 +468,15 @@ pub unsafe fn spawn_pane(sc: *mut spawn_context, cause: *mut *mut c_char) -> *mu
              * fails.
              */
             if chdir((*new_wp).cwd) == 0 {
-                environ_set!(child, c"PWD".as_ptr(), 0, "{}", _s((*new_wp).cwd));
+                environ_set!(child, c!("PWD"), 0, "{}", _s((*new_wp).cwd));
             } else if ({
                 tmp = find_home();
                 !tmp.is_null()
             }) && chdir(tmp) == 0
             {
-                environ_set!(child, c"PWD".as_ptr(), 0, "{}", _s(tmp));
-            } else if chdir(c"/".as_ptr()) == 0 {
-                environ_set!(child, c"PWD".as_ptr(), 0, "/");
+                environ_set!(child, c!("PWD"), 0, "{}", _s(tmp));
+            } else if chdir(c!("/")) == 0 {
+                environ_set!(child, c!("PWD"), 0, "/");
             } else {
                 fatal("chdir failed");
             }
@@ -524,7 +518,7 @@ pub unsafe fn spawn_pane(sc: *mut spawn_context, cause: *mut *mut c_char) -> *mu
              */
             if (*new_wp).argc != 0 && (*new_wp).argc != 1 {
                 argvp = cmd_copy_argv((*new_wp).argc, (*new_wp).argv);
-                execvp(*argvp, argvp.cast());
+                execvp((*argvp).cast(), argvp.cast());
                 _exit(1);
             }
 
@@ -535,26 +529,26 @@ pub unsafe fn spawn_pane(sc: *mut spawn_context, cause: *mut *mut c_char) -> *mu
             cp = strrchr((*new_wp).shell, b'/' as i32);
             if (*new_wp).argc == 1 {
                 tmp = *(*new_wp).argv;
-                argv0 = if !cp.is_null() && *cp.add(1) != b'\0' as c_char {
+                argv0 = if !cp.is_null() && *cp.add(1) != b'\0' as u8 {
                     format_nul!("{}", _s(cp.add(1)))
                 } else {
                     format_nul!("{}", _s((*new_wp).shell))
                 };
                 execl(
-                    (*new_wp).shell,
-                    argv0,
-                    c"-c".as_ptr(),
+                    (*new_wp).shell.cast(),
+                    argv0.cast(),
+                    c!("-c"),
                     tmp,
-                    null_mut::<c_char>(),
+                    null_mut::<u8>(),
                 );
                 _exit(1);
             }
-            argv0 = if !cp.is_null() && *cp.add(1) != b'\0' as c_char {
+            argv0 = if !cp.is_null() && *cp.add(1) != b'\0' as u8 {
                 format_nul!("-{}", _s(cp.add(1)))
             } else {
                 format_nul!("-{}", _s((*new_wp).shell))
             };
-            execl((*new_wp).shell, argv0, null_mut::<c_char>());
+            execl((*new_wp).shell.cast(), argv0.cast(), null_mut::<u8>());
             _exit(1);
         }
 

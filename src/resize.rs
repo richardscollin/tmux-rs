@@ -11,10 +11,9 @@
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-
 use crate::*;
 
-use libc::sscanf;
+use crate::libc::sscanf;
 
 use crate::compat::{queue::tailq_foreach, tree::rb_foreach};
 
@@ -409,7 +408,7 @@ pub unsafe fn default_window_size(
             ) == 0
             {
                 let value = options_get_string_((*s).options, c"default-size");
-                if sscanf(value, c"%ux%u".as_ptr(), sx, sy) != 2 {
+                if sscanf(value.cast(), c"%ux%u".as_ptr(), sx, sy) != 2 {
                     *sx = 80;
                     *sy = 24;
                 }

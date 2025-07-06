@@ -54,7 +54,7 @@ pub fn log_get_level() -> i32 {
     log_level.load(DEFAULT_ORDERING)
 }
 
-pub fn log_open(name: &CStr) {
+pub fn log_open(name: &str) {
     if log_level.load(DEFAULT_ORDERING) == 0 {
         return;
     }
@@ -66,7 +66,7 @@ pub fn log_open(name: &CStr) {
         .write(true)
         .append(true)
         .create(true)
-        .open(format!("tmux-{}-{}.log", name.to_str().unwrap(), pid))
+        .open(format!("tmux-{name}-{pid}.log"))
     else {
         return;
     };
@@ -75,7 +75,7 @@ pub fn log_open(name: &CStr) {
     unsafe { event_set_log_callback(Some(log_event_cb)) };
 }
 
-pub fn log_toggle(name: &CStr) {
+pub fn log_toggle(name: &str) {
     if log_level.fetch_xor(1, DEFAULT_ORDERING) == 0 {
         log_open(name);
         log_debug!("log opened");

@@ -20,7 +20,7 @@ use crate::libc::{SIGTERM, kill, pid_t};
 
 use crate::{args_parse, cmd, cmd_entry, cmd_flag, cmd_get_entry, cmd_retval, cmdq_item, *};
 
-pub static cmd_kill_server_entry: cmd_entry = cmd_entry {
+pub static CMD_KILL_SERVER_ENTRY: cmd_entry = cmd_entry {
     name: SyncCharPtr::new(c"kill-server"),
     alias: SyncCharPtr::null(),
 
@@ -33,7 +33,7 @@ pub static cmd_kill_server_entry: cmd_entry = cmd_entry {
     target: cmd_entry_flag::zeroed(),
 };
 
-pub static cmd_start_server_entry: cmd_entry = cmd_entry {
+pub static CMD_START_SERVER_ENTRY: cmd_entry = cmd_entry {
     name: SyncCharPtr::new(c"start-server"),
     alias: SyncCharPtr::new(c"start"),
     args: args_parse::new(c"", 0, 0, None),
@@ -46,7 +46,7 @@ pub static cmd_start_server_entry: cmd_entry = cmd_entry {
 
 unsafe fn cmd_kill_server_exec(self_: *mut cmd, _: *mut cmdq_item) -> cmd_retval {
     unsafe {
-        if std::ptr::eq(cmd_get_entry(self_), &cmd_kill_server_entry) {
+        if std::ptr::eq(cmd_get_entry(self_), &CMD_KILL_SERVER_ENTRY) {
             kill(std::process::id() as pid_t, SIGTERM);
         }
     }

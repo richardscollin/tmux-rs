@@ -18,7 +18,7 @@ use crate::compat::queue::{
     tailq_last, tailq_next, tailq_prev, tailq_remove,
 };
 
-pub static cmd_rotate_window_entry: cmd_entry = cmd_entry {
+pub static CMD_ROTATE_WINDOW_ENTRY: cmd_entry = cmd_entry {
     name: SyncCharPtr::new(c"rotate-window"),
     alias: SyncCharPtr::new(c"rotatew"),
 

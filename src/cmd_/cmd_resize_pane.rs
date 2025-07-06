@@ -15,7 +15,7 @@ use crate::*;
 
 use crate::compat::queue::tailq_empty;
 
-pub static cmd_resize_pane_entry: cmd_entry = cmd_entry {
+pub static CMD_RESIZE_PANE_ENTRY: cmd_entry = cmd_entry {
     name: SyncCharPtr::new(c"resize-pane"),
     alias: SyncCharPtr::new(c"resizep"),
 
@@ -166,9 +166,9 @@ unsafe fn cmd_resize_pane_mouse_update(c: *mut client, m: *mut mouse_event) {
         let mut ly: u32 = 0;
         let mut x: u32 = 0;
         let mut lx: u32 = 0;
-        const offsets: [[c_int; 2]; 5] = [[0, 0], [0, 1], [1, 0], [0, -1], [-1, 0]];
+        const OFFSETS: [[c_int; 2]; 5] = [[0, 0], [0, 1], [1, 0], [0, -1], [-1, 0]];
         let mut ncells: u32 = 0;
-        let mut cells: [*mut layout_cell; offsets.len()] = zeroed();
+        let mut cells: [*mut layout_cell; OFFSETS.len()] = zeroed();
         let mut resizes: u32 = 0;
 
         let wl: *mut winlink = transmute_ptr(cmd_mouse_window(m, null_mut()));
@@ -193,7 +193,7 @@ unsafe fn cmd_resize_pane_mouse_update(c: *mut client, m: *mut mouse_event) {
             ly = ((*m).statusat - 1) as u32;
         }
 
-        for offset in offsets {
+        for offset in OFFSETS {
             let mut lc = layout_search_by_border(
                 (*w).layout_root,
                 (lx as i32 + offset[0]).max(0) as u32,

@@ -20,7 +20,7 @@ use crate::libc::{
 
 use crate::compat::closefrom;
 
-pub static cmd_pipe_pane_entry: cmd_entry = cmd_entry {
+pub static CMD_PIPE_PANE_ENTRY: cmd_entry = cmd_entry {
     name: SyncCharPtr::new(c"pipe-pane"),
     alias: SyncCharPtr::new(c"pipep"),
 
@@ -122,7 +122,7 @@ pub unsafe fn cmd_pipe_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
                 cmd_retval::CMD_RETURN_ERROR
             }
             0 => {
-                proc_clear_signals(server_proc, 1);
+                proc_clear_signals(SERVER_PROC, 1);
                 sigprocmask(SIG_SETMASK, &oldset, null_mut());
                 close(pipe_fd[0]);
 

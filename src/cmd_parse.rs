@@ -1066,7 +1066,7 @@ unsafe fn yylex_token_variable(
     unsafe {
         let mut namelen: usize = 0;
         let mut name: [u8; 1024] = [0; 1024];
-        const sizeof_name: usize = 1024;
+        const SIZEOF_NAME: usize = 1024;
         let mut brackets = 0;
 
         let mut ch = yylex_getc(ps);
@@ -1098,7 +1098,7 @@ unsafe fn yylex_token_variable(
                 yyerror!(ps, "invalid environment variable");
                 return false;
             }
-            if namelen == sizeof_name - 2 {
+            if namelen == SIZEOF_NAME - 2 {
                 yyerror!(ps, "environment variable is too long");
                 return false;
             }
@@ -1107,7 +1107,7 @@ unsafe fn yylex_token_variable(
         }
         name[namelen] = b'\0';
 
-        let mut envent = environ_find(global_environ, (&raw const name).cast());
+        let mut envent = environ_find(GLOBAL_ENVIRON, (&raw const name).cast());
         if !envent.is_null() && (*envent).value.is_some() {
             let value = (*envent).value;
             // log_debug("%s: %s -> %s", __func__, name, value);
@@ -1127,7 +1127,7 @@ unsafe fn yylex_token_tilde(ps: &mut cmd_parse_state, buf: *mut *mut u8, len: *m
         let mut home = null();
         let mut namelen: usize = 0;
         let mut name: [u8; 1024] = [0; 1024];
-        const sizeof_name: usize = 1024;
+        const SIZEOF_NAME: usize = 1024;
 
         loop {
             let ch = yylex_getc(ps);
@@ -1135,7 +1135,7 @@ unsafe fn yylex_token_tilde(ps: &mut cmd_parse_state, buf: *mut *mut u8, len: *m
                 yylex_ungetc(ps, ch);
                 break;
             }
-            if namelen == sizeof_name - 2 {
+            if namelen == SIZEOF_NAME - 2 {
                 yyerror!(ps, "user name is too long");
                 return false;
             }
@@ -1145,7 +1145,7 @@ unsafe fn yylex_token_tilde(ps: &mut cmd_parse_state, buf: *mut *mut u8, len: *m
         name[namelen] = b'\0';
 
         if name[0] == b'\0' {
-            let envent = environ_find(global_environ, c!("HOME"));
+            let envent = environ_find(GLOBAL_ENVIRON, c!("HOME"));
             if (!envent.is_null() && (*(*envent).value.unwrap().as_ptr()) != b'\0') {
                 home = transmute_ptr((*envent).value);
             } else if let Some(pw) = NonNull::new(libc::getpwuid(libc::getuid())) {
@@ -1307,7 +1307,7 @@ unsafe fn yylex_token(ps: &mut cmd_parse_state, mut ch: i32) -> *mut u8 {
 unsafe fn yylex_token_escape(ps: &mut cmd_parse_state, buf: *mut *mut u8, len: *mut usize) -> bool {
     unsafe {
         #[cfg(not(target_os = "macos"))]
-        const sizeof_m: usize = libc::_SC_MB_LEN_MAX as usize;
+        const SIZEOF_M: usize = libc::_SC_MB_LEN_MAX as usize;
 
         // TODO determine a more stable way to get this value on mac
         #[cfg(target_os = "macos")]
@@ -1315,7 +1315,7 @@ unsafe fn yylex_token_escape(ps: &mut cmd_parse_state, buf: *mut *mut u8, len: *
 
         let mut tmp: u32 = 0;
         let mut s: [u8; 9] = [0; 9];
-        let mut m: [u8; sizeof_m] = [0; sizeof_m];
+        let mut m: [u8; SIZEOF_M] = [0; SIZEOF_M];
         let mut size: usize = 0;
         let mut type_: i32 = 0;
 
@@ -1392,7 +1392,7 @@ unsafe fn yylex_token_escape(ps: &mut cmd_parse_state, buf: *mut *mut u8, len: *
             return false;
         }
         let mlen = wctomb((&raw mut m).cast(), tmp as i32);
-        if mlen <= 0 || mlen > sizeof_m as i32 {
+        if mlen <= 0 || mlen > SIZEOF_M as i32 {
             yyerror!(ps, "invalid \\{} argument", type_ as u8 as char);
             return false;
         }

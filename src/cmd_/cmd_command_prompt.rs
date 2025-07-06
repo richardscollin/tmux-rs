@@ -13,7 +13,7 @@
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 use crate::*;
 
-pub static cmd_command_prompt_entry: cmd_entry = cmd_entry {
+pub static CMD_COMMAND_PROMPT_ENTRY: cmd_entry = cmd_entry {
     name: SyncCharPtr::new(c"command-prompt"),
     alias: SyncCharPtr::null(),
 

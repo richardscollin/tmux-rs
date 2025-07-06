@@ -26,7 +26,7 @@ static WINDOW_CUSTOMIZE_DEFAULT_FORMAT: &str = concat!(
     "}\0"
 );
 
-static window_customize_menu_items: [menu_item; 8] = [
+static WINDOW_CUSTOMIZE_MENU_ITEMS: [menu_item; 8] = [
     menu_item::new(c"Select", '\r' as key_code, null_mut()),
     menu_item::new(c"Expand", keyc::KEYC_RIGHT as key_code, null_mut()),
     menu_item::new(c"", KEYC_NONE, null_mut()),
@@ -37,7 +37,7 @@ static window_customize_menu_items: [menu_item; 8] = [
     menu_item::new(c"Cancel", 'q' as key_code, null_mut()),
 ];
 
-pub static window_customize_mode: window_mode = window_mode {
+pub static WINDOW_CUSTOMIZE_MODE: window_mode = window_mode {
     name: SyncCharPtr::new(c"options-mode"),
     default_format: SyncCharPtr::from_ptr(WINDOW_CUSTOMIZE_DEFAULT_FORMAT.as_ptr().cast()),
 
@@ -109,7 +109,7 @@ unsafe fn window_customize_get_tag(
     unsafe {
         if let Some(oe) = NonNull::new(oe.cast_mut()) {
             let offset = oe.offset_from_unsigned(
-                NonNull::new((&raw const options_table) as *mut options_table_entry).unwrap(),
+                NonNull::new((&raw const OPTIONS_TABLE) as *mut options_table_entry).unwrap(),
             ) as u64;
             (2u64 << 62) | (offset << 32) | ((idx as u64 + 1) << 1) | 1
         } else {
@@ -126,10 +126,10 @@ unsafe fn window_customize_get_tree(
         match scope {
             window_customize_scope::WINDOW_CUSTOMIZE_NONE
             | window_customize_scope::WINDOW_CUSTOMIZE_KEY => null_mut(),
-            window_customize_scope::WINDOW_CUSTOMIZE_SERVER => global_options,
-            window_customize_scope::WINDOW_CUSTOMIZE_GLOBAL_SESSION => global_s_options,
+            window_customize_scope::WINDOW_CUSTOMIZE_SERVER => GLOBAL_OPTIONS,
+            window_customize_scope::WINDOW_CUSTOMIZE_GLOBAL_SESSION => GLOBAL_S_OPTIONS,
             window_customize_scope::WINDOW_CUSTOMIZE_SESSION => (*(*fs).s).options,
-            window_customize_scope::WINDOW_CUSTOMIZE_GLOBAL_WINDOW => global_w_options,
+            window_customize_scope::WINDOW_CUSTOMIZE_GLOBAL_WINDOW => GLOBAL_W_OPTIONS,
             window_customize_scope::WINDOW_CUSTOMIZE_WINDOW => (*(*fs).w).options,
             window_customize_scope::WINDOW_CUSTOMIZE_PANE => (*(*fs).wp).options,
         }
@@ -638,7 +638,7 @@ unsafe fn window_customize_build(
             c!("Server Options"),
             (3u64 << 62) | ((OPTIONS_TABLE_SERVER as u64) << 1) | 1,
             window_customize_scope::WINDOW_CUSTOMIZE_SERVER,
-            global_options,
+            GLOBAL_OPTIONS,
             window_customize_scope::WINDOW_CUSTOMIZE_NONE,
             null_mut(),
             window_customize_scope::WINDOW_CUSTOMIZE_NONE,
@@ -652,7 +652,7 @@ unsafe fn window_customize_build(
             c!("Session Options"),
             (3u64 << 62) | ((OPTIONS_TABLE_SESSION as u64) << 1) | 1,
             window_customize_scope::WINDOW_CUSTOMIZE_GLOBAL_SESSION,
-            global_s_options,
+            GLOBAL_S_OPTIONS,
             window_customize_scope::WINDOW_CUSTOMIZE_SESSION,
             (*fs.s).options,
             window_customize_scope::WINDOW_CUSTOMIZE_NONE,
@@ -666,7 +666,7 @@ unsafe fn window_customize_build(
             c!("Window & Pane Options"),
             (3u64 << 62) | ((OPTIONS_TABLE_WINDOW as u64) << 1) | 1,
             window_customize_scope::WINDOW_CUSTOMIZE_GLOBAL_WINDOW,
-            global_w_options,
+            GLOBAL_W_OPTIONS,
             window_customize_scope::WINDOW_CUSTOMIZE_WINDOW,
             (*fs.w).options,
             window_customize_scope::WINDOW_CUSTOMIZE_PANE,
@@ -729,7 +729,7 @@ unsafe fn window_customize_draw_key(
             sx,
             sy,
             0,
-            &grid_default_cell,
+            &GRID_DEFAULT_CELL,
             "{}{}",
             _s(note),
             _s(period),
@@ -747,7 +747,7 @@ unsafe fn window_customize_draw_key(
             sx,
             sy - ((*s).cy - cy),
             0,
-            &raw const grid_default_cell,
+            &raw const GRID_DEFAULT_CELL,
             "This key is in the {} table.",
             _s((*kt).name),
         ) {
@@ -759,7 +759,7 @@ unsafe fn window_customize_draw_key(
             sx,
             sy - ((*s).cy - cy),
             0,
-            &raw const grid_default_cell,
+            &raw const GRID_DEFAULT_CELL,
             "This key {} repeat.",
             if (*bd).flags & KEY_BINDING_REPEAT != 0 {
                 "does"
@@ -781,7 +781,7 @@ unsafe fn window_customize_draw_key(
             sx,
             sy - ((*s).cy - cy),
             0,
-            &raw const grid_default_cell,
+            &raw const GRID_DEFAULT_CELL,
             "Command: {}",
             _s(cmd),
         ) {
@@ -798,7 +798,7 @@ unsafe fn window_customize_draw_key(
                     sx,
                     sy - ((*s).cy - cy),
                     0,
-                    &grid_default_cell,
+                    &GRID_DEFAULT_CELL,
                     "The default is: {}",
                     _s(default_cmd),
                 )
@@ -874,7 +874,7 @@ unsafe fn window_customize_draw_option(
                 sx,
                 sy,
                 0,
-                &raw const grid_default_cell,
+                &raw const GRID_DEFAULT_CELL,
                 "{}",
                 _s(text),
             ) {
@@ -904,7 +904,7 @@ unsafe fn window_customize_draw_option(
                 sx,
                 sy - ((*s).cy - cy),
                 0,
-                &raw const grid_default_cell,
+                &raw const GRID_DEFAULT_CELL,
                 "This is a {} option.",
                 _s(text),
             ) {
@@ -918,7 +918,7 @@ unsafe fn window_customize_draw_option(
                         sx,
                         sy - ((*s).cy - cy),
                         0,
-                        &raw const grid_default_cell,
+                        &raw const GRID_DEFAULT_CELL,
                         "This is an array option, index {idx}."
                     ) {
                         break 'out;
@@ -929,7 +929,7 @@ unsafe fn window_customize_draw_option(
                     sx,
                     sy - ((*s).cy - cy),
                     0,
-                    &raw const grid_default_cell,
+                    &raw const GRID_DEFAULT_CELL,
                     "This is an array option.",
                 ) {
                     break 'out;
@@ -957,7 +957,7 @@ unsafe fn window_customize_draw_option(
                 sx,
                 sy - ((*s).cy - cy),
                 0,
-                &raw const grid_default_cell,
+                &raw const GRID_DEFAULT_CELL,
                 "Option value: {}{}{}",
                 _s(value),
                 _s(space),
@@ -974,7 +974,7 @@ unsafe fn window_customize_draw_option(
                         sx,
                         sy - ((*s).cy - cy),
                         0,
-                        &raw const grid_default_cell,
+                        &raw const GRID_DEFAULT_CELL,
                         "This expands to: {}",
                         _s(expanded),
                     )
@@ -984,13 +984,13 @@ unsafe fn window_customize_draw_option(
                 free_(expanded);
             }
 
-            const sizeof_choices: usize = 256;
-            let mut choices: [u8; sizeof_choices] = [0; sizeof_choices];
+            const SIZEOF_CHOICES: usize = 256;
+            let mut choices: [u8; SIZEOF_CHOICES] = [0; SIZEOF_CHOICES];
             if !oe.is_null() && (*oe).type_ == options_table_type::OPTIONS_TABLE_CHOICE {
                 let mut choice = (*oe).choices;
                 while !(*choice).is_null() {
-                    strlcat(choices.as_mut_ptr(), *choice, sizeof_choices);
-                    strlcat(choices.as_mut_ptr(), c!(", "), sizeof_choices);
+                    strlcat(choices.as_mut_ptr(), *choice, SIZEOF_CHOICES);
+                    strlcat(choices.as_mut_ptr(), c!(", "), SIZEOF_CHOICES);
                     choice = choice.add(1);
                 }
                 choices[libc::strlen(choices.as_ptr()) - 2] = b'\0';
@@ -1000,7 +1000,7 @@ unsafe fn window_customize_draw_option(
                     sx,
                     sy - ((*s).cy - cy),
                     0,
-                    &raw const grid_default_cell,
+                    &raw const GRID_DEFAULT_CELL,
                     "Available values are: {}",
                     _s((&raw const choices) as *const u8),
                 ) {
@@ -1014,12 +1014,12 @@ unsafe fn window_customize_draw_option(
                     sx,
                     sy - ((*s).cy - cy),
                     1,
-                    &raw const grid_default_cell,
+                    &raw const GRID_DEFAULT_CELL,
                     "This is a colour option: ",
                 ) {
                     break 'out;
                 }
-                memcpy__(&raw mut gc, &raw const grid_default_cell);
+                memcpy__(&raw mut gc, &raw const GRID_DEFAULT_CELL);
                 gc.fg = options_get_number((*item).oo, name) as i32;
                 if !screen_write_text!(
                     ctx,
@@ -1040,7 +1040,7 @@ unsafe fn window_customize_draw_option(
                     sx,
                     sy - ((*s).cy - cy),
                     1,
-                    &raw const grid_default_cell,
+                    &raw const GRID_DEFAULT_CELL,
                     "This is a style option: "
                 ) {
                     break 'out;
@@ -1058,7 +1058,7 @@ unsafe fn window_customize_draw_option(
                     sx,
                     sy - ((*s).cy - cy),
                     0,
-                    &raw const grid_default_cell,
+                    &raw const GRID_DEFAULT_CELL,
                     "The default is: {}{}{}",
                     _s(default_value),
                     _s(space),
@@ -1097,7 +1097,7 @@ unsafe fn window_customize_draw_option(
                         sx,
                         sy - ((*s).cy - cy),
                         0,
-                        &raw const grid_default_cell,
+                        &raw const GRID_DEFAULT_CELL,
                         "Window value (from window {}): {}{}{}",
                         (*fs.wl).idx,
                         _s(value),
@@ -1118,7 +1118,7 @@ unsafe fn window_customize_draw_option(
                         sx,
                         sy - ((*s).cy - cy),
                         0,
-                        &raw const grid_default_cell,
+                        &raw const GRID_DEFAULT_CELL,
                         "Global value: {}{}{}",
                         _s(value),
                         _s(space),
@@ -1211,7 +1211,7 @@ pub unsafe fn window_customize_init(
             Some(window_customize_height),
             None,
             data.cast(),
-            window_customize_menu_items.as_slice(),
+            WINDOW_CUSTOMIZE_MENU_ITEMS.as_slice(),
             null_mut(),
             0,
             &raw mut s,

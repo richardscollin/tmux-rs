@@ -20,7 +20,7 @@ use crate::compat::{
     tree::{rb_find, rb_foreach, rb_initializer, rb_insert, rb_remove},
 };
 
-pub static cmd_wait_for_entry: cmd_entry = cmd_entry {
+pub static CMD_WAIT_FOR_ENTRY: cmd_entry = cmd_entry {
     name: SyncCharPtr::new(c"wait-for"),
     alias: SyncCharPtr::new(c"wait"),
 
@@ -55,7 +55,7 @@ pub struct wait_channel {
 
 pub type wait_channels = rb_head<wait_channel>;
 
-static mut wait_channels: wait_channels = rb_initializer();
+static mut WAIT_CHANNELS: wait_channels = rb_initializer();
 
 RB_GENERATE!(
     wait_channels,
@@ -80,7 +80,7 @@ pub unsafe fn cmd_wait_for_add(name: *const u8) -> *mut wait_channel {
         tailq_init(&raw mut (*wc).waiters);
         tailq_init(&raw mut (*wc).lockers);
 
-        rb_insert(&raw mut wait_channels, wc);
+        rb_insert(&raw mut WAIT_CHANNELS, wc);
 
         log_debug!("add wait channel {}", _s((*wc).name));
     }
@@ -98,7 +98,7 @@ pub unsafe fn cmd_wait_for_remove(wc: *mut wait_channel) {
 
         log_debug!("remove wait channel {}", _s((*wc).name));
 
-        rb_remove(&raw mut wait_channels, wc);
+        rb_remove(&raw mut WAIT_CHANNELS, wc);
 
         free_((*wc).name);
         free_(wc);
@@ -113,7 +113,7 @@ pub unsafe fn cmd_wait_for_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
 
         let mut find: wait_channel = zeroed();
         find.name = name as *mut u8; // TODO casting away const
-        let wc = rb_find(&raw mut wait_channels, &raw mut find);
+        let wc = rb_find(&raw mut WAIT_CHANNELS, &raw mut find);
 
         if args_has_(args, 'S') {
             return cmd_wait_for_signal(item, name, wc);
@@ -242,7 +242,7 @@ pub unsafe fn cmd_wait_for_unlock(
 
 pub unsafe fn cmd_wait_for_flush() {
     unsafe {
-        for wc in rb_foreach(&raw mut wait_channels).map(NonNull::as_ptr) {
+        for wc in rb_foreach(&raw mut WAIT_CHANNELS).map(NonNull::as_ptr) {
             for wi in tailq_foreach(&raw mut (*wc).waiters).map(NonNull::as_ptr) {
                 cmdq_continue((*wi).item);
                 tailq_remove(&raw mut (*wc).waiters, wi);

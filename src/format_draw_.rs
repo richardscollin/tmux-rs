@@ -925,7 +925,7 @@ pub unsafe fn format_draw(
             let mut current = Current::Left;
             let mut last = Current::Left;
 
-            static names: [&str; TOTAL] = [
+            static NAMES: [&str; TOTAL] = [
                 "LEFT",
                 "CENTRE",
                 "RIGHT",
@@ -1198,8 +1198,8 @@ pub unsafe fn format_draw(
                         log_debug!(
                             "{}: change {} -> {}",
                             func,
-                            names[last as usize],
-                            names[current as usize]
+                            NAMES[last as usize],
+                            NAMES[current as usize]
                         );
                         last = current;
                     }
@@ -1241,7 +1241,7 @@ pub unsafe fn format_draw(
 
                 for i in 0..TOTAL {
                     screen_write_stop(&raw mut ctx[i]);
-                    log_debug!("{}: width {} is {}", func, names[i], width[i]);
+                    log_debug!("{}: width {} is {}", func, NAMES[i], width[i]);
                 }
                 if focus_start != -1 && focus_end != -1 {
                     log_debug!("{}: focus {}-{}", func, focus_start, focus_end);
@@ -1252,7 +1252,7 @@ pub unsafe fn format_draw(
                         func,
                         (*fr).type_ as u32,
                         (*fr).argument,
-                        names[(*fr).index as usize],
+                        NAMES[(*fr).index as usize],
                         (*fr).start,
                         (*fr).end
                     );
@@ -1260,7 +1260,7 @@ pub unsafe fn format_draw(
 
                 // Clear the available area.
                 if fill != -1 {
-                    memcpy__(&raw mut gc, &raw const grid_default_cell);
+                    memcpy__(&raw mut gc, &raw const GRID_DEFAULT_CELL);
                     gc.bg = fill;
                     for i in 0..available {
                         screen_write_putc(octx, &raw mut gc, b' ');

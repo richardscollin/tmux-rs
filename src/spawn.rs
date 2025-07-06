@@ -424,7 +424,7 @@ pub unsafe fn spawn_pane(sc: *mut spawn_context, cause: *mut *mut u8) -> *mut wi
 
             /* Fork the new process. */
             (*new_wp).pid = fdforkpty(
-                ptm_fd,
+                PTM_FD,
                 &raw mut (*new_wp).fd,
                 (*new_wp).tty.as_mut_ptr(),
                 null_mut(),
@@ -491,7 +491,7 @@ pub unsafe fn spawn_pane(sc: *mut spawn_context, cause: *mut *mut u8) -> *mut wi
             if !(*s).tio.is_null() {
                 memcpy__(now.c_cc.as_mut_ptr(), (*(*s).tio).c_cc.as_ptr());
             }
-            key = options_get_number_(global_options, c"backspace") as u64;
+            key = options_get_number_(GLOBAL_OPTIONS, c"backspace") as u64;
             if key >= 0x7f {
                 now.c_cc[VERASE] = b'\x7f';
             } else {
@@ -506,7 +506,7 @@ pub unsafe fn spawn_pane(sc: *mut spawn_context, cause: *mut *mut u8) -> *mut wi
             }
 
             /* Clean up file descriptors and signals and update the environment. */
-            proc_clear_signals(server_proc, 1);
+            proc_clear_signals(SERVER_PROC, 1);
             closefrom(STDERR_FILENO + 1);
             sigprocmask(SIG_SETMASK, &raw mut oldset, null_mut());
             log_close();

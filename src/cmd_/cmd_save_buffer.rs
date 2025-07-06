@@ -15,7 +15,7 @@ use crate::*;
 
 use crate::libc::{O_APPEND, O_TRUNC};
 
-pub static cmd_save_buffer_entry: cmd_entry = cmd_entry {
+pub static CMD_SAVE_BUFFER_ENTRY: cmd_entry = cmd_entry {
     name: SyncCharPtr::new(c"save-buffer"),
     alias: SyncCharPtr::new(c"saveb"),
 
@@ -28,7 +28,7 @@ pub static cmd_save_buffer_entry: cmd_entry = cmd_entry {
     target: cmd_entry_flag::zeroed(),
 };
 
-pub static cmd_show_buffer_entry: cmd_entry = cmd_entry {
+pub static CMD_SHOW_BUFFER_ENTRY: cmd_entry = cmd_entry {
     name: SyncCharPtr::new(c"show-buffer"),
     alias: SyncCharPtr::new(c"showb"),
 
@@ -88,7 +88,7 @@ unsafe fn cmd_save_buffer_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
         let mut bufsize: usize = 0;
         let bufdata = paste_buffer_data_(pb, &mut bufsize);
 
-        if std::ptr::eq(cmd_get_entry(self_), &cmd_show_buffer_entry) {
+        if std::ptr::eq(cmd_get_entry(self_), &CMD_SHOW_BUFFER_ENTRY) {
             if !(*c).session.is_null() || (*c).flags.intersects(client_flag::CONTROL) {
                 evb = evbuffer_new();
                 if evb.is_null() {

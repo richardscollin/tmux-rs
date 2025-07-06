@@ -18,7 +18,7 @@ use crate::libc::strtol;
 
 use crate::compat::queue::tailq_first;
 
-pub static cmd_send_keys_entry: cmd_entry = cmd_entry {
+pub static CMD_SEND_KEYS_ENTRY: cmd_entry = cmd_entry {
     name: SyncCharPtr::new(c"send-keys"),
     alias: SyncCharPtr::new(c"send"),
 
@@ -37,7 +37,7 @@ pub static cmd_send_keys_entry: cmd_entry = cmd_entry {
     source: cmd_entry_flag::zeroed(),
 };
 
-pub static cmd_send_prefix_entry: cmd_entry = cmd_entry {
+pub static CMD_SEND_PREFIX_ENTRY: cmd_entry = cmd_entry {
     name: SyncCharPtr::new(c"send-prefix"),
     alias: SyncCharPtr::null(),
 
@@ -209,7 +209,7 @@ pub unsafe fn cmd_send_keys_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
             return cmd_retval::CMD_RETURN_NORMAL;
         }
 
-        if std::ptr::eq(cmd_get_entry(self_), &cmd_send_prefix_entry) {
+        if std::ptr::eq(cmd_get_entry(self_), &CMD_SEND_PREFIX_ENTRY) {
             key = if args_has_(args, '2') {
                 options_get_number_((*s).options, c"prefix2") as u64
             } else {

@@ -70,7 +70,7 @@ impl ListEntry<job, ()> for job {
 }
 
 type joblist = list_head<job>;
-static mut all_jobs: joblist = list_head_initializer();
+static mut ALL_JOBS: joblist = list_head_initializer();
 
 pub unsafe fn job_run(
     cmd: *const u8,
@@ -107,7 +107,7 @@ pub unsafe fn job_run(
         let mut oo: *mut options = null_mut();
 
         'fail: {
-            env = environ_for_session(s, !cfg_finished);
+            env = environ_for_session(s, !CFG_FINISHED);
             if !e.is_null() {
                 environ_copy(e, env);
             }
@@ -118,7 +118,7 @@ pub unsafe fn job_run(
                 if !s.is_null() {
                     oo = (*s).options;
                 } else {
-                    oo = global_s_options;
+                    oo = GLOBAL_S_OPTIONS;
                 }
                 shell = options_get_string_(oo, c"default-shell");
                 if !checkshell(shell) {
@@ -135,7 +135,7 @@ pub unsafe fn job_run(
                 (*ws.as_mut_ptr()).ws_col = sx as u16;
                 (*ws.as_mut_ptr()).ws_row = sy as u16;
                 pid = fdforkpty(
-                    ptm_fd,
+                    PTM_FD,
                     &raw mut master,
                     (&raw mut tty) as *mut u8,
                     null_mut(),
@@ -175,7 +175,7 @@ pub unsafe fn job_run(
                     break 'fail;
                 }
                 0 => {
-                    proc_clear_signals(server_proc, 1);
+                    proc_clear_signals(SERVER_PROC, 1);
                     sigprocmask(SIG_SETMASK, oldset.as_mut_ptr(), null_mut());
 
                     if (cwd.is_null() || chdir(cwd) != 0)
@@ -252,7 +252,7 @@ pub unsafe fn job_run(
             strlcpy((*job).tty.as_mut_ptr(), tty.as_ptr().cast(), TTY_NAME_MAX);
             (*job).status = 0;
 
-            list_insert_head(&raw mut all_jobs, job);
+            list_insert_head(&raw mut ALL_JOBS, job);
 
             (*job).updatecb = updatecb;
             (*job).completecb = completecb;
@@ -423,7 +423,7 @@ pub unsafe fn job_check_died(pid: pid_t, status: i32) {
     unsafe {
         let mut job: *mut job = null_mut();
 
-        for job_ in list_foreach(&raw mut all_jobs).map(NonNull::as_ptr) {
+        for job_ in list_foreach(&raw mut ALL_JOBS).map(NonNull::as_ptr) {
             job = job_;
             if pid == (*job).pid {
                 break;
@@ -475,7 +475,7 @@ pub unsafe fn job_get_event(job: *mut job) -> *mut bufferevent {
 
 pub unsafe fn job_kill_all() {
     unsafe {
-        for job in list_foreach(&raw mut all_jobs).map(NonNull::as_ptr) {
+        for job in list_foreach(&raw mut ALL_JOBS).map(NonNull::as_ptr) {
             if (*job).pid != -1 {
                 kill((*job).pid, SIGTERM);
             }
@@ -485,7 +485,7 @@ pub unsafe fn job_kill_all() {
 
 pub unsafe fn job_still_running() -> bool {
     unsafe {
-        list_foreach(&raw mut all_jobs)
+        list_foreach(&raw mut ALL_JOBS)
             .map(NonNull::as_ptr)
             .any(|job| {
                 !(*job).flags.intersects(job_flag::JOB_NOWAIT)
@@ -496,7 +496,7 @@ pub unsafe fn job_still_running() -> bool {
 
 pub unsafe fn job_print_summary(item: *mut cmdq_item, mut blank: i32) {
     unsafe {
-        for (n, job) in list_foreach(&raw mut all_jobs)
+        for (n, job) in list_foreach(&raw mut ALL_JOBS)
             .map(NonNull::as_ptr)
             .enumerate()
         {

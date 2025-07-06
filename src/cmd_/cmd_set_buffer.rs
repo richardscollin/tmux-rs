@@ -13,7 +13,7 @@
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 use crate::*;
 
-pub static cmd_set_buffer_entry: cmd_entry = cmd_entry {
+pub static CMD_SET_BUFFER_ENTRY: cmd_entry = cmd_entry {
     name: SyncCharPtr::new(c"set-buffer"),
     alias: SyncCharPtr::new(c"setb"),
 
@@ -28,7 +28,7 @@ pub static cmd_set_buffer_entry: cmd_entry = cmd_entry {
     target: cmd_entry_flag::zeroed(),
 };
 
-pub static cmd_delete_buffer_entry: cmd_entry = cmd_entry {
+pub static CMD_DELETE_BUFFER_ENTRY: cmd_entry = cmd_entry {
     name: SyncCharPtr::new(c"delete-buffer"),
     alias: SyncCharPtr::new(c"deleteb"),
 
@@ -57,7 +57,7 @@ unsafe fn cmd_set_buffer_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retv
             pb = paste_get_name(bufname);
         }
 
-        if std::ptr::eq(cmd_get_entry(self_), &cmd_delete_buffer_entry) {
+        if std::ptr::eq(cmd_get_entry(self_), &CMD_DELETE_BUFFER_ENTRY) {
             if pb.is_null() {
                 if !bufname.is_null() {
                     cmdq_error!(item, "unknown buffer: {}", _s(bufname));

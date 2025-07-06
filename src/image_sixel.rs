@@ -711,7 +711,7 @@ unsafe fn sixel_to_screen(si: *mut sixel_image) -> *mut screen {
         let s = xmalloc_::<screen>().as_ptr();
         screen_init(s, sx, sy, 0);
 
-        memcpy__(&raw mut gc, &raw const grid_default_cell);
+        memcpy__(&raw mut gc, &raw const GRID_DEFAULT_CELL);
         gc.attr |= (GRID_ATTR_CHARSET | GRID_ATTR_DIM);
         utf8_set(&raw mut gc.data, b'~');
 

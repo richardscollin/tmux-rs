@@ -15,7 +15,7 @@ use crate::*;
 
 use crate::libc::strcspn;
 
-pub static cmd_switch_client_entry: cmd_entry = cmd_entry {
+pub static CMD_SWITCH_CLIENT_ENTRY: cmd_entry = cmd_entry {
     name: SyncCharPtr::new(c"switch-client"),
     alias: SyncCharPtr::new(c"switchc"),
 

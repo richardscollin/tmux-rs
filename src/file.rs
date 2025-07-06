@@ -26,7 +26,7 @@ use crate::libc::{
 
 use std::sync::atomic;
 
-pub static file_next_stream: atomic::AtomicI32 = atomic::AtomicI32::new(3);
+pub static FILE_NEXT_STREAM: atomic::AtomicI32 = atomic::AtomicI32::new(3);
 
 pub unsafe fn file_get_path(c: *mut client, file: *const u8) -> NonNull<u8> {
     unsafe {
@@ -314,7 +314,7 @@ pub unsafe fn file_write(
         let mut msg: *mut msg_write_open = null_mut();
         let mut msglen: usize = 0;
         let mut fd = -1;
-        let stream: u32 = file_next_stream.fetch_add(1, atomic::Ordering::Relaxed) as u32;
+        let stream: u32 = FILE_NEXT_STREAM.fetch_add(1, atomic::Ordering::Relaxed) as u32;
         let mut f: *mut FILE = null_mut();
         let mut mode: *const u8 = null();
 
@@ -401,7 +401,7 @@ pub unsafe fn file_read(
         let mut msg: *mut msg_read_open = null_mut();
         let mut msglen: usize = 0;
         let mut fd: i32 = -1;
-        let stream: u32 = file_next_stream.fetch_add(1, atomic::Ordering::Relaxed) as u32;
+        let stream: u32 = FILE_NEXT_STREAM.fetch_add(1, atomic::Ordering::Relaxed) as u32;
         let mut f: *mut FILE = null_mut();
         let mut size: usize = 0;
         let mut buffer = MaybeUninit::<[u8; BUFSIZ as usize]>::uninit();

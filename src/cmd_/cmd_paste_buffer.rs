@@ -13,7 +13,7 @@
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 use crate::*;
 
-pub static cmd_paste_buffer_entry: cmd_entry = cmd_entry {
+pub static CMD_PASTE_BUFFER_ENTRY: cmd_entry = cmd_entry {
     name: SyncCharPtr::new(c"paste-buffer"),
     alias: SyncCharPtr::new(c"pasteb"),
 

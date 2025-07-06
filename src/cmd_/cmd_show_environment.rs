@@ -14,7 +14,7 @@
 
 use crate::*;
 
-pub static cmd_show_environment_entry: cmd_entry = cmd_entry {
+pub static CMD_SHOW_ENVIRONMENT_ENTRY: cmd_entry = cmd_entry {
     name: SyncCharPtr::new(c"show-environment"),
     alias: SyncCharPtr::new(c"showenv"),
 
@@ -114,7 +114,7 @@ unsafe fn cmd_show_environment_exec(self_: *mut cmd, item: *mut cmdq_item) -> cm
         }
 
         if args_has_(args, 'g') {
-            env = global_environ;
+            env = GLOBAL_ENVIRON;
         } else {
             if (*target).s.is_null() {
                 tflag = args_get_(args, 't');

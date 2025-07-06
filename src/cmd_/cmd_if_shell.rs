@@ -16,7 +16,7 @@ use crate::*;
 
 use crate::libc::{WEXITSTATUS, WIFEXITED, toupper};
 
-pub static cmd_if_shell_entry: cmd_entry = cmd_entry {
+pub static CMD_IF_SHELL_ENTRY: cmd_entry = cmd_entry {
     name: SyncCharPtr::new(c"if-shell"),
     alias: SyncCharPtr::new(c"if"),
 

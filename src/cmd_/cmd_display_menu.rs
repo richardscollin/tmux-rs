@@ -18,7 +18,7 @@ use crate::libc::strtol;
 use crate::compat::queue::tailq_foreach;
 use crate::options_::options_find_choice;
 
-pub static cmd_display_menu_entry: cmd_entry = cmd_entry {
+pub static CMD_DISPLAY_MENU_ENTRY: cmd_entry = cmd_entry {
     name: SyncCharPtr::new(c"display-menu"),
     alias: SyncCharPtr::new(c"menu"),
 
@@ -31,7 +31,7 @@ pub static cmd_display_menu_entry: cmd_entry = cmd_entry {
     source: cmd_entry_flag::zeroed(),
 };
 
-pub static cmd_display_popup_entry: cmd_entry = cmd_entry {
+pub static CMD_DISPLAY_POPUP_ENTRY: cmd_entry = cmd_entry {
     name: SyncCharPtr::new(c"display-popup"),
     alias: SyncCharPtr::new(c"popup"),
 

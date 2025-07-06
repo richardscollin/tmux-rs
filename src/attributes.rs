@@ -20,7 +20,7 @@ use crate::{c, grid_attr, xsnprintf_};
 
 pub unsafe fn attributes_tostring(attr: grid_attr) -> *const u8 {
     type buffer = [u8; 512];
-    static mut buf: buffer = unsafe { zeroed() };
+    static mut BUF: buffer = unsafe { zeroed() };
 
     if attr.is_empty() {
         return c!("none");
@@ -29,7 +29,7 @@ pub unsafe fn attributes_tostring(attr: grid_attr) -> *const u8 {
     unsafe {
         #[rustfmt::skip]
         let len: isize = xsnprintf_!(
-            &raw mut buf as _,
+            &raw mut BUF as _,
             size_of::<buffer>(),
             "{}{}{}{}{}{}{}{}{}{}{}{}{}{}",
             if attr.intersects(grid_attr::GRID_ATTR_CHARSET) { "acs," } else { "" },
@@ -48,10 +48,10 @@ pub unsafe fn attributes_tostring(attr: grid_attr) -> *const u8 {
             if attr.intersects(grid_attr::GRID_ATTR_OVERLINE) { "overline," } else { "" },
         ).unwrap() as isize;
         if len > 0 {
-            buf[len as usize - 1] = b'\0';
+            BUF[len as usize - 1] = b'\0';
         }
 
-        &raw mut buf as _
+        &raw mut BUF as _
     }
 }
 

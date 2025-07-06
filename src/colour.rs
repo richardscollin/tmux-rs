@@ -55,15 +55,15 @@ pub fn colour_find_rgb(r: u8, g: u8, b: u8) -> i32 {
     let g = g as i32;
     let b = b as i32;
 
-    const q2c: [i32; 6] = [0x00, 0x5f, 0x87, 0xaf, 0xd7, 0xff];
+    const Q2C: [i32; 6] = [0x00, 0x5f, 0x87, 0xaf, 0xd7, 0xff];
 
     // Map RGB to 6x6x6 cube.
     let qr = colour_to_6cube(r);
     let qg = colour_to_6cube(g);
     let qb = colour_to_6cube(b);
-    let cr = q2c[qr as usize];
-    let cg = q2c[qg as usize];
-    let cb = q2c[qb as usize];
+    let cr = Q2C[qr as usize];
+    let cg = Q2C[qg as usize];
+    let cb = Q2C[qb as usize];
 
     // If we have hit the colour exactly, return early.
     if cr == r && cg == g && cb == b {
@@ -128,7 +128,7 @@ pub unsafe fn colour_tostring(c: i32) -> *const u8 {
     // this means it's not thread safe and multiple
     // concurrent calls to this function would result in bugs
     // consider fixing / reworking the interface
-    static mut buf: [u8; 32] = [0; 32];
+    static mut BUF: [u8; 32] = [0; 32];
 
     if c == -1 {
         return c!("none");
@@ -136,13 +136,13 @@ pub unsafe fn colour_tostring(c: i32) -> *const u8 {
 
     if c & COLOUR_FLAG_RGB != 0 {
         let (r, g, b) = colour_split_rgb(c);
-        write!(unsafe { buf.as_mut_slice() }, "#{r:02x}{g:02x}{b:02x}\0").unwrap();
-        return &raw const buf as _;
+        write!(unsafe { BUF.as_mut_slice() }, "#{r:02x}{g:02x}{b:02x}\0").unwrap();
+        return &raw const BUF as _;
     }
 
     if c & COLOUR_FLAG_256 != 0 {
-        write!(unsafe { buf.as_mut_slice() }, "colour{}\0", c & 0xff).unwrap();
-        return &raw const buf as _;
+        write!(unsafe { BUF.as_mut_slice() }, "colour{}\0", c & 0xff).unwrap();
+        return &raw const BUF as _;
     }
 
     match c {
@@ -257,7 +257,7 @@ pub unsafe fn colour_fromstring(s: *const u8) -> c_int {
 
 /// Convert 256 colour to RGB colour.
 fn colour_256_to_rgb(c: i32) -> i32 {
-    const table: [i32; 256] = [
+    const TABLE: [i32; 256] = [
         0x000000, 0x800000, 0x008000, 0x808000, 0x000080, 0x800080, 0x008080, 0xc0c0c0, 0x808080,
         0xff0000, 0x00ff00, 0xffff00, 0x0000ff, 0xff00ff, 0x00ffff, 0xffffff, 0x000000, 0x00005f,
         0x000087, 0x0000af, 0x0000d7, 0x0000ff, 0x005f00, 0x005f5f, 0x005f87, 0x005faf, 0x005fd7,
@@ -289,11 +289,11 @@ fn colour_256_to_rgb(c: i32) -> i32 {
         0xd0d0d0, 0xdadada, 0xe4e4e4, 0xeeeeee,
     ];
 
-    table[c as u8 as usize] | COLOUR_FLAG_RGB
+    TABLE[c as u8 as usize] | COLOUR_FLAG_RGB
 }
 
 pub fn colour_256to16(c: i32) -> i32 {
-    const table: [u8; 256] = [
+    const TABLE: [u8; 256] = [
         0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 0, 4, 4, 4, 12, 12, 2, 6, 4, 4, 12,
         12, 2, 2, 6, 4, 12, 12, 2, 2, 2, 6, 12, 12, 10, 10, 10, 10, 14, 12, 10, 10, 10, 10, 10, 14,
         1, 5, 4, 4, 12, 12, 3, 8, 4, 4, 12, 12, 2, 2, 6, 4, 12, 12, 2, 2, 2, 6, 12, 12, 10, 10, 10,
@@ -305,7 +305,7 @@ pub fn colour_256to16(c: i32) -> i32 {
         9, 9, 9, 9, 13, 9, 9, 9, 9, 9, 13, 9, 9, 9, 9, 9, 13, 11, 11, 11, 11, 11, 15, 0, 0, 0, 0,
         0, 0, 8, 8, 8, 8, 8, 8, 7, 7, 7, 7, 7, 7, 15, 15, 15, 15, 15, 15,
     ];
-    table[c as u8 as usize] as i32
+    TABLE[c as u8 as usize] as i32
 }
 
 pub unsafe fn colour_byname(name: *const u8) -> i32 {

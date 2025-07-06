@@ -17,7 +17,7 @@ use crate::compat::tree::rb_foreach;
 
 const NEW_WINDOW_TEMPLATE: *const u8 = c!("#{session_name}:#{window_index}.#{pane_index}");
 
-pub static cmd_new_window_entry: cmd_entry = cmd_entry {
+pub static CMD_NEW_WINDOW_ENTRY: cmd_entry = cmd_entry {
     name: SyncCharPtr::new(c"new-window"),
     alias: SyncCharPtr::new(c"neww"),
 

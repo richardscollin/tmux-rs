@@ -564,7 +564,7 @@ pub unsafe fn screen_redraw_draw_pane_status(ctx: *mut screen_redraw_ctx) {
                 width,
                 x,
                 yoff - (*ctx).oy,
-                &raw const grid_default_cell,
+                &raw const GRID_DEFAULT_CELL,
                 null_mut(),
             );
         }
@@ -811,7 +811,7 @@ pub unsafe fn screen_redraw_draw_borders_cell(ctx: *mut screen_redraw_ctx, i: u3
         if wp.is_null() {
             if (*ctx).no_pane_gc_set == 0 {
                 let ft = format_create_defaults(null_mut(), c, s, (*s).curw, null_mut());
-                memcpy__(&raw mut (*ctx).no_pane_gc, &raw const grid_default_cell);
+                memcpy__(&raw mut (*ctx).no_pane_gc, &raw const GRID_DEFAULT_CELL);
                 style_add(&raw mut (*ctx).no_pane_gc, oo, c!("pane-border-style"), ft);
                 format_free(ft);
                 (*ctx).no_pane_gc_set = 1;
@@ -824,8 +824,8 @@ pub unsafe fn screen_redraw_draw_borders_cell(ctx: *mut screen_redraw_ctx, i: u3
             }
             memcpy__(&raw mut gc, tmp);
 
-            if server_is_marked(s, (*s).curw, marked_pane.wp)
-                && screen_redraw_check_is(ctx, x, y, marked_pane.wp) != 0
+            if server_is_marked(s, (*s).curw, MARKED_PANE.wp)
+                && screen_redraw_check_is(ctx, x, y, MARKED_PANE.wp) != 0
             {
                 gc.attr ^= grid_attr::GRID_ATTR_REVERSE;
             }
@@ -874,7 +874,7 @@ pub unsafe fn screen_redraw_draw_borders_cell(ctx: *mut screen_redraw_ctx, i: u3
             }
         }
 
-        tty_cell(tty, &raw mut gc, &grid_default_cell, null_mut(), null_mut());
+        tty_cell(tty, &raw mut gc, &GRID_DEFAULT_CELL, null_mut(), null_mut());
         if isolates {
             tty_puts(tty, START_ISOLATE);
         }
@@ -958,7 +958,7 @@ pub unsafe fn screen_redraw_draw_status(ctx: *mut screen_redraw_ctx) {
                 u32::MAX,
                 0,
                 y + i,
-                &grid_default_cell,
+                &GRID_DEFAULT_CELL,
                 null_mut(),
             );
         }

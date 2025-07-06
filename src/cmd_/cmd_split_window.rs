@@ -15,7 +15,7 @@ use crate::*;
 
 const SPLIT_WINDOW_TEMPLATE: *const u8 = c!("#{session_name}:#{window_index}.#{pane_index}");
 
-pub static cmd_split_window_entry: cmd_entry = cmd_entry {
+pub static CMD_SPLIT_WINDOW_ENTRY: cmd_entry = cmd_entry {
     name: SyncCharPtr::new(c"split-window"),
     alias: SyncCharPtr::new(c"splitw"),
 

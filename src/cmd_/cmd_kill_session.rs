@@ -15,7 +15,7 @@ use crate::*;
 
 use crate::compat::tree::rb_foreach;
 
-pub static cmd_kill_session_entry: cmd_entry = cmd_entry {
+pub static CMD_KILL_SESSION_ENTRY: cmd_entry = cmd_entry {
     name: SyncCharPtr::new(c"kill-session"),
     alias: SyncCharPtr::null(),
 
@@ -42,7 +42,7 @@ unsafe fn cmd_kill_session_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
             }
             server_redraw_session(s);
         } else if args_has(args, b'a') != 0 {
-            for sloop in rb_foreach(&raw mut sessions).map(NonNull::as_ptr) {
+            for sloop in rb_foreach(&raw mut SESSIONS).map(NonNull::as_ptr) {
                 if sloop != s {
                     server_destroy_session(sloop);
                     session_destroy(sloop, 1, c!("cmd_kill_session_exec"));

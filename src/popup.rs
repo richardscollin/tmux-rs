@@ -76,7 +76,7 @@ pub struct popup_editor {
     pub arg: *mut c_void,
 }
 
-static popup_menu_items: [menu_item; 8] = [
+static POPUP_MENU_ITEMS: [menu_item; 8] = [
     menu_item::new(c"Close", 'q' as u64, null_mut()),
     menu_item::new(
         c"#{?buffer_name,Paste #[underscore]#{buffer_name},}",
@@ -91,7 +91,7 @@ static popup_menu_items: [menu_item; 8] = [
     menu_item::new(c"To Vertical Pane", 'v' as u64, null_mut()),
 ];
 
-static popup_internal_menu_items: [menu_item; 4] = [
+static POPUP_INTERNAL_MENU_ITEMS: [menu_item; 4] = [
     menu_item::new(c"Close", 'q' as u64, null_mut()),
     menu_item::new(c"", KEYC_NONE, null_mut()),
     menu_item::new(c"Fill Space", 'F' as u64, null_mut()),
@@ -657,13 +657,13 @@ pub unsafe fn popup_key_cb(c: *mut client, data: *mut c_void, event: *mut key_ev
             if (*pd).flags & POPUP_INTERNAL != 0 {
                 menu_add_items(
                     (*pd).menu,
-                    popup_internal_menu_items.as_slice(),
+                    POPUP_INTERNAL_MENU_ITEMS.as_slice(),
                     null_mut(),
                     c,
                     null_mut(),
                 );
             } else {
-                menu_add_items((*pd).menu, &popup_menu_items, null_mut(), c, null_mut());
+                menu_add_items((*pd).menu, &POPUP_MENU_ITEMS, null_mut(), c, null_mut());
             }
             let x = (*m).x.saturating_sub(((*(*pd).menu).width + 4) / 2);
             (*pd).md = menu_prepare(
@@ -816,7 +816,7 @@ pub unsafe fn popup_display(
         (*pd).status = 128 + SIGHUP;
 
         (*pd).border_lines = lines;
-        memcpy__(&raw mut (*pd).border_cell, &raw const grid_default_cell);
+        memcpy__(&raw mut (*pd).border_cell, &raw const GRID_DEFAULT_CELL);
         style_apply(
             &raw mut (*pd).border_cell,
             o,
@@ -826,7 +826,7 @@ pub unsafe fn popup_display(
 
         if !border_style.is_null() {
             let mut sytmp = MaybeUninit::<style>::uninit();
-            style_set(sytmp.as_mut_ptr(), &raw const grid_default_cell);
+            style_set(sytmp.as_mut_ptr(), &raw const GRID_DEFAULT_CELL);
             if style_parse(sytmp.as_mut_ptr(), &raw mut (*pd).border_cell, border_style) == 0 {
                 (*pd).border_cell.fg = (*sytmp.as_ptr()).gc.fg;
                 (*pd).border_cell.bg = (*sytmp.as_ptr()).gc.bg;
@@ -836,9 +836,9 @@ pub unsafe fn popup_display(
 
         screen_init(&raw mut (*pd).s, jx, jy, 0);
         colour_palette_init(&raw mut (*pd).palette);
-        colour_palette_from_option(&raw mut (*pd).palette, global_w_options);
+        colour_palette_from_option(&raw mut (*pd).palette, GLOBAL_W_OPTIONS);
 
-        memcpy__(&raw mut (*pd).defaults, &raw const grid_default_cell);
+        memcpy__(&raw mut (*pd).defaults, &raw const GRID_DEFAULT_CELL);
         style_apply(
             &raw mut (*pd).defaults,
             o,
@@ -847,7 +847,7 @@ pub unsafe fn popup_display(
         );
         if !style.is_null() {
             let mut sytmp = MaybeUninit::<style>::uninit();
-            style_set(sytmp.as_mut_ptr(), &raw const grid_default_cell);
+            style_set(sytmp.as_mut_ptr(), &raw const GRID_DEFAULT_CELL);
             if style_parse(sytmp.as_mut_ptr(), &raw mut (*pd).defaults, style) == 0 {
                 (*pd).defaults.fg = (*sytmp.as_ptr()).gc.fg;
                 (*pd).defaults.bg = (*sytmp.as_ptr()).gc.bg;
@@ -957,7 +957,7 @@ pub unsafe fn popup_editor(
         let mut path = [0u8; 256];
         strcpy(path.as_mut_ptr(), c!("/tmp/tmux.XXXXXXXX").cast());
 
-        let editor = options_get_string_(global_options, c"editor");
+        let editor = options_get_string_(GLOBAL_OPTIONS, c"editor");
         if *editor == b'\0' {
             return -1;
         }

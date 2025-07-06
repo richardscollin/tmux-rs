@@ -15,7 +15,7 @@ use crate::*;
 
 use crate::compat::queue::tailq_foreach;
 
-pub static cmd_display_panes_entry: cmd_entry = cmd_entry {
+pub static CMD_DISPLAY_PANES_ENTRY: cmd_entry = cmd_entry {
     name: SyncCharPtr::new(c"display-panes"),
     alias: SyncCharPtr::new(c"displayp"),
 
@@ -119,8 +119,8 @@ unsafe fn cmd_display_panes_draw_pane(ctx: *mut screen_redraw_ctx, wp: *mut wind
             let colour: i32 = options_get_number_(oo, c"display-panes-colour") as _;
             let active_colour: i32 = options_get_number_(oo, c"display-panes-active-colour") as _;
 
-            let mut fgc = grid_default_cell;
-            let mut bgc = grid_default_cell;
+            let mut fgc = GRID_DEFAULT_CELL;
+            let mut bgc = GRID_DEFAULT_CELL;
             if (*w).active == wp {
                 fgc.fg = active_colour;
                 bgc.bg = active_colour;
@@ -149,7 +149,7 @@ unsafe fn cmd_display_panes_draw_pane(ctx: *mut screen_redraw_ctx, wp: *mut wind
                 tty_attributes(
                     tty,
                     &raw mut fgc,
-                    &raw const grid_default_cell,
+                    &raw const GRID_DEFAULT_CELL,
                     null_mut(),
                     null_mut(),
                 );
@@ -173,7 +173,7 @@ unsafe fn cmd_display_panes_draw_pane(ctx: *mut screen_redraw_ctx, wp: *mut wind
             tty_attributes(
                 tty,
                 &raw mut bgc,
-                &raw const grid_default_cell,
+                &raw const GRID_DEFAULT_CELL,
                 null_mut(),
                 null_mut(),
             );
@@ -189,7 +189,7 @@ unsafe fn cmd_display_panes_draw_pane(ctx: *mut screen_redraw_ctx, wp: *mut wind
                     let mut i = px;
                     while i < px + 5 {
                         tty_cursor(tty, xoff + i, yoff + py + j);
-                        if window_clock_table[idx as usize][j as usize][(i - px) as usize] != 0 {
+                        if WINDOW_CLOCK_TABLE[idx as usize][j as usize][(i - px) as usize] != 0 {
                             tty_putc(tty, b' ');
                         }
                         i += 1;
@@ -205,7 +205,7 @@ unsafe fn cmd_display_panes_draw_pane(ctx: *mut screen_redraw_ctx, wp: *mut wind
             tty_attributes(
                 tty,
                 &raw mut fgc,
-                &raw const grid_default_cell,
+                &raw const GRID_DEFAULT_CELL,
                 null_mut(),
                 null_mut(),
             );

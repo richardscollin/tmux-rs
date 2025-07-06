@@ -14,7 +14,7 @@
 
 use crate::*;
 
-pub static cmd_unbind_key_entry: cmd_entry = cmd_entry {
+pub static CMD_UNBIND_KEY_ENTRY: cmd_entry = cmd_entry {
     name: SyncCharPtr::new(c"unbind-key"),
     alias: SyncCharPtr::new(c"unbind"),
 

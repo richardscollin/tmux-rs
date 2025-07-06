@@ -24,7 +24,7 @@ impl tty_acs_entry {
     }
 }
 
-static tty_acs_table: [tty_acs_entry; 36] = [
+static TTY_ACS_TABLE: [tty_acs_entry; 36] = [
     tty_acs_entry::new(b'+', &[0o342, 0o206, 0o222, 0o000]), /* arrow pointing right */
     tty_acs_entry::new(b',', &[0o342, 0o206, 0o220, 0o000]), /* arrow pointing left */
     tty_acs_entry::new(b'-', &[0o342, 0o206, 0o221, 0o000]), /* arrow pointing up */
@@ -74,12 +74,12 @@ impl tty_acs_reverse_entry {
     }
 }
 
-static tty_acs_reverse2: [tty_acs_reverse_entry; 1] = [tty_acs_reverse_entry::new(
+static TTY_ACS_REVERSE2: [tty_acs_reverse_entry; 1] = [tty_acs_reverse_entry::new(
     &[0o302, 0o267, 0o000, 0o000],
     b'~',
 )];
 
-static tty_acs_reverse3: [tty_acs_reverse_entry; 32] = [
+static TTY_ACS_REVERSE3: [tty_acs_reverse_entry; 32] = [
     tty_acs_reverse_entry::new(&[0o342, 0o224, 0o200, 0o000], b'q'),
     tty_acs_reverse_entry::new(&[0o342, 0o224, 0o201, 0o000], b'q'),
     tty_acs_reverse_entry::new(&[0o342, 0o224, 0o202, 0o000], b'x'),
@@ -114,9 +114,8 @@ static tty_acs_reverse3: [tty_acs_reverse_entry; 32] = [
     tty_acs_reverse_entry::new(&[0o342, 0o225, 0o254, 0o000], b'n'),
 ];
 
-/* UTF-8 double borders. */
-
-static tty_acs_double_borders_list: [utf8_data; 13] = [
+/// UTF-8 double borders.
+static TTY_ACS_DOUBLE_BORDERS_LIST: [utf8_data; 13] = [
     utf8_data::new([0o000, 0o000, 0o000, 0o000], 0, 0, 0),
     utf8_data::new([0o342, 0o225, 0o221, 0o000], 0, 3, 1), /* U+2551 */
     utf8_data::new([0o342, 0o225, 0o220, 0o000], 0, 3, 1), /* U+2550 */
@@ -132,9 +131,8 @@ static tty_acs_double_borders_list: [utf8_data; 13] = [
     utf8_data::new([0o302, 0o267, 0o000, 0o000], 0, 2, 1), /* U+00B7 */
 ];
 
-/* UTF-8 heavy borders. */
-
-static tty_acs_heavy_borders_list: [utf8_data; 13] = [
+/// UTF-8 heavy borders.
+static TTY_ACS_HEAVY_BORDERS_LIST: [utf8_data; 13] = [
     utf8_data::new([0o000, 0o000, 0o000, 0o000], 0, 0, 0),
     utf8_data::new([0o342, 0o224, 0o203, 0o000], 0, 3, 1), /* U+2503 */
     utf8_data::new([0o342, 0o224, 0o201, 0o000], 0, 3, 1), /* U+2501 */
@@ -150,9 +148,8 @@ static tty_acs_heavy_borders_list: [utf8_data; 13] = [
     utf8_data::new([0o302, 0o267, 0o000, 0o000], 0, 2, 1), /* U+00B7 */
 ];
 
-/* UTF-8 rounded borders. */
-
-static tty_acs_rounded_borders_list: [utf8_data; 13] = [
+/// UTF-8 rounded borders.
+static TTY_ACS_ROUNDED_BORDERS_LIST: [utf8_data; 13] = [
     utf8_data::new([0o000, 0o000, 0o000, 0o000], 0, 0, 0),
     utf8_data::new([0o342, 0o224, 0o202, 0o000], 0, 3, 1), /* U+2502 */
     utf8_data::new([0o342, 0o224, 0o200, 0o000], 0, 3, 1), /* U+2500 */
@@ -169,17 +166,17 @@ static tty_acs_rounded_borders_list: [utf8_data; 13] = [
 ];
 
 pub unsafe fn tty_acs_double_borders(cell_type: cell_type) -> *const utf8_data {
-    unsafe { &raw const tty_acs_double_borders_list[cell_type as usize] }
+    unsafe { &raw const TTY_ACS_DOUBLE_BORDERS_LIST[cell_type as usize] }
 }
 
 pub unsafe fn tty_acs_heavy_borders(cell_type: cell_type) -> *const utf8_data {
-    unsafe { &raw const tty_acs_heavy_borders_list[cell_type as usize] }
+    unsafe { &raw const TTY_ACS_HEAVY_BORDERS_LIST[cell_type as usize] }
 }
 
 /* Get cell border character for rounded style. */
 
 pub unsafe fn tty_acs_rounded_borders(cell_type: cell_type) -> *const utf8_data {
-    unsafe { &raw const tty_acs_rounded_borders_list[cell_type as usize] }
+    unsafe { &raw const TTY_ACS_ROUNDED_BORDERS_LIST[cell_type as usize] }
 }
 
 pub unsafe extern "C" fn tty_acs_cmp(key: *const c_void, value: *const c_void) -> i32 {
@@ -238,8 +235,8 @@ pub unsafe fn tty_acs_get(tty: *mut tty, ch: u8) -> *const u8 {
         /* Otherwise look up the UTF-8 translation. */
         let entry: *mut tty_acs_entry = libc::bsearch(
             &raw const ch as *const c_void,
-            &raw const tty_acs_table as *const c_void,
-            tty_acs_table.len(),
+            &raw const TTY_ACS_TABLE as *const c_void,
+            TTY_ACS_TABLE.len(),
             size_of::<tty_acs_entry>(),
             Some(tty_acs_cmp),
         )
@@ -258,11 +255,11 @@ pub unsafe fn tty_acs_reverse_get(tty: *const tty, s: *const u8, slen: usize) ->
         let table;
         let items;
         if slen == 2 {
-            table = &raw const tty_acs_reverse2 as *const *const tty_acs_reverse_entry;
-            items = tty_acs_reverse2.len();
+            table = &raw const TTY_ACS_REVERSE2 as *const *const tty_acs_reverse_entry;
+            items = TTY_ACS_REVERSE2.len();
         } else if slen == 3 {
-            table = &raw const tty_acs_reverse3 as *const *const tty_acs_reverse_entry;
-            items = tty_acs_reverse3.len();
+            table = &raw const TTY_ACS_REVERSE3 as *const *const tty_acs_reverse_entry;
+            items = TTY_ACS_REVERSE3.len();
         } else {
             return -1;
         }

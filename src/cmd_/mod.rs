@@ -89,180 +89,180 @@ pub mod cmd_switch_client;
 pub mod cmd_unbind_key;
 pub mod cmd_wait_for;
 
-use cmd_attach_session::cmd_attach_session_entry;
-use cmd_bind_key::cmd_bind_key_entry;
-use cmd_break_pane::cmd_break_pane_entry;
-use cmd_capture_pane::{cmd_capture_pane_entry, cmd_clear_history_entry};
+use cmd_attach_session::CMD_ATTACH_SESSION_ENTRY;
+use cmd_bind_key::CMD_BIND_KEY_ENTRY;
+use cmd_break_pane::CMD_BREAK_PANE_ENTRY;
+use cmd_capture_pane::{CMD_CAPTURE_PANE_ENTRY, CMD_CLEAR_HISTORY_ENTRY};
 use cmd_choose_tree::{
-    cmd_choose_buffer_entry, cmd_choose_client_entry, cmd_choose_tree_entry,
-    cmd_customize_mode_entry,
+    CMD_CHOOSE_BUFFER_ENTRY, CMD_CHOOSE_CLIENT_ENTRY, CMD_CHOOSE_TREE_ENTRY,
+    CMD_CUSTOMIZE_MODE_ENTRY,
 };
-use cmd_command_prompt::cmd_command_prompt_entry;
-use cmd_confirm_before::cmd_confirm_before_entry;
-use cmd_copy_mode::{cmd_clock_mode_entry, cmd_copy_mode_entry};
-use cmd_detach_client::cmd_detach_client_entry;
-use cmd_detach_client::cmd_suspend_client_entry;
-use cmd_display_menu::{cmd_display_menu_entry, cmd_display_popup_entry};
-use cmd_display_message::cmd_display_message_entry;
-use cmd_display_panes::cmd_display_panes_entry;
-use cmd_find_window::cmd_find_window_entry;
-use cmd_if_shell::cmd_if_shell_entry;
-use cmd_join_pane::{cmd_join_pane_entry, cmd_move_pane_entry};
-use cmd_kill_pane::cmd_kill_pane_entry;
-use cmd_kill_server::cmd_kill_server_entry;
-use cmd_kill_server::cmd_start_server_entry;
-use cmd_kill_session::cmd_kill_session_entry;
-use cmd_kill_window::cmd_kill_window_entry;
-use cmd_kill_window::cmd_unlink_window_entry;
-use cmd_list_buffers::cmd_list_buffers_entry;
-use cmd_list_clients::cmd_list_clients_entry;
-use cmd_list_keys::{cmd_list_commands_entry, cmd_list_keys_entry};
-use cmd_list_panes::cmd_list_panes_entry;
-use cmd_list_sessions::cmd_list_sessions_entry;
-use cmd_list_windows::cmd_list_windows_entry;
-use cmd_load_buffer::cmd_load_buffer_entry;
-use cmd_lock_server::{cmd_lock_client_entry, cmd_lock_server_entry, cmd_lock_session_entry};
-use cmd_move_window::cmd_link_window_entry;
-use cmd_move_window::cmd_move_window_entry;
-use cmd_new_session::cmd_has_session_entry;
-use cmd_new_session::cmd_new_session_entry;
-use cmd_new_window::cmd_new_window_entry;
-use cmd_paste_buffer::cmd_paste_buffer_entry;
-use cmd_pipe_pane::cmd_pipe_pane_entry;
-use cmd_refresh_client::cmd_refresh_client_entry;
-use cmd_rename_session::cmd_rename_session_entry;
-use cmd_rename_window::cmd_rename_window_entry;
-use cmd_resize_pane::cmd_resize_pane_entry;
-use cmd_resize_window::cmd_resize_window_entry;
-use cmd_respawn_pane::cmd_respawn_pane_entry;
-use cmd_respawn_window::cmd_respawn_window_entry;
-use cmd_rotate_window::cmd_rotate_window_entry;
-use cmd_run_shell::cmd_run_shell_entry;
-use cmd_save_buffer::cmd_save_buffer_entry;
-use cmd_save_buffer::cmd_show_buffer_entry;
-use cmd_select_layout::cmd_next_layout_entry;
-use cmd_select_layout::cmd_previous_layout_entry;
-use cmd_select_layout::cmd_select_layout_entry;
-use cmd_select_pane::cmd_last_pane_entry;
-use cmd_select_pane::cmd_select_pane_entry;
-use cmd_select_window::cmd_last_window_entry;
-use cmd_select_window::cmd_next_window_entry;
-use cmd_select_window::cmd_previous_window_entry;
-use cmd_select_window::cmd_select_window_entry;
-use cmd_send_keys::cmd_send_keys_entry;
-use cmd_send_keys::cmd_send_prefix_entry;
-use cmd_server_access::cmd_server_access_entry;
-use cmd_set_buffer::cmd_delete_buffer_entry;
-use cmd_set_buffer::cmd_set_buffer_entry;
-use cmd_set_environment::cmd_set_environment_entry;
-use cmd_set_option::cmd_set_hook_entry;
-use cmd_set_option::cmd_set_option_entry;
-use cmd_set_option::cmd_set_window_option_entry;
-use cmd_show_environment::cmd_show_environment_entry;
-use cmd_show_messages::cmd_show_messages_entry;
-use cmd_show_options::cmd_show_hooks_entry;
-use cmd_show_options::cmd_show_options_entry;
-use cmd_show_options::cmd_show_window_options_entry;
-use cmd_show_prompt_history::{cmd_clear_prompt_history_entry, cmd_show_prompt_history_entry};
-use cmd_source_file::cmd_source_file_entry;
-use cmd_split_window::cmd_split_window_entry;
-use cmd_swap_pane::cmd_swap_pane_entry;
-use cmd_swap_window::cmd_swap_window_entry;
-use cmd_switch_client::cmd_switch_client_entry;
-use cmd_unbind_key::cmd_unbind_key_entry;
-use cmd_wait_for::cmd_wait_for_entry;
+use cmd_command_prompt::CMD_COMMAND_PROMPT_ENTRY;
+use cmd_confirm_before::CMD_CONFIRM_BEFORE_ENTRY;
+use cmd_copy_mode::{CMD_CLOCK_MODE_ENTRY, CMD_COPY_MODE_ENTRY};
+use cmd_detach_client::CMD_DETACH_CLIENT_ENTRY;
+use cmd_detach_client::CMD_SUSPEND_CLIENT_ENTRY;
+use cmd_display_menu::{CMD_DISPLAY_MENU_ENTRY, CMD_DISPLAY_POPUP_ENTRY};
+use cmd_display_message::CMD_DISPLAY_MESSAGE_ENTRY;
+use cmd_display_panes::CMD_DISPLAY_PANES_ENTRY;
+use cmd_find_window::CMD_FIND_WINDOW_ENTRY;
+use cmd_if_shell::CMD_IF_SHELL_ENTRY;
+use cmd_join_pane::{CMD_JOIN_PANE_ENTRY, CMD_MOVE_PANE_ENTRY};
+use cmd_kill_pane::CMD_KILL_PANE_ENTRY;
+use cmd_kill_server::CMD_KILL_SERVER_ENTRY;
+use cmd_kill_server::CMD_START_SERVER_ENTRY;
+use cmd_kill_session::CMD_KILL_SESSION_ENTRY;
+use cmd_kill_window::CMD_KILL_WINDOW_ENTRY;
+use cmd_kill_window::CMD_UNLINK_WINDOW_ENTRY;
+use cmd_list_buffers::CMD_LIST_BUFFERS_ENTRY;
+use cmd_list_clients::CMD_LIST_CLIENTS_ENTRY;
+use cmd_list_keys::{CMD_LIST_COMMANDS_ENTRY, CMD_LIST_KEYS_ENTRY};
+use cmd_list_panes::CMD_LIST_PANES_ENTRY;
+use cmd_list_sessions::CMD_LIST_SESSIONS_ENTRY;
+use cmd_list_windows::CMD_LIST_WINDOWS_ENTRY;
+use cmd_load_buffer::CMD_LOAD_BUFFER_ENTRY;
+use cmd_lock_server::{CMD_LOCK_CLIENT_ENTRY, CMD_LOCK_SERVER_ENTRY, CMD_LOCK_SESSION_ENTRY};
+use cmd_move_window::CMD_LINK_WINDOW_ENTRY;
+use cmd_move_window::CMD_MOVE_WINDOW_ENTRY;
+use cmd_new_session::CMD_HAS_SESSION_ENTRY;
+use cmd_new_session::CMD_NEW_SESSION_ENTRY;
+use cmd_new_window::CMD_NEW_WINDOW_ENTRY;
+use cmd_paste_buffer::CMD_PASTE_BUFFER_ENTRY;
+use cmd_pipe_pane::CMD_PIPE_PANE_ENTRY;
+use cmd_refresh_client::CMD_REFRESH_CLIENT_ENTRY;
+use cmd_rename_session::CMD_RENAME_SESSION_ENTRY;
+use cmd_rename_window::CMD_RENAME_WINDOW_ENTRY;
+use cmd_resize_pane::CMD_RESIZE_PANE_ENTRY;
+use cmd_resize_window::CMD_RESIZE_WINDOW_ENTRY;
+use cmd_respawn_pane::CMD_RESPAWN_PANE_ENTRY;
+use cmd_respawn_window::CMD_RESPAWN_WINDOW_ENTRY;
+use cmd_rotate_window::CMD_ROTATE_WINDOW_ENTRY;
+use cmd_run_shell::CMD_RUN_SHELL_ENTRY;
+use cmd_save_buffer::CMD_SAVE_BUFFER_ENTRY;
+use cmd_save_buffer::CMD_SHOW_BUFFER_ENTRY;
+use cmd_select_layout::CMD_NEXT_LAYOUT_ENTRY;
+use cmd_select_layout::CMD_PREVIOUS_LAYOUT_ENTRY;
+use cmd_select_layout::CMD_SELECT_LAYOUT_ENTRY;
+use cmd_select_pane::CMD_LAST_PANE_ENTRY;
+use cmd_select_pane::CMD_SELECT_PANE_ENTRY;
+use cmd_select_window::CMD_LAST_WINDOW_ENTRY;
+use cmd_select_window::CMD_NEXT_WINDOW_ENTRY;
+use cmd_select_window::CMD_PREVIOUS_WINDOW_ENTRY;
+use cmd_select_window::CMD_SELECT_WINDOW_ENTRY;
+use cmd_send_keys::CMD_SEND_KEYS_ENTRY;
+use cmd_send_keys::CMD_SEND_PREFIX_ENTRY;
+use cmd_server_access::CMD_SERVER_ACCESS_ENTRY;
+use cmd_set_buffer::CMD_DELETE_BUFFER_ENTRY;
+use cmd_set_buffer::CMD_SET_BUFFER_ENTRY;
+use cmd_set_environment::CMD_SET_ENVIRONMENT_ENTRY;
+use cmd_set_option::CMD_SET_HOOK_ENTRY;
+use cmd_set_option::CMD_SET_OPTION_ENTRY;
+use cmd_set_option::CMD_SET_WINDOW_OPTION_ENTRY;
+use cmd_show_environment::CMD_SHOW_ENVIRONMENT_ENTRY;
+use cmd_show_messages::CMD_SHOW_MESSAGES_ENTRY;
+use cmd_show_options::CMD_SHOW_HOOKS_ENTRY;
+use cmd_show_options::CMD_SHOW_OPTIONS_ENTRY;
+use cmd_show_options::CMD_SHOW_WINDOW_OPTIONS_ENTRY;
+use cmd_show_prompt_history::{CMD_CLEAR_PROMPT_HISTORY_ENTRY, CMD_SHOW_PROMPT_HISTORY_ENTRY};
+use cmd_source_file::CMD_SOURCE_FILE_ENTRY;
+use cmd_split_window::CMD_SPLIT_WINDOW_ENTRY;
+use cmd_swap_pane::CMD_SWAP_PANE_ENTRY;
+use cmd_swap_window::CMD_SWAP_WINDOW_ENTRY;
+use cmd_switch_client::CMD_SWITCH_CLIENT_ENTRY;
+use cmd_unbind_key::CMD_UNBIND_KEY_ENTRY;
+use cmd_wait_for::CMD_WAIT_FOR_ENTRY;
 
-pub static cmd_table: [&cmd_entry; 90] = [
-    &cmd_attach_session_entry,
-    &cmd_bind_key_entry,
-    &cmd_break_pane_entry,
-    &cmd_capture_pane_entry,
-    &cmd_choose_buffer_entry,
-    &cmd_choose_client_entry,
-    &cmd_choose_tree_entry,
-    &cmd_clear_history_entry,
-    &cmd_clear_prompt_history_entry,
-    &cmd_clock_mode_entry,
-    &cmd_command_prompt_entry,
-    &cmd_confirm_before_entry,
-    &cmd_copy_mode_entry,
-    &cmd_customize_mode_entry,
-    &cmd_delete_buffer_entry,
-    &cmd_detach_client_entry,
-    &cmd_display_menu_entry,
-    &cmd_display_message_entry,
-    &cmd_display_popup_entry,
-    &cmd_display_panes_entry,
-    &cmd_find_window_entry,
-    &cmd_has_session_entry,
-    &cmd_if_shell_entry,
-    &cmd_join_pane_entry,
-    &cmd_kill_pane_entry,
-    &cmd_kill_server_entry,
-    &cmd_kill_session_entry,
-    &cmd_kill_window_entry,
-    &cmd_last_pane_entry,
-    &cmd_last_window_entry,
-    &cmd_link_window_entry,
-    &cmd_list_buffers_entry,
-    &cmd_list_clients_entry,
-    &cmd_list_commands_entry,
-    &cmd_list_keys_entry,
-    &cmd_list_panes_entry,
-    &cmd_list_sessions_entry,
-    &cmd_list_windows_entry,
-    &cmd_load_buffer_entry,
-    &cmd_lock_client_entry,
-    &cmd_lock_server_entry,
-    &cmd_lock_session_entry,
-    &cmd_move_pane_entry,
-    &cmd_move_window_entry,
-    &cmd_new_session_entry,
-    &cmd_new_window_entry,
-    &cmd_next_layout_entry,
-    &cmd_next_window_entry,
-    &cmd_paste_buffer_entry,
-    &cmd_pipe_pane_entry,
-    &cmd_previous_layout_entry,
-    &cmd_previous_window_entry,
-    &cmd_refresh_client_entry,
-    &cmd_rename_session_entry,
-    &cmd_rename_window_entry,
-    &cmd_resize_pane_entry,
-    &cmd_resize_window_entry,
-    &cmd_respawn_pane_entry,
-    &cmd_respawn_window_entry,
-    &cmd_rotate_window_entry,
-    &cmd_run_shell_entry,
-    &cmd_save_buffer_entry,
-    &cmd_select_layout_entry,
-    &cmd_select_pane_entry,
-    &cmd_select_window_entry,
-    &cmd_send_keys_entry,
-    &cmd_send_prefix_entry,
-    &cmd_server_access_entry,
-    &cmd_set_buffer_entry,
-    &cmd_set_environment_entry,
-    &cmd_set_hook_entry,
-    &cmd_set_option_entry,
-    &cmd_set_window_option_entry,
-    &cmd_show_buffer_entry,
-    &cmd_show_environment_entry,
-    &cmd_show_hooks_entry,
-    &cmd_show_messages_entry,
-    &cmd_show_options_entry,
-    &cmd_show_prompt_history_entry,
-    &cmd_show_window_options_entry,
-    &cmd_source_file_entry,
-    &cmd_split_window_entry,
-    &cmd_start_server_entry,
-    &cmd_suspend_client_entry,
-    &cmd_swap_pane_entry,
-    &cmd_swap_window_entry,
-    &cmd_switch_client_entry,
-    &cmd_unbind_key_entry,
-    &cmd_unlink_window_entry,
-    &cmd_wait_for_entry,
+pub static CMD_TABLE: [&cmd_entry; 90] = [
+    &CMD_ATTACH_SESSION_ENTRY,
+    &CMD_BIND_KEY_ENTRY,
+    &CMD_BREAK_PANE_ENTRY,
+    &CMD_CAPTURE_PANE_ENTRY,
+    &CMD_CHOOSE_BUFFER_ENTRY,
+    &CMD_CHOOSE_CLIENT_ENTRY,
+    &CMD_CHOOSE_TREE_ENTRY,
+    &CMD_CLEAR_HISTORY_ENTRY,
+    &CMD_CLEAR_PROMPT_HISTORY_ENTRY,
+    &CMD_CLOCK_MODE_ENTRY,
+    &CMD_COMMAND_PROMPT_ENTRY,
+    &CMD_CONFIRM_BEFORE_ENTRY,
+    &CMD_COPY_MODE_ENTRY,
+    &CMD_CUSTOMIZE_MODE_ENTRY,
+    &CMD_DELETE_BUFFER_ENTRY,
+    &CMD_DETACH_CLIENT_ENTRY,
+    &CMD_DISPLAY_MENU_ENTRY,
+    &CMD_DISPLAY_MESSAGE_ENTRY,
+    &CMD_DISPLAY_POPUP_ENTRY,
+    &CMD_DISPLAY_PANES_ENTRY,
+    &CMD_FIND_WINDOW_ENTRY,
+    &CMD_HAS_SESSION_ENTRY,
+    &CMD_IF_SHELL_ENTRY,
+    &CMD_JOIN_PANE_ENTRY,
+    &CMD_KILL_PANE_ENTRY,
+    &CMD_KILL_SERVER_ENTRY,
+    &CMD_KILL_SESSION_ENTRY,
+    &CMD_KILL_WINDOW_ENTRY,
+    &CMD_LAST_PANE_ENTRY,
+    &CMD_LAST_WINDOW_ENTRY,
+    &CMD_LINK_WINDOW_ENTRY,
+    &CMD_LIST_BUFFERS_ENTRY,
+    &CMD_LIST_CLIENTS_ENTRY,
+    &CMD_LIST_COMMANDS_ENTRY,
+    &CMD_LIST_KEYS_ENTRY,
+    &CMD_LIST_PANES_ENTRY,
+    &CMD_LIST_SESSIONS_ENTRY,
+    &CMD_LIST_WINDOWS_ENTRY,
+    &CMD_LOAD_BUFFER_ENTRY,
+    &CMD_LOCK_CLIENT_ENTRY,
+    &CMD_LOCK_SERVER_ENTRY,
+    &CMD_LOCK_SESSION_ENTRY,
+    &CMD_MOVE_PANE_ENTRY,
+    &CMD_MOVE_WINDOW_ENTRY,
+    &CMD_NEW_SESSION_ENTRY,
+    &CMD_NEW_WINDOW_ENTRY,
+    &CMD_NEXT_LAYOUT_ENTRY,
+    &CMD_NEXT_WINDOW_ENTRY,
+    &CMD_PASTE_BUFFER_ENTRY,
+    &CMD_PIPE_PANE_ENTRY,
+    &CMD_PREVIOUS_LAYOUT_ENTRY,
+    &CMD_PREVIOUS_WINDOW_ENTRY,
+    &CMD_REFRESH_CLIENT_ENTRY,
+    &CMD_RENAME_SESSION_ENTRY,
+    &CMD_RENAME_WINDOW_ENTRY,
+    &CMD_RESIZE_PANE_ENTRY,
+    &CMD_RESIZE_WINDOW_ENTRY,
+    &CMD_RESPAWN_PANE_ENTRY,
+    &CMD_RESPAWN_WINDOW_ENTRY,
+    &CMD_ROTATE_WINDOW_ENTRY,
+    &CMD_RUN_SHELL_ENTRY,
+    &CMD_SAVE_BUFFER_ENTRY,
+    &CMD_SELECT_LAYOUT_ENTRY,
+    &CMD_SELECT_PANE_ENTRY,
+    &CMD_SELECT_WINDOW_ENTRY,
+    &CMD_SEND_KEYS_ENTRY,
+    &CMD_SEND_PREFIX_ENTRY,
+    &CMD_SERVER_ACCESS_ENTRY,
+    &CMD_SET_BUFFER_ENTRY,
+    &CMD_SET_ENVIRONMENT_ENTRY,
+    &CMD_SET_HOOK_ENTRY,
+    &CMD_SET_OPTION_ENTRY,
+    &CMD_SET_WINDOW_OPTION_ENTRY,
+    &CMD_SHOW_BUFFER_ENTRY,
+    &CMD_SHOW_ENVIRONMENT_ENTRY,
+    &CMD_SHOW_HOOKS_ENTRY,
+    &CMD_SHOW_MESSAGES_ENTRY,
+    &CMD_SHOW_OPTIONS_ENTRY,
+    &CMD_SHOW_PROMPT_HISTORY_ENTRY,
+    &CMD_SHOW_WINDOW_OPTIONS_ENTRY,
+    &CMD_SOURCE_FILE_ENTRY,
+    &CMD_SPLIT_WINDOW_ENTRY,
+    &CMD_START_SERVER_ENTRY,
+    &CMD_SUSPEND_CLIENT_ENTRY,
+    &CMD_SWAP_PANE_ENTRY,
+    &CMD_SWAP_WINDOW_ENTRY,
+    &CMD_SWITCH_CLIENT_ENTRY,
+    &CMD_UNBIND_KEY_ENTRY,
+    &CMD_UNLINK_WINDOW_ENTRY,
+    &CMD_WAIT_FOR_ENTRY,
 ];
 
 // Instance of a command.
@@ -286,7 +286,7 @@ impl Entry<cmd, qentry> for cmd {
 }
 
 /// Next group number for new command list.
-static cmd_list_next_group: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(1);
+static CMD_LIST_NEXT_GROUP: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(1);
 
 macro_rules! cmd_log_argv {
    ($argc:expr, $argv:expr, $fmt:literal $(, $args:expr)* $(,)?) => {
@@ -458,7 +458,7 @@ pub unsafe fn cmd_get_source(cmd: *mut cmd, file: *mut *const u8, line: &AtomicU
 
 pub unsafe fn cmd_get_alias(name: *const u8) -> *mut u8 {
     unsafe {
-        let o = options_get_only(global_options, c!("command-alias"));
+        let o = options_get_only(GLOBAL_OPTIONS, c!("command-alias"));
         if o.is_null() {
             return null_mut();
         }
@@ -493,7 +493,7 @@ pub unsafe fn cmd_find(name: *const u8) -> Result<&'static cmd_entry, *mut u8> {
 
     unsafe {
         'ambiguous: {
-            for entry in cmd_table {
+            for entry in CMD_TABLE {
                 if !entry.alias.is_null() && strcmp(entry.alias.as_ptr(), name) == 0 {
                     ambiguous = 0;
                     found = Some(entry);
@@ -524,7 +524,7 @@ pub unsafe fn cmd_find(name: *const u8) -> Result<&'static cmd_entry, *mut u8> {
 
         // ambiguous:
         s[0] = b'\0';
-        for entry in cmd_table {
+        for entry in CMD_TABLE {
             if strncmp(entry.name.as_ptr(), name, strlen(name)) != 0 {
                 continue;
             }
@@ -647,7 +647,7 @@ pub unsafe fn cmd_print(cmd: *mut cmd) -> *mut u8 {
 
 pub unsafe fn cmd_list_new<'a>() -> &'a mut cmd_list {
     unsafe {
-        let group = cmd_list_next_group.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        let group = CMD_LIST_NEXT_GROUP.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
 
         let cmdlist = Box::leak(Box::new(cmd_list {
             references: 1,
@@ -679,7 +679,7 @@ pub unsafe fn cmd_list_append_all(cmdlist: *mut cmd_list, from: *mut cmd_list) {
 pub unsafe fn cmd_list_move(cmdlist: *mut cmd_list, from: *mut cmd_list) {
     unsafe {
         tailq_concat::<_, qentry>((*cmdlist).list, (*from).list);
-        (*cmdlist).group = cmd_list_next_group.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        (*cmdlist).group = CMD_LIST_NEXT_GROUP.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
     }
 }
 
@@ -714,7 +714,7 @@ pub unsafe fn cmd_list_copy(
         for cmd in tailq_foreach(cmdlist.list).map(NonNull::as_ptr) {
             if (*cmd).group != group {
                 new_cmdlist.group =
-                    cmd_list_next_group.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+                    CMD_LIST_NEXT_GROUP.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
                 group = (*cmd).group;
             }
             let new_cmd = cmd_copy(cmd, argc, argv);

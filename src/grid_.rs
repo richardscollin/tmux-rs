@@ -18,7 +18,7 @@ use crate::libc::strlen;
 use crate::xmalloc::xreallocarray;
 
 /// Default grid cell data.
-pub static grid_default_cell: grid_cell = grid_cell::new(
+pub static GRID_DEFAULT_CELL: grid_cell = grid_cell::new(
     utf8_data::new([b' '], 0, 1, 1),
     grid_attr::empty(),
     grid_flag::empty(),
@@ -30,7 +30,7 @@ pub static grid_default_cell: grid_cell = grid_cell::new(
 
 /// Padding grid cell data. Padding cells are the only zero width cell that
 /// appears in the grid - because of this, they are always extended cells.
-pub static grid_padding_cell: grid_cell = grid_cell::new(
+pub static GRID_PADDING_CELL: grid_cell = grid_cell::new(
     utf8_data::new([b'!'], 0, 0, 0),
     grid_attr::empty(),
     grid_flag::PADDING,
@@ -41,7 +41,7 @@ pub static grid_padding_cell: grid_cell = grid_cell::new(
 );
 
 /// Cleared grid cell data.
-pub static grid_cleared_cell: grid_cell = grid_cell::new(
+pub static GRID_CLEARED_CELL: grid_cell = grid_cell::new(
     utf8_data::new([b' '], 0, 1, 1),
     grid_attr::empty(),
     grid_flag::CLEARED,
@@ -51,7 +51,7 @@ pub static grid_cleared_cell: grid_cell = grid_cell::new(
     0,
 );
 
-pub static grid_cleared_entry: grid_cell_entry = grid_cell_entry {
+pub static GRID_CLEARED_ENTRY: grid_cell_entry = grid_cell_entry {
     union_: grid_cell_entry_union {
         data: grid_cell_entry_data {
             attr: 0,
@@ -224,11 +224,11 @@ pub unsafe fn grid_clear_cell(gd: *mut grid, px: c_uint, py: c_uint, bg: c_uint)
     unsafe {
         let gl = (*gd).linedata.add(py as usize);
         let gce = (*gl).celldata.add(px as usize);
-        std::ptr::copy_nonoverlapping(&raw const grid_cleared_entry, gce, 1);
+        std::ptr::copy_nonoverlapping(&raw const GRID_CLEARED_ENTRY, gce, 1);
         if bg != 8 {
             if (bg & COLOUR_FLAG_RGB as u32) != 0 {
                 grid_get_extended_cell(gl, gce, (*gce).flags);
-                let gee = grid_extended_cell(gl, gce, &raw const grid_cleared_cell);
+                let gee = grid_extended_cell(gl, gce, &raw const GRID_CLEARED_CELL);
                 (*gee).bg = bg as i32;
             } else {
                 if (bg & COLOUR_FLAG_256 as u32) != 0 {
@@ -451,7 +451,7 @@ pub unsafe fn grid_scroll_history(gd: *mut grid, bg: c_uint) {
 
         (*gd).hscrolled += 1;
         grid_compact_line(&mut (*(*gd).linedata.add((*gd).hsize as usize)));
-        (*(*gd).linedata.add((*gd).hsize as usize)).time = current_time;
+        (*(*gd).linedata.add((*gd).hsize as usize)).time = CURRENT_TIME;
         (*gd).hsize += 1;
     }
 }
@@ -492,7 +492,7 @@ pub unsafe fn grid_scroll_history_region(
 
         // Move line into history
         std::ptr::copy_nonoverlapping(gl_upper, gl_history, 1);
-        (*gl_history).time = current_time;
+        (*gl_history).time = CURRENT_TIME;
 
         // Move region up and clear bottom line
         std::ptr::copy(gl_upper.add(1), gl_upper, (lower - upper) as usize);
@@ -556,7 +556,7 @@ unsafe fn grid_get_cell1(gl: *mut grid_line, px: c_uint, gc: *mut grid_cell) {
 
         if (*gce).flags.contains(grid_flag::EXTENDED) {
             if (*gce).union_.offset >= (*gl).extdsize {
-                std::ptr::copy(&grid_default_cell, gc, 1);
+                std::ptr::copy(&GRID_DEFAULT_CELL, gc, 1);
             } else {
                 let gee = (*gl).extddata.add((*gce).union_.offset as usize);
                 (*gc).flags = grid_flag::from_bits((*gee).flags).unwrap();
@@ -592,7 +592,7 @@ pub unsafe fn grid_get_cell(gd: *mut grid, px: c_uint, py: c_uint, gc: *mut grid
         if grid_check_y(gd, c!("grid_get_cell"), py) != 0
             || px >= (*(*gd).linedata.add(py as usize)).cellsize
         {
-            std::ptr::copy(&raw const grid_default_cell, gc, 1);
+            std::ptr::copy(&raw const GRID_DEFAULT_CELL, gc, 1);
         } else {
             grid_get_cell1((*gd).linedata.add(py as usize), px, gc);
         }
@@ -625,7 +625,7 @@ pub unsafe fn grid_set_cell(gd: *mut grid, px: c_uint, py: c_uint, gc: *const gr
 /// Set padding at position.
 pub unsafe fn grid_set_padding(gd: *mut grid, px: c_uint, py: c_uint) {
     unsafe {
-        grid_set_cell(gd, px, py, &grid_padding_cell);
+        grid_set_cell(gd, px, py, &GRID_PADDING_CELL);
     }
 }
 
@@ -1216,7 +1216,7 @@ pub unsafe fn grid_string_cells(
     flags: grid_string_flags,
     s: *mut screen,
 ) -> *mut u8 {
-    static mut lastgc1: grid_cell = unsafe { zeroed() };
+    static mut LASTGC1: grid_cell = unsafe { zeroed() };
     unsafe {
         let mut gc: grid_cell = zeroed();
         let mut data: *const u8;
@@ -1228,8 +1228,8 @@ pub unsafe fn grid_string_cells(
         let mut has_link: c_int = 0;
 
         if !lastgc.is_null() && (*lastgc).is_null() {
-            std::ptr::copy(&grid_default_cell, &raw mut lastgc1, 1);
-            *lastgc = &raw mut lastgc1;
+            std::ptr::copy(&GRID_DEFAULT_CELL, &raw mut LASTGC1, 1);
+            *lastgc = &raw mut LASTGC1;
         }
 
         let mut buf: *mut u8 = xmalloc(len).as_ptr() as *mut u8;

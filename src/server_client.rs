@@ -31,7 +31,7 @@ pub fn server_client_window_cmp(cw1: &client_window, cw2: &client_window) -> std
 /// Number of attached clients.
 pub unsafe fn server_client_how_many() -> u32 {
     unsafe {
-        tailq_foreach(&raw mut clients)
+        tailq_foreach(&raw mut CLIENTS)
             .filter(|c| {
                 !(*c.as_ptr()).session.is_null()
                     && !(*c.as_ptr()).flags.intersects(CLIENT_UNATTACHEDFLAGS)
@@ -187,7 +187,7 @@ pub unsafe fn server_client_check_nested(c: *mut client) -> i32 {
             return 0;
         }
 
-        for wp in rb_foreach(&raw mut all_window_panes) {
+        for wp in rb_foreach(&raw mut ALL_WINDOW_PANES) {
             if libc::strcmp((&raw const (*wp.as_ptr()).tty) as _, (*c).ttyname) == 0 {
                 return 1;
             }
@@ -252,7 +252,7 @@ pub unsafe fn server_client_create(fd: i32) -> *mut client {
 
         let c: *mut client = xcalloc1();
         (*c).references = 1;
-        (*c).peer = proc_add_peer(server_proc, fd, Some(server_client_dispatch), c.cast());
+        (*c).peer = proc_add_peer(SERVER_PROC, fd, Some(server_client_dispatch), c.cast());
 
         if libc::gettimeofday(&raw mut (*c).creation_time, null_mut()) != 0 {
             fatal("gettimeofday failed");
@@ -288,7 +288,7 @@ pub unsafe fn server_client_create(fd: i32) -> *mut client {
             c.cast(),
         );
 
-        tailq_insert_tail(&raw mut clients, c);
+        tailq_insert_tail(&raw mut CLIENTS, c);
         log_debug!("new client {:p}", c);
         c
     }
@@ -347,13 +347,13 @@ pub unsafe fn server_client_attached_lost(c: *mut client) {
 
         // By this point the session in the client has been cleared so walk all
         // windows to find any with this client as the latest.
-        for w in rb_foreach(&raw mut windows).map(NonNull::as_ptr) {
+        for w in rb_foreach(&raw mut WINDOWS).map(NonNull::as_ptr) {
             if (*w).latest.cast() != c {
                 continue;
             }
 
             let mut found: *mut client = null_mut();
-            for loop_ in tailq_foreach(&raw mut clients).map(NonNull::as_ptr) {
+            for loop_ in tailq_foreach(&raw mut CLIENTS).map(NonNull::as_ptr) {
                 let s = (*loop_).session;
                 if loop_ == c || s.is_null() || (*(*s).curw).window != w {
                     continue;
@@ -425,7 +425,7 @@ pub unsafe fn server_client_lost(c: *mut client) {
             free_(cw);
         }
 
-        tailq_remove(&raw mut clients, c);
+        tailq_remove(&raw mut CLIENTS, c);
         log_debug!("lost client {:p}", c);
 
         if (*c).flags.intersects(client_flag::ATTACHED) {
@@ -565,7 +565,7 @@ pub unsafe fn server_client_exec(c: *mut client, cmd: *const u8) {
         let mut shell = if !s.is_null() {
             options_get_string_((*s).options, c"default-shell")
         } else {
-            options_get_string_(global_s_options, c"default-shell")
+            options_get_string_(GLOBAL_S_OPTIONS, c"default-shell")
         };
         if !checkshell(shell) {
             shell = _PATH_BSHELL;
@@ -1940,7 +1940,7 @@ pub unsafe fn server_client_key_callback(item: *mut cmdq_item, data: *mut c_void
                          * the timeout has been exceeded. Revert to the root table if so.
                          */
                         prefix_delay =
-                            options_get_number_(global_options, c"prefix-timeout") as u64;
+                            options_get_number_(GLOBAL_OPTIONS, c"prefix-timeout") as u64;
                         if prefix_delay > 0
                             && streq_((*table).name, "prefix")
                             && server_client_key_table_activity_diff(c) > prefix_delay
@@ -2136,12 +2136,12 @@ pub unsafe fn server_client_handle_key(c: *mut client, event: *mut key_event) ->
 pub unsafe fn server_client_loop() {
     unsafe {
         // Check for window resize. This is done before redrawing.
-        for w in rb_foreach(&raw mut windows).map(NonNull::as_ptr) {
+        for w in rb_foreach(&raw mut WINDOWS).map(NonNull::as_ptr) {
             server_client_check_window_resize(w);
         }
 
         // Check clients.
-        for c in tailq_foreach(&raw mut clients).map(NonNull::as_ptr) {
+        for c in tailq_foreach(&raw mut CLIENTS).map(NonNull::as_ptr) {
             server_client_check_exit(c);
             if !(*c).session.is_null() {
                 server_client_check_modes(c);
@@ -2151,7 +2151,7 @@ pub unsafe fn server_client_loop() {
         }
 
         // Any windows will have been redrawn as part of clients, so clear their flags now.
-        for w in rb_foreach(&raw mut windows).map(NonNull::as_ptr) {
+        for w in rb_foreach(&raw mut WINDOWS).map(NonNull::as_ptr) {
             for wp in tailq_foreach::<_, discr_entry>(&raw mut (*w).panes).map(NonNull::as_ptr) {
                 if (*wp).fd != -1 {
                     server_client_check_pane_resize(wp);
@@ -2320,7 +2320,7 @@ pub unsafe fn server_client_check_pane_buffer(wp: *mut window_pane) {
             if (*wp).pipe_fd != -1 && (*wp).pipe_offset.used < minimum {
                 minimum = (*wp).pipe_offset.used;
             }
-            for c in tailq_foreach(&raw mut clients).map(NonNull::as_ptr) {
+            for c in tailq_foreach(&raw mut CLIENTS).map(NonNull::as_ptr) {
                 if (*c).session.is_null() {
                     continue;
                 }
@@ -2375,7 +2375,7 @@ pub unsafe fn server_client_check_pane_buffer(wp: *mut window_pane) {
                 if (*wp).pipe_fd != -1 {
                     (*wp).pipe_offset.used -= (*wp).base_offset;
                 }
-                for c in tailq_foreach(&raw mut clients).map(NonNull::as_ptr) {
+                for c in tailq_foreach(&raw mut CLIENTS).map(NonNull::as_ptr) {
                     if (*c).session.is_null() || !(*c).flags.intersects(client_flag::CONTROL) {
                         continue;
                     }
@@ -2672,7 +2672,7 @@ pub unsafe fn server_client_check_modes(c: *mut client) {
 
 /// Check for client redraws.
 pub unsafe fn server_client_check_redraw(c: *mut client) {
-    static mut ev: event = unsafe { zeroed() };
+    static mut EV: event = unsafe { zeroed() };
     unsafe {
         let s = (*c).session;
         let tty = &raw mut (*c).tty;
@@ -2729,12 +2729,12 @@ pub unsafe fn server_client_check_redraw(c: *mut client) {
             })
         {
             // log_debug("%s: redraw deferred (%zu left)", (*c).name, left);
-            if !evtimer_initialized(&raw mut ev) {
-                evtimer_set(&raw mut ev, Some(server_client_redraw_timer), null_mut());
+            if !evtimer_initialized(&raw mut EV) {
+                evtimer_set(&raw mut EV, Some(server_client_redraw_timer), null_mut());
             }
-            if evtimer_pending(&raw mut ev, null_mut()) == 0 {
+            if evtimer_pending(&raw mut EV, null_mut()) == 0 {
                 log_debug!("redraw timer started");
-                evtimer_add(&raw mut ev, &raw const tv);
+                evtimer_add(&raw mut EV, &raw const tv);
             }
 
             if !(*c).flags.intersects(client_flag::REDRAWWINDOW) {
@@ -3222,8 +3222,8 @@ pub unsafe fn server_client_dispatch_identify(c: *mut client, imsg: *mut imsg) {
          * config has not been loaded - they might have been run from inside it
          */
         if !(*c).flags.intersects(client_flag::EXIT)
-            && cfg_finished == 0
-            && c == tailq_first(&raw mut clients)
+            && CFG_FINISHED == 0
+            && c == tailq_first(&raw mut CLIENTS)
         {
             start_cfg();
         }
@@ -3233,7 +3233,7 @@ pub unsafe fn server_client_dispatch_identify(c: *mut client, imsg: *mut imsg) {
 /// Handle shell message.
 pub unsafe fn server_client_dispatch_shell(c: *mut client) {
     unsafe {
-        let mut shell = options_get_string_(global_s_options, c"default-shell");
+        let mut shell = options_get_string_(GLOBAL_S_OPTIONS, c"default-shell");
         if !checkshell(shell) {
             shell = _PATH_BSHELL;
         }
@@ -3252,8 +3252,8 @@ pub unsafe fn server_client_dispatch_shell(c: *mut client) {
 /// Get client working directory.
 pub unsafe fn server_client_get_cwd(c: *mut client, mut s: *mut session) -> *const u8 {
     unsafe {
-        if cfg_finished == 0 && !cfg_client.is_null() {
-            (*cfg_client).cwd
+        if CFG_FINISHED == 0 && !CFG_CLIENT.is_null() {
+            (*CFG_CLIENT).cwd
         } else if (!c.is_null() && (*c).session.is_null() && !(*c).cwd.is_null())
             || (!s.is_null() && !(*s).cwd.is_null())
         {
@@ -3359,55 +3359,55 @@ pub unsafe fn server_client_set_flags(c: *mut client, flags: *const u8) {
 /// Get client flags. This is only flags useful to show to users.
 pub unsafe fn server_client_get_flags(c: *mut client) -> *const u8 {
     unsafe {
-        const sizeof_s: usize = 256;
-        const sizeof_tmp: usize = 32;
-        static mut s: [u8; sizeof_s] = [0; sizeof_s];
-        static mut tmp: [u8; sizeof_tmp] = [0; sizeof_tmp];
+        const SIZEOF_S: usize = 256;
+        const SIZEOF_TMP: usize = 32;
+        static mut S: [u8; SIZEOF_S] = [0; SIZEOF_S];
+        static mut TMP: [u8; SIZEOF_TMP] = [0; SIZEOF_TMP];
 
-        s[0] = b'\0';
+        S[0] = b'\0';
         if (*c).flags.intersects(client_flag::ATTACHED) {
-            strlcat((&raw mut s).cast(), c!("attached,"), sizeof_s);
+            strlcat((&raw mut S).cast(), c!("attached,"), SIZEOF_S);
         }
         if (*c).flags.intersects(client_flag::FOCUSED) {
-            strlcat((&raw mut s).cast(), c!("focused,"), sizeof_s);
+            strlcat((&raw mut S).cast(), c!("focused,"), SIZEOF_S);
         }
         if (*c).flags.intersects(client_flag::CONTROL) {
-            strlcat((&raw mut s).cast(), c!("control-mode,"), sizeof_s);
+            strlcat((&raw mut S).cast(), c!("control-mode,"), SIZEOF_S);
         }
         if (*c).flags.intersects(client_flag::IGNORESIZE) {
-            strlcat((&raw mut s).cast(), c!("ignore-size,"), sizeof_s);
+            strlcat((&raw mut S).cast(), c!("ignore-size,"), SIZEOF_S);
         }
         if (*c).flags.intersects(client_flag::CONTROL_NOOUTPUT) {
-            strlcat((&raw mut s).cast(), c!("no-output,"), sizeof_s);
+            strlcat((&raw mut S).cast(), c!("no-output,"), SIZEOF_S);
         }
         if (*c).flags.intersects(client_flag::CONTROL_WAITEXIT) {
-            strlcat((&raw mut s).cast(), c!("wait-exit,"), sizeof_s);
+            strlcat((&raw mut S).cast(), c!("wait-exit,"), SIZEOF_S);
         }
         if (*c).flags.intersects(client_flag::CONTROL_PAUSEAFTER) {
             xsnprintf_!(
-                (&raw mut tmp).cast(),
-                sizeof_tmp,
+                (&raw mut TMP).cast(),
+                SIZEOF_TMP,
                 "pause-after={},",
                 (*c).pause_age / 1000,
             );
-            strlcat((&raw mut s).cast(), (&raw mut tmp).cast(), sizeof_s);
+            strlcat((&raw mut S).cast(), (&raw mut TMP).cast(), SIZEOF_S);
         }
         if (*c).flags.intersects(client_flag::READONLY) {
-            strlcat((&raw mut s).cast(), c!("read-only,"), sizeof_s);
+            strlcat((&raw mut S).cast(), c!("read-only,"), SIZEOF_S);
         }
         if (*c).flags.intersects(client_flag::ACTIVEPANE) {
-            strlcat((&raw mut s).cast(), c!("active-pane,"), sizeof_s);
+            strlcat((&raw mut S).cast(), c!("active-pane,"), SIZEOF_S);
         }
         if (*c).flags.intersects(client_flag::SUSPENDED) {
-            strlcat((&raw mut s).cast(), c!("suspended,"), sizeof_s);
+            strlcat((&raw mut S).cast(), c!("suspended,"), SIZEOF_S);
         }
         if (*c).flags.intersects(client_flag::UTF8) {
-            strlcat((&raw mut s).cast(), c!("UTF-8,"), sizeof_s);
+            strlcat((&raw mut S).cast(), c!("UTF-8,"), SIZEOF_S);
         }
-        if s[0] != b'\0' {
-            s[strlen((&raw const s).cast()) - 1] = b'\0';
+        if S[0] != b'\0' {
+            S[strlen((&raw const S).cast()) - 1] = b'\0';
         }
-        (&raw const s) as *const u8
+        (&raw const S) as *const u8
     }
 }
 
@@ -3477,7 +3477,7 @@ pub unsafe fn server_client_remove_pane(wp: *mut window_pane) {
     unsafe {
         let w = (*wp).window;
 
-        for c in tailq_foreach(&raw mut clients).map(NonNull::as_ptr) {
+        for c in tailq_foreach(&raw mut CLIENTS).map(NonNull::as_ptr) {
             let cw = server_client_get_client_window(c, (*w).id);
             if !cw.is_null() && (*cw).pane == wp {
                 rb_remove(&raw mut (*c).windows, cw);
@@ -3534,11 +3534,11 @@ pub unsafe fn server_client_print(c: *mut client, parse: i32, evb: *mut evbuffer
 
             let wp = server_client_get_pane(c);
             let wme = tailq_first(&raw mut (*wp).modes);
-            if wme.is_null() || !std::ptr::eq((*wme).mode, &raw const window_view_mode) {
+            if wme.is_null() || !std::ptr::eq((*wme).mode, &raw const WINDOW_VIEW_MODE) {
                 window_pane_set_mode(
                     wp,
                     null_mut(),
-                    &raw const window_view_mode,
+                    &raw const WINDOW_VIEW_MODE,
                     null_mut(),
                     null_mut(),
                 );

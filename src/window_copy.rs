@@ -13,7 +13,7 @@
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 use super::*;
 
-pub static window_copy_mode: window_mode = window_mode {
+pub static WINDOW_COPY_MODE: window_mode = window_mode {
     name: SyncCharPtr::new(c"copy-mode"),
     init: window_copy_init,
     free: window_copy_free,
@@ -26,7 +26,7 @@ pub static window_copy_mode: window_mode = window_mode {
     key: None,
 };
 
-pub static window_view_mode: window_mode = window_mode {
+pub static WINDOW_VIEW_MODE: window_mode = window_mode {
     name: SyncCharPtr::new(c"view-mode"),
     init: window_copy_view_init,
     free: window_copy_free,
@@ -473,7 +473,7 @@ pub(crate) use window_copy_add;
 
 pub unsafe fn window_copy_init_ctx_cb(ctx: *mut screen_write_ctx, ttyctx: *mut tty_ctx) {
     unsafe {
-        memcpy__(&raw mut (*ttyctx).defaults, &raw const grid_default_cell);
+        memcpy__(&raw mut (*ttyctx).defaults, &raw const GRID_DEFAULT_CELL);
         (*ttyctx).palette = null_mut();
         (*ttyctx).redraw_cb = None;
         (*ttyctx).set_client_cb = None;
@@ -528,7 +528,7 @@ pub unsafe fn window_copy_vadd(wp: *mut window_pane, parse: i32, args: std::fmt:
         if parse != 0 {
             screen_write_fast_copy(&raw mut backing_ctx, writing, 0, 0, sx, 1);
         } else {
-            memcpy__(&raw mut gc, &raw const grid_default_cell);
+            memcpy__(&raw mut gc, &raw const GRID_DEFAULT_CELL);
             screen_write_vnputs_(&raw mut backing_ctx, 0, &raw const gc, args);
         }
         screen_write_stop(&raw mut backing_ctx);
@@ -2807,7 +2807,7 @@ struct window_copy_cmd_table_entry {
     f: unsafe fn(*mut window_copy_cmd_state) -> window_copy_cmd_action,
 }
 
-static window_copy_cmd_table: [window_copy_cmd_table_entry; 85] = [
+static WINDOW_COPY_CMD_TABLE: [window_copy_cmd_table_entry; 85] = [
     window_copy_cmd_table_entry {
         command: SyncCharPtr::new(c"append-selection"),
         minargs: 0,
@@ -3439,7 +3439,7 @@ pub unsafe fn window_copy_command(
         cs.wl = wl;
 
         let mut action = window_copy_cmd_action::WINDOW_COPY_CMD_NOTHING;
-        for window_copy_cmd_table_i in &window_copy_cmd_table {
+        for window_copy_cmd_table_i in &WINDOW_COPY_CMD_TABLE {
             if libc::strcmp(window_copy_cmd_table_i.command.as_ptr(), command) == 0 {
                 if count - 1 < window_copy_cmd_table_i.minargs
                     || count - 1 > window_copy_cmd_table_i.maxargs
@@ -3796,7 +3796,7 @@ pub unsafe fn window_copy_cellstring(
     size: *mut usize,
     allocated: *mut i32,
 ) -> *mut u8 {
-    static mut ud: utf8_data = unsafe { zeroed() };
+    static mut UD: utf8_data = unsafe { zeroed() };
 
     unsafe {
         // struct grid_cell_entry *gce;
@@ -3821,18 +3821,18 @@ pub unsafe fn window_copy_cellstring(
 
         utf8_to_data(
             (*(*gl).extddata.add((*gce).union_.offset as usize)).data,
-            &raw mut ud,
+            &raw mut UD,
         );
-        if ud.size == 0 {
+        if UD.size == 0 {
             *size = 0;
             *allocated = 0;
             return null_mut();
         }
-        *size = ud.size as usize;
+        *size = UD.size as usize;
         *allocated = 1;
 
-        let copy: *mut u8 = xmalloc(ud.size as usize).as_ptr().cast();
-        libc::memcpy(copy.cast(), (&raw const ud.data).cast(), ud.size as usize);
+        let copy: *mut u8 = xmalloc(UD.size as usize).as_ptr().cast();
+        libc::memcpy(copy.cast(), (&raw const UD.data).cast(), UD.size as usize);
         copy
     }
 }
@@ -4424,7 +4424,7 @@ pub unsafe fn window_copy_search(
         screen_write_nputs!(
             &raw mut ctx,
             -1,
-            &raw const grid_default_cell,
+            &raw const GRID_DEFAULT_CELL,
             "{}",
             _s(str),
         );
@@ -4609,7 +4609,7 @@ pub unsafe fn window_copy_search_marks(
                 screen_write_nputs!(
                     &raw mut ctx,
                     -1,
-                    &raw const grid_default_cell,
+                    &raw const GRID_DEFAULT_CELL,
                     "{}",
                     _s((*data).searchstr),
                 );
@@ -5110,7 +5110,7 @@ pub unsafe fn window_copy_write_line(
 
         if py == (*data).cy && (*data).cx == screen_size_x(s) {
             screen_write_cursormove(ctx, screen_size_x(s) as i32 - 1, py as i32, 0);
-            screen_write_putc(ctx, &raw const grid_default_cell, b'$');
+            screen_write_putc(ctx, &raw const GRID_DEFAULT_CELL, b'$');
         }
     }
 }
@@ -5583,7 +5583,7 @@ pub unsafe fn window_copy_copy_buffer(
         let wp: *mut window_pane = (*wme).wp;
         let mut ctx: screen_write_ctx = zeroed();
 
-        if options_get_number_(global_options, c"set-clipboard") != 0 {
+        if options_get_number_(GLOBAL_OPTIONS, c"set-clipboard") != 0 {
             screen_write_start_pane(&raw mut ctx, wp, null_mut());
             screen_write_setselection(&raw mut ctx, c!(""), buf.cast(), len as u32);
             screen_write_stop(&raw mut ctx);
@@ -5603,7 +5603,7 @@ pub unsafe fn window_copy_pipe_run(
     unsafe {
         let buf = window_copy_get_selection(wme, len);
         if cmd.is_null() || *cmd == b'\0' {
-            cmd = options_get_string_(global_options, c"copy-command");
+            cmd = options_get_string_(GLOBAL_OPTIONS, c"copy-command");
         }
         if !cmd.is_null() && *cmd != b'\0' {
             let job = job_run(
@@ -5674,7 +5674,7 @@ pub unsafe fn window_copy_append_selection(wme: *mut window_mode_entry) {
             return;
         }
 
-        if options_get_number_(global_options, c"set-clipboard") != 0 {
+        if options_get_number_(GLOBAL_OPTIONS, c"set-clipboard") != 0 {
             screen_write_start_pane(&raw mut ctx, wp, null_mut());
             screen_write_setselection(&raw mut ctx, c!(""), buf.cast(), len as u32);
             screen_write_stop(&raw mut ctx);
@@ -6561,7 +6561,7 @@ pub unsafe fn window_copy_move_mouse(m: *mut mouse_event) {
         if wme.is_null() {
             return;
         }
-        if (*wme).mode != &window_copy_mode && (*wme).mode != &window_view_mode {
+        if (*wme).mode != &WINDOW_COPY_MODE && (*wme).mode != &WINDOW_VIEW_MODE {
             return;
         }
 
@@ -6591,7 +6591,7 @@ pub unsafe fn window_copy_start_drag(c: *mut client, m: *mut mouse_event) {
         if wme.is_null() {
             return;
         }
-        if (*wme).mode != &window_copy_mode && (*wme).mode != &window_view_mode {
+        if (*wme).mode != &WINDOW_COPY_MODE && (*wme).mode != &WINDOW_VIEW_MODE {
             return;
         }
 
@@ -6657,7 +6657,7 @@ pub unsafe fn window_copy_drag_update(c: *mut client, m: *mut mouse_event) {
         if wme.is_null() {
             return;
         }
-        if (*wme).mode != &window_copy_mode && (*wme).mode != &window_view_mode {
+        if (*wme).mode != &WINDOW_COPY_MODE && (*wme).mode != &WINDOW_VIEW_MODE {
             return;
         }
 
@@ -6699,7 +6699,7 @@ pub unsafe fn window_copy_drag_release(c: *mut client, m: *mut mouse_event) {
         if wme.is_null() {
             return;
         }
-        if (*wme).mode != &raw const window_copy_mode && (*wme).mode != &raw const window_view_mode
+        if (*wme).mode != &raw const WINDOW_COPY_MODE && (*wme).mode != &raw const WINDOW_VIEW_MODE
         {
             return;
         }

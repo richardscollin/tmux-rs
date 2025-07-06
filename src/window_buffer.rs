@@ -35,7 +35,7 @@ const WINDOW_BUFFER_DEFAULT_KEY_FORMAT: *const u8 = concat!(
 .as_ptr()
 .cast();
 
-static window_buffer_menu_items: [menu_item; 11] = [
+static WINDOW_BUFFER_MENU_ITEMS: [menu_item; 11] = [
     menu_item::new(c"Paste", 'p' as u64, null_mut()),
     menu_item::new(c"Paste Tagged", 'P' as u64, null_mut()),
     menu_item::new(c"", KEYC_NONE, null_mut()),
@@ -49,7 +49,7 @@ static window_buffer_menu_items: [menu_item; 11] = [
     menu_item::new(c"Cancel", 'q' as u64, null_mut()),
 ];
 
-pub static window_buffer_mode: window_mode = window_mode {
+pub static WINDOW_BUFFER_MODE: window_mode = window_mode {
     name: SyncCharPtr::new(c"buffer-mode"),
     default_format: SyncCharPtr::from_ptr(WINDOW_BUFFER_DEFAULT_FORMAT),
 
@@ -70,14 +70,14 @@ enum window_buffer_sort_type {
     WINDOW_BUFFER_BY_SIZE,
 }
 
-const window_buffer_sort_list_len: u32 = 3;
-static mut window_buffer_sort_list: [SyncCharPtr; 3] = [
+const WINDOW_BUFFER_SORT_LIST_LEN: u32 = 3;
+static mut WINDOW_BUFFER_SORT_LIST: [SyncCharPtr; 3] = [
     SyncCharPtr::new(c"time"),
     SyncCharPtr::new(c"name"),
     SyncCharPtr::new(c"size"),
 ];
 
-static mut window_buffer_sort: *mut mode_tree_sort_criteria = null_mut();
+static mut WINDOW_BUFFER_SORT: *mut mode_tree_sort_criteria = null_mut();
 
 pub struct window_buffer_itemdata {
     pub name: *mut u8,
@@ -130,9 +130,9 @@ pub unsafe extern "C" fn window_buffer_cmp(a0: *const c_void, b0: *const c_void)
         let b = b0 as *const *const window_buffer_itemdata;
         let mut result = 0i32;
 
-        if (*window_buffer_sort).field == window_buffer_sort_type::WINDOW_BUFFER_BY_TIME as u32 {
+        if (*WINDOW_BUFFER_SORT).field == window_buffer_sort_type::WINDOW_BUFFER_BY_TIME as u32 {
             result = (*(*b)).order as i32 - (*(*a)).order as i32;
-        } else if (*window_buffer_sort).field
+        } else if (*WINDOW_BUFFER_SORT).field
             == window_buffer_sort_type::WINDOW_BUFFER_BY_SIZE as u32
         {
             result = ((*(*b)).size as isize - (*(*a)).size as isize) as i32;
@@ -143,7 +143,7 @@ pub unsafe extern "C" fn window_buffer_cmp(a0: *const c_void, b0: *const c_void)
             result = strcmp((*(*a)).name, (*(*b)).name);
         }
 
-        if (*window_buffer_sort).reversed != 0 {
+        if (*WINDOW_BUFFER_SORT).reversed != 0 {
             result = -result;
         }
 
@@ -183,7 +183,7 @@ pub unsafe fn window_buffer_build(
             pb = paste_walk(pb);
         }
 
-        window_buffer_sort = sort_crit;
+        WINDOW_BUFFER_SORT = sort_crit;
         qsort(
             (*data).item_list.cast(),
             (*data).item_size as usize,
@@ -274,7 +274,7 @@ pub unsafe fn window_buffer_draw(
                 screen_write_nputs!(
                     ctx,
                     sx as isize,
-                    &raw const grid_default_cell,
+                    &raw const GRID_DEFAULT_CELL,
                     "{}",
                     _s(buf),
                 );
@@ -395,9 +395,9 @@ pub unsafe fn window_buffer_init(
             None,
             Some(window_buffer_get_key),
             data as *mut window_buffer_modedata as *mut c_void,
-            window_buffer_menu_items.as_slice(),
-            &raw mut window_buffer_sort_list as *mut *const u8,
-            window_buffer_sort_list_len,
+            WINDOW_BUFFER_MENU_ITEMS.as_slice(),
+            &raw mut WINDOW_BUFFER_SORT_LIST as *mut *const u8,
+            WINDOW_BUFFER_SORT_LIST_LEN,
             &raw mut s,
         );
         mode_tree_zoom(data.data, args);
@@ -533,7 +533,7 @@ pub unsafe fn window_buffer_edit_close_cb(buf: *mut u8, mut len: usize, arg: *mu
         let wp = window_pane_find_by_id((*ed).wp_id);
         if !wp.is_null() {
             let wme = tailq_first(&raw mut (*wp).modes);
-            if (*wme).mode == &raw const window_buffer_mode {
+            if (*wme).mode == &raw const WINDOW_BUFFER_MODE {
                 let data = (*wme).data as *mut window_buffer_modedata;
                 mode_tree_build((*data).data);
                 mode_tree_draw((*data).data);

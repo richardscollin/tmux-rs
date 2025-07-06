@@ -61,9 +61,9 @@ pub unsafe fn osdep_get_name(fd: i32, tty: *const u8) -> *mut u8 {
 #[cfg(target_os = "linux")]
 pub unsafe fn osdep_get_cwd(fd: i32) -> *const u8 {
     const MAXPATHLEN: usize = libc::PATH_MAX as usize;
-    static mut target_buffer: [u8; MAXPATHLEN + 1] = [0; MAXPATHLEN + 1];
+    static mut TARGET_BUFFER: [u8; MAXPATHLEN + 1] = [0; MAXPATHLEN + 1];
     unsafe {
-        let target = &raw mut target_buffer as *mut u8;
+        let target = &raw mut TARGET_BUFFER as *mut u8;
 
         let pgrp = libc::tcgetpgrp(fd);
         if pgrp == -1 {

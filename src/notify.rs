@@ -67,7 +67,7 @@ pub unsafe fn notify_insert_hook(mut item: *mut cmdq_item, ne: *mut notify_entry
         }
 
         let mut oo = if fs.s.is_null() {
-            global_s_options
+            GLOBAL_S_OPTIONS
         } else {
             (*fs.s).options
         };

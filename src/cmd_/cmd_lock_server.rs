@@ -13,7 +13,7 @@
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 use crate::*;
 
-pub static cmd_lock_server_entry: cmd_entry = cmd_entry {
+pub static CMD_LOCK_SERVER_ENTRY: cmd_entry = cmd_entry {
     name: SyncCharPtr::new(c"lock-server"),
     alias: SyncCharPtr::new(c"lock"),
 
@@ -26,7 +26,7 @@ pub static cmd_lock_server_entry: cmd_entry = cmd_entry {
     target: cmd_entry_flag::zeroed(),
 };
 
-pub static cmd_lock_session_entry: cmd_entry = cmd_entry {
+pub static CMD_LOCK_SESSION_ENTRY: cmd_entry = cmd_entry {
     name: SyncCharPtr::new(c"lock-session"),
     alias: SyncCharPtr::new(c"locks"),
 
@@ -40,7 +40,7 @@ pub static cmd_lock_session_entry: cmd_entry = cmd_entry {
     source: cmd_entry_flag::zeroed(),
 };
 
-pub static cmd_lock_client_entry: cmd_entry = cmd_entry {
+pub static CMD_LOCK_CLIENT_ENTRY: cmd_entry = cmd_entry {
     name: SyncCharPtr::new(c"lock-client"),
     alias: SyncCharPtr::new(c"lockc"),
 
@@ -58,9 +58,9 @@ unsafe fn cmd_lock_server_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
         let target = cmdq_get_target(item);
         let tc = cmdq_get_target_client(item);
 
-        if std::ptr::eq(cmd_get_entry(self_), &cmd_lock_server_entry) {
+        if std::ptr::eq(cmd_get_entry(self_), &CMD_LOCK_SERVER_ENTRY) {
             server_lock();
-        } else if std::ptr::eq(cmd_get_entry(self_), &cmd_lock_session_entry) {
+        } else if std::ptr::eq(cmd_get_entry(self_), &CMD_LOCK_SESSION_ENTRY) {
             server_lock_session((*target).s);
         } else {
             server_lock_client(tc);

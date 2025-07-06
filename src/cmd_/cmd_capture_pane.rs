@@ -15,7 +15,7 @@ use crate::*;
 
 use crate::libc::{INT_MIN, strcmp, strlen};
 
-pub static cmd_capture_pane_entry: cmd_entry = cmd_entry {
+pub static CMD_CAPTURE_PANE_ENTRY: cmd_entry = cmd_entry {
     name: SyncCharPtr::new(c"capture-pane"),
     alias: SyncCharPtr::new(c"capturep"),
 
@@ -31,7 +31,7 @@ pub static cmd_capture_pane_entry: cmd_entry = cmd_entry {
     exec: cmd_capture_pane_exec,
 };
 
-pub static cmd_clear_history_entry: cmd_entry = cmd_entry {
+pub static CMD_CLEAR_HISTORY_ENTRY: cmd_entry = cmd_entry {
     name: SyncCharPtr::new(c"clear-history"),
     alias: SyncCharPtr::new(c"clearhist"),
 
@@ -235,7 +235,7 @@ unsafe fn cmd_capture_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
         let c = cmdq_get_client(item);
         let wp = (*cmdq_get_target(item)).wp;
 
-        if std::ptr::eq(cmd_get_entry(self_), &cmd_clear_history_entry) {
+        if std::ptr::eq(cmd_get_entry(self_), &CMD_CLEAR_HISTORY_ENTRY) {
             window_pane_reset_mode_all(wp);
             grid_clear_history((*wp).base.grid);
             if args_has(args, b'H') != 0 {

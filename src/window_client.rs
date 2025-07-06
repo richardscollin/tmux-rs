@@ -23,7 +23,7 @@ static WINDOW_CLIENT_DEFAULT_FORMAT: &CStr = c"#{t/p:client_activity}: session #
 static WINDOW_CLIENT_DEFAULT_KEY_FORMAT: &CStr =
     c"#{?#{e|<:#{line},10},#{line},#{?#{e|<:#{line},36},M-#{a:#{e|+:97,#{e|-:#{line},10}}},}}";
 
-static window_client_menu_items: [menu_item; 8] = [
+static WINDOW_CLIENT_MENU_ITEMS: [menu_item; 8] = [
     menu_item::new(c"Detach", b'd' as _, null()),
     menu_item::new(c"Detach Tagged", b'D' as _, null()),
     menu_item::new(c"", KEYC_NONE, null()),
@@ -34,7 +34,7 @@ static window_client_menu_items: [menu_item; 8] = [
     menu_item::new(c"Cancel", b'q' as _, null()),
 ];
 
-pub static window_client_mode: window_mode = window_mode {
+pub static WINDOW_CLIENT_MODE: window_mode = window_mode {
     name: SyncCharPtr::new(c"client-mode"),
     default_format: SyncCharPtr::new(WINDOW_CLIENT_DEFAULT_FORMAT),
 
@@ -57,10 +57,10 @@ pub enum window_client_sort_type {
     WINDOW_CLIENT_BY_ACTIVITY_TIME,
 }
 const WINDOW_CLIENT_SORT_LIST_LEN: u32 = 4;
-static mut window_client_sort_list: [*const u8; 4] =
+static mut WINDOW_CLIENT_SORT_LIST: [*const u8; 4] =
     [c!("name"), c!("size"), c!("creation"), c!("activity")];
 
-static mut window_client_sort: *mut mode_tree_sort_criteria = null_mut();
+static mut WINDOW_CLIENT_SORT: *mut mode_tree_sort_criteria = null_mut();
 
 #[repr(C)]
 pub struct window_client_itemdata {
@@ -111,7 +111,7 @@ pub unsafe extern "C" fn window_client_cmp(a0: *const c_void, b0: *const c_void)
         let cb = (*itemb).c;
         let mut result: i32 = 0;
 
-        match window_client_sort_type::try_from((*window_client_sort).field) {
+        match window_client_sort_type::try_from((*WINDOW_CLIENT_SORT).field) {
             Ok(window_client_sort_type::WINDOW_CLIENT_BY_SIZE) => {
                 result = (*ca).tty.sx.wrapping_sub((*cb).tty.sx) as i32;
                 if result == 0 {
@@ -148,7 +148,7 @@ pub unsafe extern "C" fn window_client_cmp(a0: *const c_void, b0: *const c_void)
             result = strcmp((*ca).name, (*cb).name);
         }
 
-        if (*window_client_sort).reversed != 0 {
+        if (*WINDOW_CLIENT_SORT).reversed != 0 {
             result = -result;
         }
 
@@ -174,7 +174,7 @@ pub unsafe fn window_client_build(
         (*data).item_list = null_mut();
         (*data).item_size = 0;
 
-        for c in crate::compat::queue::tailq_foreach(&raw mut clients).map(NonNull::as_ptr) {
+        for c in crate::compat::queue::tailq_foreach(&raw mut CLIENTS).map(NonNull::as_ptr) {
             if (*c).session.is_null() || (*c).flags.intersects(CLIENT_UNATTACHEDFLAGS) {
                 continue;
             }
@@ -185,7 +185,7 @@ pub unsafe fn window_client_build(
             (*c).references += 1;
         }
 
-        window_client_sort = sort_crit;
+        WINDOW_CLIENT_SORT = sort_crit;
         qsort(
             (*data).item_list.cast(),
             (*data).item_size as usize,
@@ -347,8 +347,8 @@ pub unsafe fn window_client_init(
             None,
             Some(window_client_get_key),
             data.cast(),
-            window_client_menu_items.as_slice(),
-            &raw mut window_client_sort_list as *mut *const u8,
+            WINDOW_CLIENT_MENU_ITEMS.as_slice(),
+            &raw mut WINDOW_CLIENT_SORT_LIST as *mut *const u8,
             WINDOW_CLIENT_SORT_LIST_LEN,
             &raw mut s,
         );

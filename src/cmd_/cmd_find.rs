@@ -21,9 +21,9 @@ use crate::compat::{
     tree::{rb_foreach, rb_foreach_const, rb_max, rb_min},
 };
 
-static mut cmd_find_session_table: [[*const u8; 2]; 1] = [[null_mut(), null_mut()]];
+static mut CMD_FIND_SESSION_TABLE: [[*const u8; 2]; 1] = [[null_mut(), null_mut()]];
 
-static mut cmd_find_window_table: [[*const u8; 2]; 6] = [
+static mut CMD_FIND_WINDOW_TABLE: [[*const u8; 2]; 6] = [
     [c!("{start}"), c!("^")],
     [c!("{last}"), c!("!")],
     [c!("{end}"), c!("$")],
@@ -32,7 +32,7 @@ static mut cmd_find_window_table: [[*const u8; 2]; 6] = [
     [null(), null()],
 ];
 
-static mut cmd_find_pane_table: [[*const u8; 2]; 16] = [
+static mut CMD_FIND_PANE_TABLE: [[*const u8; 2]; 16] = [
     [c!("{last}"), c!("!")],
     [c!("{next}"), c!("+")],
     [c!("{previous}"), c!("-")],
@@ -59,7 +59,7 @@ pub unsafe fn cmd_find_inside_pane(c: *mut client) -> *mut window_pane {
         }
 
         let mut wp: *mut window_pane = null_mut();
-        for wp_ in rb_foreach(&raw mut all_window_panes) {
+        for wp_ in rb_foreach(&raw mut ALL_WINDOW_PANES) {
             wp = wp_.as_ptr();
             if (*wp).fd != -1 && strcmp((*wp).tty.as_ptr(), (*c).ttyname) == 0 {
                 break;
@@ -101,7 +101,7 @@ pub unsafe fn cmd_find_best_client(mut s: *mut session) -> *mut client {
         }
 
         let mut c = null_mut();
-        for c_loop in tailq_foreach(&raw mut clients).map(NonNull::as_ptr) {
+        for c_loop in tailq_foreach(&raw mut CLIENTS).map(NonNull::as_ptr) {
             if (*c_loop).session.is_null() {
                 continue;
             }
@@ -152,7 +152,7 @@ pub unsafe fn cmd_find_best_session(
                 }
             }
         } else {
-            for s_loop in rb_foreach(&raw mut sessions).map(|e| e.as_ptr()) {
+            for s_loop in rb_foreach(&raw mut SESSIONS).map(|e| e.as_ptr()) {
                 if cmd_find_session_better(s_loop, s, flags) != 0 {
                     s = s_loop;
                 }
@@ -171,7 +171,7 @@ pub unsafe fn cmd_find_best_session_with_window(fs: *mut cmd_find_state) -> i32 
 
         'fail: {
             let mut ssize: u32 = 0;
-            for s in rb_foreach(&raw mut sessions).map(NonNull::as_ptr) {
+            for s in rb_foreach(&raw mut SESSIONS).map(NonNull::as_ptr) {
                 if session_has(s, (*fs).w) == 0 {
                     continue;
                 }
@@ -263,7 +263,7 @@ pub unsafe fn cmd_find_get_session(fs: *mut cmd_find_state, session: *const u8) 
         }
 
         let mut s: *mut session = null_mut();
-        for s_loop in rb_foreach(&raw mut sessions).map(NonNull::as_ptr) {
+        for s_loop in rb_foreach(&raw mut SESSIONS).map(NonNull::as_ptr) {
             if libc::strncmp(session, (*s_loop).name, strlen(session)) == 0 {
                 if !s.is_null() {
                     return -1;
@@ -277,7 +277,7 @@ pub unsafe fn cmd_find_get_session(fs: *mut cmd_find_state, session: *const u8) 
         }
 
         s = null_mut();
-        for s_loop in rb_foreach(&raw mut sessions).map(NonNull::as_ptr) {
+        for s_loop in rb_foreach(&raw mut SESSIONS).map(NonNull::as_ptr) {
             if libc::fnmatch(session, (*s_loop).name, 0) == 0 {
                 if !s.is_null() {
                     return -1;
@@ -969,7 +969,7 @@ pub unsafe fn cmd_find_target(
                                 cmd_find_clear_state(fs, flags);
 
                                 if server_check_marked() && (flags & CMD_FIND_DEFAULT_MARKED != 0) {
-                                    (*fs).current = &raw mut marked_pane;
+                                    (*fs).current = &raw mut MARKED_PANE;
                                     log_debug!("{}: current is marked pane", __func__);
                                 } else if cmd_find_valid_state(cmdq_get_current(item)) {
                                     (*fs).current = cmdq_get_current(item);
@@ -1055,7 +1055,7 @@ pub unsafe fn cmd_find_target(
                                         }
                                         break 'error;
                                     }
-                                    cmd_find_copy_state(fs, &raw mut marked_pane);
+                                    cmd_find_copy_state(fs, &raw mut MARKED_PANE);
                                     break 'found;
                                 }
 
@@ -1127,19 +1127,19 @@ pub unsafe fn cmd_find_target(
 
                                 if !session.is_null() {
                                     session = cmd_find_map_table(
-                                        &raw const cmd_find_session_table as *const _,
+                                        &raw const CMD_FIND_SESSION_TABLE as *const _,
                                         session,
                                     );
                                 }
                                 if !window.is_null() {
                                     window = cmd_find_map_table(
-                                        &raw const cmd_find_window_table as *const _,
+                                        &raw const CMD_FIND_WINDOW_TABLE as *const _,
                                         window,
                                     );
                                 }
                                 if !pane.is_null() {
                                     pane = cmd_find_map_table(
-                                        &raw const cmd_find_pane_table as *const _,
+                                        &raw const CMD_FIND_PANE_TABLE as *const _,
                                         pane,
                                     );
                                 }
@@ -1341,7 +1341,7 @@ pub unsafe fn cmd_find_client(item: *mut cmdq_item, target: *const u8, quiet: i3
 
         let mut c = null_mut();
         /* Check name and path of each client. */
-        for c_ in tailq_foreach(&raw mut clients) {
+        for c_ in tailq_foreach(&raw mut CLIENTS) {
             c = c_.as_ptr();
             if (*c).session.is_null() {
                 continue;

@@ -13,7 +13,7 @@
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 use crate::*;
 
-pub static cmd_show_options_entry: cmd_entry = cmd_entry {
+pub static CMD_SHOW_OPTIONS_ENTRY: cmd_entry = cmd_entry {
     name: SyncCharPtr::new(c"show-options"),
     alias: SyncCharPtr::new(c"show"),
 
@@ -27,7 +27,7 @@ pub static cmd_show_options_entry: cmd_entry = cmd_entry {
     source: cmd_entry_flag::zeroed(),
 };
 
-pub static cmd_show_window_options_entry: cmd_entry = cmd_entry {
+pub static CMD_SHOW_WINDOW_OPTIONS_ENTRY: cmd_entry = cmd_entry {
     name: SyncCharPtr::new(c"show-window-options"),
     alias: SyncCharPtr::new(c"showw"),
 
@@ -42,7 +42,7 @@ pub static cmd_show_window_options_entry: cmd_entry = cmd_entry {
     source: cmd_entry_flag::zeroed(),
 };
 
-pub static cmd_show_hooks_entry: cmd_entry = cmd_entry {
+pub static CMD_SHOW_HOOKS_ENTRY: cmd_entry = cmd_entry {
     name: SyncCharPtr::new(c"show-hooks"),
     alias: SyncCharPtr::null(),
 
@@ -72,7 +72,7 @@ unsafe fn cmd_show_options_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
         let mut parent = 0;
         let mut o: *mut options_entry = null_mut();
 
-        let window = std::ptr::eq(cmd_get_entry(self_), &cmd_show_window_options_entry) as i32;
+        let window = std::ptr::eq(cmd_get_entry(self_), &CMD_SHOW_WINDOW_OPTIONS_ENTRY) as i32;
 
         'fail: {
             'out: {
@@ -215,7 +215,7 @@ pub unsafe fn cmd_show_options_all(
         let mut o: *mut options_entry = null_mut();
         let mut parent = 0;
 
-        if !std::ptr::eq(cmd_get_entry(self_), &cmd_show_hooks_entry) {
+        if !std::ptr::eq(cmd_get_entry(self_), &CMD_SHOW_HOOKS_ENTRY) {
             o = options_first(oo);
             while !o.is_null() {
                 if options_table_entry(o).is_null() {
@@ -224,17 +224,17 @@ pub unsafe fn cmd_show_options_all(
                 o = options_next(o);
             }
         }
-        let mut oe = &raw const options_table as *const options_table_entry;
+        let mut oe = &raw const OPTIONS_TABLE as *const options_table_entry;
         while !(*oe).name.is_null() {
             if !(*oe).scope & scope != 0 {
                 oe = oe.add(1);
                 continue;
             }
 
-            if !std::ptr::eq(cmd_get_entry(self_), &cmd_show_hooks_entry)
+            if !std::ptr::eq(cmd_get_entry(self_), &CMD_SHOW_HOOKS_ENTRY)
                 && !args_has_(args, 'H')
                 && ((*oe).flags & OPTIONS_TABLE_IS_HOOK != 0)
-                || (std::ptr::eq(cmd_get_entry(self_), &cmd_show_hooks_entry)
+                || (std::ptr::eq(cmd_get_entry(self_), &CMD_SHOW_HOOKS_ENTRY)
                     && (!(*oe).flags & OPTIONS_TABLE_IS_HOOK != 0))
             {
                 oe = oe.add(1);

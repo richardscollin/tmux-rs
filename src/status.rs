@@ -29,7 +29,7 @@ struct status_prompt_menu {
     flag: u8,
 }
 
-pub static prompt_type_strings: [SyncCharPtr; 4] = [
+pub static PROMPT_TYPE_STRINGS: [SyncCharPtr; 4] = [
     SyncCharPtr::new(c"command"),
     SyncCharPtr::new(c"search"),
     SyncCharPtr::new(c"target"),
@@ -37,15 +37,15 @@ pub static prompt_type_strings: [SyncCharPtr; 4] = [
 ];
 
 /// Status prompt history.
-pub static mut status_prompt_hlist: [*mut *mut u8; PROMPT_NTYPES as usize] =
+pub static mut STATUS_PROMPT_HLIST: [*mut *mut u8; PROMPT_NTYPES as usize] =
     [null_mut(); PROMPT_NTYPES as usize];
 
-pub static mut status_prompt_hsize: [u32; PROMPT_NTYPES as usize] = [0; PROMPT_NTYPES as usize];
+pub static mut STATUS_PROMPT_HSIZE: [u32; PROMPT_NTYPES as usize] = [0; PROMPT_NTYPES as usize];
 
 /// Find the history file to load/save from/to.
 unsafe fn status_prompt_find_history_file() -> *mut u8 {
     unsafe {
-        let history_file = options_get_string_(global_options, c"history-file");
+        let history_file = options_get_string_(GLOBAL_OPTIONS, c"history-file");
         if *history_file == b'\0' {
             return null_mut();
         }
@@ -154,10 +154,10 @@ pub unsafe fn status_prompt_save_history() {
         free_(history_file);
 
         for type_ in 0..PROMPT_NTYPES {
-            for i in 0..status_prompt_hsize[type_ as usize] {
-                libc::fputs(prompt_type_strings[type_ as usize].as_ptr(), f);
+            for i in 0..STATUS_PROMPT_HSIZE[type_ as usize] {
+                libc::fputs(PROMPT_TYPE_STRINGS[type_ as usize].as_ptr(), f);
                 libc::fputc(b':' as i32, f);
-                libc::fputs(*status_prompt_hlist[type_ as usize].add(i as usize), f);
+                libc::fputs(*STATUS_PROMPT_HLIST[type_ as usize].add(i as usize), f);
                 libc::fputc(b'\n' as i32, f);
             }
         }
@@ -216,7 +216,7 @@ pub unsafe fn status_timer_start(c: *mut client) {
 /// Start status timer for all clients.
 pub unsafe fn status_timer_start_all() {
     unsafe {
-        for c in tailq_foreach(&raw mut clients).map(NonNull::as_ptr) {
+        for c in tailq_foreach(&raw mut CLIENTS).map(NonNull::as_ptr) {
             status_timer_start(c);
         }
     }
@@ -266,7 +266,7 @@ pub unsafe fn status_line_size(c: *mut client) -> u32 {
             return 0;
         }
         if s.is_null() {
-            return options_get_number_(global_s_options, c"status") as u32;
+            return options_get_number_(GLOBAL_S_OPTIONS, c"status") as u32;
         }
         (*s).statuslines
     }
@@ -1804,21 +1804,21 @@ unsafe fn status_prompt_up_history(idx: *mut u32, type_: u32) -> *mut u8 {
          * empty.
          */
 
-        if status_prompt_hsize[type_ as usize] == 0
-            || *idx.add(type_ as usize) == status_prompt_hsize[type_ as usize]
+        if STATUS_PROMPT_HSIZE[type_ as usize] == 0
+            || *idx.add(type_ as usize) == STATUS_PROMPT_HSIZE[type_ as usize]
         {
             return null_mut();
         }
         *idx.add(type_ as usize) += 1;
-        *status_prompt_hlist[type_ as usize]
-            .add((status_prompt_hsize[type_ as usize] - *idx.add(type_ as usize)) as usize)
+        *STATUS_PROMPT_HLIST[type_ as usize]
+            .add((STATUS_PROMPT_HSIZE[type_ as usize] - *idx.add(type_ as usize)) as usize)
     }
 }
 
 /// Get next line from the history.
 unsafe fn status_prompt_down_history(idx: *mut u32, type_: u32) -> *const u8 {
     unsafe {
-        if status_prompt_hsize[type_ as usize] == 0 || *idx.add(type_ as usize) == 0 {
+        if STATUS_PROMPT_HSIZE[type_ as usize] == 0 || *idx.add(type_ as usize) == 0 {
             return c!("");
         }
         *idx.add(type_ as usize) -= 1;
@@ -1826,8 +1826,8 @@ unsafe fn status_prompt_down_history(idx: *mut u32, type_: u32) -> *const u8 {
             return c!("");
         }
 
-        *status_prompt_hlist[type_ as usize]
-            .add((status_prompt_hsize[type_ as usize] - *idx.add(type_ as usize)) as usize)
+        *STATUS_PROMPT_HLIST[type_ as usize]
+            .add((STATUS_PROMPT_HSIZE[type_ as usize] - *idx.add(type_ as usize)) as usize)
     }
 }
 
@@ -1839,17 +1839,17 @@ unsafe fn status_prompt_add_history(line: *const u8, type_: u32) {
         let mut freecount: u32 = 0;
         let mut movesize: usize = 0;
 
-        let oldsize = status_prompt_hsize[type_ as usize];
+        let oldsize = STATUS_PROMPT_HSIZE[type_ as usize];
         if oldsize > 0
             && libc::strcmp(
-                *status_prompt_hlist[type_ as usize].add(oldsize as usize - 1),
+                *STATUS_PROMPT_HLIST[type_ as usize].add(oldsize as usize - 1),
                 line,
             ) == 0
         {
             new = 0;
         }
 
-        let hlimit = options_get_number_(global_options, c"prompt-history-limit") as u32;
+        let hlimit = options_get_number_(GLOBAL_OPTIONS, c"prompt-history-limit") as u32;
         if hlimit > oldsize {
             if new == 0 {
                 return;
@@ -1865,13 +1865,13 @@ unsafe fn status_prompt_add_history(line: *const u8, type_: u32) {
                 return;
             }
             for i in 0..freecount {
-                free_(*status_prompt_hlist[type_ as usize].add(i as usize));
+                free_(*STATUS_PROMPT_HLIST[type_ as usize].add(i as usize));
             }
             movesize = (oldsize as isize - freecount as isize) as usize * size_of::<*mut u8>();
             if movesize > 0 {
                 libc::memmove(
-                    status_prompt_hlist[type_ as usize].cast(),
-                    status_prompt_hlist[type_ as usize]
+                    STATUS_PROMPT_HLIST[type_ as usize].cast(),
+                    STATUS_PROMPT_HLIST[type_ as usize]
                         .add(freecount as usize)
                         .cast(),
                     movesize,
@@ -1880,17 +1880,17 @@ unsafe fn status_prompt_add_history(line: *const u8, type_: u32) {
         }
 
         if newsize == 0 {
-            free_(status_prompt_hlist[type_ as usize]);
-            status_prompt_hlist[type_ as usize] = null_mut();
+            free_(STATUS_PROMPT_HLIST[type_ as usize]);
+            STATUS_PROMPT_HLIST[type_ as usize] = null_mut();
         } else if newsize != oldsize {
-            status_prompt_hlist[type_ as usize] =
-                xreallocarray_(status_prompt_hlist[type_ as usize], newsize as usize).as_ptr();
+            STATUS_PROMPT_HLIST[type_ as usize] =
+                xreallocarray_(STATUS_PROMPT_HLIST[type_ as usize], newsize as usize).as_ptr();
         }
 
         if new == 1 && newsize > 0 {
-            *status_prompt_hlist[type_ as usize].add(newsize as usize - 1) = xstrdup(line).as_ptr();
+            *STATUS_PROMPT_HLIST[type_ as usize].add(newsize as usize - 1) = xstrdup(line).as_ptr();
         }
-        status_prompt_hsize[type_ as usize] = newsize;
+        STATUS_PROMPT_HSIZE[type_ as usize] = newsize;
     }
 }
 
@@ -1927,7 +1927,7 @@ unsafe fn status_prompt_complete_list(size: *mut u32, s: *const u8, at_start: i3
         ];
 
         *size = 0;
-        let mut cmdent: *const *const cmd_entry = (&raw const cmd_table) as *const *const cmd_entry;
+        let mut cmdent: *const *const cmd_entry = (&raw const CMD_TABLE) as *const *const cmd_entry;
         while !(*cmdent).is_null() {
             if strncmp((*(*cmdent)).name.as_ptr(), s, slen) == 0 {
                 status_prompt_add_list(&raw mut list, size, (*(*cmdent)).name.as_ptr());
@@ -1937,7 +1937,7 @@ unsafe fn status_prompt_complete_list(size: *mut u32, s: *const u8, at_start: i3
             }
             cmdent = cmdent.add(1);
         }
-        let o = options_get_only(global_options, c!("command-alias"));
+        let o = options_get_only(GLOBAL_OPTIONS, c!("command-alias"));
         if !o.is_null() {
             let mut a = options_array_first(o);
             while !a.is_null() {
@@ -1963,7 +1963,7 @@ unsafe fn status_prompt_complete_list(size: *mut u32, s: *const u8, at_start: i3
         if at_start != 0 {
             return list;
         }
-        let mut oe = (&raw mut options_table) as *mut options_table_entry;
+        let mut oe = (&raw mut OPTIONS_TABLE) as *mut options_table_entry;
         while !(*oe).name.is_null() {
             if strncmp((*oe).name, s, slen) == 0 {
                 status_prompt_add_list(&raw mut list, size, (*oe).name);
@@ -2285,7 +2285,7 @@ unsafe fn status_prompt_complete_session(
         let mut tmp = null_mut();
         let mut n: [u8; 11] = [0; 11];
 
-        for loop_ in rb_foreach(&raw mut sessions).map(NonNull::as_ptr) {
+        for loop_ in rb_foreach(&raw mut SESSIONS).map(NonNull::as_ptr) {
             if *s == b'\0' || strncmp((*loop_).name, s, strlen(s)) == 0 {
                 *list = xreallocarray_(*list, (*size) as usize + 2).as_ptr();
                 *(*list).add(*size as usize) = format_nul!("{}:", _s((*loop_).name));
@@ -2436,7 +2436,7 @@ pub unsafe fn status_prompt_type_string(type_: u32) -> *const u8 {
     if type_ >= PROMPT_NTYPES {
         return c!("invalid");
     }
-    prompt_type_strings[type_ as usize].as_ptr()
+    PROMPT_TYPE_STRINGS[type_ as usize].as_ptr()
 }
 
 mod code {

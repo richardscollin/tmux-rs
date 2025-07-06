@@ -50,13 +50,13 @@ pub struct screen_write_cline {
     items: tailq_head<screen_write_citem>,
 }
 
-pub static mut screen_write_citem_freelist: tailq_head<screen_write_citem> =
-    TAILQ_HEAD_INITIALIZER!(screen_write_citem_freelist);
+pub static mut SCREEN_WRITE_CITEM_FREELIST: tailq_head<screen_write_citem> =
+    TAILQ_HEAD_INITIALIZER!(SCREEN_WRITE_CITEM_FREELIST);
 
 unsafe fn screen_write_get_citem() -> NonNull<screen_write_citem> {
     unsafe {
-        if let Some(ci) = NonNull::new(tailq_first(&raw mut screen_write_citem_freelist)) {
-            tailq_remove(&raw mut screen_write_citem_freelist, ci.as_ptr());
+        if let Some(ci) = NonNull::new(tailq_first(&raw mut SCREEN_WRITE_CITEM_FREELIST)) {
+            tailq_remove(&raw mut SCREEN_WRITE_CITEM_FREELIST, ci.as_ptr());
             memset0(ci.as_ptr());
             return ci;
         }
@@ -66,7 +66,7 @@ unsafe fn screen_write_get_citem() -> NonNull<screen_write_citem> {
 
 unsafe fn screen_write_free_citem(ci: *mut screen_write_citem) {
     unsafe {
-        tailq_insert_tail(&raw mut screen_write_citem_freelist, ci);
+        tailq_insert_tail(&raw mut SCREEN_WRITE_CITEM_FREELIST, ci);
     }
 }
 
@@ -205,7 +205,7 @@ unsafe fn screen_write_initctx(ctx: *mut screen_write_ctx, ttyctx: *mut tty_ctx,
         (*ttyctx).orlower = (*s).rlower;
         (*ttyctx).orupper = (*s).rupper;
 
-        memcpy__(&raw mut (*ttyctx).defaults, &raw const grid_default_cell);
+        memcpy__(&raw mut (*ttyctx).defaults, &raw const GRID_DEFAULT_CELL);
         if let Some(init_ctx_cb) = (*ctx).init_ctx_cb {
             init_ctx_cb(ctx, ttyctx);
             if !(*ttyctx).palette.is_null() {
@@ -354,7 +354,7 @@ pub unsafe fn screen_write_reset(ctx: *mut screen_write_ctx) {
 
         (*s).mode = mode_flag::MODE_CURSOR | mode_flag::MODE_WRAP;
 
-        if options_get_number_(global_options, c"extended-keys") == 2 {
+        if options_get_number_(GLOBAL_OPTIONS, c"extended-keys") == 2 {
             (*s).mode = ((*s).mode & !EXTENDED_KEY_MODES) | mode_flag::MODE_KEYS_EXTENDED;
         }
 
@@ -719,7 +719,7 @@ pub unsafe fn screen_write_hline(
         if !border_gc.is_null() {
             memcpy__(&raw mut gc, border_gc);
         } else {
-            memcpy__(&raw mut gc, &raw const grid_default_cell);
+            memcpy__(&raw mut gc, &raw const GRID_DEFAULT_CELL);
         }
         gc.attr |= grid_attr::GRID_ATTR_CHARSET;
 
@@ -755,7 +755,7 @@ pub unsafe fn screen_write_vline(ctx: *mut screen_write_ctx, ny: u32, top: i32, 
         let cx = (*s).cx;
         let cy = (*s).cy;
 
-        memcpy__(&raw mut gc, &raw const grid_default_cell);
+        memcpy__(&raw mut gc, &raw const GRID_DEFAULT_CELL);
         gc.attr |= grid_attr::GRID_ATTR_CHARSET;
 
         screen_write_putc(ctx, &raw const gc, if top != 0 { b'w' } else { b'x' });
@@ -855,7 +855,7 @@ pub unsafe fn screen_write_box(
         if !gcp.is_null() {
             memcpy__(&raw mut gc, gcp);
         } else {
-            memcpy__(&raw mut gc, &raw const grid_default_cell);
+            memcpy__(&raw mut gc, &raw const GRID_DEFAULT_CELL);
         }
 
         gc.attr |= grid_attr::GRID_ATTR_CHARSET;
@@ -1136,7 +1136,7 @@ pub unsafe fn screen_write_alignmenttest(ctx: *mut screen_write_ctx) {
         let mut ttyctx: tty_ctx = zeroed();
         let mut gc: grid_cell = zeroed();
 
-        memcpy__(&raw mut gc, &raw const grid_default_cell);
+        memcpy__(&raw mut gc, &raw const GRID_DEFAULT_CELL);
         utf8_set(&raw mut gc.data, b'E');
 
         #[cfg(feature = "sixel")]
@@ -1945,7 +1945,7 @@ pub unsafe fn screen_write_collect_clear(ctx: *mut screen_write_ctx, y: u32, n: 
     unsafe {
         for i in y..(y + n) {
             let cl = (*(*ctx).s).write_list.add(i as usize);
-            tailq_concat(&raw mut screen_write_citem_freelist, &raw mut (*cl).items);
+            tailq_concat(&raw mut SCREEN_WRITE_CITEM_FREELIST, &raw mut (*cl).items);
         }
     }
 }
@@ -2081,11 +2081,11 @@ pub unsafe fn screen_write_collect_end(ctx: *mut screen_write_ctx) {
                 if !gc.flags.intersects(grid_flag::PADDING) {
                     break;
                 }
-                grid_view_set_cell((*s).grid, xx, (*s).cy, &grid_default_cell);
+                grid_view_set_cell((*s).grid, xx, (*s).cy, &GRID_DEFAULT_CELL);
                 xx -= 1;
             }
             if gc.data.width > 1 {
-                grid_view_set_cell((*s).grid, xx, (*s).cy, &grid_default_cell);
+                grid_view_set_cell((*s).grid, xx, (*s).cy, &GRID_DEFAULT_CELL);
             }
         }
 
@@ -2111,7 +2111,7 @@ pub unsafe fn screen_write_collect_end(ctx: *mut screen_write_ctx) {
             if !gc.flags.intersects(grid_flag::PADDING) {
                 break;
             }
-            grid_view_set_cell((*s).grid, xx, (*s).cy, &grid_default_cell);
+            grid_view_set_cell((*s).grid, xx, (*s).cy, &GRID_DEFAULT_CELL);
         }
     }
 }
@@ -2180,7 +2180,7 @@ pub unsafe fn screen_write_cell(ctx: *mut screen_write_ctx, gc: *const grid_cell
         let mut gl: *mut grid_line = null_mut();
         let mut gce: *mut grid_cell_entry = null_mut();
 
-        const size_of_tmp_gc: usize = size_of::<grid_cell>();
+        const SIZE_OF_TMP_GC: usize = size_of::<grid_cell>();
         let mut tmp_gc: grid_cell = zeroed();
         let mut now_gc: grid_cell = zeroed();
         let mut ttyctx: tty_ctx = zeroed();
@@ -2255,7 +2255,7 @@ pub unsafe fn screen_write_cell(ctx: *mut screen_write_ctx, gc: *const grid_cell
         // If no change, do not draw.
         if skip != 0 {
             if (*s).cx >= (*gl).cellsize {
-                skip = grid_cells_equal(gc, &grid_default_cell);
+                skip = grid_cells_equal(gc, &GRID_DEFAULT_CELL);
             } else {
                 gce = (*gl).celldata.add((*s).cx as usize);
                 if (*gce).flags.intersects(grid_flag::EXTENDED)
@@ -2471,12 +2471,12 @@ pub unsafe fn screen_write_overwrite(
                     break;
                 }
                 // log_debug("%s: padding at %u,%u", __func__, xx, (*s).cy);
-                grid_view_set_cell(gd, xx, (*s).cy, &raw const grid_default_cell);
+                grid_view_set_cell(gd, xx, (*s).cy, &raw const GRID_DEFAULT_CELL);
             }
 
             /* Overwrite the character at the start of this padding. */
             // log_debug("%s: character at %u,%u", __func__, xx, (*s).cy);
-            grid_view_set_cell(gd, xx, (*s).cy, &raw const grid_default_cell);
+            grid_view_set_cell(gd, xx, (*s).cy, &raw const GRID_DEFAULT_CELL);
             done = 1;
         }
 
@@ -2495,7 +2495,7 @@ pub unsafe fn screen_write_overwrite(
                     break;
                 }
                 // log_debug("%s: overwrite at %u,%u", __func__, xx, (*s).cy);
-                grid_view_set_cell(gd, xx, (*s).cy, &raw const grid_default_cell);
+                grid_view_set_cell(gd, xx, (*s).cy, &raw const GRID_DEFAULT_CELL);
                 done = 1;
             }
         }

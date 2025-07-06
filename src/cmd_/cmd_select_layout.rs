@@ -13,7 +13,7 @@
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 use crate::*;
 
-pub static cmd_select_layout_entry: cmd_entry = cmd_entry {
+pub static CMD_SELECT_LAYOUT_ENTRY: cmd_entry = cmd_entry {
     name: SyncCharPtr::new(c"select-layout"),
     alias: SyncCharPtr::new(c"selectl"),
 
@@ -27,7 +27,7 @@ pub static cmd_select_layout_entry: cmd_entry = cmd_entry {
     source: cmd_entry_flag::zeroed(),
 };
 
-pub static cmd_next_layout_entry: cmd_entry = cmd_entry {
+pub static CMD_NEXT_LAYOUT_ENTRY: cmd_entry = cmd_entry {
     name: SyncCharPtr::new(c"next-layout"),
     alias: SyncCharPtr::new(c"nextl"),
 
@@ -41,7 +41,7 @@ pub static cmd_next_layout_entry: cmd_entry = cmd_entry {
     source: cmd_entry_flag::zeroed(),
 };
 
-pub static cmd_previous_layout_entry: cmd_entry = cmd_entry {
+pub static CMD_PREVIOUS_LAYOUT_ENTRY: cmd_entry = cmd_entry {
     name: SyncCharPtr::new(c"previous-layout"),
     alias: SyncCharPtr::new(c"prevl"),
 
@@ -69,11 +69,11 @@ unsafe fn cmd_select_layout_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
 
         'error: {
             'changed: {
-                let mut next = std::ptr::eq(cmd_get_entry(self_), &cmd_next_layout_entry);
+                let mut next = std::ptr::eq(cmd_get_entry(self_), &CMD_NEXT_LAYOUT_ENTRY);
                 if args_has_(args, 'n') {
                     next = true;
                 }
-                let mut previous = std::ptr::eq(cmd_get_entry(self_), &cmd_previous_layout_entry);
+                let mut previous = std::ptr::eq(cmd_get_entry(self_), &CMD_PREVIOUS_LAYOUT_ENTRY);
                 if args_has_(args, 'p') {
                     previous = true;
                 }

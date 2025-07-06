@@ -34,8 +34,8 @@ macro_rules! log_debug {
 pub(crate) use log_debug;
 
 // can't use File because it's open before fork which causes issues with how file works
-static log_file: Mutex<Option<LineWriter<File>>> = Mutex::new(None);
-static log_level: AtomicI32 = AtomicI32::new(0);
+static LOG_FILE: Mutex<Option<LineWriter<File>>> = Mutex::new(None);
+static LOG_LEVEL: AtomicI32 = AtomicI32::new(0);
 
 const DEFAULT_ORDERING: Ordering = Ordering::SeqCst;
 
@@ -44,15 +44,15 @@ unsafe extern "C" fn log_event_cb(_severity: c_int, msg: *const u8) {
 }
 
 pub fn log_add_level() {
-    log_level.fetch_add(1, DEFAULT_ORDERING);
+    LOG_LEVEL.fetch_add(1, DEFAULT_ORDERING);
 }
 
 pub fn log_get_level() -> i32 {
-    log_level.load(DEFAULT_ORDERING)
+    LOG_LEVEL.load(DEFAULT_ORDERING)
 }
 
 pub fn log_open(name: &CStr) {
-    if log_level.load(DEFAULT_ORDERING) == 0 {
+    if LOG_LEVEL.load(DEFAULT_ORDERING) == 0 {
         return;
     }
 
@@ -68,12 +68,12 @@ pub fn log_open(name: &CStr) {
         return;
     };
 
-    *log_file.lock().unwrap() = Some(LineWriter::new(file));
+    *LOG_FILE.lock().unwrap() = Some(LineWriter::new(file));
     unsafe { event_set_log_callback(Some(log_event_cb)) };
 }
 
 pub fn log_toggle(name: &CStr) {
-    if log_level.fetch_xor(1, DEFAULT_ORDERING) == 0 {
+    if LOG_LEVEL.fetch_xor(1, DEFAULT_ORDERING) == 0 {
         log_open(name);
         log_debug!("log opened");
     } else {
@@ -87,7 +87,7 @@ pub fn log_close() {
     // Because of this and our use of fork, extra care has to be made when closing the file.
     // see std::sys::pal::unix::fs::debug_assert_fd_is_open;
     use std::os::fd::AsRawFd;
-    if let Some(mut old_handle) = log_file.lock().unwrap().take() {
+    if let Some(mut old_handle) = LOG_FILE.lock().unwrap().take() {
         let _flush_err = old_handle.flush(); // TODO
         match old_handle.into_inner() {
             Ok(file) => unsafe {
@@ -117,7 +117,7 @@ pub fn log_close() {
 
 #[track_caller]
 pub fn log_debug_rs(args: std::fmt::Arguments) {
-    if log_file.lock().unwrap().is_none() {
+    if LOG_FILE.lock().unwrap().is_none() {
         return;
     }
     log_vwrite_rs(args, "");
@@ -126,7 +126,7 @@ pub fn log_debug_rs(args: std::fmt::Arguments) {
 #[track_caller]
 fn log_vwrite_rs(args: std::fmt::Arguments, prefix: &str) {
     unsafe {
-        if log_file.lock().unwrap().is_none() {
+        if LOG_FILE.lock().unwrap().is_none() {
             return;
         }
 
@@ -147,7 +147,7 @@ fn log_vwrite_rs(args: std::fmt::Arguments, prefix: &str) {
         let micros = duration.subsec_micros();
 
         let str_out = CStr::from_ptr(out.cast()).to_string_lossy();
-        if let Some(f) = log_file.lock().unwrap().as_mut() {
+        if let Some(f) = LOG_FILE.lock().unwrap().as_mut() {
             let location = std::panic::Location::caller();
             let file = location.file();
             let line = location.line();

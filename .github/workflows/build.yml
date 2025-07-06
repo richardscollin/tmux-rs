@@ -23,7 +23,6 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        fail-fast: false
         toolchain: [stable, beta]
         os: [ubuntu-latest, macos-latest, ubuntu-24.04-arm]
     steps:
@@ -38,7 +37,7 @@ jobs:
           brew update
           brew install ncurses libevent
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain
+      - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ matrix.toolchain }}
           components: clippy

@@ -11,13 +11,12 @@
 // WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
 // ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 // OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-use core::ffi::c_char;
 use core::ptr::null_mut;
 
 /// portable fgetln() version, NOT reentrant
-pub unsafe fn fgetln(fp: *mut libc::FILE, len: *mut usize) -> *mut c_char {
+pub unsafe fn fgetln(fp: *mut libc::FILE, len: *mut usize) -> *mut u8 {
     unsafe {
-        static mut buf: *mut c_char = null_mut();
+        static mut buf: *mut u8 = null_mut();
         static mut bufsz: usize = 0;
         let mut r = 0usize;
 
@@ -35,7 +34,7 @@ pub unsafe fn fgetln(fp: *mut libc::FILE, len: *mut usize) -> *mut c_char {
 
         let mut c = libc::fgetc(fp);
         while c != libc::EOF {
-            *buf.add(r) = c as i8;
+            *buf.add(r) = c as u8;
             r += 1;
             if (r == bufsz) {
                 let p = super::reallocarray(buf.cast(), 2, bufsz);

@@ -1405,7 +1405,7 @@ unsafe fn window_tree_kill_current_callback(
         if s.is_null() || *s == b'\0' || (*data.as_ptr()).dead != 0 {
             return 0;
         }
-        if (*s).to_ascii_lowercase() != b'y' || *s.add(1) != b'\0' {
+        if !(*s).eq_ignore_ascii_case(&b'y') || *s.add(1) != b'\0' {
             return 0;
         }
 
@@ -1435,7 +1435,7 @@ unsafe fn window_tree_kill_tagged_callback(
         if s.is_null() || *s == b'\0' || (*data.as_ptr()).dead != 0 {
             return 0;
         }
-        if (*s).to_ascii_lowercase() != b'y' || *s.add(1) != b'\0' {
+        if !(*s).eq_ignore_ascii_case(&b'y') || *s.add(1) != b'\0' {
             return 0;
         }
 

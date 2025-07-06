@@ -30,6 +30,13 @@
 #![allow(clippy::shadow_reuse)] // 145 instances
 #![allow(clippy::manual_is_multiple_of)]
 
+#![allow(clippy::manual_c_str_literals)]
+#![allow(clippy::assign_op_pattern)]
+#![allow(clippy::char_lit_as_u8)]
+#![allow(clippy::wrong_self_convention)]
+
+#![warn(clippy::unnecessary_cast)]
+
 mod compat;
 use compat::strtonum;
 use compat::vis_flags;

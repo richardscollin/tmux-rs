@@ -218,11 +218,17 @@ pub unsafe fn job_run(
 
                     if !cmd.is_null() {
                         setenv(c!("SHELL"), shell, 1);
-                        execl(shell.cast(), argv0.cast(), c!("-c"), cmd, null_mut::<c_void>());
+                        execl(
+                            shell.cast(),
+                            argv0.cast(),
+                            c!("-c"),
+                            cmd,
+                            null_mut::<c_void>(),
+                        );
                         fatal("execl failed");
                     } else {
                         argvp = cmd_copy_argv(argc, argv);
-                        execvp((*argvp).cast(), argvp as *const *const i8);
+                        execvp((*argvp).cast(), argvp.cast());
                         fatal("execvp failed");
                     }
                 }

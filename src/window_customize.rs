@@ -1776,7 +1776,7 @@ pub unsafe fn window_customize_change_current_callback(
         if s.is_null() || *s == b'\0' || (*data).dead != 0 {
             return 0;
         }
-        if (*s).to_ascii_lowercase() != b'y' || *s.add(1) != b'\0' {
+        if !(*s).eq_ignore_ascii_case(&b'y') || *s.add(1) != b'\0' {
             return 0;
         }
 
@@ -1820,7 +1820,7 @@ pub unsafe fn window_customize_change_tagged_callback(
         if s.is_null() || *s == b'\0' || (*data).dead != 0 {
             return 0;
         }
-        if (*s).to_ascii_lowercase() != b'y' || *s.add(1) != b'\0' {
+        if !(*s).eq_ignore_ascii_case(&b'y') || *s.add(1) != b'\0' {
             return 0;
         }
 

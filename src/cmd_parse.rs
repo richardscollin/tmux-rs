@@ -1151,7 +1151,7 @@ unsafe fn yylex_token_tilde(ps: &mut cmd_parse_state, buf: *mut *mut u8, len: *m
             } else if let Some(pw) = NonNull::new(libc::getpwuid(libc::getuid())) {
                 home = (*pw.as_ptr()).pw_dir.cast();
             }
-        } else if let Some(pw) = NonNull::new(libc::getpwnam((&raw const name) as *const i8)) {
+        } else if let Some(pw) = NonNull::new(libc::getpwnam((&raw const name).cast())) {
             home = (*pw.as_ptr()).pw_dir.cast();
         }
         if home.is_null() {

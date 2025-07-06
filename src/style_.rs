@@ -21,7 +21,7 @@ use crate::compat::strlcpy;
 
 // #define STYLE_ATTR_MASK (~0)
 
-pub static mut style_default: style = style {
+pub static mut STYLE_DEFAULT: style = style {
     gc: grid_cell::new(
         utf8_data::new([b' '], 0, 1, 1),
         grid_attr::empty(),
@@ -118,11 +118,11 @@ pub unsafe fn style_parse(sy: *mut style, base: *const grid_cell, mut in_: *cons
                         break 'error;
                     }
                 } else if strcasecmp(tmp, c!("norange")) == 0 {
-                    (*sy).range_type = style_default.range_type;
-                    (*sy).range_argument = style_default.range_type as u32;
+                    (*sy).range_type = STYLE_DEFAULT.range_type;
+                    (*sy).range_argument = STYLE_DEFAULT.range_type as u32;
                     strlcpy(
                         &raw mut (*sy).range_string as *mut u8,
-                        &raw const style_default.range_string as *const u8,
+                        &raw const STYLE_DEFAULT.range_string as *const u8,
                         16,
                     );
                 } else if end > 6 && strncasecmp(tmp, c!("range="), 6) == 0 {
@@ -193,7 +193,7 @@ pub unsafe fn style_parse(sy: *mut style, base: *const grid_cell, mut in_: *cons
                         style_set_range_string(sy, found);
                     }
                 } else if strcasecmp(tmp, c!("noalign")) == 0 {
-                    (*sy).align = style_default.align;
+                    (*sy).align = STYLE_DEFAULT.align;
                 } else if end > 6 && strncasecmp(tmp, c!("align="), 6) == 0 {
                     if strcasecmp(tmp.add(6), c!("left")) == 0 {
                         (*sy).align = style_align::STYLE_ALIGN_LEFT;
@@ -273,7 +273,7 @@ pub unsafe fn style_parse(sy: *mut style, base: *const grid_cell, mut in_: *cons
 
 pub unsafe fn style_tostring(sy: *const style) -> *const u8 {
     type s_type = [i8; 256];
-    static mut s_buf: MaybeUninit<s_type> = MaybeUninit::<s_type>::uninit();
+    static mut S_BUF: MaybeUninit<s_type> = MaybeUninit::<s_type>::uninit();
 
     unsafe {
         let gc = &raw const (*sy).gc;
@@ -283,7 +283,7 @@ pub unsafe fn style_tostring(sy: *const style) -> *const u8 {
         type b_type = [i8; 21];
         let mut b: b_type = [0; 21];
 
-        let s = &raw mut s_buf as *mut u8;
+        let s = &raw mut S_BUF as *mut u8;
         *s = b'\0';
 
         if (*sy).list != style_list::STYLE_LIST_OFF {
@@ -469,7 +469,7 @@ pub unsafe fn style_add(
 
         sy = options_string_to_style(oo, name, ft);
         if sy.is_null() {
-            sy = &raw mut style_default;
+            sy = &raw mut STYLE_DEFAULT;
         }
         if (*sy).gc.fg != 8 {
             (*gc).fg = (*sy).gc.fg;
@@ -495,14 +495,14 @@ pub unsafe fn style_apply(
     ft: *mut format_tree,
 ) {
     unsafe {
-        memcpy__(gc, &raw const grid_default_cell);
+        memcpy__(gc, &raw const GRID_DEFAULT_CELL);
         style_add(gc, oo, name, ft);
     }
 }
 
 pub unsafe fn style_set(sy: *mut style, gc: *const grid_cell) {
     unsafe {
-        memcpy__(sy, &raw const style_default);
+        memcpy__(sy, &raw const STYLE_DEFAULT);
         memcpy__(&raw mut (*sy).gc, gc);
     }
 }

@@ -18,7 +18,7 @@ use crate::libc::{WEXITSTATUS, WIFEXITED, WIFSIGNALED, WTERMSIG, memcpy, strtod,
 
 use crate::compat::queue::tailq_first;
 
-pub static cmd_run_shell_entry: cmd_entry = cmd_entry {
+pub static CMD_RUN_SHELL_ENTRY: cmd_entry = cmd_entry {
     name: SyncCharPtr::new(c"run-shell"),
     alias: SyncCharPtr::new(c"run"),
 
@@ -87,11 +87,11 @@ pub unsafe fn cmd_run_shell_print(job: *mut job, msg: *const u8) {
         }
 
         let wme = tailq_first(&raw mut (*wp).modes);
-        if wme.is_null() || (*wme).mode != &raw const window_view_mode {
+        if wme.is_null() || (*wme).mode != &raw const WINDOW_VIEW_MODE {
             window_pane_set_mode(
                 wp,
                 null_mut(),
-                &raw const window_view_mode,
+                &raw const WINDOW_VIEW_MODE,
                 null_mut(),
                 null_mut(),
             );

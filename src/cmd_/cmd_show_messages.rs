@@ -17,7 +17,7 @@ use crate::compat::queue::{list_foreach, tailq_foreach_reverse};
 
 const SHOW_MESSAGES_TEMPLATE: *const u8 = c!("#{t/p:message_time}: #{message_text}");
 
-pub static cmd_show_messages_entry: cmd_entry = cmd_entry {
+pub static CMD_SHOW_MESSAGES_ENTRY: cmd_entry = cmd_entry {
     name: SyncCharPtr::new(c"show-messages"),
     alias: SyncCharPtr::new(c"showmsgs"),
 
@@ -40,7 +40,7 @@ unsafe fn cmd_show_messages_terminals(
         let tc = cmdq_get_target_client(item);
 
         let mut n = 0u32;
-        for term in list_foreach::<_, discr_entry>(&raw mut tty_terms).map(NonNull::as_ptr) {
+        for term in list_foreach::<_, discr_entry>(&raw mut TTY_TERMS).map(NonNull::as_ptr) {
             if args_has(args, b't') != 0 && term != (*tc).tty.term {
                 continue;
             }
@@ -89,7 +89,7 @@ unsafe fn cmd_show_messages_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
 
         let ft = format_create_from_target(item);
 
-        for msg in tailq_foreach_reverse(&raw mut crate::server::message_log).map(NonNull::as_ptr) {
+        for msg in tailq_foreach_reverse(&raw mut crate::server::MESSAGE_LOG).map(NonNull::as_ptr) {
             format_add!(ft, c!("message_text"), "{}", _s((*msg).msg));
             format_add!(ft, c!("message_number"), "{}", (*msg).msg_num,);
             format_add_tv(ft, c!("message_time"), &raw mut (*msg).msg_time);

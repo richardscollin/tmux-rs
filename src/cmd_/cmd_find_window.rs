@@ -14,7 +14,7 @@
 
 use crate::*;
 
-pub static cmd_find_window_entry: cmd_entry = cmd_entry {
+pub static CMD_FIND_WINDOW_ENTRY: cmd_entry = cmd_entry {
     name: SyncCharPtr::new(c"find-window"),
     alias: SyncCharPtr::new(c"findw"),
 
@@ -136,7 +136,7 @@ unsafe fn cmd_find_window_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
         window_pane_set_mode(
             wp,
             null_mut(),
-            &raw const window_tree_mode,
+            &raw const WINDOW_TREE_MODE,
             target,
             new_args,
         );

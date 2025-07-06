@@ -19,7 +19,7 @@ use crate::compat::queue::{
     tailq_remove, tailq_replace,
 };
 
-pub static cmd_swap_pane_entry: cmd_entry = cmd_entry {
+pub static CMD_SWAP_PANE_ENTRY: cmd_entry = cmd_entry {
     name: SyncCharPtr::new(c"swap-pane"),
     alias: SyncCharPtr::new(c"swapp"),
 

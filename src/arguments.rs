@@ -585,8 +585,8 @@ pub unsafe fn args_print(args: *mut args) -> *mut u8 {
 /// Escape an argument.
 pub unsafe fn args_escape(s: *const u8) -> *mut u8 {
     unsafe {
-        static mut dquoted: *const u8 = c!(" #';${}%");
-        static mut squoted: *const u8 = c!(" \"");
+        let dquoted: *const u8 = c!(" #';${}%");
+        let squoted: *const u8 = c!(" \"");
 
         let mut escaped: *mut u8 = null_mut();
 

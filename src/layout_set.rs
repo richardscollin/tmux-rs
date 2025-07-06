@@ -28,8 +28,8 @@ impl layout_sets_entry {
     }
 }
 
-const layout_sets_len: usize = 7;
-static layout_sets: [layout_sets_entry; layout_sets_len] = [
+const LAYOUT_SETS_LEN: usize = 7;
+static LAYOUT_SETS: [layout_sets_entry; LAYOUT_SETS_LEN] = [
     layout_sets_entry::new(c"even-horizontal", layout_set_even_h),
     layout_sets_entry::new(c"even-vertical", layout_set_even_v),
     layout_sets_entry::new(c"main-horizontal", layout_set_main_h),
@@ -43,13 +43,13 @@ pub unsafe fn layout_set_lookup(name: *const u8) -> i32 {
     unsafe {
         let mut matched: i32 = -1;
 
-        for (i, ls) in layout_sets.iter().enumerate() {
+        for (i, ls) in LAYOUT_SETS.iter().enumerate() {
             if libc::strcmp(ls.name.as_ptr(), name) == 0 {
                 return i as i32;
             }
         }
 
-        for (i, ls) in layout_sets.iter().enumerate() {
+        for (i, ls) in LAYOUT_SETS.iter().enumerate() {
             if libc::strncmp(ls.name.as_ptr(), name, strlen(name)) == 0 {
                 if matched != -1 {
                     /* ambiguous */
@@ -65,11 +65,11 @@ pub unsafe fn layout_set_lookup(name: *const u8) -> i32 {
 
 pub unsafe fn layout_set_select(w: *mut window, mut layout: u32) -> u32 {
     unsafe {
-        if layout > layout_sets_len as u32 - 1 {
-            layout = layout_sets_len as u32 - 1;
+        if layout > LAYOUT_SETS_LEN as u32 - 1 {
+            layout = LAYOUT_SETS_LEN as u32 - 1;
         }
 
-        if let Some(arrange) = layout_sets[layout as usize].arrange {
+        if let Some(arrange) = LAYOUT_SETS[layout as usize].arrange {
             arrange(w);
         }
 
@@ -86,12 +86,12 @@ pub unsafe fn layout_set_next(w: *mut window) -> u32 {
             layout = 0;
         } else {
             layout = ((*w).lastlayout + 1) as u32;
-            if layout > layout_sets_len as u32 - 1 {
+            if layout > LAYOUT_SETS_LEN as u32 - 1 {
                 layout = 0;
             }
         }
 
-        if let Some(arrange) = layout_sets[layout as usize].arrange {
+        if let Some(arrange) = LAYOUT_SETS[layout as usize].arrange {
             arrange(w);
         }
         (*w).lastlayout = layout as i32;
@@ -104,17 +104,17 @@ pub unsafe fn layout_set_previous(w: *mut window) -> u32 {
         let mut layout: u32 = 0;
 
         if (*w).lastlayout == -1 {
-            layout = (layout_sets_len - 1) as u32;
+            layout = (LAYOUT_SETS_LEN - 1) as u32;
         } else {
             layout = (*w).lastlayout as u32;
             if layout == 0 {
-                layout = (layout_sets_len - 1) as u32;
+                layout = (LAYOUT_SETS_LEN - 1) as u32;
             } else {
                 layout -= 1;
             }
         }
 
-        if let Some(arrange) = layout_sets[layout as usize].arrange {
+        if let Some(arrange) = LAYOUT_SETS[layout as usize].arrange {
             arrange(w);
         }
         (*w).lastlayout = layout as i32;

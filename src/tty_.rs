@@ -15,7 +15,7 @@ use crate::*;
 
 use crate::{colour::colour_split_rgb, compat::b64::b64_ntop};
 
-static mut tty_log_fd: i32 = -1;
+static mut TTY_LOG_FD: i32 = -1;
 
 #[inline]
 unsafe fn tty_use_margin(tty: *const tty) -> bool {
@@ -54,12 +54,12 @@ pub unsafe fn tty_create_log() {
             libc::getpid()
         );
 
-        tty_log_fd = libc::open(
+        TTY_LOG_FD = libc::open(
             (&raw const name).cast(),
             libc::O_WRONLY | libc::O_CREAT | libc::O_TRUNC,
             0o644,
         );
-        if tty_log_fd != -1 && libc::fcntl(tty_log_fd, libc::F_SETFD, libc::FD_CLOEXEC) == -1 {
+        if TTY_LOG_FD != -1 && libc::fcntl(TTY_LOG_FD, libc::F_SETFD, libc::FD_CLOEXEC) == -1 {
             fatal("fcntl failed");
         }
     }
@@ -561,10 +561,10 @@ pub unsafe fn tty_update_features(tty: *mut tty) {
         if tty_use_margin(tty) {
             tty_putcode(tty, tty_code_code::TTYC_ENMG);
         }
-        if options_get_number_(global_options, c"extended-keys") != 0 {
+        if options_get_number_(GLOBAL_OPTIONS, c"extended-keys") != 0 {
             tty_puts(tty, tty_term_string((*tty).term, tty_code_code::TTYC_ENEKS));
         }
-        if options_get_number_(global_options, c"focus-events") != 0 {
+        if options_get_number_(GLOBAL_OPTIONS, c"focus-events") != 0 {
             tty_puts(tty, tty_term_string((*tty).term, tty_code_code::TTYC_ENFCS));
         }
         if (*(*tty).term).flags.intersects(term_flags::TERM_VT100LIKE) {
@@ -664,8 +664,8 @@ pub unsafe fn tty_add(tty: *mut tty, buf: *const u8, len: usize) {
         // log_debug("%s: %.*s", (*c).name, (int)len, buf);
         (*c).written += len;
 
-        if tty_log_fd != -1 {
-            libc::write(tty_log_fd, buf.cast(), len);
+        if TTY_LOG_FD != -1 {
+            libc::write(TTY_LOG_FD, buf.cast(), len);
         }
         if (*tty).flags.intersects(tty_flags::TTY_STARTED) {
             event_add(&raw mut (*tty).event_out, null_mut());
@@ -757,7 +757,7 @@ pub unsafe fn tty_putn(tty: *mut tty, buf: *const c_void, mut len: usize, width:
 pub unsafe fn tty_set_italics(tty: *mut tty) {
     unsafe {
         if tty_term_has((*tty).term, tty_code_code::TTYC_SITM) {
-            let s = options_get_string_(global_options, c"default-terminal");
+            let s = options_get_string_(GLOBAL_OPTIONS, c"default-terminal");
             if !streq_(s, "screen") && libc::strncmp(s, c!("screen-"), 7) != 0 {
                 tty_putcode(tty, tty_code_code::TTYC_SITM);
                 return;
@@ -991,20 +991,20 @@ pub unsafe fn tty_emulate_repeat(
 }
 
 pub unsafe fn tty_repeat_space(tty: *mut tty, mut n: u32) {
-    const sizeof_s: usize = 500;
-    static mut s: [u8; sizeof_s] = [0; sizeof_s];
+    const SIZEOF_S: usize = 500;
+    static mut S: [u8; SIZEOF_S] = [0; SIZEOF_S];
 
     unsafe {
-        if s[0] != b' ' {
-            libc::memset((&raw mut s).cast(), ' ' as i32, sizeof_s);
+        if S[0] != b' ' {
+            libc::memset((&raw mut S).cast(), ' ' as i32, SIZEOF_S);
         }
 
-        while n > sizeof_s as u32 {
-            tty_putn(tty, (&raw mut s).cast(), sizeof_s, sizeof_s as u32);
-            n -= sizeof_s as u32;
+        while n > SIZEOF_S as u32 {
+            tty_putn(tty, (&raw mut S).cast(), SIZEOF_S, SIZEOF_S as u32);
+            n -= SIZEOF_S as u32;
         }
         if n != 0 {
-            tty_putn(tty, (&raw mut s).cast(), n as usize, n);
+            tty_putn(tty, (&raw mut S).cast(), n as usize, n);
         }
     }
 }
@@ -1116,7 +1116,7 @@ pub unsafe fn tty_window_offset1(
 /// Update stored offsets for a window and redraw if necessary.
 pub unsafe fn tty_update_window_offset(w: *mut window) {
     unsafe {
-        for c in tailq_foreach(&raw mut clients).map(NonNull::as_ptr) {
+        for c in tailq_foreach(&raw mut CLIENTS).map(NonNull::as_ptr) {
             if !(*c).session.is_null()
                 && !(*(*c).session).curw.is_null()
                 && (*(*(*c).session).curw).window == w
@@ -1480,8 +1480,8 @@ pub unsafe fn tty_clear_area(
     unsafe {
         let c = (*tty).client;
         let yy: u32 = 0;
-        const sizeof_tmp: usize = 64;
-        let mut tmp: [u8; sizeof_tmp] = [0; sizeof_tmp];
+        const SIZEOF_TMP: usize = 64;
+        let mut tmp: [u8; SIZEOF_TMP] = [0; SIZEOF_TMP];
 
         // log_debug("%s: %s, %u,%u at %u,%u", __func__, (*c).name, nx, ny, px, py);
 
@@ -1513,7 +1513,7 @@ pub unsafe fn tty_clear_area(
             {
                 xsnprintf_!(
                     (&raw mut tmp).cast(),
-                    sizeof_tmp,
+                    SIZEOF_TMP,
                     "\x1b[32;{};{};{};{}$x",
                     py + 1,
                     px + 1,
@@ -1650,7 +1650,7 @@ pub unsafe fn tty_draw_pane(tty: *mut tty, ctx: *const tty_ctx, py: u32) {
 }
 
 pub unsafe fn tty_check_codeset(tty: *mut tty, gc: *const grid_cell) -> *const grid_cell {
-    static mut new: grid_cell = unsafe { zeroed() };
+    static mut NEW: grid_cell = unsafe { zeroed() };
     unsafe {
         /* Characters less than 0x7f are always fine, no matter what. */
         if (*gc).data.size == 1 && (*gc).data.data[0] < 0x7f {
@@ -1661,7 +1661,7 @@ pub unsafe fn tty_check_codeset(tty: *mut tty, gc: *const grid_cell) -> *const g
         if (*(*tty).client).flags.intersects(client_flag::UTF8) {
             return gc;
         }
-        memcpy__(&raw mut new, gc);
+        memcpy__(&raw mut NEW, gc);
 
         /* See if this can be mapped to an ACS character. */
         let c = tty_acs_reverse_get(
@@ -1670,22 +1670,22 @@ pub unsafe fn tty_check_codeset(tty: *mut tty, gc: *const grid_cell) -> *const g
             (*gc).data.size as usize,
         );
         if c != -1 {
-            utf8_set(&raw mut new.data, c as u8);
-            new.attr |= grid_attr::GRID_ATTR_CHARSET;
-            return &raw const new;
+            utf8_set(&raw mut NEW.data, c as u8);
+            NEW.attr |= grid_attr::GRID_ATTR_CHARSET;
+            return &raw const NEW;
         }
 
         /* Replace by the right number of underscores. */
-        new.data.size = (*gc).data.width;
-        if new.data.size > UTF8_SIZE as u8 {
-            new.data.size = UTF8_SIZE as u8;
+        NEW.data.size = (*gc).data.width;
+        if NEW.data.size > UTF8_SIZE as u8 {
+            NEW.data.size = UTF8_SIZE as u8;
         }
         libc::memset(
-            (&raw mut new.data.data).cast(),
+            (&raw mut NEW.data.data).cast(),
             b'_' as i32,
-            new.data.size as usize,
+            NEW.data.size as usize,
         );
-        &raw const new
+        &raw const NEW
     }
 }
 
@@ -1743,7 +1743,7 @@ pub unsafe fn tty_draw_line(
         let gd = (*s).grid;
         let mut gc: grid_cell = zeroed();
         let mut last: grid_cell = zeroed();
-        const sizeof_last: usize = size_of::<grid_cell>();
+        const SIZEOF_LAST: usize = size_of::<grid_cell>();
         // const struct grid_cell *gcp;
         // struct grid_line *gl;
         let c = (*tty).client;
@@ -1756,8 +1756,8 @@ pub unsafe fn tty_draw_line(
         // size_t len;
         let mut cleared = 0;
         let mut wrapped = 0;
-        const sizeof_buf: usize = 512;
-        let mut buf: [u8; sizeof_buf] = [0; sizeof_buf];
+        const SIZEOF_BUF: usize = 512;
+        let mut buf: [u8; SIZEOF_BUF] = [0; SIZEOF_BUF];
 
         // log_debug("%s: px=%u py=%u nx=%u atx=%u aty=%u", __func__, px, py, nx, atx, aty);
         // log_debug("%s: defaults: fg=%d, bg=%d", __func__, (*defaults).fg, (*defaults).bg);
@@ -1824,7 +1824,7 @@ pub unsafe fn tty_draw_line(
             wrapped = 1;
         }
 
-        memcpy__(&raw mut last, &raw const grid_default_cell);
+        memcpy__(&raw mut last, &raw const GRID_DEFAULT_CELL);
         let mut len = 0;
         let mut width = 0;
 
@@ -1841,7 +1841,7 @@ pub unsafe fn tty_draw_line(
                     || (*gcp).us != last.us
                     || (*gcp).link != last.link
                     || ux + width + (*gcp).data.width as u32 > nx
-                    || (sizeof_buf) - len < (*gcp).data.size as usize)
+                    || (SIZEOF_BUF) - len < (*gcp).data.size as usize)
             {
                 tty_attributes(tty, &last, defaults, palette, (*s).hyperlinks);
                 if last.flags.intersects(grid_flag::CLEARED) {
@@ -2065,7 +2065,7 @@ pub unsafe fn tty_write(cmdfn: Option<unsafe fn(*mut tty, *const tty_ctx)>, ctx:
             return;
         };
 
-        for c in tailq_foreach(&raw mut clients).map(NonNull::as_ptr) {
+        for c in tailq_foreach(&raw mut CLIENTS).map(NonNull::as_ptr) {
             if tty_client_ready(ctx, c) != 0 {
                 let state = set_client_cb(ctx, c);
                 if state == -1 {
@@ -2571,7 +2571,7 @@ pub unsafe fn tty_cmd_alignmenttest(tty: *mut tty, ctx: *const tty_ctx) {
 
         tty_attributes(
             tty,
-            &raw const grid_default_cell,
+            &raw const GRID_DEFAULT_CELL,
             &raw const (*ctx).defaults,
             (*ctx).palette,
             (*(*ctx).s).hyperlinks,
@@ -2897,7 +2897,7 @@ pub unsafe fn tty_reset(tty: *mut tty) {
     unsafe {
         let gc = &raw mut (*tty).cell;
 
-        if grid_cells_equal(gc, &raw const grid_default_cell) == 0 {
+        if grid_cells_equal(gc, &raw const GRID_DEFAULT_CELL) == 0 {
             if (*gc).link != 0 {
                 tty_putcode_ss(tty, tty_code_code::TTYC_HLS, c!(""), c!(""));
             }
@@ -2905,16 +2905,16 @@ pub unsafe fn tty_reset(tty: *mut tty) {
                 tty_putcode(tty, tty_code_code::TTYC_RMACS);
             }
             tty_putcode(tty, tty_code_code::TTYC_SGR0);
-            memcpy__(gc, &raw const grid_default_cell);
+            memcpy__(gc, &raw const GRID_DEFAULT_CELL);
         }
-        memcpy__(&raw mut (*tty).last_cell, &raw const grid_default_cell);
+        memcpy__(&raw mut (*tty).last_cell, &raw const GRID_DEFAULT_CELL);
     }
 }
 
 pub unsafe fn tty_invalidate(tty: *mut tty) {
     unsafe {
-        memcpy__(&raw mut (*tty).cell, &raw const grid_default_cell);
-        memcpy__(&raw mut (*tty).last_cell, &raw const grid_default_cell);
+        memcpy__(&raw mut (*tty).cell, &raw const GRID_DEFAULT_CELL);
+        memcpy__(&raw mut (*tty).last_cell, &raw const GRID_DEFAULT_CELL);
 
         (*tty).cx = u32::MAX;
         (*tty).cy = u32::MAX;
@@ -3760,7 +3760,7 @@ pub unsafe fn tty_try_colour(tty: *mut tty, colour: i32, type_: *const u8) -> i3
 
 pub unsafe fn tty_window_default_style(gc: *mut grid_cell, wp: *mut window_pane) {
     unsafe {
-        memcpy__(gc, &raw const grid_default_cell);
+        memcpy__(gc, &raw const GRID_DEFAULT_CELL);
         (*gc).fg = (*wp).palette.fg;
         (*gc).bg = (*wp).palette.bg;
     }
@@ -3770,7 +3770,7 @@ pub unsafe fn tty_default_colours(gc: *mut grid_cell, wp: *mut window_pane) {
     unsafe {
         let oo = (*wp).options;
 
-        memcpy__(gc, &raw const grid_default_cell);
+        memcpy__(gc, &raw const GRID_DEFAULT_CELL);
 
         if (*wp).flags.intersects(window_pane_flags::PANE_STYLECHANGED) {
             // log_debug("%%%u: style changed", (*wp).id);
@@ -3822,7 +3822,7 @@ pub unsafe fn tty_default_attributes(
 ) {
     unsafe {
         let mut gc: grid_cell = zeroed();
-        memcpy__(&raw mut gc, &raw const grid_default_cell);
+        memcpy__(&raw mut gc, &raw const GRID_DEFAULT_CELL);
         gc.bg = bg as i32;
         tty_attributes(tty, &gc, defaults, palette, hl);
     }

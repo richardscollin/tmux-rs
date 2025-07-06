@@ -47,7 +47,7 @@ impl tty_default_key_raw {
     }
 }
 
-static tty_default_raw_keys: [tty_default_key_raw; 100] = [
+static TTY_DEFAULT_RAW_KEYS: [tty_default_key_raw; 100] = [
     /* Application escape. */
     tty_default_key_raw::new(c"\x1bO[", '\x1b' as u64),
     /*
@@ -219,7 +219,7 @@ impl tty_default_key_xterm {
     }
 }
 
-static tty_default_xterm_keys: [tty_default_key_xterm; 30] = [
+static TTY_DEFAULT_XTERM_KEYS: [tty_default_key_xterm; 30] = [
     tty_default_key_xterm::new(c"\x1b[1;_P", keyc::KEYC_F1),
     tty_default_key_xterm::new(c"\x1bO1;_P", keyc::KEYC_F1),
     tty_default_key_xterm::new(c"\x1bO_P", keyc::KEYC_F1),
@@ -252,7 +252,7 @@ static tty_default_xterm_keys: [tty_default_key_xterm; 30] = [
     tty_default_key_xterm::new(c"\x1b[3;_~", keyc::KEYC_DC),
 ];
 
-static tty_default_xterm_modifiers: [key_code; 10] = [
+static TTY_DEFAULT_XTERM_MODIFIERS: [key_code; 10] = [
     0,
     0,
     KEYC_SHIFT,
@@ -279,7 +279,7 @@ impl tty_default_key_code {
     }
 }
 
-static tty_default_code_keys: [tty_default_key_code; 136] = [
+static TTY_DEFAULT_CODE_KEYS: [tty_default_key_code; 136] = [
     /* Function keys. */
     tty_default_key_code::new(tty_code_code::TTYC_KF1, keyc::KEYC_F1 as key_code),
     tty_default_key_code::new(tty_code_code::TTYC_KF2, keyc::KEYC_F2 as key_code),
@@ -835,8 +835,8 @@ pub unsafe fn tty_keys_build(tty: *mut tty) {
         }
         (*tty).key_tree = null_mut();
 
-        for (i, tdkx) in tty_default_xterm_keys.iter().enumerate() {
-            for (j, tty_default_xterm_modifiers_j) in tty_default_xterm_modifiers
+        for (i, tdkx) in TTY_DEFAULT_XTERM_KEYS.iter().enumerate() {
+            for (j, tty_default_xterm_modifiers_j) in TTY_DEFAULT_XTERM_MODIFIERS
                 .iter()
                 .cloned()
                 .enumerate()
@@ -854,21 +854,21 @@ pub unsafe fn tty_keys_build(tty: *mut tty) {
             }
         }
 
-        for tdkr in tty_default_raw_keys.iter() {
+        for tdkr in TTY_DEFAULT_RAW_KEYS.iter() {
             let s = tdkr.string.as_ptr();
             if *s != 0 {
                 tty_keys_add(tty, s, tdkr.key);
             }
         }
 
-        for tdkc in tty_default_code_keys.iter() {
+        for tdkc in TTY_DEFAULT_CODE_KEYS.iter() {
             let s = tty_term_string((*tty).term, tdkc.code);
             if *s != 0 {
                 tty_keys_add(tty, s, tdkc.key);
             }
         }
 
-        let o = options_get(global_options, c!("user-keys"));
+        let o = options_get(GLOBAL_OPTIONS, c!("user-keys"));
         if !o.is_null() {
             let mut a = options_array_first(o);
             while !a.is_null() {
@@ -1270,7 +1270,7 @@ pub unsafe fn tty_keys_next(tty: *mut tty) -> i32 {
                     }
 
                     /* Get the time period. */
-                    let mut delay = options_get_number(global_options, c!("escape-time"));
+                    let mut delay = options_get_number(GLOBAL_OPTIONS, c!("escape-time"));
                     if delay == 0 {
                         delay = 1;
                     }
@@ -1376,7 +1376,7 @@ unsafe fn tty_keys_extended_key(
         let end: usize = 0;
         let mut number: u32 = 0;
         let mut modifiers: u32 = 0;
-        const size_of_tmp: usize = 64;
+        const SIZE_OF_TMP: usize = 64;
         let mut tmp: [u8; 64] = [0; 64];
         let mut nkey: key_code = 0;
 
@@ -1403,7 +1403,7 @@ unsafe fn tty_keys_extended_key(
          * Look for a terminator. Stop at either '~' or anything that isn't a
          * number or ';'.
          */
-        for end in 2..len.min(size_of_tmp) {
+        for end in 2..len.min(SIZE_OF_TMP) {
             if *buf.add(end) == b'~' {
                 break;
             }
@@ -1414,7 +1414,7 @@ unsafe fn tty_keys_extended_key(
         if end == len {
             return 1;
         }
-        if end == size_of_tmp || (*buf.add(end) != b'~' && *buf.add(end) != b'u') {
+        if end == SIZE_OF_TMP || (*buf.add(end) != b'~' && *buf.add(end) != b'u') {
             return -1;
         }
 

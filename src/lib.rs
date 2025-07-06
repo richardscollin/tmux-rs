@@ -19,7 +19,6 @@
 #![allow(clippy::missing_safety_doc, reason = "currently using too much unsafe")]
 // maybe fix:
 #![allow(clippy::too_many_arguments)]
-#![allow(non_upper_case_globals)]
 // will fix:
 #![allow(unused)] // TODO 5000
 #![allow(unpredictable_function_pointer_comparisons)] // TODO 2
@@ -2563,9 +2562,9 @@ mod tmux;
 pub use crate::tmux::tmux_main;
 
 use crate::tmux::{
-    checkshell, find_cwd, find_home, get_timer, getversion, global_environ, global_options,
-    global_s_options, global_w_options, ptm_fd, setblocking, shell_argv0, shell_command,
-    socket_path, start_time,
+    GLOBAL_ENVIRON, GLOBAL_OPTIONS, GLOBAL_S_OPTIONS, GLOBAL_W_OPTIONS, PTM_FD, SHELL_COMMAND,
+    SOCKET_PATH, START_TIME, checkshell, find_cwd, find_home, get_timer, getversion, setblocking,
+    shell_argv0,
 };
 
 mod proc;
@@ -2577,7 +2576,7 @@ use crate::proc::{
 
 mod cfg_;
 use crate::cfg_::{
-    cfg_client, cfg_files, cfg_finished, cfg_nfiles, cfg_print_causes, cfg_quiet, cfg_show_causes,
+    CFG_CLIENT, CFG_FILES, CFG_FINISHED, CFG_NFILES, CFG_QUIET, cfg_print_causes, cfg_show_causes,
     load_cfg, load_cfg_from_buffer, start_cfg,
 };
 
@@ -2625,7 +2624,7 @@ use crate::options_::{
 };
 
 mod options_table;
-use crate::options_table::{options_other_names, options_table};
+use crate::options_table::{OPTIONS_OTHER_NAMES, OPTIONS_TABLE};
 
 bitflags::bitflags! {
     #[repr(transparent)]
@@ -2670,10 +2669,10 @@ use crate::tty_::{
 
 mod tty_term_;
 use crate::tty_term_::{
-    tty_code, tty_term_apply, tty_term_apply_overrides, tty_term_create, tty_term_describe,
-    tty_term_flag, tty_term_free, tty_term_free_list, tty_term_has, tty_term_ncodes,
-    tty_term_number, tty_term_read_list, tty_term_string, tty_term_string_i, tty_term_string_ii,
-    tty_term_string_iii, tty_term_string_s, tty_term_string_ss, tty_terms,
+    TTY_TERMS, tty_code, tty_term_apply, tty_term_apply_overrides, tty_term_create,
+    tty_term_describe, tty_term_flag, tty_term_free, tty_term_free_list, tty_term_has,
+    tty_term_ncodes, tty_term_number, tty_term_read_list, tty_term_string, tty_term_string_i,
+    tty_term_string_ii, tty_term_string_iii, tty_term_string_s, tty_term_string_ss,
 };
 
 mod tty_features;
@@ -2717,12 +2716,12 @@ use crate::arguments::{
 mod cmd_;
 use crate::cmd_::cmd_log_argv;
 use crate::cmd_::{
-    cmd, cmd_append_argv, cmd_copy, cmd_copy_argv, cmd_free, cmd_free_argv, cmd_get_alias,
-    cmd_get_args, cmd_get_entry, cmd_get_group, cmd_get_source, cmd_list_all_have,
+    CMD_TABLE, cmd, cmd_append_argv, cmd_copy, cmd_copy_argv, cmd_free, cmd_free_argv,
+    cmd_get_alias, cmd_get_args, cmd_get_entry, cmd_get_group, cmd_get_source, cmd_list_all_have,
     cmd_list_any_have, cmd_list_append, cmd_list_append_all, cmd_list_copy, cmd_list_first,
     cmd_list_free, cmd_list_move, cmd_list_new, cmd_list_next, cmd_list_print, cmd_mouse_at,
     cmd_mouse_pane, cmd_mouse_window, cmd_pack_argv, cmd_parse, cmd_print, cmd_stringify_argv,
-    cmd_table, cmd_template_replace, cmd_unpack_argv, cmds,
+    cmd_template_replace, cmd_unpack_argv, cmds,
 };
 
 use crate::cmd_::cmd_attach_session::cmd_attach_session;
@@ -2780,9 +2779,9 @@ use crate::file::{
 
 mod server;
 use crate::server::{
-    clients, current_time, marked_pane, message_log, server_add_accept, server_add_message,
-    server_check_marked, server_clear_marked, server_create_socket, server_is_marked, server_proc,
-    server_set_marked, server_start, server_update_socket,
+    CLIENTS, CURRENT_TIME, MARKED_PANE, MESSAGE_LOG, SERVER_PROC, server_add_accept,
+    server_add_message, server_check_marked, server_clear_marked, server_create_socket,
+    server_is_marked, server_set_marked, server_start, server_update_socket,
 };
 
 mod server_client;
@@ -2810,12 +2809,12 @@ use crate::server_fn::{
 
 mod status;
 use crate::status::{
-    status_at_line, status_free, status_get_range, status_init, status_line_size,
-    status_message_clear, status_message_redraw, status_message_set, status_prompt_clear,
-    status_prompt_hlist, status_prompt_hsize, status_prompt_key, status_prompt_load_history,
-    status_prompt_redraw, status_prompt_save_history, status_prompt_set, status_prompt_type,
-    status_prompt_type_string, status_prompt_update, status_redraw, status_timer_start,
-    status_timer_start_all, status_update_cache,
+    STATUS_PROMPT_HLIST, STATUS_PROMPT_HSIZE, status_at_line, status_free, status_get_range,
+    status_init, status_line_size, status_message_clear, status_message_redraw, status_message_set,
+    status_prompt_clear, status_prompt_key, status_prompt_load_history, status_prompt_redraw,
+    status_prompt_save_history, status_prompt_set, status_prompt_type, status_prompt_type_string,
+    status_prompt_update, status_redraw, status_timer_start, status_timer_start_all,
+    status_update_cache,
 };
 
 mod resize;
@@ -2845,8 +2844,8 @@ use crate::attributes::{attributes_fromstring, attributes_tostring};
 
 mod grid_;
 use crate::grid_::{
-    grid_adjust_lines, grid_cells_equal, grid_cells_look_equal, grid_clear, grid_clear_history,
-    grid_clear_lines, grid_collect_history, grid_compare, grid_create, grid_default_cell,
+    GRID_DEFAULT_CELL, grid_adjust_lines, grid_cells_equal, grid_cells_look_equal, grid_clear,
+    grid_clear_history, grid_clear_lines, grid_collect_history, grid_compare, grid_create,
     grid_destroy, grid_duplicate_lines, grid_empty_line, grid_get_cell, grid_get_line,
     grid_line_length, grid_move_cells, grid_move_lines, grid_peek_line, grid_reflow,
     grid_remove_history, grid_scroll_history, grid_scroll_history_region, grid_set_cell,
@@ -2911,7 +2910,7 @@ use crate::screen_::{
 
 mod window_;
 use crate::window_::{
-    all_window_panes, window_add_pane, window_add_ref, window_cmp, window_count_panes,
+    ALL_WINDOW_PANES, WINDOWS, window_add_pane, window_add_ref, window_cmp, window_count_panes,
     window_create, window_destroy_panes, window_find_by_id, window_find_by_id_str,
     window_find_string, window_get_active_at, window_has_pane, window_lost_pane,
     window_pane_at_index, window_pane_cmp, window_pane_default_cursor, window_pane_destroy_ready,
@@ -2925,8 +2924,8 @@ use crate::window_::{
     window_pane_visible, window_pop_zoom, window_printable_flags, window_push_zoom,
     window_redraw_active_switch, window_remove_pane, window_remove_ref, window_resize,
     window_set_active_pane, window_set_fill_character, window_set_name, window_unzoom,
-    window_update_activity, window_update_focus, window_zoom, windows, winlink_add,
-    winlink_clear_flags, winlink_cmp, winlink_count, winlink_find_by_index, winlink_find_by_window,
+    window_update_activity, window_update_focus, window_zoom, winlink_add, winlink_clear_flags,
+    winlink_cmp, winlink_count, winlink_find_by_index, winlink_find_by_window,
     winlink_find_by_window_id, winlink_next, winlink_next_by_number, winlink_previous,
     winlink_previous_by_number, winlink_remove, winlink_set_window, winlink_shuffle_up,
     winlink_stack_push, winlink_stack_remove,
@@ -2963,26 +2962,26 @@ use crate::mode_tree::{
 };
 
 mod window_buffer;
-use crate::window_buffer::window_buffer_mode;
+use crate::window_buffer::WINDOW_BUFFER_MODE;
 
 mod window_tree;
-use crate::window_tree::window_tree_mode;
+use crate::window_tree::WINDOW_TREE_MODE;
 
 mod window_clock;
-use crate::window_clock::{window_clock_mode, window_clock_table};
+use crate::window_clock::{WINDOW_CLOCK_MODE, WINDOW_CLOCK_TABLE};
 
 mod window_client;
-use crate::window_client::window_client_mode;
+use crate::window_client::WINDOW_CLIENT_MODE;
 
 mod window_copy;
 use crate::window_copy::window_copy_add;
 use crate::window_copy::{
-    window_copy_get_line, window_copy_get_word, window_copy_mode, window_copy_pagedown,
-    window_copy_pageup, window_copy_start_drag, window_copy_vadd, window_view_mode,
+    WINDOW_COPY_MODE, WINDOW_VIEW_MODE, window_copy_get_line, window_copy_get_word,
+    window_copy_pagedown, window_copy_pageup, window_copy_start_drag, window_copy_vadd,
 };
 
 mod window_customize;
-use crate::window_customize::window_customize_mode;
+use crate::window_customize::WINDOW_CUSTOMIZE_MODE;
 
 mod names;
 use crate::names::{check_window_name, default_window_name, parse_window_name};
@@ -3009,14 +3008,14 @@ use crate::control_notify::{
 
 mod session_;
 use crate::session_::{
-    next_session_id, session_add_ref, session_alive, session_attach, session_check_name,
+    NEXT_SESSION_ID, SESSIONS, session_add_ref, session_alive, session_attach, session_check_name,
     session_cmp, session_create, session_destroy, session_detach, session_find, session_find_by_id,
     session_find_by_id_str, session_group_add, session_group_attached_count,
     session_group_contains, session_group_count, session_group_find, session_group_new,
     session_group_synchronize_from, session_group_synchronize_to, session_has, session_is_linked,
     session_last, session_next, session_next_session, session_previous, session_previous_session,
     session_remove_ref, session_renumber_windows, session_select, session_set_current,
-    session_update_activity, sessions,
+    session_update_activity,
 };
 
 mod utf8;

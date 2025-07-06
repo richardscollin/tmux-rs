@@ -14,7 +14,7 @@
 
 use crate::*;
 
-pub static cmd_kill_pane_entry: cmd_entry = cmd_entry {
+pub static CMD_KILL_PANE_ENTRY: cmd_entry = cmd_entry {
     name: SyncCharPtr::new(c"kill-pane"),
     alias: SyncCharPtr::new(c"killp"),
 

@@ -24,8 +24,8 @@ use std::cmp::Ordering;
 
 const MAX_HYPERLINKS: u32 = 5000;
 
-static mut hyperlinks_next_external_id: c_longlong = 1;
-static mut global_hyperlinks_count: u32 = 0;
+static mut HYPERLINKS_NEXT_EXTERNAL_ID: c_longlong = 1;
+static mut GLOBAL_HYPERLINKS_COUNT: u32 = 0;
 
 crate::compat::impl_tailq_entry!(hyperlinks_uri, list_entry, tailq_entry<hyperlinks_uri>);
 #[repr(C)]
@@ -49,7 +49,7 @@ pub type hyperlinks_by_inner_tree = rb_head<hyperlinks_uri>;
 
 pub type hyperlinks_list = tailq_head<hyperlinks_uri>;
 
-static mut global_hyperlinks: hyperlinks_list = TAILQ_HEAD_INITIALIZER!(global_hyperlinks);
+static mut GLOBAL_HYPERLINKS: hyperlinks_list = TAILQ_HEAD_INITIALIZER!(GLOBAL_HYPERLINKS);
 
 #[repr(C)]
 pub struct hyperlinks {
@@ -100,8 +100,8 @@ unsafe fn hyperlinks_remove(hlu: *mut hyperlinks_uri) {
     unsafe {
         let hl = (*hlu).tree;
 
-        tailq_remove::<_, _>(&raw mut global_hyperlinks, hlu);
-        global_hyperlinks_count -= 1;
+        tailq_remove::<_, _>(&raw mut GLOBAL_HYPERLINKS, hlu);
+        GLOBAL_HYPERLINKS_COUNT -= 1;
 
         rb_remove::<_, discr_by_inner_entry>(&raw mut (*hl).by_inner, hlu);
         rb_remove::<_, discr_by_uri_entry>(&raw mut (*hl).by_uri, hlu);
@@ -159,9 +159,9 @@ pub unsafe fn hyperlinks_put(
             }
         }
 
-        let id = hyperlinks_next_external_id;
+        let id = HYPERLINKS_NEXT_EXTERNAL_ID;
         external_id = format_nul!("tmux{:X}", id);
-        hyperlinks_next_external_id += 1;
+        HYPERLINKS_NEXT_EXTERNAL_ID += 1;
 
         let hlu = xcalloc1::<hyperlinks_uri>() as *mut hyperlinks_uri;
         (*hlu).inner = (*hl).next_inner;
@@ -173,10 +173,10 @@ pub unsafe fn hyperlinks_put(
         rb_insert::<_, discr_by_uri_entry>(&raw mut (*hl).by_uri, hlu);
         rb_insert::<_, discr_by_inner_entry>(&raw mut (*hl).by_inner, hlu);
 
-        tailq_insert_tail(&raw mut global_hyperlinks, hlu);
-        global_hyperlinks_count += 1;
-        if global_hyperlinks_count == MAX_HYPERLINKS {
-            hyperlinks_remove(tailq_first(&raw mut global_hyperlinks));
+        tailq_insert_tail(&raw mut GLOBAL_HYPERLINKS, hlu);
+        GLOBAL_HYPERLINKS_COUNT += 1;
+        if GLOBAL_HYPERLINKS_COUNT == MAX_HYPERLINKS {
+            hyperlinks_remove(tailq_first(&raw mut GLOBAL_HYPERLINKS));
         }
 
         (*hlu).inner

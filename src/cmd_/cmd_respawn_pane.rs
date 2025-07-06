@@ -14,7 +14,7 @@
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 use crate::*;
 
-pub static cmd_respawn_pane_entry: cmd_entry = cmd_entry {
+pub static CMD_RESPAWN_PANE_ENTRY: cmd_entry = cmd_entry {
     name: SyncCharPtr::new(c"respawn-pane"),
     alias: SyncCharPtr::new(c"respawnp"),
 

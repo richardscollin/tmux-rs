@@ -13,7 +13,7 @@
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 use crate::*;
 
-pub static cmd_set_environment_entry: cmd_entry = cmd_entry {
+pub static CMD_SET_ENVIRONMENT_ENTRY: cmd_entry = cmd_entry {
     name: SyncCharPtr::new(c"set-environment"),
     alias: SyncCharPtr::new(c"setenv"),
 
@@ -58,7 +58,7 @@ unsafe fn cmd_set_environment_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd
                 value = expanded;
             }
             if args_has_(args, 'g') {
-                env = global_environ;
+                env = GLOBAL_ENVIRON;
             } else {
                 if (*target).s.is_null() {
                     tflag = args_get_(args, 't');

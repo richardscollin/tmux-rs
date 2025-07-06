@@ -15,7 +15,7 @@ use crate::*;
 
 use crate::compat::{queue::tailq_foreach, tree::rb_foreach};
 
-pub static cmd_list_panes_entry: cmd_entry = cmd_entry {
+pub static CMD_LIST_PANES_ENTRY: cmd_entry = cmd_entry {
     name: SyncCharPtr::new(c"list-panes"),
     alias: SyncCharPtr::new(c"lsp"),
 
@@ -50,7 +50,7 @@ unsafe fn cmd_list_panes_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retv
 
 unsafe fn cmd_list_panes_server(self_: *mut cmd, item: *mut cmdq_item) {
     unsafe {
-        for s in rb_foreach(&raw mut sessions).map(NonNull::as_ptr) {
+        for s in rb_foreach(&raw mut SESSIONS).map(NonNull::as_ptr) {
             cmd_list_panes_session(self_, s, item, 2);
         }
     }

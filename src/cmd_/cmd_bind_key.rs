@@ -14,7 +14,7 @@
 
 use crate::*;
 
-pub static cmd_bind_key_entry: cmd_entry = cmd_entry {
+pub static CMD_BIND_KEY_ENTRY: cmd_entry = cmd_entry {
     name: SyncCharPtr::new(c"bind-key"),
     alias: SyncCharPtr::new(c"bind"),
 

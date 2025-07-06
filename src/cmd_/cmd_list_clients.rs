@@ -19,7 +19,7 @@ const LIST_CLIENTS_TEMPLATE: *const u8 = c!(
     "#{client_name}: #{session_name} [#{client_width}x#{client_height} #{client_termname}] #{?#{!=:#{client_uid},#{uid}},[user #{?client_user,#{client_user},#{client_uid},}] ,}#{?client_flags,(,}#{client_flags}#{?client_flags,),}"
 );
 
-pub static cmd_list_clients_entry: cmd_entry = cmd_entry {
+pub static CMD_LIST_CLIENTS_ENTRY: cmd_entry = cmd_entry {
     name: SyncCharPtr::new(c"list-clients"),
     alias: SyncCharPtr::new(c"lsc"),
 
@@ -51,7 +51,7 @@ unsafe fn cmd_list_clients_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
         let filter = args_get(args, b'f');
 
         let mut idx = 0;
-        for c in tailq_foreach(&raw mut clients).map(NonNull::as_ptr) {
+        for c in tailq_foreach(&raw mut CLIENTS).map(NonNull::as_ptr) {
             if (*c).session.is_null() || (!s.is_null() && s != (*c).session) {
                 continue;
             }

@@ -112,7 +112,7 @@ pub fn options_cmp(lhs: &options_entry, rhs: &options_entry) -> Ordering {
 
 pub unsafe fn options_map_name(name: *const u8) -> *const u8 {
     unsafe {
-        let mut map = &raw const options_other_names as *const options_name_map;
+        let mut map = &raw const OPTIONS_OTHER_NAMES as *const options_name_map;
         while !(*map).from.is_null() {
             if libc::strcmp((*map).from, name) == 0 {
                 return (*map).to;
@@ -747,7 +747,7 @@ pub unsafe fn options_match(s: *const u8, idx: *mut i32, ambiguous: *mut i32) ->
         let namelen = strlen(name);
 
         let mut found: *const options_table_entry = null();
-        let mut oe = &raw const options_table as *const options_table_entry;
+        let mut oe = &raw const OPTIONS_TABLE as *const options_table_entry;
 
         while !(*oe).name.is_null() {
             if strcmp((*oe).name, name) == 0 {
@@ -951,7 +951,7 @@ pub unsafe fn options_scope_from_name(
             return options_scope_from_flags(args, window, fs, oo, cause);
         }
 
-        let mut oe = &raw const options_table as *const options_table_entry;
+        let mut oe = &raw const OPTIONS_TABLE as *const options_table_entry;
         while !(*oe).name.is_null() {
             if strcmp((*oe).name, name) == 0 {
                 break;
@@ -967,12 +967,12 @@ pub unsafe fn options_scope_from_name(
         const OPTIONS_TABLE_WINDOW_AND_PANE: i32 = OPTIONS_TABLE_WINDOW | OPTIONS_TABLE_PANE;
         match (*oe).scope {
             OPTIONS_TABLE_SERVER => {
-                *oo = global_options;
+                *oo = GLOBAL_OPTIONS;
                 scope = OPTIONS_TABLE_SERVER;
             }
             OPTIONS_TABLE_SESSION => {
                 if args_has_(args, 'g') {
-                    *oo = global_s_options;
+                    *oo = GLOBAL_S_OPTIONS;
                     scope = OPTIONS_TABLE_SESSION;
                 } else if s.is_null() && !target.is_null() {
                     *cause = format_nul!("no such session: {}", _s(target));
@@ -996,7 +996,7 @@ pub unsafe fn options_scope_from_name(
                 } else {
                     // FALLTHROUGH same as OPTIONS_TABLE_WINDOW case
                     if args_has_(args, 'g') {
-                        *oo = global_w_options;
+                        *oo = GLOBAL_W_OPTIONS;
                         scope = OPTIONS_TABLE_WINDOW;
                     } else if wl.is_null() && !target.is_null() {
                         *cause = format_nul!("no such window: {}", _s(target));
@@ -1010,7 +1010,7 @@ pub unsafe fn options_scope_from_name(
             }
             OPTIONS_TABLE_WINDOW => {
                 if args_has_(args, 'g') {
-                    *oo = global_w_options;
+                    *oo = GLOBAL_W_OPTIONS;
                     scope = OPTIONS_TABLE_WINDOW;
                 } else if wl.is_null() && !target.is_null() {
                     *cause = format_nul!("no such window: {}", _s(target));
@@ -1041,7 +1041,7 @@ pub unsafe fn options_scope_from_flags(
         let target = args_get_(args, 't');
 
         if args_has_(args, 's') {
-            *oo = global_options;
+            *oo = GLOBAL_OPTIONS;
             return OPTIONS_TABLE_SERVER;
         }
 
@@ -1058,7 +1058,7 @@ pub unsafe fn options_scope_from_flags(
             OPTIONS_TABLE_PANE
         } else if window != 0 || args_has_(args, 'w') {
             if args_has_(args, 'g') {
-                *oo = global_w_options;
+                *oo = GLOBAL_W_OPTIONS;
                 return OPTIONS_TABLE_WINDOW;
             }
             if wl.is_null() {
@@ -1073,7 +1073,7 @@ pub unsafe fn options_scope_from_flags(
             OPTIONS_TABLE_WINDOW
         } else {
             if args_has_(args, 'g') {
-                *oo = global_s_options;
+                *oo = GLOBAL_S_OPTIONS;
                 return OPTIONS_TABLE_SESSION;
             }
             if s.is_null() {
@@ -1108,17 +1108,17 @@ pub unsafe fn options_string_to_style(
         let s = (*o).value.string;
         log_debug!("{}: {} is '{}'", _s(__func__), _s(name), _s(s));
 
-        style_set(&mut (*o).style, &grid_default_cell);
+        style_set(&mut (*o).style, &GRID_DEFAULT_CELL);
         (*o).cached = if strstr(s, c!("#{")).is_null() { 1 } else { 0 };
 
         if !ft.is_null() && (*o).cached == 0 {
             let expanded = format_expand(ft, s);
-            if style_parse(&mut (*o).style, &grid_default_cell, expanded) != 0 {
+            if style_parse(&mut (*o).style, &GRID_DEFAULT_CELL, expanded) != 0 {
                 free_(expanded);
                 return null_mut();
             }
             free_(expanded);
-        } else if style_parse(&mut (*o).style, &grid_default_cell, s) != 0 {
+        } else if style_parse(&mut (*o).style, &GRID_DEFAULT_CELL, s) != 0 {
             return null_mut();
         }
         &mut (*o).style
@@ -1146,7 +1146,7 @@ unsafe fn options_from_string_check(
         }
         if ((*oe).flags & OPTIONS_TABLE_IS_STYLE) != 0
             && strstr(value, c!("#{")).is_null()
-            && style_parse(&mut sy, &grid_default_cell, value) != 0
+            && style_parse(&mut sy, &GRID_DEFAULT_CELL, value) != 0
         {
             *cause = format_nul!("invalid style: {}", _s(value));
             return -1;
@@ -1340,7 +1340,7 @@ pub unsafe fn options_push_changes(name: *const u8) {
         log_debug!("{}: {}", _s(__func__), _s(name));
 
         if streq_(name, "automatic-rename") {
-            for w in rb_foreach(&raw mut windows).map(NonNull::as_ptr) {
+            for w in rb_foreach(&raw mut WINDOWS).map(NonNull::as_ptr) {
                 if (*w).active.is_null() {
                     continue;
                 }
@@ -1351,31 +1351,31 @@ pub unsafe fn options_push_changes(name: *const u8) {
         }
 
         if streq_(name, "cursor-colour") {
-            for wp in rb_foreach(&raw mut all_window_panes) {
+            for wp in rb_foreach(&raw mut ALL_WINDOW_PANES) {
                 window_pane_default_cursor(wp.as_ptr());
             }
         }
 
         if streq_(name, "cursor-style") {
-            for wp in rb_foreach(&raw mut all_window_panes) {
+            for wp in rb_foreach(&raw mut ALL_WINDOW_PANES) {
                 window_pane_default_cursor(wp.as_ptr());
             }
         }
 
         if streq_(name, "fill-character") {
-            for w in rb_foreach(&raw mut windows) {
+            for w in rb_foreach(&raw mut WINDOWS) {
                 window_set_fill_character(w);
             }
         }
 
         if streq_(name, "key-table") {
-            for loop_ in tailq_foreach(&raw mut clients).map(NonNull::as_ptr) {
+            for loop_ in tailq_foreach(&raw mut CLIENTS).map(NonNull::as_ptr) {
                 server_client_set_key_table(loop_, null_mut());
             }
         }
 
         if streq_(name, "user-keys") {
-            for loop_ in tailq_foreach(&raw mut clients).map(NonNull::as_ptr) {
+            for loop_ in tailq_foreach(&raw mut CLIENTS).map(NonNull::as_ptr) {
                 if (*loop_).tty.flags.intersects(tty_flags::TTY_OPENED) {
                     tty_keys_build(&mut (*loop_).tty);
                 }
@@ -1391,30 +1391,30 @@ pub unsafe fn options_push_changes(name: *const u8) {
         }
 
         if streq_(name, "window-style") || streq_(name, "window-active-style") {
-            for wp in rb_foreach(&raw mut all_window_panes) {
+            for wp in rb_foreach(&raw mut ALL_WINDOW_PANES) {
                 (*wp.as_ptr()).flags |= window_pane_flags::PANE_STYLECHANGED;
             }
         }
 
         if streq_(name, "pane-colours") {
-            for wp in rb_foreach(&raw mut all_window_panes).map(NonNull::as_ptr) {
+            for wp in rb_foreach(&raw mut ALL_WINDOW_PANES).map(NonNull::as_ptr) {
                 colour_palette_from_option(&raw mut (*wp).palette, (*wp).options);
             }
         }
 
         if streq_(name, "pane-border-status") {
-            for w in rb_foreach(&raw mut windows) {
+            for w in rb_foreach(&raw mut WINDOWS) {
                 layout_fix_panes(w.as_ptr(), null_mut());
             }
         }
 
-        for s in rb_foreach(&raw mut sessions) {
+        for s in rb_foreach(&raw mut SESSIONS) {
             status_update_cache(s.as_ptr());
         }
 
         recalculate_sizes();
 
-        for loop_ in tailq_foreach(&raw mut clients).map(NonNull::as_ptr) {
+        for loop_ in tailq_foreach(&raw mut CLIENTS).map(NonNull::as_ptr) {
             if !(*loop_).session.is_null() {
                 server_redraw_client(loop_);
             }
@@ -1432,7 +1432,7 @@ pub unsafe fn options_remove_or_default(
 
         if idx == -1 {
             if !(*o).tableentry.is_null()
-                && (oo == global_options || oo == global_s_options || oo == global_w_options)
+                && (oo == GLOBAL_OPTIONS || oo == GLOBAL_S_OPTIONS || oo == GLOBAL_W_OPTIONS)
             {
                 options_default(oo, (*o).tableentry);
             } else {

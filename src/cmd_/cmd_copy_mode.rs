@@ -14,7 +14,7 @@
 
 use super::*;
 
-pub static cmd_copy_mode_entry: cmd_entry = cmd_entry {
+pub static CMD_COPY_MODE_ENTRY: cmd_entry = cmd_entry {
     name: SyncCharPtr::new(c"copy-mode"),
     alias: SyncCharPtr::null(),
 
@@ -28,7 +28,7 @@ pub static cmd_copy_mode_entry: cmd_entry = cmd_entry {
     exec: cmd_copy_mode_exec,
 };
 
-pub static cmd_clock_mode_entry: cmd_entry = cmd_entry {
+pub static CMD_CLOCK_MODE_ENTRY: cmd_entry = cmd_entry {
     name: SyncCharPtr::new(c"clock-mode"),
     alias: SyncCharPtr::null(),
 
@@ -67,11 +67,11 @@ unsafe fn cmd_copy_mode_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retva
             }
         }
 
-        if std::ptr::eq(cmd_get_entry(self_), &cmd_clock_mode_entry) {
+        if std::ptr::eq(cmd_get_entry(self_), &CMD_CLOCK_MODE_ENTRY) {
             window_pane_set_mode(
                 wp,
                 null_mut(),
-                &raw const window_clock_mode,
+                &raw const WINDOW_CLOCK_MODE,
                 null_mut(),
                 null_mut(),
             );
@@ -83,7 +83,7 @@ unsafe fn cmd_copy_mode_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retva
         } else {
             wp
         };
-        if window_pane_set_mode(wp, swp, &raw const window_copy_mode, null_mut(), args) == 0
+        if window_pane_set_mode(wp, swp, &raw const WINDOW_COPY_MODE, null_mut(), args) == 0
             && args_has(args, b'M') != 0
         {
             window_copy_start_drag(c, &raw mut (*event).m);

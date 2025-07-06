@@ -16,7 +16,7 @@ use crate::*;
 
 use crate::compat::{queue::tailq_remove, tailq_insert_head};
 
-pub static cmd_break_pane_entry: cmd_entry = cmd_entry {
+pub static CMD_BREAK_PANE_ENTRY: cmd_entry = cmd_entry {
     name: SyncCharPtr::new(c"break-pane"),
     alias: SyncCharPtr::new(c"breakp"),
 

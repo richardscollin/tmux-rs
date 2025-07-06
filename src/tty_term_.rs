@@ -20,7 +20,7 @@ use crate::compat::{
 };
 use crate::libc::{fnmatch, memset, strchr, strcmp, strcspn, strncmp};
 
-pub static mut tty_terms: tty_terms = list_head_initializer();
+pub static mut TTY_TERMS: tty_terms = list_head_initializer();
 
 #[repr(i32)]
 #[derive(Copy, Clone, Eq, PartialEq)]
@@ -60,7 +60,7 @@ impl tty_term_code_entry {
     }
 }
 
-static tty_term_codes: [tty_term_code_entry; 232] = const {
+static TTY_TERM_CODES: [tty_term_code_entry; 232] = const {
     let mut tmp: [tty_term_code_entry; 232] = unsafe { zeroed() };
 
     tmp[tty_code_code::TTYC_ACSC as usize] =
@@ -476,12 +476,12 @@ static tty_term_codes: [tty_term_code_entry; 232] = const {
 };
 
 pub const unsafe fn tty_term_ncodes() -> u32 {
-    tty_term_codes.len() as u32
+    TTY_TERM_CODES.len() as u32
 }
 
 pub unsafe fn tty_term_strip(s: *const u8) -> *mut u8 {
     let sizeof_buf: usize = 8192;
-    static mut buf: [u8; 8192] = [0; 8192];
+    static mut BUF: [u8; 8192] = [0; 8192];
 
     unsafe {
         // const char *ptr;
@@ -508,22 +508,22 @@ pub unsafe fn tty_term_strip(s: *const u8) -> *mut u8 {
                 }
             }
 
-            buf[len] = *ptr;
+            BUF[len] = *ptr;
             len += 1;
             if len == (sizeof_buf) - 1 {
                 break;
             }
             ptr = ptr.add(1);
         }
-        buf[len] = b'\0';
+        BUF[len] = b'\0';
 
-        xstrdup(&raw mut buf as *mut u8).as_ptr()
+        xstrdup(&raw mut BUF as *mut u8).as_ptr()
     }
 }
 
 pub unsafe fn tty_term_override_next(s: *const u8, offset: *mut usize) -> *mut u8 {
     let sizeof_value = 8192;
-    static mut value: [u8; 8192] = [0; 8192];
+    static mut VALUE: [u8; 8192] = [0; 8192];
     unsafe {
         let mut n = 0;
         let mut at = *offset;
@@ -535,14 +535,14 @@ pub unsafe fn tty_term_override_next(s: *const u8, offset: *mut usize) -> *mut u
         while *s.add(at) != b'\0' {
             if *s.add(at) == b':' {
                 if *s.add(at + 1) == b':' {
-                    value[n] = b':';
+                    VALUE[n] = b':';
                     n += 1;
                     at += 2;
                 } else {
                     break;
                 }
             } else {
-                value[n] = *s.add(at);
+                VALUE[n] = *s.add(at);
                 n += 1;
                 at += 1;
             }
@@ -555,9 +555,9 @@ pub unsafe fn tty_term_override_next(s: *const u8, offset: *mut usize) -> *mut u
         } else {
             *offset = at;
         }
-        value[n] = b'\0';
+        VALUE[n] = b'\0';
 
-        &raw mut value as *mut u8
+        &raw mut VALUE as *mut u8
     }
 }
 
@@ -608,7 +608,7 @@ pub unsafe fn tty_term_apply(term: *mut tty_term, capabilities: *const u8, quiet
             }
 
             for i in 0..tty_term_ncodes() {
-                let ent = &raw const tty_term_codes[i as usize];
+                let ent = &raw const TTY_TERM_CODES[i as usize];
                 if strcmp(s, (*ent).name) != 0 {
                     continue;
                 }
@@ -655,7 +655,7 @@ pub unsafe fn tty_term_apply_overrides(term: *mut tty_term) {
 
     unsafe {
         /* Update capabilities from the option. */
-        let o = options_get_only(global_options, c!("terminal-overrides"));
+        let o = options_get_only(GLOBAL_OPTIONS, c!("terminal-overrides"));
         let mut a = options_array_first(o);
         unsafe {
             while !a.is_null() {
@@ -790,7 +790,7 @@ pub unsafe fn tty_term_create(
         (*term).tty = tty;
         (*term).name = xstrdup(name).as_ptr();
         (*term).codes = xcalloc_(tty_term_ncodes() as usize).as_ptr();
-        list_insert_head(&raw mut tty_terms, term);
+        list_insert_head(&raw mut TTY_TERMS, term);
         'error: {
             // Fill in codes.
             for i in 0..ncaps as usize {
@@ -800,7 +800,7 @@ pub unsafe fn tty_term_create(
                 }
                 let value = (*caps.add(i)).add(namelen + 1);
 
-                for (j, ent) in tty_term_codes.iter().enumerate() {
+                for (j, ent) in TTY_TERM_CODES.iter().enumerate() {
                     if strncmp(ent.name, *caps.add(i), namelen) != 0 {
                         continue;
                     }
@@ -834,7 +834,7 @@ pub unsafe fn tty_term_create(
             }
 
             /* Apply terminal features. */
-            let o = options_get_only(global_options, c!("terminal-features"));
+            let o = options_get_only(GLOBAL_OPTIONS, c!("terminal-features"));
             let mut a = options_array_first(o);
             while !a.is_null() {
                 let ov = options_array_item_value(a);
@@ -960,7 +960,7 @@ pub unsafe fn tty_term_read_list(
         *caps = null_mut();
 
         let mut s = null();
-        for (i, ent) in tty_term_codes.iter().enumerate() {
+        for (i, ent) in TTY_TERM_CODES.iter().enumerate() {
             match ent.type_ {
                 tty_code_type::None => (),
                 tty_code_type::String => {
@@ -1043,7 +1043,7 @@ pub unsafe fn tty_term_string_i(term: *mut tty_term, code: tty_code_code, a: i32
         if s.is_null() {
             log_debug!(
                 "could not expand {}",
-                _s(tty_term_codes[code as usize].name)
+                _s(TTY_TERM_CODES[code as usize].name)
             );
             return c!("c");
         }
@@ -1071,7 +1071,7 @@ pub unsafe fn tty_term_string_ii(
         if s.is_null() {
             log_debug!(
                 "could not expand {}",
-                _s(tty_term_codes[code as usize].name)
+                _s(TTY_TERM_CODES[code as usize].name)
             );
             return c!("");
         }
@@ -1101,7 +1101,7 @@ pub unsafe fn tty_term_string_iii(
         if s.is_null() {
             log_debug!(
                 "could not expand {}",
-                _s(tty_term_codes[code as usize].name)
+                _s(TTY_TERM_CODES[code as usize].name)
             );
             return c!("");
         }
@@ -1128,7 +1128,7 @@ pub unsafe fn tty_term_string_s(
         if s.is_null() {
             log_debug!(
                 "could not expand {}",
-                _s(tty_term_codes[code as usize].name)
+                _s(TTY_TERM_CODES[code as usize].name)
             );
             return c!("");
         }
@@ -1158,7 +1158,7 @@ pub unsafe fn tty_term_string_ss(
         if s.is_null() {
             log_debug!(
                 "could not expand {}",
-                _s(tty_term_codes[code as usize].name)
+                _s(TTY_TERM_CODES[code as usize].name)
             );
             return c!("");
         }
@@ -1193,7 +1193,7 @@ pub unsafe fn tty_term_flag(term: *mut tty_term, code: tty_code_code) -> i32 {
 
 pub unsafe fn tty_term_describe(term: *mut tty_term, code: tty_code_code) -> *const u8 {
     let sizeof_s = 256;
-    static mut s: [u8; 256] = [0; 256];
+    static mut S: [u8; 256] = [0; 256];
 
     unsafe {
         let sizeof_out = 128;
@@ -1202,11 +1202,11 @@ pub unsafe fn tty_term_describe(term: *mut tty_term, code: tty_code_code) -> *co
         match (*(*term).codes.add(code as usize)).type_ {
             tty_code_type::None => {
                 xsnprintf_!(
-                    &raw mut s as _,
+                    &raw mut S as _,
                     sizeof_s,
                     "{:4}: {}: [missing]",
                     code as u32,
-                    _s(tty_term_codes[code as usize].name),
+                    _s(TTY_TERM_CODES[code as usize].name),
                 );
             }
             tty_code_type::String => {
@@ -1220,36 +1220,36 @@ pub unsafe fn tty_term_describe(term: *mut tty_term, code: tty_code_code) -> *co
                         | vis_flags::VIS_NL,
                 );
                 xsnprintf_!(
-                    &raw mut s as _,
+                    &raw mut S as _,
                     sizeof_s,
                     "{:4}: {}: (string) {}",
                     code as u32,
-                    _s(tty_term_codes[code as usize].name),
+                    _s(TTY_TERM_CODES[code as usize].name),
                     _s(&raw const out as *const c_char),
                 );
             }
             tty_code_type::Number => {
                 xsnprintf_!(
-                    &raw mut s as _,
+                    &raw mut S as _,
                     sizeof_s,
                     "{:4}: {}: (number) {}",
                     code as u32,
-                    _s(tty_term_codes[code as usize].name),
+                    _s(TTY_TERM_CODES[code as usize].name),
                     (*(*term).codes.add(code as usize)).value.number,
                 );
             }
             tty_code_type::Flag => {
                 xsnprintf_!(
-                    &raw mut s as _,
+                    &raw mut S as _,
                     sizeof_s,
                     "{:4}: {}: (flag) {}",
                     code as u32,
-                    _s(tty_term_codes[code as usize].name),
+                    _s(TTY_TERM_CODES[code as usize].name),
                     (*(*term).codes.add(code as usize)).value.flag != 0
                 );
             }
         };
 
-        &raw const s as *const u8
+        &raw const S as *const u8
     }
 }

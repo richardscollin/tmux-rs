@@ -1,3 +1,4 @@
+#![allow(non_upper_case_globals)]
 use ::core::{
     ffi::{c_int, c_short, c_void},
     option::Option,

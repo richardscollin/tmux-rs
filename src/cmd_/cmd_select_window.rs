@@ -14,7 +14,7 @@
 
 use crate::*;
 
-pub static cmd_select_window_entry: cmd_entry = cmd_entry {
+pub static CMD_SELECT_WINDOW_ENTRY: cmd_entry = cmd_entry {
     name: SyncCharPtr::new(c"select-window"),
     alias: SyncCharPtr::new(c"selectw"),
 
@@ -28,7 +28,7 @@ pub static cmd_select_window_entry: cmd_entry = cmd_entry {
     source: cmd_entry_flag::zeroed(),
 };
 
-pub static cmd_next_window_entry: cmd_entry = cmd_entry {
+pub static CMD_NEXT_WINDOW_ENTRY: cmd_entry = cmd_entry {
     name: SyncCharPtr::new(c"next-window"),
     alias: SyncCharPtr::new(c"next"),
 
@@ -42,7 +42,7 @@ pub static cmd_next_window_entry: cmd_entry = cmd_entry {
     source: cmd_entry_flag::zeroed(),
 };
 
-pub static cmd_previous_window_entry: cmd_entry = cmd_entry {
+pub static CMD_PREVIOUS_WINDOW_ENTRY: cmd_entry = cmd_entry {
     name: SyncCharPtr::new(c"previous-window"),
     alias: SyncCharPtr::new(c"prev"),
 
@@ -56,7 +56,7 @@ pub static cmd_previous_window_entry: cmd_entry = cmd_entry {
     source: cmd_entry_flag::zeroed(),
 };
 
-pub static cmd_last_window_entry: cmd_entry = cmd_entry {
+pub static CMD_LAST_WINDOW_ENTRY: cmd_entry = cmd_entry {
     name: SyncCharPtr::new(c"last-window"),
     alias: SyncCharPtr::new(c"last"),
 
@@ -79,15 +79,15 @@ unsafe fn cmd_select_window_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
         let wl = (*target).wl;
         let s = (*target).s;
 
-        let mut next = std::ptr::eq(cmd_get_entry(self_), &cmd_next_window_entry);
+        let mut next = std::ptr::eq(cmd_get_entry(self_), &CMD_NEXT_WINDOW_ENTRY);
         if args_has_(args, 'n') {
             next = true;
         }
-        let mut previous = std::ptr::eq(cmd_get_entry(self_), &cmd_previous_window_entry);
+        let mut previous = std::ptr::eq(cmd_get_entry(self_), &CMD_PREVIOUS_WINDOW_ENTRY);
         if args_has_(args, 'p') {
             previous = true;
         }
-        let mut last = std::ptr::eq(cmd_get_entry(self_), &cmd_last_window_entry);
+        let mut last = std::ptr::eq(cmd_get_entry(self_), &CMD_LAST_WINDOW_ENTRY);
         if args_has_(args, 'l') {
             last = true;
         }

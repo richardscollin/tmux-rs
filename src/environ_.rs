@@ -246,13 +246,13 @@ pub unsafe fn environ_for_session(s: *mut session, no_term: c_int) -> *mut envir
     let env: *mut environ = environ_create().as_ptr();
 
     unsafe {
-        environ_copy(global_environ, env);
+        environ_copy(GLOBAL_ENVIRON, env);
         if !s.is_null() {
             environ_copy((*s).environ, env);
         }
 
         if no_term == 0 {
-            let value = options_get_string_(global_options, c"default-terminal");
+            let value = options_get_string_(GLOBAL_OPTIONS, c"default-terminal");
             environ_set!(env, c!("TERM"), 0, "{}", _s(value));
             environ_set!(env, c!("TERM_PROGRAM"), 0, "{}", "tmux");
             environ_set!(env, c!("TERM_PROGRAM_VERSION"), 0, "{}", getversion());
@@ -272,7 +272,7 @@ pub unsafe fn environ_for_session(s: *mut session, no_term: c_int) -> *mut envir
             c!("TMUX"),
             0,
             "{},{},{}",
-            _s(socket_path),
+            _s(SOCKET_PATH),
             std::process::id(),
             idx,
         );

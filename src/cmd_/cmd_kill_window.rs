@@ -16,7 +16,7 @@ use crate::*;
 
 use crate::compat::tree::{rb_foreach, rb_next, rb_prev};
 
-pub static cmd_kill_window_entry: cmd_entry = cmd_entry {
+pub static CMD_KILL_WINDOW_ENTRY: cmd_entry = cmd_entry {
     name: SyncCharPtr::new(c"kill-window"),
     alias: SyncCharPtr::new(c"killw"),
 
@@ -30,7 +30,7 @@ pub static cmd_kill_window_entry: cmd_entry = cmd_entry {
     source: cmd_entry_flag::zeroed(),
 };
 
-pub static cmd_unlink_window_entry: cmd_entry = cmd_entry {
+pub static CMD_UNLINK_WINDOW_ENTRY: cmd_entry = cmd_entry {
     name: SyncCharPtr::new(c"unlink-window"),
     alias: SyncCharPtr::new(c"unlinkw"),
 
@@ -54,7 +54,7 @@ unsafe fn cmd_kill_window_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
         let s = (*target).s;
         let mut found = 0u32;
 
-        if std::ptr::eq(cmd_get_entry(self_), &cmd_unlink_window_entry) {
+        if std::ptr::eq(cmd_get_entry(self_), &CMD_UNLINK_WINDOW_ENTRY) {
             if !args_has(args, b'k') != 0 && session_is_linked(s, w) == 0 {
                 cmdq_error!(item, "window only linked to one session");
                 return cmd_retval::CMD_RETURN_ERROR;

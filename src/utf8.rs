@@ -29,7 +29,7 @@ unsafe extern "C" {
     fn utf8proc_wctomb(_: *mut char, _: wchar_t) -> i32;
 }
 
-static utf8_force_wide: [wchar_t; 162] = [
+static UTF8_FORCE_WIDE: [wchar_t; 162] = [
     0x0261D, 0x026F9, 0x0270A, 0x0270B, 0x0270C, 0x0270D, 0x1F1E6, 0x1F1E7, 0x1F1E8, 0x1F1E9,
     0x1F1EA, 0x1F1EB, 0x1F1EC, 0x1F1ED, 0x1F1EE, 0x1F1EF, 0x1F1F0, 0x1F1F1, 0x1F1F2, 0x1F1F3,
     0x1F1F4, 0x1F1F5, 0x1F1F6, 0x1F1F7, 0x1F1F8, 0x1F1F9, 0x1F1FA, 0x1F1FB, 0x1F1FC, 0x1F1FD,
@@ -72,7 +72,7 @@ RB_GENERATE!(
     discr_data_entry,
     utf8_data_cmp
 );
-static mut utf8_data_tree: utf8_data_tree = rb_initializer();
+static mut UTF8_DATA_TREE: utf8_data_tree = rb_initializer();
 
 pub fn utf8_index_cmp(ui1: &utf8_item, ui2: &utf8_item) -> std::cmp::Ordering {
     ui1.index.cmp(&ui2.index)
@@ -85,9 +85,9 @@ RB_GENERATE!(
     discr_index_entry,
     utf8_index_cmp
 );
-static mut utf8_index_tree: utf8_index_tree = rb_initializer();
+static mut UTF8_INDEX_TREE: utf8_index_tree = rb_initializer();
 
-static mut utf8_next_index: u32 = 0;
+static mut UTF8_NEXT_INDEX: u32 = 0;
 
 fn utf8_get_size(uc: utf8_char) -> u8 {
     (((uc) >> 24) & 0x1f) as u8
@@ -114,7 +114,7 @@ pub unsafe fn utf8_item_by_data(data: *const [u8; UTF8_SIZE], size: usize) -> *m
         );
         (*ui).size = size as u8;
 
-        rb_find::<_, discr_data_entry>(&raw mut utf8_data_tree, ui)
+        rb_find::<_, discr_data_entry>(&raw mut UTF8_DATA_TREE, ui)
     }
 }
 
@@ -125,7 +125,7 @@ pub unsafe fn utf8_item_by_index(index: u32) -> *mut utf8_item {
 
         (*ui).index = index;
 
-        rb_find::<_, discr_index_entry>(&raw mut utf8_index_tree, ui)
+        rb_find::<_, discr_index_entry>(&raw mut UTF8_INDEX_TREE, ui)
     }
 }
 
@@ -143,18 +143,18 @@ pub unsafe fn utf8_put_item(data: *const [u8; UTF8_SIZE], size: usize, index: *m
             return 0;
         }
 
-        if utf8_next_index == 0xffffff + 1 {
+        if UTF8_NEXT_INDEX == 0xffffff + 1 {
             return -1;
         }
 
         let ui: &mut utf8_item = xcalloc1();
-        ui.index = utf8_next_index;
-        utf8_next_index += 1;
-        rb_insert::<_, discr_index_entry>(&raw mut utf8_index_tree, ui);
+        ui.index = UTF8_NEXT_INDEX;
+        UTF8_NEXT_INDEX += 1;
+        rb_insert::<_, discr_index_entry>(&raw mut UTF8_INDEX_TREE, ui);
 
         memcpy(ui.data.as_mut_ptr().cast(), data.cast(), size);
         ui.size = size as u8;
-        rb_insert::<_, discr_data_entry>(&raw mut utf8_data_tree, ui);
+        rb_insert::<_, discr_data_entry>(&raw mut UTF8_DATA_TREE, ui);
 
         *index = ui.index;
         log_debug!(
@@ -278,7 +278,7 @@ pub fn utf8_build_one(ch: c_uchar) -> u32 {
 }
 
 pub unsafe fn utf8_set(ud: *mut utf8_data, ch: c_uchar) {
-    static empty: utf8_data = utf8_data {
+    static EMPTY: utf8_data = utf8_data {
         data: unsafe { zeroed() },
         have: 1,
         size: 1,
@@ -286,7 +286,7 @@ pub unsafe fn utf8_set(ud: *mut utf8_data, ch: c_uchar) {
     };
 
     unsafe {
-        memcpy__(ud, &raw const empty);
+        memcpy__(ud, &raw const EMPTY);
         (*ud).data[0] = ch;
     }
 }
@@ -308,7 +308,7 @@ pub unsafe fn utf8_width(ud: *mut utf8_data, width: *mut i32) -> utf8_state {
         if utf8_towc(ud, &raw mut wc) != utf8_state::UTF8_DONE {
             return utf8_state::UTF8_ERROR;
         }
-        if utf8_in_table(wc, utf8_force_wide.as_ptr(), utf8_force_wide.len() as u32) != 0 {
+        if utf8_in_table(wc, UTF8_FORCE_WIDE.as_ptr(), UTF8_FORCE_WIDE.len() as u32) != 0 {
             *width = 2;
             return utf8_state::UTF8_DONE;
         }

@@ -13,7 +13,7 @@
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 use crate::*;
 
-pub static cmd_respawn_window_entry: cmd_entry = cmd_entry {
+pub static CMD_RESPAWN_WINDOW_ENTRY: cmd_entry = cmd_entry {
     name: SyncCharPtr::new(c"respawn-window"),
     alias: SyncCharPtr::new(c"respawnw"),
 

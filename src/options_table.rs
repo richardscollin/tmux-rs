@@ -21,9 +21,9 @@ use crate::*;
 //user sets an option or its value needs to be shown.
 
 // Choice option type lists.
-static mut options_table_mode_keys_list: [*const u8; 3] = [c!("emacs"), c!("vi"), null()];
-static mut options_table_clock_mode_style_list: [*const u8; 3] = [c!("12"), c!("24"), null()];
-static mut options_table_status_list: [*const u8; 7] = [
+static mut OPTIONS_TABLE_MODE_KEYS_LIST: [*const u8; 3] = [c!("emacs"), c!("vi"), null()];
+static mut OPTIONS_TABLE_CLOCK_MODE_STYLE_LIST: [*const u8; 3] = [c!("12"), c!("24"), null()];
+static mut OPTIONS_TABLE_STATUS_LIST: [*const u8; 7] = [
     c!("off"),
     c!("on"),
     c!("2"),
@@ -32,22 +32,22 @@ static mut options_table_status_list: [*const u8; 7] = [
     c!("5"),
     null(),
 ];
-static mut options_table_message_line_list: [*const u8; 6] =
+static mut OPTIONS_TABLE_MESSAGE_LINE_LIST: [*const u8; 6] =
     [c!("0"), c!("1"), c!("2"), c!("3"), c!("4"), null()];
-static mut options_table_status_keys_list: [*const u8; 3] = [c!("emacs"), c!("vi"), null()];
-static mut options_table_status_justify_list: [*const u8; 5] = [
+static mut OPTIONS_TABLE_STATUS_KEYS_LIST: [*const u8; 3] = [c!("emacs"), c!("vi"), null()];
+static mut OPTIONS_TABLE_STATUS_JUSTIFY_LIST: [*const u8; 5] = [
     c!("left"),
     c!("centre"),
     c!("right"),
     c!("absolute-centre"),
     null(),
 ];
-static mut options_table_status_position_list: [*const u8; 3] = [c!("top"), c!("bottom"), null()];
-static mut options_table_bell_action_list: [*const u8; 5] =
+static mut OPTIONS_TABLE_STATUS_POSITION_LIST: [*const u8; 3] = [c!("top"), c!("bottom"), null()];
+static mut OPTIONS_TABLE_BELL_ACTION_LIST: [*const u8; 5] =
     [c!("none"), c!("any"), c!("current"), c!("other"), null()];
-static mut options_table_visual_bell_list: [*const u8; 4] =
+static mut OPTIONS_TABLE_VISUAL_BELL_LIST: [*const u8; 4] =
     [c!("off"), c!("on"), c!("both"), null()];
-static mut options_table_cursor_style_list: [*const u8; 8] = [
+static mut OPTIONS_TABLE_CURSOR_STYLE_LIST: [*const u8; 8] = [
     c!("default"),
     c!("blinking-block"),
     c!("block"),
@@ -57,11 +57,11 @@ static mut options_table_cursor_style_list: [*const u8; 8] = [
     c!("bar"),
     null(),
 ];
-static mut options_table_pane_status_list: [*const u8; 4] =
+static mut OPTIONS_TABLE_PANE_STATUS_LIST: [*const u8; 4] =
     [c!("off"), c!("top"), c!("bottom"), null()];
-static mut options_table_pane_border_indicators_list: [*const u8; 5] =
+static mut OPTIONS_TABLE_PANE_BORDER_INDICATORS_LIST: [*const u8; 5] =
     [c!("off"), c!("colour"), c!("arrows"), c!("both"), null()];
-static mut options_table_pane_border_lines_list: [*const u8; 6] = [
+static mut OPTIONS_TABLE_PANE_BORDER_LINES_LIST: [*const u8; 6] = [
     c!("single"),
     c!("double"),
     c!("heavy"),
@@ -69,7 +69,7 @@ static mut options_table_pane_border_lines_list: [*const u8; 6] = [
     c!("number"),
     null(),
 ];
-static mut options_table_popup_border_lines_list: [*const u8; 8] = [
+static mut OPTIONS_TABLE_POPUP_BORDER_LINES_LIST: [*const u8; 8] = [
     c!("single"),
     c!("double"),
     c!("heavy"),
@@ -79,25 +79,25 @@ static mut options_table_popup_border_lines_list: [*const u8; 8] = [
     c!("none"),
     null(),
 ];
-static mut options_table_set_clipboard_list: [*const u8; 4] =
+static mut OPTIONS_TABLE_SET_CLIPBOARD_LIST: [*const u8; 4] =
     [c!("off"), c!("external"), c!("on"), null()];
-static mut options_table_window_size_list: [*const u8; 5] = [
+static mut OPTIONS_TABLE_WINDOW_SIZE_LIST: [*const u8; 5] = [
     c!("largest"),
     c!("smallest"),
     c!("manual"),
     c!("latest"),
     null(),
 ];
-static mut options_table_remain_on_exit_list: [*const u8; 4] =
+static mut OPTIONS_TABLE_REMAIN_ON_EXIT_LIST: [*const u8; 4] =
     [c!("off"), c!("on"), c!("failed"), null()];
-static mut options_table_destroy_unattached_list: [*const u8; 5] = [
+static mut OPTIONS_TABLE_DESTROY_UNATTACHED_LIST: [*const u8; 5] = [
     c!("off"),
     c!("on"),
     c!("keep-last"),
     c!("keep-group"),
     null(),
 ];
-static mut options_table_detach_on_destroy_list: [*const u8; 6] = [
+static mut OPTIONS_TABLE_DETACH_ON_DESTROY_LIST: [*const u8; 6] = [
     c!("off"),
     c!("on"),
     c!("no-detached"),
@@ -105,15 +105,15 @@ static mut options_table_detach_on_destroy_list: [*const u8; 6] = [
     c!("next"),
     null(),
 ];
-static mut options_table_extended_keys_list: [*const u8; 4] =
+static mut OPTIONS_TABLE_EXTENDED_KEYS_LIST: [*const u8; 4] =
     [c!("off"), c!("on"), c!("always"), null()];
-static mut options_table_extended_keys_format_list: [*const u8; 3] =
+static mut OPTIONS_TABLE_EXTENDED_KEYS_FORMAT_LIST: [*const u8; 3] =
     [c!("csi-u"), c!("xterm"), null()];
-static mut options_table_allow_passthrough_list: [*const u8; 4] =
+static mut OPTIONS_TABLE_ALLOW_PASSTHROUGH_LIST: [*const u8; 4] =
     [c!("off"), c!("on"), c!("all"), null()];
 
 /// Map of name conversions.
-pub static mut options_other_names: [options_name_map; 6] = [
+pub static mut OPTIONS_OTHER_NAMES: [options_name_map; 6] = [
     options_name_map::new(c!("display-panes-color"), c!("display-panes-colour")),
     options_name_map::new(
         c!("display-panes-active-color"),
@@ -202,7 +202,7 @@ pub const OPTIONS_TABLE_STATUS_FORMAT2: *const u8 = concat!(
 .as_ptr()
 .cast();
 
-pub static mut options_table_status_format_default: [*const u8; 3] = [
+pub static mut OPTIONS_TABLE_STATUS_FORMAT_DEFAULT: [*const u8; 3] = [
     OPTIONS_TABLE_STATUS_FORMAT1,
     OPTIONS_TABLE_STATUS_FORMAT2,
     null(),
@@ -251,7 +251,7 @@ macro_rules! options_table_window_hook {
     };
 }
 
-pub static mut options_table: [options_table_entry; 191] = [
+pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
     options_table_entry {
         name: c!("backspace"),
         type_: options_table_type::OPTIONS_TABLE_KEY,
@@ -306,7 +306,7 @@ pub static mut options_table: [options_table_entry; 191] = [
         name: c!("cursor-style"),
         type_: options_table_type::OPTIONS_TABLE_CHOICE,
         scope: OPTIONS_TABLE_WINDOW | OPTIONS_TABLE_PANE,
-        choices: &raw const options_table_cursor_style_list as *const *const u8,
+        choices: &raw const OPTIONS_TABLE_CURSOR_STYLE_LIST as *const *const u8,
         default_num: 0,
         text: c!("Style of the cursor."),
         ..unsafe { zeroed() }
@@ -358,7 +358,7 @@ pub static mut options_table: [options_table_entry; 191] = [
         name: c!("extended-keys"),
         type_: options_table_type::OPTIONS_TABLE_CHOICE,
         scope: OPTIONS_TABLE_SERVER,
-        choices: &raw const options_table_extended_keys_list as *const *const u8,
+        choices: &raw const OPTIONS_TABLE_EXTENDED_KEYS_LIST as *const *const u8,
         default_num: 0,
         text: c!("Whether to request extended key sequences from terminals that support it."),
         ..unsafe { zeroed() }
@@ -367,7 +367,7 @@ pub static mut options_table: [options_table_entry; 191] = [
         name: c!("extended-keys-format"),
         type_: options_table_type::OPTIONS_TABLE_CHOICE,
         scope: OPTIONS_TABLE_SERVER,
-        choices: &raw const options_table_extended_keys_format_list as *const *const u8,
+        choices: &raw const OPTIONS_TABLE_EXTENDED_KEYS_FORMAT_LIST as *const *const u8,
         default_num: 1,
         text: c!("The format of emitted extended key sequences."),
         ..unsafe { zeroed() }
@@ -424,7 +424,7 @@ pub static mut options_table: [options_table_entry; 191] = [
         name: c!("menu-border-lines"),
         type_: options_table_type::OPTIONS_TABLE_CHOICE,
         scope: OPTIONS_TABLE_WINDOW,
-        choices: &raw const options_table_popup_border_lines_list as *const *const u8,
+        choices: &raw const OPTIONS_TABLE_POPUP_BORDER_LINES_LIST as *const *const u8,
         default_num: box_lines::BOX_LINES_SINGLE as i64,
         text: c!(
             "Type of characters used to draw menu border lines. Some of these are only supported on terminals with UTF-8 support."
@@ -468,7 +468,7 @@ pub static mut options_table: [options_table_entry; 191] = [
         name: c!("set-clipboard"),
         type_: options_table_type::OPTIONS_TABLE_CHOICE,
         scope: OPTIONS_TABLE_SERVER,
-        choices: &raw const options_table_set_clipboard_list as *const *const u8,
+        choices: &raw const OPTIONS_TABLE_SET_CLIPBOARD_LIST as *const *const u8,
         default_num: 1,
         text: c!(
             "Whether to attempt to set the system clipboard ('on' or 'external') and whether to allow applications to create paste buffers with an escape sequence ('on' only)."
@@ -514,7 +514,7 @@ pub static mut options_table: [options_table_entry; 191] = [
         name: c!("activity-action"),
         type_: options_table_type::OPTIONS_TABLE_CHOICE,
         scope: OPTIONS_TABLE_SESSION,
-        choices: &raw const options_table_bell_action_list as *const *const u8,
+        choices: &raw const OPTIONS_TABLE_BELL_ACTION_LIST as *const *const u8,
         default_num: alert_option::ALERT_OTHER as i64,
         text: c!("Action to take on an activity alert."),
         ..unsafe { zeroed() }
@@ -544,7 +544,7 @@ pub static mut options_table: [options_table_entry; 191] = [
         name: c!("bell-action"),
         type_: options_table_type::OPTIONS_TABLE_CHOICE,
         scope: OPTIONS_TABLE_SESSION,
-        choices: &raw const options_table_bell_action_list as *const *const u8,
+        choices: &raw const OPTIONS_TABLE_BELL_ACTION_LIST as *const *const u8,
         default_num: alert_option::ALERT_ANY as i64,
         text: c!("Action to take on a bell alert."),
         ..unsafe { zeroed() }
@@ -578,7 +578,7 @@ pub static mut options_table: [options_table_entry; 191] = [
         name: c!("destroy-unattached"),
         type_: options_table_type::OPTIONS_TABLE_CHOICE,
         scope: OPTIONS_TABLE_SESSION,
-        choices: &raw const options_table_destroy_unattached_list as *const *const u8,
+        choices: &raw const OPTIONS_TABLE_DESTROY_UNATTACHED_LIST as *const *const u8,
         default_num: 0,
         text: c!(
             "Whether to destroy sessions when they have no attached clients, or keep the last session whether in the group."
@@ -589,7 +589,7 @@ pub static mut options_table: [options_table_entry; 191] = [
         name: c!("detach-on-destroy"),
         type_: options_table_type::OPTIONS_TABLE_CHOICE,
         scope: OPTIONS_TABLE_SESSION,
-        choices: &raw const options_table_detach_on_destroy_list as *const *const u8,
+        choices: &raw const OPTIONS_TABLE_DETACH_ON_DESTROY_LIST as *const *const u8,
         default_num: 1,
         text: c!(
             "Whether to detach when a session is destroyed, or switch the client to another session if any exist."
@@ -690,7 +690,7 @@ pub static mut options_table: [options_table_entry; 191] = [
         name: c!("message-line"),
         type_: options_table_type::OPTIONS_TABLE_CHOICE,
         scope: OPTIONS_TABLE_SESSION,
-        choices: &raw const options_table_message_line_list as *const *const u8,
+        choices: &raw const OPTIONS_TABLE_MESSAGE_LINE_LIST as *const *const u8,
         default_num: 0,
         text: c!("Position (line) of messages and the command prompt."),
         ..unsafe { zeroed() }
@@ -770,7 +770,7 @@ pub static mut options_table: [options_table_entry; 191] = [
         name: c!("silence-action"),
         type_: options_table_type::OPTIONS_TABLE_CHOICE,
         scope: OPTIONS_TABLE_SESSION,
-        choices: &raw const options_table_bell_action_list as *const *const u8,
+        choices: &raw const OPTIONS_TABLE_BELL_ACTION_LIST as *const *const u8,
         default_num: alert_option::ALERT_OTHER as i64,
         text: c!("Action to take on a silence alert."),
         ..unsafe { zeroed() }
@@ -779,7 +779,7 @@ pub static mut options_table: [options_table_entry; 191] = [
         name: c!("status"),
         type_: options_table_type::OPTIONS_TABLE_CHOICE,
         scope: OPTIONS_TABLE_SESSION,
-        choices: &raw const options_table_status_list as *const *const u8,
+        choices: &raw const OPTIONS_TABLE_STATUS_LIST as *const *const u8,
         default_num: 1,
         text: c!("Number of lines in the status line."),
         ..unsafe { zeroed() }
@@ -809,7 +809,7 @@ pub static mut options_table: [options_table_entry; 191] = [
         type_: options_table_type::OPTIONS_TABLE_STRING,
         scope: OPTIONS_TABLE_SESSION,
         flags: OPTIONS_TABLE_IS_ARRAY,
-        default_arr: &raw const options_table_status_format_default as *const *const u8,
+        default_arr: &raw const OPTIONS_TABLE_STATUS_FORMAT_DEFAULT as *const *const u8,
         text: c!(
             "Formats for the status lines. Each array member is the format for one status line. The default status line is made up of several components which may be configured individually with other options such as 'status-left'."
         ),
@@ -830,7 +830,7 @@ pub static mut options_table: [options_table_entry; 191] = [
         name: c!("status-justify"),
         type_: options_table_type::OPTIONS_TABLE_CHOICE,
         scope: OPTIONS_TABLE_SESSION,
-        choices: &raw const options_table_status_justify_list as *const *const u8,
+        choices: &raw const OPTIONS_TABLE_STATUS_JUSTIFY_LIST as *const *const u8,
         default_num: 0,
         text: c!("Position of the window list in the status line."),
         ..unsafe { zeroed() }
@@ -839,7 +839,7 @@ pub static mut options_table: [options_table_entry; 191] = [
         name: c!("status-keys"),
         type_: options_table_type::OPTIONS_TABLE_CHOICE,
         scope: OPTIONS_TABLE_SESSION,
-        choices: &raw const options_table_status_keys_list as *const *const u8,
+        choices: &raw const OPTIONS_TABLE_STATUS_KEYS_LIST as *const *const u8,
         default_num: modekey::MODEKEY_EMACS as i64,
         text: c!("Key set to use at the command prompt."),
         ..unsafe { zeroed() }
@@ -876,7 +876,7 @@ pub static mut options_table: [options_table_entry; 191] = [
         name: c!("status-position"),
         type_: options_table_type::OPTIONS_TABLE_CHOICE,
         scope: OPTIONS_TABLE_SESSION,
-        choices: &raw const options_table_status_position_list as *const *const u8,
+        choices: &raw const OPTIONS_TABLE_STATUS_POSITION_LIST as *const *const u8,
         default_num: 1,
         text: c!("Position of the status line."),
         ..unsafe { zeroed() }
@@ -938,7 +938,7 @@ pub static mut options_table: [options_table_entry; 191] = [
         name: c!("visual-activity"),
         type_: options_table_type::OPTIONS_TABLE_CHOICE,
         scope: OPTIONS_TABLE_SESSION,
-        choices: &raw const options_table_visual_bell_list as *const *const u8,
+        choices: &raw const OPTIONS_TABLE_VISUAL_BELL_LIST as *const *const u8,
         default_num: visual_option::VISUAL_OFF as i64,
         text: c!(
             "How activity alerts should be shown: a message ('on'), a message and a bell ('both') or nothing ('off')."
@@ -949,7 +949,7 @@ pub static mut options_table: [options_table_entry; 191] = [
         name: c!("visual-bell"),
         type_: options_table_type::OPTIONS_TABLE_CHOICE,
         scope: OPTIONS_TABLE_SESSION,
-        choices: &raw const options_table_visual_bell_list as *const *const u8,
+        choices: &raw const OPTIONS_TABLE_VISUAL_BELL_LIST as *const *const u8,
         default_num: visual_option::VISUAL_OFF as i64,
         text: c!(
             "How bell alerts should be shown: a message ('on'), a message and a bell ('both') or nothing ('off')."
@@ -960,7 +960,7 @@ pub static mut options_table: [options_table_entry; 191] = [
         name: c!("visual-silence"),
         type_: options_table_type::OPTIONS_TABLE_CHOICE,
         scope: OPTIONS_TABLE_SESSION,
-        choices: &raw const options_table_visual_bell_list as *const *const u8,
+        choices: &raw const OPTIONS_TABLE_VISUAL_BELL_LIST as *const *const u8,
         default_num: visual_option::VISUAL_OFF as i64,
         text: c!(
             "How silence alerts should be shown: a message ('on'), a message and a bell ('both') or nothing ('off')."
@@ -990,7 +990,7 @@ pub static mut options_table: [options_table_entry; 191] = [
         name: c!("allow-passthrough"),
         type_: options_table_type::OPTIONS_TABLE_CHOICE,
         scope: OPTIONS_TABLE_WINDOW | OPTIONS_TABLE_PANE,
-        choices: &raw const options_table_allow_passthrough_list as *const *const u8,
+        choices: &raw const OPTIONS_TABLE_ALLOW_PASSTHROUGH_LIST as *const *const u8,
         default_num: 0,
         text: c!(
             "Whether applications are allowed to use the escape sequence to bypass tmux. Can be 'off' (disallowed), 'on' (allowed if the pane is visible), or 'all' (allowed even if the pane is invisible)."
@@ -1051,7 +1051,7 @@ pub static mut options_table: [options_table_entry; 191] = [
         name: c!("clock-mode-style"),
         type_: options_table_type::OPTIONS_TABLE_CHOICE,
         scope: OPTIONS_TABLE_WINDOW,
-        choices: &raw const options_table_clock_mode_style_list as *const *const u8,
+        choices: &raw const OPTIONS_TABLE_CLOCK_MODE_STYLE_LIST as *const *const u8,
         default_num: 1,
         text: c!("Time format of the clock in clock mode."),
         ..unsafe { zeroed() }
@@ -1118,7 +1118,7 @@ pub static mut options_table: [options_table_entry; 191] = [
         name: c!("mode-keys"),
         type_: options_table_type::OPTIONS_TABLE_CHOICE,
         scope: OPTIONS_TABLE_WINDOW,
-        choices: &raw const options_table_mode_keys_list as *const *const u8,
+        choices: &raw const OPTIONS_TABLE_MODE_KEYS_LIST as *const *const u8,
         default_num: modekey::MODEKEY_EMACS as i64,
         text: c!("Key set used in copy mode."),
         ..unsafe { zeroed() }
@@ -1211,7 +1211,7 @@ pub static mut options_table: [options_table_entry; 191] = [
         name: c!("pane-border-indicators"),
         type_: options_table_type::OPTIONS_TABLE_CHOICE,
         scope: OPTIONS_TABLE_WINDOW,
-        choices: &raw const options_table_pane_border_indicators_list as *const *const u8,
+        choices: &raw const OPTIONS_TABLE_PANE_BORDER_INDICATORS_LIST as *const *const u8,
         default_num: pane_border_indicator::PANE_BORDER_COLOUR as i64,
         text: c!(
             "Whether to indicate the active pane by colouring border or displaying arrow markers."
@@ -1222,7 +1222,7 @@ pub static mut options_table: [options_table_entry; 191] = [
         name: c!("pane-border-lines"),
         type_: options_table_type::OPTIONS_TABLE_CHOICE,
         scope: OPTIONS_TABLE_WINDOW,
-        choices: &raw const options_table_pane_border_lines_list as *const *const u8,
+        choices: &raw const OPTIONS_TABLE_PANE_BORDER_LINES_LIST as *const *const u8,
         default_num: pane_lines::PANE_LINES_SINGLE as i64,
         text: c!(
             "Type of characters used to draw pane border lines. Some of these are only supported on terminals with UTF-8 support."
@@ -1233,7 +1233,7 @@ pub static mut options_table: [options_table_entry; 191] = [
         name: c!("pane-border-status"),
         type_: options_table_type::OPTIONS_TABLE_CHOICE,
         scope: OPTIONS_TABLE_WINDOW,
-        choices: &raw const options_table_pane_status_list as *const *const u8,
+        choices: &raw const OPTIONS_TABLE_PANE_STATUS_LIST as *const *const u8,
         default_num: pane_status::PANE_STATUS_OFF as i64,
         text: c!("Position of the pane status lines."),
         ..unsafe { zeroed() }
@@ -1281,7 +1281,7 @@ pub static mut options_table: [options_table_entry; 191] = [
         name: c!("popup-border-lines"),
         type_: options_table_type::OPTIONS_TABLE_CHOICE,
         scope: OPTIONS_TABLE_WINDOW,
-        choices: &raw const options_table_popup_border_lines_list as *const *const u8,
+        choices: &raw const OPTIONS_TABLE_POPUP_BORDER_LINES_LIST as *const *const u8,
         default_num: box_lines::BOX_LINES_SINGLE as i64,
         text: c!(
             "Type of characters used to draw popup border lines. Some of these are only supported on terminals with UTF-8 support."
@@ -1292,7 +1292,7 @@ pub static mut options_table: [options_table_entry; 191] = [
         name: c!("remain-on-exit"),
         type_: options_table_type::OPTIONS_TABLE_CHOICE,
         scope: OPTIONS_TABLE_WINDOW | OPTIONS_TABLE_PANE,
-        choices: &raw const options_table_remain_on_exit_list as *const *const u8,
+        choices: &raw const OPTIONS_TABLE_REMAIN_ON_EXIT_LIST as *const *const u8,
         default_num: 0,
         text: c!(
             "Whether panes should remain ('on') or be automatically killed ('off' or 'failed') when the program inside exits."
@@ -1343,7 +1343,7 @@ pub static mut options_table: [options_table_entry; 191] = [
         name: c!("window-size"),
         type_: options_table_type::OPTIONS_TABLE_CHOICE,
         scope: OPTIONS_TABLE_WINDOW,
-        choices: &raw const options_table_window_size_list as *const *const u8,
+        choices: &raw const OPTIONS_TABLE_WINDOW_SIZE_LIST as *const *const u8,
         default_num: window_size_option::WINDOW_SIZE_LATEST as i64,
         text: c!(
             "How window size is calculated. 'latest' uses the size of the most recently used client, 'largest' the largest client, 'smallest' the smallest client and 'manual' a size set by the 'resize-window' command."

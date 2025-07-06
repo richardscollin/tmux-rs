@@ -138,7 +138,7 @@ struct mode_tree_menu {
     line: u32,
 }
 
-static mode_tree_menu_items: [menu_item; 4] = [
+static MODE_TREE_MENU_ITEMS: [menu_item; 4] = [
     menu_item::new(c"Scroll Left", '<' as u64, null_mut()),
     menu_item::new(c"Scroll Right", '>' as u64, null_mut()),
     menu_item::new(c"", KEYC_NONE, null_mut()),
@@ -712,8 +712,8 @@ pub unsafe fn mode_tree_draw(mtd: *mut mode_tree_data) {
                 return;
             }
 
-            memcpy__(&raw mut gc0, &raw const grid_default_cell);
-            memcpy__(&raw mut gc, &raw const grid_default_cell);
+            memcpy__(&raw mut gc0, &raw const GRID_DEFAULT_CELL);
+            memcpy__(&raw mut gc, &raw const GRID_DEFAULT_CELL);
             style_apply(&raw mut gc, oo, c!("mode-style"), null_mut());
 
             let w = (*mtd).width;
@@ -1170,7 +1170,7 @@ pub unsafe fn mode_tree_display_menu(
                 format_nul!("#[align=centre]{}", _s((*mti).name)),
             )
         } else {
-            (mode_tree_menu_items.as_slice(), xstrdup_(c"").as_ptr())
+            (MODE_TREE_MENU_ITEMS.as_slice(), xstrdup_(c"").as_ptr())
         };
         let menu = menu_create(title);
         menu_add_items(menu, items, null_mut(), c, null_mut());

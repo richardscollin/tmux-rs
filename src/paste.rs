@@ -38,15 +38,15 @@ pub struct paste_buffer {
     pub time_entry: rb_entry<paste_buffer>,
 }
 
-static mut paste_next_index: u32 = 0;
-static mut paste_next_order: u32 = 0;
-static mut paste_num_automatic: u32 = 0;
+static mut PASTE_NEXT_INDEX: u32 = 0;
+static mut PASTE_NEXT_ORDER: u32 = 0;
+static mut PASTE_NUM_AUTOMATIC: u32 = 0;
 
 type paste_name_tree = rb_head<paste_buffer>;
 type paste_time_tree = rb_head<paste_buffer>;
 
-static mut paste_by_name: paste_name_tree = rb_initializer();
-static mut paste_by_time: paste_time_tree = rb_initializer();
+static mut PASTE_BY_NAME: paste_name_tree = rb_initializer();
+static mut PASTE_BY_TIME: paste_time_tree = rb_initializer();
 
 RB_GENERATE!(
     paste_name_tree,
@@ -106,19 +106,19 @@ pub unsafe fn paste_buffer_data_(pb: NonNull<paste_buffer>, size: &mut usize) ->
 pub unsafe fn paste_walk(pb: *mut paste_buffer) -> *mut paste_buffer {
     unsafe {
         if pb.is_null() {
-            return rb_min::<_, discr_time_entry>(&raw mut paste_by_time);
+            return rb_min::<_, discr_time_entry>(&raw mut PASTE_BY_TIME);
         }
         rb_next::<_, discr_time_entry>(pb)
     }
 }
 
 pub unsafe fn paste_is_empty() -> i32 {
-    unsafe { rb_root(&raw mut paste_by_time).is_null() as i32 }
+    unsafe { rb_root(&raw mut PASTE_BY_TIME).is_null() as i32 }
 }
 
 pub unsafe fn paste_get_top(name: *mut *const u8) -> *mut paste_buffer {
     unsafe {
-        let mut pb = rb_min::<_, discr_time_entry>(&raw mut paste_by_time);
+        let mut pb = rb_min::<_, discr_time_entry>(&raw mut PASTE_BY_TIME);
         while !pb.is_null() && (*pb).automatic == 0 {
             pb = rb_next::<_, discr_time_entry>(pb);
         }
@@ -142,7 +142,7 @@ pub unsafe fn paste_get_name(name: *const u8) -> *mut paste_buffer {
         }
 
         (*pbfind.as_mut_ptr()).name = name.cast_mut();
-        rb_find::<_, discr_name_entry>(&raw mut paste_by_name, pbfind.as_ptr())
+        rb_find::<_, discr_name_entry>(&raw mut PASTE_BY_NAME, pbfind.as_ptr())
     }
 }
 
@@ -151,10 +151,10 @@ pub unsafe fn paste_free(pb: NonNull<paste_buffer>) {
         let pb = pb.as_ptr();
         notify_paste_buffer((*pb).name, 1);
 
-        rb_remove::<_, discr_name_entry>(&raw mut paste_by_name, pb);
-        rb_remove::<_, discr_time_entry>(&raw mut paste_by_time, pb);
+        rb_remove::<_, discr_name_entry>(&raw mut PASTE_BY_NAME, pb);
+        rb_remove::<_, discr_time_entry>(&raw mut PASTE_BY_TIME, pb);
         if (*pb).automatic != 0 {
-            paste_num_automatic -= 1;
+            PASTE_NUM_AUTOMATIC -= 1;
         }
 
         free_((*pb).data);
@@ -174,9 +174,9 @@ pub unsafe fn paste_add(mut prefix: *const u8, data: *mut u8, size: usize) {
             return;
         }
 
-        let limit = options_get_number_(global_options, c"buffer-limit");
-        for pb in rb_foreach_reverse::<_, discr_time_entry>(&raw mut paste_by_time) {
-            if (paste_num_automatic as i64) < limit {
+        let limit = options_get_number_(GLOBAL_OPTIONS, c"buffer-limit");
+        for pb in rb_foreach_reverse::<_, discr_time_entry>(&raw mut PASTE_BY_TIME) {
+            if (PASTE_NUM_AUTOMATIC as i64) < limit {
                 break;
             }
             if (*pb.as_ptr()).automatic != 0 {
@@ -189,9 +189,9 @@ pub unsafe fn paste_add(mut prefix: *const u8, data: *mut u8, size: usize) {
         (*pb).name = null_mut();
         loop {
             free_((*pb).name);
-            let tmp = paste_next_index;
+            let tmp = PASTE_NEXT_INDEX;
             (*pb).name = format_nul!("{}{}", _s(prefix), tmp);
-            paste_next_index += 1;
+            PASTE_NEXT_INDEX += 1;
             if paste_get_name((*pb).name).is_null() {
                 break;
             }
@@ -201,14 +201,14 @@ pub unsafe fn paste_add(mut prefix: *const u8, data: *mut u8, size: usize) {
         (*pb).size = size;
 
         (*pb).automatic = 1;
-        paste_num_automatic += 1;
+        PASTE_NUM_AUTOMATIC += 1;
 
         (*pb).created = libc::time(null_mut());
 
-        (*pb).order = paste_next_order;
-        paste_next_order += 1;
-        rb_insert::<_, discr_name_entry>(&raw mut paste_by_name, pb);
-        rb_insert::<_, discr_time_entry>(&raw mut paste_by_time, pb);
+        (*pb).order = PASTE_NEXT_ORDER;
+        PASTE_NEXT_ORDER += 1;
+        rb_insert::<_, discr_name_entry>(&raw mut PASTE_BY_NAME, pb);
+        rb_insert::<_, discr_time_entry>(&raw mut PASTE_BY_TIME, pb);
 
         notify_paste_buffer((*pb).name, 0);
     }
@@ -245,17 +245,17 @@ pub unsafe fn paste_rename(oldname: *const u8, newname: *const u8, cause: *mut *
             paste_free(pb_new);
         }
 
-        rb_remove::<_, discr_name_entry>(&raw mut paste_by_name, pb);
+        rb_remove::<_, discr_name_entry>(&raw mut PASTE_BY_NAME, pb);
 
         free_((*pb).name);
         (*pb).name = xstrdup(newname).as_ptr();
 
         if (*pb).automatic != 0 {
-            paste_num_automatic -= 1;
+            PASTE_NUM_AUTOMATIC -= 1;
         }
         (*pb).automatic = 0;
 
-        rb_insert::<_, discr_name_entry>(&raw mut paste_by_name, pb);
+        rb_insert::<_, discr_name_entry>(&raw mut PASTE_BY_NAME, pb);
 
         notify_paste_buffer(oldname, 1);
         notify_paste_buffer(newname, 0);
@@ -293,8 +293,8 @@ pub unsafe fn paste_set(data: *mut u8, size: usize, name: *const u8, cause: *mut
         (*pb).size = size;
 
         (*pb).automatic = 0;
-        (*pb).order = paste_next_order;
-        paste_next_order += 1;
+        (*pb).order = PASTE_NEXT_ORDER;
+        PASTE_NEXT_ORDER += 1;
 
         (*pb).created = libc::time(null_mut());
 
@@ -302,8 +302,8 @@ pub unsafe fn paste_set(data: *mut u8, size: usize, name: *const u8, cause: *mut
             paste_free(old);
         }
 
-        rb_insert::<_, discr_name_entry>(&raw mut paste_by_name, pb);
-        rb_insert::<_, discr_time_entry>(&raw mut paste_by_time, pb);
+        rb_insert::<_, discr_name_entry>(&raw mut PASTE_BY_NAME, pb);
+        rb_insert::<_, discr_time_entry>(&raw mut PASTE_BY_TIME, pb);
 
         notify_paste_buffer(name, 0);
     }

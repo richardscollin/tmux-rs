@@ -15,7 +15,7 @@ use crate::*;
 
 use crate::compat::tree::rb_foreach;
 
-pub static cmd_list_sessions_entry: cmd_entry = cmd_entry {
+pub static CMD_LIST_SESSIONS_ENTRY: cmd_entry = cmd_entry {
     name: SyncCharPtr::new(c"list-sessions"),
     alias: SyncCharPtr::new(c"ls"),
 
@@ -42,7 +42,7 @@ unsafe fn cmd_list_sessions_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
         }
         let filter = args_get(args, b'f');
 
-        for (n, s) in rb_foreach(&raw mut sessions).enumerate() {
+        for (n, s) in rb_foreach(&raw mut SESSIONS).enumerate() {
             let ft = format_create(
                 cmdq_get_client(item),
                 item,

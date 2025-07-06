@@ -15,7 +15,7 @@ use crate::*;
 
 use crate::libc::{sscanf, strchr, strcmp};
 
-pub static cmd_refresh_client_entry: cmd_entry = cmd_entry {
+pub static CMD_REFRESH_CLIENT_ENTRY: cmd_entry = cmd_entry {
     name: SyncCharPtr::new(c"refresh-client"),
     alias: SyncCharPtr::new(c"refresh"),
 

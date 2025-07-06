@@ -19,7 +19,7 @@ use crate::compat::tree::rb_min;
 
 const NEW_SESSION_TEMPLATE: *const u8 = c!("#{session_name}:");
 
-pub static cmd_new_session_entry: cmd_entry = cmd_entry {
+pub static CMD_NEW_SESSION_ENTRY: cmd_entry = cmd_entry {
     name: SyncCharPtr::new(c"new-session"),
     alias: SyncCharPtr::new(c"new"),
 
@@ -33,7 +33,7 @@ pub static cmd_new_session_entry: cmd_entry = cmd_entry {
     source: cmd_entry_flag::zeroed(),
 };
 
-pub static cmd_has_session_entry: cmd_entry = cmd_entry {
+pub static CMD_HAS_SESSION_ENTRY: cmd_entry = cmd_entry {
     name: SyncCharPtr::new(c"has-session"),
     alias: SyncCharPtr::new(c"has"),
 
@@ -86,7 +86,7 @@ unsafe fn cmd_new_session_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
         let mut av: *mut args_value;
 
         'fail: {
-            if std::ptr::eq(cmd_get_entry(self_), &cmd_has_session_entry) {
+            if std::ptr::eq(cmd_get_entry(self_), &CMD_HAS_SESSION_ENTRY) {
                 /*
                  * cmd_find_target() will fail if the session cannot be found,
                  * so always return success here.
@@ -253,11 +253,11 @@ unsafe fn cmd_new_session_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
             if !detached && !is_control {
                 sx = (*c).tty.sx;
                 sy = (*c).tty.sy;
-                if sy > 0 && options_get_number_(global_s_options, c"status") != 0 {
+                if sy > 0 && options_get_number_(GLOBAL_S_OPTIONS, c"status") != 0 {
                     sy -= 1;
                 }
             } else {
-                tmp = options_get_string_(global_s_options, c"default-size");
+                tmp = options_get_string_(GLOBAL_S_OPTIONS, c"default-size");
                 if sscanf(tmp.cast(), c"%ux%u".as_ptr(), &raw mut sx, &raw mut sy) != 2 {
                     sx = dsx;
                     sy = dsy;
@@ -278,7 +278,7 @@ unsafe fn cmd_new_session_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
             }
 
             /* Create the new session. */
-            oo = options_create(global_s_options);
+            oo = options_create(GLOBAL_S_OPTIONS);
             if args_has_(args, 'x') || args_has_(args, 'y') {
                 if !args_has_(args, 'x') {
                     dsx = sx;
@@ -290,7 +290,7 @@ unsafe fn cmd_new_session_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
             }
             env = environ_create().as_ptr();
             if !c.is_null() && !args_has_(args, 'E') {
-                environ_update(global_s_options, (*c).environ, env);
+                environ_update(GLOBAL_S_OPTIONS, (*c).environ, env);
             }
             av = args_first_value(args, b'e');
             while !av.is_null() {
@@ -383,7 +383,7 @@ unsafe fn cmd_new_session_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
             cmd_find_from_session(fs.as_mut_ptr(), s, 0);
             cmdq_insert_hook!(s, item, fs.as_mut_ptr(), "after-new-session");
 
-            if cfg_finished != 0 {
+            if CFG_FINISHED != 0 {
                 cfg_show_causes(s);
             }
 

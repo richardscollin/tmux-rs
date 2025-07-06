@@ -16,7 +16,7 @@ use crate::*;
 
 use crate::compat::tree::{rb_insert, rb_remove};
 
-pub static cmd_rename_session_entry: cmd_entry = cmd_entry {
+pub static CMD_RENAME_SESSION_ENTRY: cmd_entry = cmd_entry {
     name: SyncCharPtr::new(c"rename-session"),
     alias: SyncCharPtr::new(c"rename"),
 
@@ -54,10 +54,10 @@ unsafe fn cmd_rename_session_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
             return cmd_retval::CMD_RETURN_ERROR;
         }
 
-        rb_remove(&raw mut sessions, s);
+        rb_remove(&raw mut SESSIONS, s);
         free_((*s).name);
         (*s).name = newname;
-        rb_insert(&raw mut sessions, s);
+        rb_insert(&raw mut SESSIONS, s);
 
         server_status_session(s);
         notify_session(c"session-renamed", s);

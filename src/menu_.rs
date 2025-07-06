@@ -274,7 +274,7 @@ pub unsafe fn menu_draw_cb(c: *mut client, data: *mut c_void, _rctx: *mut screen
                 (*menu).width + 4,
                 px,
                 py + i,
-                &raw const grid_default_cell,
+                &raw const GRID_DEFAULT_CELL,
                 null_mut(),
             );
         }
@@ -589,13 +589,13 @@ pub unsafe fn menu_set_style(
     unsafe {
         let o = (*(*(*(*c).session).curw).window).options;
 
-        memcpy__(gc, &raw const grid_default_cell);
+        memcpy__(gc, &raw const GRID_DEFAULT_CELL);
         style_apply(gc, o, option, null_mut());
         if !style.is_null() {
             let mut sytmp = MaybeUninit::<style>::uninit();
             let sytmp = sytmp.as_mut_ptr();
 
-            style_set(sytmp, &raw const grid_default_cell);
+            style_set(sytmp, &raw const GRID_DEFAULT_CELL);
             if style_parse(sytmp, gc, style) == 0 {
                 (*gc).fg = (*sytmp).gc.fg;
                 (*gc).bg = (*sytmp).gc.bg;

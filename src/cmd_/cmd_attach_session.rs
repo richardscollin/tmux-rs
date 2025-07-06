@@ -16,7 +16,7 @@ use super::*;
 use crate::compat::queue::tailq_foreach;
 use crate::compat::tree::rb_empty;
 
-pub static cmd_attach_session_entry: cmd_entry = cmd_entry {
+pub static CMD_ATTACH_SESSION_ENTRY: cmd_entry = cmd_entry {
     name: SyncCharPtr::new(c"attach-session"),
     alias: SyncCharPtr::new(c"attach"),
 
@@ -49,7 +49,7 @@ pub unsafe fn cmd_attach_session(
 
         let msgtype: msgtype;
 
-        if rb_empty(&raw mut sessions) {
+        if rb_empty(&raw mut SESSIONS) {
             cmdq_error!(item, "no sessions");
             return cmd_retval::CMD_RETURN_ERROR;
         }
@@ -112,7 +112,7 @@ pub unsafe fn cmd_attach_session(
                 } else {
                     msgtype = msgtype::MSG_DETACH;
                 }
-                for c_loop in tailq_foreach(&raw mut clients).map(NonNull::as_ptr) {
+                for c_loop in tailq_foreach(&raw mut CLIENTS).map(NonNull::as_ptr) {
                     {
                         if (*c_loop).session != s || c == c_loop {
                             continue;
@@ -142,7 +142,7 @@ pub unsafe fn cmd_attach_session(
                 } else {
                     msgtype::MSG_DETACH
                 };
-                for c_loop in tailq_foreach(&raw mut clients).map(NonNull::as_ptr) {
+                for c_loop in tailq_foreach(&raw mut CLIENTS).map(NonNull::as_ptr) {
                     if (*c_loop).session != s || c == c_loop {
                         continue;
                     }
@@ -162,7 +162,7 @@ pub unsafe fn cmd_attach_session(
             notify_client(c"client-attached", c);
             (*c).flags |= client_flag::ATTACHED;
 
-            if cfg_finished != 0 {
+            if CFG_FINISHED != 0 {
                 cfg_show_causes(s);
             }
         }

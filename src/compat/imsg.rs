@@ -101,7 +101,7 @@ impl super::queue::Entry<imsg_fd> for imsg_fd {
     }
 }
 
-static mut imsg_fd_overhead: i32 = 0;
+static mut IMSG_FD_OVERHEAD: i32 = 0;
 
 pub unsafe fn imsg_init(imsgbuf: *mut imsgbuf, fd: c_int) {
     unsafe {
@@ -146,7 +146,7 @@ pub unsafe fn imsg_read(imsgbuf: *mut imsgbuf) -> isize {
         'fail: {
             'again: loop {
                 if getdtablecount()
-                    + imsg_fd_overhead
+                    + IMSG_FD_OVERHEAD
                     + ((CMSG_SPACE(size_of::<libc::c_int>() as u32) - CMSG_SPACE(0)) as i32
                         / size_of::<c_int>() as i32)
                     >= getdtablesize()

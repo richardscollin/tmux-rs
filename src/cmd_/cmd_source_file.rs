@@ -15,7 +15,7 @@ use crate::*;
 
 use crate::libc::{EINVAL, ENOENT, ENOMEM, GLOB_NOMATCH, GLOB_NOSPACE, glob, glob_t, globfree};
 
-pub static cmd_source_file_entry: cmd_entry = cmd_entry {
+pub static CMD_SOURCE_FILE_ENTRY: cmd_entry = cmd_entry {
     name: SyncCharPtr::new(c"source-file"),
     alias: SyncCharPtr::new(c"source"),
 
@@ -51,7 +51,7 @@ unsafe fn cmd_source_file_complete_cb(item: *mut cmdq_item, data: *mut c_void) -
 
 unsafe fn cmd_source_file_complete(c: *mut client, cdata: *mut cmd_source_file_data) {
     unsafe {
-        if cfg_finished != 0 {
+        if CFG_FINISHED != 0 {
             if (*cdata).retval == cmd_retval::CMD_RETURN_ERROR
                 && !c.is_null()
                 && (*c).session.is_null()

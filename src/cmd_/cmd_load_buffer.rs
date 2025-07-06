@@ -13,7 +13,7 @@
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 use crate::*;
 
-pub static cmd_load_buffer_entry: cmd_entry = cmd_entry {
+pub static CMD_LOAD_BUFFER_ENTRY: cmd_entry = cmd_entry {
     name: SyncCharPtr::new(c"load-buffer"),
     alias: SyncCharPtr::new(c"loadb"),
 

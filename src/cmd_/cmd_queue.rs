@@ -94,8 +94,8 @@ pub struct cmdq_list {
 }
 
 pub unsafe fn cmdq_name(c: *const client) -> *const u8 {
-    static mut buf: [u8; 256] = [0; 256];
-    let s = &raw mut buf as *mut u8;
+    static mut BUF: [u8; 256] = [0; 256];
+    let s = &raw mut BUF as *mut u8;
 
     if c.is_null() {
         return c!("<global>");
@@ -113,14 +113,14 @@ pub unsafe fn cmdq_name(c: *const client) -> *const u8 {
 }
 
 pub unsafe fn cmdq_get(c: *mut client) -> *mut cmdq_list {
-    static mut global_queue: *mut cmdq_list = null_mut();
+    static mut GLOBAL_QUEUE: *mut cmdq_list = null_mut();
 
     unsafe {
         if c.is_null() {
-            if global_queue.is_null() {
-                global_queue = cmdq_new().as_ptr();
+            if GLOBAL_QUEUE.is_null() {
+                GLOBAL_QUEUE = cmdq_new().as_ptr();
             }
-            return global_queue;
+            return GLOBAL_QUEUE;
         }
 
         (*c).queue
@@ -373,7 +373,7 @@ pub unsafe fn cmdq_insert_hook_(
         let args = cmd_get_args(cmd);
         let mut ae: *mut args_entry = null_mut();
         let mut flag: c_uchar = 0;
-        const sizeof_tmp: usize = 32;
+        const SIZEOF_TMP: usize = 32;
         let mut buf: [u8; 32] = zeroed();
         let tmp = &raw mut buf as *mut u8;
 
@@ -384,7 +384,7 @@ pub unsafe fn cmdq_insert_hook_(
             return;
         }
         let oo = if s.is_null() {
-            global_s_options
+            GLOBAL_S_OPTIONS
         } else {
             (*s).options
         };
@@ -414,24 +414,24 @@ pub unsafe fn cmdq_insert_hook_(
         free_(arguments);
 
         for i in 0..args_count(args) {
-            xsnprintf_!(tmp, sizeof_tmp, "hook_argument_{}", i);
+            xsnprintf_!(tmp, SIZEOF_TMP, "hook_argument_{}", i);
             cmdq_add_format!(new_state, tmp, "{}", _s(args_string(args, i)));
         }
         flag = args_first(args, &raw mut ae);
         while flag != 0 {
             let value = args_get(args, flag);
             if value.is_null() {
-                xsnprintf_!(tmp, sizeof_tmp, "hook_flag_{}", flag as char);
+                xsnprintf_!(tmp, SIZEOF_TMP, "hook_flag_{}", flag as char);
                 cmdq_add_format!(new_state, tmp, "1");
             } else {
-                xsnprintf_!(tmp, sizeof_tmp, "hook_flag_{}", flag as char);
+                xsnprintf_!(tmp, SIZEOF_TMP, "hook_flag_{}", flag as char);
                 cmdq_add_format!(new_state, tmp, "{}", _s(value));
             }
 
             let mut i = 0;
             let mut av = args_first_value(args, flag);
             while !av.is_null() {
-                xsnprintf_!(tmp, sizeof_tmp, "hook_flag_{}_{}", flag as char, i);
+                xsnprintf_!(tmp, SIZEOF_TMP, "hook_flag_{}_{}", flag as char, i);
                 cmdq_add_format!(new_state, tmp, "{}", _s((*av).union_.string));
                 i += 1;
                 av = args_next_value(av);
@@ -626,7 +626,7 @@ pub unsafe fn cmdq_fire_command(item: *mut cmdq_item) -> cmd_retval {
         let mut flags = false;
 
         'out: {
-            if cfg_finished != 0 {
+            if CFG_FINISHED != 0 {
                 cmdq_add_message(item);
             }
             if log_get_level() > 1 {
@@ -756,7 +756,7 @@ pub unsafe fn cmdq_fire_callback(item: *mut cmdq_item) -> cmd_retval {
 
 pub unsafe fn cmdq_next(c: *mut client) -> u32 {
     let __func__ = "cmdq_next";
-    static mut number: u32 = 0;
+    static mut NUMBER: u32 = 0;
     let mut items = 0;
     let mut retval: cmd_retval = cmd_retval::CMD_RETURN_NORMAL;
 
@@ -796,8 +796,8 @@ pub unsafe fn cmdq_next(c: *mut client) -> u32 {
 
                 if !(*item).flags & CMDQ_FIRED != 0 {
                     (*item).time = libc::time(null_mut());
-                    number += 1;
-                    (*item).number = number;
+                    NUMBER += 1;
+                    (*item).number = NUMBER;
 
                     match (*item).type_ {
                         cmdq_type::CMDQ_COMMAND => {

@@ -18,22 +18,22 @@ use crate::libc::{ENOENT, fclose, fopen, strerror};
 use crate::cmd_::cmd_queue::cmdq_get_callback;
 use crate::compat::{queue::tailq_first, tree::rb_min};
 
-pub static mut cfg_client: *mut client = null_mut();
+pub static mut CFG_CLIENT: *mut client = null_mut();
 
-pub static mut cfg_finished: c_int = 0;
+pub static mut CFG_FINISHED: c_int = 0;
 
-static mut cfg_causes: *mut *mut u8 = null_mut();
-static mut cfg_ncauses: c_uint = 0;
-static mut cfg_item: *mut cmdq_item = null_mut();
+static mut CFG_CAUSES: *mut *mut u8 = null_mut();
+static mut CFG_NCAUSES: c_uint = 0;
+static mut CFG_ITEM: *mut cmdq_item = null_mut();
 
-pub static mut cfg_quiet: c_int = 1;
+pub static mut CFG_QUIET: c_int = 1;
 
-pub static mut cfg_files: *mut *mut u8 = null_mut();
+pub static mut CFG_FILES: *mut *mut u8 = null_mut();
 
-pub static mut cfg_nfiles: c_uint = 0;
+pub static mut CFG_NFILES: c_uint = 0;
 
 unsafe fn cfg_client_done(_item: *mut cmdq_item, _data: *mut c_void) -> cmd_retval {
-    if unsafe { cfg_finished } == 0 {
+    if unsafe { CFG_FINISHED } == 0 {
         cmd_retval::CMD_RETURN_WAIT
     } else {
         cmd_retval::CMD_RETURN_NORMAL
@@ -42,15 +42,15 @@ unsafe fn cfg_client_done(_item: *mut cmdq_item, _data: *mut c_void) -> cmd_retv
 
 unsafe fn cfg_done(_item: *mut cmdq_item, _data: *mut c_void) -> cmd_retval {
     unsafe {
-        if cfg_finished != 0 {
+        if CFG_FINISHED != 0 {
             return cmd_retval::CMD_RETURN_NORMAL;
         }
-        cfg_finished = 1;
+        CFG_FINISHED = 1;
 
         cfg_show_causes(null_mut());
 
-        if !cfg_item.is_null() {
-            cmdq_continue(cfg_item);
+        if !CFG_ITEM.is_null() {
+            cmdq_continue(CFG_ITEM);
         }
 
         status_prompt_load_history();
@@ -75,21 +75,21 @@ pub unsafe fn start_cfg() {
     // front - we need to get in before MSG_COMMAND.
 
     unsafe {
-        c = tailq_first(&raw mut clients);
-        cfg_client = c;
+        c = tailq_first(&raw mut CLIENTS);
+        CFG_CLIENT = c;
         if !c.is_null() {
-            cfg_item = cmdq_get_callback!(cfg_client_done, null_mut()).as_ptr();
-            cmdq_append(c, cfg_item);
+            CFG_ITEM = cmdq_get_callback!(cfg_client_done, null_mut()).as_ptr();
+            cmdq_append(c, CFG_ITEM);
         }
 
-        if cfg_quiet != 0 {
+        if CFG_QUIET != 0 {
             flags = cmd_parse_input_flags::CMD_PARSE_QUIET;
         }
 
         i = 0;
-        while i < cfg_nfiles {
+        while i < CFG_NFILES {
             load_cfg(
-                cstr_to_str(*cfg_files.add(i as usize)),
+                cstr_to_str(*CFG_FILES.add(i as usize)),
                 c,
                 null_mut(),
                 null_mut(),
@@ -252,38 +252,38 @@ pub unsafe fn cfg_add_cause_(args: std::fmt::Arguments) {
         msg.push('\0');
         let msg = msg.leak();
 
-        cfg_ncauses += 1;
-        cfg_causes = xreallocarray_::<*mut u8>(cfg_causes, cfg_ncauses as usize).as_ptr();
-        *cfg_causes.add(cfg_ncauses as usize - 1) = msg.as_mut_ptr().cast();
+        CFG_NCAUSES += 1;
+        CFG_CAUSES = xreallocarray_::<*mut u8>(CFG_CAUSES, CFG_NCAUSES as usize).as_ptr();
+        *CFG_CAUSES.add(CFG_NCAUSES as usize - 1) = msg.as_mut_ptr().cast();
     }
 }
 
 pub unsafe fn cfg_print_causes(item: *mut cmdq_item) {
     unsafe {
-        for i in 0..cfg_ncauses {
-            cmdq_print!(item, "{}", _s(*cfg_causes.add(i as usize)));
-            free_(*cfg_causes.add(i as usize));
+        for i in 0..CFG_NCAUSES {
+            cmdq_print!(item, "{}", _s(*CFG_CAUSES.add(i as usize)));
+            free_(*CFG_CAUSES.add(i as usize));
         }
 
-        free_(cfg_causes);
-        cfg_causes = null_mut();
-        cfg_ncauses = 0;
+        free_(CFG_CAUSES);
+        CFG_CAUSES = null_mut();
+        CFG_NCAUSES = 0;
     }
 }
 
 pub unsafe fn cfg_show_causes(mut s: *mut session) {
     unsafe {
         'out: {
-            let c = tailq_first(&raw mut clients);
+            let c = tailq_first(&raw mut CLIENTS);
 
-            if cfg_ncauses == 0 {
+            if CFG_NCAUSES == 0 {
                 return;
             }
 
             if !c.is_null() && (*c).flags.intersects(client_flag::CONTROL) {
-                for i in 0..cfg_ncauses {
-                    control_write!(c, "%config-error {}", _s(*cfg_causes.add(i as usize)),);
-                    free_(*cfg_causes.add(i as usize));
+                for i in 0..CFG_NCAUSES {
+                    control_write!(c, "%config-error {}", _s(*CFG_CAUSES.add(i as usize)),);
+                    free_(*CFG_CAUSES.add(i as usize));
                 }
                 break 'out;
             }
@@ -292,7 +292,7 @@ pub unsafe fn cfg_show_causes(mut s: *mut session) {
                 if !c.is_null() && !(*c).session.is_null() {
                     s = (*c).session;
                 } else {
-                    s = rb_min(&raw mut sessions);
+                    s = rb_min(&raw mut SESSIONS);
                 }
             }
             if s.is_null() || (*s).attached == 0 {
@@ -301,24 +301,24 @@ pub unsafe fn cfg_show_causes(mut s: *mut session) {
             let wp = (*(*(*s).curw).window).active;
 
             let wme: *mut window_mode_entry = tailq_first(&raw mut (*wp).modes);
-            if wme.is_null() || (*wme).mode != &raw const window_view_mode {
+            if wme.is_null() || (*wme).mode != &raw const WINDOW_VIEW_MODE {
                 window_pane_set_mode(
                     wp,
                     null_mut(),
-                    &raw const window_view_mode,
+                    &raw const WINDOW_VIEW_MODE,
                     null_mut(),
                     null_mut(),
                 );
             }
-            for i in 0..cfg_ncauses {
-                window_copy_add!(wp, 0, "{}", _s(*cfg_causes.add(i as usize)));
-                free(*cfg_causes.add(i as usize) as _);
+            for i in 0..CFG_NCAUSES {
+                window_copy_add!(wp, 0, "{}", _s(*CFG_CAUSES.add(i as usize)));
+                free(*CFG_CAUSES.add(i as usize) as _);
             }
             break 'out;
         }
         // out:
-        free_(cfg_causes);
-        cfg_causes = null_mut();
-        cfg_ncauses = 0;
+        free_(CFG_CAUSES);
+        CFG_CAUSES = null_mut();
+        CFG_NCAUSES = 0;
     }
 }

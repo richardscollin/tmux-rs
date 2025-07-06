@@ -13,7 +13,7 @@
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 use crate::*;
 
-pub static cmd_move_window_entry: cmd_entry = cmd_entry {
+pub static CMD_MOVE_WINDOW_ENTRY: cmd_entry = cmd_entry {
     name: SyncCharPtr::new(c"move-window"),
     alias: SyncCharPtr::new(c"movew"),
 
@@ -27,7 +27,7 @@ pub static cmd_move_window_entry: cmd_entry = cmd_entry {
     target: cmd_entry_flag::zeroed(),
 };
 
-pub static cmd_link_window_entry: cmd_entry = cmd_entry {
+pub static CMD_LINK_WINDOW_ENTRY: cmd_entry = cmd_entry {
     name: SyncCharPtr::new(c"link-window"),
     alias: SyncCharPtr::new(c"linkw"),
 
@@ -103,7 +103,7 @@ unsafe fn cmd_move_window_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
             free_(cause);
             return cmd_retval::CMD_RETURN_ERROR;
         }
-        if std::ptr::eq(cmd_get_entry(self_), &cmd_move_window_entry) {
+        if std::ptr::eq(cmd_get_entry(self_), &CMD_MOVE_WINDOW_ENTRY) {
             server_unlink_window(src, wl);
         }
 

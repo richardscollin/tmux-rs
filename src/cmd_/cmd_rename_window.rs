@@ -13,7 +13,7 @@
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 use crate::*;
 
-pub static cmd_rename_window_entry: cmd_entry = cmd_entry {
+pub static CMD_RENAME_WINDOW_ENTRY: cmd_entry = cmd_entry {
     name: SyncCharPtr::new(c"rename-window"),
     alias: SyncCharPtr::new(c"renamew"),
 

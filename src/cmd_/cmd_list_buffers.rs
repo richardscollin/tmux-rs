@@ -14,7 +14,7 @@
 
 use crate::*;
 
-pub static cmd_list_buffers_entry: cmd_entry = cmd_entry {
+pub static CMD_LIST_BUFFERS_ENTRY: cmd_entry = cmd_entry {
     name: SyncCharPtr::new(c"list-buffers"),
     alias: SyncCharPtr::new(c"lsb"),
 

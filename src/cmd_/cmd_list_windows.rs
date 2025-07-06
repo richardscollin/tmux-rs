@@ -22,7 +22,7 @@ const LIST_WINDOWS_WITH_SESSION_TEMPLATE: *const u8 = c!(
     "#{session_name}:#{window_index}: #{window_name}#{window_raw_flags} (#{window_panes} panes) [#{window_width}x#{window_height}] "
 );
 
-pub static cmd_list_windows_entry: cmd_entry = cmd_entry {
+pub static CMD_LIST_WINDOWS_ENTRY: cmd_entry = cmd_entry {
     name: SyncCharPtr::new(c"list-windows"),
     alias: SyncCharPtr::new(c"lsw"),
 
@@ -53,7 +53,7 @@ unsafe fn cmd_list_windows_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
 
 unsafe fn cmd_list_windows_server(self_: *mut cmd, item: *mut cmdq_item) {
     unsafe {
-        for s in rb_foreach(&raw mut sessions) {
+        for s in rb_foreach(&raw mut SESSIONS) {
             cmd_list_windows_session(self_, s, item, 1);
         }
     }

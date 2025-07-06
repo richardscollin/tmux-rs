@@ -15,7 +15,7 @@ use crate::*;
 
 use crate::compat::queue::tailq_foreach;
 
-pub static cmd_set_option_entry: cmd_entry = cmd_entry {
+pub static CMD_SET_OPTION_ENTRY: cmd_entry = cmd_entry {
     name: SyncCharPtr::new(c"set-option"),
     alias: SyncCharPtr::new(c"set"),
 
@@ -29,7 +29,7 @@ pub static cmd_set_option_entry: cmd_entry = cmd_entry {
     source: cmd_entry_flag::zeroed(),
 };
 
-pub static cmd_set_window_option_entry: cmd_entry = cmd_entry {
+pub static CMD_SET_WINDOW_OPTION_ENTRY: cmd_entry = cmd_entry {
     name: SyncCharPtr::new(c"set-window-option"),
     alias: SyncCharPtr::new(c"setw"),
 
@@ -43,7 +43,7 @@ pub static cmd_set_window_option_entry: cmd_entry = cmd_entry {
     source: cmd_entry_flag::zeroed(),
 };
 
-pub static cmd_set_hook_entry: cmd_entry = cmd_entry {
+pub static CMD_SET_HOOK_ENTRY: cmd_entry = cmd_entry {
     name: SyncCharPtr::new(c"set-hook"),
     alias: SyncCharPtr::null(),
 
@@ -92,13 +92,13 @@ pub unsafe fn cmd_set_option_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
         'fail: {
             'out: {
                 let window =
-                    std::ptr::eq(cmd_get_entry(self_), &cmd_set_window_option_entry) as i32;
+                    std::ptr::eq(cmd_get_entry(self_), &CMD_SET_WINDOW_OPTION_ENTRY) as i32;
 
                 /* Expand argument. */
                 argument = format_single_from_target(item, args_string(args, 0));
 
                 /* If set-hook -R, fire the hook straight away. */
-                if std::ptr::eq(cmd_get_entry(self_), &cmd_set_hook_entry) && args_has_(args, 'R') {
+                if std::ptr::eq(cmd_get_entry(self_), &CMD_SET_HOOK_ENTRY) && args_has_(args, 'R') {
                     notify_hook(item, argument);
                     free_(argument);
                     return cmd_retval::CMD_RETURN_NORMAL;

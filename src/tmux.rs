@@ -31,24 +31,24 @@ use crate::libc::{
     strcasecmp, strcasestr, strchr, strcspn, strerror, strncmp, strrchr, strstr, timespec,
 };
 
-pub static mut global_options: *mut options = null_mut();
+pub static mut GLOBAL_OPTIONS: *mut options = null_mut();
 
-pub static mut global_s_options: *mut options = null_mut();
+pub static mut GLOBAL_S_OPTIONS: *mut options = null_mut();
 
-pub static mut global_w_options: *mut options = null_mut();
+pub static mut GLOBAL_W_OPTIONS: *mut options = null_mut();
 
-pub static mut global_environ: *mut environ = null_mut();
+pub static mut GLOBAL_ENVIRON: *mut environ = null_mut();
 
-pub static mut start_time: timeval = timeval {
+pub static mut START_TIME: timeval = timeval {
     tv_sec: 0,
     tv_usec: 0,
 };
 
-pub static mut socket_path: *const u8 = null_mut();
+pub static mut SOCKET_PATH: *const u8 = null_mut();
 
-pub static mut ptm_fd: c_int = -1;
+pub static mut PTM_FD: c_int = -1;
 
-pub static mut shell_command: *mut u8 = null_mut();
+pub static mut SHELL_COMMAND: *mut u8 = null_mut();
 
 pub fn usage() -> ! {
     eprintln!(
@@ -129,7 +129,7 @@ pub unsafe fn expand_path(path: *const u8, home: *const u8) -> *mut u8 {
                     .cast()
                     .as_ptr()
             };
-            let value = environ_find(global_environ, name);
+            let value = environ_find(GLOBAL_ENVIRON, name);
             free_(name);
             if value.is_null() {
                 return null_mut();
@@ -311,53 +311,53 @@ pub unsafe fn get_timer() -> u64 {
 }
 
 pub unsafe fn find_cwd() -> *mut u8 {
-    static mut cwd: [u8; PATH_MAX as usize] = [0; PATH_MAX as usize];
+    static mut CWD: [u8; PATH_MAX as usize] = [0; PATH_MAX as usize];
     unsafe {
         let mut resolved1: [u8; PATH_MAX as usize] = [0; PATH_MAX as usize];
         let mut resolved2: [u8; PATH_MAX as usize] = [0; PATH_MAX as usize];
 
-        if getcwd(&raw mut cwd as _, size_of::<[u8; PATH_MAX as usize]>()).is_null() {
+        if getcwd(&raw mut CWD as _, size_of::<[u8; PATH_MAX as usize]>()).is_null() {
             return null_mut();
         }
         let pwd = getenv(c!("PWD"));
         if pwd.is_null() || *pwd == b'\0' {
-            return &raw mut cwd as _;
+            return &raw mut CWD as _;
         }
 
         //We want to use PWD so that symbolic links are maintained,
         //but only if it matches the actual working directory.
 
         if realpath(pwd, &raw mut resolved1 as _).is_null() {
-            return &raw mut cwd as _;
+            return &raw mut CWD as _;
         }
-        if realpath(&raw mut cwd as _, &raw mut resolved2 as _).is_null() {
-            return &raw mut cwd as _;
+        if realpath(&raw mut CWD as _, &raw mut resolved2 as _).is_null() {
+            return &raw mut CWD as _;
         }
         if libc::strcmp(&raw mut resolved1 as _, &raw mut resolved2 as _) != 0 {
-            return &raw mut cwd as _;
+            return &raw mut CWD as _;
         }
         pwd
     }
 }
 
 pub unsafe fn find_home() -> *mut u8 {
-    static mut home: *mut u8 = null_mut();
+    static mut HOME: *mut u8 = null_mut();
 
     unsafe {
-        if !home.is_null() {
-            home
+        if !HOME.is_null() {
+            HOME
         } else {
-            home = getenv(c!("HOME"));
-            if home.is_null() || *home == b'\0' {
+            HOME = getenv(c!("HOME"));
+            if HOME.is_null() || *HOME == b'\0' {
                 let pw = getpwuid(getuid());
                 if !pw.is_null() {
-                    home = (*pw).pw_dir.cast();
+                    HOME = (*pw).pw_dir.cast();
                 } else {
-                    home = null_mut();
+                    HOME = null_mut();
                 }
             }
 
-            home
+            HOME
         }
     }
 }
@@ -406,19 +406,19 @@ pub unsafe fn tmux_main(mut argc: i32, mut argv: *mut *mut u8, env: *mut *mut u8
             flags = client_flag::LOGIN;
         }
 
-        global_environ = environ_create().as_ptr();
+        GLOBAL_ENVIRON = environ_create().as_ptr();
 
         let mut var = environ;
         while !(*var).is_null() {
-            environ_put(global_environ, *var, 0);
+            environ_put(GLOBAL_ENVIRON, *var, 0);
             var = var.add(1);
         }
 
         let cwd = find_cwd();
         if !cwd.is_null() {
-            environ_set!(global_environ, c!("PWD"), 0, "{}", _s(cwd));
+            environ_set!(GLOBAL_ENVIRON, c!("PWD"), 0, "{}", _s(cwd));
         }
-        expand_paths(TMUX_CONF, &raw mut cfg_files, &raw mut cfg_nfiles, 1);
+        expand_paths(TMUX_CONF, &raw mut CFG_FILES, &raw mut CFG_NFILES, 1);
 
         let mut opt;
         while {
@@ -427,7 +427,7 @@ pub unsafe fn tmux_main(mut argc: i32, mut argv: *mut *mut u8, env: *mut *mut u8
         } {
             match opt as u8 {
                 b'2' => tty_add_features(&raw mut feat, c!("256"), c!(":,")),
-                b'c' => shell_command = optarg.cast(),
+                b'c' => SHELL_COMMAND = optarg.cast(),
                 b'D' => flags |= client_flag::NOFORK,
                 b'C' => {
                     if flags.intersects(client_flag::CONTROL) {
@@ -439,16 +439,16 @@ pub unsafe fn tmux_main(mut argc: i32, mut argv: *mut *mut u8, env: *mut *mut u8
                 b'f' => {
                     if fflag == 0 {
                         fflag = 1;
-                        for i in 0..cfg_nfiles {
-                            free((*cfg_files.add(i as usize)) as _);
+                        for i in 0..CFG_NFILES {
+                            free((*CFG_FILES.add(i as usize)) as _);
                         }
-                        cfg_nfiles = 0;
+                        CFG_NFILES = 0;
                     }
-                    cfg_files =
-                        xreallocarray_::<*mut u8>(cfg_files, cfg_nfiles as usize + 1).as_ptr();
-                    *cfg_files.add(cfg_nfiles as usize) = xstrdup(optarg.cast()).cast().as_ptr();
-                    cfg_nfiles += 1;
-                    cfg_quiet = 0;
+                    CFG_FILES =
+                        xreallocarray_::<*mut u8>(CFG_FILES, CFG_NFILES as usize + 1).as_ptr();
+                    *CFG_FILES.add(CFG_NFILES as usize) = xstrdup(optarg.cast()).cast().as_ptr();
+                    CFG_NFILES += 1;
+                    CFG_QUIET = 0;
                 }
                 b'V' => {
                     println!("tmux {}", getversion());
@@ -474,15 +474,15 @@ pub unsafe fn tmux_main(mut argc: i32, mut argv: *mut *mut u8, env: *mut *mut u8
         argc -= optind;
         argv = argv.add(optind as usize);
 
-        if !shell_command.is_null() && argc != 0 {
+        if !SHELL_COMMAND.is_null() && argc != 0 {
             usage();
         }
         if flags.intersects(client_flag::NOFORK) && argc != 0 {
             usage();
         }
 
-        ptm_fd = getptmfd();
-        if ptm_fd == -1 {
+        PTM_FD = getptmfd();
+        if PTM_FD == -1 {
             err(1, c!("getptmfd"));
         }
 
@@ -516,27 +516,27 @@ pub unsafe fn tmux_main(mut argc: i32, mut argv: *mut *mut u8, env: *mut *mut u8
             }
         }
 
-        global_options = options_create(null_mut());
-        global_s_options = options_create(null_mut());
-        global_w_options = options_create(null_mut());
+        GLOBAL_OPTIONS = options_create(null_mut());
+        GLOBAL_S_OPTIONS = options_create(null_mut());
+        GLOBAL_W_OPTIONS = options_create(null_mut());
 
-        let mut oe: *const options_table_entry = &raw const options_table as _;
+        let mut oe: *const options_table_entry = &raw const OPTIONS_TABLE as _;
         while !(*oe).name.is_null() {
             if (*oe).scope & OPTIONS_TABLE_SERVER != 0 {
-                options_default(global_options, oe);
+                options_default(GLOBAL_OPTIONS, oe);
             }
             if (*oe).scope & OPTIONS_TABLE_SESSION != 0 {
-                options_default(global_s_options, oe);
+                options_default(GLOBAL_S_OPTIONS, oe);
             }
             if (*oe).scope & OPTIONS_TABLE_WINDOW != 0 {
-                options_default(global_w_options, oe);
+                options_default(GLOBAL_W_OPTIONS, oe);
             }
             oe = oe.add(1);
         }
 
         // The default shell comes from SHELL or from the user's passwd entry if available.
         options_set_string!(
-            global_s_options,
+            GLOBAL_S_OPTIONS,
             c!("default-shell"),
             0,
             "{}",
@@ -551,7 +551,7 @@ pub unsafe fn tmux_main(mut argc: i32, mut argv: *mut *mut u8, env: *mut *mut u8
                 !s.is_null()
             })
         {
-            options_set_string!(global_options, c!("editor"), 0, "{}", _s(s));
+            options_set_string!(GLOBAL_OPTIONS, c!("editor"), 0, "{}", _s(s));
             if !strrchr(s, b'/' as _).is_null() {
                 s = strrchr(s, b'/' as _).add(1);
             }
@@ -560,8 +560,8 @@ pub unsafe fn tmux_main(mut argc: i32, mut argv: *mut *mut u8, env: *mut *mut u8
             } else {
                 modekey::MODEKEY_EMACS
             };
-            options_set_number(global_s_options, c!("status-keys"), keys as _);
-            options_set_number(global_w_options, c!("mode-keys"), keys as _);
+            options_set_number(GLOBAL_S_OPTIONS, c!("status-keys"), keys as _);
+            options_set_number(GLOBAL_W_OPTIONS, c!("mode-keys"), keys as _);
         }
 
         // If socket is specified on the command-line with -S or -L, it is
@@ -586,7 +586,7 @@ pub unsafe fn tmux_main(mut argc: i32, mut argv: *mut *mut u8, env: *mut *mut u8
             }
             flags |= client_flag::DEFAULTSOCKET;
         }
-        socket_path = path;
+        SOCKET_PATH = path;
         free_(label);
 
         // Pass control to the client.

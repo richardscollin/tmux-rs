@@ -14,7 +14,7 @@
 
 use crate::*;
 
-pub static cmd_choose_tree_entry: cmd_entry = cmd_entry {
+pub static CMD_CHOOSE_TREE_ENTRY: cmd_entry = cmd_entry {
     name: SyncCharPtr::new(c"choose-tree"),
     alias: SyncCharPtr::null(),
 
@@ -28,7 +28,7 @@ pub static cmd_choose_tree_entry: cmd_entry = cmd_entry {
     exec: cmd_choose_tree_exec,
 };
 
-pub static cmd_choose_client_entry: cmd_entry = cmd_entry {
+pub static CMD_CHOOSE_CLIENT_ENTRY: cmd_entry = cmd_entry {
     name: SyncCharPtr::new(c"choose-client"),
     alias: SyncCharPtr::null(),
 
@@ -42,7 +42,7 @@ pub static cmd_choose_client_entry: cmd_entry = cmd_entry {
     exec: cmd_choose_tree_exec,
 };
 
-pub static cmd_choose_buffer_entry: cmd_entry = cmd_entry {
+pub static CMD_CHOOSE_BUFFER_ENTRY: cmd_entry = cmd_entry {
     name: SyncCharPtr::new(c"choose-buffer"),
     alias: SyncCharPtr::null(),
 
@@ -56,7 +56,7 @@ pub static cmd_choose_buffer_entry: cmd_entry = cmd_entry {
     exec: cmd_choose_tree_exec,
 };
 
-pub static cmd_customize_mode_entry: cmd_entry = cmd_entry {
+pub static CMD_CUSTOMIZE_MODE_ENTRY: cmd_entry = cmd_entry {
     name: SyncCharPtr::new(c"customize-mode"),
     alias: SyncCharPtr::null(),
 
@@ -84,20 +84,20 @@ unsafe fn cmd_choose_tree_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
         let target = cmdq_get_target(item);
         let wp = (*target).wp;
 
-        let mode = if std::ptr::eq(cmd_get_entry(self_), &cmd_choose_buffer_entry) {
+        let mode = if std::ptr::eq(cmd_get_entry(self_), &CMD_CHOOSE_BUFFER_ENTRY) {
             if paste_is_empty() != 0 {
                 return cmd_retval::CMD_RETURN_NORMAL;
             }
-            &raw const window_buffer_mode
-        } else if std::ptr::eq(cmd_get_entry(self_), &cmd_choose_client_entry) {
+            &raw const WINDOW_BUFFER_MODE
+        } else if std::ptr::eq(cmd_get_entry(self_), &CMD_CHOOSE_CLIENT_ENTRY) {
             if server_client_how_many() == 0 {
                 return cmd_retval::CMD_RETURN_NORMAL;
             }
-            &raw const window_client_mode
-        } else if std::ptr::eq(cmd_get_entry(self_), &cmd_customize_mode_entry) {
-            &raw const window_customize_mode
+            &raw const WINDOW_CLIENT_MODE
+        } else if std::ptr::eq(cmd_get_entry(self_), &CMD_CUSTOMIZE_MODE_ENTRY) {
+            &raw const WINDOW_CUSTOMIZE_MODE
         } else {
-            &raw const window_tree_mode
+            &raw const WINDOW_TREE_MODE
         };
 
         window_pane_set_mode(wp, null_mut(), mode, target, args);

@@ -97,7 +97,7 @@ RB_GENERATE!(
     key_bindings_cmp
 );
 RB_GENERATE!(key_tables, key_table, entry, discr_entry, key_table_cmp);
-static mut key_tables: key_tables = rb_initializer();
+static mut KEY_TABLES: key_tables = rb_initializer();
 
 pub fn key_table_cmp(table1: &key_table, table2: &key_table) -> Ordering {
     unsafe { i32_to_ordering(strcmp(table1.name, table2.name)) }
@@ -122,7 +122,7 @@ pub unsafe fn key_bindings_get_table(name: *const u8, create: i32) -> *mut key_t
         // struct key_table	table_find, *table;
 
         (*table_find).name = name.cast_mut();
-        let table = rb_find(&raw mut key_tables, table_find);
+        let table = rb_find(&raw mut KEY_TABLES, table_find);
         if !table.is_null() || create == 0 {
             return table;
         }
@@ -133,14 +133,14 @@ pub unsafe fn key_bindings_get_table(name: *const u8, create: i32) -> *mut key_t
         rb_init(&raw mut (*table).default_key_bindings);
 
         (*table).references = 1; /* one reference in key_tables */
-        rb_insert(&raw mut key_tables, table);
+        rb_insert(&raw mut KEY_TABLES, table);
 
         table
     }
 }
 
 pub unsafe fn key_bindings_first_table() -> *mut key_table {
-    unsafe { rb_min(&raw mut key_tables) }
+    unsafe { rb_min(&raw mut KEY_TABLES) }
 }
 
 pub unsafe fn key_bindings_next_table(table: *mut key_table) -> *mut key_table {
@@ -271,7 +271,7 @@ pub unsafe fn key_bindings_remove(name: *const u8, key: key_code) {
         if rb_empty(&raw mut (*table.as_ptr()).key_bindings)
             && rb_empty(&raw mut (*table.as_ptr()).default_key_bindings)
         {
-            rb_remove(&raw mut key_tables, table.as_ptr());
+            rb_remove(&raw mut KEY_TABLES, table.as_ptr());
             key_bindings_unref_table(table.as_ptr());
         }
     }
@@ -312,10 +312,10 @@ pub unsafe fn key_bindings_remove_table(name: *const u8) {
     unsafe {
         let table = key_bindings_get_table(name, 0);
         if !table.is_null() {
-            rb_remove(&raw mut key_tables, table);
+            rb_remove(&raw mut KEY_TABLES, table);
             key_bindings_unref_table(table);
         }
-        for c in crate::compat::queue::tailq_foreach(&raw mut clients).map(NonNull::as_ptr) {
+        for c in crate::compat::queue::tailq_foreach(&raw mut CLIENTS).map(NonNull::as_ptr) {
             if (*c).keytable == table {
                 server_client_set_key_table(c, null_mut());
             }
@@ -341,7 +341,7 @@ pub unsafe fn key_bindings_reset_table(name: *const u8) {
 
 pub unsafe fn key_bindings_init_done(_item: *mut cmdq_item, data: *mut c_void) -> cmd_retval {
     unsafe {
-        for table in rb_foreach(&raw mut key_tables).map(NonNull::as_ptr) {
+        for table in rb_foreach(&raw mut KEY_TABLES).map(NonNull::as_ptr) {
             for bd in rb_foreach(&raw mut (*table).key_bindings).map(NonNull::as_ptr) {
                 let new_bd = xcalloc1::<key_binding>();
                 new_bd.key = (*bd).key;
@@ -361,7 +361,7 @@ pub unsafe fn key_bindings_init_done(_item: *mut cmdq_item, data: *mut c_void) -
 
 pub unsafe fn key_bindings_init() {
     #[rustfmt::skip]
-    static defaults: [&str; 262] = [
+    static DEFAULTS: [&str; 262] = [
         // Prefix keys.
         "bind -N 'Send the prefix key' C-b { send-prefix }",
         "bind -N 'Rotate through the panes' C-o { rotate-window }",
@@ -644,7 +644,7 @@ pub unsafe fn key_bindings_init() {
     ];
 
     unsafe {
-        for default in defaults {
+        for default in DEFAULTS {
             match cmd_parse_from_string(default, None) {
                 Err(error) => {
                     log_debug!("{}", _s(error));

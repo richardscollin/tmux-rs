@@ -15,7 +15,7 @@ use crate::*;
 
 use crate::compat::queue::{tailq_first, tailq_foreach, tailq_next, tailq_prev};
 
-pub static cmd_select_pane_entry: cmd_entry = cmd_entry {
+pub static CMD_SELECT_PANE_ENTRY: cmd_entry = cmd_entry {
     name: SyncCharPtr::new(c"select-pane"),
     alias: SyncCharPtr::new(c"selectp"),
 
@@ -29,7 +29,7 @@ pub static cmd_select_pane_entry: cmd_entry = cmd_entry {
     source: cmd_entry_flag::zeroed(),
 };
 
-pub static cmd_last_pane_entry: cmd_entry = cmd_entry {
+pub static CMD_LAST_PANE_ENTRY: cmd_entry = cmd_entry {
     name: SyncCharPtr::new(c"last-pane"),
     alias: SyncCharPtr::new(c"lastp"),
 
@@ -50,7 +50,7 @@ pub unsafe fn cmd_select_pane_redraw(w: *mut window) {
          * offset may change), otherwise just draw borders.
          */
 
-        for c in tailq_foreach(&raw mut clients).map(NonNull::as_ptr) {
+        for c in tailq_foreach(&raw mut CLIENTS).map(NonNull::as_ptr) {
             if (*c).session.is_null() || ((*c).flags.intersects(client_flag::CONTROL)) {
                 continue;
             }
@@ -85,7 +85,7 @@ pub unsafe fn cmd_select_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd
         let mut lastwp: *mut window_pane = null_mut();
         let mut markedwp = null_mut();
 
-        if std::ptr::eq(entry, &cmd_last_pane_entry) || args_has_(args, 'l') {
+        if std::ptr::eq(entry, &CMD_LAST_PANE_ENTRY) || args_has_(args, 'l') {
             /*
              * Check for no last pane found in case the other pane was
              * spawned without being visited (for example split-window -d).
@@ -130,7 +130,7 @@ pub unsafe fn cmd_select_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd
                 return cmd_retval::CMD_RETURN_NORMAL;
             }
             if server_check_marked() {
-                lastwp = marked_pane.wp;
+                lastwp = MARKED_PANE.wp;
             } else {
                 lastwp = null_mut();
             }
@@ -140,7 +140,7 @@ pub unsafe fn cmd_select_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd
             } else {
                 server_set_marked(s, wl, wp);
             }
-            markedwp = marked_pane.wp;
+            markedwp = MARKED_PANE.wp;
 
             if !lastwp.is_null() {
                 (*lastwp).flags |=

@@ -16,38 +16,38 @@ use core::ptr::null_mut;
 /// portable fgetln() version, NOT reentrant
 pub unsafe fn fgetln(fp: *mut libc::FILE, len: *mut usize) -> *mut u8 {
     unsafe {
-        static mut buf: *mut u8 = null_mut();
-        static mut bufsz: usize = 0;
+        static mut BUF: *mut u8 = null_mut();
+        static mut BUFSZ: usize = 0;
         let mut r = 0usize;
 
         if fp.is_null() || len.is_null() {
             crate::errno!() = libc::EINVAL;
             return null_mut();
         }
-        if buf.is_null() {
-            buf = libc::calloc(1, libc::BUFSIZ as usize).cast();
-            if buf.is_null() {
+        if BUF.is_null() {
+            BUF = libc::calloc(1, libc::BUFSIZ as usize).cast();
+            if BUF.is_null() {
                 return null_mut();
             }
-            bufsz = libc::BUFSIZ as usize;
+            BUFSZ = libc::BUFSIZ as usize;
         }
 
         let mut c = libc::fgetc(fp);
         while c != libc::EOF {
-            *buf.add(r) = c as u8;
+            *BUF.add(r) = c as u8;
             r += 1;
-            if (r == bufsz) {
-                let p = super::reallocarray(buf.cast(), 2, bufsz);
+            if (r == BUFSZ) {
+                let p = super::reallocarray(BUF.cast(), 2, BUFSZ);
                 if p.is_null() {
                     let e = crate::errno!();
-                    libc::free(buf.cast());
+                    libc::free(BUF.cast());
                     crate::errno!() = e;
-                    buf = null_mut();
-                    bufsz = 0;
+                    BUF = null_mut();
+                    BUFSZ = 0;
                     return null_mut();
                 }
-                buf = p.cast();
-                bufsz *= 2;
+                BUF = p.cast();
+                BUFSZ *= 2;
             }
             if c == b'\n' as i32 {
                 break;
@@ -56,6 +56,6 @@ pub unsafe fn fgetln(fp: *mut libc::FILE, len: *mut usize) -> *mut u8 {
         }
 
         *len = r;
-        if r == 0 { null_mut() } else { buf }
+        if r == 0 { null_mut() } else { BUF }
     }
 }

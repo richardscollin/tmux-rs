@@ -16,7 +16,7 @@ use crate::*;
 use crate::compat::strlcat;
 use crate::libc::strcmp;
 
-pub static cmd_list_keys_entry: cmd_entry = cmd_entry {
+pub static CMD_LIST_KEYS_ENTRY: cmd_entry = cmd_entry {
     name: SyncCharPtr::new(c"list-keys"),
     alias: SyncCharPtr::new(c"lsk"),
 
@@ -29,7 +29,7 @@ pub static cmd_list_keys_entry: cmd_entry = cmd_entry {
     target: cmd_entry_flag::zeroed(),
 };
 
-pub static cmd_list_commands_entry: cmd_entry = cmd_entry {
+pub static CMD_LIST_COMMANDS_ENTRY: cmd_entry = cmd_entry {
     name: SyncCharPtr::new(c"list-commands"),
     alias: SyncCharPtr::new(c"lscm"),
 
@@ -126,7 +126,7 @@ unsafe fn cmd_list_keys_print_notes(
 
 unsafe fn cmd_list_keys_get_prefix(args: *mut args, prefix: *mut key_code) -> NonNull<u8> {
     unsafe {
-        *prefix = options_get_number_(global_s_options, c"prefix") as _;
+        *prefix = options_get_number_(GLOBAL_S_OPTIONS, c"prefix") as _;
         if !args_has_(args, 'P') {
             if *prefix != KEYC_NONE {
                 let mut s = format_nul!("{} ", _s(key_string_lookup_key(*prefix, 0)));
@@ -151,7 +151,7 @@ unsafe fn cmd_list_keys_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retva
         let mut found = 0;
         let mut only: key_code = KEYC_UNKNOWN;
 
-        if std::ptr::eq(cmd_get_entry(self_), &cmd_list_commands_entry) {
+        if std::ptr::eq(cmd_get_entry(self_), &CMD_LIST_COMMANDS_ENTRY) {
             return cmd_list_keys_commands(self_, item);
         }
 
@@ -373,7 +373,7 @@ unsafe fn cmd_list_keys_commands(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
         format_defaults(ft, null_mut(), None, None, None);
 
         let command = args_string(args, 0);
-        let mut entryp = &raw const cmd_table as *const *const cmd_entry;
+        let mut entryp = &raw const CMD_TABLE as *const *const cmd_entry;
         while !(*entryp).is_null() {
             let entry = *entryp;
             if !command.is_null()

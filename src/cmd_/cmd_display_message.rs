@@ -18,7 +18,7 @@ const DISPLAY_MESSAGE_TEMPLATE: *const u8 = c!(
     "[#{session_name}] #{window_index}:#{window_name}, current pane #{pane_index} - (%H:%M %d-%b-%y)"
 );
 
-pub static cmd_display_message_entry: cmd_entry = cmd_entry {
+pub static CMD_DISPLAY_MESSAGE_ENTRY: cmd_entry = cmd_entry {
     name: SyncCharPtr::new(c"display-message"),
     alias: SyncCharPtr::new(c"display"),
 

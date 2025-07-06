@@ -4,8 +4,6 @@ use ::core::{
 };
 use ::libc::timeval;
 
-type c_char = u8;
-
 macro_rules! evbuffer_add_printf {
    ($buf:expr, $fmt:literal $(, $args:expr)* $(,)?) => {
         crate::event_::evbuffer_add_vprintf($buf, format_args!($fmt $(, $args)*))
@@ -265,7 +263,7 @@ pub struct bufferevent {
     pub timeout_write: timeval,
     pub enabled: c_short,
 }
-pub type event_log_cb = Option<unsafe extern "C" fn(severity: c_int, msg: *const c_char)>;
+pub type event_log_cb = Option<unsafe extern "C" fn(severity: c_int, msg: *const u8)>;
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct bufferevent_ops {
@@ -281,12 +279,12 @@ unsafe extern "C" {
 
     pub fn evbuffer_write(buffer: *mut evbuffer, fd: i32) -> i32;
     pub fn evbuffer_read(buffer: *mut evbuffer, fd: i32, howmuch: i32) -> i32;
-    pub fn evbuffer_readline(buffer: *mut evbuffer) -> *mut c_char;
+    pub fn evbuffer_readline(buffer: *mut evbuffer) -> *mut u8;
     pub fn evbuffer_readln(
         buffer: *mut evbuffer,
         n_read_out: *mut usize,
         eol_style: evbuffer_eol_style,
-    ) -> *mut c_char;
+    ) -> *mut u8;
     pub fn evbuffer_drain(buf: *mut evbuffer, len: usize) -> c_int;
     pub fn evbuffer_pullup(buf: *mut evbuffer, size: isize) -> *mut u8;
     pub fn bufferevent_free(bufev: *mut bufferevent);
@@ -316,7 +314,7 @@ unsafe extern "C" {
     pub fn event_active(ev: *mut event, res: c_int, ncalls: c_short);
     pub fn event_pending(ev: *const event, events: c_short, tv: *mut timeval) -> c_int;
     pub fn event_initialized(ev: *const event) -> c_int;
-    pub fn event_get_version() -> *const c_char;
+    pub fn event_get_version() -> *const u8;
     pub fn event_loop(arg1: c_int) -> c_int;
     pub fn event_once(
         arg1: c_int,
@@ -325,7 +323,7 @@ unsafe extern "C" {
         arg4: *mut c_void,
         arg5: *const timeval,
     ) -> c_int;
-    pub fn event_get_method() -> *const c_char;
+    pub fn event_get_method() -> *const u8;
     pub fn event_set(
         arg1: *mut event,
         arg2: c_int,

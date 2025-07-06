@@ -11,12 +11,12 @@
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-use crate::libc::{PR_SET_NAME, prctl, snprintf, strrchr};
 
 // a custom version of setproctitle which just supports our usage:
 // setproctitle( c!("%s (%s)"), name, socket_path);
 #[cfg(target_os = "linux")]
 pub unsafe fn setproctitle_(_fmt: *const u8, name: *const u8, socket_path: *const u8) {
+    use crate::libc::{PR_SET_NAME, prctl, snprintf, strrchr};
     unsafe {
         let mut title: [u8; 16] = [0; 16];
 
@@ -39,7 +39,7 @@ pub unsafe fn setproctitle_(_fmt: *const u8, name: *const u8, socket_path: *cons
 }
 
 #[cfg(target_os = "macos")]
-pub unsafe fn setproctitle_(_: *const c_char, _: *const u8, _: *const u8) {}
+pub unsafe fn setproctitle_(_: *const u8, _: *const u8, _: *const u8) {}
 
 fn getprogname() -> *const u8 {
     c"tmux".as_ptr().cast()

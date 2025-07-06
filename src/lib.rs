@@ -28,7 +28,6 @@
 #![warn(clippy::shadow_same)]
 #![allow(clippy::shadow_unrelated)] // TODO, 134 instances probably some latent bugs
 #![allow(clippy::shadow_reuse)] // 145 instances
-#![allow(clippy::manual_is_multiple_of)]
 
 mod compat;
 use compat::strtonum;

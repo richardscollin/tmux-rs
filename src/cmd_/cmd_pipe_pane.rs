@@ -12,6 +12,8 @@
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
+use std::sync::atomic;
+
 use crate::*;
 
 use libc::{
@@ -123,7 +125,7 @@ pub unsafe fn cmd_pipe_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
                 cmd_retval::CMD_RETURN_ERROR
             }
             0 => {
-                proc_clear_signals(server_proc, 1);
+                proc_clear_signals(&mut *server_proc.load(atomic::Ordering::Relaxed), 1);
                 sigprocmask(SIG_SETMASK, &oldset, null_mut());
                 close(pipe_fd[0]);
 

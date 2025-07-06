@@ -12,6 +12,8 @@
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
+use std::sync::atomic;
+
 use crate::*;
 
 use libc::{
@@ -36,7 +38,7 @@ unsafe extern "C" {
     fn ttyname(fd: i32) -> *mut c_char;
 }
 
-pub static mut client_proc: *mut tmuxproc = null_mut();
+pub static client_proc: atomic::AtomicPtr<tmuxproc> = atomic::AtomicPtr::new(null_mut());
 
 pub static mut client_peer: *mut tmuxpeer = null_mut();
 
@@ -173,7 +175,13 @@ pub unsafe fn client_connect(
                         close(lockfd);
                         return -1;
                     }
-                    fd = server_start(client_proc, flags, base, lockfd, lockfile);
+                    fd = server_start(
+                        &mut *client_proc.load(atomic::Ordering::Relaxed),
+                        flags,
+                        base,
+                        lockfd,
+                        lockfile,
+                    );
                 }
 
                 break 'retry;
@@ -244,7 +252,7 @@ pub unsafe fn client_exit_message() -> *const c_char {
 unsafe fn client_exit() {
     unsafe {
         if file_write_left(&raw mut client_files) == 0 {
-            proc_exit(client_proc);
+            proc_exit(&mut *client_proc.load(atomic::Ordering::Relaxed));
         }
     }
 }
@@ -298,8 +306,11 @@ pub unsafe extern "C-unwind" fn client_main(
             free_(values);
         }
 
-        client_proc = proc_start(c"client");
-        proc_set_signals(client_proc, Some(client_signal));
+        client_proc.store(proc_start("client"), atomic::Ordering::Release);
+        proc_set_signals(
+            &mut *client_proc.load(atomic::Ordering::Relaxed),
+            Some(client_signal),
+        );
 
         client_flags = flags;
         log_debug!(
@@ -336,7 +347,12 @@ pub unsafe extern "C-unwind" fn client_main(
             }
             return 1;
         }
-        client_peer = proc_add_peer(client_proc, fd, Some(client_dispatch), null_mut());
+        client_peer = proc_add_peer(
+            &mut *client_proc.load(atomic::Ordering::Relaxed),
+            fd,
+            Some(client_dispatch),
+            null_mut(),
+        );
 
         cwd = find_cwd();
         if cwd.is_null()
@@ -444,7 +460,7 @@ pub unsafe extern "C-unwind" fn client_main(
             proc_send(client_peer, msg, -1, null_mut(), 0);
         }
 
-        proc_loop(client_proc, None);
+        proc_loop(&mut *client_proc.load(atomic::Ordering::Relaxed), None);
 
         if client_exittype == msgtype::MSG_EXEC {
             if (*&raw const client_flags).intersects(client_flag::CONTROLCONTROL) {
@@ -620,7 +636,7 @@ unsafe fn client_exec(shell: *mut c_char, shellcmd: *mut c_char) {
         );
         setenv(c"SHELL".as_ptr(), shell, 1);
 
-        proc_clear_signals(client_proc, 1);
+        proc_clear_signals(&mut *client_proc.load(atomic::Ordering::Relaxed), 1);
 
         setblocking(STDIN_FILENO, 1);
         setblocking(STDOUT_FILENO, 1);
@@ -654,7 +670,7 @@ unsafe fn client_signal(sig: i32) {
             }
         } else if client_attached == 0 {
             if sig == SIGTERM || sig == SIGHUP {
-                proc_exit(client_proc);
+                proc_exit(&mut *client_proc.load(atomic::Ordering::Relaxed));
             }
         } else {
             match sig {
@@ -712,7 +728,7 @@ unsafe fn client_dispatch(imsg: *mut imsg, _arg: *mut c_void) {
                 client_exitreason = client_exitreason::CLIENT_EXIT_LOST_SERVER;
                 client_exitval = 1;
             }
-            proc_exit(client_proc);
+            proc_exit(&mut *client_proc.load(atomic::Ordering::Relaxed));
             return;
         }
 
@@ -796,7 +812,7 @@ unsafe fn client_dispatch_wait(imsg: *mut imsg) {
                     (*imsg).hdr.peerid & 0xff,
                 );
                 client_exitval = 1;
-                proc_exit(client_proc);
+                proc_exit(&mut *client_proc.load(atomic::Ordering::Relaxed));
             }
             msgtype::MSG_FLAGS => {
                 if datalen != size_of::<u64>() {
@@ -823,7 +839,7 @@ unsafe fn client_dispatch_wait(imsg: *mut imsg) {
             msgtype::MSG_DETACH | msgtype::MSG_DETACHKILL => {
                 proc_send(client_peer, msgtype::MSG_EXITING, -1, null_mut(), 0);
             }
-            msgtype::MSG_EXITED => proc_exit(client_proc),
+            msgtype::MSG_EXITED => proc_exit(&mut *client_proc.load(atomic::Ordering::Relaxed)),
             msgtype::MSG_READ_OPEN => {
                 file_read_open(
                     &raw mut client_files,
@@ -851,7 +867,7 @@ unsafe fn client_dispatch_wait(imsg: *mut imsg) {
             msgtype::MSG_WRITE_CLOSE => file_write_close(&raw mut client_files, imsg),
             msgtype::MSG_OLDSTDERR | msgtype::MSG_OLDSTDIN | msgtype::MSG_OLDSTDOUT => {
                 fprintf(stderr, c"server version is too old for client\n".as_ptr());
-                proc_exit(client_proc);
+                proc_exit(&mut *client_proc.load(atomic::Ordering::Relaxed));
             }
             _ => (), // TODO
         }
@@ -922,7 +938,7 @@ unsafe fn client_dispatch_attached(imsg: *mut imsg) {
                     fatalx("bad MSG_EXITED size");
                 }
 
-                proc_exit(client_proc);
+                proc_exit(&mut *client_proc.load(atomic::Ordering::Relaxed));
             }
             msgtype::MSG_SHUTDOWN => {
                 if datalen != 0 {

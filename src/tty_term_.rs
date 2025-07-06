@@ -756,7 +756,7 @@ pub unsafe fn tty_term_apply_overrides(term: *mut tty_term) {
                 acs = c!("a#j+k+l+m+n+o-p-q-r-s-t+u+v+w+x|y<z>~.");
             }
             while *acs != b'\0' && *acs.add(1) != b'\0' {
-                (*term).acs[*acs as u8 as usize][0] = *acs.add(1);
+                (*term).acs[*acs as usize][0] = *acs.add(1);
                 acs = acs.add(2);
             }
         }

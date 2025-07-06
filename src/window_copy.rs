@@ -1717,7 +1717,7 @@ pub unsafe fn window_copy_cmd_previous_matching_bracket(
                     if gc.data.size == 1 && !gc.flags.intersects(grid_flag::PADDING) {
                         if gc.data.data[0] == found {
                             n += 1;
-                        } else if gc.data.data[0] == start as u8 {
+                        } else if gc.data.data[0] == start {
                             n -= 1;
                         }
                     }
@@ -1860,7 +1860,7 @@ pub unsafe fn window_copy_cmd_next_matching_bracket(
                     if gc.data.size == 1 && !gc.flags.intersects(grid_flag::PADDING) {
                         if gc.data.data[0] == found {
                             n += 1;
-                        } else if gc.data.data[0] == end as u8 {
+                        } else if gc.data.data[0] == end {
                             n -= 1;
                         }
                     }

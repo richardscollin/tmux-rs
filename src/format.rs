@@ -4487,7 +4487,7 @@ pub unsafe fn format_replace(
                         }
                     }
                     if (*fm).size == 1 {
-                        match (*fm).modifier[0] as u8 {
+                        match (*fm).modifier[0] {
                             b'm' | b'<' | b'>' => cmp = fm,
                             b'C' => search = fm,
                             b's' => {

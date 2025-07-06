@@ -140,7 +140,7 @@ pub unsafe fn osdep_get_name(fd: i32, tty: *const u8) -> *mut u8 {
 
 #[cfg(target_os = "macos")]
 pub unsafe fn osdep_get_cwd(fd: i32) -> *const u8 {
-    static mut wd: [u8; libc::PATH_MAX as usize] = [0; libc::PATH_MAX as usize];
+    static mut WD: [u8; libc::PATH_MAX as usize] = [0; libc::PATH_MAX as usize];
     unsafe {
         let mut pathinfo: libc::proc_vnodepathinfo = zeroed();
 
@@ -158,11 +158,11 @@ pub unsafe fn osdep_get_cwd(fd: i32) -> *const u8 {
         );
         if ret == size_of::<libc::proc_vnodepathinfo>() as i32 {
             crate::compat::strlcpy(
-                &raw mut wd as *mut u8,
+                &raw mut WD as *mut u8,
                 &raw const pathinfo.pvi_cdir.vip_path as *const u8,
                 libc::PATH_MAX as usize,
             );
-            return &raw const wd as *const u8;
+            return &raw const WD as *const u8;
         }
 
         null_mut()

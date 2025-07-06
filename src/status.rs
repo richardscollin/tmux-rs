@@ -2295,7 +2295,8 @@ unsafe fn status_prompt_complete_session(
                 if *s.add(1) == b'\0' || strncmp((&raw mut n).cast(), s.add(1), strlen(s) - 1) == 0
                 {
                     *list = xreallocarray_(*list, (*size) as usize + 2).as_ptr();
-                    *(*list).add(*size as usize) = format_nul!("${}:", _s((&raw const n).cast::<u8>()));
+                    *(*list).add(*size as usize) =
+                        format_nul!("${}:", _s((&raw const n).cast::<u8>()));
                     (*size) += 1
                 }
             }

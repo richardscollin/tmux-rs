@@ -15,7 +15,6 @@ use crate::*;
 
 use crate::libc::{INT_MIN, strcmp, strlen};
 
-
 pub static cmd_capture_pane_entry: cmd_entry = cmd_entry {
     name: SyncCharPtr::new(c"capture-pane"),
     alias: SyncCharPtr::new(c"capturep"),

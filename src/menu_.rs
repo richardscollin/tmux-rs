@@ -59,9 +59,8 @@ pub unsafe fn menu_add_item(
     fs: *mut cmd_find_state,
 ) {
     unsafe {
-        let line = item.is_null()
-            || (*item).name.as_ptr().is_null()
-            || *(*item).name.as_ptr() == b'\0';
+        let line =
+            item.is_null() || (*item).name.as_ptr().is_null() || *(*item).name.as_ptr() == b'\0';
         if line && (*menu).count == 0 {
             return;
         }
@@ -465,9 +464,7 @@ pub unsafe fn menu_key_cb(c: *mut client, data: *mut c_void, mut event: *mut key
                                     }
                                     name =
                                         (*(*menu).items.add((*md).choice as usize)).name.as_ptr();
-                                    if !((name.is_null() || *name == b'-')
-                                        && (*md).choice != old)
-                                    {
+                                    if !((name.is_null() || *name == b'-') && (*md).choice != old) {
                                         break;
                                     }
                                 }
@@ -484,8 +481,7 @@ pub unsafe fn menu_key_cb(c: *mut client, data: *mut c_void, mut event: *mut key
                                     (*md).choice -= 1;
                                     name =
                                         (*(*menu).items.add((*md).choice as usize)).name.as_ptr();
-                                    if (*md).choice != 0 && (!name.is_null() && *name != b'-')
-                                    {
+                                    if (*md).choice != 0 && (!name.is_null() && *name != b'-') {
                                         i -= 1;
                                     } else if (*md).choice == 0 {
                                         break;

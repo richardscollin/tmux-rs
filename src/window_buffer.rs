@@ -523,8 +523,7 @@ pub unsafe fn window_buffer_edit_close_cb(buf: *mut u8, mut len: usize, arg: *mu
 
         let mut oldlen = 0;
         let oldbuf = paste_buffer_data_(pb, &mut oldlen);
-        if oldlen != 0 && *oldbuf.add(oldlen - 1) != b'\n' && *buf.add(len - 1) == b'\n'
-        {
+        if oldlen != 0 && *oldbuf.add(oldlen - 1) != b'\n' && *buf.add(len - 1) == b'\n' {
             len -= 1;
         }
         if len != 0 {

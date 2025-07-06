@@ -899,10 +899,7 @@ unsafe fn client_dispatch_attached(imsg: *mut imsg) {
                 proc_send(client_peer, msgtype::MSG_EXITING, -1, null_mut(), 0);
             }
             msgtype::MSG_EXEC => {
-                if datalen == 0
-                    || *data.add(datalen - 1) != b'\0'
-                    || strlen(data) + 1 == datalen
-                {
+                if datalen == 0 || *data.add(datalen - 1) != b'\0' || strlen(data) + 1 == datalen {
                     fatalx("bad MSG_EXEC string");
                 }
                 client_execcmd = xstrdup(data).as_ptr();

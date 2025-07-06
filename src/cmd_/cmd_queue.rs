@@ -26,8 +26,8 @@ macro_rules! cmdq_get_callback {
         $crate::cmd_::cmd_queue::cmdq_get_callback1(stringify!($cb), Some($cb), $data)
     };
 }
-pub(crate) use cmdq_get_callback;
 use crate::libc::{getpwuid, getuid, toupper};
+pub(crate) use cmdq_get_callback;
 
 /* Command queue flags. */
 pub const CMDQ_FIRED: i32 = 0x1;

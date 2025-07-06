@@ -15,8 +15,12 @@ use crate::*;
 
 use crate::compat::tree::rb_foreach;
 
-const LIST_WINDOWS_TEMPLATE: *const u8 = c!("#{window_index}: #{window_name}#{window_raw_flags} (#{window_panes} panes) [#{window_width}x#{window_height}] [layout #{window_layout}] #{window_id}#{?window_active, (active),}");
-const LIST_WINDOWS_WITH_SESSION_TEMPLATE: *const u8 = c!("#{session_name}:#{window_index}: #{window_name}#{window_raw_flags} (#{window_panes} panes) [#{window_width}x#{window_height}] ");
+const LIST_WINDOWS_TEMPLATE: *const u8 = c!(
+    "#{window_index}: #{window_name}#{window_raw_flags} (#{window_panes} panes) [#{window_width}x#{window_height}] [layout #{window_layout}] #{window_id}#{?window_active, (active),}"
+);
+const LIST_WINDOWS_WITH_SESSION_TEMPLATE: *const u8 = c!(
+    "#{session_name}:#{window_index}: #{window_name}#{window_raw_flags} (#{window_panes} panes) [#{window_width}x#{window_height}] "
+);
 
 pub static cmd_list_windows_entry: cmd_entry = cmd_entry {
     name: SyncCharPtr::new(c"list-windows"),

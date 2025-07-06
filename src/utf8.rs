@@ -471,9 +471,7 @@ pub unsafe fn utf8_strvis(
                 src = src.sub(ud.have as usize);
             }
             if flag.intersects(vis_flags::VIS_DQ) && *src == b'$' && src < end.sub(1) {
-                if (*src.add(1)).is_ascii_alphabetic()
-                    || *src.add(1) == b'_'
-                    || *src.add(1) == b'{'
+                if (*src.add(1)).is_ascii_alphabetic() || *src.add(1) == b'_' || *src.add(1) == b'{'
                 {
                     *dst = b'\\';
                     dst = dst.add(1);

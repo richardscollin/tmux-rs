@@ -5059,12 +5059,22 @@ pub unsafe fn window_copy_write_line(
                     )
                     .unwrap() as usize;
                 } else {
-                    size = xsnprintf_!((&raw mut hdr).cast(), 512, "{}", _s(&raw const tmp as *const u8))
-                        .unwrap() as usize;
+                    size = xsnprintf_!(
+                        (&raw mut hdr).cast(),
+                        512,
+                        "{}",
+                        _s(&raw const tmp as *const u8)
+                    )
+                    .unwrap() as usize;
                 }
             } else if (*data).searchcount == -1 {
-                size = xsnprintf_!((&raw mut hdr).cast(), 512, "{}", _s(&raw const tmp as *const u8))
-                    .unwrap() as usize;
+                size = xsnprintf_!(
+                    (&raw mut hdr).cast(),
+                    512,
+                    "{}",
+                    _s(&raw const tmp as *const u8)
+                )
+                .unwrap() as usize;
             } else {
                 size = xsnprintf_!(
                     (&raw mut hdr).cast(),

@@ -40,12 +40,13 @@ jobs:
     steps:
       - if: startsWith(matrix.os, 'ubuntu')
         <<: *ubuntu-setup
+      - uses: actions/checkout@v4
+        if: matrix.os == 'macos-latest'
       - name: Install system dependencies (macOS)
         if: matrix.os == 'macos-latest'
         run: |
           brew update
           brew install ncurses libevent
-        uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
 
       - run: cargo build

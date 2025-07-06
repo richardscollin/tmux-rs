@@ -9,5 +9,5 @@ pub unsafe fn getprogname() -> *const u8 {
 
 #[cfg(target_os = "macos")]
 pub unsafe fn getprogname() -> *const u8 {
-    c!("tmux")
+    c"tmux".as_ptr().cast()
 }

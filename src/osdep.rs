@@ -175,12 +175,12 @@ pub unsafe fn osdep_event_init() -> *mut event_base {
          * On OS X, kqueue and poll are both completely broken and don't
          * work on anything except socket file descriptors (yes, really).
          */
-        libc::setenv(c!("EVENT_NOKQUEUE"), c!("1"), 1);
-        libc::setenv(c!("EVENT_NOPOLL"), c!("1"), 1);
+        crate::libc::setenv(c!("EVENT_NOKQUEUE"), c!("1"), 1);
+        crate::libc::setenv(c!("EVENT_NOPOLL"), c!("1"), 1);
 
         let mut base: *mut event_base = event_init();
-        libc::unsetenv(c!("EVENT_NOKQUEUE"));
-        libc::unsetenv(c!("EVENT_NOPOLL"));
+        crate::libc::unsetenv(c!("EVENT_NOKQUEUE"));
+        crate::libc::unsetenv(c!("EVENT_NOPOLL"));
 
         base
     }

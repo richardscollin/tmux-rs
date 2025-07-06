@@ -196,8 +196,8 @@ pub unsafe fn proc_send(
 pub unsafe fn proc_start(name: &CStr) -> *mut tmuxproc {
     unsafe {
         log_open(name);
-        let name = name.as_ptr();
-        setproctitle_(c"%s (%s)".as_ptr(), name, socket_path);
+        let name: *const u8 = name.as_ptr().cast();
+        setproctitle_(c"%s (%s)".as_ptr().cast(), name, socket_path);
 
         let mut u = MaybeUninit::<utsname>::uninit();
         if uname(u.as_mut_ptr()) < 0 {
@@ -238,7 +238,7 @@ pub unsafe fn proc_start(name: &CStr) -> *mut tmuxproc {
         }
 
         let tp = xcalloc1::<tmuxproc>();
-        tp.name = xstrdup(name.cast()).as_ptr();
+        tp.name = xstrdup(name).as_ptr();
         tailq_init(&raw mut tp.peers);
 
         tp

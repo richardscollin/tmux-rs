@@ -5,49 +5,48 @@ on:
   push:
     branches: [main]
 name: build
+
+# Common steps for Ubuntu jobs
+.ubuntu-setup: &ubuntu-setup
+  - name: Install system dependencies (ubuntu)
+    run: |
+      sudo apt-get update
+      sudo apt-get install -y libncurses-dev libevent-dev
+  - uses: actions/checkout@v4
+
 jobs:
+
   unsafe-report:
     runs-on: ubuntu-latest
     steps:
-      - run: |
-          sudo apt-get update
-          sudo apt-get install -y libncurses-dev libevent-dev
+      - <<: *ubuntu-setup
       - uses: dtolnay/rust-toolchain@nightly
-      - uses: actions/checkout@v4
       - run: ./tools/unsafe_usage_analyzer.rs .
 
   lint:
     runs-on: ubuntu-latest
     steps:
-      - run: |
-          sudo apt-get update
-          sudo apt-get install -y libncurses-dev libevent-dev
+      - <<: *ubuntu-setup
       - uses: dtolnay/rust-toolchain@stable
-      - uses: actions/checkout@v4
       - run: cargo fmt --check
 
   build:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os: [ubuntu-latest, macos-latest, ubuntu-24.04-arm]
     env:
       LIBRARY_PATH: /opt/homebrew/lib
     steps:
-      - name: Install system dependencies (Linux)
-        if: matrix.os == 'ubuntu-latest'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libncurses-dev libevent-dev
-
+      - if: startsWith(matrix.os, 'ubuntu')
+        <<: *ubuntu-setup
       - name: Install system dependencies (macOS)
         if: matrix.os == 'macos-latest'
         run: |
           brew update
           brew install ncurses libevent
-
+        uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-      - uses: actions/checkout@v4
 
       - run: cargo build
       - run: cargo clippy

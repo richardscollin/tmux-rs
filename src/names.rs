@@ -145,13 +145,13 @@ pub unsafe fn parse_window_name(in_: *const u8) -> *mut u8 {
         if *name == b'"' as _ {
             name = name.wrapping_add(1);
         }
-        *name.add(strcspn(name, c!("\""))) = b'\0' as u8;
+        *name.add(strcspn(name, c!("\""))) = b'\0';
 
         if strncmp(name, c!("exec "), sizeof_exec - 1) == 0 {
             name = name.wrapping_add(sizeof_exec - 1);
         }
 
-        while *name == b' ' as u8 || *name == b'-' as u8 {
+        while *name == b' ' || *name == b'-' {
             name = name.wrapping_add(1);
         }
 
@@ -160,7 +160,7 @@ pub unsafe fn parse_window_name(in_: *const u8) -> *mut u8 {
             *ptr = b'\0' as _;
         }
 
-        if *name != b'\0' as u8 {
+        if *name != b'\0' {
             ptr = name.add(strlen(name) - 1);
             while ptr > name
                 && !(*ptr as u8).is_ascii_alphanumeric()
@@ -171,7 +171,7 @@ pub unsafe fn parse_window_name(in_: *const u8) -> *mut u8 {
             }
         }
 
-        if *name == b'/' as u8 {
+        if *name == b'/' {
             name = basename(name);
         }
         name = xstrdup(name).cast().as_ptr();

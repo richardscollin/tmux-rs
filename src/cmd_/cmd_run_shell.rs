@@ -278,7 +278,7 @@ pub unsafe fn cmd_run_shell_callback(job: *mut job) {
         if size != 0 {
             line = xmalloc(size + 1).cast().as_ptr();
             memcpy(line.cast(), EVBUFFER_DATA((*event).input).cast(), size);
-            *line.add(size) = b'\0' as u8;
+            *line.add(size) = b'\0';
 
             cmd_run_shell_print(job, line);
 

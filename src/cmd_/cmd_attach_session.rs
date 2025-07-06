@@ -67,7 +67,7 @@ pub unsafe fn cmd_attach_session(
         }
 
         let (type_, flags) =
-            if !tflag.is_null() && *tflag.add(libc::strcspn(tflag, c!(":."))) != b'\0' as u8 {
+            if !tflag.is_null() && *tflag.add(libc::strcspn(tflag, c!(":."))) != b'\0' {
                 (cmd_find_type::CMD_FIND_PANE, 0)
             } else {
                 (cmd_find_type::CMD_FIND_SESSION, CMD_FIND_PREFER_UNATTACHED)

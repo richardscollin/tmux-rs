@@ -30,7 +30,7 @@ pub static file_next_stream: atomic::AtomicI32 = atomic::AtomicI32::new(3);
 
 pub unsafe fn file_get_path(c: *mut client, file: *const u8) -> NonNull<u8> {
     unsafe {
-        if *file == b'/' as u8 {
+        if *file == b'/' {
             xstrdup(file)
         } else {
             NonNull::new(format_nul!(

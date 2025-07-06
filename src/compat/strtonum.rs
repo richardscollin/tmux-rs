@@ -14,7 +14,7 @@ where
         return Err(c"invalid");
     }
 
-    let buf = unsafe { std::slice::from_raw_parts(nptr as *const u8, crate::libc::strlen(nptr)) };
+    let buf = unsafe { std::slice::from_raw_parts(nptr, crate::libc::strlen(nptr)) };
     let s = std::str::from_utf8(buf).map_err(|_| c"invalid")?;
     let n = s.trim_start().parse::<i64>().map_err(|_| c"invalid")?;
 

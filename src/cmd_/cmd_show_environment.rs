@@ -38,7 +38,7 @@ unsafe fn cmd_show_environment_escape(envent: *mut environ_entry) -> *mut u8 {
         while {
             c = *value;
             value = value.add(1);
-            c != b'\0' as u8
+            c != b'\0'
         } {
             /* POSIX interprets $ ` " and \ in double quotes. */
             if c == b'$' as _ || c == b'`' as _ || c == b'"' as _ || c == b'\\' as _ {
@@ -48,7 +48,7 @@ unsafe fn cmd_show_environment_escape(envent: *mut environ_entry) -> *mut u8 {
             *out = c;
             out = out.add(1);
         }
-        *out = b'\0' as u8;
+        *out = b'\0';
 
         ret
     }

@@ -3111,10 +3111,10 @@ pub unsafe fn server_client_dispatch_identify(c: *mut client, imsg: *mut imsg) {
                 // log_debug("client %p IDENTIFY_LONGFLAGS %#llx", c, (unsigned long long)longflags);
             }
             msgtype::MSG_IDENTIFY_TERM => {
-                if datalen == 0 || *data.cast::<u8>().add((datalen - 1) as usize) != b'\0' as u8 {
+                if datalen == 0 || *data.cast::<u8>().add((datalen - 1) as usize) != b'\0' {
                     fatalx("bad MSG_IDENTIFY_TERM string");
                 }
-                if *data.cast::<u8>() == b'\0' as u8 {
+                if *data.cast::<u8>() == b'\0' {
                     (*c).term_name = xstrdup(c!("unknown")).as_ptr();
                 } else {
                     (*c).term_name = xstrdup(data.cast()).as_ptr();
@@ -3122,7 +3122,7 @@ pub unsafe fn server_client_dispatch_identify(c: *mut client, imsg: *mut imsg) {
                 // log_debug("client %p IDENTIFY_TERM %s", c, data);
             }
             msgtype::MSG_IDENTIFY_TERMINFO => {
-                if datalen == 0 || *data.cast::<u8>().add((datalen - 1) as usize) != b'\0' as u8 {
+                if datalen == 0 || *data.cast::<u8>().add((datalen - 1) as usize) != b'\0' {
                     fatalx("bad MSG_IDENTIFY_TERMINFO string");
                 }
                 (*c).term_caps =
@@ -3132,14 +3132,14 @@ pub unsafe fn server_client_dispatch_identify(c: *mut client, imsg: *mut imsg) {
                 // log_debug("client %p IDENTIFY_TERMINFO %s", c, data);
             }
             msgtype::MSG_IDENTIFY_TTYNAME => {
-                if datalen == 0 || *data.cast::<u8>().add((datalen - 1) as usize) != b'\0' as u8 {
+                if datalen == 0 || *data.cast::<u8>().add((datalen - 1) as usize) != b'\0' {
                     fatalx("bad MSG_IDENTIFY_TTYNAME string");
                 }
                 (*c).ttyname = xstrdup(data.cast()).as_ptr();
                 // log_debug("client %p IDENTIFY_TTYNAME %s", c, data);
             }
             msgtype::MSG_IDENTIFY_CWD => {
-                if datalen == 0 || *data.cast::<u8>().add((datalen - 1) as usize) != b'\0' as u8 {
+                if datalen == 0 || *data.cast::<u8>().add((datalen - 1) as usize) != b'\0' {
                     // fatalx("bad MSG_IDENTIFY_CWD string");
                 }
                 if libc::access(data.cast(), libc::X_OK) == 0 {

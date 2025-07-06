@@ -75,7 +75,7 @@ pub unsafe fn getshell() -> *const u8 {
 
 pub unsafe fn checkshell(shell: *const u8) -> bool {
     unsafe {
-        if shell.is_null() || *shell != b'/' as u8 {
+        if shell.is_null() || *shell != b'/' {
             return false;
         }
         if areshell(shell) != 0 {
@@ -97,7 +97,7 @@ pub unsafe fn areshell(shell: *const u8) -> c_int {
             shell
         };
         let mut progname = getprogname();
-        if *progname == b'-' as u8 {
+        if *progname == b'-' {
             progname = progname.wrapping_add(1);
         }
         if libc::strcmp(ptr, progname) == 0 {
@@ -120,7 +120,7 @@ pub unsafe fn expand_path(path: *const u8, home: *const u8) -> *mut u8 {
             return format_nul!("{}{}", _s(home), _s(path.add(1)));
         }
 
-        if *path == b'$' as u8 {
+        if *path == b'$' {
             end = strchr(path, b'/' as i32);
             let name = if end.is_null() {
                 xstrdup(path.add(1)).cast().as_ptr()
@@ -269,7 +269,7 @@ unsafe fn make_label(mut label: *const u8, cause: *mut *mut u8) -> *const u8 {
 pub unsafe fn shell_argv0(shell: *const u8, is_login: c_int) -> *mut u8 {
     unsafe {
         let slash = strrchr(shell, b'/' as _);
-        let name = if !slash.is_null() && *slash.add(1) != b'\0' as u8 {
+        let name = if !slash.is_null() && *slash.add(1) != b'\0' {
             slash.add(1)
         } else {
             shell
@@ -320,7 +320,7 @@ pub unsafe fn find_cwd() -> *mut u8 {
             return null_mut();
         }
         let pwd = getenv(c!("PWD"));
-        if pwd.is_null() || *pwd == b'\0' as u8 {
+        if pwd.is_null() || *pwd == b'\0' {
             return &raw mut cwd as _;
         }
 
@@ -348,7 +348,7 @@ pub unsafe fn find_home() -> *mut u8 {
             home
         } else {
             home = getenv(c!("HOME"));
-            if home.is_null() || *home == b'\0' as u8 {
+            if home.is_null() || *home == b'\0' {
                 let pw = getpwuid(getuid());
                 if !pw.is_null() {
                     home = (*pw).pw_dir.cast();
@@ -402,7 +402,7 @@ pub unsafe fn tmux_main(mut argc: i32, mut argv: *mut *mut u8, env: *mut *mut u8
         setlocale(LC_TIME, c"".as_ptr());
         tzset();
 
-        if **argv == b'-' as u8 {
+        if **argv == b'-' {
             flags = client_flag::LOGIN;
         }
 
@@ -502,13 +502,13 @@ pub unsafe fn tmux_main(mut argc: i32, mut argv: *mut *mut u8, env: *mut *mut u8
             flags |= client_flag::UTF8;
         } else {
             let mut s = getenv(c!("LC_ALL")) as *const u8;
-            if s.is_null() || *s == b'\0' as u8 {
+            if s.is_null() || *s == b'\0' {
                 s = getenv(c!("LC_CTYPE")) as *const u8;
             }
-            if s.is_null() || *s == b'\0' as u8 {
+            if s.is_null() || *s == b'\0' {
                 s = getenv(c!("LANG")) as *const u8;
             }
-            if s.is_null() || *s == b'\0' as u8 {
+            if s.is_null() || *s == b'\0' {
                 s = c!("");
             }
             if !strcasestr(s, c!("UTF-8")).is_null() || !strcasestr(s, c!("UTF8")).is_null() {
@@ -569,9 +569,9 @@ pub unsafe fn tmux_main(mut argc: i32, mut argv: *mut *mut u8, env: *mut *mut u8
         // used.
         if path.is_null() && label.is_null() {
             s = getenv(c!("TMUX"));
-            if !s.is_null() && *s != b'\0' as u8 && *s != b',' as u8 {
+            if !s.is_null() && *s != b'\0' && *s != b',' {
                 let tmp: *mut u8 = xstrdup(s).cast().as_ptr();
-                *tmp.add(strcspn(tmp, c!(","))) = b'\0' as u8;
+                *tmp.add(strcspn(tmp, c!(","))) = b'\0';
                 path = tmp;
             }
         }

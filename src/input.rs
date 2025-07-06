@@ -2157,7 +2157,7 @@ unsafe fn input_csi_dispatch_sgr_colon(ictx: *mut input_ctx, mut i: u32) {
             out = strsep(&raw mut ptr, c!(":"));
             !out.is_null()
         } {
-            if *out != b'\0' as u8 {
+            if *out != b'\0' {
                 match strtonum(out, 0, i32::MAX) {
                     Ok(x) => {
                         p[n] = x;
@@ -2997,7 +2997,7 @@ unsafe fn input_osc_133(ictx: *mut input_ctx, p: *const u8) {
         }
         let gl = grid_get_line(gd, line);
 
-        match (*p) as u8 {
+        match *p {
             b'A' => (*gl).flags |= grid_line_flag::START_PROMPT,
             b'C' => (*gl).flags |= grid_line_flag::START_OUTPUT,
             _ => (),

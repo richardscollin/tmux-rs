@@ -49,7 +49,7 @@ pub unsafe fn cmd_refresh_client_update_subscription(tc: *mut client, value: *co
             if split.is_null() {
                 break 'out;
             }
-            *split = b'\0' as u8;
+            *split = b'\0';
             split = split.add(1);
 
             let subtype = if streq_(what, "%*") {
@@ -151,7 +151,7 @@ pub unsafe fn cmd_refresh_client_update_offset(tc: *mut client, value: *const u8
     unsafe {
         let mut pane: u32 = 0;
 
-        if *value != b'%' as u8 {
+        if *value != b'%' {
             return;
         }
         let copy = xstrdup(value).as_ptr();
@@ -160,7 +160,7 @@ pub unsafe fn cmd_refresh_client_update_offset(tc: *mut client, value: *const u8
             if split.is_null() {
                 break 'out;
             }
-            *split = b'\0' as u8;
+            *split = b'\0';
             split = split.add(1);
 
             if sscanf(copy.cast(), c"%%%u".as_ptr(), &raw mut pane) != 1 {

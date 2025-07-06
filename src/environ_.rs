@@ -146,7 +146,7 @@ pub unsafe fn environ_put(env: *mut environ, var: *const u8, flags: c_int) {
         value = value.add(1);
 
         let name: *mut u8 = xstrdup(var).cast().as_ptr();
-        *name.add(libc::strcspn(name, c!("="))) = b'\0' as u8;
+        *name.add(libc::strcspn(name, c!("="))) = b'\0';
 
         environ_set!(env, name, flags, "{}", _s(value));
         free_(name);
@@ -205,7 +205,7 @@ pub unsafe fn environ_push(env: *mut environ) {
         environ = xcalloc_::<*mut u8>(1).as_ptr();
         for envent in rb_foreach(env).map(NonNull::as_ptr) {
             if (*envent).value.is_some()
-                && *(*envent).name.unwrap().as_ptr() != b'\0' as u8
+                && *(*envent).name.unwrap().as_ptr() != b'\0'
                 && !(*envent).flags & ENVIRON_HIDDEN != 0
             {
                 libc::setenv(
@@ -230,7 +230,7 @@ pub unsafe fn environ_log_(env: *mut environ, args: std::fmt::Arguments) {
         let prefix = args.to_string();
 
         for envent in rb_foreach(env).map(NonNull::as_ptr) {
-            if (*envent).value.is_some() && *(*envent).name.unwrap().as_ptr() != b'\0' as u8 {
+            if (*envent).value.is_some() && *(*envent).name.unwrap().as_ptr() != b'\0' {
                 log_debug!(
                     "{}{}={}",
                     prefix,

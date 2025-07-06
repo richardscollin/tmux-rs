@@ -397,7 +397,7 @@ pub unsafe fn tty_get_features(feat: i32) -> *const u8 {
         let s: *mut u8 = (&raw mut s_buf).cast();
         // const struct tty_feature *tf;
 
-        *s = b'\0' as u8;
+        *s = b'\0';
         for (i, tf) in tty_features.iter().cloned().enumerate() {
             if (!feat & (1 << i)) != 0 {
                 continue;
@@ -406,8 +406,8 @@ pub unsafe fn tty_get_features(feat: i32) -> *const u8 {
             strlcat(s, tf.name.as_ptr(), 512);
             strlcat(s, c!(","), 512);
         }
-        if *s != b'\0' as u8 {
-            *s.add(strlen(s) - 1) = b'\0' as u8;
+        if *s != b'\0' {
+            *s.add(strlen(s) - 1) = b'\0';
         }
 
         s

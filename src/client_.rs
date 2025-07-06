@@ -359,7 +359,7 @@ pub unsafe extern "C-unwind" fn client_main(
         */
 
         if isatty(STDIN_FILENO) != 0
-            && *termname != b'\0' as u8
+            && *termname != b'\0'
             && tty_term_read_list(
                 termname,
                 STDIN_FILENO,
@@ -745,7 +745,7 @@ unsafe fn client_dispatch_exit_message(mut data: *const u8, mut datalen: usize) 
 
             client_exitmessage = xmalloc(datalen).cast().as_ptr();
             memcpy(client_exitmessage as _, data as _, datalen);
-            *client_exitmessage.add(datalen - 1) = b'\0' as u8;
+            *client_exitmessage.add(datalen - 1) = b'\0';
 
             client_exitreason = client_exitreason::CLIENT_EXIT_MESSAGE_PROVIDED;
         }
@@ -815,7 +815,7 @@ unsafe fn client_dispatch_wait(imsg: *mut imsg) {
                 );
             }
             msgtype::MSG_SHELL => {
-                if datalen == 0 || *data.add(datalen - 1) != b'\0' as u8 {
+                if datalen == 0 || *data.add(datalen - 1) != b'\0' {
                     fatalx("bad MSG_SHELL string");
                 }
 
@@ -885,7 +885,7 @@ unsafe fn client_dispatch_attached(imsg: *mut imsg) {
                 );
             }
             msgtype::MSG_DETACH | msgtype::MSG_DETACHKILL => {
-                if datalen == 0 || *data.add(datalen - 1) != b'\0' as u8 {
+                if datalen == 0 || *data.add(datalen - 1) != b'\0' {
                     fatalx("bad MSG_DETACH string");
                 }
 
@@ -900,7 +900,7 @@ unsafe fn client_dispatch_attached(imsg: *mut imsg) {
             }
             msgtype::MSG_EXEC => {
                 if datalen == 0
-                    || *data.add(datalen - 1) != b'\0' as u8
+                    || *data.add(datalen - 1) != b'\0'
                     || strlen(data) + 1 == datalen
                 {
                     fatalx("bad MSG_EXEC string");
@@ -950,7 +950,7 @@ unsafe fn client_dispatch_attached(imsg: *mut imsg) {
                 kill(std::process::id() as i32, SIGTSTP);
             }
             msgtype::MSG_LOCK => {
-                if datalen == 0 || *data.add(datalen - 1) != b'\0' as u8 {
+                if datalen == 0 || *data.add(datalen - 1) != b'\0' {
                     fatalx("bad MSG_LOCK string");
                 }
 

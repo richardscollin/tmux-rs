@@ -65,7 +65,7 @@ pub unsafe fn session_find(name: *mut u8) -> *mut session {
 /// Find session by id parsed from a string.
 pub unsafe fn session_find_by_id_str(s: *const u8) -> *mut session {
     unsafe {
-        if *s != b'$' as u8 {
+        if *s != b'$' {
             return null_mut();
         }
 
@@ -255,14 +255,14 @@ pub unsafe fn session_destroy(s: *mut session, notify: i32, from: *const u8) {
 pub unsafe fn session_check_name(name: *const u8) -> *mut u8 {
     unsafe {
         let mut new_name = null_mut();
-        if *name == b'\0' as u8 {
+        if *name == b'\0' {
             return null_mut();
         }
         let copy = xstrdup(name).as_ptr();
         let mut cp = copy;
-        while *cp != b'\0' as u8 {
-            if *cp == b':' as u8 || *cp == b'.' as u8 {
-                *cp = b'_' as u8;
+        while *cp != b'\0' {
+            if *cp == b':' || *cp == b'.' {
+                *cp = b'_';
             }
             cp = cp.add(1);
         }

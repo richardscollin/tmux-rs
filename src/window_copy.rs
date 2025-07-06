@@ -1715,7 +1715,7 @@ pub unsafe fn window_copy_cmd_previous_matching_bracket(
 
                     grid_get_cell((*s).grid, px, py, &raw mut gc);
                     if gc.data.size == 1 && !gc.flags.intersects(grid_flag::PADDING) {
-                        if gc.data.data[0] == found as u8 {
+                        if gc.data.data[0] == found {
                             n += 1;
                         } else if gc.data.data[0] == start as u8 {
                             n -= 1;
@@ -4116,7 +4116,7 @@ pub unsafe fn window_copy_move_right(s: *mut screen, fx: *mut u32, fy: *mut u32,
 pub unsafe fn window_copy_is_lowercase(mut ptr: *const u8) -> bool {
     unsafe {
         while *ptr != b'\0' {
-            if *ptr as u8 != (*ptr as u8).to_ascii_lowercase() {
+            if *ptr != (*ptr).to_ascii_lowercase() {
                 return false;
             }
             ptr = ptr.add(1);

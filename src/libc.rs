@@ -84,7 +84,7 @@ pub unsafe fn strcspn(cs: *const u8, ct: *const u8) -> usize {
 }
 
 pub unsafe fn strrchr(cs: *const u8, c: c_int) -> *mut u8 {
-    unsafe { ::libc::strchr(cs.cast(), c as i32).cast() }
+    unsafe { ::libc::strchr(cs.cast(), c).cast() }
 }
 
 pub unsafe fn strchr(cs: *const u8, c: i32) -> *mut u8 {
@@ -283,7 +283,7 @@ pub unsafe fn strncmp(cs: *const u8, ct: *const u8, n: usize) -> i32 {
 pub unsafe fn strcmp_(left: *const u8, right: &'static str) -> std::cmp::Ordering {
     unsafe {
         for (i, r_ch) in right.bytes().enumerate() {
-            let l_ch = *left.add(i) as u8;
+            let l_ch = *left.add(i);
 
             if l_ch == b'\0' {
                 return std::cmp::Ordering::Less;
@@ -314,7 +314,7 @@ pub unsafe fn strncasecmp(s1: *const u8, s2: *const u8, n: usize) -> i32 {
 pub unsafe fn strcasecmp_(left: *const u8, right: &'static str) -> std::cmp::Ordering {
     unsafe {
         for (i, r_ch) in right.bytes().enumerate() {
-            let l_ch = *left.add(i) as u8;
+            let l_ch = *left.add(i);
 
             if l_ch == b'\0' {
                 return std::cmp::Ordering::Less;

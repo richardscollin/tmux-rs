@@ -360,7 +360,7 @@ pub unsafe fn format_job_complete(job: *mut job) {
             if len != 0 {
                 memcpy(buf.cast(), EVBUFFER_DATA(evb).cast(), len);
             }
-            *buf.add(len) = b'\0' as u8;
+            *buf.add(len) = b'\0';
         } else {
             buf = line;
         }
@@ -373,7 +373,7 @@ pub unsafe fn format_job_complete(job: *mut job) {
             _s(buf)
         );
 
-        if *buf != b'\0' as u8 || !(*fj).updated != 0 {
+        if *buf != b'\0' || !(*fj).updated != 0 {
             free((*fj).out.cast());
             (*fj).out = buf;
         } else {
@@ -560,7 +560,7 @@ pub unsafe fn format_cb_host_short(ft: *mut format_tree) -> *mut c_void {
 
         let cp = strchr(host.as_mut_ptr().cast(), b'.' as i32);
         if !cp.is_null() {
-            *cp = b'\0' as u8;
+            *cp = b'\0';
         }
         xstrdup(host.as_ptr().cast()).as_ptr().cast()
     }
@@ -619,14 +619,14 @@ pub unsafe fn format_cb_session_alerts(ft: *mut format_tree) -> *mut c_void {
             return null_mut();
         }
 
-        *alerts = b'\0' as u8;
+        *alerts = b'\0';
         for wl in rb_foreach(&raw mut (*s).windows).map(NonNull::as_ptr) {
             if !(*wl).flags.intersects(WINLINK_ALERTFLAGS) {
                 continue;
             }
             xsnprintf_!(tmp, sizeof_tmp, "{}", (*wl).idx);
 
-            if *alerts != b'\0' as u8 {
+            if *alerts != b'\0' {
                 strlcat(alerts, c!(","), sizeof_alerts);
             }
             strlcat(alerts, tmp, sizeof_alerts);
@@ -664,7 +664,7 @@ pub unsafe fn format_cb_session_stack(ft: *mut format_tree) -> *mut c_void {
         for wl in tailq_foreach::<_, discr_sentry>(&raw mut (*s).lastw).map(NonNull::as_ptr) {
             xsnprintf_!(tmp, sizeof_tmp, "{}", (*wl).idx);
 
-            if *result != b'\0' as u8 {
+            if *result != b'\0' {
                 strlcat(result, c!(","), sizeof_result);
             }
             strlcat(result, tmp, sizeof_result);
@@ -907,10 +907,10 @@ pub unsafe fn format_cb_current_command(ft: *mut format_tree) -> *mut c_void {
         }
 
         let mut cmd = osdep_get_name((*wp).fd, (*wp).tty.as_ptr());
-        if cmd.is_null() || *cmd == b'\0' as u8 {
+        if cmd.is_null() || *cmd == b'\0' {
             free_(cmd);
             cmd = cmd_stringify_argv((*wp).argc, (*wp).argv);
-            if cmd.is_null() || *cmd == b'\0' as u8 {
+            if cmd.is_null() || *cmd == b'\0' {
                 free_(cmd);
                 cmd = xstrdup((*wp).shell).as_ptr().cast();
             }
@@ -3380,16 +3380,16 @@ pub unsafe fn format_quote_shell(s: *const u8) -> *mut u8 {
         let out: *mut u8 = xmalloc(strlen(s) * 2 + 1).as_ptr().cast();
         let mut at = out;
         let mut cp = s;
-        while *cp != b'\0' as u8 {
+        while *cp != b'\0' {
             if !strchr(c!("|&;<>()$`\\\"'*?[# =%"), *cp as i32).is_null() {
-                *at = b'\\' as u8;
+                *at = b'\\';
                 at = at.add(1);
             }
             *at = *cp;
             at = at.add(1);
             cp = cp.add(1);
         }
-        *at = b'\0' as u8;
+        *at = b'\0';
         out
     }
 }
@@ -3401,16 +3401,16 @@ pub unsafe fn format_quote_style(s: *const u8) -> *mut u8 {
         let mut at = out;
 
         let mut cp = s;
-        while *cp != b'\0' as u8 {
-            if *cp == b'#' as u8 {
-                *at = b'#' as u8;
+        while *cp != b'\0' {
+            if *cp == b'#' {
+                *at = b'#';
                 at = at.add(1);
             }
             *at = *cp;
             at = at.add(1);
             cp = cp.add(1);
         }
-        *at = b'\0' as u8;
+        *at = b'\0';
         out
     }
 }
@@ -3584,7 +3584,7 @@ fn format_find(
                     strftime(s, sizeof_s, time_format, tm);
                 } else {
                     ctime_r(&raw const t, s.cast());
-                    *s.add(strcspn(s, c!("\n"))) = b'\0' as u8;
+                    *s.add(strcspn(s, c!("\n"))) = b'\0';
                 }
                 found = xstrdup(s).as_ptr();
             }
@@ -3628,24 +3628,23 @@ pub unsafe fn format_unescape(mut s: *const u8) -> *mut u8 {
         let mut cp = xmalloc(strlen(s) + 1).as_ptr().cast();
         let out = cp;
         let mut brackets = 0;
-        while *s != b'\0' as u8 {
-            if *s == b'#' as u8 && *s.add(1) == b'{' as u8 {
+        while *s != b'\0' {
+            if *s == b'#' && *s.add(1) == b'{' {
                 brackets += 1;
             }
-            if brackets == 0 && *s == b'#' as u8 && !strchr(c!(",#{}:"), *s.add(1) as i32).is_null()
-            {
+            if brackets == 0 && *s == b'#' && !strchr(c!(",#{}:"), *s.add(1) as i32).is_null() {
                 s = s.add(1);
                 *cp = *s;
                 cp = cp.add(1);
                 continue;
             }
-            if *s == b'}' as u8 {
+            if *s == b'}' {
                 brackets -= 1;
             }
             *cp = *s;
             cp = cp.add(1);
         }
-        *cp = b'\0' as u8;
+        *cp = b'\0';
         out
     }
 }
@@ -3657,11 +3656,11 @@ pub unsafe fn format_strip(mut s: *const u8) -> *mut u8 {
         let mut cp = out;
         let mut brackets = 0;
 
-        while *s != b'\0' as u8 {
-            if *s == b'#' as u8 && *s.add(1) == b'{' as u8 {
+        while *s != b'\0' {
+            if *s == b'#' && *s.add(1) == b'{' {
                 brackets += 1;
             }
-            if *s == b'#' as u8 && !strchr(c!(",#{}:"), *s.add(1) as i32).is_null() {
+            if *s == b'#' && !strchr(c!(",#{}:"), *s.add(1) as i32).is_null() {
                 if brackets != 0 {
                     *cp = *s;
                     cp = cp.add(1);
@@ -3669,14 +3668,14 @@ pub unsafe fn format_strip(mut s: *const u8) -> *mut u8 {
                 s = s.add(1);
                 continue;
             }
-            if *s == b'}' as u8 {
+            if *s == b'}' {
                 brackets -= 1;
             }
             *cp = *s;
             cp = cp.add(1);
             s = s.add(1);
         }
-        *cp = b'\0' as u8;
+        *cp = b'\0';
         out
     }
 }
@@ -3686,18 +3685,16 @@ pub unsafe fn format_skip(mut s: *const u8, end: *const u8) -> *const u8 {
     unsafe {
         let mut brackets = 0;
 
-        while *s != b'\0' as u8 {
-            if *s == b'#' as u8 && *s.add(1) == b'{' as u8 {
+        while *s != b'\0' {
+            if *s == b'#' && *s.add(1) == b'{' {
                 brackets += 1;
             }
-            if *s == b'#' as u8
-                && *s.add(1) != b'\0' as u8
-                && !strchr(c!(",#{}:"), *s.add(1) as i32).is_null()
+            if *s == b'#' && *s.add(1) != b'\0' && !strchr(c!(",#{}:"), *s.add(1) as i32).is_null()
             {
                 s = s.add(2);
                 continue;
             }
-            if *s == b'}' as u8 {
+            if *s == b'}' {
                 brackets -= 1;
             }
             if !strchr(end, *s as i32).is_null() && brackets == 0 {
@@ -3705,7 +3702,7 @@ pub unsafe fn format_skip(mut s: *const u8, end: *const u8) -> *const u8 {
             }
             s = s.add(1);
         }
-        if *s == b'\0' as u8 {
+        if *s == b'\0' {
             return null_mut();
         }
         s
@@ -3746,7 +3743,7 @@ pub unsafe fn format_choose(
 
 pub unsafe fn format_true(s: *const u8) -> c_int {
     unsafe {
-        if !s.is_null() && *s != b'\0' as u8 && (*s != b'0' as u8 || *s.add(1) != b'\0' as u8) {
+        if !s.is_null() && *s != b'\0' && (*s != b'0' || *s.add(1) != b'\0') {
             return 1;
         }
         0
@@ -3755,7 +3752,7 @@ pub unsafe fn format_true(s: *const u8) -> c_int {
 
 /// Check if modifier end.
 pub fn format_is_end(c: u8) -> bool {
-    c == b';' as u8 || c == b':' as u8
+    c == b';' || c == b':'
 }
 
 /* Add to modifier list. */
@@ -3776,7 +3773,7 @@ pub unsafe fn format_add_modifier(
         (*count) += 1;
 
         memcpy((*fm).modifier.as_mut_ptr().cast(), c.cast(), n);
-        (*fm).modifier[n] = b'\0' as u8;
+        (*fm).modifier[n] = b'\0';
         (*fm).size = n as u32;
 
         (*fm).argv = argv;
@@ -3827,9 +3824,9 @@ pub unsafe fn format_build_modifiers(
 
         *count = 0;
 
-        while *cp != b'\0' as u8 && *cp != b':' as u8 {
+        while *cp != b'\0' && *cp != b':' {
             /* Skip any separator character. */
-            if *cp == b';' as u8 {
+            if *cp == b';' {
                 cp = cp.add(1);
             }
 
@@ -3870,7 +3867,7 @@ pub unsafe fn format_build_modifiers(
             argc = 0;
 
             /* Single argument with no wrapper character. */
-            if ispunct(*cp.add(1) as i32) == 0 || *cp.add(1) == b'-' as u8 {
+            if ispunct(*cp.add(1) as i32) == 0 || *cp.add(1) == b'-' {
                 let end: *const u8 = format_skip(cp.add(1), c!(":;"));
                 if end.is_null() {
                     break;
@@ -3914,7 +3911,7 @@ pub unsafe fn format_build_modifiers(
             }
             format_add_modifier(&raw mut list, count, &raw mut c, 1, argv, argc);
         }
-        if *cp != b':' as u8 {
+        if *cp != b':' {
             format_free_modifiers(list, *count);
             *count = 0;
             return null_mut();
@@ -3930,7 +3927,7 @@ pub unsafe fn format_match(
     text: *const u8,
 ) -> *mut u8 {
     unsafe {
-        let mut s = c!("") as *const u8;
+        let mut s = c!("");
         let mut r = MaybeUninit::<regex_t>::uninit();
         let r = r.as_mut_ptr();
         let mut flags: i32 = 0;
@@ -4329,7 +4326,7 @@ pub unsafe fn format_replace_expression(
             }
 
             mleft = strtod(left, &raw mut endch);
-            if *endch != b'\0' as u8 {
+            if *endch != b'\0' {
                 format_log1!(
                     es,
                     c!("format_replace_expression"),
@@ -4340,7 +4337,7 @@ pub unsafe fn format_replace_expression(
             }
 
             mright = strtod(right, &raw mut endch);
-            if *endch != b'\0' as u8 {
+            if *endch != b'\0' {
                 format_log1!(
                     es,
                     c!("format_replace_expression"),
@@ -4738,7 +4735,7 @@ pub unsafe fn format_replace(
 
                     free_(right);
                     free_(left);
-                } else if *copy == b'?' as u8 {
+                } else if *copy == b'?' {
                     /* Conditional: check first and choose second or third. */
                     cp = format_skip(copy.add(1), c!(","));
                     if cp.is_null() {
@@ -4974,7 +4971,7 @@ pub unsafe fn format_expand1(es: *mut format_expand_state, mut fmt: *const u8) -
         let mut expanded = MaybeUninit::<[u8; sizeof_expanded]>::uninit();
         let expanded = expanded.as_mut_ptr() as *mut u8;
 
-        if fmt.is_null() || *fmt == b'\0' as u8 {
+        if fmt.is_null() || *fmt == b'\0' {
             return xstrdup(c!("")).as_ptr();
         }
 
@@ -5020,8 +5017,8 @@ pub unsafe fn format_expand1(es: *mut format_expand_state, mut fmt: *const u8) -
         let mut off = 0;
         let mut n = 0;
 
-        while *fmt != b'\0' as u8 {
-            if *fmt != b'#' as u8 {
+        while *fmt != b'\0' {
+            if *fmt != b'#' {
                 while len - off < 2 {
                     buf = xreallocarray(buf.cast(), 2, len).as_ptr().cast();
                     len *= 2;
@@ -5033,7 +5030,7 @@ pub unsafe fn format_expand1(es: *mut format_expand_state, mut fmt: *const u8) -
             }
             fmt = fmt.add(1);
 
-            let ch: u8 = (*fmt) as u8;
+            let ch: u8 = (*fmt);
             fmt = fmt.add(1);
             let mut brackets = 0;
 
@@ -5042,11 +5039,11 @@ pub unsafe fn format_expand1(es: *mut format_expand_state, mut fmt: *const u8) -
                 b'(' => {
                     brackets = 1;
                     ptr = fmt;
-                    while *ptr != b'\0' as u8 {
-                        if *ptr == b'(' as u8 {
+                    while *ptr != b'\0' {
+                        if *ptr == b'(' {
                             brackets += 1;
                         }
-                        if *ptr == b')' as u8
+                        if *ptr == b')'
                             && ({
                                 brackets -= 1;
                                 brackets == 0
@@ -5056,7 +5053,7 @@ pub unsafe fn format_expand1(es: *mut format_expand_state, mut fmt: *const u8) -
                         }
                         ptr = ptr.add(1);
                     }
-                    if *ptr != b')' as u8 || brackets != 0 {
+                    if *ptr != b')' || brackets != 0 {
                         break;
                     }
                     n = ptr.offset_from(fmt) as usize;
@@ -5111,11 +5108,11 @@ pub unsafe fn format_expand1(es: *mut format_expand_state, mut fmt: *const u8) -
                      */
                     ptr = fmt.sub((ch == b'[') as usize);
                     n = 2 - (ch == b'[') as usize;
-                    while *ptr == b'#' as u8 {
+                    while *ptr == b'#' {
                         ptr = ptr.add(1);
                         n += 1;
                     }
-                    if *ptr == b'[' as u8 {
+                    if *ptr == b'[' {
                         style_end = format_skip(fmt.offset(-2), c!("]"));
                         format_log1!(es, c!("format_expand1"), "found #*{}[", n);
                         while len - off < n + 2 {
@@ -5133,7 +5130,7 @@ pub unsafe fn format_expand1(es: *mut format_expand_state, mut fmt: *const u8) -
                         buf = xreallocarray(buf.cast(), 2, len).as_ptr().cast();
                         len *= 2;
                     }
-                    *buf.add(off) = ch as u8;
+                    *buf.add(off) = ch;
                     off += 1;
                     continue;
                 }
@@ -5144,7 +5141,7 @@ pub unsafe fn format_expand1(es: *mut format_expand_state, mut fmt: *const u8) -
                         buf = xreallocarray(buf.cast(), 2, len).as_ptr().cast();
                         len *= 2;
                     }
-                    *buf.add(off) = ch as u8;
+                    *buf.add(off) = ch;
                     off += 1;
                     continue;
                 }
@@ -5162,9 +5159,9 @@ pub unsafe fn format_expand1(es: *mut format_expand_state, mut fmt: *const u8) -
                             buf = xreallocarray(buf.cast(), 2, len).as_ptr().cast();
                             len *= 2;
                         }
-                        *buf.add(off) = b'#' as u8;
+                        *buf.add(off) = b'#';
                         off += 1;
-                        *buf.add(off) = ch as u8;
+                        *buf.add(off) = ch;
                         off += 1;
 
                         continue;
@@ -5180,7 +5177,7 @@ pub unsafe fn format_expand1(es: *mut format_expand_state, mut fmt: *const u8) -
 
             break;
         }
-        *buf.add(off) = b'\0' as u8;
+        *buf.add(off) = b'\0';
 
         format_log1!(es, c!("format_expand1"), "result is: {}", _s(buf),);
         (*es).loop_ -= 1;

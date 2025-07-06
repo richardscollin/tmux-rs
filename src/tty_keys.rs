@@ -847,7 +847,7 @@ pub unsafe fn tty_keys_build(tty: *mut tty) {
                     tdkx.template.as_ptr(),
                     size_of::<[u8; 16]>(),
                 );
-                copy[libc::strcspn(copy.as_ptr(), c!("_")) as usize] = b'0' as u8 + j as u8;
+                copy[libc::strcspn(copy.as_ptr(), c!("_"))] = b'0' + j as u8;
 
                 let key = tdkx.key | tty_default_xterm_modifiers_j;
                 tty_keys_add(tty, copy.as_ptr(), key);
@@ -997,7 +997,7 @@ unsafe fn tty_keys_next1(
         }
 
         /* Is this valid UTF-8? */
-        more = utf8_open(&mut ud, *buf as u8);
+        more = utf8_open(&mut ud, (*buf));
         if more == utf8_state::UTF8_MORE {
             *size = ud.size as usize;
             if len < ud.size as usize {
@@ -1007,7 +1007,7 @@ unsafe fn tty_keys_next1(
                 return -1;
             }
             for i in 1..ud.size {
-                more = utf8_append(&mut ud, *buf.add(i as usize) as u8);
+                more = utf8_append(&mut ud, (*buf.add(i as usize)));
             }
             if more != utf8_state::UTF8_DONE {
                 return -1;
@@ -1407,7 +1407,7 @@ unsafe fn tty_keys_extended_key(
             if *buf.add(end) == b'~' {
                 break;
             }
-            if !(*buf.add(end) as u8).is_ascii_digit() && *buf.add(end) != b';' {
+            if !(*buf.add(end)).is_ascii_digit() && *buf.add(end) != b';' {
                 break;
             }
         }
@@ -1575,7 +1575,7 @@ unsafe fn tty_keys_mouse(
                 if len <= *size {
                     return 1;
                 }
-                ch = *buf.add(*size) as u8;
+                ch = *buf.add(*size);
                 *size += 1;
                 if i == 0 {
                     b = ch as u32;
@@ -1601,7 +1601,7 @@ unsafe fn tty_keys_mouse(
                 if len <= *size {
                     return 1;
                 }
-                ch = *buf.add(*size) as u8;
+                ch = *buf.add(*size);
                 *size += 1;
                 if ch == b';' {
                     break;
@@ -1615,7 +1615,7 @@ unsafe fn tty_keys_mouse(
                 if len <= *size {
                     return 1;
                 }
-                ch = *buf.add(*size) as u8;
+                ch = *buf.add(*size);
                 *size += 1;
                 if ch == b';' {
                     break;
@@ -1629,7 +1629,7 @@ unsafe fn tty_keys_mouse(
                 if len <= *size {
                     return 1;
                 }
-                ch = *buf.add(*size) as u8;
+                ch = *buf.add(*size);
                 *size += 1;
                 if ch == b'M' || ch == b'm' {
                     break;

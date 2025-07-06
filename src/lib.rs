@@ -29,8 +29,6 @@
 #![allow(clippy::shadow_unrelated)] // TODO, 134 instances probably some latent bugs
 #![allow(clippy::shadow_reuse)] // 145 instances
 #![allow(clippy::manual_is_multiple_of)]
-//
-#![warn(clippy::unnecessary_cast)]
 
 mod compat;
 use compat::strtonum;
@@ -2073,11 +2071,7 @@ struct cmd_entry_flag {
 
 impl cmd_entry_flag {
     const fn new(flag: u8, type_: cmd_find_type, flags: i32) -> Self {
-        Self {
-            flag: flag as u8,
-            type_,
-            flags,
-        }
+        Self { flag, type_, flags }
     }
 
     const fn zeroed() -> Self {
@@ -3184,7 +3178,7 @@ impl std::fmt::Display for DisplayCStrPtr {
             unsafe { libc::strlen(self.0) }
         };
 
-        let s: &[u8] = unsafe { std::slice::from_raw_parts(self.0 as *const u8, len) };
+        let s: &[u8] = unsafe { std::slice::from_raw_parts(self.0, len) };
         let s = std::str::from_utf8(s).unwrap_or("%s-invalid-utf8");
         f.write_str(s)
     }

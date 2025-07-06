@@ -137,7 +137,7 @@ pub unsafe fn paste_get_name(name: *const u8) -> *mut paste_buffer {
     unsafe {
         let mut pbfind = MaybeUninit::<paste_buffer>::uninit();
 
-        if name.is_null() || *name == b'\0' as u8 {
+        if name.is_null() || *name == b'\0' {
             return null_mut();
         }
 
@@ -220,13 +220,13 @@ pub unsafe fn paste_rename(oldname: *const u8, newname: *const u8, cause: *mut *
             *cause = null_mut();
         }
 
-        if oldname.is_null() || *oldname == b'\0' as u8 {
+        if oldname.is_null() || *oldname == b'\0' {
             if !cause.is_null() {
                 *cause = xstrdup_(c"no buffer").as_ptr();
             }
             return -1;
         }
-        if newname.is_null() || *newname == b'\0' as u8 {
+        if newname.is_null() || *newname == b'\0' {
             if !cause.is_null() {
                 *cause = xstrdup_(c"new name is empty").as_ptr();
             }

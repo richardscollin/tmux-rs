@@ -92,7 +92,7 @@ pub unsafe fn notify_insert_hook(mut item: *mut cmdq_item, ne: *mut notify_entry
         );
         cmdq_add_formats(state, (*ne).formats);
 
-        if *(*ne).name == b'@' as u8 {
+        if *(*ne).name == b'@' {
             let value = options_get_string(oo, (*ne).name);
             match cmd_parse_from_string(cstr_to_str(value), None) {
                 Err(error) => {

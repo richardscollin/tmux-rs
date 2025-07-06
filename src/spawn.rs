@@ -332,7 +332,7 @@ pub unsafe fn spawn_pane(sc: *mut spawn_context, cause: *mut *mut u8) -> *mut wi
              */
             if (*sc).argc == 0 && (!(*sc).flags & SPAWN_RESPAWN != 0) {
                 cmd = options_get_string_((*s).options, c"default-command");
-                if !cmd.is_null() && *cmd != b'\0' as u8 {
+                if !cmd.is_null() && *cmd != b'\0' {
                     argc = 1;
                     argv = &raw mut cmd as *mut *mut u8;
                 } else {
@@ -529,7 +529,7 @@ pub unsafe fn spawn_pane(sc: *mut spawn_context, cause: *mut *mut u8) -> *mut wi
             cp = strrchr((*new_wp).shell, b'/' as i32);
             if (*new_wp).argc == 1 {
                 tmp = *(*new_wp).argv;
-                argv0 = if !cp.is_null() && *cp.add(1) != b'\0' as u8 {
+                argv0 = if !cp.is_null() && *cp.add(1) != b'\0' {
                     format_nul!("{}", _s(cp.add(1)))
                 } else {
                     format_nul!("{}", _s((*new_wp).shell))
@@ -543,7 +543,7 @@ pub unsafe fn spawn_pane(sc: *mut spawn_context, cause: *mut *mut u8) -> *mut wi
                 );
                 _exit(1);
             }
-            argv0 = if !cp.is_null() && *cp.add(1) != b'\0' as u8 {
+            argv0 = if !cp.is_null() && *cp.add(1) != b'\0' {
                 format_nul!("-{}", _s(cp.add(1)))
             } else {
                 format_nul!("-{}", _s((*new_wp).shell))

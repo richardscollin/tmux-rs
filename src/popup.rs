@@ -958,7 +958,7 @@ pub unsafe fn popup_editor(
         strcpy(path.as_mut_ptr(), c!("/tmp/tmux.XXXXXXXX").cast());
 
         let editor = options_get_string_(global_options, c"editor");
-        if *editor == b'\0' as u8 {
+        if *editor == b'\0' {
             return -1;
         }
 

@@ -948,38 +948,38 @@ pub unsafe fn window_printable_flags(wl: *mut winlink, escape: i32) -> *const u8
 
         let mut pos = 0;
         if (*wl).flags.intersects(winlink_flags::WINLINK_ACTIVITY) {
-            flags[pos] = b'#' as u8;
+            flags[pos] = b'#';
             pos += 1;
             if escape != 0 {
-                flags[pos] = b'#' as u8;
+                flags[pos] = b'#';
                 pos += 1;
             }
         }
         if (*wl).flags.intersects(winlink_flags::WINLINK_BELL) {
-            flags[pos] = b'!' as u8;
+            flags[pos] = b'!';
             pos += 1;
         }
         if (*wl).flags.intersects(winlink_flags::WINLINK_SILENCE) {
-            flags[pos] = b'~' as u8;
+            flags[pos] = b'~';
             pos += 1;
         }
         if wl == (*s).curw {
-            flags[pos] = b'*' as u8;
+            flags[pos] = b'*';
             pos += 1;
         }
         if wl == tailq_first(&raw mut (*s).lastw) {
-            flags[pos] = b'-' as u8;
+            flags[pos] = b'-';
             pos += 1;
         }
         if server_check_marked() && wl == marked_pane.wl {
-            flags[pos] = b'M' as u8;
+            flags[pos] = b'M';
             pos += 1;
         }
         if (*(*wl).window).flags.intersects(window_flag::ZOOMED) {
-            flags[pos] = b'Z' as u8;
+            flags[pos] = b'Z';
             pos += 1;
         }
-        flags[pos] = b'\0' as u8;
+        flags[pos] = b'\0';
         &raw mut flags as *mut u8
     }
 }
@@ -987,7 +987,7 @@ pub unsafe fn window_printable_flags(wl: *mut winlink, escape: i32) -> *const u8
 pub unsafe fn window_pane_find_by_id_str(s: *const u8) -> *mut window_pane {
     let mut errstr: *const u8 = null_mut();
     unsafe {
-        if *s != b'%' as u8 {
+        if *s != b'%' {
             return null_mut();
         }
 

@@ -888,7 +888,7 @@ unsafe fn format_draw_many(ctx: *mut screen_write_ctx, sy: *mut style, ch: u8, n
     unsafe {
         let mut i: u32;
 
-        utf8_set(&raw mut (*sy).gc.data, ch as u8);
+        utf8_set(&raw mut (*sy).gc.data, ch);
         for i in 0..n {
             screen_write_cell(ctx, &raw mut (*sy).gc);
         }
@@ -1026,14 +1026,14 @@ pub unsafe fn format_draw(
                     // Is this not a style?
                     if *cp != b'#' || *cp.add(1) != b'[' || sy.ignore != 0 {
                         // See if this is a UTF-8 character.
-                        more = utf8_open(ud, *cp as u8);
+                        more = utf8_open(ud, (*cp));
                         if more == utf8_state::UTF8_MORE {
                             while ({
                                 cp = cp.add(1);
                                 *cp != b'\0'
                             }) && more == utf8_state::UTF8_MORE
                             {
-                                more = utf8_append(ud, *cp as u8);
+                                more = utf8_append(ud, (*cp));
                             }
                             if more != utf8_state::UTF8_DONE {
                                 cp = cp.wrapping_sub((*ud).have as usize);
@@ -1047,7 +1047,7 @@ pub unsafe fn format_draw(
                                 cp = cp.add(1);
                                 continue;
                             }
-                            utf8_set(ud, *cp as u8);
+                            utf8_set(ud, (*cp));
                             cp = cp.add(1);
                         }
 
@@ -1455,7 +1455,7 @@ pub unsafe fn format_width(expanded: *const u8) -> u32 {
                     }
                     cp = end.add(1);
                 }
-            } else if let mut more = utf8_open(&raw mut ud, *cp as u8)
+            } else if let mut more = utf8_open(&raw mut ud, (*cp))
                 && more == utf8_state::UTF8_MORE
             {
                 while ({
@@ -1463,7 +1463,7 @@ pub unsafe fn format_width(expanded: *const u8) -> u32 {
                     *cp != b'\0'
                 } && more == utf8_state::UTF8_MORE)
                 {
-                    more = utf8_append(&raw mut ud, *cp as u8);
+                    more = utf8_append(&raw mut ud, (*cp));
                 }
                 if more == utf8_state::UTF8_DONE {
                     width += ud.width as u32;
@@ -1534,7 +1534,7 @@ pub unsafe fn format_trim_left(expanded: *const u8, limit: u32) -> *mut u8 {
                     out = out.offset(end.add(1).offset_from(cp));
                     cp = end.add(1);
                 }
-            } else if let mut more = utf8_open(&raw mut ud, *cp as u8)
+            } else if let mut more = utf8_open(&raw mut ud, (*cp))
                 && more == utf8_state::UTF8_MORE
             {
                 while ({
@@ -1542,7 +1542,7 @@ pub unsafe fn format_trim_left(expanded: *const u8, limit: u32) -> *mut u8 {
                     *cp != b'\0'
                 }) && more == utf8_state::UTF8_MORE
                 {
-                    more = utf8_append(&raw mut ud, *cp as u8);
+                    more = utf8_append(&raw mut ud, (*cp));
                 }
                 if more == utf8_state::UTF8_DONE {
                     if width + ud.width as u32 <= limit {
@@ -1632,7 +1632,7 @@ pub unsafe fn format_trim_right(expanded: *const u8, limit: u32) -> *mut u8 {
                     out = out.offset(end.add(1).offset_from(cp));
                     cp = end.add(1);
                 }
-            } else if let mut more = utf8_open(&raw mut ud, *cp as u8)
+            } else if let mut more = utf8_open(&raw mut ud, (*cp))
                 && more == utf8_state::UTF8_MORE
             {
                 while ({
@@ -1640,7 +1640,7 @@ pub unsafe fn format_trim_right(expanded: *const u8, limit: u32) -> *mut u8 {
                     *(cp) != b'\0'
                 }) && more == utf8_state::UTF8_MORE
                 {
-                    more = utf8_append(&raw mut ud, *cp as u8);
+                    more = utf8_append(&raw mut ud, (*cp));
                 }
                 if more == utf8_state::UTF8_DONE {
                     if width >= skip {

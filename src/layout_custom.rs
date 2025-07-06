@@ -361,7 +361,7 @@ unsafe fn layout_construct(lcparent: *mut layout_cell, layout: *mut *const u8) -
             (*lc).xoff = xoff;
             (*lc).yoff = yoff;
 
-            match **layout as u8 {
+            match (**layout) {
                 b',' | b'}' | b']' | b'\0' => return lc,
                 b'{' => (*lc).type_ = layout_type::LAYOUT_LEFTRIGHT,
                 b'[' => (*lc).type_ = layout_type::LAYOUT_TOPBOTTOM,

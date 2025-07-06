@@ -258,8 +258,8 @@ pub unsafe fn key_string_get_modifiers(string: *mut *const u8) -> key_code {
     unsafe {
         let mut modifiers: key_code = 0;
 
-        while **string as u8 != b'\0' && *(*string).add(1) as u8 == b'-' {
-            match **string as u8 {
+        while **string != b'\0' && *(*string).add(1) == b'-' {
+            match (**string) {
                 b'C' | b'c' => {
                     modifiers |= KEYC_CTRL;
                 }
@@ -307,7 +307,7 @@ pub unsafe fn key_string_lookup_string(mut string: *const u8) -> key_code {
         }
 
         /* Is this a hexadecimal value? */
-        if *string == b'0' as u8 && *string.add(1) == b'x' {
+        if *string == b'0' && *string.add(1) == b'x' {
             if sscanf(string.add(2).cast(), c"%x".as_ptr(), &raw mut u) != 1 {
                 return KEYC_UNKNOWN;
             }
@@ -318,7 +318,7 @@ pub unsafe fn key_string_lookup_string(mut string: *const u8) -> key_code {
             if mlen <= 0 || mlen > MB_LEN_MAX as i32 {
                 return KEYC_UNKNOWN;
             }
-            m[mlen as usize].write(b'\0' as u8);
+            m[mlen as usize].write(b'\0');
 
             let udp: *mut utf8_data = utf8_fromcstr(m.as_slice().as_ptr().cast());
             if udp.is_null()
@@ -334,7 +334,7 @@ pub unsafe fn key_string_lookup_string(mut string: *const u8) -> key_code {
         }
 
         /* Check for short Ctrl key. */
-        if *string == b'^' as u8 && *string.add(1) != b'\0' {
+        if *string == b'^' && *string.add(1) != b'\0' {
             if *string.add(2) == b'\0' {
                 return tolower(*string.add(1) as _) as u64 | KEYC_CTRL;
             }
@@ -344,25 +344,25 @@ pub unsafe fn key_string_lookup_string(mut string: *const u8) -> key_code {
 
         // Check for modifiers.
         modifiers |= key_string_get_modifiers(&raw mut string);
-        if string.is_null() || *string == b'\0' as u8 {
+        if string.is_null() || *string == b'\0' {
             return KEYC_UNKNOWN;
         }
 
         /* Is this a standard ASCII key? */
-        if *string.add(1) == b'\0' as u8 && *string as u8 <= 127 {
-            key = *string as u8 as u64;
+        if *string.add(1) == b'\0' && *string <= 127 {
+            key = *string as u64;
             if key < 32 {
                 return KEYC_UNKNOWN;
             }
         } else {
             /* Try as a UTF-8 key. */
-            let mut more: utf8_state = utf8_open(&raw mut ud, *string as u8);
+            let mut more: utf8_state = utf8_open(&raw mut ud, (*string));
             if more == utf8_state::UTF8_MORE {
                 if strlen(string) != ud.size as usize {
                     return KEYC_UNKNOWN;
                 }
                 for i in 1..ud.size {
-                    more = utf8_append(&raw mut ud, *string.add(i as usize) as u8);
+                    more = utf8_append(&raw mut ud, (*string.add(i as usize)));
                 }
                 if more != utf8_state::UTF8_DONE {
                     return KEYC_UNKNOWN;
@@ -522,7 +522,7 @@ pub unsafe fn key_string_lookup_key(mut key: key_code, with_flags: i32) -> *cons
                         &raw const ud.data as *const c_void,
                         ud.size as usize,
                     );
-                    out[off + ud.size as usize] = b'\0' as u8;
+                    out[off + ud.size as usize] = b'\0';
                     break 'out;
                 }
 
@@ -540,7 +540,7 @@ pub unsafe fn key_string_lookup_key(mut key: key_code, with_flags: i32) -> *cons
                 /* Printable ASCII keys. */
                 if key > 32 && key <= 126 {
                     tmp[0] = key as u8;
-                    tmp[1] = b'\0' as u8;
+                    tmp[1] = b'\0';
                 } else if key == 127 {
                     xsnprintf_!(&raw mut tmp as _, sizeof_tmp, "C-?");
                 } else if key >= 128 {

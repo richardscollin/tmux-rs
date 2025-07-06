@@ -284,7 +284,7 @@ pub unsafe fn style_tostring(sy: *const style) -> *const u8 {
         let mut b: b_type = [0; 21];
 
         let s = &raw mut s_buf as *mut u8;
-        *s = b'\0' as u8;
+        *s = b'\0';
 
         if (*sy).list != style_list::STYLE_LIST_OFF {
             if (*sy).list == style_list::STYLE_LIST_ON {
@@ -445,7 +445,7 @@ pub unsafe fn style_tostring(sy: *const style) -> *const u8 {
             comma = c!(",");
         }
 
-        if *s == b'\0' as u8 {
+        if *s == b'\0' {
             return c!("default");
         }
         s

@@ -171,9 +171,9 @@ pub unsafe fn colour_tostring(c: i32) -> *const u8 {
 /// Convert colour from string.
 pub unsafe fn colour_fromstring(s: *const u8) -> c_int {
     unsafe {
-        if *s as u8 == b'#' && libc::strlen(s) == 7 {
+        if *s == b'#' && libc::strlen(s) == 7 {
             let mut cp = s.wrapping_add(1);
-            while (*cp as u8).is_ascii_hexdigit() {
+            while (*cp).is_ascii_hexdigit() {
                 cp = cp.wrapping_add(1);
             }
             if *cp != 0 {

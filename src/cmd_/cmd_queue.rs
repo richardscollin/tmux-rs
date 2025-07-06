@@ -565,7 +565,7 @@ pub unsafe fn cmdq_find_flag(
             return cmd_retval::CMD_RETURN_NORMAL;
         }
 
-        let value = args_get(cmd_get_args((*item).cmd), (*flag).flag as u8);
+        let value = args_get(cmd_get_args((*item).cmd), (*flag).flag);
         if cmd_find_target(fs, item, value, (*flag).type_, (*flag).flags) != 0 {
             cmd_find_clear_state(fs, 0);
             return cmd_retval::CMD_RETURN_ERROR;

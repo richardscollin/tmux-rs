@@ -38,7 +38,7 @@ unsafe fn cmd_switch_client_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
         let mut flags: i32 = 0;
         let tc = cmdq_get_target_client(item);
 
-        if !tflag.is_null() && *tflag.add(strcspn(tflag, c!(":.%"))) != b'\0' as u8 {
+        if !tflag.is_null() && *tflag.add(strcspn(tflag, c!(":.%"))) != b'\0' {
             type_ = cmd_find_type::CMD_FIND_PANE;
             flags = 0;
         } else {

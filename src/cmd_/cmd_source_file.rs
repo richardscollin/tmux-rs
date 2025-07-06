@@ -181,7 +181,7 @@ unsafe fn cmd_source_file_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
                 continue;
             }
 
-            if *path == b'/' as u8 {
+            if *path == b'/' {
                 pattern = xstrdup(path).as_ptr();
             } else {
                 pattern = format_nul!("{}/{}", _s(cwd), _s(path));

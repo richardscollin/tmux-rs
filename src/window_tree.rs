@@ -1056,7 +1056,7 @@ unsafe fn window_tree_search(
                 {
                     let cmd: *mut u8 =
                         osdep_get_name((*wp.as_ptr()).fd, (&raw const (*wp.as_ptr()).tty).cast());
-                    if cmd.is_null() || *cmd == b'\0' as u8 {
+                    if cmd.is_null() || *cmd == b'\0' {
                         return false;
                     } else {
                         let retval = !libc::strstr(cmd, ss).is_null();

@@ -350,11 +350,11 @@ pub unsafe fn options_default_to_string(oe: *const options_table_entry) -> NonNu
             options_table_type::OPTIONS_TABLE_COLOUR => {
                 xstrdup(colour_tostring((*oe).default_num as i32))
             }
-            options_table_type::OPTIONS_TABLE_FLAG => xstrdup(if (*oe).default_num != 0 {
-                c!("on")
+            options_table_type::OPTIONS_TABLE_FLAG => xstrdup_(if (*oe).default_num != 0 {
+                c"on"
             } else {
-                c!("off")
-            } as *const u8),
+                c"off"
+            }),
             options_table_type::OPTIONS_TABLE_CHOICE => {
                 xstrdup(*(*oe).choices.add((*oe).default_num as usize))
             }
@@ -875,7 +875,7 @@ pub unsafe fn options_set_string_(
 
         let mut o = options_get_only(oo, name);
         if !o.is_null() && append != 0 && OPTIONS_IS_STRING(o) {
-            if *name != b'@' as u8 {
+            if *name != b'@' {
                 separator = (*(*o).tableentry).separator;
                 if separator.is_null() {
                     separator = c!("");
@@ -887,7 +887,7 @@ pub unsafe fn options_set_string_(
             value = s;
         }
 
-        if o.is_null() && *name == b'@' as u8 {
+        if o.is_null() && *name == b'@' {
             o = options_add(oo, name);
         } else if o.is_null() {
             o = options_default(oo, options_parent_table_entry(oo, name));
@@ -912,7 +912,7 @@ pub unsafe fn options_set_number(
     value: i64,
 ) -> *mut options_entry {
     unsafe {
-        if *name == b'@' as u8 {
+        if *name == b'@' {
             panic!("user option {} must be a string", _s(name));
         }
 
@@ -947,7 +947,7 @@ pub unsafe fn options_scope_from_name(
         let target = args_get_(args, 't');
         let mut scope = OPTIONS_TABLE_NONE;
 
-        if *name == b'@' as u8 {
+        if *name == b'@' {
             return options_scope_from_flags(args, window, fs, oo, cause);
         }
 
@@ -1258,7 +1258,7 @@ pub unsafe fn options_from_string(
             }
             (*oe).type_
         } else {
-            if *name != b'@' as u8 {
+            if *name != b'@' {
                 *cause = format_nul!("bad option name");
                 return -1;
             }

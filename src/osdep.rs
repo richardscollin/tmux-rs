@@ -49,7 +49,7 @@ pub unsafe fn osdep_get_name(fd: i32, tty: *const u8) -> *mut u8 {
             len += 1;
         }
         if !buf.is_null() {
-            *buf.add(len) = b'\0' as u8;
+            *buf.add(len) = b'\0';
         }
 
         fclose(f);
@@ -81,7 +81,7 @@ pub unsafe fn osdep_get_cwd(fd: i32) -> *const u8 {
         }
 
         if n > 0 {
-            *target.add(n as usize) = b'\0' as u8;
+            *target.add(n as usize) = b'\0';
             return target;
         }
         null_mut()

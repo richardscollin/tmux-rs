@@ -734,10 +734,10 @@ unsafe fn yyerror_(ps: &mut cmd_parse_state, args: std::fmt::Arguments) -> i32 {
 }
 
 fn yylex_is_var(ch: u8, first: bool) -> bool {
-    if ch == b'=' || (first && (ch as u8).is_ascii_digit()) {
+    if ch == b'=' || (first && ch.is_ascii_digit()) {
         false
     } else {
-        (ch as u8).is_ascii_alphanumeric() || ch == b'_'
+        ch.is_ascii_alphanumeric() || ch == b'_'
     }
 }
 
@@ -1031,7 +1031,7 @@ unsafe fn yylex_format(ps: &mut cmd_parse_state) -> Option<NonNull<u8>> {
                     if ch == '{' as i32 {
                         brackets += 1;
                     }
-                    yylex_append1(&raw mut buf, &raw mut len, b'#' as u8);
+                    yylex_append1(&raw mut buf, &raw mut len, b'#');
                 } else if (ch == '}' as i32)
                     && brackets != 0
                     && ({
@@ -1383,7 +1383,7 @@ unsafe fn yylex_token_escape(ps: &mut cmd_parse_state, buf: *mut *mut u8, len: *
             }
             s[i] = ch as u8;
         }
-        s[i] = b'\0' as u8;
+        s[i] = b'\0';
 
         if ((size == 4 && libc::sscanf((&raw mut s).cast(), c"%4x".as_ptr(), &raw mut tmp) != 1)
             || (size == 8 && libc::sscanf((&raw mut s).cast(), c"%8x".as_ptr(), &raw mut tmp) != 1))

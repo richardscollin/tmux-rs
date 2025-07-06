@@ -196,7 +196,7 @@ pub unsafe fn cmd_set_option_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
                         free_(cause);
                         break 'fail;
                     }
-                } else if *name == b'@' as u8 {
+                } else if *name == b'@' {
                     if value.is_null() {
                         cmdq_error!(item, "empty value");
                         break 'fail;

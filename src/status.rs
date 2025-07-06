@@ -1295,7 +1295,7 @@ unsafe fn status_prompt_replace_complete(c: *mut client, mut s: *const u8) -> i3
             n * size_of::<utf8_data>(),
         );
         for idx in 0..strlen(s) {
-            utf8_set(first.add(idx), *s.add(idx) as u8);
+            utf8_set(first.add(idx), (*s.add(idx)));
         }
         (*c).prompt_index = first.offset_from_unsigned((*c).prompt_buffer) + strlen(s);
 
@@ -2023,7 +2023,7 @@ unsafe fn status_prompt_menu_callback(
             } else {
                 format_nul!(
                     "-{}{}",
-                    (*spm).flag as u8 as char,
+                    (*spm).flag as char,
                     _s(*(*spm).list.add(idx as usize))
                 )
             };
@@ -2209,7 +2209,7 @@ unsafe fn status_prompt_complete_window_menu(
         if size == 1 {
             menu_free(menu);
             if flag != b'\0' {
-                tmp = format_nul!("-{}{}", flag as u8 as char, _s(*list));
+                tmp = format_nul!("-{}{}", flag as char, _s(*list));
                 free_(*list);
             } else {
                 tmp = *list;
@@ -2302,7 +2302,7 @@ unsafe fn status_prompt_complete_session(
         }
         let mut out = status_prompt_complete_prefix(*list, *size);
         if !out.is_null() && flag != b'\0' {
-            tmp = format_nul!("-{}{}", flag as u8 as char, _s(out));
+            tmp = format_nul!("-{}{}", flag as char, _s(out));
             free_(out);
             out = tmp;
         }

@@ -654,9 +654,9 @@ pub unsafe fn grid_set_cells(
             let gce = (*gl).celldata.add((px + i as c_uint) as usize);
             if grid_need_extended_cell(gce, gc) != 0 {
                 let gee = grid_extended_cell(gl, gce, gc);
-                (*gee).data = utf8_build_one(*s.add(i) as u8);
+                (*gee).data = utf8_build_one(*s.add(i));
             } else {
-                grid_store_cell(gce, gc, *s.add(i) as u8);
+                grid_store_cell(gce, gc, (*s.add(i)));
             }
         }
     }
@@ -977,9 +977,9 @@ pub unsafe fn grid_string_cells_add_code(
         }
 
         if flags.intersects(grid_string_flags::GRID_STRING_ESCAPE_SEQUENCES) {
-            strlcat(buf, c!("\\033[") as *const u8, len);
+            strlcat(buf, c!("\\033["), len);
         } else {
-            strlcat(buf, c!("\x1b[") as *const u8, len);
+            strlcat(buf, c!("\x1b["), len);
         }
 
         for i in 0..nnewc {
@@ -990,7 +990,7 @@ pub unsafe fn grid_string_cells_add_code(
             }
             strlcat(buf, tmp.as_ptr(), len);
         }
-        strlcat(buf, c!("m") as *const u8, len);
+        strlcat(buf, c!("m"), len);
     }
 }
 
@@ -1009,9 +1009,9 @@ pub unsafe fn grid_string_cells_add_hyperlink(
         }
 
         if flags.intersects(grid_string_flags::GRID_STRING_ESCAPE_SEQUENCES) {
-            strlcat(buf, c!("\\033]8;") as *const u8, len);
+            strlcat(buf, c!("\\033]8;"), len);
         } else {
-            strlcat(buf, c!("\x1b]8;") as *const u8, len);
+            strlcat(buf, c!("\x1b]8;"), len);
         }
 
         if *id != 0 {
@@ -1019,15 +1019,15 @@ pub unsafe fn grid_string_cells_add_hyperlink(
             strlcat(buf, tmp, len);
             free_(tmp);
         } else {
-            strlcat(buf, c!(";") as *const u8, len);
+            strlcat(buf, c!(";"), len);
         }
 
         strlcat(buf, uri, len);
 
         if flags.intersects(grid_string_flags::GRID_STRING_ESCAPE_SEQUENCES) {
-            strlcat(buf, c!("\\033\\\\") as *const u8, len);
+            strlcat(buf, c!("\\033\\\\"), len);
         } else {
-            strlcat(buf, c!("\x1b\\") as *const u8, len);
+            strlcat(buf, c!("\x1b\\"), len);
         }
 
         1
@@ -1098,9 +1098,9 @@ pub unsafe fn grid_string_cells_code(
         *buf = 0;
         if n > 0 {
             if flags.intersects(grid_string_flags::GRID_STRING_ESCAPE_SEQUENCES) {
-                strlcat(buf, c!("\\033[") as *const u8, len);
+                strlcat(buf, c!("\\033["), len);
             } else {
-                strlcat(buf, c!("\x1b[") as *const u8, len);
+                strlcat(buf, c!("\x1b["), len);
             }
 
             for i in 0..n {
@@ -1117,10 +1117,10 @@ pub unsafe fn grid_string_cells_code(
                 }
                 strlcat(buf, tmp.as_ptr(), len);
                 if i + 1 < n {
-                    strlcat(buf, c!(";") as *const u8, len);
+                    strlcat(buf, c!(";"), len);
                 }
             }
-            strlcat(buf, c!("m") as *const u8, len);
+            strlcat(buf, c!("m"), len);
         }
 
         // If the foreground colour changed, write its parameters
@@ -1173,18 +1173,18 @@ pub unsafe fn grid_string_cells_code(
             && !lastattr.intersects(grid_attr::GRID_ATTR_CHARSET)
         {
             if flags.intersects(grid_string_flags::GRID_STRING_ESCAPE_SEQUENCES) {
-                strlcat(buf, c!("\\016") as *const u8, len); // SO
+                strlcat(buf, c!("\\016"), len); // SO
             } else {
-                strlcat(buf, c!("\x0e") as *const u8, len); // SO
+                strlcat(buf, c!("\x0e"), len); // SO
             }
         }
         if !attr.intersects(grid_attr::GRID_ATTR_CHARSET)
             && lastattr.intersects(grid_attr::GRID_ATTR_CHARSET)
         {
             if flags.intersects(grid_string_flags::GRID_STRING_ESCAPE_SEQUENCES) {
-                strlcat(buf, c!("\\017") as *const u8, len); // SI
+                strlcat(buf, c!("\\017"), len); // SI
             } else {
-                strlcat(buf, c!("\x0f") as *const u8, len); // SI
+                strlcat(buf, c!("\x0f"), len); // SI
             }
         }
 
@@ -1199,13 +1199,7 @@ pub unsafe fn grid_string_cells_code(
             ) {
                 *has_link = grid_string_cells_add_hyperlink(buf, len, id, uri, flags);
             } else if *has_link != 0 {
-                grid_string_cells_add_hyperlink(
-                    buf,
-                    len,
-                    c!("") as *const u8,
-                    c!("") as *const u8,
-                    flags,
-                );
+                grid_string_cells_add_hyperlink(buf, len, c!(""), c!(""), flags);
                 *has_link = 0;
             }
         }
@@ -1276,9 +1270,9 @@ pub unsafe fn grid_string_cells(
             size = gc.data.size as usize;
             if flags.intersects(grid_string_flags::GRID_STRING_ESCAPE_SEQUENCES)
                 && size == 1
-                && *data as u8 == b'\\'
+                && *data == b'\\'
             {
-                data = c!("\\\\") as *const u8;
+                data = c!("\\\\");
                 size = 2;
             }
 
@@ -1296,13 +1290,7 @@ pub unsafe fn grid_string_cells(
         }
 
         if has_link != 0 {
-            grid_string_cells_add_hyperlink(
-                code.as_mut_ptr(),
-                code.len(),
-                c!("") as *const u8,
-                c!("") as *const u8,
-                flags,
-            );
+            grid_string_cells_add_hyperlink(code.as_mut_ptr(), code.len(), c!(""), c!(""), flags);
             codelen = strlen(code.as_ptr());
             while len < off + size + codelen + 1 {
                 buf = xreallocarray(buf.cast(), 2, len).as_ptr() as *mut u8;

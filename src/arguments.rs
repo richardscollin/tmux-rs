@@ -135,7 +135,7 @@ pub unsafe fn args_parse_flag_argument(
         'out: {
             new = xcalloc(1, size_of::<args_value>()).cast().as_ptr();
 
-            if *string != b'\0' as u8 {
+            if *string != b'\0' {
                 (*new).type_ = args_type::ARGS_STRING;
                 (*new).union_.string = xstrdup(string).cast().as_ptr();
                 break 'out;
@@ -197,7 +197,7 @@ pub unsafe fn args_parse_flags(
         let mut string = (*value).union_.string;
         log_debug!("{}: next {}", __func__, _s(string));
         if ({
-            let tmp = *string != b'-' as u8;
+            let tmp = *string != b'-';
             string = string.add(1);
             tmp
         }) || *string == b'\0' as _
@@ -228,12 +228,12 @@ pub unsafe fn args_parse_flags(
                 *cause = format_nul!("unknown flag -{}", flag as char);
                 return -1;
             }
-            if *found.add(1) != b':' as u8 {
+            if *found.add(1) != b':' {
                 log_debug!("{}: -{}", __func__, flag as i32);
                 args_set(args, flag, null_mut(), 0);
                 continue;
             }
-            let optional_argument = (*found.add(2) == b':' as u8) as i32;
+            let optional_argument = (*found.add(2) == b':') as i32;
             return args_parse_flag_argument(
                 values,
                 count,
@@ -499,7 +499,7 @@ pub unsafe fn args_print_add_(buf: *mut *mut u8, len: *mut usize, fmt: std::fmt:
 
 pub unsafe fn args_print_add_value(buf: *mut *mut u8, len: *mut usize, value: *mut args_value) {
     unsafe {
-        if **buf != b'\0' as u8 {
+        if **buf != b'\0' {
             args_print_add!(buf, len, " ");
         }
 
@@ -535,7 +535,7 @@ pub unsafe fn args_print(args: *mut args) -> *mut u8 {
                 continue;
             }
 
-            if *buf == b'\0' as u8 {
+            if *buf == b'\0' {
                 args_print_add!(&raw mut buf, &raw mut len, "-");
             }
             for _ in 0..(*entry).count {
@@ -546,7 +546,7 @@ pub unsafe fn args_print(args: *mut args) -> *mut u8 {
         /* Then the flags with arguments. */
         for entry in rb_foreach(&raw mut (*args).tree).map(NonNull::as_ptr) {
             if (*entry).flags & ARGS_ENTRY_OPTIONAL_VALUE != 0 {
-                if *buf != b'\0' as u8 {
+                if *buf != b'\0' {
                     args_print_add!(&raw mut buf, &raw mut len, " -{}", (*entry).flag as char);
                 } else {
                     args_print_add!(&raw mut buf, &raw mut len, "-{}", (*entry).flag as char,);
@@ -559,7 +559,7 @@ pub unsafe fn args_print(args: *mut args) -> *mut u8 {
             }
             for value in tailq_foreach(&raw mut (*entry).values) {
                 {
-                    if *buf != b'\0' as u8 {
+                    if *buf != b'\0' {
                         args_print_add!(&raw mut buf, &raw mut len, " -{}", (*entry).flag as char,);
                     } else {
                         args_print_add!(&raw mut buf, &raw mut len, "-{}", (*entry).flag as char,);
@@ -592,7 +592,7 @@ pub unsafe fn args_escape(s: *const u8) -> *mut u8 {
 
         let mut quotes: i32 = 0;
 
-        if *s == b'\0' as u8 {
+        if *s == b'\0' {
             return format_nul!("''");
         }
         if *s.add(libc::strcspn(s, dquoted)) != b'\0' as _ {
@@ -602,7 +602,7 @@ pub unsafe fn args_escape(s: *const u8) -> *mut u8 {
         }
 
         if *s != b' ' as _ && *s.add(1) == b'\0' as _ && (quotes != 0 || *s == b'~' as _) {
-            escaped = format_nul!("\\{}", *s as u8 as char);
+            escaped = format_nul!("\\{}", *s as char);
             return escaped;
         }
 
@@ -1102,7 +1102,7 @@ pub unsafe fn args_string_percentage_and_expand(
 
         if *value.add(valuelen - 1) == b'%' as _ {
             let copy = xstrdup(value).as_ptr();
-            *copy.add(valuelen - 1) = b'\0' as u8;
+            *copy.add(valuelen - 1) = b'\0';
 
             f = format_single_from_target(item, copy);
             let tmp = strtonum(f, 0, 100);

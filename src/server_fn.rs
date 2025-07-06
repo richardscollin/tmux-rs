@@ -146,7 +146,7 @@ pub unsafe fn server_lock_client(c: *mut client) {
         }
 
         let cmd = options_get_string_((*(*c).session).options, c"lock-command");
-        if *cmd == b'\0' as u8 || strlen(cmd) + 1 > MAX_IMSGSIZE - IMSG_HEADER_SIZE {
+        if *cmd == b'\0' || strlen(cmd) + 1 > MAX_IMSGSIZE - IMSG_HEADER_SIZE {
             return;
         }
 

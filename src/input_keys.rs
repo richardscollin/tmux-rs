@@ -208,7 +208,7 @@ pub unsafe extern "C-unwind" fn input_key_build() {
             {
                 let key = (*ike).key & !KEYC_BUILD_MODIFIERS;
                 let data = xstrdup((*ike).data).as_ptr();
-                *data.add(libc::strcspn(data, c!("_"))) = b'0' as u8 + j as u8;
+                *data.add(libc::strcspn(data, c!("_"))) = b'0' + j as u8;
 
                 let new = xcalloc1::<input_key_entry>();
                 new.key = key | input_key_modifiers_j;

@@ -298,7 +298,7 @@ pub unsafe fn cmd_find_get_window(fs: *mut cmd_find_state, window: *const u8, on
     unsafe {
         log_debug!("{}: {}", __func__, _s(window));
 
-        if *window == b'@' as u8 {
+        if *window == b'@' {
             (*fs).w = window_find_by_id_str(window);
             if (*fs).w.is_null() {
                 return -1;
@@ -926,7 +926,7 @@ pub unsafe fn cmd_find_target(
                                     cmd_find_type::CMD_FIND_SESSION => c!("session"),
                                 };
 
-                                tmp[0] = b'\0' as u8;
+                                tmp[0] = b'\0';
                                 if flags & CMD_FIND_PREFER_UNATTACHED != 0 {
                                     strlcat(tmp.as_mut_ptr(), c!("PREFER_UNATTACHED,"), sizeof_tmp);
                                 }
@@ -948,8 +948,8 @@ pub unsafe fn cmd_find_target(
                                 if flags & CMD_FIND_CANFAIL != 0 {
                                     strlcat(tmp.as_mut_ptr(), c!("CANFAIL,"), sizeof_tmp);
                                 }
-                                if tmp[0] != b'\0' as u8 {
-                                    tmp[strlen(tmp.as_mut_ptr()) - 1] = b'\0' as u8;
+                                if tmp[0] != b'\0' {
+                                    tmp[strlen(tmp.as_mut_ptr()) - 1] = b'\0';
                                 } else {
                                     strlcat(tmp.as_mut_ptr(), c!("NONE"), sizeof_tmp);
                                 }

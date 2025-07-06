@@ -257,7 +257,7 @@ pub unsafe fn window_buffer_draw(
         let pdata = end;
         for i in 0..sy {
             let start = end;
-            while end != pdata.add(psize) && *end != b'\n' as u8 {
+            while end != pdata.add(psize) && *end != b'\n' {
                 end = end.add(1);
             }
             buf = xreallocarray(buf.cast(), 4, end.offset_from(start) as usize + 1)
@@ -269,7 +269,7 @@ pub unsafe fn window_buffer_draw(
                 end.offset_from(start) as usize,
                 vis_flags::VIS_OCTAL | vis_flags::VIS_CSTYLE | vis_flags::VIS_TAB,
             );
-            if *buf != b'\0' as u8 {
+            if *buf != b'\0' {
                 screen_write_cursormove(ctx, cx as i32, (cy + i) as i32, 0);
                 screen_write_nputs!(
                     ctx,
@@ -523,7 +523,7 @@ pub unsafe fn window_buffer_edit_close_cb(buf: *mut u8, mut len: usize, arg: *mu
 
         let mut oldlen = 0;
         let oldbuf = paste_buffer_data_(pb, &mut oldlen);
-        if oldlen != 0 && *oldbuf.add(oldlen - 1) != b'\n' as u8 && *buf.add(len - 1) == b'\n' as u8
+        if oldlen != 0 && *oldbuf.add(oldlen - 1) != b'\n' && *buf.add(len - 1) == b'\n'
         {
             len -= 1;
         }

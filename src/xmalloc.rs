@@ -23,7 +23,7 @@ use crate::{
 };
 
 pub extern "C" fn xmalloc(size: usize) -> NonNull<c_void> {
-    debug_assert!(size != 0, "xmalloc: zero size");
+    debug_assert_ne!(size, 0, "xmalloc: zero size");
 
     NonNull::new(unsafe { libc::malloc(size) })
         .unwrap_or_else(|| panic!("xmalloc: allocating {size}"))
@@ -36,25 +36,19 @@ fn malloc_(size: NonZero<usize>) -> *mut c_void {
 }
 
 pub fn xmalloc_<T>() -> NonNull<T> {
-    let size = size_of::<T>();
-    debug_assert!(size != 0);
-    let nz_size = NonZero::<usize>::try_from(size).unwrap();
-    NonNull::new(malloc_(nz_size))
-        .unwrap_or_else(|| panic!("xmalloc: allocating {size} bytes"))
+    debug_assert_ne!(size_of::<T>(), 0, "xmalloc: zero size");
+
+    let alloc = Box::new(MaybeUninit::<T>::uninit());
+    NonNull::new(Box::into_raw(alloc))
+        .expect("box pointer is not null")
         .cast()
 }
 
-pub fn xmalloc__<'a, T>() -> &'a mut MaybeUninit<T> {
-    let size = size_of::<T>();
-    debug_assert!(size != 0);
-    let nz_size = NonZero::<usize>::try_from(size).unwrap();
+pub fn xmalloc__<T>() -> &'static mut MaybeUninit<T> {
+    debug_assert_ne!(size_of::<T>(), 0, "xmalloc: zero size");
 
-    let ptr: NonNull<T> = NonNull::new(malloc_(nz_size))
-        .unwrap_or_else(|| panic!("xmalloc: allocating {size} bytes"))
-        .cast();
-
-    // from `NonNull::as_uninit_mut`
-    unsafe { &mut *ptr.cast().as_ptr() }
+    let alloc = Box::new(MaybeUninit::<T>::uninit());
+    Box::leak(alloc)
 }
 
 pub extern "C" fn xcalloc(nmemb: usize, size: usize) -> NonNull<c_void> {

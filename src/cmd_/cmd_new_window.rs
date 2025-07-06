@@ -15,7 +15,7 @@ use crate::*;
 
 use crate::compat::tree::rb_foreach;
 
-const NEW_WINDOW_TEMPLATE: &CStr = c"#{session_name}:#{window_index}.#{pane_index}";
+const NEW_WINDOW_TEMPLATE: *const u8 = c!("#{session_name}:#{window_index}.#{pane_index}");
 
 pub static cmd_new_window_entry: cmd_entry = cmd_entry {
     name: SyncCharPtr::new(c"new-window"),
@@ -135,7 +135,7 @@ unsafe fn cmd_new_window_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retv
         if args_has_(args, 'P') {
             let mut template = args_get_(args, 'F');
             if template.is_null() {
-                template = NEW_WINDOW_TEMPLATE.as_ptr();
+                template = NEW_WINDOW_TEMPLATE;
             }
             let cp = format_single(item, template, tc, s, new_wl, (*(*new_wl).window).active);
             cmdq_print!(item, "{}", _s(cp));

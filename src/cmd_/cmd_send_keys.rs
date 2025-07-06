@@ -14,7 +14,7 @@
 
 use crate::*;
 
-use libc::strtol;
+use crate::libc::strtol;
 
 use crate::compat::queue::tailq_first;
 
@@ -109,7 +109,7 @@ pub unsafe fn cmd_send_keys_inject_string(
         let mut loop_: *mut utf8_data;
         let mut uc: utf8_char = 0;
         let mut key: key_code;
-        let mut endptr: *mut c_char = null_mut();
+        let mut endptr: *mut u8 = null_mut();
         let n: c_long = 0;
 
         if args_has_(args, 'H') {
@@ -168,7 +168,7 @@ pub unsafe fn cmd_send_keys_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
         let mut key: key_code = 0;
         let mut np: u32 = 1;
         let count = args_count(args);
-        let mut cause: *mut c_char = null_mut();
+        let mut cause: *mut u8 = null_mut();
 
         if args_has_(args, 'N') {
             np = args_strtonum_and_expand(args, b'N', 1, u32::MAX as i64, item, &raw mut cause)

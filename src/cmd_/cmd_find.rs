@@ -13,7 +13,7 @@
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 use crate::*;
 
-use libc::strcmp;
+use crate::libc::strcmp;
 
 use crate::compat::{
     queue::{tailq_first, tailq_foreach},
@@ -21,33 +21,33 @@ use crate::compat::{
     tree::{rb_foreach, rb_foreach_const, rb_max, rb_min},
 };
 
-static mut cmd_find_session_table: [[*const c_char; 2]; 1] = [[null_mut(), null_mut()]];
+static mut cmd_find_session_table: [[*const u8; 2]; 1] = [[null_mut(), null_mut()]];
 
-static mut cmd_find_window_table: [[*const c_char; 2]; 6] = [
-    [c"{start}".as_ptr(), c"^".as_ptr()],
-    [c"{last}".as_ptr(), c"!".as_ptr()],
-    [c"{end}".as_ptr(), c"$".as_ptr()],
-    [c"{next}".as_ptr(), c"+".as_ptr()],
-    [c"{previous}".as_ptr(), c"-".as_ptr()],
+static mut cmd_find_window_table: [[*const u8; 2]; 6] = [
+    [c!("{start}"), c!("^")],
+    [c!("{last}"), c!("!")],
+    [c!("{end}"), c!("$")],
+    [c!("{next}"), c!("+")],
+    [c!("{previous}"), c!("-")],
     [null(), null()],
 ];
 
-static mut cmd_find_pane_table: [[*const c_char; 2]; 16] = [
-    [c"{last}".as_ptr(), c"!".as_ptr()],
-    [c"{next}".as_ptr(), c"+".as_ptr()],
-    [c"{previous}".as_ptr(), c"-".as_ptr()],
-    [c"{top}".as_ptr(), c"top".as_ptr()],
-    [c"{bottom}".as_ptr(), c"bottom".as_ptr()],
-    [c"{left}".as_ptr(), c"left".as_ptr()],
-    [c"{right}".as_ptr(), c"right".as_ptr()],
-    [c"{top-left}".as_ptr(), c"top-left".as_ptr()],
-    [c"{top-right}".as_ptr(), c"top-right".as_ptr()],
-    [c"{bottom-left}".as_ptr(), c"bottom-left".as_ptr()],
-    [c"{bottom-right}".as_ptr(), c"bottom-right".as_ptr()],
-    [c"{up-of}".as_ptr(), c"{up-of}".as_ptr()],
-    [c"{down-of}".as_ptr(), c"{down-of}".as_ptr()],
-    [c"{left-of}".as_ptr(), c"{left-of}".as_ptr()],
-    [c"{right-of}.as_ptr()".as_ptr(), c"{right-of}".as_ptr()],
+static mut cmd_find_pane_table: [[*const u8; 2]; 16] = [
+    [c!("{last}"), c!("!")],
+    [c!("{next}"), c!("+")],
+    [c!("{previous}"), c!("-")],
+    [c!("{top}"), c!("top")],
+    [c!("{bottom}"), c!("bottom")],
+    [c!("{left}"), c!("left")],
+    [c!("{right}"), c!("right")],
+    [c!("{top-left}"), c!("top-left")],
+    [c!("{top-right}"), c!("top-right")],
+    [c!("{bottom-left}"), c!("bottom-left")],
+    [c!("{bottom-right}"), c!("bottom-right")],
+    [c!("{up-of}"), c!("{up-of}")],
+    [c!("{down-of}"), c!("{down-of}")],
+    [c!("{left-of}"), c!("{left-of}")],
+    [c!("{right-of}.as_ptr()"), c!("{right-of}")],
     [null(), null()],
 ];
 
@@ -67,7 +67,7 @@ pub unsafe fn cmd_find_inside_pane(c: *mut client) -> *mut window_pane {
         }
 
         if wp.is_null() {
-            let envent = environ_find((*c).environ, c"TMUX_PANE".as_ptr());
+            let envent = environ_find((*c).environ, c!("TMUX_PANE"));
             if !envent.is_null() {
                 wp = window_pane_find_by_id_str(transmute_ptr((*envent).value));
             }
@@ -221,10 +221,7 @@ pub unsafe fn cmd_find_best_winlink_with_window(fs: *mut cmd_find_state) -> i32 
     0
 }
 
-pub unsafe fn cmd_find_map_table(
-    table: *const [*const c_char; 2],
-    s: *const c_char,
-) -> *const c_char {
+pub unsafe fn cmd_find_map_table(table: *const [*const u8; 2], s: *const u8) -> *const u8 {
     unsafe {
         let mut i = 0;
         while !(*table.add(i))[0].is_null() {
@@ -237,7 +234,7 @@ pub unsafe fn cmd_find_map_table(
     }
 }
 
-pub unsafe fn cmd_find_get_session(fs: *mut cmd_find_state, session: *const c_char) -> i32 {
+pub unsafe fn cmd_find_get_session(fs: *mut cmd_find_state, session: *const u8) -> i32 {
     let __func__ = "cmd_find_get_session";
     unsafe {
         log_debug!("{}: {}", __func__, _s(session));
@@ -296,16 +293,12 @@ pub unsafe fn cmd_find_get_session(fs: *mut cmd_find_state, session: *const c_ch
     -1
 }
 
-pub unsafe fn cmd_find_get_window(
-    fs: *mut cmd_find_state,
-    window: *const c_char,
-    only: i32,
-) -> i32 {
+pub unsafe fn cmd_find_get_window(fs: *mut cmd_find_state, window: *const u8, only: i32) -> i32 {
     let __func__ = "cmd_find_get_window";
     unsafe {
         log_debug!("{}: {}", __func__, _s(window));
 
-        if *window == b'@' as c_char {
+        if *window == b'@' {
             (*fs).w = window_find_by_id_str(window);
             if (*fs).w.is_null() {
                 return -1;
@@ -331,13 +324,10 @@ pub unsafe fn cmd_find_get_window(
     -1
 }
 
-pub unsafe fn cmd_find_get_window_with_session(
-    fs: *mut cmd_find_state,
-    window: *const c_char,
-) -> i32 {
+pub unsafe fn cmd_find_get_window_with_session(fs: *mut cmd_find_state, window: *const u8) -> i32 {
     let __func__ = "cmd_find_get_window_with_session";
     unsafe {
-        let mut errstr: *const c_char = null();
+        let mut errstr: *const u8 = null();
         let mut n = 0i32;
         let mut exact = 0i32;
         let mut s = null_mut();
@@ -421,7 +411,7 @@ pub unsafe fn cmd_find_get_window_with_session(
             clippy::collapsible_if,
             reason = "collapsing doesn't work with if let; false positive"
         )]
-        if *window != b'+' as _ && *window != b'-' as i8 {
+        if *window != b'+' as _ && *window != b'-' {
             if let Ok(idx) = strtonum(window, 0, i32::MAX) {
                 (*fs).wl = winlink_find_by_index(&raw mut (*(*fs).s).windows, idx);
                 if !(*fs).wl.is_null() {
@@ -491,7 +481,7 @@ pub unsafe fn cmd_find_get_window_with_session(
     -1
 }
 
-pub unsafe fn cmd_find_get_pane(fs: *mut cmd_find_state, pane: *const c_char, only: i32) -> i32 {
+pub unsafe fn cmd_find_get_pane(fs: *mut cmd_find_state, pane: *const u8, only: i32) -> i32 {
     let __func__ = "cmd_find_get_pane";
     unsafe {
         log_debug!("{}: {}", __func__, _s(pane));
@@ -522,7 +512,7 @@ pub unsafe fn cmd_find_get_pane(fs: *mut cmd_find_state, pane: *const c_char, on
     -1
 }
 
-pub unsafe fn cmd_find_get_pane_with_session(fs: *mut cmd_find_state, pane: *const c_char) -> i32 {
+pub unsafe fn cmd_find_get_pane_with_session(fs: *mut cmd_find_state, pane: *const u8) -> i32 {
     let __func__ = "cmd_find_get_pane_with_session";
     unsafe {
         log_debug!("{}: {}", __func__, _s(pane));
@@ -544,11 +534,11 @@ pub unsafe fn cmd_find_get_pane_with_session(fs: *mut cmd_find_state, pane: *con
     }
 }
 
-pub unsafe fn cmd_find_get_pane_with_window(fs: *mut cmd_find_state, pane: *const c_char) -> i32 {
+pub unsafe fn cmd_find_get_pane_with_window(fs: *mut cmd_find_state, pane: *const u8) -> i32 {
     let __func__ = "cmd_find_get_pane_with_window";
     unsafe {
         let mut n = 0u32;
-        let mut errstr: *const c_char = null();
+        let mut errstr: *const u8 = null();
 
         log_debug!("{}: {}", __func__, _s(pane));
 
@@ -677,7 +667,7 @@ pub unsafe fn cmd_find_copy_state(dst: *mut cmd_find_state, src: *mut cmd_find_s
     }
 }
 
-pub unsafe fn cmd_find_log_state(prefix: *const c_char, fs: *const cmd_find_state) {
+pub unsafe fn cmd_find_log_state(prefix: *const u8, fs: *const cmd_find_state) {
     unsafe {
         if !(*fs).s.is_null() {
             log_debug!(
@@ -716,7 +706,7 @@ pub unsafe fn cmd_find_from_session(fs: *mut cmd_find_state, s: *mut session, fl
         (*fs).w = (*(*fs).wl).window;
         (*fs).wp = (*(*fs).w).active;
 
-        cmd_find_log_state(c"cmd_find_from_session".as_ptr(), fs);
+        cmd_find_log_state(c!("cmd_find_from_session"), fs);
     }
 }
 
@@ -729,7 +719,7 @@ pub unsafe fn cmd_find_from_winlink(fs: *mut cmd_find_state, wl: *mut winlink, f
         (*fs).w = (*wl).window;
         (*fs).wp = (*(*wl).window).active;
 
-        cmd_find_log_state(c"cmd_find_from_winlink".as_ptr(), fs);
+        cmd_find_log_state(c!("cmd_find_from_winlink"), fs);
     }
 }
 
@@ -750,7 +740,7 @@ pub unsafe fn cmd_find_from_session_window(
         }
         (*fs).wp = (*(*fs).w).active;
 
-        cmd_find_log_state(c"cmd_find_from_session_window".as_ptr(), fs);
+        cmd_find_log_state(c!("cmd_find_from_session_window"), fs);
     }
     0
 }
@@ -770,7 +760,7 @@ pub unsafe fn cmd_find_from_window(fs: *mut cmd_find_state, w: *mut window, flag
         }
         (*fs).wp = (*(*fs).w).active;
 
-        cmd_find_log_state(c"cmd_find_from_window".as_ptr(), fs);
+        cmd_find_log_state(c!("cmd_find_from_window"), fs);
         0
     }
 }
@@ -790,7 +780,7 @@ pub unsafe fn cmd_find_from_winlink_pane(
         (*fs).w = (*(*fs).wl).window;
         (*fs).wp = wp;
 
-        cmd_find_log_state(c"cmd_find_from_winlink_pane".as_ptr(), fs);
+        cmd_find_log_state(c!("cmd_find_from_winlink_pane"), fs);
     }
 }
 
@@ -801,7 +791,7 @@ pub unsafe fn cmd_find_from_pane(fs: *mut cmd_find_state, wp: *mut window_pane, 
         }
         (*fs).wp = wp;
 
-        cmd_find_log_state(c"cmd_find_from_pane".as_ptr(), fs);
+        cmd_find_log_state(c!("cmd_find_from_pane"), fs);
     }
 
     0
@@ -821,7 +811,7 @@ pub unsafe fn cmd_find_from_nothing(fs: *mut cmd_find_state, flags: i32) -> i32 
         (*fs).w = (*(*fs).wl).window;
         (*fs).wp = (*(*fs).w).active;
 
-        cmd_find_log_state(c"cmd_find_from_nothing".as_ptr(), fs);
+        cmd_find_log_state(c!("cmd_find_from_nothing"), fs);
     }
     0
 }
@@ -841,13 +831,13 @@ pub unsafe fn cmd_find_from_mouse(fs: *mut cmd_find_state, m: *mut mouse_event, 
         }
         (*fs).w = (*(*fs).wl).window;
 
-        cmd_find_log_state(c"cmd_find_from_mouse".as_ptr(), fs);
+        cmd_find_log_state(c!("cmd_find_from_mouse"), fs);
     }
     0
 }
 
 pub unsafe fn cmd_find_from_client(fs: *mut cmd_find_state, c: *mut client, flags: i32) -> i32 {
-    let __func__ = c"cmd_find_from_client".as_ptr();
+    let __func__ = c!("cmd_find_from_client");
     unsafe {
         // struct window_pane *wp;
 
@@ -897,7 +887,7 @@ pub unsafe fn cmd_find_from_client(fs: *mut cmd_find_state, c: *mut client, flag
 pub unsafe fn cmd_find_target(
     fs: *mut cmd_find_state,
     item: *mut cmdq_item,
-    target: *const c_char,
+    target: *const u8,
     type_: cmd_find_type,
     mut flags: i32,
 ) -> i32 {
@@ -906,16 +896,16 @@ pub unsafe fn cmd_find_target(
         let mut m: *mut mouse_event = null_mut();
         let mut current: cmd_find_state = zeroed();
 
-        let mut colon: *mut c_char = null_mut();
-        let mut period: *mut c_char = null_mut();
-        let mut copy: *mut c_char = null_mut();
+        let mut colon: *mut u8 = null_mut();
+        let mut period: *mut u8 = null_mut();
+        let mut copy: *mut u8 = null_mut();
         let sizeof_tmp = 256;
-        let mut tmp: [c_char; 256] = [0; 256];
+        let mut tmp: [u8; 256] = [0; 256];
 
-        let mut session: *const c_char = null();
-        let mut window: *const c_char = null();
-        let mut pane: *const c_char = null();
-        let mut s: *const c_char = null();
+        let mut session: *const u8 = null();
+        let mut window: *const u8 = null();
+        let mut pane: *const u8 = null();
+        let mut s: *const u8 = null();
 
         let mut window_only = 0;
         let mut pane_only = 0;
@@ -931,63 +921,43 @@ pub unsafe fn cmd_find_target(
                                 }
 
                                 s = match type_ {
-                                    cmd_find_type::CMD_FIND_PANE => c"pane".as_ptr(),
-                                    cmd_find_type::CMD_FIND_WINDOW => c"window".as_ptr(),
-                                    cmd_find_type::CMD_FIND_SESSION => c"session".as_ptr(),
+                                    cmd_find_type::CMD_FIND_PANE => c!("pane"),
+                                    cmd_find_type::CMD_FIND_WINDOW => c!("window"),
+                                    cmd_find_type::CMD_FIND_SESSION => c!("session"),
                                 };
 
-                                tmp[0] = b'\0' as c_char;
+                                tmp[0] = b'\0';
                                 if flags & CMD_FIND_PREFER_UNATTACHED != 0 {
-                                    strlcat(
-                                        tmp.as_mut_ptr(),
-                                        c"PREFER_UNATTACHED,".as_ptr(),
-                                        sizeof_tmp,
-                                    );
+                                    strlcat(tmp.as_mut_ptr(), c!("PREFER_UNATTACHED,"), sizeof_tmp);
                                 }
                                 if flags & CMD_FIND_QUIET != 0 {
-                                    strlcat(tmp.as_mut_ptr(), c"QUIET,".as_ptr(), sizeof_tmp);
+                                    strlcat(tmp.as_mut_ptr(), c!("QUIET,"), sizeof_tmp);
                                 }
                                 if flags & CMD_FIND_WINDOW_INDEX != 0 {
-                                    strlcat(
-                                        tmp.as_mut_ptr(),
-                                        c"WINDOW_INDEX,".as_ptr(),
-                                        sizeof_tmp,
-                                    );
+                                    strlcat(tmp.as_mut_ptr(), c!("WINDOW_INDEX,"), sizeof_tmp);
                                 }
                                 if flags & CMD_FIND_DEFAULT_MARKED != 0 {
-                                    strlcat(
-                                        tmp.as_mut_ptr(),
-                                        c"DEFAULT_MARKED,".as_ptr(),
-                                        sizeof_tmp,
-                                    );
+                                    strlcat(tmp.as_mut_ptr(), c!("DEFAULT_MARKED,"), sizeof_tmp);
                                 }
                                 if flags & CMD_FIND_EXACT_SESSION != 0 {
-                                    strlcat(
-                                        tmp.as_mut_ptr(),
-                                        c"EXACT_SESSION,".as_ptr(),
-                                        sizeof_tmp,
-                                    );
+                                    strlcat(tmp.as_mut_ptr(), c!("EXACT_SESSION,"), sizeof_tmp);
                                 }
                                 if flags & CMD_FIND_EXACT_WINDOW != 0 {
-                                    strlcat(
-                                        tmp.as_mut_ptr(),
-                                        c"EXACT_WINDOW,".as_ptr(),
-                                        sizeof_tmp,
-                                    );
+                                    strlcat(tmp.as_mut_ptr(), c!("EXACT_WINDOW,"), sizeof_tmp);
                                 }
                                 if flags & CMD_FIND_CANFAIL != 0 {
-                                    strlcat(tmp.as_mut_ptr(), c"CANFAIL,".as_ptr(), sizeof_tmp);
+                                    strlcat(tmp.as_mut_ptr(), c!("CANFAIL,"), sizeof_tmp);
                                 }
-                                if tmp[0] != b'\0' as c_char {
-                                    tmp[strlen(tmp.as_mut_ptr()) - 1] = b'\0' as c_char;
+                                if tmp[0] != b'\0' {
+                                    tmp[strlen(tmp.as_mut_ptr()) - 1] = b'\0';
                                 } else {
-                                    strlcat(tmp.as_mut_ptr(), c"NONE".as_ptr(), sizeof_tmp);
+                                    strlcat(tmp.as_mut_ptr(), c!("NONE"), sizeof_tmp);
                                 }
                                 log_debug!(
                                     "{}: target {}, type {}, item {:p}, flags {}",
                                     __func__,
                                     if target.is_null() {
-                                        _s(c"none".as_ptr())
+                                        _s(c!("none"))
                                     } else {
                                         _s(target)
                                     },
@@ -1180,19 +1150,11 @@ pub unsafe fn cmd_find_target(
                                         __func__,
                                         _s(target),
                                         if session.is_null() { "" } else { "session " },
-                                        _s(if session.is_null() {
-                                            c"".as_ptr()
-                                        } else {
-                                            session
-                                        }),
+                                        _s(if session.is_null() { c!("") } else { session }),
                                         if window.is_null() { "" } else { "window " },
-                                        _s(if window.is_null() {
-                                            c"".as_ptr()
-                                        } else {
-                                            window
-                                        }),
+                                        _s(if window.is_null() { c!("") } else { window }),
                                         if pane.is_null() { "" } else { "pane " },
-                                        _s(if pane.is_null() { c"".as_ptr() } else { pane }),
+                                        _s(if pane.is_null() { c!("") } else { pane }),
                                     );
                                 }
 
@@ -1280,7 +1242,7 @@ pub unsafe fn cmd_find_target(
                         }
                         // found:
                         (*fs).current = null_mut();
-                        cmd_find_log_state(c"cmd_find_target".as_ptr(), fs);
+                        cmd_find_log_state(c!("cmd_find_target"), fs);
 
                         free_(copy);
                         return 0;
@@ -1358,11 +1320,7 @@ pub unsafe fn cmd_find_current_client(item: *mut cmdq_item, quiet: i32) -> *mut 
     }
 }
 
-pub unsafe fn cmd_find_client(
-    item: *mut cmdq_item,
-    target: *const c_char,
-    quiet: i32,
-) -> *mut client {
+pub unsafe fn cmd_find_client(item: *mut cmdq_item, target: *const u8, quiet: i32) -> *mut client {
     let __func__ = "cmd_find_client";
     unsafe {
         // struct client *c;

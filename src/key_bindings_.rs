@@ -16,7 +16,7 @@ use std::cmp::Ordering;
 
 use crate::*;
 
-use libc::strcmp;
+use crate::libc::strcmp;
 
 use crate::compat::{
     RB_GENERATE,
@@ -115,7 +115,7 @@ pub unsafe fn key_bindings_free(bd: *mut key_binding) {
     }
 }
 
-pub unsafe fn key_bindings_get_table(name: *const c_char, create: i32) -> *mut key_table {
+pub unsafe fn key_bindings_get_table(name: *const u8, create: i32) -> *mut key_table {
     unsafe {
         let mut table_find = MaybeUninit::<key_table>::uninit();
         let table_find = table_find.as_mut_ptr();
@@ -197,9 +197,9 @@ pub unsafe fn key_bindings_next(_table: *mut key_table, bd: *mut key_binding) ->
 }
 
 pub unsafe fn key_bindings_add(
-    name: *const c_char,
+    name: *const u8,
     key: key_code,
-    note: *const c_char,
+    note: *const u8,
     repeat: i32,
     cmdlist: *mut cmd_list,
 ) {
@@ -247,7 +247,7 @@ pub unsafe fn key_bindings_add(
     }
 }
 
-pub unsafe fn key_bindings_remove(name: *const c_char, key: key_code) {
+pub unsafe fn key_bindings_remove(name: *const u8, key: key_code) {
     unsafe {
         let Some(table) = NonNull::new(key_bindings_get_table(name, 0)) else {
             return;
@@ -277,7 +277,7 @@ pub unsafe fn key_bindings_remove(name: *const c_char, key: key_code) {
     }
 }
 
-pub unsafe fn key_bindings_reset(name: *const c_char, key: key_code) {
+pub unsafe fn key_bindings_reset(name: *const u8, key: key_code) {
     unsafe {
         let Some(table) = NonNull::new(key_bindings_get_table(name, 0)) else {
             return;
@@ -308,7 +308,7 @@ pub unsafe fn key_bindings_reset(name: *const c_char, key: key_code) {
     }
 }
 
-pub unsafe fn key_bindings_remove_table(name: *const c_char) {
+pub unsafe fn key_bindings_remove_table(name: *const u8) {
     unsafe {
         let table = key_bindings_get_table(name, 0);
         if !table.is_null() {
@@ -323,7 +323,7 @@ pub unsafe fn key_bindings_remove_table(name: *const c_char) {
     }
 }
 
-pub unsafe fn key_bindings_reset_table(name: *const c_char) {
+pub unsafe fn key_bindings_reset_table(name: *const u8) {
     unsafe {
         let table = key_bindings_get_table(name, 0);
         if table.is_null() {

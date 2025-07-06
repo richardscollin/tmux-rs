@@ -11,10 +11,9 @@
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-
 use crate::*;
 
-use libc::{
+use crate::libc::{
     _exit, AF_UNIX, O_WRONLY, PF_UNSPEC, SIG_BLOCK, SIG_SETMASK, STDERR_FILENO, STDIN_FILENO,
     STDOUT_FILENO, close, dup2, execl, open, sigfillset, sigprocmask, sigset_t, socketpair,
 };
@@ -127,7 +126,7 @@ pub unsafe fn cmd_pipe_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
                 sigprocmask(SIG_SETMASK, &oldset, null_mut());
                 close(pipe_fd[0]);
 
-                let null_fd = open(_PATH_DEVNULL, O_WRONLY);
+                let null_fd = open(_PATH_DEVNULL, O_WRONLY, 0);
                 if out != 0 {
                     if dup2(pipe_fd[1], STDIN_FILENO) == -1 {
                         _exit(1);
@@ -157,7 +156,7 @@ pub unsafe fn cmd_pipe_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
                 closefrom(STDERR_FILENO + 1);
 
                 execl(
-                    _PATH_BSHELL,
+                    _PATH_BSHELL.cast(),
                     c"sh".as_ptr(),
                     c"-c".as_ptr(),
                     cmd,

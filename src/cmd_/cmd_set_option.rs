@@ -60,7 +60,7 @@ pub static cmd_set_hook_entry: cmd_entry = cmd_entry {
 pub unsafe fn cmd_set_option_args_parse(
     _args: *mut args,
     idx: u32,
-    cause: *mut *mut c_char,
+    cause: *mut *mut u8,
 ) -> args_parse_type {
     if idx == 1 {
         return args_parse_type::ARGS_PARSE_COMMANDS_OR_STRING;
@@ -78,11 +78,11 @@ pub unsafe fn cmd_set_option_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
         let mut parent: *mut options_entry = null_mut();
         let mut o: *mut options_entry = null_mut();
         let po: *mut options_entry = null_mut();
-        let mut name: *mut c_char = null_mut();
-        let mut argument: *mut c_char = null_mut();
-        let mut expanded: *mut c_char = null_mut();
-        let mut cause: *mut c_char = null_mut();
-        let mut value: *const c_char = null();
+        let mut name: *mut u8 = null_mut();
+        let mut argument: *mut u8 = null_mut();
+        let mut expanded: *mut u8 = null_mut();
+        let mut cause: *mut u8 = null_mut();
+        let mut value: *const u8 = null();
         let mut idx: i32 = 0;
         let mut already: i32 = 0;
         let error: i32;
@@ -196,7 +196,7 @@ pub unsafe fn cmd_set_option_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
                         free_(cause);
                         break 'fail;
                     }
-                } else if *name == b'@' as c_char {
+                } else if *name == b'@' {
                     if value.is_null() {
                         cmdq_error!(item, "empty value");
                         break 'fail;

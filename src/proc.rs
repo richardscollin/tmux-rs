@@ -13,7 +13,7 @@
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 use crate::*;
 
-use libc::{
+use crate::libc::{
     AF_UNIX, EAGAIN, PF_UNSPEC, SA_RESTART, SIG_DFL, SIG_IGN, SIGCHLD, SIGCONT, SIGHUP, SIGINT,
     SIGPIPE, SIGQUIT, SIGTERM, SIGTSTP, SIGTTIN, SIGTTOU, SIGUSR1, SIGUSR2, SIGWINCH, close, gid_t,
     sigaction, sigemptyset, socketpair, uname, utsname,
@@ -33,7 +33,7 @@ use crate::event_::{signal_add, signal_set};
 
 #[repr(C)]
 pub struct tmuxproc {
-    pub name: *const c_char,
+    pub name: *const u8,
     pub exit: i32,
 
     pub signalcb: Option<unsafe fn(i32)>,
@@ -196,8 +196,8 @@ pub unsafe fn proc_send(
 pub unsafe fn proc_start(name: &CStr) -> *mut tmuxproc {
     unsafe {
         log_open(name);
-        let name = name.as_ptr();
-        setproctitle_(c"%s (%s)".as_ptr(), name, socket_path);
+        let name: *const u8 = name.as_ptr().cast();
+        setproctitle_(c"%s (%s)".as_ptr().cast(), name, socket_path);
 
         let mut u = MaybeUninit::<utsname>::uninit();
         if uname(u.as_mut_ptr()) < 0 {
@@ -238,7 +238,7 @@ pub unsafe fn proc_start(name: &CStr) -> *mut tmuxproc {
         }
 
         let tp = xcalloc1::<tmuxproc>();
-        tp.name = xstrdup(name.cast()).as_ptr();
+        tp.name = xstrdup(name).as_ptr();
         tailq_init(&raw mut tp.peers);
 
         tp
@@ -452,7 +452,7 @@ pub unsafe fn proc_flush_peer(peer: *mut tmuxpeer) {
 
 pub unsafe fn proc_toggle_log(tp: *mut tmuxproc) {
     unsafe {
-        log_toggle(CStr::from_ptr((*tp).name));
+        log_toggle(CStr::from_ptr((*tp).name.cast::<c_char>()));
     }
 }
 

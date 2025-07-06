@@ -33,9 +33,9 @@
 //! - Special handling for ESC inside a DCS to allow arbitrary byte sequences to
 //!   be passed to the underlying terminals.
 //!
-use super::*;
+use crate::*;
 
-use libc::{strchr, strcmp, strpbrk, strtol};
+use crate::libc::{strchr, strcmp, strpbrk, strtol};
 
 use crate::compat::{
     b64::{b64_ntop, b64_pton},
@@ -62,7 +62,7 @@ enum input_param_type {
 #[repr(C)]
 union input_param_union {
     num: i32,
-    str: *mut c_char,
+    str: *mut u8,
 }
 
 /// Input parser argument.
@@ -1182,14 +1182,14 @@ unsafe fn input_split(ictx: *mut input_ctx) -> i32 {
         let mut ip = &raw mut (*ictx).param_list[0];
 
         let mut out;
-        let mut errstr: *const c_char = null();
+        let mut errstr: *const u8 = null();
 
-        let mut ptr: *mut c_char = (&raw mut (*ictx).param_buf).cast();
+        let mut ptr: *mut u8 = (&raw mut (*ictx).param_buf).cast();
         while {
-            out = strsep(&raw mut ptr, c";".as_ptr());
+            out = strsep(&raw mut ptr, c!(";"));
             !out.is_null()
         } {
-            if *out == b'\0' as i8 {
+            if *out == b'\0' {
                 (*ip).type_ = input_param_type::INPUT_MISSING;
             } else if !libc::strchr(out, b':' as i32).is_null() {
                 (*ip).type_ = input_param_type::INPUT_STRING;
@@ -1260,7 +1260,7 @@ unsafe fn input_reply_(ictx: *mut input_ctx, args: std::fmt::Arguments) {
         let mut reply = args.to_string();
         reply.push('\0');
 
-        log_debug!("{}: {}", "input_reply", _s(reply.as_ptr().cast()));
+        log_debug!("{}: {}", "input_reply", _s(reply.as_ptr().cast::<u8>()));
         bufferevent_write(bev, reply.as_ptr().cast(), strlen(reply.as_ptr().cast()));
     }
 }
@@ -1454,7 +1454,7 @@ unsafe fn input_esc_dispatch(ictx: *mut input_ctx) -> i32 {
             "{}: '{}', {}",
             __func__,
             (*ictx).ch as u8 as char,
-            _s((*ictx).interm_buf.as_ptr().cast())
+            _s((*ictx).interm_buf.as_ptr().cast::<u8>())
         );
 
         let entry: *const input_table_entry = libc::bsearch(
@@ -1533,8 +1533,8 @@ unsafe fn input_csi_dispatch(ictx: *mut input_ctx) -> i32 {
             "{}: '{}' \"{}\" \"{}\"",
             __func__,
             (*ictx).ch as u8 as char,
-            _s((&raw const (*ictx).interm_buf).cast()),
-            _s((&raw const (*ictx).param_buf).cast())
+            _s((&raw const (*ictx).interm_buf).cast::<u8>()),
+            _s((&raw const (*ictx).param_buf).cast::<u8>())
         );
 
         if input_split(ictx) != 0 {
@@ -1656,7 +1656,7 @@ unsafe fn input_csi_dispatch(ictx: *mut input_ctx) -> i32 {
                 0 => {
                     #[cfg(feature = "sixel")]
                     {
-                        input_reply(ictx, c"\x1b[?1;2;4c".as_ptr());
+                        input_reply(ictx, c!("\x1b[?1;2;4c"));
                     }
                     #[cfg(not(feature = "sixel"))]
                     {
@@ -1965,9 +1965,9 @@ unsafe fn input_csi_dispatch_sm_graphics(ictx: *mut input_ctx) {
             let o = input_get(ictx, 2, 0, 0);
 
             if n == 1 && (m == 1 || m == 2 || m == 4) {
-                input_reply(ictx, c"\x1b[?%d;0;%uS".as_ptr(), n, SIXEL_COLOUR_REGISTERS);
+                input_reply(ictx, c!("\x1b[?%d;0;%uS"), n, SIXEL_COLOUR_REGISTERS);
             } else {
-                input_reply(ictx, c"\x1b[?%d;3;%dS".as_ptr(), n, o);
+                input_reply(ictx, c!("\x1b[?%d;3;%dS"), n, o);
             }
         }
     }
@@ -2149,15 +2149,15 @@ unsafe fn input_csi_dispatch_sgr_colon(ictx: *mut input_ctx, mut i: u32) {
         let mut n = 0;
         let mut p: [i32; 8] = [-1; 8];
 
-        let mut errstr: *const c_char = null();
+        let mut errstr: *const u8 = null();
         let mut ptr = xstrdup(s).as_ptr();
         let copy = ptr;
-        let mut out: *mut c_char = null_mut();
+        let mut out: *mut u8 = null_mut();
         while {
-            out = strsep(&raw mut ptr, c":".as_ptr());
+            out = strsep(&raw mut ptr, c!(":"));
             !out.is_null()
         } {
-            if *out != b'\0' as c_char {
+            if *out != b'\0' {
                 match strtonum(out, 0, i32::MAX) {
                     Ok(x) => {
                         p[n] = x;
@@ -2387,7 +2387,7 @@ unsafe fn input_dcs_dispatch(ictx: *mut input_ctx) -> i32 {
         if allow_passthrough == 0 {
             return 0;
         }
-        log_debug!("{}: \"{}\"", func, _s(buf.cast()));
+        log_debug!("{}: \"{}\"", func, _s(buf.cast::<u8>()));
 
         if len >= prefixlen as usize
             && libc::strncmp(buf.cast(), prefix.as_ptr().cast(), prefixlen as usize) == 0
@@ -2432,7 +2432,7 @@ unsafe fn input_exit_osc(ictx: *mut input_ctx) {
         log_debug!(
             "{}: \"{}\" (end {})",
             "input_exit_osc",
-            _s(p.cast()),
+            _s(p.cast::<u8>()),
             if (*ictx).input_end == input_end_type::INPUT_END_ST {
                 "ST"
             } else {
@@ -2508,7 +2508,7 @@ unsafe fn input_exit_apc(ictx: *mut input_ctx) {
         if (*ictx).flags.intersects(input_flags::INPUT_DISCARD) {
             return;
         }
-        log_debug!("input_exit_apc: \"{}\"", _s((*ictx).input_buf.cast()));
+        log_debug!("input_exit_apc: \"{}\"", _s((*ictx).input_buf.cast::<u8>()));
 
         if screen_set_title((*sctx).s, (*ictx).input_buf.cast()) != 0 && !wp.is_null() {
             notify_pane(c"pane-title-changed", wp);
@@ -2546,7 +2546,7 @@ unsafe fn input_exit_rename(ictx: *mut input_ctx) {
         log_debug!(
             "{}: \"{}\"",
             "input_exit_rename",
-            _s((*ictx).input_buf.cast())
+            _s((*ictx).input_buf.cast::<u8>())
         );
 
         if !utf8_isvalid((*ictx).input_buf.cast()) {
@@ -2555,16 +2555,14 @@ unsafe fn input_exit_rename(ictx: *mut input_ctx) {
         let w = (*wp).window;
 
         if (*ictx).input_len == 0 {
-            if let Some(o) =
-                NonNull::new(options_get_only((*w).options, c"automatic-rename".as_ptr()))
-            {
+            if let Some(o) = NonNull::new(options_get_only((*w).options, c!("automatic-rename"))) {
                 options_remove_or_default(o.as_ptr(), -1, null_mut());
             }
             if options_get_number_((*w).options, c"automatic-rename") == 0 {
-                window_set_name(w, c"".as_ptr());
+                window_set_name(w, c!(""));
             }
         } else {
-            options_set_number((*w).options, c"automatic-rename".as_ptr(), 0);
+            options_set_number((*w).options, c!("automatic-rename"), 0);
             window_set_name(w, (*ictx).input_buf.cast());
         }
         server_redraw_window_borders(w);
@@ -2623,9 +2621,9 @@ unsafe fn input_osc_colour_reply(ictx: *mut input_ctx, n: u32, mut c: i32) {
         let (r, g, b) = colour_split_rgb(c);
 
         let end = if (*ictx).input_end == input_end_type::INPUT_END_BEL {
-            c"\x07".as_ptr()
+            c!("\x07")
         } else {
-            c"\x1b\\".as_ptr()
+            c!("\x1b\\")
         };
 
         input_reply!(
@@ -2644,7 +2642,7 @@ unsafe fn input_osc_colour_reply(ictx: *mut input_ctx, n: u32, mut c: i32) {
 }
 
 /// Handle the OSC 4 sequence for setting (multiple) palette entries.
-unsafe fn input_osc_4(ictx: *mut input_ctx, p: *mut c_char) {
+unsafe fn input_osc_4(ictx: *mut input_ctx, p: *mut u8) {
     unsafe {
         // char *copy, *s, *next = NULL;
         // long idx;
@@ -2655,14 +2653,14 @@ unsafe fn input_osc_4(ictx: *mut input_ctx, p: *mut c_char) {
         let mut bad = false;
         let mut redraw = false;
 
-        let mut s: *mut c_char = xstrdup(p).as_ptr();
+        let mut s: *mut u8 = xstrdup(p).as_ptr();
         let copy = s;
-        while !s.is_null() && *s != b'\0' as i8 {
+        while !s.is_null() && *s != b'\0' {
             idx = strtol(s, &raw mut next, 10);
 
             let tmp = *next;
             next = next.add(1);
-            if tmp != b';' as i8 {
+            if tmp != b';' {
                 bad = true;
                 break;
             }
@@ -2671,7 +2669,7 @@ unsafe fn input_osc_4(ictx: *mut input_ctx, p: *mut c_char) {
                 break;
             }
 
-            s = strsep(&raw mut next, c";".as_ptr());
+            s = strsep(&raw mut next, c!(";"));
             if streq_(s, "?") {
                 c = colour_palette_get((*ictx).palette, idx as i32);
                 if c != -1 {
@@ -2700,26 +2698,24 @@ unsafe fn input_osc_4(ictx: *mut input_ctx, p: *mut c_char) {
 }
 
 /// Handle the OSC 8 sequence for embedding hyperlinks.
-unsafe fn input_osc_8(ictx: *mut input_ctx, p: *mut c_char) {
+unsafe fn input_osc_8(ictx: *mut input_ctx, p: *mut u8) {
     unsafe {
         let hl: *mut hyperlinks = (*(*ictx).ctx.s).hyperlinks;
         let gc = &raw mut (*ictx).cell.cell;
 
-        let start: *const c_char = null();
-        let mut end: *mut c_char = null_mut();
-        let mut uri: *const c_char = null();
+        let start: *const u8 = null();
+        let mut end: *mut u8 = null_mut();
+        let mut uri: *const u8 = null();
 
-        let mut id: *mut c_char = null_mut();
+        let mut id: *mut u8 = null_mut();
 
         'bad: {
             let mut start = p;
             while {
-                end = strpbrk(start, c":;".as_ptr());
+                end = strpbrk(start, c!(":;"));
                 !end.is_null()
             } {
-                if end.offset_from_unsigned(start) >= 4
-                    && libc::strncmp(start, c"id=".as_ptr(), 3) == 0
-                {
+                if end.offset_from_unsigned(start) >= 4 && libc::strncmp(start, c!("id="), 3) == 0 {
                     if !id.is_null() {
                         break 'bad;
                     }
@@ -2727,16 +2723,16 @@ unsafe fn input_osc_8(ictx: *mut input_ctx, p: *mut c_char) {
                 }
 
                 /* The first ; is the end of parameters and start of the URI. */
-                if *end == b';' as i8 {
+                if *end == b';' {
                     break;
                 }
                 start = end.add(1);
             }
-            if end.is_null() || *end != b';' as i8 {
+            if end.is_null() || *end != b';' {
                 break 'bad;
             }
             uri = end.add(1);
-            if *uri == b'\0' as i8 {
+            if *uri == b'\0' {
                 (*gc).link = 0;
                 free_(id);
                 return;
@@ -2751,7 +2747,7 @@ unsafe fn input_osc_8(ictx: *mut input_ctx, p: *mut c_char) {
             return;
         }
         // bad:
-        log_debug!("bad OSC 8 {}", _s(p.cast()));
+        log_debug!("bad OSC 8 {}", _s(p.cast::<u8>()));
         free_(id);
     }
 }
@@ -2838,7 +2834,7 @@ unsafe fn input_get_fg_control_client(wp: *mut window_pane) -> i32 {
 
 // Handle the OSC 10 sequence for setting and querying foreground colour.
 
-unsafe fn input_osc_10(ictx: *mut input_ctx, p: *mut c_char) {
+unsafe fn input_osc_10(ictx: *mut input_ctx, p: *mut u8) {
     unsafe {
         let wp = (*ictx).wp;
         let mut defaults: grid_cell = zeroed();
@@ -2878,11 +2874,11 @@ unsafe fn input_osc_10(ictx: *mut input_ctx, p: *mut c_char) {
 
 // Handle the OSC 110 sequence for resetting foreground colour.
 
-unsafe fn input_osc_110(ictx: *mut input_ctx, p: *const c_char) {
+unsafe fn input_osc_110(ictx: *mut input_ctx, p: *const u8) {
     unsafe {
         let wp = (*ictx).wp;
 
-        if *p != b'\0' as i8 {
+        if *p != b'\0' {
             return;
         }
 
@@ -2897,7 +2893,7 @@ unsafe fn input_osc_110(ictx: *mut input_ctx, p: *const c_char) {
 }
 
 /// Handle the OSC 11 sequence for setting and querying background colour.
-unsafe fn input_osc_11(ictx: *mut input_ctx, p: *const c_char) {
+unsafe fn input_osc_11(ictx: *mut input_ctx, p: *const u8) {
     unsafe {
         let wp = (*ictx).wp;
         let mut defaults: grid_cell = zeroed();
@@ -2937,11 +2933,11 @@ unsafe fn input_osc_11(ictx: *mut input_ctx, p: *const c_char) {
 }
 
 /// Handle the OSC 111 sequence for resetting background colour.
-unsafe fn input_osc_111(ictx: *mut input_ctx, p: *mut c_char) {
+unsafe fn input_osc_111(ictx: *mut input_ctx, p: *mut u8) {
     unsafe {
         let wp = (*ictx).wp;
 
-        if *p != b'\0' as i8 {
+        if *p != b'\0' {
             return;
         }
         if !(*ictx).palette.is_null() {
@@ -2955,7 +2951,7 @@ unsafe fn input_osc_111(ictx: *mut input_ctx, p: *mut c_char) {
 }
 
 /// Handle the OSC 12 sequence for setting and querying cursor colour.
-unsafe fn input_osc_12(ictx: *mut input_ctx, p: *const c_char) {
+unsafe fn input_osc_12(ictx: *mut input_ctx, p: *const u8) {
     unsafe {
         let wp = (*ictx).wp;
         let mut c = 0;
@@ -2981,9 +2977,9 @@ unsafe fn input_osc_12(ictx: *mut input_ctx, p: *const c_char) {
 }
 
 /// Handle the OSC 112 sequence for resetting cursor colour.
-unsafe fn input_osc_112(ictx: *mut input_ctx, p: *const c_char) {
+unsafe fn input_osc_112(ictx: *mut input_ctx, p: *const u8) {
     unsafe {
-        if *p == b'\0' as i8 {
+        if *p == b'\0' {
             /* no arguments allowed */
             screen_set_cursor_colour((*ictx).ctx.s, -1);
         }
@@ -2991,7 +2987,7 @@ unsafe fn input_osc_112(ictx: *mut input_ctx, p: *const c_char) {
 }
 
 /// Handle the OSC 133 sequence.
-unsafe fn input_osc_133(ictx: *mut input_ctx, p: *const c_char) {
+unsafe fn input_osc_133(ictx: *mut input_ctx, p: *const u8) {
     unsafe {
         let gd = (*(*ictx).ctx.s).grid;
         let line = (*(*ictx).ctx.s).cy + (*gd).hsize;
@@ -3001,7 +2997,7 @@ unsafe fn input_osc_133(ictx: *mut input_ctx, p: *const c_char) {
         }
         let gl = grid_get_line(gd, line);
 
-        match (*p) as u8 {
+        match *p {
             b'A' => (*gl).flags |= grid_line_flag::START_PROMPT,
             b'C' => (*gl).flags |= grid_line_flag::START_OUTPUT,
             _ => (),
@@ -3010,21 +3006,21 @@ unsafe fn input_osc_133(ictx: *mut input_ctx, p: *const c_char) {
 }
 
 /// Handle the OSC 52 sequence for setting the clipboard.
-unsafe fn input_osc_52(ictx: *mut input_ctx, p: *const c_char) {
+unsafe fn input_osc_52(ictx: *mut input_ctx, p: *const u8) {
     let __func__ = "input_osc_52";
 
     unsafe {
         let wp = (*ictx).wp;
-        let mut end: *const c_char = null();
-        let mut buf: *const c_char = null_mut();
+        let mut end: *const u8 = null();
+        let mut buf: *const u8 = null_mut();
         let mut len: usize = 0;
         let mut out: *mut u8 = null_mut();
         let mut outlen: i32 = 0;
 
         let mut ctx: screen_write_ctx = zeroed();
         let mut pb: *mut paste_buffer = null_mut();
-        let allow: *const c_char = c"cpqs01234567".as_ptr();
-        let mut flags: [c_char; 13] = [0; 13];
+        let allow: *const u8 = c!("cpqs01234567");
+        let mut flags: [u8; 13] = [0; 13];
         let mut j = 0;
 
         if wp.is_null() {
@@ -3040,7 +3036,7 @@ unsafe fn input_osc_52(ictx: *mut input_ctx, p: *const c_char) {
             return;
         }
         end = end.add(1);
-        if *end == b'\0' as i8 {
+        if *end == b'\0' {
             return;
         }
         log_debug!("{}: {}", __func__, _s(end));
@@ -3048,7 +3044,7 @@ unsafe fn input_osc_52(ictx: *mut input_ctx, p: *const c_char) {
         let mut i = 0;
         while p.add(i) != end {
             if !strchr(allow, *p.add(i) as i32).is_null()
-                && strchr((&raw mut flags) as *const c_char, *p.add(i) as i32).is_null()
+                && strchr((&raw mut flags) as *const u8, *p.add(i) as i32).is_null()
             {
                 flags[j] = *p.add(i);
                 j += 1;
@@ -3063,9 +3059,9 @@ unsafe fn input_osc_52(ictx: *mut input_ctx, p: *const c_char) {
                 buf = paste_buffer_data(pb, &raw mut len);
             }
             if (*ictx).input_end == input_end_type::INPUT_END_BEL {
-                input_reply_clipboard((*ictx).event, buf, len, c"\x07".as_ptr());
+                input_reply_clipboard((*ictx).event, buf, len, c!("\x07"));
             } else {
-                input_reply_clipboard((*ictx).event, buf, len, c"\x1b\\".as_ptr());
+                input_reply_clipboard((*ictx).event, buf, len, c!("\x1b\\"));
             }
             return;
         }
@@ -3085,7 +3081,7 @@ unsafe fn input_osc_52(ictx: *mut input_ctx, p: *const c_char) {
         screen_write_start_pane(&raw mut ctx, wp, null_mut());
         screen_write_setselection(
             &raw mut ctx,
-            (&raw const flags) as *const c_char,
+            (&raw const flags) as *const u8,
             out,
             outlen as u32,
         );
@@ -3097,22 +3093,22 @@ unsafe fn input_osc_52(ictx: *mut input_ctx, p: *const c_char) {
 }
 
 /// Handle the OSC 104 sequence for unsetting (multiple) palette entries.
-unsafe fn input_osc_104(ictx: *mut input_ctx, p: *const c_char) {
+unsafe fn input_osc_104(ictx: *mut input_ctx, p: *const u8) {
     unsafe {
         let mut bad = false;
         let mut redraw = false;
 
-        if *p == b'\0' as i8 {
+        if *p == b'\0' {
             colour_palette_clear((*ictx).palette);
             screen_write_fullredraw(&raw mut (*ictx).ctx);
             return;
         }
 
-        let copy: *mut c_char = xstrdup(p).as_ptr();
-        let mut s: *mut c_char = copy;
-        while *s != b'\0' as i8 {
+        let copy: *mut u8 = xstrdup(p).as_ptr();
+        let mut s: *mut u8 = copy;
+        while *s != b'\0' {
             let idx = strtol(s, &raw mut s, 10);
-            if *s != b'\0' as i8 && *s != b';' as i8 {
+            if *s != b'\0' && *s != b';' {
                 bad = true;
                 break;
             }
@@ -3123,7 +3119,7 @@ unsafe fn input_osc_104(ictx: *mut input_ctx, p: *const c_char) {
             if colour_palette_set((*ictx).palette, idx as i32, -1) != 0 {
                 redraw = true;
             }
-            if *s == b';' as i8 {
+            if *s == b';' {
                 s = s.add(1);
             }
         }
@@ -3139,12 +3135,12 @@ unsafe fn input_osc_104(ictx: *mut input_ctx, p: *const c_char) {
 
 pub unsafe fn input_reply_clipboard(
     bev: *mut bufferevent,
-    buf: *const c_char,
+    buf: *const u8,
     len: usize,
-    end: *const c_char,
+    end: *const u8,
 ) {
     unsafe {
-        let mut out: *mut c_char = null_mut();
+        let mut out: *mut u8 = null_mut();
         let mut outlen: i32 = 0;
 
         if !buf.is_null() && len != 0 {
@@ -3161,7 +3157,7 @@ pub unsafe fn input_reply_clipboard(
             }
         }
 
-        bufferevent_write(bev, c"\x1b]52;;".as_ptr().cast(), 6);
+        bufferevent_write(bev, c!("\x1b]52;;").cast(), 6);
         if outlen != 0 {
             bufferevent_write(bev, out.cast(), outlen as usize);
         }

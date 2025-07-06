@@ -1,4 +1,4 @@
-// Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
+// Copyright (c) 2007 Nicholas Marriott <nichu8gmail.com>
 //
 // Permission to use, copy, modify, and distribute this software for any
 // purpose with or without fee is hereby granted, provided that the above
@@ -24,7 +24,7 @@ use crate::compat::{
 // Entry in the key tree.
 pub struct input_key_entry {
     pub key: key_code,
-    pub data: *const c_char,
+    pub data: *const u8,
 
     pub entry: rb_entry<input_key_entry>,
 }
@@ -34,7 +34,7 @@ impl input_key_entry {
     const fn new(key: key_code, data: &'static CStr) -> Self {
         Self {
             key,
-            data: data.as_ptr(),
+            data: data.as_ptr().cast(),
             entry: unsafe { zeroed() },
         }
     }
@@ -208,7 +208,7 @@ pub unsafe extern "C-unwind" fn input_key_build() {
             {
                 let key = (*ike).key & !KEYC_BUILD_MODIFIERS;
                 let data = xstrdup((*ike).data).as_ptr();
-                *data.add(libc::strcspn(data, c"_".as_ptr())) = b'0' as c_char + j as c_char;
+                *data.add(libc::strcspn(data, c!("_"))) = b'0' + j as u8;
 
                 let new = xcalloc1::<input_key_entry>();
                 new.key = key | input_key_modifiers_j;
@@ -227,7 +227,7 @@ pub unsafe extern "C-unwind" fn input_key_build() {
 pub unsafe fn input_key_pane(wp: *mut window_pane, key: key_code, m: *mut mouse_event) -> i32 {
     unsafe {
         if log_get_level() != 0 {
-            // log_debug( c"writing key 0x%llx (%s) to %%%u".as_ptr(), key, key_string_lookup_key(key, 1), (*wp).id,);
+            // log_debug(  c!("writing key 0x%llx (%s) to %%%u"), key, key_string_lookup_key(key, 1), (*wp).id,);
         }
 
         if KEYC_IS_MOUSE(key) {
@@ -241,9 +241,9 @@ pub unsafe fn input_key_pane(wp: *mut window_pane, key: key_code, m: *mut mouse_
 }
 
 pub unsafe fn input_key_write(
-    from: *const c_char,
+    from: *const u8,
     bev: *mut bufferevent,
-    data: *const c_char,
+    data: *const u8,
     size: usize,
 ) {
     unsafe {
@@ -253,10 +253,10 @@ pub unsafe fn input_key_write(
 }
 
 pub unsafe fn input_key_extended(bev: *mut bufferevent, mut key: key_code) -> i32 {
-    let __func__ = c"input_key_extended".as_ptr();
+    let __func__ = c!("input_key_extended");
     unsafe {
         let sizeof_tmp = 64;
-        let mut tmp = MaybeUninit::<[c_char; 64]>::uninit();
+        let mut tmp = MaybeUninit::<[u8; 64]>::uninit();
         let mut ud = MaybeUninit::<utf8_data>::uninit();
         let mut wc: wchar_t = 0;
 
@@ -320,7 +320,7 @@ pub unsafe fn input_key_extended(bev: *mut bufferevent, mut key: key_code) -> i3
     reason = "false positive if c string contains NUL"
 )]
 static standard_map: [SyncCharPtr; 2] = [
-    SyncCharPtr::from_ptr(c"1!9(0)=+;:'\",<.>/-8? 2".as_ptr()),
+    SyncCharPtr::from_ptr(c!("1!9(0)=+;:'\",<.>/-8? 2")),
     SyncCharPtr::from_ptr(b"119900=+;;'',,..\x1f\x1f\x7f\x7f\0\0\0".as_ptr().cast()),
 ];
 
@@ -328,14 +328,14 @@ static standard_map: [SyncCharPtr; 2] = [
 /// complicated output mode, with a lot of remapping in order to
 /// emulate quirks of terminals that today can be only found in museums.
 pub unsafe fn input_key_vt10x(bev: *mut bufferevent, mut key: key_code) -> i32 {
-    let __func__ = c"input_key_vt10x".as_ptr();
+    let __func__ = c!("input_key_vt10x");
     unsafe {
         let mut ud: utf8_data = zeroed(); // TODO use uninit
 
         log_debug!("{}: key in {}", _s(__func__), key);
 
         if key & KEYC_META != 0 {
-            input_key_write(__func__, bev, c"\x1b".as_ptr(), 1);
+            input_key_write(__func__, bev, c!("\x1b"), 1);
         }
 
         /*
@@ -416,7 +416,7 @@ pub unsafe fn input_key_mode1(bev: *mut bufferevent, key: key_code) -> i32 {
 
 /// Translate a key code into an output key sequence.
 pub unsafe fn input_key(s: *mut screen, bev: *mut bufferevent, mut key: key_code) -> i32 {
-    let __func__ = c"input_key".as_ptr();
+    let __func__ = c!("input_key");
     unsafe {
         let mut ike: *mut input_key_entry = null_mut();
         let mut ud: utf8_data = zeroed();
@@ -510,7 +510,7 @@ pub unsafe fn input_key(s: *mut screen, bev: *mut bufferevent, mut key: key_code
                 return 0;
             }
             if (key & KEYC_META != 0) && (!key & KEYC_IMPLIED_META != 0) {
-                input_key_write(__func__, bev, c"\x1b".as_ptr(), 1);
+                input_key_write(__func__, bev, c!("\x1b"), 1);
             }
             input_key_write(__func__, bev, (*ike).data, strlen((*ike).data));
             return 0;
@@ -567,10 +567,10 @@ pub unsafe fn input_key_get_mouse(
     m: *mut mouse_event,
     x: u32,
     y: u32,
-    rbuf: *mut *const c_char,
+    rbuf: *mut *const u8,
     rlen: *mut usize,
 ) -> i32 {
-    static mut buf: [c_char; 40] = [0; 40];
+    static mut buf: [u8; 40] = [0; 40];
     let len = 0usize;
 
     unsafe {
@@ -619,7 +619,7 @@ pub unsafe fn input_key_get_mouse(
         let mut len: usize = 0;
         if (*m).sgr_type != ' ' as u32 && (*s).mode.intersects(mode_flag::MODE_MOUSE_SGR) {
             len = xsnprintf_!(
-                &raw mut buf as *mut c_char,
+                &raw mut buf as *mut u8,
                 sizeof_buf,
                 "\x1b[<{};{};{}{}",
                 (*m).sgr_b,
@@ -635,7 +635,7 @@ pub unsafe fn input_key_get_mouse(
             {
                 return 0;
             }
-            len = xsnprintf_!(&raw mut buf as *mut c_char, sizeof_buf, "\x1b[M").unwrap() as usize;
+            len = xsnprintf_!(&raw mut buf as *mut u8, sizeof_buf, "\x1b[M").unwrap() as usize;
             len += input_key_split2((*m).b + MOUSE_PARAM_BTN_OFF, &raw mut buf[len] as _);
             len += input_key_split2(x + MOUSE_PARAM_POS_OFF, &raw mut buf[len] as _);
             len += input_key_split2(y + MOUSE_PARAM_POS_OFF, &raw mut buf[len] as _);
@@ -644,8 +644,8 @@ pub unsafe fn input_key_get_mouse(
                 return 0;
             }
 
-            len = xsnprintf_!(&raw mut buf as *mut c_char, sizeof_buf, "\x1b[M").unwrap() as usize;
-            buf[len] = ((*m).b + MOUSE_PARAM_BTN_OFF) as c_char;
+            len = xsnprintf_!(&raw mut buf as *mut u8, sizeof_buf, "\x1b[M").unwrap() as usize;
+            buf[len] = ((*m).b + MOUSE_PARAM_BTN_OFF) as u8;
             len += 1;
 
             /*
@@ -654,22 +654,22 @@ pub unsafe fn input_key_get_mouse(
              * coordinates to the supported range.
              */
             if x + MOUSE_PARAM_POS_OFF > MOUSE_PARAM_MAX {
-                buf[len] = MOUSE_PARAM_MAX as c_char;
+                buf[len] = MOUSE_PARAM_MAX as u8;
                 len += 1;
             } else {
-                buf[len] = x as c_char + MOUSE_PARAM_POS_OFF as c_char;
+                buf[len] = x as u8 + MOUSE_PARAM_POS_OFF as u8;
                 len += 1;
             }
             if y + MOUSE_PARAM_POS_OFF > MOUSE_PARAM_MAX {
-                buf[len] = MOUSE_PARAM_MAX as c_char;
+                buf[len] = MOUSE_PARAM_MAX as u8;
                 len += 1;
             } else {
-                buf[len] = y as c_char + MOUSE_PARAM_POS_OFF as c_char;
+                buf[len] = y as u8 + MOUSE_PARAM_POS_OFF as u8;
                 len += 1;
             }
         }
 
-        *rbuf = &raw const buf as *const c_char;
+        *rbuf = &raw const buf as *const u8;
         *rlen = len;
     }
     1
@@ -677,7 +677,7 @@ pub unsafe fn input_key_get_mouse(
 
 /// Translate mouse and output.
 pub unsafe fn input_key_mouse(wp: *mut window_pane, m: *mut mouse_event) {
-    let __func__ = c"input_key_mouse".as_ptr();
+    let __func__ = c!("input_key_mouse");
     unsafe {
         let s = (*wp).screen;
         let mut x = 0;

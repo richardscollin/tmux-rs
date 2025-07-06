@@ -13,11 +13,11 @@
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 use crate::*;
 
-use libc::{sscanf, tcgetattr};
+use crate::libc::{sscanf, tcgetattr};
 
 use crate::compat::tree::rb_min;
 
-const NEW_SESSION_TEMPLATE: &CStr = c"#{session_name}:";
+const NEW_SESSION_TEMPLATE: *const u8 = c!("#{session_name}:");
 
 pub static cmd_new_session_entry: cmd_entry = cmd_entry {
     name: SyncCharPtr::new(c"new-session"),
@@ -49,7 +49,7 @@ pub static cmd_has_session_entry: cmd_entry = cmd_entry {
 };
 
 unsafe fn cmd_new_session_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retval {
-    let __func__ = c"cmd_new_session_exec".as_ptr();
+    let __func__ = c!("cmd_new_session_exec");
 
     unsafe {
         let args = cmd_get_args(self_);
@@ -64,9 +64,9 @@ unsafe fn cmd_new_session_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
         let mut tio: termios = zeroed();
         let mut tiop = null_mut();
         let mut sg: *mut session_group = null_mut();
-        let mut errstr: *const c_char = null();
-        let mut group: *const c_char = null();
-        let mut tmp: *const c_char = null();
+        let mut errstr: *const u8 = null();
+        let mut group: *const u8 = null();
+        let mut tmp: *const u8 = null();
         let mut cause = null_mut();
         let mut cwd = null_mut();
         let mut cp = null_mut();
@@ -258,7 +258,7 @@ unsafe fn cmd_new_session_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
                 }
             } else {
                 tmp = options_get_string_(global_s_options, c"default-size");
-                if sscanf(tmp, c"%ux%u".as_ptr(), &raw mut sx, &raw mut sy) != 2 {
+                if sscanf(tmp.cast(), c"%ux%u".as_ptr(), &raw mut sx, &raw mut sy) != 2 {
                     sx = dsx;
                     sy = dsy;
                 } else {
@@ -286,7 +286,7 @@ unsafe fn cmd_new_session_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
                 if !args_has_(args, 'y') {
                     dsy = sy;
                 }
-                options_set_string!(oo, c"default-size".as_ptr(), 0, "{dsx}x{dsy}");
+                options_set_string!(oo, c!("default-size"), 0, "{dsx}x{dsy}");
             }
             env = environ_create().as_ptr();
             if !c.is_null() && !args_has_(args, 'E') {
@@ -363,9 +363,9 @@ unsafe fn cmd_new_session_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
 
             /* Print if requested. */
             if args_has_(args, 'P') {
-                let mut template: *const c_char = args_get_(args, 'F');
+                let mut template: *const u8 = args_get_(args, 'F');
                 if template.is_null() {
-                    template = NEW_SESSION_TEMPLATE.as_ptr();
+                    template = NEW_SESSION_TEMPLATE;
                 }
                 cp = format_single(item, template, c, s, (*s).curw, null_mut());
                 cmdq_print!(item, "{}", _s(cp));

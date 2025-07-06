@@ -1,6 +1,6 @@
 use ::std::{
     alloc::{GlobalAlloc, Layout},
-    ffi::{CString, c_char},
+    ffi::CString,
     str::FromStr as _,
 };
 
@@ -40,7 +40,7 @@ fn main() {
         .into_iter()
         .map(|s| CString::from_str(&s).unwrap())
         .collect::<Vec<CString>>();
-    let mut args: Vec<*mut c_char> = args.into_iter().map(|s| s.into_raw()).collect();
+    let mut args: Vec<*mut u8> = args.into_iter().map(|s| s.into_raw().cast()).collect();
 
     // TODO
     // passing null_mut() as env is ok for now because setproctitle call was removed
@@ -55,6 +55,6 @@ fn main() {
 
     drop(
         args.into_iter()
-            .map(|ptr| unsafe { CString::from_raw(ptr) }),
+            .map(|ptr| unsafe { CString::from_raw(ptr.cast()) }),
     );
 }

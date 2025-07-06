@@ -45,7 +45,7 @@ unsafe extern "C" fn alerts_callback(_fd: c_int, _events: c_short, _arg: *mut c_
             tailq_remove::<_, crate::discr_alerts_entry>(&raw mut alerts_list, w);
 
             (*w).flags &= !WINDOW_ALERTFLAGS;
-            window_remove_ref(w, c"alerts_callback".as_ptr());
+            window_remove_ref(w, c!("alerts_callback"));
         }
         alerts_fired.store(0, atomic::Ordering::Release);
     }
@@ -140,7 +140,7 @@ pub(crate) unsafe fn alerts_queue(w: NonNull<window>, flags: window_flag) {
             if (*w).alerts_queued == 0 {
                 (*w).alerts_queued = 1;
                 tailq_insert_tail::<_, discr_alerts_entry>(&raw mut alerts_list, w);
-                window_add_ref(w, c"alerts_queue".as_ptr());
+                window_add_ref(w, c!("alerts_queue"));
             }
 
             if alerts_fired.load(atomic::Ordering::Acquire) == 0 {
@@ -302,7 +302,14 @@ unsafe fn alerts_set_message(wl: *mut winlink, type_: &'static CStr, option: &'s
                 continue;
             }
             if (*(*c).session).curw == wl {
-                status_message_set!(c, -1, 1, 0, "{} in current window", _s(type_.as_ptr()));
+                status_message_set!(
+                    c,
+                    -1,
+                    1,
+                    0,
+                    "{} in current window",
+                    _s(type_.as_ptr().cast::<u8>())
+                );
             } else {
                 status_message_set!(
                     c,
@@ -310,7 +317,7 @@ unsafe fn alerts_set_message(wl: *mut winlink, type_: &'static CStr, option: &'s
                     1,
                     0,
                     "{} in window {}",
-                    _s(type_.as_ptr()),
+                    _s(type_.as_ptr().cast::<u8>()),
                     (*wl).idx
                 );
             }

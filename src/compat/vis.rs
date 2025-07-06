@@ -24,7 +24,7 @@
 // LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
 // OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 // SUCH DAMAGE.
-use core::ffi::{c_char, c_int, c_void};
+use core::ffi::{c_int, c_void};
 
 // documentation from vis(3bsd)
 bitflags::bitflags! {
@@ -68,7 +68,7 @@ bitflags::bitflags! {
 
 /// copies into dst a string which represents the character c. If c needs no encoding, it is copied in unaltered.
 /// The string is null terminated, and a pointer to the end of the string is returned.
-pub unsafe fn vis_(dst: *mut c_char, c: c_int, flag: vis_flags, nextc: c_int) -> *mut c_char {
+pub unsafe fn vis_(dst: *mut u8, c: c_int, flag: vis_flags, nextc: c_int) -> *mut u8 {
     unsafe {
         if flag.intersects(vis_flags::VIS_CSTYLE) {
             match c as u8 {
@@ -102,41 +102,41 @@ pub unsafe fn vis_(dst: *mut c_char, c: c_int, flag: vis_flags, nextc: c_int) ->
 }
 
 #[inline]
-unsafe fn encode_passthrough(dst: *mut i8, ch: i32) -> *mut i8 {
+unsafe fn encode_passthrough(dst: *mut u8, ch: i32) -> *mut u8 {
     unsafe {
-        *dst = ch as i8;
-        *dst.add(1) = b'\0' as i8;
+        *dst = ch as u8;
+        *dst.add(1) = b'\0';
         dst.add(1)
     }
 }
 
 #[inline]
-unsafe fn encode_cstyle(dst: *mut i8, ch: u8) -> *mut i8 {
+unsafe fn encode_cstyle(dst: *mut u8, ch: u8) -> *mut u8 {
     unsafe {
-        *dst = b'\\' as i8;
-        *dst.add(1) = ch as i8;
-        *dst.add(2) = b'\0' as i8;
+        *dst = b'\\';
+        *dst.add(1) = ch;
+        *dst.add(2) = b'\0';
         dst.add(2)
     }
 }
 
 #[inline]
-unsafe fn encode_octal(dst: *mut i8, c: i32) -> *mut i8 {
+unsafe fn encode_octal(dst: *mut u8, c: i32) -> *mut u8 {
     unsafe {
         let c = c as u8;
         let ones_place = c % 8;
         let eights_place = (c / 8) % 8;
         let sixty_four_place = c / 64;
-        *dst = b'\\' as i8;
-        *dst.add(1) = sixty_four_place as i8 + b'0' as i8;
-        *dst.add(2) = eights_place as i8 + b'0' as i8;
-        *dst.add(3) = ones_place as i8 + b'0' as i8;
-        *dst.add(4) = b'\0' as i8;
+        *dst = b'\\';
+        *dst.add(1) = sixty_four_place + b'0';
+        *dst.add(2) = eights_place + b'0';
+        *dst.add(3) = ones_place + b'0';
+        *dst.add(4) = b'\0';
         dst.add(4)
     }
 }
 
-pub unsafe fn strvis(mut dst: *mut c_char, mut src: *const c_char, flag: vis_flags) -> i32 {
+pub unsafe fn strvis(mut dst: *mut u8, mut src: *const u8, flag: vis_flags) -> i32 {
     unsafe {
         let start = dst;
 
@@ -150,12 +150,7 @@ pub unsafe fn strvis(mut dst: *mut c_char, mut src: *const c_char, flag: vis_fla
     }
 }
 
-pub unsafe fn strnvis(
-    mut dst: *mut c_char,
-    mut src: *const c_char,
-    dlen: usize,
-    flag: vis_flags,
-) -> i32 {
+pub unsafe fn strnvis(mut dst: *mut u8, mut src: *const u8, dlen: usize, flag: vis_flags) -> i32 {
     unsafe {
         let mut i = 0;
 
@@ -171,9 +166,9 @@ pub unsafe fn strnvis(
     }
 }
 
-pub unsafe fn stravis(outp: *mut *mut c_char, src: *const c_char, flag: vis_flags) -> i32 {
+pub unsafe fn stravis(outp: *mut *mut u8, src: *const u8, flag: vis_flags) -> i32 {
     unsafe {
-        let buf: *mut c_char = libc::calloc(4, libc::strlen(src) + 1).cast();
+        let buf: *mut u8 = libc::calloc(4, crate::libc::strlen(src) + 1).cast();
         if buf.is_null() {
             return -1;
         }
@@ -189,8 +184,7 @@ pub unsafe fn stravis(outp: *mut *mut c_char, src: *const c_char, flag: vis_flag
     }
 }
 
-// unsafe extern "C" { pub unsafe fn vis(dst: *mut c_char, c: c_int, flag: vis_flags, nextc: c_int) -> *mut c_char; }
-pub unsafe fn vis(dst: *mut c_char, c: c_int, flag: vis_flags, nextc: c_int) -> *mut c_char {
+pub unsafe fn vis(dst: *mut u8, c: c_int, flag: vis_flags, nextc: c_int) -> *mut u8 {
     unsafe { vis_(dst, c, flag, nextc) }
 }
 
@@ -200,11 +194,11 @@ mod test {
 
     #[test]
     fn test_vis() {
-        let mut c_dst_arr: [c_char; 16] = [0; 16];
-        let mut rs_dst_arr: [c_char; 16] = [0; 16];
+        let mut c_dst_arr: [u8; 16] = [0; 16];
+        let mut rs_dst_arr: [u8; 16] = [0; 16];
 
-        let c_dst = &raw mut c_dst_arr as *mut c_char;
-        let rs_dst = &raw mut rs_dst_arr as *mut c_char;
+        let c_dst = &raw mut c_dst_arr as *mut u8;
+        let rs_dst = &raw mut rs_dst_arr as *mut u8;
 
         unsafe {
             for f1 in [

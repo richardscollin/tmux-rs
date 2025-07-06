@@ -48,7 +48,7 @@ pub struct args {
 #[repr(C)]
 pub struct args_command_state<'a> {
     pub cmdlist: *mut cmd_list,
-    pub cmd: *mut c_char,
+    pub cmd: *mut u8,
     pub pi: cmd_parse_input<'a>,
 }
 
@@ -90,10 +90,10 @@ pub fn args_type_to_string(type_: args_type) -> &'static str {
     }
 }
 
-pub unsafe fn args_value_as_string(value: *mut args_value) -> *const c_char {
+pub unsafe fn args_value_as_string(value: *mut args_value) -> *const u8 {
     unsafe {
         match (*value).type_ {
-            args_type::ARGS_NONE => c"".as_ptr(),
+            args_type::ARGS_NONE => c!(""),
             args_type::ARGS_STRING => (*value).union_.string,
             args_type::ARGS_COMMANDS => {
                 if (*value).cached.is_null() {
@@ -122,10 +122,10 @@ pub fn args_create<'a>() -> &'a mut args {
 pub unsafe fn args_parse_flag_argument(
     values: *mut args_value,
     count: u32,
-    cause: *mut *mut c_char,
+    cause: *mut *mut u8,
     args: *mut args,
     i: *mut u32,
-    string: *mut c_char,
+    string: *mut u8,
     flag: i32,
     optional_argument: i32,
 ) -> i32 {
@@ -135,7 +135,7 @@ pub unsafe fn args_parse_flag_argument(
         'out: {
             new = xcalloc(1, size_of::<args_value>()).cast().as_ptr();
 
-            if *string != b'\0' as c_char {
+            if *string != b'\0' {
                 (*new).type_ = args_type::ARGS_STRING;
                 (*new).union_.string = xstrdup(string).cast().as_ptr();
                 break 'out;
@@ -183,7 +183,7 @@ pub unsafe fn args_parse_flags(
     parse: *const args_parse,
     values: *mut args_value,
     count: u32,
-    cause: *mut *mut c_char,
+    cause: *mut *mut u8,
     args: *mut args,
     i: *mut u32,
 ) -> i32 {
@@ -197,7 +197,7 @@ pub unsafe fn args_parse_flags(
         let mut string = (*value).union_.string;
         log_debug!("{}: next {}", __func__, _s(string));
         if ({
-            let tmp = *string != b'-' as c_char;
+            let tmp = *string != b'-';
             string = string.add(1);
             tmp
         }) || *string == b'\0' as _
@@ -228,12 +228,12 @@ pub unsafe fn args_parse_flags(
                 *cause = format_nul!("unknown flag -{}", flag as char);
                 return -1;
             }
-            if *found.add(1) != b':' as c_char {
+            if *found.add(1) != b':' {
                 log_debug!("{}: -{}", __func__, flag as i32);
                 args_set(args, flag, null_mut(), 0);
                 continue;
             }
-            let optional_argument = (*found.add(2) == b':' as c_char) as i32;
+            let optional_argument = (*found.add(2) == b':') as i32;
             return args_parse_flag_argument(
                 values,
                 count,
@@ -253,7 +253,7 @@ pub unsafe fn args_parse(
     parse: *const args_parse,
     values: *mut args_value,
     count: u32,
-    cause: *mut *mut c_char,
+    cause: *mut *mut u8,
 ) -> *mut args {
     let __func__ = "args_parse";
     unsafe {
@@ -353,7 +353,7 @@ pub unsafe fn args_copy_copy_value(
     to: *mut args_value,
     from: *mut args_value,
     argc: i32,
-    argv: *mut *mut c_char,
+    argv: *mut *mut u8,
 ) {
     unsafe {
         (*to).type_ = (*from).type_;
@@ -376,7 +376,7 @@ pub unsafe fn args_copy_copy_value(
 }
 
 /// Copy an arguments set.
-pub unsafe fn args_copy(args: *mut args, argc: i32, argv: *mut *mut c_char) -> *mut args {
+pub unsafe fn args_copy(args: *mut args, argc: i32, argv: *mut *mut u8) -> *mut args {
     let __func__ = "args_copy";
     unsafe {
         cmd_log_argv!(argc, argv, "{__func__}");
@@ -447,7 +447,7 @@ pub unsafe fn args_free(args: *mut args) {
     }
 }
 
-pub unsafe fn args_to_vector(args: *mut args, argc: *mut i32, argv: *mut *mut *mut c_char) {
+pub unsafe fn args_to_vector(args: *mut args, argc: *mut i32, argv: *mut *mut *mut u8) {
     unsafe {
         *argc = 0;
         *argv = null_mut();
@@ -469,7 +469,7 @@ pub unsafe fn args_to_vector(args: *mut args, argc: *mut i32, argv: *mut *mut *m
     }
 }
 
-pub unsafe fn args_from_vector(argc: i32, argv: *mut *mut c_char) -> *mut args_value {
+pub unsafe fn args_from_vector(argc: i32, argv: *mut *mut u8) -> *mut args_value {
     unsafe {
         let values: *mut args_value = xcalloc_(argc as usize).as_ptr();
         for i in 0..argc {
@@ -486,7 +486,7 @@ macro_rules! args_print_add {
     };
 }
 pub(crate) use args_print_add;
-pub unsafe fn args_print_add_(buf: *mut *mut c_char, len: *mut usize, fmt: std::fmt::Arguments) {
+pub unsafe fn args_print_add_(buf: *mut *mut u8, len: *mut usize, fmt: std::fmt::Arguments) {
     unsafe {
         let s = fmt.to_string();
 
@@ -497,9 +497,9 @@ pub unsafe fn args_print_add_(buf: *mut *mut c_char, len: *mut usize, fmt: std::
     }
 }
 
-pub unsafe fn args_print_add_value(buf: *mut *mut c_char, len: *mut usize, value: *mut args_value) {
+pub unsafe fn args_print_add_value(buf: *mut *mut u8, len: *mut usize, value: *mut args_value) {
     unsafe {
-        if **buf != b'\0' as c_char {
+        if **buf != b'\0' {
             args_print_add!(buf, len, " ");
         }
 
@@ -519,12 +519,12 @@ pub unsafe fn args_print_add_value(buf: *mut *mut c_char, len: *mut usize, value
     }
 }
 
-pub unsafe fn args_print(args: *mut args) -> *mut c_char {
+pub unsafe fn args_print(args: *mut args) -> *mut u8 {
     unsafe {
         let mut last: *mut args_entry = null_mut();
 
         let mut len: usize = 1;
-        let mut buf: *mut c_char = xcalloc(1, len).cast().as_ptr();
+        let mut buf: *mut u8 = xcalloc(1, len).cast().as_ptr();
 
         /* Process the flags first. */
         for entry in rb_foreach(&raw mut (*args).tree).map(NonNull::as_ptr) {
@@ -535,7 +535,7 @@ pub unsafe fn args_print(args: *mut args) -> *mut c_char {
                 continue;
             }
 
-            if *buf == b'\0' as c_char {
+            if *buf == b'\0' {
                 args_print_add!(&raw mut buf, &raw mut len, "-");
             }
             for _ in 0..(*entry).count {
@@ -546,7 +546,7 @@ pub unsafe fn args_print(args: *mut args) -> *mut c_char {
         /* Then the flags with arguments. */
         for entry in rb_foreach(&raw mut (*args).tree).map(NonNull::as_ptr) {
             if (*entry).flags & ARGS_ENTRY_OPTIONAL_VALUE != 0 {
-                if *buf != b'\0' as c_char {
+                if *buf != b'\0' {
                     args_print_add!(&raw mut buf, &raw mut len, " -{}", (*entry).flag as char);
                 } else {
                     args_print_add!(&raw mut buf, &raw mut len, "-{}", (*entry).flag as char,);
@@ -559,7 +559,7 @@ pub unsafe fn args_print(args: *mut args) -> *mut c_char {
             }
             for value in tailq_foreach(&raw mut (*entry).values) {
                 {
-                    if *buf != b'\0' as c_char {
+                    if *buf != b'\0' {
                         args_print_add!(&raw mut buf, &raw mut len, " -{}", (*entry).flag as char,);
                     } else {
                         args_print_add!(&raw mut buf, &raw mut len, "-{}", (*entry).flag as char,);
@@ -583,16 +583,16 @@ pub unsafe fn args_print(args: *mut args) -> *mut c_char {
 }
 
 /// Escape an argument.
-pub unsafe fn args_escape(s: *const c_char) -> *mut c_char {
+pub unsafe fn args_escape(s: *const u8) -> *mut u8 {
     unsafe {
-        static mut dquoted: *const c_char = c" #';${}%".as_ptr();
-        static mut squoted: *const c_char = c" \"".as_ptr();
+        static mut dquoted: *const u8 = c!(" #';${}%");
+        static mut squoted: *const u8 = c!(" \"");
 
-        let mut escaped: *mut c_char = null_mut();
+        let mut escaped: *mut u8 = null_mut();
 
         let mut quotes: i32 = 0;
 
-        if *s == b'\0' as c_char {
+        if *s == b'\0' {
             return format_nul!("''");
         }
         if *s.add(libc::strcspn(s, dquoted)) != b'\0' as _ {
@@ -602,7 +602,7 @@ pub unsafe fn args_escape(s: *const c_char) -> *mut c_char {
         }
 
         if *s != b' ' as _ && *s.add(1) == b'\0' as _ && (quotes != 0 || *s == b'~' as _) {
-            escaped = format_nul!("\\{}", *s as u8 as char);
+            escaped = format_nul!("\\{}", *s as char);
             return escaped;
         }
 
@@ -616,12 +616,12 @@ pub unsafe fn args_escape(s: *const c_char) -> *mut c_char {
         let result = if quotes == b'\'' as i32 {
             format_nul!("'{}'", _s(escaped))
         } else if quotes == b'"' as i32 {
-            if *escaped == b'~' as i8 {
+            if *escaped == b'~' {
                 format_nul!("\"\\{}\"", _s(escaped))
             } else {
                 format_nul!("\"{}\"", _s(escaped))
             }
-        } else if *escaped == b'~' as i8 {
+        } else if *escaped == b'~' {
             format_nul!("\\{}", _s(escaped))
         } else {
             xstrdup(escaped).as_ptr()
@@ -664,7 +664,7 @@ pub unsafe fn args_set(args: *mut args, flag: c_uchar, value: *mut args_value, f
     }
 }
 
-pub unsafe fn args_get(args: *mut args, flag: u8) -> *const c_char {
+pub unsafe fn args_get(args: *mut args, flag: u8) -> *const u8 {
     unsafe {
         let entry = args_find(args, flag);
 
@@ -720,7 +720,7 @@ pub unsafe fn args_value(args: *mut args, idx: u32) -> *mut args_value {
 }
 
 /// Return argument as string.
-pub unsafe fn args_string(args: *mut args, idx: u32) -> *const c_char {
+pub unsafe fn args_string(args: *mut args, idx: u32) -> *const u8 {
     unsafe {
         if idx >= (*args).count {
             return null();
@@ -756,7 +756,7 @@ pub unsafe fn args_make_commands_prepare<'a>(
     self_: *mut cmd,
     item: *mut cmdq_item,
     idx: u32,
-    default_command: *const c_char,
+    default_command: *const u8,
     wait: i32,
     expand: i32,
 ) -> *mut args_command_state<'a> {
@@ -812,8 +812,8 @@ pub unsafe fn args_make_commands_prepare<'a>(
 pub unsafe fn args_make_commands(
     state: *mut args_command_state,
     argc: i32,
-    argv: *mut *mut c_char,
-    error: *mut *mut c_char,
+    argv: *mut *mut u8,
+    error: *mut *mut u8,
 ) -> *mut cmd_list {
     let __func__ = "args_make_commands";
     unsafe {
@@ -877,7 +877,7 @@ pub unsafe fn args_make_commands_free(state: *mut args_command_state) {
 }
 
 /// Get prepared command.
-pub unsafe fn args_make_commands_get_command(state: *mut args_command_state) -> *mut c_char {
+pub unsafe fn args_make_commands_get_command(state: *mut args_command_state) -> *mut u8 {
     unsafe {
         if !(*state).cmdlist.is_null() {
             let first = cmd_list_first((*state).cmdlist);
@@ -886,7 +886,7 @@ pub unsafe fn args_make_commands_get_command(state: *mut args_command_state) -> 
             }
             return xstrdup(cmd_get_entry(first).name.as_ptr()).as_ptr();
         }
-        let n = libc::strcspn((*state).cmd, c" ,".as_ptr());
+        let n = libc::strcspn((*state).cmd, c!(" ,"));
         format_nul!("{1:0$}", n, _s((*state).cmd))
     }
 }
@@ -913,7 +913,7 @@ pub unsafe fn args_strtonum(
     flag: u8,
     minval: i64,
     maxval: i64,
-    cause: *mut *mut c_char,
+    cause: *mut *mut u8,
 ) -> i64 {
     unsafe {
         let entry = args_find(args, flag);
@@ -936,7 +936,7 @@ pub unsafe fn args_strtonum(
                 ll
             }
             Err(errstr) => {
-                *cause = xstrdup(errstr.as_ptr()).as_ptr();
+                *cause = xstrdup(errstr.as_ptr().cast()).as_ptr();
                 0
             }
         }
@@ -950,7 +950,7 @@ pub unsafe fn args_strtonum_and_expand(
     minval: c_longlong,
     maxval: c_longlong,
     item: *mut cmdq_item,
-    cause: *mut *mut c_char,
+    cause: *mut *mut u8,
 ) -> c_longlong {
     unsafe {
         let entry = args_find(args, flag);
@@ -990,7 +990,7 @@ pub unsafe fn args_percentage(
     minval: i64,
     maxval: i64,
     curval: i64,
-    cause: *mut *mut c_char,
+    cause: *mut *mut u8,
 ) -> i64 {
     unsafe {
         let entry = args_find(args, flag);
@@ -1009,11 +1009,11 @@ pub unsafe fn args_percentage(
 
 /// Convert a string to a number which may be a percentage.
 pub unsafe fn args_string_percentage(
-    value: *const c_char,
+    value: *const u8,
     minval: i64,
     maxval: i64,
     curval: i64,
-    cause: *mut *mut c_char,
+    cause: *mut *mut u8,
 ) -> i64 {
     unsafe {
         let mut ll: i64;
@@ -1033,7 +1033,7 @@ pub unsafe fn args_string_percentage(
             ll = match tmp {
                 Ok(n) => n,
                 Err(errstr) => {
-                    *cause = xstrdup(errstr.as_ptr()).as_ptr();
+                    *cause = xstrdup_(errstr).as_ptr();
                     return 0;
                 }
             };
@@ -1050,7 +1050,7 @@ pub unsafe fn args_string_percentage(
             ll = match strtonum(value, minval, maxval) {
                 Ok(n) => n,
                 Err(errstr) => {
-                    *cause = xstrdup(errstr.as_ptr()).as_ptr();
+                    *cause = xstrdup_(errstr).as_ptr();
                     return 0;
                 }
             };
@@ -1069,7 +1069,7 @@ pub unsafe fn args_percentage_and_expand(
     maxval: i64,
     curval: i64,
     item: *mut cmdq_item,
-    cause: *mut *mut c_char,
+    cause: *mut *mut u8,
 ) -> i64 {
     unsafe {
         let entry = args_find(args, flag);
@@ -1088,21 +1088,21 @@ pub unsafe fn args_percentage_and_expand(
 
 /// Convert a string to a number which may be a percentage, and expand formats.
 pub unsafe fn args_string_percentage_and_expand(
-    value: *mut c_char,
+    value: *mut u8,
     minval: i64,
     maxval: i64,
     curval: i64,
     item: *mut cmdq_item,
-    cause: *mut *mut c_char,
+    cause: *mut *mut u8,
 ) -> i64 {
     unsafe {
         let valuelen = strlen(value);
         let mut ll: i64;
-        let f: *mut c_char;
+        let f: *mut u8;
 
         if *value.add(valuelen - 1) == b'%' as _ {
             let copy = xstrdup(value).as_ptr();
-            *copy.add(valuelen - 1) = b'\0' as c_char;
+            *copy.add(valuelen - 1) = b'\0';
 
             f = format_single_from_target(item, copy);
             let tmp = strtonum(f, 0, 100);

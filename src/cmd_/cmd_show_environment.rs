@@ -28,17 +28,17 @@ pub static cmd_show_environment_entry: cmd_entry = cmd_entry {
     source: cmd_entry_flag::zeroed(),
 };
 
-unsafe fn cmd_show_environment_escape(envent: *mut environ_entry) -> *mut c_char {
+unsafe fn cmd_show_environment_escape(envent: *mut environ_entry) -> *mut u8 {
     unsafe {
         let mut value = transmute_ptr((*envent).value);
-        let ret: *mut i8 = xmalloc(strlen(value) * 2 + 1).as_ptr().cast(); /* at most twice the size */
+        let ret: *mut u8 = xmalloc(strlen(value) * 2 + 1).as_ptr().cast(); /* at most twice the size */
         let mut out = ret;
 
         let mut c = 0;
         while {
             c = *value;
             value = value.add(1);
-            c != b'\0' as c_char
+            c != b'\0'
         } {
             /* POSIX interprets $ ` " and \ in double quotes. */
             if c == b'$' as _ || c == b'`' as _ || c == b'"' as _ || c == b'\\' as _ {
@@ -48,7 +48,7 @@ unsafe fn cmd_show_environment_escape(envent: *mut environ_entry) -> *mut c_char
             *out = c;
             out = out.add(1);
         }
-        *out = b'\0' as c_char;
+        *out = b'\0';
 
         ret
     }

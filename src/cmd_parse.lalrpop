@@ -59,12 +59,12 @@ pub Statement: &'static mut cmd_parse_commands = {
     }
 };
 
-pub Format: NonNull<c_char> = {
+pub Format: NonNull<u8> = {
   <arg:format> => (arg.unwrap()),
   <arg:token> => (arg.unwrap()),
 };
 
-pub Expanded: NonNull<c_char> = {
+pub Expanded: NonNull<u8> = {
     <arg1:Format> => unsafe {
       let pi = (*ps.as_ptr()).input.as_mut().map(|e|&raw mut *e).unwrap_or_default();
       let c = (*pi).c;
@@ -502,9 +502,9 @@ extern {
       "%else" => lexer::Tok::Else,
 
       error => lexer::Tok::Error,
-      format => lexer::Tok::Format(<Option<NonNull<c_char>>>),
-      token => lexer::Tok::Token(<Option<NonNull<c_char>>>),
-      equals => lexer::Tok::Equals(<Option<NonNull<c_char>>>),
+      format => lexer::Tok::Format(<Option<NonNull<u8>>>),
+      token => lexer::Tok::Token(<Option<NonNull<u8>>>),
+      equals => lexer::Tok::Equals(<Option<NonNull<u8>>>),
     }
 }
 

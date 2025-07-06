@@ -13,7 +13,7 @@
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 use ::core::{
-    ffi::{CStr, c_char, c_int},
+    ffi::{CStr, c_int},
     ptr::null_mut,
 };
 use ::std::{
@@ -24,12 +24,9 @@ use ::std::{
 };
 use std::{io::BufWriter, sync::Mutex};
 
-use ::libc::{free, snprintf, strerror};
-
 use crate::compat::{stravis, vis_flags};
-
 use crate::{_s, event_::event_set_log_callback};
-use crate::{libc_::errno, vasprintf};
+use crate::{libc::errno, vasprintf};
 
 macro_rules! log_debug {
     ($($arg:tt)*) => {$crate::log::log_debug_rs(format_args!($($arg)*))};
@@ -42,7 +39,7 @@ static log_level: AtomicI32 = AtomicI32::new(0);
 
 const DEFAULT_ORDERING: Ordering = Ordering::SeqCst;
 
-unsafe extern "C" fn log_event_cb(_severity: c_int, msg: *const c_char) {
+unsafe extern "C" fn log_event_cb(_severity: c_int, msg: *const u8) {
     unsafe { log_debug!("{}", _s(msg)) }
 }
 
@@ -134,7 +131,7 @@ fn log_vwrite_rs(args: std::fmt::Arguments, prefix: &str) {
         }
 
         let msg = format!("{args}\0").to_string();
-        let mut out: *mut c_char = null_mut();
+        let mut out = null_mut();
         if stravis(
             &mut out,
             msg.as_ptr().cast(),
@@ -149,7 +146,7 @@ fn log_vwrite_rs(args: std::fmt::Arguments, prefix: &str) {
         let secs = duration.as_secs();
         let micros = duration.subsec_micros();
 
-        let str_out = CStr::from_ptr(out).to_string_lossy();
+        let str_out = CStr::from_ptr(out.cast()).to_string_lossy();
         if let Some(f) = log_file.lock().unwrap().as_mut() {
             let location = std::panic::Location::caller();
             let file = location.file();

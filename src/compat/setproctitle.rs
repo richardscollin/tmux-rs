@@ -11,36 +11,36 @@
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-use core::ffi::c_char;
 
 // a custom version of setproctitle which just supports our usage:
-// setproctitle(c"%s (%s)".as_ptr(), name, socket_path);
+// setproctitle( c!("%s (%s)"), name, socket_path);
 #[cfg(target_os = "linux")]
-pub unsafe fn setproctitle_(_fmt: *const c_char, name: *const c_char, socket_path: *const c_char) {
+pub unsafe fn setproctitle_(_fmt: *const u8, name: *const u8, socket_path: *const u8) {
+    use crate::libc::{PR_SET_NAME, prctl, snprintf, strrchr};
     unsafe {
-        let mut name: [c_char; 16] = [0; 16];
+        let mut title: [u8; 16] = [0; 16];
 
         let used = libc::snprintf(
-            &raw mut name as *mut c_char,
-            name.len(),
+            &raw mut title as _,
+            title.len(),
             c"%s: %s (%s)".as_ptr(),
             getprogname(),
-            &raw const name as *const c_char,
+            name,
             socket_path,
         );
-        if used >= name.len() as i32 {
-            let cp = libc::strrchr(&raw const name as *const c_char, b' ' as i32);
+        if used >= title.len() as i32 {
+            let cp = strrchr(&raw const title as *const u8, b' ' as i32);
             if !cp.is_null() {
-                *cp = b'\0' as i8;
+                *cp = b'\0';
             }
         }
-        libc::prctl(libc::PR_SET_NAME, &raw const name as *const c_char);
+        libc::prctl(libc::PR_SET_NAME, &raw const title as *const u8);
     }
 }
 
 #[cfg(target_os = "macos")]
-pub unsafe fn setproctitle_(_: *const c_char, _: *const c_char, _: *const c_char) {}
+pub unsafe fn setproctitle_(_: *const u8, _: *const u8, _: *const u8) {}
 
-fn getprogname() -> *const c_char {
-    c"tmux".as_ptr()
+fn getprogname() -> *const u8 {
+    c"tmux".as_ptr().cast()
 }

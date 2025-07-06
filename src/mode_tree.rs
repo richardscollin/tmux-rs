@@ -11,10 +11,9 @@
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-
 use crate::*;
 
-use libc::{strcasecmp, strstr};
+use crate::libc::{strcasecmp, strstr};
 
 use crate::compat::{
     impl_tailq_entry,
@@ -26,7 +25,7 @@ use crate::compat::{
 };
 
 pub type mode_tree_build_cb = Option<
-    unsafe fn(_: NonNull<c_void>, _: *mut mode_tree_sort_criteria, _: *mut u64, _: *const c_char),
+    unsafe fn(_: NonNull<c_void>, _: *mut mode_tree_sort_criteria, _: *mut u64, _: *const u8),
 >;
 pub type mode_tree_draw_cb = Option<
     unsafe fn(
@@ -38,7 +37,7 @@ pub type mode_tree_draw_cb = Option<
     ),
 >;
 pub type mode_tree_search_cb =
-    Option<unsafe fn(_: *mut c_void, _: NonNull<c_void>, _: *const c_char) -> bool>;
+    Option<unsafe fn(_: *mut c_void, _: NonNull<c_void>, _: *const u8) -> bool>;
 pub type mode_tree_menu_cb = Option<unsafe fn(_: NonNull<c_void>, _: *mut client, _: key_code)>;
 pub type mode_tree_height_cb = Option<unsafe fn(_: *mut c_void, _: c_uint) -> c_uint>;
 pub type mode_tree_key_cb =
@@ -65,7 +64,7 @@ pub struct mode_tree_data {
     modedata: *mut c_void,
     menu: &'static [menu_item],
 
-    sort_list: *const *const c_char,
+    sort_list: *const *const u8,
     sort_size: u32,
     sort_crit: mode_tree_sort_criteria,
 
@@ -93,8 +92,8 @@ pub struct mode_tree_data {
     screen: screen,
 
     preview: i32,
-    search: *mut c_char,
-    filter: *mut c_char,
+    search: *mut u8,
+    filter: *mut u8,
     no_matches: i32,
     search_dir: mode_tree_search_dir,
 }
@@ -106,12 +105,12 @@ pub struct mode_tree_item {
     line: u32,
 
     key: key_code,
-    keystr: *mut c_char,
+    keystr: *mut u8,
     keylen: usize,
 
     tag: u64,
-    name: *mut c_char,
-    text: *mut c_char,
+    name: *mut u8,
+    text: *mut u8,
 
     expanded: i32,
     tagged: i32,
@@ -312,7 +311,7 @@ pub unsafe fn mode_tree_get_current(mtd: *mut mode_tree_data) -> NonNull<c_void>
         .unwrap()
 }
 
-pub unsafe fn mode_tree_get_current_name(mtd: *mut mode_tree_data) -> *const c_char {
+pub unsafe fn mode_tree_get_current_name(mtd: *mut mode_tree_data) -> *const u8 {
     unsafe { (*(*(*mtd).line_list.add((*mtd).current as usize)).item).name }
 }
 
@@ -441,7 +440,7 @@ pub unsafe fn mode_tree_start(
     keycb: mode_tree_key_cb,
     modedata: *mut c_void,
     menu: &'static [menu_item],
-    sort_list: *const *const c_char,
+    sort_list: *const *const u8,
     sort_size: u32,
     s: *mut *mut screen,
 ) -> *mut mode_tree_data {
@@ -632,8 +631,8 @@ pub unsafe fn mode_tree_add(
     parent: *mut mode_tree_item,
     itemdata: *mut c_void,
     tag: u64,
-    name: *const c_char,
-    text: *const c_char,
+    name: *const u8,
+    text: *const u8,
     expanded: i32,
 ) -> *mut mode_tree_item {
     unsafe {
@@ -715,7 +714,7 @@ pub unsafe fn mode_tree_draw(mtd: *mut mode_tree_data) {
 
             memcpy__(&raw mut gc0, &raw const grid_default_cell);
             memcpy__(&raw mut gc, &raw const grid_default_cell);
-            style_apply(&raw mut gc, oo, c"mode-style".as_ptr(), null_mut());
+            style_apply(&raw mut gc, oo, c!("mode-style"), null_mut());
 
             let w = (*mtd).width;
             let h = (*mtd).height;
@@ -754,16 +753,16 @@ pub unsafe fn mode_tree_draw(mtd: *mut mode_tree_data) {
                 };
 
                 let symbol = if (*line).flat != 0 {
-                    c"".as_ptr()
+                    c!("")
                 } else if tailq_empty(&raw const (*mti).children) {
-                    c"  ".as_ptr()
+                    c!("  ")
                 } else if (*mti).expanded != 0 {
-                    c"- ".as_ptr()
+                    c!("- ")
                 } else {
-                    c"+ ".as_ptr()
+                    c!("+ ")
                 };
 
-                let start: *mut c_char;
+                let start: *mut u8;
                 if (*line).depth == 0 {
                     start = xstrdup(symbol).as_ptr();
                 } else {
@@ -774,24 +773,20 @@ pub unsafe fn mode_tree_draw(mtd: *mut mode_tree_data) {
                         if !(*mti).parent.is_null()
                             && (*(*mtd).line_list.add((*(*mti).parent).line as usize)).last != 0
                         {
-                            strlcat(start, c"    ".as_ptr(), size);
+                            strlcat(start, c!("    "), size);
                         } else {
-                            strlcat(start, c"\x01x\x01   ".as_ptr(), size);
+                            strlcat(start, c!("\x01x\x01   "), size);
                         }
                     }
                     if (*line).last != 0 {
-                        strlcat(start, c"\x01mq\x01> ".as_ptr(), size);
+                        strlcat(start, c!("\x01mq\x01> "), size);
                     } else {
-                        strlcat(start, c"\x01tq\x01> ".as_ptr(), size);
+                        strlcat(start, c!("\x01tq\x01> "), size);
                     }
                     strlcat(start, symbol, size);
                 }
 
-                let tag = if (*mti).tagged != 0 {
-                    c"*".as_ptr()
-                } else {
-                    c"".as_ptr()
-                };
+                let tag = if (*mti).tagged != 0 { c!("*") } else { c!("") };
                 let text = format_nul!(
                     "{1:<0$}{2}{3}{4}{5}",
                     keylen as usize,
@@ -1063,7 +1058,7 @@ pub unsafe fn mode_tree_search_set(mtd: *mut mode_tree_data) {
 pub unsafe fn mode_tree_search_callback(
     _c: *mut client,
     data: NonNull<c_void>,
-    s: *const c_char,
+    s: *const u8,
     _done: i32,
 ) -> i32 {
     unsafe {
@@ -1074,7 +1069,7 @@ pub unsafe fn mode_tree_search_callback(
         }
 
         free_((*mtd).search);
-        if s.is_null() || *s == b'\0' as i8 {
+        if s.is_null() || *s == b'\0' {
             (*mtd).search = null_mut();
             return 0;
         }
@@ -1094,7 +1089,7 @@ pub unsafe fn mode_tree_search_free(data: NonNull<c_void>) {
 pub unsafe fn mode_tree_filter_callback(
     _c: *mut client,
     data: NonNull<c_void>,
-    s: *const c_char,
+    s: *const u8,
     _done: i32,
 ) -> i32 {
     unsafe {
@@ -1107,7 +1102,7 @@ pub unsafe fn mode_tree_filter_callback(
         if !(*mtd).filter.is_null() {
             free_((*mtd).filter);
         }
-        if s.is_null() || *s == b'\0' as i8 {
+        if s.is_null() || *s == b'\0' {
             (*mtd).filter = null_mut();
         } else {
             (*mtd).filter = xstrdup(s).as_ptr();
@@ -1477,8 +1472,8 @@ pub unsafe fn mode_tree_key(
                 status_prompt_set(
                     c,
                     null_mut(),
-                    c"(search) ".as_ptr(),
-                    c"".as_ptr(),
+                    c!("(search) "),
+                    c!(""),
                     Some(mode_tree_search_callback),
                     Some(mode_tree_search_free),
                     mtd.cast(),
@@ -1499,7 +1494,7 @@ pub unsafe fn mode_tree_key(
                 status_prompt_set(
                     c,
                     null_mut(),
-                    c"(filter) ".as_ptr(),
+                    c!("(filter) "),
                     (*mtd).filter,
                     Some(mode_tree_filter_callback),
                     Some(mode_tree_filter_free),
@@ -1524,19 +1519,19 @@ pub unsafe fn mode_tree_key(
 pub unsafe fn mode_tree_run_command(
     c: *mut client,
     fs: *mut cmd_find_state,
-    template: *const c_char,
-    name: *const c_char,
+    template: *const u8,
+    name: *const u8,
 ) {
     unsafe {
-        let mut error: *mut c_char = null_mut();
+        let mut error: *mut u8 = null_mut();
 
         let command = cmd_template_replace(template, name, 1);
-        if !command.is_null() && *command != b'\0' as i8 {
+        if !command.is_null() && *command != b'\0' {
             let state = cmdq_new_state(fs, null_mut(), cmdq_state_flags::empty());
             let status = cmd_parse_and_append(cstr_to_str(command), None, c, state, &raw mut error);
             if status == cmd_parse_status::CMD_PARSE_ERROR {
                 if !c.is_null() {
-                    *error = (*error as u8 as char).to_ascii_uppercase() as i8;
+                    *error = (*error).to_ascii_uppercase();
                     status_message_set!(c, -1, 1, 0, "{}", _s(error));
                 }
                 free_(error);

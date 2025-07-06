@@ -60,7 +60,7 @@ pub struct cmd_parse_scope {
 #[repr(i32)]
 pub enum cmd_parse_argument_type {
     /// string
-    String(*mut c_char),
+    String(*mut u8),
     /// commands
     Commands(&'static mut cmd_parse_commands),
     /// cmdlist
@@ -102,13 +102,13 @@ pub struct cmd_parse_state<'a> {
     pub input: Option<&'a cmd_parse_input<'a>>,
     pub escapes: u32,
 
-    pub error: *mut c_char,
+    pub error: *mut u8,
 
     pub scope: Option<&'a mut cmd_parse_scope>,
     pub stack: tailq_head<cmd_parse_scope>,
 }
 
-pub unsafe fn cmd_parse_get_error(file: Option<&str>, line: u32, error: &str) -> *mut c_char {
+pub unsafe fn cmd_parse_get_error(file: Option<&str>, line: u32, error: &str) -> *mut u8 {
     match file {
         None => {
             let mut s = error.to_string();
@@ -193,7 +193,7 @@ pub unsafe fn cmd_parse_free_commands(cmds: *mut cmd_parse_commands) {
 
 pub unsafe fn cmd_parse_run_parser(
     ps: &mut cmd_parse_state,
-) -> Result<&'static mut cmd_parse_commands, *mut c_char> {
+) -> Result<&'static mut cmd_parse_commands, *mut u8> {
     unsafe {
         tailq_init(&mut ps.stack);
 
@@ -214,7 +214,7 @@ pub unsafe fn cmd_parse_run_parser(
 pub unsafe fn cmd_parse_do_file<'a>(
     f: &'a mut std::io::BufReader<std::fs::File>,
     pi: &'a cmd_parse_input<'a>,
-) -> Result<&'static mut cmd_parse_commands, *mut c_char> {
+) -> Result<&'static mut cmd_parse_commands, *mut u8> {
     unsafe {
         let mut ps: Box<cmd_parse_state> = Box::new(zeroed());
         ps.input = Some(pi);
@@ -226,7 +226,7 @@ pub unsafe fn cmd_parse_do_file<'a>(
 pub unsafe fn cmd_parse_do_buffer<'a>(
     buf: &'a [u8],
     pi: &'a cmd_parse_input<'a>,
-) -> Result<&'static mut cmd_parse_commands, *mut c_char> {
+) -> Result<&'static mut cmd_parse_commands, *mut u8> {
     unsafe {
         let mut ps: Box<cmd_parse_state> = Box::new(zeroed());
 
@@ -236,7 +236,7 @@ pub unsafe fn cmd_parse_do_buffer<'a>(
     }
 }
 
-pub unsafe fn cmd_parse_log_commands(cmds: *mut cmd_parse_commands, prefix: *const c_char) {
+pub unsafe fn cmd_parse_log_commands(cmds: *mut cmd_parse_commands, prefix: *const u8) {
     unsafe {
         for (i, cmd) in tailq_foreach(cmds).map(NonNull::as_ptr).enumerate() {
             for (j, arg) in tailq_foreach(&raw mut (*cmd).arguments)
@@ -268,7 +268,7 @@ pub unsafe fn cmd_parse_expand_alias<'a>(
     pi: &'a cmd_parse_input<'a>,
     pr: &mut cmd_parse_result,
 ) -> i32 {
-    let __func__ = c"cmd_parse_expand_alias".as_ptr();
+    let __func__ = c!("cmd_parse_expand_alias");
     unsafe {
         if pi
             .flags
@@ -420,7 +420,7 @@ pub unsafe fn cmd_parse_build_commands(
             *pr = Ok(cmd_list_new());
             return;
         }
-        cmd_parse_log_commands(cmds, c"cmd_parse_build_commands".as_ptr());
+        cmd_parse_log_commands(cmds, c!("cmd_parse_build_commands"));
 
         // Parse each command into a command list. Create a new command list
         // for each line (unless the flag is set) so they get a new group (so
@@ -505,7 +505,7 @@ pub unsafe fn cmd_parse_and_insert(
     pi: Option<&cmd_parse_input>,
     after: *mut cmdq_item,
     state: *mut cmdq_state,
-    error: *mut *mut c_char,
+    error: *mut *mut u8,
 ) -> cmd_parse_status {
     unsafe {
         match cmd_parse_from_string(s, pi) {
@@ -532,7 +532,7 @@ pub unsafe fn cmd_parse_and_append(
     pi: Option<&cmd_parse_input>,
     c: *mut client,
     state: *mut cmdq_state,
-    error: *mut *mut c_char,
+    error: *mut *mut u8,
 ) -> cmd_parse_status {
     unsafe {
         match cmd_parse_from_string(s, pi) {
@@ -669,9 +669,9 @@ mod lexer {
         Elif,
         Endif,
 
-        Format(Option<NonNull<c_char>>),
-        Token(Option<NonNull<c_char>>),
-        Equals(Option<NonNull<c_char>>),
+        Format(Option<NonNull<u8>>),
+        Token(Option<NonNull<u8>>),
+        Equals(Option<NonNull<u8>>),
     }
     impl std::fmt::Display for Tok {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -733,15 +733,15 @@ unsafe fn yyerror_(ps: &mut cmd_parse_state, args: std::fmt::Arguments) -> i32 {
     }
 }
 
-fn yylex_is_var(ch: c_char, first: bool) -> bool {
-    if ch == b'=' as i8 || (first && (ch as u8).is_ascii_digit()) {
+fn yylex_is_var(ch: u8, first: bool) -> bool {
+    if ch == b'=' || (first && ch.is_ascii_digit()) {
         false
     } else {
-        (ch as u8).is_ascii_alphanumeric() || ch == b'_' as i8
+        ch.is_ascii_alphanumeric() || ch == b'_'
     }
 }
 
-unsafe fn yylex_append(buf: *mut *mut c_char, len: *mut usize, add: *const c_char, addlen: usize) {
+unsafe fn yylex_append(buf: *mut *mut u8, len: *mut usize, add: *const u8, addlen: usize) {
     unsafe {
         if (addlen > usize::MAX - 1 || *len > usize::MAX - 1 - addlen) {
             fatalx("buffer is too big");
@@ -752,7 +752,7 @@ unsafe fn yylex_append(buf: *mut *mut c_char, len: *mut usize, add: *const c_cha
     }
 }
 
-unsafe fn yylex_append1(buf: *mut *mut c_char, len: *mut usize, add: c_char) {
+unsafe fn yylex_append1(buf: *mut *mut u8, len: *mut usize, add: u8) {
     unsafe {
         yylex_append(buf, len, &raw const add, 1);
     }
@@ -827,21 +827,21 @@ fn yylex_getc(ps: &mut cmd_parse_state) -> i32 {
     }
 }
 
-unsafe fn yylex_get_word(ps: &mut cmd_parse_state, mut ch: i32) -> *mut c_char {
+unsafe fn yylex_get_word(ps: &mut cmd_parse_state, mut ch: i32) -> *mut u8 {
     unsafe {
         let mut len = 0;
-        let mut buf: *mut i8 = xmalloc(1).cast().as_ptr();
+        let mut buf: *mut u8 = xmalloc(1).cast().as_ptr();
 
         loop {
-            yylex_append1(&raw mut buf, &raw mut len, ch as i8);
+            yylex_append1(&raw mut buf, &raw mut len, ch as u8);
             ch = yylex_getc(ps);
-            if ch == libc::EOF || !libc::strchr(c" \t\n".as_ptr(), ch).is_null() {
+            if ch == libc::EOF || !libc::strchr(c!(" \t\n"), ch).is_null() {
                 break;
             }
         }
         yylex_ungetc(ps, ch);
 
-        *buf.add(len) = b'\0' as i8;
+        *buf.add(len) = b'\0';
         // log_debug("%s: %s", __func__, buf);
         buf
     }
@@ -950,13 +950,13 @@ unsafe fn yylex_(ps: &mut cmd_parse_state) -> Option<Tok> {
                  */
                 let yylval_token = yylex_get_word(ps, '%' as i32);
                 let mut cp = yylval_token;
-                while *cp != b'\0' as i8 {
-                    if *cp != b'%' as i8 && !(*cp as u8).is_ascii_digit() {
+                while *cp != b'\0' {
+                    if *cp != b'%' && !(*cp as u8).is_ascii_digit() {
                         break;
                     }
                     cp = cp.add(1);
                 }
-                if (*cp == b'\0' as i8) {
+                if (*cp == b'\0') {
                     return Some(Tok::Token(NonNull::new(yylval_token)));
                 }
                 ps.condition = 1;
@@ -993,13 +993,13 @@ unsafe fn yylex_(ps: &mut cmd_parse_state) -> Option<Tok> {
 
             if !libc::strchr(token, b'=' as i32).is_null() && yylex_is_var(*token, true) {
                 let mut cp = token.add(1);
-                while *cp != '=' as i8 {
+                while *cp != b'=' {
                     if !yylex_is_var(*cp, false) {
                         break;
                     }
                     cp = cp.add(1);
                 }
-                if *cp == b'=' as i8 {
+                if *cp == b'=' {
                     return Some(Tok::Equals(NonNull::new(yylval_token)));
                 }
             }
@@ -1010,14 +1010,14 @@ unsafe fn yylex_(ps: &mut cmd_parse_state) -> Option<Tok> {
     }
 }
 
-unsafe fn yylex_format(ps: &mut cmd_parse_state) -> Option<NonNull<c_char>> {
+unsafe fn yylex_format(ps: &mut cmd_parse_state) -> Option<NonNull<u8>> {
     unsafe {
         let mut brackets = 1;
         let mut len = 0;
-        let mut buf = xmalloc_::<c_char>().as_ptr();
+        let mut buf = xmalloc_::<u8>().as_ptr();
 
         'error: {
-            yylex_append(&raw mut buf, &raw mut len, c"#{".as_ptr(), 2);
+            yylex_append(&raw mut buf, &raw mut len, c!("#{"), 2);
             loop {
                 let mut ch = yylex_getc(ps);
                 if (ch == libc::EOF || ch == '\n' as i32) {
@@ -1031,7 +1031,7 @@ unsafe fn yylex_format(ps: &mut cmd_parse_state) -> Option<NonNull<c_char>> {
                     if ch == '{' as i32 {
                         brackets += 1;
                     }
-                    yylex_append1(&raw mut buf, &raw mut len, b'#' as c_char);
+                    yylex_append1(&raw mut buf, &raw mut len, b'#');
                 } else if (ch == '}' as i32)
                     && brackets != 0
                     && ({
@@ -1039,16 +1039,16 @@ unsafe fn yylex_format(ps: &mut cmd_parse_state) -> Option<NonNull<c_char>> {
                         brackets == 0
                     })
                 {
-                    yylex_append1(&raw mut buf, &raw mut len, ch as c_char);
+                    yylex_append1(&raw mut buf, &raw mut len, ch as u8);
                     break;
                 }
-                yylex_append1(&raw mut buf, &raw mut len, ch as c_char);
+                yylex_append1(&raw mut buf, &raw mut len, ch as u8);
             }
             if (brackets != 0) {
                 break 'error;
             }
 
-            *buf.add(len) = b'\0' as i8;
+            *buf.add(len) = b'\0';
             // log_debug("%s: %s", __func__, buf);
             return NonNull::new(buf);
         } // error:
@@ -1060,12 +1060,12 @@ unsafe fn yylex_format(ps: &mut cmd_parse_state) -> Option<NonNull<c_char>> {
 
 unsafe fn yylex_token_variable(
     ps: &mut cmd_parse_state,
-    buf: *mut *mut c_char,
+    buf: *mut *mut u8,
     len: *mut usize,
 ) -> bool {
     unsafe {
         let mut namelen: usize = 0;
-        let mut name: [c_char; 1024] = [0; 1024];
+        let mut name: [u8; 1024] = [0; 1024];
         const sizeof_name: usize = 1024;
         let mut brackets = 0;
 
@@ -1076,12 +1076,12 @@ unsafe fn yylex_token_variable(
         if (ch == '{' as i32) {
             brackets = 1;
         } else {
-            if !yylex_is_var(ch as c_char, true) {
-                yylex_append1(buf, len, b'$' as i8);
+            if !yylex_is_var(ch as u8, true) {
+                yylex_append1(buf, len, b'$');
                 yylex_ungetc(ps, ch);
                 return true;
             }
-            name[namelen] = ch as i8;
+            name[namelen] = ch as u8;
             namelen += 1;
         }
 
@@ -1090,7 +1090,7 @@ unsafe fn yylex_token_variable(
             if (brackets != 0 && ch == '}' as i32) {
                 break;
             }
-            if (ch == libc::EOF || !yylex_is_var(ch as c_char, false)) {
+            if (ch == libc::EOF || !yylex_is_var(ch as u8, false)) {
                 if brackets == 0 {
                     yylex_ungetc(ps, ch);
                     break;
@@ -1102,10 +1102,10 @@ unsafe fn yylex_token_variable(
                 yyerror!(ps, "environment variable is too long");
                 return false;
             }
-            name[namelen] = ch as i8;
+            name[namelen] = ch as u8;
             namelen += 1;
         }
-        name[namelen] = b'\0' as i8;
+        name[namelen] = b'\0';
 
         let mut envent = environ_find(global_environ, (&raw const name).cast());
         if !envent.is_null() && (*envent).value.is_some() {
@@ -1122,20 +1122,16 @@ unsafe fn yylex_token_variable(
     }
 }
 
-unsafe fn yylex_token_tilde(
-    ps: &mut cmd_parse_state,
-    buf: *mut *mut c_char,
-    len: *mut usize,
-) -> bool {
+unsafe fn yylex_token_tilde(ps: &mut cmd_parse_state, buf: *mut *mut u8, len: *mut usize) -> bool {
     unsafe {
         let mut home = null();
         let mut namelen: usize = 0;
-        let mut name: [c_char; 1024] = [0; 1024];
+        let mut name: [u8; 1024] = [0; 1024];
         const sizeof_name: usize = 1024;
 
         loop {
             let ch = yylex_getc(ps);
-            if ch == libc::EOF || !libc::strchr(c"/ \t\n\"'".as_ptr(), ch).is_null() {
+            if ch == libc::EOF || !libc::strchr(c!("/ \t\n\"'"), ch).is_null() {
                 yylex_ungetc(ps, ch);
                 break;
             }
@@ -1143,20 +1139,20 @@ unsafe fn yylex_token_tilde(
                 yyerror!(ps, "user name is too long");
                 return false;
             }
-            name[namelen] = ch as i8;
+            name[namelen] = ch as u8;
             namelen += 1;
         }
-        name[namelen] = b'\0' as i8;
+        name[namelen] = b'\0';
 
-        if name[0] == b'\0' as i8 {
-            let envent = environ_find(global_environ, c"HOME".as_ptr());
-            if (!envent.is_null() && (*(*envent).value.unwrap().as_ptr()) != b'\0' as i8) {
+        if name[0] == b'\0' {
+            let envent = environ_find(global_environ, c!("HOME"));
+            if (!envent.is_null() && (*(*envent).value.unwrap().as_ptr()) != b'\0') {
                 home = transmute_ptr((*envent).value);
             } else if let Some(pw) = NonNull::new(libc::getpwuid(libc::getuid())) {
-                home = (*pw.as_ptr()).pw_dir;
+                home = (*pw.as_ptr()).pw_dir.cast();
             }
-        } else if let Some(pw) = NonNull::new(libc::getpwnam((&raw const name) as *const i8)) {
-            home = (*pw.as_ptr()).pw_dir;
+        } else if let Some(pw) = NonNull::new(libc::getpwnam((&raw const name).cast())) {
+            home = (*pw.as_ptr()).pw_dir.cast();
         }
         if home.is_null() {
             return false;
@@ -1168,7 +1164,7 @@ unsafe fn yylex_token_tilde(
     }
 }
 
-unsafe fn yylex_token(ps: &mut cmd_parse_state, mut ch: i32) -> *mut c_char {
+unsafe fn yylex_token(ps: &mut cmd_parse_state, mut ch: i32) -> *mut u8 {
     unsafe {
         #[derive(Copy, Clone, Eq, PartialEq)]
         enum State {
@@ -1182,7 +1178,7 @@ unsafe fn yylex_token(ps: &mut cmd_parse_state, mut ch: i32) -> *mut c_char {
         let mut last = State::Start;
 
         let mut len = 0;
-        let mut buf = xmalloc_::<c_char>().as_ptr();
+        let mut buf = xmalloc_::<u8>().as_ptr();
 
         'error: {
             'aloop: loop {
@@ -1220,7 +1216,7 @@ unsafe fn yylex_token(ps: &mut cmd_parse_state, mut ch: i32) -> *mut c_char {
                          * the \n is left.
                          */
                         if (ch == '\n' as i32 && state != State::None) {
-                            yylex_append1(&raw mut buf, &raw mut len, b'\n' as i8);
+                            yylex_append1(&raw mut buf, &raw mut len, b'\n');
                             while ({
                                 ch = yylex_getc(ps);
                                 ch == b' ' as i32
@@ -1230,7 +1226,7 @@ unsafe fn yylex_token(ps: &mut cmd_parse_state, mut ch: i32) -> *mut c_char {
                                 continue 'aloop;
                             }
                             ch = yylex_getc(ps);
-                            if !libc::strchr(c",#{}:".as_ptr(), ch).is_null() {
+                            if !libc::strchr(c!(",#{}:"), ch).is_null() {
                                 yylex_ungetc(ps, ch);
                                 ch = '#' as i32;
                             } else {
@@ -1288,7 +1284,7 @@ unsafe fn yylex_token(ps: &mut cmd_parse_state, mut ch: i32) -> *mut c_char {
                         }
 
                         /* Otherwise add the character to the buffer. */
-                        yylex_append1(&raw mut buf, &raw mut len, ch as c_char);
+                        yylex_append1(&raw mut buf, &raw mut len, ch as u8);
                     }
                     // skip:
                     last = state;
@@ -1298,7 +1294,7 @@ unsafe fn yylex_token(ps: &mut cmd_parse_state, mut ch: i32) -> *mut c_char {
             }
             yylex_ungetc(ps, ch);
 
-            *buf.add(len) = b'\0' as i8;
+            *buf.add(len) = b'\0';
             // log_debug("%s: %s", __func__, buf);
             return (buf);
         } // error:
@@ -1308,11 +1304,7 @@ unsafe fn yylex_token(ps: &mut cmd_parse_state, mut ch: i32) -> *mut c_char {
     }
 }
 
-unsafe fn yylex_token_escape(
-    ps: &mut cmd_parse_state,
-    buf: *mut *mut c_char,
-    len: *mut usize,
-) -> bool {
+unsafe fn yylex_token_escape(ps: &mut cmd_parse_state, buf: *mut *mut u8, len: *mut usize) -> bool {
     unsafe {
         #[cfg(not(target_os = "macos"))]
         const sizeof_m: usize = libc::_SC_MB_LEN_MAX as usize;
@@ -1322,8 +1314,8 @@ unsafe fn yylex_token_escape(
         const sizeof_m: usize = 6; // compiled and printed constant from C
 
         let mut tmp: u32 = 0;
-        let mut s: [c_char; 9] = [0; 9];
-        let mut m: [c_char; sizeof_m] = [0; sizeof_m];
+        let mut s: [u8; 9] = [0; 9];
+        let mut m: [u8; sizeof_m] = [0; sizeof_m];
         let mut size: usize = 0;
         let mut type_: i32 = 0;
 
@@ -1340,7 +1332,7 @@ unsafe fn yylex_token_escape(
                     let o3 = yylex_getc(ps);
                     if (o3 >= '0' as i32 && o3 <= '7' as i32) {
                         ch = 64 * (ch - '0' as i32) + 8 * (o2 - '0' as i32) + (o3 - '0' as i32);
-                        yylex_append1(buf, len, ch as i8);
+                        yylex_append1(buf, len, ch as u8);
                         return true;
                     }
                 }
@@ -1375,7 +1367,7 @@ unsafe fn yylex_token_escape(
                 _ => (),
             }
 
-            yylex_append1(buf, len, ch as i8);
+            yylex_append1(buf, len, ch as u8);
             return true;
         } // unicode:
         let mut i = 0;
@@ -1389,9 +1381,9 @@ unsafe fn yylex_token_escape(
                 yyerror!(ps, "invalid \\{} argument", type_ as u8 as char);
                 return false;
             }
-            s[i] = ch as i8;
+            s[i] = ch as u8;
         }
-        s[i] = b'\0' as c_char;
+        s[i] = b'\0';
 
         if ((size == 4 && libc::sscanf((&raw mut s).cast(), c"%4x".as_ptr(), &raw mut tmp) != 1)
             || (size == 8 && libc::sscanf((&raw mut s).cast(), c"%8x".as_ptr(), &raw mut tmp) != 1))

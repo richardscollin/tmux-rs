@@ -62,9 +62,9 @@ unsafe fn cmd_show_options_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
         let args = cmd_get_args(self_);
         let target = cmdq_get_target(item);
         let mut oo: *mut options = null_mut();
-        let mut argument: *mut c_char = null_mut();
-        let mut name: *mut c_char = null_mut();
-        let mut cause: *mut c_char = null_mut();
+        let mut argument: *mut u8 = null_mut();
+        let mut name: *mut u8 = null_mut();
+        let mut cause: *mut u8 = null_mut();
 
         let window = 0;
         let mut idx = 0;

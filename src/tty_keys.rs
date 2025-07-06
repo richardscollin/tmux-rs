@@ -11,7 +11,7 @@
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-use super::*;
+use crate::*;
 
 use crate::compat::b64::b64_pton;
 use crate::compat::strlcpy;
@@ -23,7 +23,7 @@ use crate::compat::strlcpy;
 // A key tree entry.
 #[repr(C)]
 pub struct tty_key {
-    ch: c_char,
+    ch: u8,
     key: key_code,
 
     left: *mut tty_key,
@@ -773,7 +773,7 @@ static tty_default_code_keys: [tty_default_key_code; 136] = [
 ];
 
 /// Add key to tree.
-unsafe fn tty_keys_add(tty: *mut tty, s: *const c_char, key: key_code) {
+unsafe fn tty_keys_add(tty: *mut tty, s: *const u8, key: key_code) {
     unsafe {
         let mut size: usize = 0;
 
@@ -790,7 +790,7 @@ unsafe fn tty_keys_add(tty: *mut tty, s: *const c_char, key: key_code) {
 }
 
 /// Add next node to the tree.
-unsafe fn tty_keys_add1(mut tkp: *mut *mut tty_key, mut s: *const c_char, key: key_code) {
+unsafe fn tty_keys_add1(mut tkp: *mut *mut tty_key, mut s: *const u8, key: key_code) {
     unsafe {
         // Allocate a tree entry if there isn't one already.
         let mut tk = *tkp;
@@ -807,7 +807,7 @@ unsafe fn tty_keys_add1(mut tkp: *mut *mut tty_key, mut s: *const c_char, key: k
             s = s.add(1);
 
             // If this is the end of the string, no more is necessary.
-            if *s == b'\0' as i8 {
+            if *s == b'\0' {
                 (*tk).key = key;
                 return;
             }
@@ -828,7 +828,7 @@ unsafe fn tty_keys_add1(mut tkp: *mut *mut tty_key, mut s: *const c_char, key: k
 /// Initialise a key tree from the table.
 pub unsafe fn tty_keys_build(tty: *mut tty) {
     unsafe {
-        let mut copy: [c_char; 16] = [0; 16];
+        let mut copy: [u8; 16] = [0; 16];
 
         if !(*tty).key_tree.is_null() {
             tty_keys_free(tty);
@@ -845,10 +845,9 @@ pub unsafe fn tty_keys_build(tty: *mut tty) {
                 strlcpy(
                     copy.as_mut_ptr(),
                     tdkx.template.as_ptr(),
-                    size_of::<[c_char; 16]>(),
+                    size_of::<[u8; 16]>(),
                 );
-                copy[libc::strcspn(copy.as_ptr(), c"_".as_ptr()) as usize] =
-                    b'0' as c_char + j as c_char;
+                copy[libc::strcspn(copy.as_ptr(), c!("_"))] = b'0' + j as u8;
 
                 let key = tdkx.key | tty_default_xterm_modifiers_j;
                 tty_keys_add(tty, copy.as_ptr(), key);
@@ -869,7 +868,7 @@ pub unsafe fn tty_keys_build(tty: *mut tty) {
             }
         }
 
-        let o = options_get(global_options, c"user-keys".as_ptr());
+        let o = options_get(global_options, c!("user-keys"));
         if !o.is_null() {
             let mut a = options_array_first(o);
             while !a.is_null() {
@@ -908,7 +907,7 @@ unsafe fn tty_keys_free1(tk: *mut tty_key) {
 /// Lookup a key in the tree.
 pub unsafe fn tty_keys_find(
     tty: *mut tty,
-    buf: *const c_char,
+    buf: *const u8,
     len: usize,
     size: *mut usize,
 ) -> *mut tty_key {
@@ -920,7 +919,7 @@ pub unsafe fn tty_keys_find(
 
 unsafe fn tty_keys_find1(
     mut tk: *mut tty_key,
-    mut buf: *const c_char,
+    mut buf: *const u8,
     mut len: usize,
     size: *mut usize,
 ) -> *mut tty_key {
@@ -962,7 +961,7 @@ unsafe fn tty_keys_find1(
 
 unsafe fn tty_keys_next1(
     tty: *mut tty,
-    buf: *const c_char,
+    buf: *const u8,
     len: usize,
     key: *mut key_code,
     size: *mut usize,
@@ -998,7 +997,7 @@ unsafe fn tty_keys_next1(
         }
 
         /* Is this valid UTF-8? */
-        more = utf8_open(&mut ud, *buf as u8);
+        more = utf8_open(&mut ud, (*buf));
         if more == utf8_state::UTF8_MORE {
             *size = ud.size as usize;
             if len < ud.size as usize {
@@ -1008,7 +1007,7 @@ unsafe fn tty_keys_next1(
                 return -1;
             }
             for i in 1..ud.size {
-                more = utf8_append(&mut ud, *buf.add(i as usize) as u8);
+                more = utf8_append(&mut ud, (*buf.add(i as usize)));
             }
             if more != utf8_state::UTF8_DONE {
                 return -1;
@@ -1271,7 +1270,7 @@ pub unsafe fn tty_keys_next(tty: *mut tty) -> i32 {
                     }
 
                     /* Get the time period. */
-                    let mut delay = options_get_number(global_options, c"escape-time".as_ptr());
+                    let mut delay = options_get_number(global_options, c!("escape-time"));
                     if delay == 0 {
                         delay = 1;
                     }
@@ -1367,7 +1366,7 @@ unsafe extern "C" fn tty_keys_callback(_fd: i32, _events: i16, data: *mut c_void
 /// for failure, 1 for partial;
 unsafe fn tty_keys_extended_key(
     tty: *mut tty,
-    buf: *const c_char,
+    buf: *const u8,
     len: usize,
     size: *mut usize,
     key: *mut key_code,
@@ -1378,7 +1377,7 @@ unsafe fn tty_keys_extended_key(
         let mut number: u32 = 0;
         let mut modifiers: u32 = 0;
         const size_of_tmp: usize = 64;
-        let mut tmp: [c_char; 64] = [0; 64];
+        let mut tmp: [u8; 64] = [0; 64];
         let mut nkey: key_code = 0;
 
         let mut ud: utf8_data = zeroed();
@@ -1387,13 +1386,13 @@ unsafe fn tty_keys_extended_key(
         *size = 0;
 
         /* First two bytes are always \x1b[. */
-        if *buf != b'\x1b' as i8 {
+        if *buf != b'\x1b' {
             return -1;
         }
         if len == 1 {
             return 1;
         }
-        if *buf.add(1) != b'[' as i8 {
+        if *buf.add(1) != b'[' {
             return -1;
         }
         if len == 2 {
@@ -1405,17 +1404,17 @@ unsafe fn tty_keys_extended_key(
          * number or ';'.
          */
         for end in 2..len.min(size_of_tmp) {
-            if *buf.add(end) == b'~' as i8 {
+            if *buf.add(end) == b'~' {
                 break;
             }
-            if !(*buf.add(end) as u8).is_ascii_digit() && *buf.add(end) != b';' as i8 {
+            if !(*buf.add(end)).is_ascii_digit() && *buf.add(end) != b';' {
                 break;
             }
         }
         if end == len {
             return 1;
         }
-        if end == size_of_tmp || (*buf.add(end) != b'~' as i8 && *buf.add(end) != b'u' as i8) {
+        if end == size_of_tmp || (*buf.add(end) != b'~' && *buf.add(end) != b'u') {
             return -1;
         }
 
@@ -1424,9 +1423,9 @@ unsafe fn tty_keys_extended_key(
         tmp[end] = 0;
 
         /* Try to parse either form of key. */
-        if *buf.add(end) == b'~' as i8 {
+        if *buf.add(end) == b'~' {
             if libc::sscanf(
-                tmp.as_ptr(),
+                tmp.as_ptr().cast(),
                 c"27;%u;%u".as_ptr(),
                 &raw mut modifiers,
                 &raw mut number,
@@ -1435,7 +1434,7 @@ unsafe fn tty_keys_extended_key(
                 return -1;
             }
         } else if libc::sscanf(
-            tmp.as_ptr(),
+            tmp.as_ptr().cast(),
             c"%u;%u".as_ptr(),
             &raw mut number,
             &raw mut modifiers,
@@ -1522,7 +1521,7 @@ unsafe fn tty_keys_extended_key(
 /// sequence.
 unsafe fn tty_keys_mouse(
     tty: *mut tty,
-    buf: *const c_char,
+    buf: *const u8,
     len: usize,
     size: *mut usize,
     m: *mut mouse_event,
@@ -1552,13 +1551,13 @@ unsafe fn tty_keys_mouse(
         *size = 0;
 
         /* First two bytes are always \x1b[. */
-        if *buf != b'\x1b' as i8 {
+        if *buf != b'\x1b' {
             return -1;
         }
         if len == 1 {
             return 1;
         }
-        if *buf.add(1) != b'[' as i8 {
+        if *buf.add(1) != b'[' {
             return -1;
         }
         if len == 2 {
@@ -1569,14 +1568,14 @@ unsafe fn tty_keys_mouse(
          * Third byte is M in old standard (and UTF-8 extension which we do not
          * support), < in SGR extension.
          */
-        if *buf.add(2) == b'M' as i8 {
+        if *buf.add(2) == b'M' {
             /* Read the three inputs. */
             *size = 3;
             for i in 0..3 {
                 if len <= *size {
                     return 1;
                 }
-                ch = *buf.add(*size) as u8;
+                ch = *buf.add(*size);
                 *size += 1;
                 if i == 0 {
                     b = ch as u32;
@@ -1595,14 +1594,14 @@ unsafe fn tty_keys_mouse(
             b -= MOUSE_PARAM_BTN_OFF;
             x -= MOUSE_PARAM_POS_OFF;
             y -= MOUSE_PARAM_POS_OFF;
-        } else if *buf.add(2) == b'<' as i8 {
+        } else if *buf.add(2) == b'<' {
             /* Read the three inputs. */
             *size = 3;
             loop {
                 if len <= *size {
                     return 1;
                 }
-                ch = *buf.add(*size) as u8;
+                ch = *buf.add(*size);
                 *size += 1;
                 if ch == b';' {
                     break;
@@ -1616,7 +1615,7 @@ unsafe fn tty_keys_mouse(
                 if len <= *size {
                     return 1;
                 }
-                ch = *buf.add(*size) as u8;
+                ch = *buf.add(*size);
                 *size += 1;
                 if ch == b';' {
                     break;
@@ -1630,7 +1629,7 @@ unsafe fn tty_keys_mouse(
                 if len <= *size {
                     return 1;
                 }
-                ch = *buf.add(*size) as u8;
+                ch = *buf.add(*size);
                 *size += 1;
                 if ch == b'M' || ch == b'm' {
                     break;
@@ -1695,7 +1694,7 @@ unsafe fn tty_keys_mouse(
 
 unsafe fn tty_keys_clipboard(
     tty: *mut tty,
-    mut buf: *const c_char,
+    mut buf: *const u8,
     len: usize,
     size: *mut usize,
 ) -> i32 {
@@ -1710,31 +1709,31 @@ unsafe fn tty_keys_clipboard(
         *size = 0;
 
         /* First five bytes are always \x1b]52;. */
-        if *buf != '\x1b' as i8 {
+        if *buf != b'\x1b' {
             return -1;
         }
         if len == 1 {
             return 1;
         }
-        if *buf.add(1) != ']' as i8 {
+        if *buf.add(1) != b']' {
             return -1;
         }
         if len == 2 {
             return 1;
         }
-        if *buf.add(2) != '5' as i8 {
+        if *buf.add(2) != b'5' {
             return -1;
         }
         if len == 3 {
             return 1;
         }
-        if *buf.add(3) != '2' as i8 {
+        if *buf.add(3) != b'2' {
             return -1;
         }
         if len == 4 {
             return 1;
         }
-        if *buf.add(4) != ';' as i8 {
+        if *buf.add(4) != b';' {
             return -1;
         }
         if len == 5 {
@@ -1744,11 +1743,11 @@ unsafe fn tty_keys_clipboard(
         /* Find the terminator if any. */
         end = 5;
         while end < len {
-            if *buf.add(end) == '\x07' as i8 {
+            if *buf.add(end) == b'\x07' {
                 terminator = 1;
                 break;
             }
-            if end > 5 && *buf.add(end - 1) == '\x1b' as i8 && *buf.add(end) == '\\' as i8 {
+            if end > 5 && *buf.add(end - 1) == b'\x1b' && *buf.add(end) == b'\\' {
                 terminator = 2;
                 break;
             }
@@ -1767,7 +1766,7 @@ unsafe fn tty_keys_clipboard(
         end -= terminator - 1;
 
         /* Get the second argument. */
-        while end != 0 && *buf != ';' as i8 {
+        while end != 0 && *buf != b';' {
             buf = buf.add(1);
             end -= 1;
         }
@@ -1785,13 +1784,13 @@ unsafe fn tty_keys_clipboard(
         evtimer_del(&raw mut (*tty).clipboard_timer);
 
         /* It has to be a string so copy it. */
-        let copy: *mut c_char = xmalloc(end + 1).as_ptr().cast();
+        let copy: *mut u8 = xmalloc(end + 1).as_ptr().cast();
         libc::memcpy(copy.cast(), buf.cast(), end);
-        *copy.add(end) = '\0' as i8;
+        *copy.add(end) = b'\0';
 
         /* Convert from base64. */
         let needed: usize = (end / 4) * 3;
-        let out: *mut c_char = xmalloc(needed).as_ptr().cast();
+        let out: *mut u8 = xmalloc(needed).as_ptr().cast();
         let outlen: i32 = b64_pton(copy, out.cast(), len);
         if outlen == -1 {
             free_(out);
@@ -1801,7 +1800,7 @@ unsafe fn tty_keys_clipboard(
         free_(copy);
 
         /* Create a new paste buffer and forward to panes. */
-        // log_debug(c"%s: %.*s\0".as_ptr(), __func__, outlen, out);
+        // log_debug( c!("%s: %.*s\0"), __func__, outlen, out);
         if (*c).flags.intersects(client_flag::CLIPBOARDBUFFER) {
             paste_add(null_mut(), out, outlen as usize);
             (*c).flags &= !client_flag::CLIPBOARDBUFFER;
@@ -1810,7 +1809,7 @@ unsafe fn tty_keys_clipboard(
         while i < (*c).clipboard_npanes {
             wp = window_pane_find_by_id(*(*c).clipboard_panes.add(i as usize));
             if !wp.is_null() {
-                input_reply_clipboard((*wp).event, out, outlen as usize, c"\x1b\\".as_ptr());
+                input_reply_clipboard((*wp).event, out, outlen as usize, c!("\x1b\\"));
             }
             i += 1;
         }
@@ -1829,7 +1828,7 @@ unsafe fn tty_keys_clipboard(
 
 unsafe fn tty_keys_device_attributes(
     tty: *mut tty,
-    buf: *const c_char,
+    buf: *const u8,
     len: usize,
     size: *mut usize,
 ) -> i32 {
@@ -1837,11 +1836,11 @@ unsafe fn tty_keys_device_attributes(
         let c = (*tty).client;
         let features = &raw mut (*c).term_features;
         let mut n: u32 = 0;
-        let mut tmp: [c_char; 128] = [0; 128];
-        let mut endptr: *mut c_char = null_mut();
+        let mut tmp: [u8; 128] = [0; 128];
+        let mut endptr: *mut u8 = null_mut();
         let mut p: [u32; 32] = [0; 32];
-        let mut cp: *mut c_char = null_mut();
-        let mut next: *mut c_char = null_mut();
+        let mut cp: *mut u8 = null_mut();
+        let mut next: *mut u8 = null_mut();
 
         *size = 0;
         if (*tty).flags.intersects(tty_flags::TTY_HAVEDA) {
@@ -1849,19 +1848,19 @@ unsafe fn tty_keys_device_attributes(
         }
 
         /* First three bytes are always \x1b[?. */
-        if *buf != '\x1b' as i8 {
+        if *buf != b'\x1b' {
             return -1;
         }
         if len == 1 {
             return 1;
         }
-        if *buf.add(1) != '[' as i8 {
+        if *buf.add(1) != b'[' {
             return -1;
         }
         if len == 2 {
             return 1;
         }
-        if *buf.add(2) != '?' as i8 {
+        if *buf.add(2) != b'?' {
             return -1;
         }
         if len == 3 {
@@ -1876,7 +1875,7 @@ unsafe fn tty_keys_device_attributes(
             if 3 + i == len {
                 return 1;
             }
-            if *buf.add(3 + i) == 'c' as i8 {
+            if *buf.add(3 + i) == b'c' {
                 found = true;
                 break;
             }
@@ -1885,17 +1884,17 @@ unsafe fn tty_keys_device_attributes(
         if !found {
             return -1;
         }
-        tmp[i] = '\0' as i8;
+        tmp[i] = b'\0';
         *size = 4 + i;
 
         /* Convert all arguments to numbers. */
         cp = tmp.as_mut_ptr();
         while {
-            next = strsep(&raw mut cp, c";".as_ptr());
+            next = strsep(&raw mut cp, c!(";"));
             !next.is_null()
         } {
             p[n as usize] = libc::strtoul(next, &raw mut endptr, 10) as u32;
-            if *endptr != '\0' as i8 {
+            if *endptr != b'\0' {
                 p[n as usize] = 0;
             }
             n += 1;
@@ -1908,19 +1907,19 @@ unsafe fn tty_keys_device_attributes(
         if matches!(p[0], 61..=65) {
             /* level 1-5 */
             for i in 1..n {
-                // log_debug(c"%s: DA feature: %d\0".as_ptr(), (*c).name, p[i as usize]);
+                // log_debug( c!("%s: DA feature: %d\0"), (*c).name, p[i as usize]);
                 if p[i as usize] == 4 {
-                    tty_add_features(features, c"sixel".as_ptr(), c",".as_ptr());
+                    tty_add_features(features, c!("sixel"), c!(","));
                 }
                 if p[i as usize] == 21 {
-                    tty_add_features(features, c"margins".as_ptr(), c",".as_ptr());
+                    tty_add_features(features, c!("margins"), c!(","));
                 }
                 if p[i as usize] == 28 {
-                    tty_add_features(features, c"rectfill".as_ptr(), c",".as_ptr());
+                    tty_add_features(features, c!("rectfill"), c!(","));
                 }
             }
         }
-        // log_debug(c"%s: received primary DA %.*s\0".as_ptr(), (*c).name, *size as i32, buf);
+        // log_debug( c!("%s: received primary DA %.*s\0"), (*c).name, *size as i32, buf);
 
         tty_update_features(tty);
         (*tty).flags |= tty_flags::TTY_HAVEDA;
@@ -1929,14 +1928,10 @@ unsafe fn tty_keys_device_attributes(
     }
 }
 
-/*
- * Handle secondary device attributes input. Returns 0 for success, -1 for
- * failure, 1 for partial.
- */
-
+/// Handle secondary device attributes input. Returns 0 for success, -1 for failure, 1 for partial.
 unsafe fn tty_keys_device_attributes2(
     tty: *mut tty,
-    buf: *const c_char,
+    buf: *const u8,
     len: usize,
     size: *mut usize,
 ) -> i32 {
@@ -1945,11 +1940,11 @@ unsafe fn tty_keys_device_attributes2(
         let features = &raw mut (*c).term_features;
         let i: u32 = 0;
         let mut n: u32 = 0;
-        let mut tmp: [c_char; 128] = [0; 128];
-        let mut endptr: *mut c_char = null_mut();
+        let mut tmp: [u8; 128] = [0; 128];
+        let mut endptr: *mut u8 = null_mut();
         let mut p: [u32; 32] = [0; 32];
-        let mut cp: *mut c_char = null_mut();
-        let mut next: *mut c_char = null_mut();
+        let mut cp: *mut u8 = null_mut();
+        let mut next: *mut u8 = null_mut();
 
         *size = 0;
         if (*tty).flags.intersects(tty_flags::TTY_HAVEDA2) {
@@ -1957,19 +1952,19 @@ unsafe fn tty_keys_device_attributes2(
         }
 
         /* First three bytes are always \x1b[>. */
-        if *buf != '\x1b' as i8 {
+        if *buf != b'\x1b' {
             return -1;
         }
         if len == 1 {
             return 1;
         }
-        if *buf.add(1) != '[' as i8 {
+        if *buf.add(1) != b'[' {
             return -1;
         }
         if len == 2 {
             return 1;
         }
-        if *buf.add(2) != '>' as i8 {
+        if *buf.add(2) != b'>' {
             return -1;
         }
         if len == 3 {
@@ -1984,7 +1979,7 @@ unsafe fn tty_keys_device_attributes2(
             if 3 + i == len {
                 return 1;
             }
-            if *buf.add(3 + i) == 'c' as i8 {
+            if *buf.add(3 + i) == b'c' {
                 found = true;
                 break;
             }
@@ -1993,17 +1988,17 @@ unsafe fn tty_keys_device_attributes2(
         if !found {
             return -1;
         }
-        tmp[i] = '\0' as i8;
+        tmp[i] = b'\0';
         *size = 4 + i;
 
         /* Convert all arguments to numbers. */
         cp = tmp.as_mut_ptr();
         while {
-            next = strsep(&raw mut cp, c";".as_ptr());
+            next = strsep(&raw mut cp, c!(";"));
             !next.is_null()
         } {
             p[n as usize] = libc::strtoul(next, &raw mut endptr, 10) as u32;
-            if *endptr != '\0' as i8 {
+            if *endptr != b'\0' {
                 p[n as usize] = 0;
             }
             n += 1;
@@ -2020,19 +2015,19 @@ unsafe fn tty_keys_device_attributes2(
         match p[0] as u8 {
             b'M' => {
                 /* mintty */
-                tty_default_features(features, c"mintty".as_ptr(), 0);
+                tty_default_features(features, c!("mintty"), 0);
             }
             b'T' => {
                 /* tmux */
-                tty_default_features(features, c"tmux".as_ptr(), 0);
+                tty_default_features(features, c!("tmux"), 0);
             }
             b'U' => {
                 /* rxvt-unicode */
-                tty_default_features(features, c"rxvt-unicode".as_ptr(), 0);
+                tty_default_features(features, c!("rxvt-unicode"), 0);
             }
             _ => {}
         }
-        // log_debug(c"%s: received secondary DA %.*s\0".as_ptr(), (*c).name, *size as i32, buf);
+        // log_debug( c!("%s: received secondary DA %.*s\0"), (*c).name, *size as i32, buf);
 
         tty_update_features(tty);
         (*tty).flags |= tty_flags::TTY_HAVEDA2;
@@ -2048,7 +2043,7 @@ unsafe fn tty_keys_device_attributes2(
 
 unsafe fn tty_keys_extended_device_attributes(
     tty: *mut tty,
-    buf: *const c_char,
+    buf: *const u8,
     len: usize,
     size: *mut usize,
 ) -> i32 {
@@ -2056,7 +2051,7 @@ unsafe fn tty_keys_extended_device_attributes(
         let c = (*tty).client;
         let features = &raw mut (*c).term_features;
         let mut i: usize = 0;
-        let mut tmp: [c_char; 128] = [0; 128];
+        let mut tmp: [u8; 128] = [0; 128];
 
         *size = 0;
         if (*tty).flags.intersects(tty_flags::TTY_HAVEXDA) {
@@ -2064,25 +2059,25 @@ unsafe fn tty_keys_extended_device_attributes(
         }
 
         /* First four bytes are always \x1bP>|. */
-        if *buf != '\x1b' as i8 {
+        if *buf != b'\x1b' {
             return -1;
         }
         if len == 1 {
             return 1;
         }
-        if *buf.add(1) != 'P' as i8 {
+        if *buf.add(1) != b'P' {
             return -1;
         }
         if len == 2 {
             return 1;
         }
-        if *buf.add(2) != '>' as i8 {
+        if *buf.add(2) != b'>' {
             return -1;
         }
         if len == 3 {
             return 1;
         }
-        if *buf.add(3) != '|' as i8 {
+        if *buf.add(3) != b'|' {
             return -1;
         }
         if len == 4 {
@@ -2096,7 +2091,7 @@ unsafe fn tty_keys_extended_device_attributes(
             if 4 + i == len {
                 return 1;
             }
-            if *buf.add(4 + i - 1) == '\x1b' as i8 && *buf.add(4 + i) == '\\' as i8 {
+            if *buf.add(4 + i - 1) == b'\x1b' && *buf.add(4 + i) == b'\\' {
                 found = true;
                 break;
             }
@@ -2105,20 +2100,20 @@ unsafe fn tty_keys_extended_device_attributes(
         if !found {
             return -1;
         }
-        tmp[i - 1] = '\0' as i8;
+        tmp[i - 1] = b'\0';
         *size = 5 + i;
 
         /* Add terminal features. */
-        if libc::strncmp(tmp.as_ptr(), c"iTerm2 ".as_ptr(), 7) == 0 {
-            tty_default_features(features, c"iTerm2".as_ptr(), 0);
-        } else if libc::strncmp(tmp.as_ptr(), c"tmux ".as_ptr(), 5) == 0 {
-            tty_default_features(features, c"tmux".as_ptr(), 0);
-        } else if libc::strncmp(tmp.as_ptr(), c"XTerm(".as_ptr(), 6) == 0 {
-            tty_default_features(features, c"XTerm".as_ptr(), 0);
-        } else if libc::strncmp(tmp.as_ptr(), c"mintty ".as_ptr(), 7) == 0 {
-            tty_default_features(features, c"mintty".as_ptr(), 0);
+        if libc::strncmp(tmp.as_ptr(), c!("iTerm2 "), 7) == 0 {
+            tty_default_features(features, c!("iTerm2"), 0);
+        } else if libc::strncmp(tmp.as_ptr(), c!("tmux "), 5) == 0 {
+            tty_default_features(features, c!("tmux"), 0);
+        } else if libc::strncmp(tmp.as_ptr(), c!("XTerm("), 6) == 0 {
+            tty_default_features(features, c!("XTerm"), 0);
+        } else if libc::strncmp(tmp.as_ptr(), c!("mintty "), 7) == 0 {
+            tty_default_features(features, c!("mintty"), 0);
         }
-        // log_debug(c"%s: received extended DA %.*s\0".as_ptr(), (*c).name, *size as i32, buf);
+        // log_debug( c!("%s: received extended DA %.*s\0"), (*c).name, *size as i32, buf);
 
         free_((*c).term_type);
         (*c).term_type = xstrdup(tmp.as_ptr()).as_ptr();
@@ -2137,7 +2132,7 @@ unsafe fn tty_keys_extended_device_attributes(
 
 pub unsafe fn tty_keys_colours(
     tty: *mut tty,
-    buf: *const c_char,
+    buf: *const u8,
     len: usize,
     size: *mut usize,
     fg: *mut i32,
@@ -2145,36 +2140,36 @@ pub unsafe fn tty_keys_colours(
 ) -> i32 {
     unsafe {
         let c = (*tty).client;
-        let mut tmp: [c_char; 128] = [0; 128];
+        let mut tmp: [u8; 128] = [0; 128];
 
         *size = 0;
 
         /* First four bytes are always \x1b]1 and 0 or 1 and ;. */
-        if *buf != '\x1b' as i8 {
+        if *buf != b'\x1b' {
             return -1;
         }
         if len == 1 {
             return 1;
         }
-        if *buf.add(1) != ']' as i8 {
+        if *buf.add(1) != b']' {
             return -1;
         }
         if len == 2 {
             return 1;
         }
-        if *buf.add(2) != '1' as i8 {
+        if *buf.add(2) != b'1' {
             return -1;
         }
         if len == 3 {
             return 1;
         }
-        if *buf.add(3) != '0' as i8 && *buf.add(3) != '1' as i8 {
+        if *buf.add(3) != b'0' && *buf.add(3) != b'1' {
             return -1;
         }
         if len == 4 {
             return 1;
         }
-        if *buf.add(4) != ';' as i8 {
+        if *buf.add(4) != b';' {
             return -1;
         }
         if len == 5 {
@@ -2189,11 +2184,11 @@ pub unsafe fn tty_keys_colours(
             if 5 + i == len {
                 return 1;
             }
-            if *buf.add(5 + i - 1) == '\x1b' as i8 && *buf.add(5 + i) == '\\' as i8 {
+            if *buf.add(5 + i - 1) == b'\x1b' && *buf.add(5 + i) == b'\\' {
                 found = true;
                 break;
             }
-            if *buf.add(5 + i) == '\x07' as i8 {
+            if *buf.add(5 + i) == b'\x07' {
                 found = true;
                 break;
             }
@@ -2202,26 +2197,26 @@ pub unsafe fn tty_keys_colours(
         if !found {
             return -1;
         }
-        if tmp[i - 1] == '\x1b' as i8 {
-            tmp[i - 1] = '\0' as i8;
+        if tmp[i - 1] == b'\x1b' {
+            tmp[i - 1] = b'\0';
         } else {
-            tmp[i] = '\0' as i8;
+            tmp[i] = b'\0';
         }
         *size = 6 + i;
 
         let n: i32 = colour_parse_x11(tmp.as_ptr());
-        if n != -1 && *buf.add(3) == '0' as i8 {
+        if n != -1 && *buf.add(3) == b'0' {
             if !c.is_null() {
-                // log_debug(c"%s fg is %s\0".as_ptr(), (*c).name, colour_tostring(n));
+                // log_debug( c!("%s fg is %s\0"), (*c).name, colour_tostring(n));
             } else {
-                // log_debug(c"fg is %s\0".as_ptr(), colour_tostring(n));
+                // log_debug( c!("fg is %s\0"), colour_tostring(n));
             }
             *fg = n;
         } else if n != -1 {
             if !c.is_null() {
-                // log_debug(c"%s bg is %s\0".as_ptr(), (*c).name, colour_tostring(n));
+                // log_debug( c!("%s bg is %s\0"), (*c).name, colour_tostring(n));
             } else {
-                // log_debug(c"bg is %s\0".as_ptr(), colour_tostring(n));
+                // log_debug( c!("bg is %s\0"), colour_tostring(n));
             }
             *bg = n;
         }

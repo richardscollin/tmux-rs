@@ -11,10 +11,9 @@
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+use crate::*;
 
-use super::*;
-
-use libc::{WEXITSTATUS, WIFEXITED, close, gettimeofday};
+use crate::libc::{WEXITSTATUS, WIFEXITED, close, gettimeofday};
 
 use crate::compat::{
     imsg::{IMSG_HEADER_SIZE, MAX_IMSGSIZE},
@@ -147,7 +146,7 @@ pub unsafe fn server_lock_client(c: *mut client) {
         }
 
         let cmd = options_get_string_((*(*c).session).options, c"lock-command");
-        if *cmd == b'\0' as c_char || strlen(cmd) + 1 > MAX_IMSGSIZE - IMSG_HEADER_SIZE {
+        if *cmd == b'\0' || strlen(cmd) + 1 > MAX_IMSGSIZE - IMSG_HEADER_SIZE {
             return;
         }
 
@@ -248,7 +247,7 @@ pub unsafe fn server_link_window(
     mut dstidx: i32,
     killflag: i32,
     mut selectflag: i32,
-    cause: *mut *mut c_char,
+    cause: *mut *mut u8,
 ) -> i32 {
     unsafe {
         let mut dstwl = null_mut();
@@ -361,7 +360,7 @@ pub unsafe fn server_destroy_pane(wp: *mut window_pane, notify: i32) {
                     }
 
                     let s = options_get_string_((*wp).options, c"remain-on-exit-format");
-                    if *s != '\0' as c_char {
+                    if *s != b'\0' {
                         screen_write_start_pane(ctx, wp, &raw mut (*wp).base);
                         screen_write_scrollregion(ctx, 0, sy - 1);
                         screen_write_cursormove(ctx, 0, sy as i32 - 1, 0);
@@ -406,11 +405,11 @@ pub unsafe fn server_destroy_session_group(s: *mut session) {
         let sg = session_group_contains(s);
         if sg.is_null() {
             server_destroy_session(s);
-            session_destroy(s, 1, c"server_destroy_session_group".as_ptr());
+            session_destroy(s, 1, c!("server_destroy_session_group"));
         } else {
             for s in tailq_foreach(&raw mut (*sg).sessions).map(NonNull::as_ptr) {
                 server_destroy_session(s);
-                session_destroy(s, 1, c"server_destroy_session_group".as_ptr());
+                session_destroy(s, 1, c!("server_destroy_session_group"));
             }
         }
     }
@@ -506,7 +505,7 @@ pub unsafe fn server_check_unattached() {
                 }
                 _ => (),
             }
-            session_destroy(s, 1, c"server_check_unattached".as_ptr());
+            session_destroy(s, 1, c!("server_check_unattached"));
         }
     }
 }

@@ -38,7 +38,9 @@ pub unsafe fn control_notify_pane_mode_changed(pane: c_int) {
 }
 
 pub unsafe fn control_notify_window_layout_changed(w: *mut window) {
-    let template = c"%layout-change #{window_id} #{window_layout} #{window_visible_layout} #{window_raw_flags}".as_ptr();
+    let template = c!(
+        "%layout-change #{window_id} #{window_layout} #{window_visible_layout} #{window_raw_flags}"
+    );
 
     unsafe {
         for c in tailq_foreach(&raw mut clients).map(NonNull::as_ptr) {
@@ -248,7 +250,7 @@ pub unsafe fn control_notify_session_window_changed(s: *mut session) {
     }
 }
 
-pub unsafe fn control_notify_paste_buffer_changed(name: *const c_char) {
+pub unsafe fn control_notify_paste_buffer_changed(name: *const u8) {
     unsafe {
         for c in tailq_foreach(&raw mut clients).map(NonNull::as_ptr) {
             {
@@ -262,7 +264,7 @@ pub unsafe fn control_notify_paste_buffer_changed(name: *const c_char) {
     }
 }
 
-pub unsafe fn control_notify_paste_buffer_deleted(name: *const c_char) {
+pub unsafe fn control_notify_paste_buffer_deleted(name: *const u8) {
     unsafe {
         for c in tailq_foreach(&raw mut clients).map(NonNull::as_ptr) {
             {

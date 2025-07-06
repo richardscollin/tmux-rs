@@ -32,12 +32,12 @@ pub static cmd_load_buffer_entry: cmd_entry = cmd_entry {
 pub struct cmd_load_buffer_data {
     pub client: *mut client,
     pub item: *mut cmdq_item,
-    pub name: *mut c_char,
+    pub name: *mut u8,
 }
 
 unsafe fn cmd_load_buffer_done(
     _c: *mut client,
-    path: *mut c_char,
+    path: *mut u8,
     error: i32,
     closed: i32,
     buffer: *mut evbuffer,
@@ -68,7 +68,7 @@ unsafe fn cmd_load_buffer_done(
                 && !(*tc).session.is_null()
                 && !(*tc).flags.intersects(client_flag::DEAD)
             {
-                tty_set_selection(&raw mut (*tc).tty, c"".as_ptr(), copy as _, bsize);
+                tty_set_selection(&raw mut (*tc).tty, c!(""), copy as _, bsize);
             }
             if !tc.is_null() {
                 server_client_unref(tc);

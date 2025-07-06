@@ -29,8 +29,8 @@ pub static cmd_command_prompt_entry: cmd_entry = cmd_entry {
 };
 
 struct cmd_command_prompt_prompt {
-    input: *mut c_char,
-    prompt: *mut c_char,
+    input: *mut u8,
+    prompt: *mut u8,
 }
 
 struct cmd_command_prompt_cdata<'a> {
@@ -45,13 +45,13 @@ struct cmd_command_prompt_cdata<'a> {
     current: u32,
 
     argc: i32,
-    argv: *mut *mut c_char,
+    argv: *mut *mut u8,
 }
 
 unsafe fn cmd_command_prompt_args_parse(
     _args: *mut args,
     _idx: u32,
-    _cause: *mut *mut c_char,
+    _cause: *mut *mut u8,
 ) -> args_parse_type {
     args_parse_type::ARGS_PARSE_COMMANDS_OR_STRING
 }
@@ -62,7 +62,7 @@ unsafe fn cmd_command_prompt_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
         let tc = cmdq_get_target_client(item);
         let target = cmdq_get_target(item);
         let mut prompts = null_mut();
-        let mut prompt: *const i8 = null();
+        let mut prompt: *const u8 = null();
         let mut next_prompt = null_mut();
         let mut tmp = null_mut();
         let mut inputs = null_mut();
@@ -83,7 +83,7 @@ unsafe fn cmd_command_prompt_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
             (*cdata).item = item;
         }
         (*cdata).state =
-            args_make_commands_prepare(self_, item, 0, c"%1".as_ptr(), wait, args_has(args, b'F'));
+            args_make_commands_prepare(self_, item, 0, c!("%1"), wait, args_has(args, b'F'));
 
         let mut s = args_get(args, b'p');
         if s.is_null() {
@@ -108,7 +108,7 @@ unsafe fn cmd_command_prompt_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
             next_input = null_mut();
         }
         while {
-            prompt = strsep(&raw mut next_prompt as _, c",".as_ptr());
+            prompt = strsep(&raw mut next_prompt as _, c!(","));
             !prompt.is_null()
         } {
             (*cdata).prompts = xreallocarray_::<cmd_command_prompt_prompt>(
@@ -125,12 +125,12 @@ unsafe fn cmd_command_prompt_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
 
             let mut input = null();
             if !next_input.is_null() {
-                input = strsep(&raw mut next_input as _, c",".as_ptr());
+                input = strsep(&raw mut next_input as _, c!(","));
                 if input.is_null() {
-                    input = c"".as_ptr();
+                    input = c!("");
                 }
             } else {
-                input = c"".as_ptr();
+                input = c!("");
             }
             (*(*cdata).prompts.add((*cdata).count as usize)).input = xstrdup(input).as_ptr();
 
@@ -182,13 +182,13 @@ unsafe fn cmd_command_prompt_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
 unsafe fn cmd_command_prompt_callback(
     c: *mut client,
     data: NonNull<c_void>,
-    s: *const c_char,
+    s: *const u8,
     done: i32,
 ) -> i32 {
     unsafe {
         let cdata: NonNull<cmd_command_prompt_cdata> = data.cast();
         let cdata = cdata.as_ptr();
-        let mut error: *mut c_char = null_mut();
+        let mut error: *mut u8 = null_mut();
         let item: *mut cmdq_item = (*cdata).item;
 
         'out: {

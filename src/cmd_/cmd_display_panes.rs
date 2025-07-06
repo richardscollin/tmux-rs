@@ -34,11 +34,7 @@ pub struct cmd_display_panes_data<'a> {
     pub state: *mut args_command_state<'a>,
 }
 
-unsafe fn cmd_display_panes_args_parse(
-    _: *mut args,
-    _: u32,
-    _: *mut *mut c_char,
-) -> args_parse_type {
+unsafe fn cmd_display_panes_args_parse(_: *mut args, _: u32, _: *mut *mut u8) -> args_parse_type {
     args_parse_type::ARGS_PARSE_COMMANDS_OR_STRING
 }
 
@@ -162,7 +158,7 @@ unsafe fn cmd_display_panes_draw_pane(ctx: *mut screen_redraw_ctx, wp: *mut wind
                     len += llen + 1;
                     tty_cursor(tty, xoff + px - (len / 2) as u32, yoff + py);
                     tty_putn(tty, &raw mut buf as _, len, len as _);
-                    tty_putn(tty, c" ".as_ptr().cast(), 1, 1);
+                    tty_putn(tty, c!(" ").cast(), 1, 1);
                     tty_putn(tty, &raw mut lbuf as _, llen, llen as _);
                 } else {
                     tty_cursor(tty, xoff + px - (len / 2) as u32, yoff + py);
@@ -344,7 +340,7 @@ unsafe fn cmd_display_panes_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
             (*cdata).item = item;
         }
         (*cdata).state =
-            args_make_commands_prepare(self_, item, 0, c"select-pane -t \"%%%\"".as_ptr(), wait, 0);
+            args_make_commands_prepare(self_, item, 0, c!("select-pane -t \"%%%\""), wait, 0);
 
         if args_has_(args, 'N') {
             server_client_set_overlay(

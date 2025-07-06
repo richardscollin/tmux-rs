@@ -14,7 +14,7 @@
 use crate::*;
 
 pub type popup_close_cb = Option<unsafe fn(_: i32, _: *mut c_void)>;
-pub type popup_finish_edit_cb = Option<unsafe fn(_: *mut c_char, _: usize, _: *mut c_void)>;
+pub type popup_finish_edit_cb = Option<unsafe fn(_: *mut u8, _: usize, _: *mut c_void)>;
 
 #[repr(i32)]
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -29,7 +29,7 @@ pub struct popup_data {
     pub c: *mut client,
     pub item: *mut cmdq_item,
     pub flags: i32,
-    pub title: *mut c_char,
+    pub title: *mut u8,
 
     pub border_cell: grid_cell,
     pub border_lines: box_lines,
@@ -71,7 +71,7 @@ pub struct popup_data {
 
 #[repr(C)]
 pub struct popup_editor {
-    pub path: *mut c_char,
+    pub path: *mut u8,
     pub cb: popup_finish_edit_cb,
     pub arg: *mut c_void,
 }
@@ -98,16 +98,12 @@ static popup_internal_menu_items: [menu_item; 4] = [
     menu_item::new(c"Centre", 'C' as u64, null_mut()),
 ];
 
-// #[cfg(disabled)]
-
 pub unsafe fn popup_redraw_cb(ttyctx: *const tty_ctx) {
     unsafe {
         let pd = (*ttyctx).arg.cast::<popup_data>();
         (*(*pd).c).flags |= client_flag::REDRAWOVERLAY;
     }
 }
-
-// #[cfg(disabled)]
 
 pub unsafe fn popup_set_client_cb(ttyctx: *mut tty_ctx, c: *mut client) -> i32 {
     unsafe {
@@ -142,8 +138,6 @@ pub unsafe fn popup_set_client_cb(ttyctx: *mut tty_ctx, c: *mut client) -> i32 {
     }
 }
 
-// #[cfg(disabled)]
-
 pub unsafe fn popup_init_ctx_cb(ctx: *mut screen_write_ctx, ttyctx: *mut tty_ctx) {
     unsafe {
         let pd = (*ctx).arg.cast::<popup_data>();
@@ -155,8 +149,6 @@ pub unsafe fn popup_init_ctx_cb(ctx: *mut screen_write_ctx, ttyctx: *mut tty_ctx
         (*ttyctx).arg = pd.cast();
     }
 }
-
-// #[cfg(disabled)]
 
 pub unsafe fn popup_mode_cb(
     c: *mut client,
@@ -241,8 +233,6 @@ pub unsafe fn popup_check_cb(
     }
 }
 
-// #[cfg(disabled)]
-
 pub unsafe fn popup_draw_cb(c: *mut client, data: *mut c_void, rctx: *mut screen_redraw_ctx) {
     unsafe {
         let pd = data.cast::<popup_data>();
@@ -325,8 +315,6 @@ pub unsafe fn popup_draw_cb(c: *mut client, data: *mut c_void, rctx: *mut screen
     }
 }
 
-// #[cfg(disabled)]
-
 pub fn popup_free_cb(c: *mut client, data: *mut c_void) {
     unsafe {
         let pd = data as *mut popup_data;
@@ -361,8 +349,6 @@ pub fn popup_free_cb(c: *mut client, data: *mut c_void) {
         free_(pd);
     }
 }
-
-// #[cfg(disabled)]
 
 pub fn popup_resize_cb(_c: *mut client, data: *mut c_void) {
     unsafe {
@@ -408,8 +394,6 @@ pub fn popup_resize_cb(_c: *mut client, data: *mut c_void) {
     }
 }
 
-//#[cfg(disabled)]
-
 pub fn popup_make_pane(pd: *mut popup_data, type_: layout_type) {
     unsafe {
         let c = (*pd).c;
@@ -438,7 +422,7 @@ pub fn popup_make_pane(pd: *mut popup_data, type_: layout_type) {
         screen_resize(&raw mut (*new_wp).base, (*new_wp).sx, (*new_wp).sy, 1);
         screen_init(&raw mut (*pd).s, 1, 1, 0);
 
-        let mut shell: *const i8 = options_get_string_((*s).options, c"default-shell");
+        let mut shell = options_get_string_((*s).options, c"default-shell");
         if !checkshell(shell) {
             shell = _PATH_BSHELL;
         }
@@ -451,8 +435,6 @@ pub fn popup_make_pane(pd: *mut popup_data, type_: layout_type) {
         (*pd).close = 1;
     }
 }
-
-// #[cfg(disabled)]
 
 pub fn popup_menu_done(_menu: *mut menu, _choice: u32, key: key_code, data: *mut c_void) {
     unsafe {
@@ -490,8 +472,6 @@ pub fn popup_menu_done(_menu: *mut menu, _choice: u32, key: key_code, data: *mut
         }
     }
 }
-
-// #[cfg(disabled)]
 
 pub unsafe fn popup_handle_drag(c: *mut client, pd: *mut popup_data, m: *mut mouse_event) {
     unsafe {
@@ -558,8 +538,6 @@ pub unsafe fn popup_handle_drag(c: *mut client, pd: *mut popup_data, m: *mut mou
         }
     }
 }
-
-// #[cfg(disabled)]
 
 pub unsafe fn popup_key_cb(c: *mut client, data: *mut c_void, event: *mut key_event) -> i32 {
     unsafe {
@@ -675,7 +653,7 @@ pub unsafe fn popup_key_cb(c: *mut client, data: *mut c_void, event: *mut key_ev
                 return 0;
             }
             // menu:
-            (*pd).menu = menu_create(c"".as_ptr());
+            (*pd).menu = menu_create(c!(""));
             if (*pd).flags & POPUP_INTERNAL != 0 {
                 menu_add_items(
                     (*pd).menu,
@@ -714,8 +692,6 @@ pub unsafe fn popup_key_cb(c: *mut client, data: *mut c_void, event: *mut key_ev
     }
 }
 
-// #[cfg(disabled)]
-
 pub unsafe fn popup_job_update_cb(job: *mut job) {
     unsafe {
         let pd = job_get_data(job) as *mut popup_data;
@@ -751,7 +727,6 @@ pub unsafe fn popup_job_update_cb(job: *mut job) {
     }
 }
 
-// #[cfg(disabled)]
 pub unsafe fn popup_job_complete_cb(job: *mut job) {
     unsafe {
         let pd = job_get_data(job) as *mut popup_data;
@@ -774,8 +749,6 @@ pub unsafe fn popup_job_complete_cb(job: *mut job) {
     }
 }
 
-// #[cfg(disabled)]
-
 pub unsafe fn popup_display(
     flags: c_int,
     mut lines: box_lines,
@@ -785,15 +758,15 @@ pub unsafe fn popup_display(
     sx: c_uint,
     sy: c_uint,
     env: *mut environ,
-    shellcmd: *const c_char,
+    shellcmd: *const u8,
     argc: c_int,
-    argv: *mut *mut c_char,
-    cwd: *const c_char,
-    title: *const c_char,
+    argv: *mut *mut u8,
+    cwd: *const u8,
+    title: *const u8,
     c: *mut client,
     s: *mut session,
-    style: *const c_char,
-    border_style: *const c_char,
+    style: *const u8,
+    border_style: *const u8,
     cb: popup_close_cb,
     arg: *mut c_void,
 ) -> c_int {
@@ -847,7 +820,7 @@ pub unsafe fn popup_display(
         style_apply(
             &raw mut (*pd).border_cell,
             o,
-            c"popup-border-style".as_ptr(),
+            c!("popup-border-style"),
             null_mut(),
         );
 
@@ -869,7 +842,7 @@ pub unsafe fn popup_display(
         style_apply(
             &raw mut (*pd).defaults,
             o,
-            c"popup-style".as_ptr().cast(),
+            c!("popup-style").cast(),
             null_mut(),
         );
         if !style.is_null() {
@@ -927,22 +900,18 @@ pub unsafe fn popup_display(
     }
 }
 
-// #[cfg(disabled)]
-
 pub unsafe fn popup_editor_free(pe: *mut popup_editor) {
     unsafe {
-        unlink((*pe).path);
+        unlink((*pe).path.cast());
         free_((*pe).path);
         free_(pe);
     }
 }
 
-// #[cfg(disabled)]
-
 pub unsafe fn popup_editor_close_cb(status: i32, arg: *mut c_void) {
     unsafe {
         let pe = arg as *mut popup_editor;
-        let mut buf: *mut c_char = null_mut();
+        let mut buf: *mut u8 = null_mut();
         let mut len: libc::off_t = 0;
 
         if status != 0 {
@@ -951,7 +920,7 @@ pub unsafe fn popup_editor_close_cb(status: i32, arg: *mut c_void) {
             return;
         }
 
-        let f = fopen((*pe).path, c"r".as_ptr());
+        let f = fopen((*pe).path, c!("r"));
         if !f.is_null() {
             fseeko(f, 0, SEEK_END);
             len = ftello(f);
@@ -977,30 +946,28 @@ pub unsafe fn popup_editor_close_cb(status: i32, arg: *mut c_void) {
     }
 }
 
-// #[cfg(disabled)]
-
 pub unsafe fn popup_editor(
     c: *mut client,
-    buf: *const c_char,
+    buf: *const u8,
     len: usize,
     cb: popup_finish_edit_cb,
     arg: *mut c_void,
 ) -> c_int {
     unsafe {
-        let mut path = [0i8; 256];
-        strcpy(path.as_mut_ptr(), c"/tmp/tmux.XXXXXXXX".as_ptr().cast());
+        let mut path = [0u8; 256];
+        strcpy(path.as_mut_ptr(), c!("/tmp/tmux.XXXXXXXX").cast());
 
         let editor = options_get_string_(global_options, c"editor");
-        if *editor == b'\0' as c_char {
+        if *editor == b'\0' {
             return -1;
         }
 
-        let fd = mkstemp(path.as_mut_ptr());
+        let fd = mkstemp(path.as_mut_ptr().cast());
         if fd == -1 {
             return -1;
         }
 
-        let f = fdopen(fd, c"w".as_ptr().cast());
+        let f = fdopen(fd, c!("w").cast());
         if f.is_null() {
             return -1;
         }
@@ -1021,7 +988,7 @@ pub unsafe fn popup_editor(
         let px = ((*c).tty.sx / 2).wrapping_sub(sx / 2);
         let py = ((*c).tty.sy / 2).wrapping_sub(sy / 2);
 
-        let mut cmd: *mut c_char = null_mut();
+        let mut cmd: *mut u8 = null_mut();
         cmd = format_nul!("{} {}", _s(editor), _s(path.as_ptr()));
         if popup_display(
             POPUP_INTERNAL | POPUP_CLOSEEXIT,
@@ -1035,7 +1002,7 @@ pub unsafe fn popup_editor(
             cmd,
             0,
             null_mut(),
-            c"/tmp/".as_ptr(),
+            c!("/tmp/"),
             null(),
             c,
             null_mut(),

@@ -13,7 +13,7 @@
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 use crate::*;
 
-use libc::{fnmatch, isdigit, sscanf, strcasecmp, strchr, strcmp, strncmp, strstr};
+use crate::libc::{fnmatch, isdigit, sscanf, strcasecmp, strchr, strcmp, strncmp, strstr};
 
 use std::cmp::Ordering;
 
@@ -51,7 +51,7 @@ RB_GENERATE!(
 #[repr(C)]
 pub struct options_entry {
     pub owner: *mut options,
-    pub name: *const c_char,
+    pub name: *const u8,
     pub tableentry: *const options_table_entry,
     pub value: options_value,
     pub cached: i32,
@@ -110,7 +110,7 @@ pub fn options_cmp(lhs: &options_entry, rhs: &options_entry) -> Ordering {
     unsafe { i32_to_ordering(libc::strcmp(lhs.name, rhs.name)) }
 }
 
-pub unsafe fn options_map_name(name: *const c_char) -> *const c_char {
+pub unsafe fn options_map_name(name: *const u8) -> *const u8 {
     unsafe {
         let mut map = &raw const options_other_names as *const options_name_map;
         while !(*map).from.is_null() {
@@ -125,7 +125,7 @@ pub unsafe fn options_map_name(name: *const c_char) -> *const c_char {
 
 pub unsafe fn options_parent_table_entry(
     oo: *mut options,
-    s: *const c_char,
+    s: *const u8,
 ) -> *const options_table_entry {
     unsafe {
         if (*oo).parent.is_null() {
@@ -156,9 +156,9 @@ pub unsafe fn options_value_to_string(
     o: *mut options_entry,
     ov: *mut options_value,
     numeric: i32,
-) -> *mut c_char {
+) -> *mut u8 {
     unsafe {
-        let mut s: *mut c_char = null_mut();
+        let mut s: *mut u8 = null_mut();
 
         if OPTIONS_IS_COMMAND(o) {
             return cmd_list_print(&mut *(*ov).cmdlist, 0);
@@ -180,9 +180,9 @@ pub unsafe fn options_value_to_string(
                         format_nul!("{}", (*ov).number)
                     } else {
                         xstrdup(if (*ov).number != 0 {
-                            c"on".as_ptr()
+                            c!("on")
                         } else {
-                            c"off".as_ptr()
+                            c!("off")
                         })
                         .as_ptr()
                     }
@@ -201,7 +201,7 @@ pub unsafe fn options_value_to_string(
             return xstrdup((*ov).string).as_ptr();
         }
 
-        xstrdup(c"".as_ptr()).as_ptr()
+        xstrdup(c!("")).as_ptr()
     }
 }
 
@@ -241,7 +241,7 @@ pub unsafe fn options_next(o: *mut options_entry) -> *mut options_entry {
     unsafe { rb_next(o) }
 }
 
-pub unsafe fn options_get_only(oo: *mut options, name: *const c_char) -> *mut options_entry {
+pub unsafe fn options_get_only(oo: *mut options, name: *const u8) -> *mut options_entry {
     unsafe {
         let mut o = options_entry {
             name,
@@ -258,7 +258,7 @@ pub unsafe fn options_get_only(oo: *mut options, name: *const c_char) -> *mut op
     }
 }
 
-pub unsafe fn options_get(mut oo: *mut options, name: *const c_char) -> *mut options_entry {
+pub unsafe fn options_get(mut oo: *mut options, name: *const u8) -> *mut options_entry {
     unsafe {
         let mut o = options_get_only(oo, name);
         while o.is_null() {
@@ -276,7 +276,7 @@ pub unsafe fn options_get_(mut oo: *mut options, name: &CStr) -> *mut options_en
     unsafe {
         let mut o;
         while {
-            o = options_get_only(oo, name.as_ptr());
+            o = options_get_only(oo, name.as_ptr().cast());
             o.is_null()
         } {
             oo = (*oo).parent;
@@ -336,7 +336,7 @@ pub unsafe fn options_default(
     }
 }
 
-pub unsafe fn options_default_to_string(oe: *const options_table_entry) -> NonNull<c_char> {
+pub unsafe fn options_default_to_string(oe: *const options_table_entry) -> NonNull<u8> {
     unsafe {
         match (*oe).type_ {
             options_table_type::OPTIONS_TABLE_STRING
@@ -350,11 +350,11 @@ pub unsafe fn options_default_to_string(oe: *const options_table_entry) -> NonNu
             options_table_type::OPTIONS_TABLE_COLOUR => {
                 xstrdup(colour_tostring((*oe).default_num as i32))
             }
-            options_table_type::OPTIONS_TABLE_FLAG => xstrdup(if (*oe).default_num != 0 {
-                c"on".as_ptr()
+            options_table_type::OPTIONS_TABLE_FLAG => xstrdup_(if (*oe).default_num != 0 {
+                c"on"
             } else {
-                c"off".as_ptr()
-            } as *const c_char),
+                c"off"
+            }),
             options_table_type::OPTIONS_TABLE_CHOICE => {
                 xstrdup(*(*oe).choices.add((*oe).default_num as usize))
             }
@@ -362,7 +362,7 @@ pub unsafe fn options_default_to_string(oe: *const options_table_entry) -> NonNu
     }
 }
 
-unsafe fn options_add(oo: *mut options, name: *const c_char) -> *mut options_entry {
+unsafe fn options_add(oo: *mut options, name: *const u8) -> *mut options_entry {
     unsafe {
         let mut o = options_get_only(oo, name);
         if !o.is_null() {
@@ -393,7 +393,7 @@ pub unsafe fn options_remove(o: *mut options_entry) {
     }
 }
 
-pub unsafe fn options_name(o: *mut options_entry) -> *const c_char {
+pub unsafe fn options_name(o: *mut options_entry) -> *const u8 {
     unsafe { (*o).name }
 }
 
@@ -463,14 +463,14 @@ pub unsafe fn options_array_get(o: *mut options_entry, idx: u32) -> *mut options
 pub unsafe fn options_array_set(
     o: *mut options_entry,
     idx: u32,
-    value: *const c_char,
+    value: *const u8,
     append: i32,
-    cause: *mut *mut c_char,
+    cause: *mut *mut u8,
 ) -> i32 {
     unsafe {
         if !OPTIONS_IS_ARRAY(o) {
             if !cause.is_null() {
-                *cause = xstrdup(c"not an array".as_ptr()).as_ptr();
+                *cause = xstrdup(c!("not an array")).as_ptr();
             }
             return -1;
         }
@@ -542,7 +542,7 @@ pub unsafe fn options_array_set(
         }
 
         if !cause.is_null() {
-            *cause = xstrdup(c"wrong array type".as_ptr()).as_ptr();
+            *cause = xstrdup(c!("wrong array type")).as_ptr();
         }
         -1
     }
@@ -550,13 +550,13 @@ pub unsafe fn options_array_set(
 
 pub unsafe fn options_array_assign(
     o: *mut options_entry,
-    s: *const c_char,
-    cause: *mut *mut c_char,
+    s: *const u8,
+    cause: *mut *mut u8,
 ) -> i32 {
     unsafe {
         let mut separator = (*(*o).tableentry).separator;
         if separator.is_null() {
-            separator = c" ,".as_ptr();
+            separator = c!(" ,");
         }
         if *separator == 0 {
             if *s == 0 {
@@ -631,12 +631,12 @@ pub unsafe fn options_is_string(o: *mut options_entry) -> i32 {
     unsafe { OPTIONS_IS_STRING(o) as i32 }
 }
 
-pub unsafe fn options_to_string(o: *mut options_entry, idx: i32, numeric: i32) -> *mut c_char {
+pub unsafe fn options_to_string(o: *mut options_entry, idx: i32, numeric: i32) -> *mut u8 {
     unsafe {
         if OPTIONS_IS_ARRAY(o) {
             if idx == -1 {
                 let mut result = null_mut();
-                let mut last: *mut i8 = null_mut();
+                let mut last: *mut u8 = null_mut();
 
                 let mut a = rb_min(&raw mut (*o).value.array);
                 while !a.is_null() {
@@ -660,14 +660,14 @@ pub unsafe fn options_to_string(o: *mut options_entry, idx: i32, numeric: i32) -
                 }
 
                 if result.is_null() {
-                    return xstrdup(c"".as_ptr()).as_ptr();
+                    return xstrdup(c!("")).as_ptr();
                 }
                 return result;
             }
 
             let a = options_array_item(o, idx as u32);
             if a.is_null() {
-                return xstrdup(c"".as_ptr()).as_ptr();
+                return xstrdup(c!("")).as_ptr();
             }
             return options_value_to_string(o, &raw mut (*a).value, numeric);
         }
@@ -676,7 +676,7 @@ pub unsafe fn options_to_string(o: *mut options_entry, idx: i32, numeric: i32) -
     }
 }
 
-pub unsafe fn options_parse(name: *const c_char, idx: *mut i32) -> *mut c_char {
+pub unsafe fn options_parse(name: *const u8, idx: *mut i32) -> *mut u8 {
     unsafe {
         if *name == 0 {
             return null_mut();
@@ -697,7 +697,7 @@ pub unsafe fn options_parse(name: *const c_char, idx: *mut i32) -> *mut c_char {
         }
 
         let mut parsed_idx = 0;
-        if sscanf(cp, c"[%d]".as_ptr(), &mut parsed_idx) != 1 || parsed_idx < 0 {
+        if sscanf(cp.cast(), c"[%d]".as_ptr(), &mut parsed_idx) != 1 || parsed_idx < 0 {
             free_(copy);
             return null_mut();
         }
@@ -710,7 +710,7 @@ pub unsafe fn options_parse(name: *const c_char, idx: *mut i32) -> *mut c_char {
 
 pub unsafe fn options_parse_get(
     oo: *mut options,
-    s: *const c_char,
+    s: *const u8,
     idx: *mut i32,
     only: i32,
 ) -> *mut options_entry {
@@ -731,14 +731,14 @@ pub unsafe fn options_parse_get(
     }
 }
 
-pub unsafe fn options_match(s: *const c_char, idx: *mut i32, ambiguous: *mut i32) -> *mut c_char {
+pub unsafe fn options_match(s: *const u8, idx: *mut i32, ambiguous: *mut i32) -> *mut u8 {
     unsafe {
         let parsed = options_parse(s, idx);
         if parsed.is_null() {
             return null_mut();
         }
 
-        if *parsed == b'@' as i8 {
+        if *parsed == b'@' {
             *ambiguous = 0;
             return parsed;
         }
@@ -777,7 +777,7 @@ pub unsafe fn options_match(s: *const c_char, idx: *mut i32, ambiguous: *mut i32
 
 pub unsafe fn options_match_get(
     oo: *mut options,
-    s: *const c_char,
+    s: *const u8,
     idx: *mut i32,
     only: i32,
     ambiguous: *mut i32,
@@ -800,7 +800,7 @@ pub unsafe fn options_match_get(
     }
 }
 
-pub unsafe fn options_get_string(oo: *mut options, name: *const c_char) -> *const c_char {
+pub unsafe fn options_get_string(oo: *mut options, name: *const u8) -> *const u8 {
     unsafe {
         let o = options_get(oo, name);
         if o.is_null() {
@@ -813,7 +813,7 @@ pub unsafe fn options_get_string(oo: *mut options, name: *const c_char) -> *cons
     }
 }
 
-pub unsafe fn options_get_string_(oo: *mut options, name: &CStr) -> *const c_char {
+pub unsafe fn options_get_string_(oo: *mut options, name: &CStr) -> *const u8 {
     unsafe {
         let o = options_get_(oo, name);
         if o.is_null() {
@@ -826,7 +826,7 @@ pub unsafe fn options_get_string_(oo: *mut options, name: &CStr) -> *const c_cha
     }
 }
 
-pub unsafe fn options_get_number(oo: *mut options, name: *const c_char) -> i64 {
+pub unsafe fn options_get_number(oo: *mut options, name: *const u8) -> i64 {
     unsafe {
         let o = options_get(oo, name);
         if o.is_null() {
@@ -861,13 +861,13 @@ pub(crate) use options_set_string;
 
 pub unsafe fn options_set_string_(
     oo: *mut options,
-    name: *const c_char,
+    name: *const u8,
     append: c_int,
     args: std::fmt::Arguments,
 ) -> *mut options_entry {
     unsafe {
-        let mut separator = c"".as_ptr();
-        let mut value: *mut c_char = null_mut();
+        let mut separator = c!("");
+        let mut value: *mut u8 = null_mut();
 
         let mut s = args.to_string();
         s.push('\0');
@@ -875,10 +875,10 @@ pub unsafe fn options_set_string_(
 
         let mut o = options_get_only(oo, name);
         if !o.is_null() && append != 0 && OPTIONS_IS_STRING(o) {
-            if *name != b'@' as c_char {
+            if *name != b'@' {
                 separator = (*(*o).tableentry).separator;
                 if separator.is_null() {
-                    separator = c"".as_ptr();
+                    separator = c!("");
                 }
             }
             value = format_nul!("{}{}{}", _s((*o).value.string), _s(separator), _s(s),);
@@ -887,7 +887,7 @@ pub unsafe fn options_set_string_(
             value = s;
         }
 
-        if o.is_null() && *name == b'@' as c_char {
+        if o.is_null() && *name == b'@' {
             o = options_add(oo, name);
         } else if o.is_null() {
             o = options_default(oo, options_parent_table_entry(oo, name));
@@ -908,11 +908,11 @@ pub unsafe fn options_set_string_(
 
 pub unsafe fn options_set_number(
     oo: *mut options,
-    name: *const c_char,
+    name: *const u8,
     value: i64,
 ) -> *mut options_entry {
     unsafe {
-        if *name == b'@' as c_char {
+        if *name == b'@' {
             panic!("user option {} must be a string", _s(name));
         }
 
@@ -935,10 +935,10 @@ pub unsafe fn options_set_number(
 pub unsafe fn options_scope_from_name(
     args: *mut args,
     window: i32,
-    name: *const c_char,
+    name: *const u8,
     fs: *mut cmd_find_state,
     oo: *mut *mut options,
-    cause: *mut *mut c_char,
+    cause: *mut *mut u8,
 ) -> i32 {
     unsafe {
         let s = (*fs).s;
@@ -947,7 +947,7 @@ pub unsafe fn options_scope_from_name(
         let target = args_get_(args, 't');
         let mut scope = OPTIONS_TABLE_NONE;
 
-        if *name == b'@' as c_char {
+        if *name == b'@' {
             return options_scope_from_flags(args, window, fs, oo, cause);
         }
 
@@ -1032,7 +1032,7 @@ pub unsafe fn options_scope_from_flags(
     window: i32,
     fs: *mut cmd_find_state,
     oo: *mut *mut options,
-    cause: *mut *mut c_char,
+    cause: *mut *mut u8,
 ) -> i32 {
     unsafe {
         let s = (*fs).s;
@@ -1092,10 +1092,10 @@ pub unsafe fn options_scope_from_flags(
 
 pub unsafe fn options_string_to_style(
     oo: *mut options,
-    name: *const c_char,
+    name: *const u8,
     ft: *mut format_tree,
 ) -> *mut style {
-    let __func__ = c"options_string_to_style".as_ptr();
+    let __func__ = c!("options_string_to_style");
     unsafe {
         let o = options_get(oo, name);
         if o.is_null() || !OPTIONS_IS_STRING(o) {
@@ -1109,11 +1109,7 @@ pub unsafe fn options_string_to_style(
         log_debug!("{}: {} is '{}'", _s(__func__), _s(name), _s(s));
 
         style_set(&mut (*o).style, &grid_default_cell);
-        (*o).cached = if strstr(s, c"#{".as_ptr()).is_null() {
-            1
-        } else {
-            0
-        };
+        (*o).cached = if strstr(s, c!("#{")).is_null() { 1 } else { 0 };
 
         if !ft.is_null() && (*o).cached == 0 {
             let expanded = format_expand(ft, s);
@@ -1131,8 +1127,8 @@ pub unsafe fn options_string_to_style(
 
 unsafe fn options_from_string_check(
     oe: *const options_table_entry,
-    value: *const c_char,
-    cause: *mut *mut c_char,
+    value: *const u8,
+    cause: *mut *mut u8,
 ) -> c_int {
     unsafe {
         let mut sy: style = std::mem::zeroed();
@@ -1149,7 +1145,7 @@ unsafe fn options_from_string_check(
             return -1;
         }
         if ((*oe).flags & OPTIONS_TABLE_IS_STYLE) != 0
-            && strstr(value, c"#{".as_ptr()).is_null()
+            && strstr(value, c!("#{")).is_null()
             && style_parse(&mut sy, &grid_default_cell, value) != 0
         {
             *cause = format_nul!("invalid style: {}", _s(value));
@@ -1161,21 +1157,21 @@ unsafe fn options_from_string_check(
 
 unsafe fn options_from_string_flag(
     oo: *mut options,
-    name: *const c_char,
-    value: *const c_char,
-    cause: *mut *mut c_char,
+    name: *const u8,
+    value: *const u8,
+    cause: *mut *mut u8,
 ) -> c_int {
     unsafe {
         let flag = if value.is_null() || *value == 0 {
             !options_get_number(oo, name)
         } else if streq_(value, "1")
-            || strcasecmp(value, c"on".as_ptr()) == 0
-            || strcasecmp(value, c"yes".as_ptr()) == 0
+            || strcasecmp(value, c!("on")) == 0
+            || strcasecmp(value, c!("yes")) == 0
         {
             1
         } else if streq_(value, "0")
-            || strcasecmp(value, c"off".as_ptr()) == 0
-            || strcasecmp(value, c"no".as_ptr()) == 0
+            || strcasecmp(value, c!("off")) == 0
+            || strcasecmp(value, c!("no")) == 0
         {
             0
         } else {
@@ -1189,8 +1185,8 @@ unsafe fn options_from_string_flag(
 
 pub unsafe fn options_find_choice(
     oe: *const options_table_entry,
-    value: *const c_char,
-    cause: *mut *mut c_char,
+    value: *const u8,
+    cause: *mut *mut u8,
 ) -> c_int {
     unsafe {
         let mut n = 0;
@@ -1215,9 +1211,9 @@ pub unsafe fn options_find_choice(
 unsafe fn options_from_string_choice(
     oe: *const options_table_entry,
     oo: *mut options,
-    name: *const c_char,
-    value: *const c_char,
-    cause: *mut *mut c_char,
+    name: *const u8,
+    value: *const u8,
+    cause: *mut *mut u8,
 ) -> c_int {
     unsafe {
         let choice = if value.is_null() {
@@ -1241,15 +1237,15 @@ unsafe fn options_from_string_choice(
 pub unsafe fn options_from_string(
     oo: *mut options,
     oe: *const options_table_entry,
-    name: *const c_char,
-    value: *const c_char,
+    name: *const u8,
+    value: *const u8,
     append: c_int,
-    cause: *mut *mut c_char,
+    cause: *mut *mut u8,
 ) -> c_int {
     unsafe {
-        let mut errstr: *const c_char;
-        let new: *const c_char;
-        let old: *mut c_char;
+        let mut errstr: *const u8;
+        let new: *const u8;
+        let old: *mut u8;
         let key: key_code;
 
         let type_: options_table_type = if !oe.is_null() {
@@ -1262,7 +1258,7 @@ pub unsafe fn options_from_string(
             }
             (*oe).type_
         } else {
-            if *name != b'@' as c_char {
+            if *name != b'@' {
                 *cause = format_nul!("bad option name");
                 return -1;
             }
@@ -1333,8 +1329,8 @@ pub unsafe fn options_from_string(
     }
 }
 
-pub unsafe fn options_push_changes(name: *const c_char) {
-    let __func__ = c"options_push_changes".as_ptr();
+pub unsafe fn options_push_changes(name: *const u8) {
+    let __func__ = c!("options_push_changes");
     unsafe {
         let mut loop_: *mut client;
         let mut s: *mut session;
@@ -1429,7 +1425,7 @@ pub unsafe fn options_push_changes(name: *const c_char) {
 pub unsafe fn options_remove_or_default(
     o: *mut options_entry,
     idx: i32,
-    cause: *mut *mut c_char,
+    cause: *mut *mut u8,
 ) -> i32 {
     unsafe {
         let oo = (*o).owner;

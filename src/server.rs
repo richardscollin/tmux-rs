@@ -13,7 +13,7 @@
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 use crate::*;
 
-use libc::{
+use crate::libc::{
     AF_UNIX, ECHILD, ENAMETOOLONG, S_IRGRP, S_IROTH, S_IRUSR, S_IRWXG, S_IRWXO, S_IXGRP, S_IXOTH,
     S_IXUSR, SIG_BLOCK, SIG_SETMASK, SIGCONT, SIGTTIN, SIGTTOU, SOCK_STREAM, WIFEXITED,
     WIFSIGNALED, WIFSTOPPED, WNOHANG, WSTOPSIG, WUNTRACED, accept, bind, chmod, close, fprintf,
@@ -86,13 +86,13 @@ pub unsafe fn server_check_marked() -> bool {
     unsafe { cmd_find_valid_state(&raw mut marked_pane) }
 }
 
-pub unsafe fn server_create_socket(flags: client_flag, cause: *mut *mut c_char) -> c_int {
+pub unsafe fn server_create_socket(flags: client_flag, cause: *mut *mut u8) -> c_int {
     unsafe {
         'fail: {
             let mut sa: sockaddr_un = zeroed();
             sa.sun_family = AF_UNIX as _;
             let size = strlcpy(
-                sa.sun_path.as_mut_ptr(),
+                sa.sun_path.as_mut_ptr().cast(),
                 socket_path,
                 size_of_val(&sa.sun_path),
             );
@@ -100,7 +100,7 @@ pub unsafe fn server_create_socket(flags: client_flag, cause: *mut *mut c_char) 
                 errno!() = ENAMETOOLONG;
                 break 'fail;
             }
-            unlink(sa.sun_path.as_ptr());
+            unlink(sa.sun_path.as_ptr().cast());
 
             let fd = socket(AF_UNIX, SOCK_STREAM, 0);
             if fd == -1 {
@@ -175,7 +175,7 @@ pub unsafe fn server_start(
     flags: client_flag,
     base: *mut event_base,
     lockfd: c_int,
-    lockfile: *mut c_char,
+    lockfile: *mut u8,
 ) -> c_int {
     unsafe {
         let mut fd = 0;
@@ -183,7 +183,7 @@ pub unsafe fn server_start(
         let mut oldset: sigset_t = zeroed();
 
         let mut c: *mut client = null_mut();
-        let mut cause: *mut c_char = null_mut();
+        let mut cause: *mut u8 = null_mut();
         let tv: timeval = timeval {
             tv_sec: 3600,
             tv_usec: 0,
@@ -250,7 +250,7 @@ pub unsafe fn server_start(
         if !flags.intersects(client_flag::NOFORK) {
             c = server_client_create(fd);
         } else {
-            options_set_number(global_options, c"exit-empty".as_ptr(), 0);
+            options_set_number(global_options, c!("exit-empty"), 0);
         }
 
         if lockfd >= 0 {
@@ -351,7 +351,7 @@ unsafe fn server_send_exit() {
         }
 
         for s in rb_foreach(&raw mut sessions).map(NonNull::as_ptr) {
-            session_destroy(s, 1, c"server_send_exit".as_ptr());
+            session_destroy(s, 1, c!("server_send_exit"));
         }
     }
 }
@@ -372,7 +372,7 @@ pub unsafe fn server_update_socket() {
         if n != last {
             last = n;
 
-            if stat(socket_path, &raw mut sb) != 0 {
+            if stat(socket_path.cast(), &raw mut sb) != 0 {
                 return;
             }
             let mut mode = sb.st_mode & ACCESSPERMS;
@@ -389,7 +389,7 @@ pub unsafe fn server_update_socket() {
             } else {
                 mode &= !(S_IXUSR | S_IXGRP | S_IXOTH);
             }
-            chmod(socket_path, mode);
+            chmod(socket_path.cast(), mode);
         }
     }
 }
@@ -423,9 +423,7 @@ unsafe extern "C" fn server_accept(fd: i32, events: i16, _data: *mut c_void) {
         }
         let c = server_client_create(newfd);
         if server_acl_join(c) == 0 {
-            (*c).exit_message = xmalloc::xstrdup(c"access not allowed".as_ptr())
-                .cast()
-                .as_ptr();
+            (*c).exit_message = xmalloc::xstrdup(c!("access not allowed")).cast().as_ptr();
             (*c).flags |= client_flag::EXIT;
         }
     }
@@ -472,7 +470,7 @@ pub unsafe fn server_add_accept(timeout: c_int) {
 
 unsafe fn server_signal(sig: i32) {
     unsafe {
-        log_debug!("{}: {}", "server_signal", _s(strsignal(sig)));
+        log_debug!("{}: {}", "server_signal", _s(strsignal(sig).cast::<u8>()));
         match sig {
             libc::SIGINT | libc::SIGTERM => {
                 server_exit = 1;

@@ -13,7 +13,7 @@
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 use crate::*;
 
-use libc::strtol;
+use crate::libc::strtol;
 
 use crate::compat::queue::tailq_foreach;
 use crate::options_::options_find_choice;
@@ -47,7 +47,7 @@ pub static cmd_display_popup_entry: cmd_entry = cmd_entry {
 unsafe fn cmd_display_menu_args_parse(
     args: *mut args,
     idx: u32,
-    cause: *mut *mut c_char,
+    cause: *mut *mut u8,
 ) -> args_parse_type {
     let mut i: u32 = 0;
     let mut type_ = args_parse_type::ARGS_PARSE_STRING;
@@ -119,8 +119,8 @@ unsafe fn cmd_display_menu_get_position(
         /* Create format with mouse position if any. */
         let ft = format_create_from_target(item);
         if (*event).m.valid != 0 {
-            format_add!(ft, c"popup_mouse_x".as_ptr(), "{}", (*event).m.x);
-            format_add!(ft, c"popup_mouse_y".as_ptr(), "{}", (*event).m.y);
+            format_add!(ft, c!("popup_mouse_x"), "{}", (*event).m.x);
+            format_add!(ft, c!("popup_mouse_y"), "{}", (*event).m.y);
         }
 
         /*
@@ -156,23 +156,13 @@ unsafe fn cmd_display_menu_get_position(
             }
 
             if !sr.is_null() {
-                format_add!(
-                    ft,
-                    c"popup_window_status_line_x".as_ptr(),
-                    "{}",
-                    (*sr).start,
-                );
+                format_add!(ft, c!("popup_window_status_line_x"), "{}", (*sr).start,);
                 if position == 0 {
-                    format_add!(
-                        ft,
-                        c"popup_window_status_line_y".as_ptr(),
-                        "{}",
-                        line + 1 + h,
-                    );
+                    format_add!(ft, c!("popup_window_status_line_y"), "{}", line + 1 + h,);
                 } else {
                     format_add!(
                         ft,
-                        c"popup_window_status_line_y".as_ptr(),
+                        c!("popup_window_status_line_y"),
                         "{}",
                         (*tty).sy - lines + line,
                     );
@@ -180,57 +170,57 @@ unsafe fn cmd_display_menu_get_position(
             }
 
             if position == 0 {
-                format_add!(ft, c"popup_status_line_y".as_ptr(), "{}", lines + h,);
+                format_add!(ft, c!("popup_status_line_y"), "{}", lines + h,);
             } else {
-                format_add!(ft, c"popup_status_line_y".as_ptr(), "{}", (*tty).sy - lines,);
+                format_add!(ft, c!("popup_status_line_y"), "{}", (*tty).sy - lines,);
             }
         } else {
             top = 0;
         }
 
         /* Popup width and height. */
-        format_add!(ft, c"popup_width".as_ptr(), "{w}");
-        format_add!(ft, c"popup_height".as_ptr(), "{h}");
+        format_add!(ft, c!("popup_width"), "{w}");
+        format_add!(ft, c!("popup_height"), "{h}");
 
         /* Position so popup is in the centre. */
         n = ((*tty).sx - 1) as c_long / 2 - w as c_long / 2;
         if n < 0 {
-            format_add!(ft, c"popup_centre_x".as_ptr(), "0");
+            format_add!(ft, c!("popup_centre_x"), "0");
         } else {
-            format_add!(ft, c"popup_centre_x".as_ptr(), "{n}");
+            format_add!(ft, c!("popup_centre_x"), "{n}");
         }
         n = (((*tty).sy - 1) / 2 + h / 2) as i64;
         if n >= (*tty).sy as i64 {
-            format_add!(ft, c"popup_centre_y".as_ptr(), "{}", (*tty).sy - h,);
+            format_add!(ft, c!("popup_centre_y"), "{}", (*tty).sy - h,);
         } else {
-            format_add!(ft, c"popup_centre_y".as_ptr(), "{n}");
+            format_add!(ft, c!("popup_centre_y"), "{n}");
         }
 
         /* Position of popup relative to mouse. */
         if (*event).m.valid != 0 {
             n = (*event).m.x as c_long - w as c_long / 2;
             if n < 0 {
-                format_add!(ft, c"popup_mouse_centre_x".as_ptr(), "0");
+                format_add!(ft, c!("popup_mouse_centre_x"), "0");
             } else {
-                format_add!(ft, c"popup_mouse_centre_x".as_ptr(), "{n}");
+                format_add!(ft, c!("popup_mouse_centre_x"), "{n}");
             }
             n = ((*event).m.y - h / 2) as i64;
             if n + h as c_long >= (*tty).sy as i64 {
-                format_add!(ft, c"popup_mouse_centre_y".as_ptr(), "{}", (*tty).sy - h,);
+                format_add!(ft, c!("popup_mouse_centre_y"), "{}", (*tty).sy - h,);
             } else {
-                format_add!(ft, c"popup_mouse_centre_y".as_ptr(), "{n}");
+                format_add!(ft, c!("popup_mouse_centre_y"), "{n}");
             }
             n = (*event).m.y as c_long + h as c_long;
             if n >= (*tty).sy as c_long {
-                format_add!(ft, c"popup_mouse_top".as_ptr(), "{}", (*tty).sy - 1,);
+                format_add!(ft, c!("popup_mouse_top"), "{}", (*tty).sy - 1,);
             } else {
-                format_add!(ft, c"popup_mouse_top".as_ptr(), "{n}");
+                format_add!(ft, c!("popup_mouse_top"), "{n}");
             }
             n = ((*event).m.y - h) as c_long;
             if n < 0 {
-                format_add!(ft, c"popup_mouse_bottom".as_ptr(), "0");
+                format_add!(ft, c!("popup_mouse_bottom"), "0");
             } else {
-                format_add!(ft, c"popup_mouse_bottom".as_ptr(), "{n}");
+                format_add!(ft, c!("popup_mouse_bottom"), "{n}");
             }
         }
 
@@ -244,36 +234,36 @@ unsafe fn cmd_display_menu_get_position(
         );
         n = top as i64 + (*wp).yoff as i64 - oy as i64 + h as i64;
         if n >= (*tty).sy as i64 {
-            format_add!(ft, c"popup_pane_top".as_ptr(), "{}", (*tty).sy - h,);
+            format_add!(ft, c!("popup_pane_top"), "{}", (*tty).sy - h,);
         } else {
-            format_add!(ft, c"popup_pane_top".as_ptr(), "{n}");
+            format_add!(ft, c!("popup_pane_top"), "{n}");
         }
         format_add!(
             ft,
-            c"popup_pane_bottom".as_ptr(),
+            c!("popup_pane_bottom"),
             "{}",
             top + (*wp).yoff as i32 + (*wp).sy as i32 - oy as i32,
         );
-        format_add!(ft, c"popup_pane_left".as_ptr(), "{}", (*wp).xoff - ox,);
+        format_add!(ft, c!("popup_pane_left"), "{}", (*wp).xoff - ox,);
         n = (*wp).xoff as c_long + (*wp).sx as i64 - ox as i64 - w as i64;
         if n < 0 {
-            format_add!(ft, c"popup_pane_right".as_ptr(), "0");
+            format_add!(ft, c!("popup_pane_right"), "0");
         } else {
-            format_add!(ft, c"popup_pane_right".as_ptr(), "{n}");
+            format_add!(ft, c!("popup_pane_right"), "{n}");
         }
 
         /* Expand horizontal position. */
         let mut xp = args_get_(args, 'x');
         if xp.is_null() || streq_(xp, "C") {
-            xp = c"#{popup_centre_x}".as_ptr();
+            xp = c!("#{popup_centre_x}");
         } else if streq_(xp, "R") {
-            xp = c"#{popup_pane_right}".as_ptr();
+            xp = c!("#{popup_pane_right}");
         } else if streq_(xp, "P") {
-            xp = c"#{popup_pane_left}".as_ptr();
+            xp = c!("#{popup_pane_left}");
         } else if streq_(xp, "M") {
-            xp = c"#{popup_mouse_centre_x}".as_ptr();
+            xp = c!("#{popup_mouse_centre_x}");
         } else if streq_(xp, "W") {
-            xp = c"#{popup_window_status_line_x}".as_ptr();
+            xp = c!("#{popup_window_status_line_x}");
         }
         let p = format_expand(ft, xp);
         n = strtol(p, null_mut(), 10);
@@ -296,15 +286,15 @@ unsafe fn cmd_display_menu_get_position(
         /* Expand vertical position  */
         let mut yp = args_get_(args, 'y');
         if yp.is_null() || streq_(yp, "C") {
-            yp = c"#{popup_centre_y}".as_ptr();
+            yp = c!("#{popup_centre_y}");
         } else if streq_(yp, "P") {
-            yp = c"#{popup_pane_bottom}".as_ptr();
+            yp = c!("#{popup_pane_bottom}");
         } else if streq_(yp, "M") {
-            yp = c"#{popup_mouse_top}".as_ptr();
+            yp = c!("#{popup_mouse_top}");
         } else if streq_(yp, "S") {
-            yp = c"#{popup_status_line_y}".as_ptr();
+            yp = c!("#{popup_status_line_y}");
         } else if streq_(yp, "W") {
-            yp = c"#{popup_window_status_line_y}".as_ptr();
+            yp = c!("#{popup_window_status_line_y}");
         }
         let p = format_expand(ft, yp);
         n = strtol(p, null_mut(), 10);
@@ -433,7 +423,7 @@ unsafe fn cmd_display_menu_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
 
         let value = args_get_(args, 'b');
         if !value.is_null() {
-            let oe = options_get(o, c"menu-border-lines".as_ptr());
+            let oe = options_get(o, c!("menu-border-lines"));
             let lines = options_find_choice(options_table_entry(oe), value, &raw mut cause);
             if lines == -1 {
                 cmdq_error!(item, "menu-border-lines {}", _s(cause));
@@ -481,7 +471,7 @@ unsafe fn cmd_display_popup_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
         //const char		*value, *shell, *shellcmd = NULL;
         let style = args_get(args, b's');
         let border_style = args_get(args, b'S');
-        let mut cause: *mut c_char = null_mut();
+        let mut cause: *mut u8 = null_mut();
         //char			*cwd, *cause = NULL, **argv = NULL, *title;
         let mut argc = 0;
         let mut lines = box_lines::BOX_LINES_DEFAULT as i32;
@@ -551,7 +541,7 @@ unsafe fn cmd_display_popup_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
         if args_has_(args, 'B') {
             lines = box_lines::BOX_LINES_NONE as i32;
         } else if !value.is_null() {
-            let oe = options_get(o, c"popup-border-lines".as_ptr());
+            let oe = options_get(o, c!("popup-border-lines"));
             lines = options_find_choice(options_table_entry(oe), value, &raw mut cause);
             if !cause.is_null() {
                 cmdq_error!(item, "popup-border-lines {}", _s(cause));

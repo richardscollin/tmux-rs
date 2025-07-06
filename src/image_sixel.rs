@@ -130,26 +130,26 @@ unsafe fn sixel_parse_attributes(
 
         let mut last = cp;
         while last != end {
-            if (*last != b';' as i8 && (*last < b'0' as i8 || *last > b'9' as i8)) {
+            if (*last != b';' && (*last < b'0' || *last > b'9')) {
                 break;
             }
             last = last.add(1);
         }
         libc::strtoul(cp, &raw mut endptr, 10);
-        if endptr.cast_const() == last || *endptr != b';' as i8 {
+        if endptr.cast_const() == last || *endptr != b';' {
             return last;
         }
         libc::strtoul(endptr.add(1), &raw mut endptr, 10);
         if endptr.cast_const() == last {
             return last;
         }
-        if (*endptr != b';' as i8) {
+        if (*endptr != b';') {
             // log_debug("%s: missing ;", __func__);
             return null_mut();
         }
 
         let x = libc::strtoul(endptr.add(1), &raw mut endptr, 10) as u32;
-        if (endptr.cast_const() == last || *endptr != b';' as i8) {
+        if (endptr.cast_const() == last || *endptr != b';') {
             // log_debug("%s: missing ;", __func__);
             return null_mut();
         }
@@ -184,7 +184,7 @@ unsafe fn sixel_parse_colour(
 
         let mut last = cp;
         while (last != end) {
-            if (*last != b';' as i8 && (*last < b'0' as i8 || *last > b'9' as i8)) {
+            if (*last != b';' && (*last < b'0' || *last > b'9')) {
                 break;
             }
             last = last.add(1);
@@ -196,22 +196,22 @@ unsafe fn sixel_parse_colour(
             return null_mut();
         }
         (*si).dc = c + 1;
-        if endptr.cast_const() == last || *endptr != b';' as i8 {
+        if endptr.cast_const() == last || *endptr != b';' {
             return last;
         }
 
         let mut type_ = libc::strtoul(endptr.add(1), &raw mut endptr, 10) as u32;
-        if endptr.cast_const() == last || *endptr != b';' as i8 {
+        if endptr.cast_const() == last || *endptr != b';' {
             // log_debug("%s: missing ;", __func__);
             return null_mut();
         }
         let mut r = libc::strtoul(endptr.add(1), &raw mut endptr, 10) as u32;
-        if (endptr.cast_const() == last || *endptr != b';' as i8) {
+        if (endptr.cast_const() == last || *endptr != b';') {
             // log_debug("%s: missing ;", __func__);
             return null_mut();
         }
         let mut g = libc::strtoul(endptr.add(1), &raw mut endptr, 10) as u32;
-        if (endptr.cast_const() == last || *endptr != b';' as i8) {
+        if (endptr.cast_const() == last || *endptr != b';') {
             // log_debug("%s: missing ;", __func__);
             return null_mut();
         }
@@ -250,7 +250,7 @@ unsafe fn sixel_parse_repeat(
 
         let mut last = cp;
         while (last != end) {
-            if (*last < b'0' as i8 || *last > b'9' as i8) {
+            if (*last < b'0' || *last > b'9') {
                 break;
             }
             tmp[n as usize] = *last;
@@ -265,7 +265,7 @@ unsafe fn sixel_parse_repeat(
             // log_debug("%s: repeat not terminated", __func__);
             return null_mut();
         }
-        tmp[n as usize] = b'\0' as i8;
+        tmp[n as usize] = b'\0';
 
         n = strtonum(
             (&raw const tmp) as *const i8,
@@ -307,7 +307,7 @@ pub unsafe fn sixel_parse(
         let mut end = buf.add(len);
 
         'bad: {
-            if (len == 0 || len == 1 || *cp != b'q' as i8) {
+            if (len == 0 || len == 1 || *cp != b'q') {
                 // log_debug("%s: empty image", __func__);
                 return null_mut();
             }
@@ -398,15 +398,15 @@ unsafe fn sixel_log(si: *mut sixel_image) {
             let sl = (*si).lines.add(y as usize);
             for x in 0..(*si).x {
                 s[x as usize] = if (x >= (*sl).x) {
-                    b'_' as i8
+                    b'_'
                 } else if (*(*sl).data.add(x as usize) != 0) {
-                    b'0' as i8 + ((*(*sl).data.add(x as usize) - 1) % 10) as i8
+                    b'0' + ((*(*sl).data.add(x as usize) - 1) % 10) as i8
                 } else {
-                    b'.' as i8
+                    b'.'
                 };
                 xx = x;
             }
-            s[xx as usize] = b'\0' as c_char;
+            s[xx as usize] = b'\0';
             // log_debug("%s: %4u: %s", __func__, y, s);
         }
     }
@@ -540,7 +540,7 @@ unsafe fn sixel_print_repeat(
             let tmplen = xsnprintf(
                 (&raw mut tmp) as *mut i8,
                 16usize,
-                c"!%u%c".as_ptr(),
+                c!("!%u%c"),
                 count,
                 ch as i32,
             ) as usize;
@@ -559,7 +559,7 @@ unsafe fn sixel_print(
         const size_of_tmp: usize = 64;
         let mut tmp: [c_char; size_of_tmp] = [0; size_of_tmp];
         let mut contains: *mut c_char = null_mut();
-        let mut data: c_char = b'\0' as i8;
+        let mut data: c_char = b'\0';
         let mut last = 0;
 
         let mut len: usize = 0;
@@ -580,18 +580,12 @@ unsafe fn sixel_print(
         len = 8192;
         buf = xmalloc(len).as_ptr().cast();
 
-        sixel_print_add(
-            &raw mut buf,
-            &raw mut len,
-            &raw mut used,
-            c"\x1bPq".as_ptr(),
-            3,
-        );
+        sixel_print_add(&raw mut buf, &raw mut len, &raw mut used, c!("\x1bPq"), 3);
 
         tmplen = xsnprintf(
             (&raw mut tmp).cast(),
             size_of_tmp,
-            c"\"1;1;%u;%u".as_ptr(),
+            c!("\"1;1;%u;%u"),
             (*si).x,
             (*si).y,
         ) as usize;
@@ -608,7 +602,7 @@ unsafe fn sixel_print(
             tmplen = xsnprintf(
                 (&raw mut tmp).cast(),
                 size_of_tmp,
-                c"#%u;%u;%u;%u;%u".as_ptr(),
+                c!("#%u;%u;%u;%u;%u"),
                 i,
                 c >> 24,
                 (c >> 16) & 0xff,
@@ -643,7 +637,7 @@ unsafe fn sixel_print(
                 if *contains.add(c as usize) == 0 {
                     continue;
                 }
-                tmplen = xsnprintf((&raw mut tmp).cast(), size_of_tmp, c"#%u".as_ptr(), c) as usize;
+                tmplen = xsnprintf((&raw mut tmp).cast(), size_of_tmp, c!("#%u"), c) as usize;
                 sixel_print_add(
                     &raw mut buf,
                     &raw mut len,
@@ -674,31 +668,25 @@ unsafe fn sixel_print(
                     }
                 }
                 sixel_print_repeat(&raw mut buf, &raw mut len, &raw mut used, count, data);
-                sixel_print_add(&raw mut buf, &raw mut len, &raw mut used, c"$".as_ptr(), 1);
+                sixel_print_add(&raw mut buf, &raw mut len, &raw mut used, c!("$"), 1);
             }
 
-            if *buf.add(used - 1) == b'$' as i8 {
+            if *buf.add(used - 1) == b'$' {
                 used -= 1;
             }
-            if *buf.add(used - 1) != b'-' as i8 {
-                sixel_print_add(&raw mut buf, &raw mut len, &raw mut used, c"-".as_ptr(), 1);
+            if *buf.add(used - 1) != b'-' {
+                sixel_print_add(&raw mut buf, &raw mut len, &raw mut used, c!("-"), 1);
             }
 
             y += 6;
         }
-        if *buf.add(used - 1) == b'$' as i8 || *buf.add(used - 1) == b'-' as i8 {
+        if *buf.add(used - 1) == b'$' || *buf.add(used - 1) == b'-' {
             used -= 1;
         }
 
-        sixel_print_add(
-            &raw mut buf,
-            &raw mut len,
-            &raw mut used,
-            c"\x1b\\".as_ptr(),
-            2,
-        );
+        sixel_print_add(&raw mut buf, &raw mut len, &raw mut used, c!("\x1b\\"), 2);
 
-        *buf.add(used) = b'\0' as i8;
+        *buf.add(used) = b'\0';
         if !size.is_null() {
             *size = used;
         }

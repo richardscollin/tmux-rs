@@ -77,7 +77,7 @@ pub unsafe fn environ_copy(srcenv: *mut environ, dstenv: *mut environ) {
     }
 }
 
-pub unsafe fn environ_find(env: *mut environ, name: *const c_char) -> *mut environ_entry {
+pub unsafe fn environ_find(env: *mut environ, name: *const u8) -> *mut environ_entry {
     let mut envent: MaybeUninit<environ_entry> = MaybeUninit::uninit();
     let envent = envent.as_mut_ptr();
 
@@ -97,7 +97,7 @@ macro_rules! environ_set {
 pub(crate) use environ_set;
 pub unsafe fn environ_set_(
     env: *mut environ,
-    name: *const c_char,
+    name: *const u8,
     flags: c_int,
     args: std::fmt::Arguments,
 ) {
@@ -121,7 +121,7 @@ pub unsafe fn environ_set_(
     }
 }
 
-pub unsafe fn environ_clear(env: *mut environ, name: *const c_char) {
+pub unsafe fn environ_clear(env: *mut environ, name: *const u8) {
     unsafe {
         let mut envent = environ_find(env, name);
         if !envent.is_null() {
@@ -137,7 +137,7 @@ pub unsafe fn environ_clear(env: *mut environ, name: *const c_char) {
     }
 }
 
-pub unsafe fn environ_put(env: *mut environ, var: *const c_char, flags: c_int) {
+pub unsafe fn environ_put(env: *mut environ, var: *const u8, flags: c_int) {
     unsafe {
         let mut value = libc::strchr(var, b'=' as c_int);
         if value.is_null() {
@@ -145,15 +145,15 @@ pub unsafe fn environ_put(env: *mut environ, var: *const c_char, flags: c_int) {
         }
         value = value.add(1);
 
-        let name: *mut c_char = xstrdup(var).cast().as_ptr();
-        *name.add(libc::strcspn(name, c"=".as_ptr())) = b'\0' as c_char;
+        let name: *mut u8 = xstrdup(var).cast().as_ptr();
+        *name.add(libc::strcspn(name, c!("="))) = b'\0';
 
         environ_set!(env, name, flags, "{}", _s(value));
         free_(name);
     }
 }
 
-pub unsafe fn environ_unset(env: *mut environ, name: *const c_char) {
+pub unsafe fn environ_unset(env: *mut environ, name: *const u8) {
     unsafe {
         let envent = environ_find(env, name);
         if envent.is_null() {
@@ -170,7 +170,7 @@ pub unsafe fn environ_update(oo: *mut options, src: *mut environ, dst: *mut envi
     unsafe {
         let mut found: i32 = 0;
 
-        let o = options_get(oo, c"update-environment".as_ptr());
+        let o = options_get(oo, c!("update-environment"));
         if o.is_null() {
             return;
         }
@@ -202,10 +202,10 @@ pub unsafe fn environ_push(env: *mut environ) {
     unsafe {
         let mut envent: *mut environ_entry;
 
-        environ = xcalloc_::<*mut c_char>(1).as_ptr();
+        environ = xcalloc_::<*mut u8>(1).as_ptr();
         for envent in rb_foreach(env).map(NonNull::as_ptr) {
             if (*envent).value.is_some()
-                && *(*envent).name.unwrap().as_ptr() != b'\0' as c_char
+                && *(*envent).name.unwrap().as_ptr() != b'\0'
                 && !(*envent).flags & ENVIRON_HIDDEN != 0
             {
                 libc::setenv(
@@ -230,7 +230,7 @@ pub unsafe fn environ_log_(env: *mut environ, args: std::fmt::Arguments) {
         let prefix = args.to_string();
 
         for envent in rb_foreach(env).map(NonNull::as_ptr) {
-            if (*envent).value.is_some() && *(*envent).name.unwrap().as_ptr() != b'\0' as c_char {
+            if (*envent).value.is_some() && *(*envent).name.unwrap().as_ptr() != b'\0' {
                 log_debug!(
                     "{}{}={}",
                     prefix,
@@ -253,23 +253,23 @@ pub unsafe fn environ_for_session(s: *mut session, no_term: c_int) -> *mut envir
 
         if no_term == 0 {
             let value = options_get_string_(global_options, c"default-terminal");
-            environ_set!(env, c"TERM".as_ptr(), 0, "{}", _s(value));
-            environ_set!(env, c"TERM_PROGRAM".as_ptr(), 0, "{}", "tmux");
-            environ_set!(env, c"TERM_PROGRAM_VERSION".as_ptr(), 0, "{}", getversion());
+            environ_set!(env, c!("TERM"), 0, "{}", _s(value));
+            environ_set!(env, c!("TERM_PROGRAM"), 0, "{}", "tmux");
+            environ_set!(env, c!("TERM_PROGRAM_VERSION"), 0, "{}", getversion());
         }
 
         #[cfg(feature = "systemd")]
         {
-            environ_clear(env, c"LISTEN_PID".as_ptr());
-            environ_clear(env, c"LISTEN_FDS".as_ptr());
-            environ_clear(env, c"LISTEN_FDNAMES".as_ptr());
+            environ_clear(env, c!("LISTEN_PID"));
+            environ_clear(env, c!("LISTEN_FDS"));
+            environ_clear(env, c!("LISTEN_FDNAMES"));
         }
 
         let idx = if !s.is_null() { (*s).id as i32 } else { -1 };
 
         environ_set!(
             env,
-            c"TMUX".as_ptr(),
+            c!("TMUX"),
             0,
             "{},{},{}",
             _s(socket_path),

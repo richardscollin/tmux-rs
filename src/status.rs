@@ -11,23 +11,22 @@
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-
-use super::*;
+use crate::*;
 
 use crate::compat::{
     fgetln,
     queue::{tailq_init, tailq_remove},
     tree::rb_foreach,
 };
-use libc::strncmp;
+use crate::libc::strncmp;
 
 #[repr(C)]
 struct status_prompt_menu {
     c: *mut client,
     start: u32,
     size: u32,
-    list: *mut *mut c_char,
-    flag: c_char,
+    list: *mut *mut u8,
+    flag: u8,
 }
 
 pub static prompt_type_strings: [SyncCharPtr; 4] = [
@@ -38,23 +37,23 @@ pub static prompt_type_strings: [SyncCharPtr; 4] = [
 ];
 
 /// Status prompt history.
-pub static mut status_prompt_hlist: [*mut *mut c_char; PROMPT_NTYPES as usize] =
+pub static mut status_prompt_hlist: [*mut *mut u8; PROMPT_NTYPES as usize] =
     [null_mut(); PROMPT_NTYPES as usize];
 
 pub static mut status_prompt_hsize: [u32; PROMPT_NTYPES as usize] = [0; PROMPT_NTYPES as usize];
 
 /// Find the history file to load/save from/to.
-unsafe fn status_prompt_find_history_file() -> *mut c_char {
+unsafe fn status_prompt_find_history_file() -> *mut u8 {
     unsafe {
         let history_file = options_get_string_(global_options, c"history-file");
-        if *history_file == b'\0' as i8 {
+        if *history_file == b'\0' {
             return null_mut();
         }
-        if *history_file == b'/' as i8 {
+        if *history_file == b'/' {
             return xstrdup(history_file).as_ptr();
         }
 
-        if *history_file != b'~' as i8 || *history_file.add(1) != b'/' as i8 {
+        if *history_file != b'~' || *history_file.add(1) != b'/' {
             return null_mut();
         }
 
@@ -67,11 +66,11 @@ unsafe fn status_prompt_find_history_file() -> *mut c_char {
 }
 
 /// Add loaded history item to the appropriate list.
-unsafe fn status_prompt_add_typed_history(mut line: *mut c_char) {
+unsafe fn status_prompt_add_typed_history(mut line: *mut u8) {
     unsafe {
         let mut type_ = prompt_type::PROMPT_TYPE_INVALID;
 
-        let typestr: *mut c_char = strsep(&raw mut line, c":".as_ptr());
+        let typestr: *mut u8 = strsep(&raw mut line, c!(":"));
         if !line.is_null() {
             type_ = status_prompt_type(typestr);
         }
@@ -82,7 +81,7 @@ unsafe fn status_prompt_add_typed_history(mut line: *mut c_char) {
              */
             if !line.is_null() {
                 line = line.sub(1);
-                *(line) = b':' as i8;
+                *(line) = b':';
             }
             status_prompt_add_history(typestr, prompt_type::PROMPT_TYPE_COMMAND as u32);
         } else {
@@ -105,7 +104,7 @@ pub unsafe fn status_prompt_load_history() {
 
         // std::fs::OpenOptions::read(true).open()
 
-        let Some(f) = NonNull::new(libc::fopen(history_file, c"r".as_ptr())) else {
+        let Some(f) = NonNull::new(libc::fopen(history_file, c!("r"))) else {
             log_debug!("{}: {}", _s(history_file), _s(strerror(errno!())));
             free_(history_file);
             return;
@@ -114,19 +113,19 @@ pub unsafe fn status_prompt_load_history() {
         free_(history_file);
 
         loop {
-            let line = fgetln(f, &raw mut length);
+            let line: *mut u8 = fgetln(f, &raw mut length).cast();
             if line.is_null() {
                 break;
             }
 
             if length > 0 {
-                if *line.add(length - 1) == b'\n' as i8 {
-                    *line.add(length - 1) = b'\0' as i8;
+                if *line.add(length - 1) == b'\n' {
+                    *line.add(length - 1) = b'\0';
                     status_prompt_add_typed_history(line);
                 } else {
-                    let tmp: *mut i8 = xmalloc(length + 1).as_ptr().cast();
+                    let tmp: *mut u8 = xmalloc(length + 1).as_ptr().cast();
                     libc::memcpy(tmp.cast(), line.cast(), length);
-                    *tmp.add(length) = b'\0' as i8;
+                    *tmp.add(length) = b'\0';
                     status_prompt_add_typed_history(tmp.cast());
                     free_(tmp);
                 }
@@ -146,7 +145,7 @@ pub unsafe fn status_prompt_save_history() {
 
         log_debug!("saving history to {}", _s(history_file));
 
-        let Some(f) = NonNull::new(fopen(history_file, c"w".as_ptr())) else {
+        let Some(f) = NonNull::new(fopen(history_file, c!("w"))) else {
             log_debug!("{}: {}", _s(history_file), _s(strerror(errno!())));
             free_(history_file);
             return;
@@ -423,7 +422,7 @@ pub unsafe fn status_redraw(c: *mut client) -> i32 {
         format_defaults(ft, c, None, None, None);
 
         /* Set up default colour. */
-        style_apply(&raw mut gc, (*s).options, c"status-style".as_ptr(), ft);
+        style_apply(&raw mut gc, (*s).options, c!("status-style"), ft);
         let fg = options_get_number_((*s).options, c"status-fg") as i32;
         if !COLOUR_DEFAULT(fg) {
             gc.fg = fg;
@@ -448,7 +447,7 @@ pub unsafe fn status_redraw(c: *mut client) -> i32 {
         screen_write_start(&raw mut ctx, &raw mut (*sl).screen);
 
         // Write the status lines.
-        let o = options_get((*s).options, c"status-format".as_ptr());
+        let o = options_get((*s).options, c!("status-format"));
         if o.is_null() {
             for n in 0..(width * lines) {
                 screen_write_putc(&raw mut ctx, &raw mut gc, b' ');
@@ -636,7 +635,7 @@ pub unsafe fn status_message_redraw(c: *mut client) -> i32 {
         }
 
         let ft = format_create_defaults(null_mut(), c, null_mut(), null_mut(), null_mut());
-        style_apply(&raw mut gc, (*s).options, c"message-style".as_ptr(), ft);
+        style_apply(&raw mut gc, (*s).options, c!("message-style"), ft);
         format_free(ft);
 
         screen_write_start(&raw mut ctx, (*sl).active);
@@ -686,8 +685,8 @@ pub unsafe fn status_message_redraw(c: *mut client) -> i32 {
 pub unsafe fn status_prompt_set(
     c: *mut client,
     fs: *mut cmd_find_state,
-    msg: *const c_char,
-    mut input: *const c_char,
+    msg: *const u8,
+    mut input: *const u8,
     inputcb: prompt_input_cb,
     freecb: prompt_free_cb,
     data: *mut c_void,
@@ -704,7 +703,7 @@ pub unsafe fn status_prompt_set(
         };
 
         if input.is_null() {
-            input = c"".as_ptr();
+            input = c!("");
         }
         let tmp = if flags & PROMPT_NOFORMAT != 0 {
             xstrdup(input).as_ptr()
@@ -720,7 +719,7 @@ pub unsafe fn status_prompt_set(
 
         if (flags & PROMPT_INCREMENTAL) != 0 {
             (*c).prompt_last = xstrdup(tmp).as_ptr();
-            (*c).prompt_buffer = utf8_fromcstr(c"".as_ptr());
+            (*c).prompt_buffer = utf8_fromcstr(c!(""));
         } else {
             (*c).prompt_last = null_mut();
             (*c).prompt_buffer = utf8_fromcstr(tmp);
@@ -747,12 +746,7 @@ pub unsafe fn status_prompt_set(
         (*c).flags |= client_flag::REDRAWSTATUS;
 
         if (flags & PROMPT_INCREMENTAL) != 0 {
-            (*c).prompt_inputcb.unwrap()(
-                c,
-                NonNull::new((*c).prompt_data).unwrap(),
-                c"=".as_ptr(),
-                0,
-            );
+            (*c).prompt_inputcb.unwrap()(c, NonNull::new((*c).prompt_data).unwrap(), c!("="), 0);
         }
 
         free_(tmp);
@@ -793,7 +787,7 @@ pub unsafe fn status_prompt_clear(c: *mut client) {
 }
 
 /// Update status line prompt with a new prompt string.
-pub unsafe fn status_prompt_update(c: *mut client, msg: *const c_char, input: *const c_char) {
+pub unsafe fn status_prompt_update(c: *mut client, msg: *const u8, input: *const u8) {
     unsafe {
         let ft = format_create(c, null_mut(), FORMAT_NONE, format_flags::empty());
         format_defaults(ft, c, None, None, None);
@@ -853,14 +847,9 @@ pub unsafe fn status_prompt_redraw(c: *mut client) -> i32 {
 
             let ft = format_create_defaults(null_mut(), c, null_mut(), null_mut(), null_mut());
             if (*c).prompt_mode == prompt_mode::PROMPT_COMMAND {
-                style_apply(
-                    &raw mut gc,
-                    (*s).options,
-                    c"message-command-style".as_ptr(),
-                    ft,
-                );
+                style_apply(&raw mut gc, (*s).options, c!("message-command-style"), ft);
             } else {
-                style_apply(&raw mut gc, (*s).options, c"message-style".as_ptr(), ft);
+                style_apply(&raw mut gc, (*s).options, c!("message-style"), ft);
             }
             format_free(ft);
 
@@ -961,7 +950,7 @@ pub unsafe fn status_prompt_redraw(c: *mut client) -> i32 {
 }
 
 /// Is this a separator?
-unsafe fn status_prompt_in_list(ws: *const c_char, ud: *const utf8_data) -> i32 {
+unsafe fn status_prompt_in_list(ws: *const u8, ud: *const utf8_data) -> i32 {
     unsafe {
         if (*ud).size != 1 || (*ud).width != 1 {
             return 0;
@@ -1219,10 +1208,10 @@ unsafe fn status_prompt_paste(c: *mut client) -> i32 {
 }
 
 /// Finish completion.
-unsafe fn status_prompt_replace_complete(c: *mut client, mut s: *const c_char) -> i32 {
+unsafe fn status_prompt_replace_complete(c: *mut client, mut s: *const u8) -> i32 {
     unsafe {
-        let mut word: [c_char; 64] = [0; 64];
-        let mut allocated: *mut c_char = null_mut();
+        let mut word: [u8; 64] = [0; 64];
+        let mut allocated: *mut u8 = null_mut();
 
         let mut n: usize = 0;
         let mut off: usize = 0;
@@ -1274,7 +1263,7 @@ unsafe fn status_prompt_replace_complete(c: *mut client, mut s: *const c_char) -
             if ud != last {
                 return 0;
             }
-            word[used] = b'\0' as i8;
+            word[used] = b'\0';
         }
 
         /* Try to complete it. */
@@ -1306,7 +1295,7 @@ unsafe fn status_prompt_replace_complete(c: *mut client, mut s: *const c_char) -
             n * size_of::<utf8_data>(),
         );
         for idx in 0..strlen(s) {
-            utf8_set(first.add(idx), *s.add(idx) as u8);
+            utf8_set(first.add(idx), (*s.add(idx)));
         }
         (*c).prompt_index = first.offset_from_unsigned((*c).prompt_buffer) + strlen(s);
 
@@ -1316,12 +1305,7 @@ unsafe fn status_prompt_replace_complete(c: *mut client, mut s: *const c_char) -
 }
 
 /// Prompt forward to the next beginning of a word.
-unsafe fn status_prompt_forward_word(
-    c: *mut client,
-    size: usize,
-    vi: i32,
-    separators: *const c_char,
-) {
+unsafe fn status_prompt_forward_word(c: *mut client, size: usize, vi: i32, separators: *const u8) {
     unsafe {
         let mut idx = (*c).prompt_index;
 
@@ -1369,7 +1353,7 @@ unsafe fn status_prompt_forward_word(
 }
 
 /// Prompt forward to the next end of a word.
-unsafe fn status_prompt_end_word(c: *mut client, size: usize, separators: *const c_char) {
+unsafe fn status_prompt_end_word(c: *mut client, size: usize, separators: *const u8) {
     unsafe {
         let mut idx = (*c).prompt_index;
         // int word_is_separators;
@@ -1414,7 +1398,7 @@ unsafe fn status_prompt_end_word(c: *mut client, size: usize, separators: *const
 }
 
 /// Prompt backward to the previous beginning of a word.
-unsafe fn status_prompt_backward_word(c: *mut client, separators: *const c_char) {
+unsafe fn status_prompt_backward_word(c: *mut client, separators: *const u8) {
     unsafe {
         let mut idx = (*c).prompt_index;
 
@@ -1451,9 +1435,9 @@ pub unsafe fn status_prompt_key(c: *mut client, mut key: key_code) -> i32 {
         let mut cp = null_mut();
         let mut prefix = b'=';
 
-        let mut histstr: *const c_char = null();
-        let mut separators: *const c_char = null();
-        let mut keystring: *const c_char = null();
+        let mut histstr: *const u8 = null();
+        let mut separators: *const u8 = null();
+        let mut keystring: *const u8 = null();
 
         let mut idx: usize = 0;
 
@@ -1628,7 +1612,7 @@ pub unsafe fn status_prompt_key(c: *mut client, mut key: key_code) -> i32 {
                         break 'changed;
                     }
                     code::E_UPPER_VI => {
-                        status_prompt_end_word(c, size, c"".as_ptr());
+                        status_prompt_end_word(c, size, c!(""));
                         break 'changed;
                     }
                     code::E_VI => {
@@ -1637,7 +1621,7 @@ pub unsafe fn status_prompt_key(c: *mut client, mut key: key_code) -> i32 {
                         break 'changed;
                     }
                     code::W_UPPER_VI => {
-                        status_prompt_forward_word(c, size, 1, c"".as_ptr());
+                        status_prompt_forward_word(c, size, 1, c!(""));
                         break 'changed;
                     }
                     code::W_VI => {
@@ -1646,7 +1630,7 @@ pub unsafe fn status_prompt_key(c: *mut client, mut key: key_code) -> i32 {
                         break 'changed;
                     }
                     code::B_VI => {
-                        status_prompt_backward_word(c, c"".as_ptr());
+                        status_prompt_backward_word(c, c!(""));
                         break 'changed;
                     }
                     code::LEFT_CTRL | code::B_META => {
@@ -1701,7 +1685,7 @@ pub unsafe fn status_prompt_key(c: *mut client, mut key: key_code) -> i32 {
                     }
                     code::CR | code::LF => {
                         s = utf8_tocstr((*c).prompt_buffer);
-                        if *s != b'\0' as i8 {
+                        if *s != b'\0' {
                             status_prompt_add_history(s, (*c).prompt_type as u32);
                         }
                         if (*c).prompt_inputcb.unwrap()(
@@ -1813,7 +1797,7 @@ pub unsafe fn status_prompt_key(c: *mut client, mut key: key_code) -> i32 {
 }
 
 /// Get previous line from the history.
-unsafe fn status_prompt_up_history(idx: *mut u32, type_: u32) -> *mut c_char {
+unsafe fn status_prompt_up_history(idx: *mut u32, type_: u32) -> *mut u8 {
     unsafe {
         /*
          * History runs from 0 to size - 1. Index is from 0 to size. Zero is
@@ -1832,14 +1816,14 @@ unsafe fn status_prompt_up_history(idx: *mut u32, type_: u32) -> *mut c_char {
 }
 
 /// Get next line from the history.
-unsafe fn status_prompt_down_history(idx: *mut u32, type_: u32) -> *const c_char {
+unsafe fn status_prompt_down_history(idx: *mut u32, type_: u32) -> *const u8 {
     unsafe {
         if status_prompt_hsize[type_ as usize] == 0 || *idx.add(type_ as usize) == 0 {
-            return c"".as_ptr();
+            return c!("");
         }
         *idx.add(type_ as usize) -= 1;
         if *idx.add(type_ as usize) == 0 {
-            return c"".as_ptr();
+            return c!("");
         }
 
         *status_prompt_hlist[type_ as usize]
@@ -1848,7 +1832,7 @@ unsafe fn status_prompt_down_history(idx: *mut u32, type_: u32) -> *const c_char
 }
 
 /// Add line to the history.
-unsafe fn status_prompt_add_history(line: *const c_char, type_: u32) {
+unsafe fn status_prompt_add_history(line: *const u8, type_: u32) {
     unsafe {
         let mut new: u32 = 1;
         let mut newsize: u32 = 0;
@@ -1883,7 +1867,7 @@ unsafe fn status_prompt_add_history(line: *const c_char, type_: u32) {
             for i in 0..freecount {
                 free_(*status_prompt_hlist[type_ as usize].add(i as usize));
             }
-            movesize = (oldsize as isize - freecount as isize) as usize * size_of::<*mut c_char>();
+            movesize = (oldsize as isize - freecount as isize) as usize * size_of::<*mut u8>();
             if movesize > 0 {
                 libc::memmove(
                     status_prompt_hlist[type_ as usize].cast(),
@@ -1911,7 +1895,7 @@ unsafe fn status_prompt_add_history(line: *const c_char, type_: u32) {
 }
 
 /// Add to completion list.
-unsafe fn status_prompt_add_list(list: *mut *mut *mut c_char, size: *mut u32, s: *const c_char) {
+unsafe fn status_prompt_add_list(list: *mut *mut *mut u8, size: *mut u32, s: *const u8) {
     unsafe {
         for i in 0..*size {
             if libc::strcmp(*(*list).add(i as usize), s) == 0 {
@@ -1925,24 +1909,20 @@ unsafe fn status_prompt_add_list(list: *mut *mut *mut c_char, size: *mut u32, s:
 }
 
 /// Build completion list.
-unsafe fn status_prompt_complete_list(
-    size: *mut u32,
-    s: *const c_char,
-    at_start: i32,
-) -> *mut *mut c_char {
+unsafe fn status_prompt_complete_list(size: *mut u32, s: *const u8, at_start: i32) -> *mut *mut u8 {
     unsafe {
-        let mut tmp: *mut c_char = null_mut();
-        let mut list: *mut *mut c_char = null_mut();
+        let mut tmp: *mut u8 = null_mut();
+        let mut list: *mut *mut u8 = null_mut();
         let slen = strlen(s);
 
-        let layouts: [*const c_char; 8] = [
-            c"even-horizontal".as_ptr(),
-            c"even-vertical".as_ptr(),
-            c"main-horizontal".as_ptr(),
-            c"main-horizontal-mirrored".as_ptr(),
-            c"main-vertical".as_ptr(),
-            c"main-vertical-mirrored".as_ptr(),
-            c"tiled".as_ptr(),
+        let layouts: [*const u8; 8] = [
+            c!("even-horizontal"),
+            c!("even-vertical"),
+            c!("main-horizontal"),
+            c!("main-horizontal-mirrored"),
+            c!("main-vertical"),
+            c!("main-vertical-mirrored"),
+            c!("tiled"),
             null_mut(),
         ];
 
@@ -1957,7 +1937,7 @@ unsafe fn status_prompt_complete_list(
             }
             cmdent = cmdent.add(1);
         }
-        let o = options_get_only(global_options, c"command-alias".as_ptr());
+        let o = options_get_only(global_options, c!("command-alias"));
         if !o.is_null() {
             let mut a = options_array_first(o);
             while !a.is_null() {
@@ -1990,7 +1970,7 @@ unsafe fn status_prompt_complete_list(
             }
             oe = oe.add(1);
         }
-        let mut layout = (&raw const layouts) as *const *const i8;
+        let mut layout = (&raw const layouts) as *const *const u8;
         while !(*layout).is_null() {
             if strncmp(*layout, s, slen) == 0 {
                 status_prompt_add_list(&raw mut list, size, *layout);
@@ -2002,7 +1982,7 @@ unsafe fn status_prompt_complete_list(
 }
 
 /// Find longest prefix.
-unsafe fn status_prompt_complete_prefix(list: *mut *mut c_char, size: u32) -> *mut c_char {
+unsafe fn status_prompt_complete_prefix(list: *mut *mut u8, size: u32) -> *mut u8 {
     unsafe {
         if list.is_null() || size == 0 {
             return null_mut();
@@ -2015,7 +1995,7 @@ unsafe fn status_prompt_complete_prefix(list: *mut *mut c_char, size: u32) -> *m
             }
             while j > 0 {
                 if *out.add(j - 1) != *(*list.add(i as usize)).add(j - 1) {
-                    *out.add(j - 1) = b'\0' as i8;
+                    *out.add(j - 1) = b'\0';
                 }
                 j -= 1;
             }
@@ -2034,16 +2014,16 @@ unsafe fn status_prompt_menu_callback(
     unsafe {
         let spm: *mut status_prompt_menu = data.cast();
         let c = (*spm).c;
-        let mut s: *mut c_char = null_mut();
+        let mut s: *mut u8 = null_mut();
 
         if key != KEYC_NONE {
             idx += (*spm).start;
-            s = if (*spm).flag == b'\0' as i8 {
+            s = if (*spm).flag == b'\0' {
                 xstrdup(*(*spm).list.add(idx as usize)).as_ptr()
             } else {
                 format_nul!(
                     "-{}{}",
-                    (*spm).flag as u8 as char,
+                    (*spm).flag as char,
                     _s(*(*spm).list.add(idx as usize))
                 )
             };
@@ -2068,10 +2048,10 @@ unsafe fn status_prompt_menu_callback(
 /// Show complete word menu.
 unsafe fn status_prompt_complete_list_menu(
     c: *mut client,
-    list: *mut *mut c_char,
+    list: *mut *mut u8,
     size: u32,
     mut offset: u32,
-    flag: c_char,
+    flag: u8,
 ) -> i32 {
     unsafe {
         // struct menu *menu;
@@ -2105,7 +2085,7 @@ unsafe fn status_prompt_complete_list_menu(
         }
         (*spm).start = size - height;
 
-        let menu = menu_create(c"".as_ptr());
+        let menu = menu_create(c!(""));
         for i in (*spm).start..size {
             item.name = SyncCharPtr::from_ptr(*list.add(i as usize));
             item.key = b'0' as u64 + (i as i64 - (*spm).start as i64) as u64;
@@ -2154,18 +2134,18 @@ unsafe fn status_prompt_complete_list_menu(
 unsafe fn status_prompt_complete_window_menu(
     c: *mut client,
     s: *mut session,
-    word: *const c_char,
+    word: *const u8,
     mut offset: u32,
-    flag: c_char,
-) -> *mut c_char {
+    flag: u8,
+) -> *mut u8 {
     unsafe {
         // struct menu_item item;
         // struct status_prompt_menu *spm;
         // struct winlink *wl;
         // char **list = NULL, *tmp;
         let mut item: menu_item = zeroed();
-        let mut tmp: *mut c_char = null_mut();
-        let mut list: *mut *mut c_char = null_mut();
+        let mut tmp: *mut u8 = null_mut();
+        let mut list: *mut *mut u8 = null_mut();
         let lines = status_line_size(c);
 
         // u_int py;
@@ -2185,9 +2165,9 @@ unsafe fn status_prompt_complete_window_menu(
         }
         (*spm).start = 0;
 
-        let menu = menu_create(c"".as_ptr());
+        let menu = menu_create(c!(""));
         for wl in rb_foreach(&raw mut (*s).windows).map(NonNull::as_ptr) {
-            if !word.is_null() && *word != b'\0' as i8 {
+            if !word.is_null() && *word != b'\0' {
                 tmp = format_nul!("{}", (*wl).idx);
                 if strncmp(tmp, word, strlen(word)) != 0 {
                     free_(tmp);
@@ -2228,8 +2208,8 @@ unsafe fn status_prompt_complete_window_menu(
         }
         if size == 1 {
             menu_free(menu);
-            if flag != b'\0' as i8 {
-                tmp = format_nul!("-{}{}", flag as u8 as char, _s(*list));
+            if flag != b'\0' {
+                tmp = format_nul!("-{}{}", flag as char, _s(*list));
                 free_(*list);
             } else {
                 tmp = *list;
@@ -2285,8 +2265,8 @@ unsafe fn status_prompt_complete_window_menu(
 /// Sort complete list.
 unsafe extern "C" fn status_prompt_complete_sort(a: *const c_void, b: *const c_void) -> i32 {
     unsafe {
-        let aa: *const *const c_char = a.cast();
-        let bb: *const *const c_char = b.cast();
+        let aa: *const *const u8 = a.cast();
+        let bb: *const *const u8 = b.cast();
 
         libc::strcmp(*aa, *bb)
     }
@@ -2294,36 +2274,36 @@ unsafe extern "C" fn status_prompt_complete_sort(a: *const c_void, b: *const c_v
 
 /// Complete a session.
 unsafe fn status_prompt_complete_session(
-    list: *mut *mut *mut c_char,
+    list: *mut *mut *mut u8,
     size: *mut u32,
-    s: *const c_char,
-    flag: c_char,
-) -> *mut c_char {
+    s: *const u8,
+    flag: u8,
+) -> *mut u8 {
     unsafe {
         // char *out, *tmp, n[11];
 
         let mut tmp = null_mut();
-        let mut n: [c_char; 11] = [0; 11];
+        let mut n: [u8; 11] = [0; 11];
 
         for loop_ in rb_foreach(&raw mut sessions).map(NonNull::as_ptr) {
-            if *s == b'\0' as i8 || strncmp((*loop_).name, s, strlen(s)) == 0 {
+            if *s == b'\0' || strncmp((*loop_).name, s, strlen(s)) == 0 {
                 *list = xreallocarray_(*list, (*size) as usize + 2).as_ptr();
                 *(*list).add(*size as usize) = format_nul!("{}:", _s((*loop_).name));
                 (*size) += 1;
-            } else if *s == b'$' as i8 {
+            } else if *s == b'$' {
                 xsnprintf_!((&raw mut n).cast(), n.len(), "{}", (*loop_).id);
-                if *s.add(1) == b'\0' as i8
-                    || strncmp((&raw mut n).cast(), s.add(1), strlen(s) - 1) == 0
+                if *s.add(1) == b'\0' || strncmp((&raw mut n).cast(), s.add(1), strlen(s) - 1) == 0
                 {
                     *list = xreallocarray_(*list, (*size) as usize + 2).as_ptr();
-                    *(*list).add(*size as usize) = format_nul!("${}:", _s((&raw const n).cast()));
+                    *(*list).add(*size as usize) =
+                        format_nul!("${}:", _s((&raw const n).cast::<u8>()));
                     (*size) += 1
                 }
             }
         }
         let mut out = status_prompt_complete_prefix(*list, *size);
-        if !out.is_null() && flag != b'\0' as i8 {
-            tmp = format_nul!("-{}{}", flag as u8 as char, _s(out));
+        if !out.is_null() && flag != b'\0' {
+            tmp = format_nul!("-{}{}", flag as char, _s(out));
             free_(out);
             out = tmp;
         }
@@ -2332,25 +2312,21 @@ unsafe fn status_prompt_complete_session(
 }
 
 /// Complete word.
-unsafe fn status_prompt_complete(
-    c: *mut client,
-    word: *const c_char,
-    mut offset: u32,
-) -> *mut c_char {
+unsafe fn status_prompt_complete(c: *mut client, word: *const u8, mut offset: u32) -> *mut u8 {
     unsafe {
         let mut session: *mut session = null_mut();
 
-        let mut s: *const c_char = null();
-        let mut colon: *mut c_char = null_mut();
+        let mut s: *const u8 = null();
+        let mut colon: *mut u8 = null_mut();
 
-        let mut flag: c_char = b'\0' as i8;
+        let mut flag: u8 = b'\0';
 
-        let mut list: *mut *mut c_char = null_mut();
-        let mut copy: *mut c_char = null_mut();
-        let mut out: *mut c_char = null_mut();
+        let mut list: *mut *mut u8 = null_mut();
+        let mut copy: *mut u8 = null_mut();
+        let mut out: *mut u8 = null_mut();
         let mut size: u32 = 0;
 
-        if *word == b'\0' as i8
+        if *word == b'\0'
             && (*c).prompt_type != prompt_type::PROMPT_TYPE_TARGET
             && (*c).prompt_type != prompt_type::PROMPT_TYPE_WINDOW_TARGET
         {
@@ -2360,8 +2336,8 @@ unsafe fn status_prompt_complete(
         'found: {
             if (*c).prompt_type != prompt_type::PROMPT_TYPE_TARGET
                 && (*c).prompt_type != prompt_type::PROMPT_TYPE_WINDOW_TARGET
-                && strncmp(word, c"-t".as_ptr(), 2) != 0
-                && strncmp(word, c"-s".as_ptr(), 2) != 0
+                && strncmp(word, c!("-t"), 2) != 0
+                && strncmp(word, c!("-s"), 2) != 0
             {
                 list = status_prompt_complete_list(&raw mut size, word, (offset == 0) as i32);
                 out = if size == 0 {
@@ -2378,7 +2354,7 @@ unsafe fn status_prompt_complete(
                 || (*c).prompt_type == prompt_type::PROMPT_TYPE_WINDOW_TARGET
             {
                 s = word;
-                flag = b'\0' as i8;
+                flag = b'\0';
             } else {
                 s = word.add(2);
                 flag = *word.add(1);
@@ -2387,7 +2363,7 @@ unsafe fn status_prompt_complete(
 
             /* If this is a window completion, open the window menu. */
             if (*c).prompt_type == prompt_type::PROMPT_TYPE_WINDOW_TARGET {
-                out = status_prompt_complete_window_menu(c, (*c).session, s, offset, b'\0' as i8);
+                out = status_prompt_complete_window_menu(c, (*c).session, s, offset, b'\0');
                 break 'found;
             }
             colon = libc::strchr(s, b':' as i32);
@@ -2400,11 +2376,11 @@ unsafe fn status_prompt_complete(
 
             /* If there is a colon but no period, find session and show a menu. */
             if libc::strchr(colon.add(1), b'.' as i32).is_null() {
-                if *s == b':' as i8 {
+                if *s == b':' {
                     session = (*c).session;
                 } else {
                     copy = xstrdup(s).as_ptr();
-                    *libc::strchr(copy, b':' as i32) = b'\0' as i8;
+                    *libc::strchr(copy, b':' as i32) = b'\0';
                     session = session_find(copy);
                     free_(copy);
                     if session.is_null() {
@@ -2444,7 +2420,7 @@ unsafe fn status_prompt_complete(
 }
 
 /// Return the type of the prompt as an enum.
-pub unsafe fn status_prompt_type(type_: *const c_char) -> prompt_type {
+pub unsafe fn status_prompt_type(type_: *const u8) -> prompt_type {
     unsafe {
         for i in 0..PROMPT_NTYPES {
             if libc::strcmp(type_, status_prompt_type_string(i)) == 0 {
@@ -2456,9 +2432,9 @@ pub unsafe fn status_prompt_type(type_: *const c_char) -> prompt_type {
 }
 
 /// Accessor for prompt_type_strings.
-pub unsafe fn status_prompt_type_string(type_: u32) -> *const c_char {
+pub unsafe fn status_prompt_type_string(type_: u32) -> *const u8 {
     if type_ >= PROMPT_NTYPES {
-        return c"invalid".as_ptr();
+        return c!("invalid");
     }
     prompt_type_strings[type_ as usize].as_ptr()
 }

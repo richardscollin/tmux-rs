@@ -12,10 +12,9 @@
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-
 use crate::*;
 
-use libc::{WEXITSTATUS, WIFEXITED, WIFSIGNALED, WTERMSIG, memcpy, strtod, toupper};
+use crate::libc::{WEXITSTATUS, WIFEXITED, WIFSIGNALED, WTERMSIG, memcpy, strtod, toupper};
 
 use crate::compat::queue::tailq_first;
 
@@ -38,9 +37,9 @@ pub static cmd_run_shell_entry: cmd_entry = cmd_entry {
 #[repr(C)]
 pub struct cmd_run_shell_data<'a> {
     pub client: *mut client,
-    pub cmd: *mut c_char,
+    pub cmd: *mut u8,
     pub state: *mut args_command_state<'a>,
-    pub cwd: *mut c_char,
+    pub cwd: *mut u8,
     pub item: *mut cmdq_item,
     pub s: *mut session,
     pub wp_id: i32,
@@ -51,7 +50,7 @@ pub struct cmd_run_shell_data<'a> {
 pub unsafe fn cmd_run_shell_args_parse(
     args: *mut args,
     _idx: u32,
-    cause: *mut *mut c_char,
+    cause: *mut *mut u8,
 ) -> args_parse_type {
     unsafe {
         if args_has_(args, 'C') {
@@ -62,7 +61,7 @@ pub unsafe fn cmd_run_shell_args_parse(
     args_parse_type::ARGS_PARSE_STRING
 }
 
-pub unsafe fn cmd_run_shell_print(job: *mut job, msg: *const c_char) {
+pub unsafe fn cmd_run_shell_print(job: *mut job, msg: *const u8) {
     unsafe {
         let cdata: *mut cmd_run_shell_data = job_get_data(job) as *mut cmd_run_shell_data;
         let mut wp = null_mut();
@@ -102,7 +101,7 @@ pub unsafe fn cmd_run_shell_print(job: *mut job, msg: *const c_char) {
 }
 
 pub unsafe fn cmd_run_shell_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retval {
-    let __func__ = c"cmd_run_shell_exec".as_ptr();
+    let __func__ = c!("cmd_run_shell_exec");
     unsafe {
         let args = cmd_get_args(self_);
         let target = cmdq_get_target(item);
@@ -110,10 +109,8 @@ pub unsafe fn cmd_run_shell_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
         let tc = cmdq_get_target_client(item);
         let s = (*target).s;
         let wp = (*target).wp;
-        // const char *delay, *cmd;
         let mut d: f64 = 0.0;
-        let mut end: *mut c_char = null_mut();
-        // char *end;
+        let mut end: *mut u8 = null_mut();
         let wait = !args_has(args, b'b') as i32;
 
         let delay = args_get(args, b'd');
@@ -192,10 +189,7 @@ pub unsafe extern "C" fn cmd_run_shell_timer(_fd: i32, _events: i16, arg: *mut c
         let c = (*cdata).client;
         let cmd = (*cdata).cmd;
         let item = (*cdata).item;
-        let mut error = null_mut::<c_char>();
-        // *new_item;
-        // struct cmd_list *cmdlist;
-        // char *error;
+        let mut error = null_mut::<u8>();
 
         if (*cdata).state.is_null() {
             if cmd.is_null() {
@@ -230,7 +224,7 @@ pub unsafe extern "C" fn cmd_run_shell_timer(_fd: i32, _events: i16, arg: *mut c
         let cmdlist = args_make_commands((*cdata).state, 0, null_mut(), &raw mut error);
         if cmdlist.is_null() {
             if (*cdata).item.is_null() {
-                *error = toupper(*error as i32) as i8;
+                *error = (*error).to_ascii_uppercase();
                 status_message_set!(c, -1, 1, 0, "{}", _s(error));
             } else {
                 cmdq_error!((*cdata).item, "{}", _s(error));
@@ -264,7 +258,7 @@ pub unsafe fn cmd_run_shell_callback(job: *mut job) {
         let status: i32 = 0;
         // int retcode, status;
 
-        let mut line = null_mut::<c_char>();
+        let mut line = null_mut::<u8>();
         loop {
             line = evbuffer_readln(
                 (*event).input,
@@ -284,7 +278,7 @@ pub unsafe fn cmd_run_shell_callback(job: *mut job) {
         if size != 0 {
             line = xmalloc(size + 1).cast().as_ptr();
             memcpy(line.cast(), EVBUFFER_DATA((*event).input).cast(), size);
-            *line.add(size) = b'\0' as c_char;
+            *line.add(size) = b'\0';
 
             cmd_run_shell_print(job, line);
 
@@ -320,7 +314,7 @@ pub unsafe fn cmd_run_shell_callback(job: *mut job) {
 
 pub unsafe fn cmd_run_shell_free(data: *mut c_void) {
     unsafe {
-        let __func__ = c"cmd_run_shell_free".as_ptr();
+        let __func__ = c!("cmd_run_shell_free");
         let cdata = data as *mut cmd_run_shell_data;
 
         evtimer_del(&raw mut (*cdata).timer);

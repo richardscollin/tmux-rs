@@ -31,21 +31,21 @@ pub static cmd_attach_session_entry: cmd_entry = cmd_entry {
 
 pub unsafe fn cmd_attach_session(
     item: *mut cmdq_item,
-    tflag: *const c_char,
+    tflag: *const u8,
     dflag: c_int,
     xflag: c_int,
     rflag: c_int,
-    cflag: *const c_char,
+    cflag: *const u8,
     eflag: c_int,
-    fflag: *const c_char,
+    fflag: *const u8,
 ) -> cmd_retval {
     unsafe {
         let current: *mut cmd_find_state = cmdq_get_current(item);
         let mut target: cmd_find_state = zeroed(); // TODO can be uninit
         let c: *mut client = cmdq_get_client(item);
 
-        let cwd: *mut c_char;
-        let mut cause: *mut c_char = null_mut();
+        let cwd: *mut u8;
+        let mut cause: *mut u8 = null_mut();
 
         let msgtype: msgtype;
 
@@ -66,13 +66,12 @@ pub unsafe fn cmd_attach_session(
             return cmd_retval::CMD_RETURN_ERROR;
         }
 
-        let (type_, flags) = if !tflag.is_null()
-            && *tflag.add(libc::strcspn(tflag, c":.".as_ptr())) != b'\0' as c_char
-        {
-            (cmd_find_type::CMD_FIND_PANE, 0)
-        } else {
-            (cmd_find_type::CMD_FIND_SESSION, CMD_FIND_PREFER_UNATTACHED)
-        };
+        let (type_, flags) =
+            if !tflag.is_null() && *tflag.add(libc::strcspn(tflag, c!(":."))) != b'\0' {
+                (cmd_find_type::CMD_FIND_PANE, 0)
+            } else {
+                (cmd_find_type::CMD_FIND_SESSION, CMD_FIND_PREFER_UNATTACHED)
+            };
         if cmd_find_target(&raw mut target, item, tflag, type_, flags) != 0 {
             return cmd_retval::CMD_RETURN_ERROR;
         }

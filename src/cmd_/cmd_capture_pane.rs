@@ -1,4 +1,4 @@
-// Copyright (c) 2009 Jonathan Alvarado <radobobo@users.sourceforge.net>
+// Copyright (c) 2009 Jonathan Alvarado <radobobo@users.u8forge.net>
 //
 // Permission to use, copy, modify, and distribute this software for any
 // purpose with or without fee is hereby granted, provided that the above
@@ -11,10 +11,9 @@
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-
-use libc::{INT_MIN, strcmp, strlen};
-
 use crate::*;
+
+use crate::libc::{INT_MIN, strcmp, strlen};
 
 pub static cmd_capture_pane_entry: cmd_entry = cmd_entry {
     name: SyncCharPtr::new(c"capture-pane"),
@@ -51,11 +50,11 @@ pub static cmd_clear_history_entry: cmd_entry = cmd_entry {
 };
 
 unsafe fn cmd_capture_pane_append(
-    mut buf: *mut c_char,
+    mut buf: *mut u8,
     len: *mut usize,
-    line: *mut c_char,
+    line: *mut u8,
     linelen: usize,
-) -> *mut c_char {
+) -> *mut u8 {
     unsafe {
         buf = xrealloc_(buf, *len + linelen + 1).as_ptr();
         memcpy_(buf.add(*len), line, linelen);
@@ -68,19 +67,19 @@ unsafe fn cmd_capture_pane_pending(
     args: *mut args,
     wp: *const window_pane,
     len: *mut usize,
-) -> *mut c_char {
-    let mut tmp: [c_char; 5] = [0; 5];
+) -> *mut u8 {
+    let mut tmp: [u8; 5] = [0; 5];
 
     unsafe {
         let pending = input_pending((*wp).ictx);
         if pending.is_null() {
-            return xstrdup(c"".as_ptr()).as_ptr();
+            return xstrdup(c!("")).as_ptr();
         }
 
         let mut line = EVBUFFER_DATA(pending);
         let linelen = EVBUFFER_LENGTH(pending);
 
-        let mut buf = xstrdup(c"".as_ptr()).as_ptr();
+        let mut buf = xstrdup(c!("")).as_ptr();
         if args_has(args, b'C') != 0 {
             for i in 0usize..linelen {
                 if *line.add(i) >= b' ' && *line.add(i) != b'\\' {
@@ -109,7 +108,7 @@ unsafe fn cmd_capture_pane_history(
     item: *mut cmdq_item,
     wp: *mut window_pane,
     len: *mut usize,
-) -> *mut c_char {
+) -> *mut u8 {
     unsafe {
         let mut gd: *mut grid = null_mut();
         let mut gl: *const grid_line = null_mut();
@@ -120,9 +119,9 @@ unsafe fn cmd_capture_pane_history(
 
         let mut tmp: u32 = 0;
         let mut bottom: u32 = 0;
-        let mut cause: *mut c_char = null_mut();
-        let buf: *mut c_char = null_mut();
-        let mut line: *mut c_char = null_mut();
+        let mut cause: *mut u8 = null_mut();
+        let buf: *mut u8 = null_mut();
+        let mut line: *mut u8 = null_mut();
 
         let mut linelen: usize = 0;
 
@@ -134,13 +133,13 @@ unsafe fn cmd_capture_pane_history(
                     cmdq_error!(item, "no alternate screen");
                     return null_mut();
                 }
-                return xstrdup(c"".as_ptr()).as_ptr();
+                return xstrdup(c!("")).as_ptr();
             }
         } else {
             gd = (*wp).base.grid;
         }
 
-        let sflag: *const c_char = args_get(args, b'S');
+        let sflag: *const u8 = args_get(args, b'S');
         let mut top = 0;
         if !sflag.is_null() && streq_(sflag, "-") {
             top = 0;
@@ -166,7 +165,7 @@ unsafe fn cmd_capture_pane_history(
             }
         }
 
-        let eflag: *const c_char = args_get(args, b'E');
+        let eflag: *const u8 = args_get(args, b'E');
         if !eflag.is_null() && streq_(eflag, "-") {
             bottom = (*gd).hsize + (*gd).sy - 1;
         } else {

@@ -13,13 +13,13 @@
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 use crate::*;
-use core::ffi::{CStr, c_char, c_double, c_int, c_uchar};
+use core::ffi::{CStr, c_double, c_int, c_uchar};
 use std::{
     io::Write as _,
     ptr::{null, null_mut},
 };
 
-use libc::{free, sscanf, strcasecmp, strncasecmp, strncmp};
+use crate::libc::{free, sscanf, strcasecmp, strncasecmp, strncmp};
 use xmalloc::xstrndup;
 
 const COLOUR_FLAG_256: i32 = 0x01000000;
@@ -123,7 +123,7 @@ pub fn colour_force_rgb(c: i32) -> i32 {
     static_mut_refs,
     reason = "TODO need to find a better way to make use of the write macro without invoking ub"
 )]
-pub unsafe fn colour_tostring(c: i32) -> *const c_char {
+pub unsafe fn colour_tostring(c: i32) -> *const u8 {
     // TODO this function returns a static buffer
     // this means it's not thread safe and multiple
     // concurrent calls to this function would result in bugs
@@ -131,49 +131,49 @@ pub unsafe fn colour_tostring(c: i32) -> *const c_char {
     static mut buf: [u8; 32] = [0; 32];
 
     if c == -1 {
-        return c"none".as_ptr();
+        return c!("none");
     }
 
     if c & COLOUR_FLAG_RGB != 0 {
         let (r, g, b) = colour_split_rgb(c);
         write!(unsafe { buf.as_mut_slice() }, "#{r:02x}{g:02x}{b:02x}\0").unwrap();
-        return &raw const buf as *const c_char;
+        return &raw const buf as _;
     }
 
     if c & COLOUR_FLAG_256 != 0 {
         write!(unsafe { buf.as_mut_slice() }, "colour{}\0", c & 0xff).unwrap();
-        return &raw const buf as *const c_char;
+        return &raw const buf as _;
     }
 
     match c {
-        0 => c"black".as_ptr(),
-        1 => c"red".as_ptr(),
-        2 => c"green".as_ptr(),
-        3 => c"yellow".as_ptr(),
-        4 => c"blue".as_ptr(),
-        5 => c"magenta".as_ptr(),
-        6 => c"cyan".as_ptr(),
-        7 => c"white".as_ptr(),
-        8 => c"default".as_ptr(),
-        9 => c"terminal".as_ptr(),
-        90 => c"brightblack".as_ptr(),
-        91 => c"brightred".as_ptr(),
-        92 => c"brightgreen".as_ptr(),
-        93 => c"brightyellow".as_ptr(),
-        94 => c"brightblue".as_ptr(),
-        95 => c"brightmagenta".as_ptr(),
-        96 => c"brightcyan".as_ptr(),
-        97 => c"brightwhite".as_ptr(),
-        _ => c"invalid".as_ptr(),
+        0 => c!("black"),
+        1 => c!("red"),
+        2 => c!("green"),
+        3 => c!("yellow"),
+        4 => c!("blue"),
+        5 => c!("magenta"),
+        6 => c!("cyan"),
+        7 => c!("white"),
+        8 => c!("default"),
+        9 => c!("terminal"),
+        90 => c!("brightblack"),
+        91 => c!("brightred"),
+        92 => c!("brightgreen"),
+        93 => c!("brightyellow"),
+        94 => c!("brightblue"),
+        95 => c!("brightmagenta"),
+        96 => c!("brightcyan"),
+        97 => c!("brightwhite"),
+        _ => c!("invalid"),
     }
 }
 
 /// Convert colour from string.
-pub unsafe fn colour_fromstring(s: *const c_char) -> c_int {
+pub unsafe fn colour_fromstring(s: *const u8) -> c_int {
     unsafe {
-        if *s as u8 == b'#' && libc::strlen(s) == 7 {
+        if *s == b'#' && libc::strlen(s) == 7 {
             let mut cp = s.wrapping_add(1);
-            while (*cp as u8).is_ascii_hexdigit() {
+            while (*cp).is_ascii_hexdigit() {
                 cp = cp.wrapping_add(1);
             }
             if *cp != 0 {
@@ -185,7 +185,7 @@ pub unsafe fn colour_fromstring(s: *const c_char) -> c_int {
             let mut b: u8 = 0;
 
             let n = sscanf(
-                s.wrapping_add(1),
+                s.wrapping_add(1).cast(),
                 c"%2hhx%2hhx%2hhx".as_ptr(),
                 &raw mut r,
                 &raw mut g,
@@ -198,7 +198,7 @@ pub unsafe fn colour_fromstring(s: *const c_char) -> c_int {
         }
 
         if strcaseeq_(s, "colour") {
-            let mut errstr: *const c_char = null();
+            let mut errstr: *const u8 = null();
             let Ok(n) = strtonum(s.add(6), 0i32, 255) else {
                 return -1;
             };
@@ -206,7 +206,7 @@ pub unsafe fn colour_fromstring(s: *const c_char) -> c_int {
         }
 
         if strcaseeq_(s, "color") {
-            let mut errstr: *const c_char = null();
+            let mut errstr: *const u8 = null();
             let Ok(n) = strtonum(s.add(5), 0i32, 255) else {
                 return -1;
             };
@@ -308,7 +308,7 @@ pub fn colour_256to16(c: i32) -> i32 {
     table[c as u8 as usize] as i32
 }
 
-pub unsafe fn colour_byname(name: *const c_char) -> i32 {
+pub unsafe fn colour_byname(name: *const u8) -> i32 {
     const COLOURS: [(&CStr, i32); 578] = [
         (c"AliceBlue", 0xf0f8ff),
         (c"AntiqueWhite", 0xfaebd7),
@@ -891,12 +891,12 @@ pub unsafe fn colour_byname(name: *const c_char) -> i32 {
     ];
 
     unsafe {
-        if strncmp(name, c"grey".as_ptr(), 4) == 0 || strncmp(name, c"gray".as_ptr(), 4) == 0 {
+        if strncmp(name, c!("grey"), 4) == 0 || strncmp(name, c!("gray"), 4) == 0 {
             if *name.add(4) == 0 {
                 return -1;
             }
 
-            let mut errstr: *const c_char = null();
+            let mut errstr: *const u8 = null();
             let Ok(c) = strtonum(name.add(4), 0, 100) else {
                 return -1;
             };
@@ -911,7 +911,7 @@ pub unsafe fn colour_byname(name: *const c_char) -> i32 {
         }
 
         for (color_name, color_hex) in &COLOURS {
-            if strcasecmp(color_name.as_ptr(), name) == 0 {
+            if strcasecmp(color_name.as_ptr().cast(), name) == 0 {
                 return color_hex | COLOUR_FLAG_RGB;
             }
         }
@@ -1011,7 +1011,7 @@ pub unsafe fn colour_palette_from_option(p: *mut colour_palette, oo: *mut option
             return;
         }
 
-        let o = options_get(oo, c"pane-colours".as_ptr());
+        let o = options_get(oo, c!("pane-colours"));
 
         let mut a = options_array_first(o);
         if a.is_null() {
@@ -1041,7 +1041,7 @@ pub unsafe fn colour_palette_from_option(p: *mut colour_palette, oo: *mut option
 }
 
 // below has the auto generated code I haven't bothered to translate yet
-pub unsafe fn colour_parse_x11(mut p: *const c_char) -> c_int {
+pub unsafe fn colour_parse_x11(mut p: *const u8) -> c_int {
     unsafe {
         let mut c: f64 = 0.0;
         let mut m: f64 = 0.0;
@@ -1052,12 +1052,12 @@ pub unsafe fn colour_parse_x11(mut p: *const c_char) -> c_int {
         let mut g: u32 = 0;
         let mut b: u32 = 0;
 
-        let mut len = libc::strlen(p);
+        let mut len = strlen(p);
         let mut colour: i32 = -1;
-        let mut copy: *mut libc::c_char = null_mut();
+        let mut copy: *mut u8 = null_mut();
         if len == 12
             && sscanf(
-                p,
+                p.cast(),
                 c"rgb:%02x/%02x/%02x".as_ptr(),
                 &raw mut r,
                 &raw mut g,
@@ -1065,18 +1065,24 @@ pub unsafe fn colour_parse_x11(mut p: *const c_char) -> c_int {
             ) == 3
             || len == 7
                 && sscanf(
-                    p,
+                    p.cast(),
                     c"#%02x%02x%02x".as_ptr(),
                     &raw mut r,
                     &raw mut g,
                     &raw mut b,
                 ) == 3
-            || sscanf(p, c"%d,%d,%d".as_ptr(), &raw mut r, &raw mut g, &raw mut b) == 3
+            || sscanf(
+                p.cast(),
+                c"%d,%d,%d.as_ptr()".as_ptr(),
+                &raw mut r,
+                &raw mut g,
+                &raw mut b,
+            ) == 3
         {
             colour = colour_join_rgb(r as u8, g as u8, b as u8);
         } else if len == 18
             && sscanf(
-                p,
+                p.cast(),
                 c"rgb:%04x/%04x/%04x".as_ptr(),
                 &raw mut r,
                 &raw mut g,
@@ -1084,7 +1090,7 @@ pub unsafe fn colour_parse_x11(mut p: *const c_char) -> c_int {
             ) == 3 as c_int
             || len == 13
                 && sscanf(
-                    p,
+                    p.cast(),
                     c"#%04x%04x%04x".as_ptr(),
                     &raw mut r,
                     &raw mut g,
@@ -1097,7 +1103,7 @@ pub unsafe fn colour_parse_x11(mut p: *const c_char) -> c_int {
                 (b >> 8 as c_int) as c_uchar,
             );
         } else if (sscanf(
-            p,
+            p.cast(),
             c"cmyk:%lf/%lf/%lf/%lf".as_ptr(),
             &raw mut c,
             &raw mut m,
@@ -1105,38 +1111,32 @@ pub unsafe fn colour_parse_x11(mut p: *const c_char) -> c_int {
             &raw mut k,
         ) == 4
             || sscanf(
-                p,
+                p.cast(),
                 c"cmy:%lf/%lf/%lf".as_ptr(),
                 &raw mut c,
                 &raw mut m,
                 &raw mut y,
             ) == 3 as c_int)
-            && c >= 0 as c_int as c_double
-            && c <= 1 as c_int as c_double
-            && m >= 0 as c_int as c_double
-            && m <= 1 as c_int as c_double
-            && y >= 0 as c_int as c_double
-            && y <= 1 as c_int as c_double
-            && k >= 0 as c_int as c_double
-            && k <= 1 as c_int as c_double
+            && c >= 0.0
+            && c <= 1.0
+            && m >= 0.0
+            && m <= 1.0
+            && y >= 0.0
+            && y <= 1.0
+            && k >= 0.0
+            && k <= 1.0
         {
             colour = colour_join_rgb(
-                ((1 as c_int as c_double - c)
-                    * (1 as c_int as c_double - k)
-                    * 255 as c_int as c_double) as c_uchar,
-                ((1 as c_int as c_double - m)
-                    * (1 as c_int as c_double - k)
-                    * 255 as c_int as c_double) as c_uchar,
-                ((1 as c_int as c_double - y)
-                    * (1 as c_int as c_double - k)
-                    * 255 as c_int as c_double) as c_uchar,
+                ((1f64 - c) * (1f64 - k) * 255f64) as u8,
+                ((1f64 - m) * (1f64 - k) * 255f64) as u8,
+                ((1f64 - y) * (1f64 - k) * 255f64) as u8,
             );
         } else {
-            while len != 0 && *p as c_int == ' ' as i32 {
+            while len != 0 && *p == b' ' {
                 p = p.offset(1);
                 len = len.wrapping_sub(1);
             }
-            while len != 0 && *p.add(len - 1) == b' ' as i8 {
+            while len != 0 && *p.add(len - 1) == b' ' {
                 len = len.wrapping_sub(1);
             }
             copy = xstrndup(p, len).cast().as_ptr();

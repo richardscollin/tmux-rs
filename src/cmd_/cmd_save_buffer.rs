@@ -11,10 +11,9 @@
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-
-use libc::{O_APPEND, O_TRUNC};
-
 use crate::*;
+
+use crate::libc::{O_APPEND, O_TRUNC};
 
 pub static cmd_save_buffer_entry: cmd_entry = cmd_entry {
     name: SyncCharPtr::new(c"save-buffer"),
@@ -44,7 +43,7 @@ pub static cmd_show_buffer_entry: cmd_entry = cmd_entry {
 
 unsafe fn cmd_save_buffer_done(
     _c: *mut client,
-    path: *mut c_char,
+    path: *mut u8,
     error: i32,
     closed: i32,
     _buffer: *mut evbuffer,

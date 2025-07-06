@@ -33,9 +33,9 @@ pub struct hyperlinks_uri {
     pub tree: *mut hyperlinks,
 
     pub inner: u32,
-    pub internal_id: *mut c_char,
-    pub external_id: *mut c_char,
-    pub uri: *mut c_char,
+    pub internal_id: *mut u8,
+    pub external_id: *mut u8,
+    pub uri: *mut u8,
 
     // #[entry]
     pub list_entry: tailq_entry<hyperlinks_uri>,
@@ -72,7 +72,7 @@ fn hyperlinks_by_uri_cmp(left: &hyperlinks_uri, right: &hyperlinks_uri) -> std::
         }
 
         i32_to_ordering(libc::strcmp(left.internal_id, right.internal_id))
-            .then_with(|| i32_to_ordering(libc::strcmp(left.uri, right.uri)))
+            .then_with(|| i32_to_ordering(crate::libc::strcmp(left.uri, right.uri)))
     }
 }
 
@@ -115,15 +115,15 @@ unsafe fn hyperlinks_remove(hlu: *mut hyperlinks_uri) {
 
 pub unsafe fn hyperlinks_put(
     hl: *mut hyperlinks,
-    uri_in: *const c_char,
-    mut internal_id_in: *const c_char,
+    uri_in: *const u8,
+    mut internal_id_in: *const u8,
 ) -> u32 {
     unsafe {
         // struct hyperlinks_uri	 find, *hlu;
         // char			*uri, *internal_id, *external_id;
         let mut uri = null_mut();
         let mut internal_id = null_mut();
-        let mut external_id = null_mut();
+        let mut external_id: *mut u8 = null_mut();
 
         /*
          * Anonymous URI are stored with an empty internal ID and the tree
@@ -131,7 +131,7 @@ pub unsafe fn hyperlinks_put(
          * anonymous URI is unique).
          */
         if internal_id_in.is_null() {
-            internal_id_in = c"".as_ptr();
+            internal_id_in = c!("");
         }
 
         utf8_stravis(
@@ -186,9 +186,9 @@ pub unsafe fn hyperlinks_put(
 pub unsafe fn hyperlinks_get(
     hl: *mut hyperlinks,
     inner: u32,
-    uri_out: *mut *const c_char,
-    internal_id_out: *mut *const c_char,
-    external_id_out: *mut *const c_char,
+    uri_out: *mut *const u8,
+    internal_id_out: *mut *const u8,
+    external_id_out: *mut *const u8,
 ) -> bool {
     unsafe {
         let mut find = MaybeUninit::<hyperlinks_uri>::uninit();

@@ -159,12 +159,12 @@ pub unsafe fn cmd_select_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd
 
         let style = args_get(args, b'P');
         if !style.is_null() {
-            let o = options_set_string!(oo, c"window-style".as_ptr(), 0, "{}", _s(style));
+            let o = options_set_string!(oo, c!("window-style"), 0, "{}", _s(style));
             if o.is_null() {
                 cmdq_error!(item, "bad style: {}", _s(style));
                 return cmd_retval::CMD_RETURN_ERROR;
             }
-            options_set_string!(oo, c"window-active-style".as_ptr(), 0, "{}", _s(style),);
+            options_set_string!(oo, c!("window-active-style"), 0, "{}", _s(style),);
             (*wp).flags |= window_pane_flags::PANE_REDRAW | window_pane_flags::PANE_STYLECHANGED;
         }
         if args_has_(args, 'g') {

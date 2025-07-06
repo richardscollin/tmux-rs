@@ -13,7 +13,7 @@
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 use crate::*;
 
-use libc::{ENOENT, fclose, fopen, strerror};
+use crate::libc::{ENOENT, fclose, fopen, strerror};
 
 use crate::cmd_::cmd_queue::cmdq_get_callback;
 use crate::compat::{queue::tailq_first, tree::rb_min};
@@ -22,13 +22,13 @@ pub static mut cfg_client: *mut client = null_mut();
 
 pub static mut cfg_finished: c_int = 0;
 
-static mut cfg_causes: *mut *mut c_char = null_mut();
+static mut cfg_causes: *mut *mut u8 = null_mut();
 static mut cfg_ncauses: c_uint = 0;
 static mut cfg_item: *mut cmdq_item = null_mut();
 
 pub static mut cfg_quiet: c_int = 1;
 
-pub static mut cfg_files: *mut *mut c_char = null_mut();
+pub static mut cfg_files: *mut *mut u8 = null_mut();
 
 pub static mut cfg_nfiles: c_uint = 0;
 
@@ -160,12 +160,7 @@ pub unsafe fn load_cfg(
         } else {
             cmdq_new_state(null_mut(), null_mut(), cmdq_state_flags::empty())
         };
-        cmdq_add_format!(
-            state,
-            c"current_file".as_ptr(),
-            "{}",
-            pi.file.as_ref().unwrap()
-        );
+        cmdq_add_format!(state, c!("current_file"), "{}", pi.file.as_ref().unwrap());
 
         let mut new_item0 = cmdq_get_command(cmdlist, state);
         if !item.is_null() {
@@ -226,12 +221,7 @@ pub unsafe fn load_cfg_from_buffer(
         } else {
             cmdq_new_state(null_mut(), null_mut(), cmdq_state_flags::empty())
         };
-        cmdq_add_format!(
-            state,
-            c"current_file".as_ptr(),
-            "{}",
-            pi.file.as_ref().unwrap()
-        );
+        cmdq_add_format!(state, c!("current_file"), "{}", pi.file.as_ref().unwrap());
 
         let mut new_item0 = cmdq_get_command(cmdlist, state);
         if !item.is_null() {
@@ -263,7 +253,7 @@ pub unsafe fn cfg_add_cause_(args: std::fmt::Arguments) {
         let msg = msg.leak();
 
         cfg_ncauses += 1;
-        cfg_causes = xreallocarray_::<*mut c_char>(cfg_causes, cfg_ncauses as usize).as_ptr();
+        cfg_causes = xreallocarray_::<*mut u8>(cfg_causes, cfg_ncauses as usize).as_ptr();
         *cfg_causes.add(cfg_ncauses as usize - 1) = msg.as_mut_ptr().cast();
     }
 }

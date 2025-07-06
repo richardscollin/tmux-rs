@@ -12,13 +12,14 @@
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-
 use crate::*;
+
+use crate::libc;
 
 // this is for osdep-linux.c
 
 #[cfg(target_os = "linux")]
-pub unsafe fn osdep_get_name(fd: i32, tty: *const c_char) -> *mut c_char {
+pub unsafe fn osdep_get_name(fd: i32, tty: *const u8) -> *mut u8 {
     unsafe {
         let pgrp = libc::tcgetpgrp(fd);
         if pgrp == -1 {
@@ -26,7 +27,7 @@ pub unsafe fn osdep_get_name(fd: i32, tty: *const c_char) -> *mut c_char {
         }
 
         let mut path = format_nul!("/proc/{pgrp}/cmdline");
-        let f = fopen(path, c"r".as_ptr());
+        let f = fopen(path, c!("r"));
         if f.is_null() {
             free_(path);
             return null_mut();
@@ -34,7 +35,7 @@ pub unsafe fn osdep_get_name(fd: i32, tty: *const c_char) -> *mut c_char {
         free_(path);
 
         let mut len = 0;
-        let mut buf: *mut c_char = null_mut();
+        let mut buf: *mut u8 = null_mut();
 
         loop {
             let ch = libc::fgetc(f);
@@ -45,11 +46,11 @@ pub unsafe fn osdep_get_name(fd: i32, tty: *const c_char) -> *mut c_char {
                 break;
             }
             buf = xrealloc_(buf, len + 2).as_ptr();
-            *buf.add(len) = ch as c_char;
+            *buf.add(len) = ch as u8;
             len += 1;
         }
         if !buf.is_null() {
-            *buf.add(len) = b'\0' as c_char;
+            *buf.add(len) = b'\0';
         }
 
         fclose(f);
@@ -58,11 +59,11 @@ pub unsafe fn osdep_get_name(fd: i32, tty: *const c_char) -> *mut c_char {
 }
 
 #[cfg(target_os = "linux")]
-pub unsafe fn osdep_get_cwd(fd: i32) -> *const c_char {
+pub unsafe fn osdep_get_cwd(fd: i32) -> *const u8 {
     const MAXPATHLEN: usize = libc::PATH_MAX as usize;
-    static mut target_buffer: [c_char; MAXPATHLEN + 1] = [0; MAXPATHLEN + 1];
+    static mut target_buffer: [u8; MAXPATHLEN + 1] = [0; MAXPATHLEN + 1];
     unsafe {
-        let target = &raw mut target_buffer as *mut c_char;
+        let target = &raw mut target_buffer as *mut u8;
 
         let pgrp = libc::tcgetpgrp(fd);
         if pgrp == -1 {
@@ -70,18 +71,18 @@ pub unsafe fn osdep_get_cwd(fd: i32) -> *const c_char {
         }
 
         let mut path = format_nul!("/proc/{pgrp}/cwd");
-        let mut n = libc::readlink(path, target, MAXPATHLEN);
+        let mut n = libc::readlink(path.cast(), target.cast(), MAXPATHLEN);
         free_(path);
 
         let mut sid: pid_t = 0;
         if n == -1 && libc::ioctl(fd, libc::TIOCGSID, &raw mut sid) != -1 {
             path = format_nul!("/proc/{sid}/cwd");
-            n = libc::readlink(path, target, MAXPATHLEN);
+            n = libc::readlink(path.cast(), target.cast(), MAXPATHLEN);
             free_(path);
         }
 
         if n > 0 {
-            *target.add(n as usize) = b'\0' as c_char;
+            *target.add(n as usize) = b'\0';
             return target;
         }
         null_mut()
@@ -92,10 +93,10 @@ pub unsafe fn osdep_get_cwd(fd: i32) -> *const c_char {
 pub unsafe fn osdep_event_init() -> *mut event_base {
     unsafe {
         // On Linux, epoll doesn't work on /dev/null (yes, really).
-        libc::setenv(c"EVENT_NOEPOLL".as_ptr(), c"1".as_ptr(), 1);
+        libc::setenv(c!("EVENT_NOEPOLL"), c!("1"), 1);
 
         let base = event_init();
-        libc::unsetenv(c"EVENT_NOEPOLL".as_ptr());
+        libc::unsetenv(c!("EVENT_NOEPOLL"));
         base
     }
 }
@@ -103,7 +104,7 @@ pub unsafe fn osdep_event_init() -> *mut event_base {
 // osdep darwin
 
 #[cfg(target_os = "macos")]
-pub unsafe fn osdep_get_name(fd: i32, tty: *const c_char) -> *mut c_char {
+pub unsafe fn osdep_get_name(fd: i32, tty: *const u8) -> *mut u8 {
     // note only bothering to port the version for > Mac OS X 10.7 SDK or later
     unsafe {
         use libc::proc_pidinfo;
@@ -119,7 +120,7 @@ pub unsafe fn osdep_get_name(fd: i32, tty: *const c_char) -> *mut c_char {
         #[repr(C)]
         struct proc_bsdshortinfo {
             padding1: [u32; 4],
-            pbsi_comm: [c_char; 16],
+            pbsi_comm: [u8; 16],
             padding2: [u32; 8],
         }
 
@@ -130,7 +131,7 @@ pub unsafe fn osdep_get_name(fd: i32, tty: *const c_char) -> *mut c_char {
             (&raw mut bsdinfo).cast(),
             size_of::<proc_bsdshortinfo>() as _,
         );
-        if (ret == size_of::<proc_bsdshortinfo>() as _ && bsdinfo.pbsi_comm[0] != b'\0' as i8) {
+        if (ret == size_of::<proc_bsdshortinfo>() as _ && bsdinfo.pbsi_comm[0] != b'\0') {
             return libc::strdup((&raw const bsdinfo.pbsi_comm).cast());
         }
         null_mut()
@@ -138,8 +139,8 @@ pub unsafe fn osdep_get_name(fd: i32, tty: *const c_char) -> *mut c_char {
 }
 
 #[cfg(target_os = "macos")]
-pub unsafe fn osdep_get_cwd(fd: i32) -> *const c_char {
-    static mut wd: [c_char; libc::PATH_MAX as usize] = [0; libc::PATH_MAX as usize];
+pub unsafe fn osdep_get_cwd(fd: i32) -> *const u8 {
+    static mut wd: [u8; libc::PATH_MAX as usize] = [0; libc::PATH_MAX as usize];
     unsafe {
         let mut pathinfo: libc::proc_vnodepathinfo = zeroed();
 
@@ -157,11 +158,11 @@ pub unsafe fn osdep_get_cwd(fd: i32) -> *const c_char {
         );
         if ret == size_of::<libc::proc_vnodepathinfo>() as i32 {
             crate::compat::strlcpy(
-                &raw mut wd as *mut c_char,
-                &raw const pathinfo.pvi_cdir.vip_path as *const c_char,
+                &raw mut wd as *mut u8,
+                &raw const pathinfo.pvi_cdir.vip_path as *const u8,
                 libc::PATH_MAX as usize,
             );
-            return &raw const wd as *const c_char;
+            return &raw const wd as *const u8;
         }
 
         null_mut()
@@ -175,12 +176,12 @@ pub unsafe fn osdep_event_init() -> *mut event_base {
          * On OS X, kqueue and poll are both completely broken and don't
          * work on anything except socket file descriptors (yes, really).
          */
-        libc::setenv(c"EVENT_NOKQUEUE".as_ptr(), c"1".as_ptr(), 1);
-        libc::setenv(c"EVENT_NOPOLL".as_ptr(), c"1".as_ptr(), 1);
+        crate::libc::setenv(c!("EVENT_NOKQUEUE"), c!("1"), 1);
+        crate::libc::setenv(c!("EVENT_NOPOLL"), c!("1"), 1);
 
         let mut base: *mut event_base = event_init();
-        libc::unsetenv(c"EVENT_NOKQUEUE".as_ptr());
-        libc::unsetenv(c"EVENT_NOPOLL".as_ptr());
+        crate::libc::unsetenv(c!("EVENT_NOKQUEUE"));
+        crate::libc::unsetenv(c!("EVENT_NOPOLL"));
 
         base
     }

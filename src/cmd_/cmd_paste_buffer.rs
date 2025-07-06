@@ -61,9 +61,9 @@ unsafe fn cmd_paste_buffer_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
             let mut sepstr = args_get(args, b's');
             if sepstr.is_null() {
                 if args_has(args, b'r') != 0 {
-                    sepstr = c"\n".as_ptr();
+                    sepstr = c!("\n");
                 } else {
-                    sepstr = c"\r".as_ptr();
+                    sepstr = c!("\r");
                 }
             }
             let seplen = strlen(sepstr);
@@ -73,7 +73,7 @@ unsafe fn cmd_paste_buffer_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
                     .mode
                     .intersects(mode_flag::MODE_BRACKETPASTE)
             {
-                bufferevent_write((*wp).event, c"\x1b[200~".as_ptr().cast(), 6);
+                bufferevent_write((*wp).event, c!("\x1b[200~").cast(), 6);
             }
 
             let mut bufsize: usize = 0;
@@ -81,7 +81,7 @@ unsafe fn cmd_paste_buffer_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
             let bufend = bufdata.add(bufsize);
 
             loop {
-                let line: *mut c_char =
+                let line: *mut u8 =
                     libc::memchr(bufdata as _, b'\n' as i32, bufend.addr() - bufdata.addr()).cast();
                 if line.is_null() {
                     break;
@@ -101,7 +101,7 @@ unsafe fn cmd_paste_buffer_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
                     .mode
                     .intersects(mode_flag::MODE_BRACKETPASTE)
             {
-                bufferevent_write((*wp).event, c"\x1b[201~".as_ptr().cast(), 6);
+                bufferevent_write((*wp).event, c!("\x1b[201~").cast(), 6);
             }
         }
 

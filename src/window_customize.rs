@@ -76,11 +76,11 @@ pub struct window_customize_itemdata {
     data: *mut window_customize_modedata,
     scope: window_customize_scope,
 
-    table: *mut c_char,
+    table: *mut u8,
     key: key_code,
 
     oo: *mut options,
-    name: *mut c_char,
+    name: *mut u8,
     idx: i32,
 }
 
@@ -91,7 +91,7 @@ pub struct window_customize_modedata {
     references: i32,
 
     data: *mut mode_tree_data,
-    format: *mut c_char,
+    format: *mut u8,
     hide_global: i32,
 
     item_list: *mut *mut window_customize_itemdata,
@@ -185,9 +185,9 @@ unsafe fn window_customize_get_key(
 unsafe fn window_customize_scope_text(
     scope: window_customize_scope,
     fs: *mut cmd_find_state,
-) -> *mut c_char {
+) -> *mut u8 {
     unsafe {
-        let mut s: *mut c_char = null_mut();
+        let mut s: *mut u8 = null_mut();
         let mut idx: u32 = 0;
 
         match scope {
@@ -244,12 +244,12 @@ unsafe fn window_customize_build_array(
         let mut ai = options_array_first(o);
         while !ai.is_null() {
             let idx = options_array_item_index(ai);
-            let mut name: *mut c_char = null_mut();
+            let mut name: *mut u8 = null_mut();
 
             name = format_nul!("{}[{}]", _s(options_name(o)), idx);
-            format_add!(ft, c"option_name".as_ptr(), "{}", _s(name));
-            let value: *mut c_char = options_to_string(o, idx as i32, 0);
-            format_add!(ft, c"option_value".as_ptr(), "{}", _s(value));
+            format_add!(ft, c!("option_name"), "{}", _s(name));
+            let value: *mut u8 = options_to_string(o, idx as i32, 0);
+            format_add!(ft, c!("option_value"), "{}", _s(value));
 
             let item = window_customize_add_item(data);
             (*item).scope = scope;
@@ -257,7 +257,7 @@ unsafe fn window_customize_build_array(
             (*item).name = xstrdup(options_name(o)).as_ptr();
             (*item).idx = idx as i32;
 
-            let text: *mut c_char = format_expand(ft, (*data).format);
+            let text: *mut u8 = format_expand(ft, (*data).format);
             let tag = window_customize_get_tag(o, idx as i32, oe);
             mode_tree_add((*data).data, top, item.cast(), tag, name, text, -1);
             free_(text);
@@ -276,13 +276,13 @@ unsafe fn window_customize_build_option(
     scope: window_customize_scope,
     o: *mut options_entry,
     ft: *mut format_tree,
-    filter: *const c_char,
+    filter: *const u8,
     fs: *mut cmd_find_state,
 ) {
     unsafe {
         let oe = options_table_entry(o);
         let oo = options_owner(o);
-        let name: *const c_char = options_name(o);
+        let name: *const u8 = options_name(o);
 
         let mut global: i32 = 0;
         let mut array: i32 = 0;
@@ -304,23 +304,23 @@ unsafe fn window_customize_build_option(
             return;
         }
 
-        format_add!(ft, c"option_name".as_ptr(), "{}", _s(name));
-        format_add!(ft, c"option_is_global".as_ptr(), "{global}");
-        format_add!(ft, c"option_is_array".as_ptr(), "{array}");
+        format_add!(ft, c!("option_name"), "{}", _s(name));
+        format_add!(ft, c!("option_is_global"), "{global}");
+        format_add!(ft, c!("option_is_array"), "{array}");
 
         let mut text = window_customize_scope_text(scope, fs);
-        format_add!(ft, c"option_scope".as_ptr(), "{}", _s(text));
+        format_add!(ft, c!("option_scope"), "{}", _s(text));
         free_(text);
 
         if !oe.is_null() && !(*oe).unit.is_null() {
-            format_add!(ft, c"option_unit".as_ptr(), "{}", _s((*oe).unit));
+            format_add!(ft, c!("option_unit"), "{}", _s((*oe).unit));
         } else {
-            format_add!(ft, c"option_unit".as_ptr(), "{}", "");
+            format_add!(ft, c!("option_unit"), "{}", "");
         }
 
         if array == 0 {
             let value = options_to_string(o, -1, 0);
-            format_add!(ft, c"option_value".as_ptr(), "{}", _s(value));
+            format_add!(ft, c!("option_value"), "{}", _s(value));
             free_(value);
         }
 
@@ -355,14 +355,14 @@ unsafe fn window_customize_build_option(
 
 unsafe fn window_customize_find_user_options(
     oo: *mut options,
-    list: *mut *mut *const c_char,
+    list: *mut *mut *const u8,
     size: *mut u32,
 ) {
     unsafe {
         let mut o = options_first(oo);
         while !o.is_null() {
             let name = options_name(o);
-            if *name != b'@' as i8 {
+            if *name != b'@' {
                 o = options_next(o);
                 continue;
             }
@@ -388,7 +388,7 @@ unsafe fn window_customize_find_user_options(
 
 unsafe fn window_customize_build_options(
     data: *mut window_customize_modedata,
-    title: *const c_char,
+    title: *const u8,
     tag: u64,
     scope0: window_customize_scope,
     oo0: *mut options,
@@ -397,7 +397,7 @@ unsafe fn window_customize_build_options(
     scope2: window_customize_scope,
     oo2: *mut options,
     ft: *mut format_tree,
-    filter: *const c_char,
+    filter: *const u8,
     fs: *mut cmd_find_state,
 ) {
     unsafe {
@@ -451,8 +451,8 @@ unsafe fn window_customize_build_options(
 
         let mut loop_ = options_first(oo0);
         while !loop_.is_null() {
-            let name: *const c_char = options_name(loop_);
-            if *name == b'@' as i8 {
+            let name: *const u8 = options_name(loop_);
+            if *name == b'@' {
                 loop_ = options_next(loop_);
                 continue;
             }
@@ -480,7 +480,7 @@ unsafe fn window_customize_build_keys(
     data: *mut window_customize_modedata,
     kt: *mut key_table,
     mut ft: *mut format_tree,
-    filter: *const c_char,
+    filter: *const u8,
     fs: *mut cmd_find_state,
     number: i32,
 ) {
@@ -492,8 +492,8 @@ unsafe fn window_customize_build_keys(
         // const char *flag;
         // uint64_t tag;
 
-        let mut text: *mut c_char = null_mut();
-        let mut title: *mut c_char = null_mut();
+        let mut text: *mut u8 = null_mut();
+        let mut title: *mut u8 = null_mut();
         let tag: u64 = (1u64 << 62) | ((number as u64) << 54) | 1;
 
         title = format_nul!("Key Table - {}", _s((*kt).name));
@@ -510,19 +510,14 @@ unsafe fn window_customize_build_keys(
         free_(title);
 
         ft = format_create_from_state(null_mut(), null_mut(), fs);
-        format_add!(ft, c"is_option".as_ptr(), "0");
-        format_add!(ft, c"is_key".as_ptr(), "1");
+        format_add!(ft, c!("is_option"), "0");
+        format_add!(ft, c!("is_key"), "1");
 
         let mut bd = key_bindings_first(kt);
         while !bd.is_null() {
-            format_add!(
-                ft,
-                c"key".as_ptr(),
-                "{}",
-                _s(key_string_lookup_key((*bd).key, 0)),
-            );
+            format_add!(ft, c!("key"), "{}", _s(key_string_lookup_key((*bd).key, 0)),);
             if !(*bd).note.is_null() {
-                format_add!(ft, c"key_note".as_ptr(), "{}", _s((*bd).note));
+                format_add!(ft, c!("key_note"), "{}", _s((*bd).note));
             }
             if !filter.is_null() {
                 let expanded = format_expand(ft, filter);
@@ -560,7 +555,7 @@ unsafe fn window_customize_build_keys(
                 child,
                 item.cast(),
                 tag | ((*bd).key << 3) | 1,
-                c"Command".as_ptr(),
+                c!("Command"),
                 text,
                 -1,
             );
@@ -571,14 +566,14 @@ unsafe fn window_customize_build_keys(
             if !(*bd).note.is_null() {
                 text = format_nul!("#[ignore]{}", _s((*bd).note));
             } else {
-                text = xstrdup(c"".as_ptr()).as_ptr();
+                text = xstrdup(c!("")).as_ptr();
             }
             mti = mode_tree_add(
                 (*data).data,
                 child,
                 item.cast(),
                 tag | ((*bd).key << 3) | (1 << 1) | 1,
-                c"Note".as_ptr(),
+                c!("Note"),
                 text,
                 -1,
             );
@@ -587,16 +582,16 @@ unsafe fn window_customize_build_keys(
             free_(text);
 
             let flag = if (*bd).flags & KEY_BINDING_REPEAT != 0 {
-                c"on".as_ptr()
+                c!("on")
             } else {
-                c"off".as_ptr()
+                c!("off")
             };
             mti = mode_tree_add(
                 (*data).data,
                 child,
                 item.cast(),
                 tag | ((*bd).key << 3) | (2 << 1) | 1,
-                c"Repeat".as_ptr(),
+                c!("Repeat"),
                 flag,
                 -1,
             );
@@ -614,7 +609,7 @@ unsafe fn window_customize_build(
     modedata: NonNull<c_void>,
     _: *mut mode_tree_sort_criteria,
     _: *mut u64,
-    filter: *const c_char,
+    filter: *const u8,
 ) {
     unsafe {
         let data: NonNull<window_customize_modedata> = modedata.cast();
@@ -635,12 +630,12 @@ unsafe fn window_customize_build(
         }
 
         let mut ft = format_create_from_state(null_mut(), null_mut(), &raw mut fs);
-        format_add!(ft, c"is_option".as_ptr(), "1");
-        format_add!(ft, c"is_key".as_ptr(), "0");
+        format_add!(ft, c!("is_option"), "1");
+        format_add!(ft, c!("is_key"), "0");
 
         window_customize_build_options(
             data,
-            c"Server Options".as_ptr(),
+            c!("Server Options"),
             (3u64 << 62) | ((OPTIONS_TABLE_SERVER as u64) << 1) | 1,
             window_customize_scope::WINDOW_CUSTOMIZE_SERVER,
             global_options,
@@ -654,7 +649,7 @@ unsafe fn window_customize_build(
         );
         window_customize_build_options(
             data,
-            c"Session Options".as_ptr(),
+            c!("Session Options"),
             (3u64 << 62) | ((OPTIONS_TABLE_SESSION as u64) << 1) | 1,
             window_customize_scope::WINDOW_CUSTOMIZE_GLOBAL_SESSION,
             global_s_options,
@@ -668,7 +663,7 @@ unsafe fn window_customize_build(
         );
         window_customize_build_options(
             data,
-            c"Window & Pane Options".as_ptr(),
+            c!("Window & Pane Options"),
             (3u64 << 62) | ((OPTIONS_TABLE_WINDOW as u64) << 1) | 1,
             window_customize_scope::WINDOW_CUSTOMIZE_GLOBAL_WINDOW,
             global_w_options,
@@ -715,18 +710,18 @@ unsafe fn window_customize_draw_key(
 
         let mut kt: *mut key_table = null_mut();
         let mut bd: *mut key_binding = null_mut();
-        let mut period = c"".as_ptr();
+        let mut period = c!("");
 
         if item.is_null() || window_customize_get_key(item, &raw mut kt, &raw mut bd) == 0 {
             return;
         }
 
-        let mut note: *const i8 = (*bd).note;
+        let mut note: *const u8 = (*bd).note;
         if note.is_null() {
-            note = c"There is no note for this key.".as_ptr();
+            note = c!("There is no note for this key.");
         }
-        if *note != b'\0' as i8 && *note.add(libc::strlen(note) - 1) != b'.' as i8 {
-            period = c".".as_ptr();
+        if *note != b'\0' && *note.add(libc::strlen(note) - 1) != b'.' {
+            period = c!(".");
         }
         if !screen_write_text!(
             ctx,
@@ -837,12 +832,12 @@ unsafe fn window_customize_draw_option(
         // struct grid_cell gc;
         // const char **choice, *text, *name;
         let mut gc: grid_cell = zeroed();
-        let mut space: *const c_char = c"".as_ptr();
-        let mut unit: *const c_char = c"".as_ptr();
+        let mut space: *const u8 = c!("");
+        let mut unit: *const u8 = c!("");
 
-        let mut expanded: *mut c_char = null_mut();
-        let mut value: *mut c_char = null_mut();
-        let mut default_value: *mut c_char = null_mut();
+        let mut expanded: *mut u8 = null_mut();
+        let mut value: *mut u8 = null_mut();
+        let mut default_value: *mut u8 = null_mut();
         // char choices[256] = "";
 
         let mut fs: cmd_find_state = zeroed();
@@ -852,7 +847,7 @@ unsafe fn window_customize_draw_option(
             if !window_customize_check_item(data, item, &raw mut fs) {
                 return;
             }
-            let name: *mut c_char = (*item).name;
+            let name: *mut u8 = (*item).name;
             let idx = (*item).idx;
 
             let o = options_get((*item).oo, name);
@@ -862,13 +857,13 @@ unsafe fn window_customize_draw_option(
             let oe = options_table_entry(o);
 
             if !oe.is_null() && !(*oe).unit.is_null() {
-                space = c" ".as_ptr();
+                space = c!(" ");
                 unit = (*oe).unit;
             }
             let ft = format_create_from_state(null_mut(), null_mut(), &raw mut fs);
 
             let mut text = if oe.is_null() || (*oe).text.is_null() {
-                c"This option doesn't have a description.".as_ptr()
+                c!("This option doesn't have a description.")
             } else {
                 (*oe).text
             };
@@ -891,17 +886,17 @@ unsafe fn window_customize_draw_option(
             }
 
             if oe.is_null() {
-                text = c"user".as_ptr();
+                text = c!("user");
             } else if ((*oe).scope & (OPTIONS_TABLE_WINDOW | OPTIONS_TABLE_PANE))
                 == (OPTIONS_TABLE_WINDOW | OPTIONS_TABLE_PANE)
             {
-                text = c"window and pane".as_ptr();
+                text = c!("window and pane");
             } else if (*oe).scope & OPTIONS_TABLE_WINDOW != 0 {
-                text = c"window".as_ptr();
+                text = c!("window");
             } else if (*oe).scope & OPTIONS_TABLE_SESSION != 0 {
-                text = c"session".as_ptr();
+                text = c!("session");
             } else {
-                text = c"server".as_ptr();
+                text = c!("server");
             }
             if !screen_write_text!(
                 ctx,
@@ -990,15 +985,15 @@ unsafe fn window_customize_draw_option(
             }
 
             const sizeof_choices: usize = 256;
-            let mut choices: [c_char; sizeof_choices] = [0; sizeof_choices];
+            let mut choices: [u8; sizeof_choices] = [0; sizeof_choices];
             if !oe.is_null() && (*oe).type_ == options_table_type::OPTIONS_TABLE_CHOICE {
                 let mut choice = (*oe).choices;
                 while !(*choice).is_null() {
                     strlcat(choices.as_mut_ptr(), *choice, sizeof_choices);
-                    strlcat(choices.as_mut_ptr(), c", ".as_ptr(), sizeof_choices);
+                    strlcat(choices.as_mut_ptr(), c!(", "), sizeof_choices);
                     choice = choice.add(1);
                 }
-                choices[libc::strlen(choices.as_ptr()) - 2] = b'\0' as i8;
+                choices[libc::strlen(choices.as_ptr()) - 2] = b'\0';
                 if !screen_write_text!(
                     ctx,
                     cx,
@@ -1007,7 +1002,7 @@ unsafe fn window_customize_draw_option(
                     0,
                     &raw const grid_default_cell,
                     "Available values are: {}",
-                    _s((&raw const choices) as *const i8),
+                    _s((&raw const choices) as *const u8),
                 ) {
                     break 'out;
                 }
@@ -1289,7 +1284,7 @@ pub unsafe fn window_customize_free_item_callback(itemdata: NonNull<c_void>) {
 pub unsafe fn window_customize_set_option_callback(
     c: *mut client,
     itemdata: NonNull<c_void>,
-    s: *const c_char,
+    s: *const u8,
     done: i32,
 ) -> i32 {
     unsafe {
@@ -1298,13 +1293,13 @@ pub unsafe fn window_customize_set_option_callback(
         let data: *mut window_customize_modedata = (*item).data.cast();
 
         let oo: *mut options = (*item).oo;
-        let name: *mut c_char = (*item).name;
+        let name: *mut u8 = (*item).name;
 
-        let mut cause: *mut c_char = null_mut();
+        let mut cause: *mut u8 = null_mut();
         let mut idx: i32 = (*item).idx;
 
         'fail: {
-            if s.is_null() || *s == b'\0' as i8 || (*data).dead != 0 {
+            if s.is_null() || *s == b'\0' || (*data).dead != 0 {
                 return 0;
             }
             if item.is_null() || !window_customize_check_item(data, item, null_mut()) {
@@ -1339,7 +1334,7 @@ pub unsafe fn window_customize_set_option_callback(
 
             return 0;
         } // 'fail:
-        *cause = libc::toupper(*cause as u8 as i32) as i8;
+        *cause = (*cause).to_ascii_uppercase();
         status_message_set!(c, -1, 1, 0, "{}", _s(cause));
         free_(cause);
         0
@@ -1364,7 +1359,7 @@ pub unsafe fn window_customize_set_option(
 
         let mut choice: u32;
         let name = (*item).name;
-        let mut space = c"".as_ptr();
+        let mut space = c!("");
         let mut oo: *mut options = null_mut();
 
         // char *prompt, *value, *text;
@@ -1452,10 +1447,10 @@ pub unsafe fn window_customize_set_option(
             options_set_number(oo, name, choice as i64);
         } else {
             let text = window_customize_scope_text(scope, &raw mut fs);
-            if *text != b'\0' as i8 {
-                space = c", for ".as_ptr();
+            if *text != b'\0' {
+                space = c!(", for ");
             } else if scope != window_customize_scope::WINDOW_CUSTOMIZE_SERVER {
-                space = c", global".as_ptr();
+                space = c!(", global");
             }
             let prompt = if !oe.is_null() && (*oe).flags & OPTIONS_TABLE_IS_ARRAY != 0 {
                 if idx == -1 {
@@ -1543,7 +1538,7 @@ pub unsafe fn window_customize_reset_option(
 pub unsafe fn window_customize_set_command_callback(
     c: *mut client,
     itemdata: NonNull<c_void>,
-    s: *const c_char,
+    s: *const u8,
     _done: i32,
 ) -> i32 {
     unsafe {
@@ -1551,10 +1546,10 @@ pub unsafe fn window_customize_set_command_callback(
         let item = item.as_ptr();
         let data: *mut window_customize_modedata = (*item).data;
         let mut bd: *mut key_binding = null_mut();
-        let mut error: *mut c_char = null_mut();
+        let mut error: *mut u8 = null_mut();
 
         'fail: {
-            if s.is_null() || *s == b'\0' as i8 || (*data).dead != 0 {
+            if s.is_null() || *s == b'\0' || (*data).dead != 0 {
                 return 0;
             }
             if item.is_null() || window_customize_get_key(item, null_mut(), &raw mut bd) == 0 {
@@ -1578,7 +1573,7 @@ pub unsafe fn window_customize_set_command_callback(
             return 0;
         }
         // 'fail:
-        *error = libc::toupper(*error as u8 as i32) as i8;
+        *error = (*error).to_ascii_uppercase();
         status_message_set!(c, -1, 1, 0, "{}", _s(error));
         free_(error);
         0
@@ -1588,7 +1583,7 @@ pub unsafe fn window_customize_set_command_callback(
 pub unsafe fn window_customize_set_note_callback(
     _c: *mut client,
     itemdata: NonNull<c_void>,
-    s: *const c_char,
+    s: *const u8,
     _done: i32,
 ) -> i32 {
     unsafe {
@@ -1597,7 +1592,7 @@ pub unsafe fn window_customize_set_note_callback(
         let data: *mut window_customize_modedata = (*item).data;
         let mut bd = null_mut();
 
-        if s.is_null() || *s == b'\0' as i8 || (*data).dead != 0 {
+        if s.is_null() || *s == b'\0' || (*data).dead != 0 {
             return 0;
         }
         if item.is_null() || window_customize_get_key(item, null_mut(), &raw mut bd) == 0 {
@@ -1622,8 +1617,8 @@ pub unsafe fn window_customize_set_key(
 ) {
     unsafe {
         let key = (*item).key;
-        let mut prompt: *mut c_char = null_mut();
-        let mut value: *mut c_char = null_mut();
+        let mut prompt: *mut u8 = null_mut();
+        let mut value: *mut u8 = null_mut();
         let mut bd: *mut key_binding = null_mut();
 
         if item.is_null() || window_customize_get_key(item, null_mut(), &raw mut bd) == 0 {
@@ -1674,7 +1669,7 @@ pub unsafe fn window_customize_set_key(
                 null_mut(),
                 prompt,
                 if (*bd).note.is_null() {
-                    c"".as_ptr()
+                    c!("")
                 } else {
                     (*bd).note
                 },
@@ -1771,17 +1766,17 @@ pub unsafe fn window_customize_change_each(
 pub unsafe fn window_customize_change_current_callback(
     c: *mut client,
     modedata: NonNull<c_void>,
-    s: *const c_char,
+    s: *const u8,
     _done: i32,
 ) -> i32 {
     unsafe {
         let data: *mut window_customize_modedata = modedata.cast().as_ptr();
         let mut item: *mut window_customize_itemdata = null_mut();
 
-        if s.is_null() || *s == b'\0' as i8 || (*data).dead != 0 {
+        if s.is_null() || *s == b'\0' || (*data).dead != 0 {
             return 0;
         }
-        if libc::tolower(*s as i32) != b'y' as i32 || *s.add(1) != b'\0' as i8 {
+        if !(*s).eq_ignore_ascii_case(&b'y') || *s.add(1) != b'\0' {
             return 0;
         }
 
@@ -1816,16 +1811,16 @@ pub unsafe fn window_customize_change_current_callback(
 pub unsafe fn window_customize_change_tagged_callback(
     c: *mut client,
     modedata: NonNull<c_void>,
-    s: *const c_char,
+    s: *const u8,
     _done: i32,
 ) -> i32 {
     unsafe {
         let data: *mut window_customize_modedata = modedata.cast().as_ptr();
 
-        if s.is_null() || *s == b'\0' as i8 || (*data).dead != 0 {
+        if s.is_null() || *s == b'\0' || (*data).dead != 0 {
             return 0;
         }
-        if libc::tolower(*s as i32) != b'y' as i32 || *s.add(1) != b'\0' as i8 {
+        if !(*s).eq_ignore_ascii_case(&b'y') || *s.add(1) != b'\0' {
             return 0;
         }
 
@@ -1905,7 +1900,7 @@ pub unsafe fn window_customize_key(
                         c,
                         null_mut(),
                         prompt,
-                        c"".as_ptr(),
+                        c!(""),
                         Some(window_customize_change_current_callback),
                         Some(window_customize_free_callback),
                         data.cast(),
@@ -1925,7 +1920,7 @@ pub unsafe fn window_customize_key(
                         c,
                         null_mut(),
                         prompt,
-                        c"".as_ptr(),
+                        c!(""),
                         Some(window_customize_change_tagged_callback),
                         Some(window_customize_free_callback),
                         data.cast(),
@@ -1949,7 +1944,7 @@ pub unsafe fn window_customize_key(
                         c,
                         null_mut(),
                         prompt,
-                        c"".as_ptr(),
+                        c!(""),
                         Some(window_customize_change_current_callback),
                         Some(window_customize_free_callback),
                         data.cast(),
@@ -1969,7 +1964,7 @@ pub unsafe fn window_customize_key(
                         c,
                         null_mut(),
                         prompt,
-                        c"".as_ptr(),
+                        c!(""),
                         Some(window_customize_change_tagged_callback),
                         Some(window_customize_free_callback),
                         data.cast(),

@@ -11,12 +11,13 @@
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-
 use crate::*;
 
 use crate::compat::queue::tailq_foreach;
 
-const LIST_CLIENTS_TEMPLATE: &CStr = c"#{client_name}: #{session_name} [#{client_width}x#{client_height} #{client_termname}] #{?#{!=:#{client_uid},#{uid}},[user #{?client_user,#{client_user},#{client_uid},}] ,}#{?client_flags,(,}#{client_flags}#{?client_flags,),}";
+const LIST_CLIENTS_TEMPLATE: *const u8 = c!(
+    "#{client_name}: #{session_name} [#{client_width}x#{client_height} #{client_termname}] #{?#{!=:#{client_uid},#{uid}},[user #{?client_user,#{client_user},#{client_uid},}] ,}#{?client_flags,(,}#{client_flags}#{?client_flags,),}"
+);
 
 pub static cmd_list_clients_entry: cmd_entry = cmd_entry {
     name: SyncCharPtr::new(c"list-clients"),
@@ -45,7 +46,7 @@ unsafe fn cmd_list_clients_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
 
         let mut template = args_get(args, b'F');
         if template.is_null() {
-            template = LIST_CLIENTS_TEMPLATE.as_ptr();
+            template = LIST_CLIENTS_TEMPLATE;
         }
         let filter = args_get(args, b'f');
 
@@ -61,7 +62,7 @@ unsafe fn cmd_list_clients_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
                 FORMAT_NONE,
                 format_flags::empty(),
             );
-            format_add!(ft, c"line".as_ptr(), "{idx}");
+            format_add!(ft, c!("line"), "{idx}");
             format_defaults(ft, c, None, None, None);
 
             let mut flag = 0;

@@ -1311,7 +1311,7 @@ unsafe fn yylex_token_escape(ps: &mut cmd_parse_state, buf: *mut *mut u8, len: *
 
         // TODO determine a more stable way to get this value on mac
         #[cfg(target_os = "macos")]
-        const sizeof_m: usize = 6; // compiled and printed constant from C
+        const SIZEOF_M: usize = 6; // compiled and printed constant from C
 
         let mut tmp: u32 = 0;
         let mut s: [u8; 9] = [0; 9];

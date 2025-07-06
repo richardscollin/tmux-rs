@@ -19,7 +19,32 @@ jobs:
       - uses: dtolnay/rust-toolchain@nightly
       - run: ./tools/unsafe_usage_analyzer.rs .
 
-  lint:
+  clippy:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        fail-fast: false
+        toolchain: [stable, beta]
+        os: [ubuntu-latest, macos-latest, ubuntu-24.04-arm]
+    steps:
+      - name: Install system dependencies (ubuntu)
+        if: startsWith(matrix.os, 'ubuntu')
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libncurses-dev libevent-dev
+      - name: Install system dependencies (macOS)
+        if: matrix.os == 'macos-latest'
+        run: |
+          brew update
+          brew install ncurses libevent
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain
+        with:
+          toolchain: ${{ matrix.toolchain }}
+          components: clippy
+      - run: cargo clippy -- -Dwarnings
+
+  fmt:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -51,5 +76,4 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - run: cargo build
-      - run: cargo clippy
       - run: cargo test

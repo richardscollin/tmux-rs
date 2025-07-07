@@ -257,7 +257,6 @@ pub unsafe fn input_key_extended(bev: *mut bufferevent, mut key: key_code) -> i3
     unsafe {
         let sizeof_tmp = 64;
         let mut tmp = MaybeUninit::<[u8; 64]>::uninit();
-        let mut ud = MaybeUninit::<utf8_data>::uninit();
         let mut wc: wchar_t = 0;
 
         const KEYC_SHIFT_OR_META: u64 = KEYC_SHIFT | KEYC_META;
@@ -277,8 +276,8 @@ pub unsafe fn input_key_extended(bev: *mut bufferevent, mut key: key_code) -> i3
         };
 
         if KEYC_IS_UNICODE(key) {
-            utf8_to_data((key & KEYC_MASK_KEY) as u32, ud.as_mut_ptr());
-            if utf8_towc(ud.as_mut_ptr(), &raw mut wc) == utf8_state::UTF8_DONE {
+            let ud = utf8_to_data((key & KEYC_MASK_KEY) as u32);
+            if utf8_towc(&ud, &raw mut wc) == utf8_state::UTF8_DONE {
                 key = wc as u64;
             } else {
                 return -1;
@@ -343,7 +342,7 @@ pub unsafe fn input_key_vt10x(bev: *mut bufferevent, mut key: key_code) -> i32 {
          * so lose the modifiers.
          */
         if KEYC_IS_UNICODE(key) {
-            utf8_to_data(key as u32, &raw mut ud);
+            ud = utf8_to_data(key as u32);
             input_key_write(__func__, bev, ud.data.as_ptr().cast(), ud.size as usize);
             return 0;
         }
@@ -469,7 +468,7 @@ pub unsafe fn input_key(s: *mut screen, bev: *mut bufferevent, mut key: key_code
                 return 0;
             }
             if KEYC_IS_UNICODE(key) {
-                utf8_to_data(key as u32, &raw mut ud);
+                ud = utf8_to_data(key as u32);
                 input_key_write(__func__, bev, ud.data.as_ptr().cast(), ud.size as usize);
                 return 0;
             }

@@ -565,7 +565,7 @@ unsafe fn grid_get_cell1(gl: *mut grid_line, px: c_uint, gc: *mut grid_cell) {
                 (*gc).bg = (*gee).bg;
                 (*gc).us = (*gee).us;
                 (*gc).link = (*gee).link;
-                utf8_to_data((*gee).data, &mut (*gc).data);
+                (*gc).data = utf8_to_data((*gee).data);
             }
             return;
         }

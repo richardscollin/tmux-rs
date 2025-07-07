@@ -396,7 +396,6 @@ pub unsafe fn key_string_lookup_key(mut key: key_code, with_flags: i32) -> *cons
         let sizeof_tmp: usize = 8;
         let mut tmp: [u8; 8] = [0; 8];
         let mut s = null();
-        let mut ud: utf8_data = zeroed();
         let mut off: usize = 0;
 
         OUT[0] = b'\0';
@@ -515,7 +514,7 @@ pub unsafe fn key_string_lookup_key(mut key: key_code, with_flags: i32) -> *cons
 
                 /* Is this a Unicode key? */
                 if KEYC_IS_UNICODE(key) {
-                    utf8_to_data(key as u32, &raw mut ud);
+                    let ud = utf8_to_data(key as u32);
                     off = strlen(&raw const OUT as *const u8);
                     memcpy(
                         &raw mut OUT[off] as *mut c_void,

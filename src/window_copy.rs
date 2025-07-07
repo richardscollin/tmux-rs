@@ -3795,8 +3795,6 @@ pub unsafe fn window_copy_cellstring(
     size: *mut usize,
     allocated: *mut i32,
 ) -> *mut u8 {
-    static mut UD: utf8_data = unsafe { zeroed() };
-
     unsafe {
         // struct grid_cell_entry *gce;
 
@@ -3818,20 +3816,17 @@ pub unsafe fn window_copy_cellstring(
             return (&raw mut (*gce).union_.data.data).cast();
         }
 
-        utf8_to_data(
-            (*(*gl).extddata.add((*gce).union_.offset as usize)).data,
-            &raw mut UD,
-        );
-        if UD.size == 0 {
+        let ud = utf8_to_data((*(*gl).extddata.add((*gce).union_.offset as usize)).data);
+        if ud.size == 0 {
             *size = 0;
             *allocated = 0;
             return null_mut();
         }
-        *size = UD.size as usize;
+        *size = ud.size as usize;
         *allocated = 1;
 
-        let copy: *mut u8 = xmalloc(UD.size as usize).as_ptr().cast();
-        libc::memcpy(copy.cast(), (&raw const UD.data).cast(), UD.size as usize);
+        let copy: *mut u8 = xmalloc(ud.size as usize).as_ptr().cast();
+        libc::memcpy(copy.cast(), (&raw const ud.data).cast(), ud.size as usize);
         copy
     }
 }

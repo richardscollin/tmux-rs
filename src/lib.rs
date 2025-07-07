@@ -646,7 +646,7 @@ impl utf8_data {
             panic!("invalid size");
         }
 
-        let mut padded_data = [0u8; 21];
+        let mut padded_data = [0u8; UTF8_SIZE];
         let mut i = 0usize;
         while i < N {
             padded_data[i] = data[i];

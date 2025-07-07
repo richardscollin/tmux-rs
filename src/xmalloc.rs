@@ -23,38 +23,31 @@ use crate::{
 };
 
 pub extern "C" fn xmalloc(size: usize) -> NonNull<c_void> {
-    debug_assert!(size != 0, "xmalloc: zero size");
+    debug_assert_ne!(size, 0, "xmalloc: zero size");
 
-    NonNull::new(unsafe { libc::malloc(size) })
-        .unwrap_or_else(|| panic!("xmalloc: allocating {size}"))
-}
-
-// note this function definition is safe
-#[inline]
-fn malloc_(size: NonZero<usize>) -> *mut c_void {
-    unsafe { ::libc::malloc(size.get()) }
-}
-
-pub fn xmalloc_<T>() -> NonNull<T> {
-    let size = size_of::<T>();
-    debug_assert!(size != 0);
-    let nz_size = NonZero::<usize>::try_from(size).unwrap();
-    NonNull::new(malloc_(nz_size))
-        .unwrap_or_else(|| panic!("xmalloc: allocating {size} bytes"))
+    // Allocate using max_align_t to have the same allignment as malloc.
+    // We allocate a bit too much when size is not a multiple of max_align_t.
+    let count = size.div_ceil(size_of::<libc::max_align_t>());
+    let alloc = vec![MaybeUninit::<libc::max_align_t>::uninit(); count].into_boxed_slice();
+    NonNull::new(Box::into_raw(alloc))
+        .expect("box pointer is not null")
         .cast()
 }
 
-pub fn xmalloc__<'a, T>() -> &'a mut MaybeUninit<T> {
-    let size = size_of::<T>();
-    debug_assert!(size != 0);
-    let nz_size = NonZero::<usize>::try_from(size).unwrap();
+pub fn xmalloc_<T>() -> NonNull<T> {
+    debug_assert_ne!(size_of::<T>(), 0, "xmalloc: zero size");
 
-    let ptr: NonNull<T> = NonNull::new(malloc_(nz_size))
-        .unwrap_or_else(|| panic!("xmalloc: allocating {size} bytes"))
-        .cast();
+    let alloc = Box::new(MaybeUninit::<T>::uninit());
+    NonNull::new(Box::into_raw(alloc))
+        .expect("box pointer is not null")
+        .cast()
+}
 
-    // from `NonNull::as_uninit_mut`
-    unsafe { &mut *ptr.cast().as_ptr() }
+pub fn xmalloc__<T>() -> &'static mut MaybeUninit<T> {
+    debug_assert_ne!(size_of::<T>(), 0, "xmalloc: zero size");
+
+    let alloc = Box::new(MaybeUninit::<T>::uninit());
+    Box::leak(alloc)
 }
 
 pub extern "C" fn xcalloc(nmemb: usize, size: usize) -> NonNull<c_void> {

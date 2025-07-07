@@ -1,4 +1,4 @@
-use core::ffi::{c_char, c_int, c_void};
+use core::ffi::{c_char, c_int};
 
 pub mod b64;
 pub mod fdforkpty;

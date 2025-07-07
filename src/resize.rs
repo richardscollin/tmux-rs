@@ -19,8 +19,6 @@ use crate::compat::{queue::tailq_foreach, tree::rb_foreach};
 
 pub unsafe fn resize_window(w: *mut window, mut sx: u32, mut sy: u32, xpixel: i32, ypixel: i32) {
     unsafe {
-        let zoomed = 0;
-
         // Check size limits.
         sx = sx.clamp(WINDOW_MINIMUM, WINDOW_MAXIMUM);
         sy = sy.clamp(WINDOW_MINIMUM, WINDOW_MAXIMUM);
@@ -131,9 +129,9 @@ pub unsafe fn clients_calculate_size(
     xpixel: *mut u32,
     ypixel: *mut u32,
 ) -> i32 {
-    let mut cx = 0u32;
-    let mut cy = 0u32;
-    let mut cw = null_mut();
+    let mut cx;
+    let mut cy;
+    let mut cw;
     let mut n = 0;
     let __func__ = "clients_calculate_size";
 
@@ -319,7 +317,7 @@ pub unsafe fn clients_calculate_size(
 pub unsafe fn default_window_size_skip_client(
     loop_: *mut client,
     type_: window_size_option,
-    current: i32,
+    _current: i32,
     s: *mut session,
     w: *mut window,
 ) -> i32 {
@@ -425,9 +423,9 @@ pub unsafe fn default_window_size(
 
 pub unsafe fn recalculate_size_skip_client(
     loop_: *mut client,
-    type_: window_size_option,
+    _type_: window_size_option,
     current: i32,
-    s: *mut session,
+    _s: *mut session,
     w: *mut window,
 ) -> i32 {
     unsafe {

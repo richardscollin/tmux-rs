@@ -245,8 +245,6 @@ pub unsafe fn winlink_stack_remove(stack: *mut winlink_stack, wl: *mut winlink) 
 
 pub unsafe fn window_find_by_id_str(s: *const u8) -> *mut window {
     unsafe {
-        let mut errstr: *const u8 = null_mut();
-
         if *s != b'@' {
             return null_mut();
         }
@@ -985,7 +983,6 @@ pub unsafe fn window_printable_flags(wl: *mut winlink, escape: i32) -> *const u8
 }
 
 pub unsafe fn window_pane_find_by_id_str(s: *const u8) -> *mut window_pane {
-    let mut errstr: *const u8 = null_mut();
     unsafe {
         if *s != b'%' {
             return null_mut();

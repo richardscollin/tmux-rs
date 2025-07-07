@@ -3248,7 +3248,9 @@ pub unsafe fn format_free(ft: *mut format_tree) {
 
 pub unsafe fn format_log_debug_cb(key: *const u8, value: *const u8, arg: *mut c_void) {
     let prefix = arg as *const u8;
-    log_debug!("{}: {}={}", _s(prefix), _s(key), _s(value));
+    unsafe {
+        log_debug!("{}: {}={}", _s(prefix), _s(key), _s(value));
+    }
 }
 
 pub unsafe fn format_log_debug(ft: *mut format_tree, prefix: *const u8) {

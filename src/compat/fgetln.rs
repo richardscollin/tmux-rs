@@ -36,7 +36,7 @@ pub unsafe fn fgetln(fp: *mut libc::FILE, len: *mut usize) -> *mut u8 {
         while c != libc::EOF {
             *BUF.add(r) = c as u8;
             r += 1;
-            if (r == BUFSZ) {
+            if r == BUFSZ {
                 let p = super::reallocarray(BUF.cast(), 2, BUFSZ);
                 if p.is_null() {
                     let e = crate::errno!();

@@ -365,9 +365,8 @@ pub unsafe fn tty_add_features(feat: *mut i32, s: *const u8, separators: *const 
         log_debug!("adding terminal features {}", _s(s));
 
         let copy = xstrdup(s).as_ptr();
-        let loop_ = copy;
-        let mut next = null_mut();
-        let mut loop_ = null_mut();
+        let mut loop_ = copy;
+        let mut next;
 
         while {
             next = strsep(&raw mut loop_, separators);

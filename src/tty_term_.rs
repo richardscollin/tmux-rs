@@ -12,7 +12,7 @@
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use crate::{log::fatalx_c, xmalloc::xreallocarray, *};
+use crate::{xmalloc::xreallocarray, *};
 
 use crate::compat::{
     queue::{list_head_initializer, list_insert_head, list_remove},

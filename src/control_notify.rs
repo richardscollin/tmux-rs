@@ -91,7 +91,7 @@ pub unsafe fn control_notify_window_pane_changed(w: *mut window) {
     }
 }
 
-pub unsafe fn control_notify_window_unlinked(s: *mut session, w: *mut window) {
+pub unsafe fn control_notify_window_unlinked(_s: *mut session, w: *mut window) {
     unsafe {
         for c in tailq_foreach(&raw mut CLIENTS).map(NonNull::as_ptr) {
             {
@@ -110,7 +110,7 @@ pub unsafe fn control_notify_window_unlinked(s: *mut session, w: *mut window) {
     }
 }
 
-pub unsafe fn control_notify_window_linked(s: *mut session, w: *mut window) {
+pub unsafe fn control_notify_window_linked(_s: *mut session, w: *mut window) {
     unsafe {
         for c in tailq_foreach(&raw mut CLIENTS).map(NonNull::as_ptr) {
             {

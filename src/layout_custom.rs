@@ -169,7 +169,7 @@ pub unsafe fn layout_check(lc: *mut layout_cell) -> i32 {
 pub unsafe fn layout_parse(w: *mut window, mut layout: *const u8, cause: *mut *mut u8) -> i32 {
     let __func__ = c!("layout_parse");
     unsafe {
-        let mut lc: *mut layout_cell = null_mut();
+        let mut lc: *mut layout_cell;
         let mut csum: u16 = 0;
 
         'fail: {
@@ -298,7 +298,7 @@ unsafe fn layout_assign(wp: *mut *mut window_pane, lc: *mut layout_cell) {
 /// Construct a cell from all or part of a layout tree.
 unsafe fn layout_construct(lcparent: *mut layout_cell, layout: *mut *const u8) -> *mut layout_cell {
     unsafe {
-        let mut lc = null_mut();
+        let lc;
         let mut sx = 0u32;
         let mut sy = 0u32;
         let mut xoff = 0u32;
@@ -361,7 +361,7 @@ unsafe fn layout_construct(lcparent: *mut layout_cell, layout: *mut *const u8) -
             (*lc).xoff = xoff;
             (*lc).yoff = yoff;
 
-            match (**layout) {
+            match **layout {
                 b',' | b'}' | b']' | b'\0' => return lc,
                 b'{' => (*lc).type_ = layout_type::LAYOUT_LEFTRIGHT,
                 b'[' => (*lc).type_ = layout_type::LAYOUT_TOPBOTTOM,

@@ -165,7 +165,6 @@ pub unsafe fn window_client_build(
     unsafe {
         let data: NonNull<window_client_modedata> = modedata.cast();
         let data = data.as_ptr();
-        let mut item: *mut window_client_itemdata = null_mut();
 
         for i in 0..(*data).item_size {
             window_client_free_item(*(*data).item_list.add(i as usize));
@@ -179,7 +178,7 @@ pub unsafe fn window_client_build(
                 continue;
             }
 
-            item = window_client_add_item(data);
+            let item = window_client_add_item(data);
             (*item).c = c;
 
             (*c).references += 1;
@@ -194,7 +193,7 @@ pub unsafe fn window_client_build(
         );
 
         for i in 0..(*data).item_size {
-            item = *(*data).item_list.add(i as usize);
+            let item = *(*data).item_list.add(i as usize);
             let c = (*item).c;
 
             if !filter.is_null() {
@@ -229,7 +228,7 @@ pub unsafe fn window_client_build(
 }
 
 pub unsafe fn window_client_draw(
-    modedata: *mut c_void,
+    _modedata: *mut c_void,
     itemdata: Option<NonNull<c_void>>,
     ctx: *mut screen_write_ctx,
     sx: u32,
@@ -405,7 +404,7 @@ pub unsafe fn window_client_update(wme: NonNull<window_mode_entry>) {
 pub unsafe fn window_client_do_detach(
     modedata: NonNull<c_void>,
     itemdata: NonNull<c_void>,
-    c: *mut client,
+    _c: *mut client,
     key: key_code,
 ) {
     let data: NonNull<window_client_modedata> = modedata.cast();

@@ -24,7 +24,7 @@
 // LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
 // OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 // SUCH DAMAGE.
-use core::ffi::{c_int, c_void};
+use core::ffi::c_int;
 
 // documentation from vis(3bsd)
 bitflags::bitflags! {

@@ -19,14 +19,12 @@ use ::core::{
 use ::std::{
     fs::File,
     io::{LineWriter, Write},
-    os::fd::AsRawFd,
     sync::atomic::{AtomicI32, Ordering},
 };
 use std::{io::BufWriter, sync::Mutex};
 
 use crate::compat::{stravis, vis_flags};
 use crate::{_s, event_::event_set_log_callback};
-use crate::{libc::errno, vasprintf};
 
 macro_rules! log_debug {
     ($($arg:tt)*) => {$crate::log::log_debug_rs(format_args!($($arg)*))};

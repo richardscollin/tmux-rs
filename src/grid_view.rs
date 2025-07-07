@@ -20,7 +20,7 @@ use crate::{
     grid_set_cell, grid_set_cells, grid_set_padding, grid_string_cells, grid_string_flags,
 };
 
-fn grid_view_x(gd: *mut grid, x: u32) -> u32 {
+fn grid_view_x(_gd: *mut grid, x: u32) -> u32 {
     x
 }
 unsafe fn grid_view_y(gd: *mut grid, y: u32) -> u32 {
@@ -73,7 +73,7 @@ pub unsafe fn grid_view_clear_history(gd: *mut grid, bg: u32) {
             return;
         }
 
-        for yy in 0..(*gd).sy {
+        for _ in 0..(*gd).sy {
             grid_collect_history(gd);
             grid_scroll_history(gd, bg);
         }

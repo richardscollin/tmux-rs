@@ -188,7 +188,7 @@ pub unsafe fn server_start(
             return fd;
         }
 
-        std::panic::set_hook(Box::new(|panic_info| {
+        std::panic::set_hook(Box::new(|_panic_info| {
             let backtrace = std::backtrace::Backtrace::capture();
             let err_str = format!("{backtrace:#?}");
             log_debug!("{err_str}");

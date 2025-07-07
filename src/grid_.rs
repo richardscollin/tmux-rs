@@ -656,7 +656,7 @@ pub unsafe fn grid_set_cells(
                 let gee = grid_extended_cell(gl, gce, gc);
                 (*gee).data = utf8_build_one(*s.add(i));
             } else {
-                grid_store_cell(gce, gc, (*s.add(i)));
+                grid_store_cell(gce, gc, *s.add(i));
             }
         }
     }
@@ -1002,8 +1002,6 @@ pub unsafe fn grid_string_cells_add_hyperlink(
     flags: grid_string_flags,
 ) -> c_int {
     unsafe {
-        let mut tmp: *mut u8 = null_mut();
-
         if strlen(uri) + strlen(id) + 17 >= len {
             return 0;
         }
@@ -1048,10 +1046,9 @@ pub unsafe fn grid_string_cells_code(
         let mut oldc: [c_int; 64] = [0; 64];
         let mut newc: [c_int; 64] = [0; 64];
         let mut s: [c_int; 128] = [0; 128];
-        let mut noldc: usize = 0;
-        let mut nnewc: usize = 0;
+        let mut noldc: usize;
+        let mut nnewc: usize;
         let mut n: u32 = 0;
-        let mut i: usize;
         let attr = (*gc).attr;
         let mut lastattr = (*lastgc).attr;
         let mut tmp: [u8; 64] = [0; 64];
@@ -1075,7 +1072,7 @@ pub unsafe fn grid_string_cells_code(
         ];
 
         // If any attribute is removed, begin with 0
-        for (i, &(mask, _)) in ATTRS.iter().enumerate() {
+        for &(mask, _) in ATTRS.iter() {
             if !attr.intersects(mask) && lastattr.intersects(mask)
                 || ((*lastgc).us != 8 && (*gc).us == 8)
             {

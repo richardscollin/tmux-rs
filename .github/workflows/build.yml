@@ -23,15 +23,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - toolchain: stable
-            os: ubuntu-latest
-          - toolchain: stable
-            os: macos-latest
-          - toolchain: stable
-            os: ubuntu-24.04-arm
-          - toolchain: beta
-            os: ubuntu-latest
+        os: [ubuntu-latest, macos-latest, ubuntu-24.04-arm]
     steps:
       - name: Install system dependencies (ubuntu)
         if: startsWith(matrix.os, 'ubuntu')
@@ -44,9 +36,8 @@ jobs:
           brew update
           brew install ncurses libevent
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@master
+      - uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: ${{ matrix.toolchain }}
           components: clippy
       - run: cargo clippy -- -Dwarnings
 

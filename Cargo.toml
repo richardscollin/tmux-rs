@@ -35,6 +35,9 @@ paste        = { version = "1.0.15" }
 [build-dependencies]
 lalrpop      = { version = "0.22.2", default-features = false }
 
+[target.'cfg(target_os = "macos")'.build-dependencies]
+pkg-config   = { version = "0.3.32" }
+
 # https://doc.rust-lang.org/rustc/lints/index.html
 [lints.rust]
 unpredictable_function_pointer_comparisons = "allow" # FIXME

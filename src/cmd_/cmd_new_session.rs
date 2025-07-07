@@ -383,7 +383,7 @@ unsafe fn cmd_new_session_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
             cmd_find_from_session(fs.as_mut_ptr(), s, 0);
             cmdq_insert_hook!(s, item, fs.as_mut_ptr(), "after-new-session");
 
-            if CFG_FINISHED != 0 {
+            if CFG_FINISHED.load(atomic::Ordering::Acquire) {
                 cfg_show_causes(s);
             }
 

@@ -18,22 +18,24 @@ use crate::libc::{ENOENT, strerror};
 use crate::cmd_::cmd_queue::cmdq_get_callback;
 use crate::compat::{queue::tailq_first, tree::rb_min};
 
+use std::sync::atomic::AtomicBool;
+
 pub static mut CFG_CLIENT: *mut client = null_mut();
 
-pub static mut CFG_FINISHED: c_int = 0;
+pub static CFG_FINISHED: AtomicBool = AtomicBool::new(false);
 
 static mut CFG_CAUSES: *mut *mut u8 = null_mut();
 static mut CFG_NCAUSES: c_uint = 0;
+
 static mut CFG_ITEM: *mut cmdq_item = null_mut();
 
-pub static mut CFG_QUIET: c_int = 1;
+pub static CFG_QUIET: AtomicBool = AtomicBool::new(true);
 
 pub static mut CFG_FILES: *mut *mut u8 = null_mut();
-
 pub static mut CFG_NFILES: c_uint = 0;
 
-unsafe fn cfg_client_done(_item: *mut cmdq_item, _data: *mut c_void) -> cmd_retval {
-    if unsafe { CFG_FINISHED } == 0 {
+fn cfg_client_done(_item: *mut cmdq_item, _data: *mut c_void) -> cmd_retval {
+    if !CFG_FINISHED.load(atomic::Ordering::Acquire) {
         cmd_retval::CMD_RETURN_WAIT
     } else {
         cmd_retval::CMD_RETURN_NORMAL
@@ -42,10 +44,10 @@ unsafe fn cfg_client_done(_item: *mut cmdq_item, _data: *mut c_void) -> cmd_retv
 
 unsafe fn cfg_done(_item: *mut cmdq_item, _data: *mut c_void) -> cmd_retval {
     unsafe {
-        if CFG_FINISHED != 0 {
+        if CFG_FINISHED.load(atomic::Ordering::Acquire) {
             return cmd_retval::CMD_RETURN_NORMAL;
         }
-        CFG_FINISHED = 1;
+        CFG_FINISHED.store(true, atomic::Ordering::Release);
 
         cfg_show_causes(null_mut());
 
@@ -60,11 +62,6 @@ unsafe fn cfg_done(_item: *mut cmdq_item, _data: *mut c_void) -> cmd_retval {
 }
 
 pub unsafe fn start_cfg() {
-    let c: *mut client;
-    let mut i: u32;
-    let mut flags: cmd_parse_input_flags = cmd_parse_input_flags::empty();
-
-    //
     // Configuration files are loaded without a client, so commands are run
     // in the global queue with item->client NULL.
     //
@@ -75,19 +72,20 @@ pub unsafe fn start_cfg() {
     // front - we need to get in before MSG_COMMAND.
 
     unsafe {
-        c = tailq_first(&raw mut CLIENTS);
+        let c = tailq_first(&raw mut CLIENTS);
         CFG_CLIENT = c;
         if !c.is_null() {
             CFG_ITEM = cmdq_get_callback!(cfg_client_done, null_mut()).as_ptr();
             cmdq_append(c, CFG_ITEM);
         }
 
-        if CFG_QUIET != 0 {
-            flags = cmd_parse_input_flags::CMD_PARSE_QUIET;
-        }
+        let flags: cmd_parse_input_flags = if CFG_QUIET.load(atomic::Ordering::Relaxed) {
+            cmd_parse_input_flags::CMD_PARSE_QUIET
+        } else {
+            cmd_parse_input_flags::empty()
+        };
 
-        i = 0;
-        while i < CFG_NFILES {
+        for i in 0..CFG_NFILES {
             load_cfg(
                 cstr_to_str(*CFG_FILES.add(i as usize)),
                 c,
@@ -96,7 +94,6 @@ pub unsafe fn start_cfg() {
                 flags,
                 null_mut(),
             );
-            i += 1;
         }
 
         cmdq_append(

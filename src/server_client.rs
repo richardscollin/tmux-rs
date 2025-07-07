@@ -3222,7 +3222,7 @@ pub unsafe fn server_client_dispatch_identify(c: *mut client, imsg: *mut imsg) {
          * config has not been loaded - they might have been run from inside it
          */
         if !(*c).flags.intersects(client_flag::EXIT)
-            && CFG_FINISHED == 0
+            && !CFG_FINISHED.load(atomic::Ordering::Acquire)
             && c == tailq_first(&raw mut CLIENTS)
         {
             start_cfg();
@@ -3252,7 +3252,7 @@ pub unsafe fn server_client_dispatch_shell(c: *mut client) {
 /// Get client working directory.
 pub unsafe fn server_client_get_cwd(c: *mut client, mut s: *mut session) -> *const u8 {
     unsafe {
-        if CFG_FINISHED == 0 && !CFG_CLIENT.is_null() {
+        if !CFG_FINISHED.load(atomic::Ordering::Acquire) && !CFG_CLIENT.is_null() {
             (*CFG_CLIENT).cwd
         } else if (!c.is_null() && (*c).session.is_null() && !(*c).cwd.is_null())
             || (!s.is_null() && !(*s).cwd.is_null())

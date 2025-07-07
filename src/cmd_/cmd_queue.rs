@@ -626,7 +626,7 @@ pub unsafe fn cmdq_fire_command(item: *mut cmdq_item) -> cmd_retval {
         let mut flags = false;
 
         'out: {
-            if CFG_FINISHED != 0 {
+            if CFG_FINISHED.load(atomic::Ordering::Acquire) {
                 cmdq_add_message(item);
             }
             if log_get_level() > 1 {

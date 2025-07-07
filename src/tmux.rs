@@ -448,7 +448,7 @@ pub unsafe fn tmux_main(mut argc: i32, mut argv: *mut *mut u8, env: *mut *mut u8
                         xreallocarray_::<*mut u8>(CFG_FILES, CFG_NFILES as usize + 1).as_ptr();
                     *CFG_FILES.add(CFG_NFILES as usize) = xstrdup(optarg.cast()).cast().as_ptr();
                     CFG_NFILES += 1;
-                    CFG_QUIET = 0;
+                    CFG_QUIET.store(false, atomic::Ordering::Relaxed);
                 }
                 b'V' => {
                     println!("tmux {}", getversion());

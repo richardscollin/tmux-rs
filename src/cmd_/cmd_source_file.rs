@@ -51,7 +51,7 @@ unsafe fn cmd_source_file_complete_cb(item: *mut cmdq_item, data: *mut c_void) -
 
 unsafe fn cmd_source_file_complete(c: *mut client, cdata: *mut cmd_source_file_data) {
     unsafe {
-        if CFG_FINISHED != 0 {
+        if CFG_FINISHED.load(atomic::Ordering::Acquire) {
             if (*cdata).retval == cmd_retval::CMD_RETURN_ERROR
                 && !c.is_null()
                 && (*c).session.is_null()

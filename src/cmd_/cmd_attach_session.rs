@@ -162,7 +162,7 @@ pub unsafe fn cmd_attach_session(
             notify_client(c"client-attached", c);
             (*c).flags |= client_flag::ATTACHED;
 
-            if CFG_FINISHED != 0 {
+            if CFG_FINISHED.load(atomic::Ordering::Acquire) {
                 cfg_show_causes(s);
             }
         }

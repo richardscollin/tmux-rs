@@ -29,6 +29,8 @@
 #![allow(clippy::shadow_unrelated)] // TODO, 134 instances probably some latent bugs
 #![allow(clippy::shadow_reuse)] // 145 instances
 
+pub(crate) use std::sync::atomic;
+
 mod compat;
 use compat::strtonum;
 use compat::vis_flags;

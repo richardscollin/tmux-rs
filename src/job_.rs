@@ -107,7 +107,7 @@ pub unsafe fn job_run(
         let mut oo: *mut options = null_mut();
 
         'fail: {
-            env = environ_for_session(s, !CFG_FINISHED);
+            env = environ_for_session(s, !CFG_FINISHED.load(atomic::Ordering::Acquire) as i32);
             if !e.is_null() {
                 environ_copy(e, env);
             }

@@ -439,7 +439,7 @@ pub unsafe fn style_tostring(sy: *const style) -> *const u8 {
                 size_of::<s_type>() - off as usize,
                 "{}{}",
                 _s(comma),
-                _s(attributes_tostring((*gc).attr)),
+                attributes_tostring((*gc).attr),
             );
             comma = c!(",");
         }

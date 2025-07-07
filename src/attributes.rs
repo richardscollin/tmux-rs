@@ -12,44 +12,33 @@
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 use core::mem::{size_of, zeroed};
+use std::borrow::Cow;
 
 use crate::{c, grid_attr, xsnprintf_};
 
-pub unsafe fn attributes_tostring(attr: grid_attr) -> *const u8 {
-    type buffer = [u8; 512];
-    static mut BUF: buffer = unsafe { zeroed() };
-
+#[rustfmt::skip]
+pub fn attributes_tostring(attr: grid_attr) -> Cow<'static, str> {
     if attr.is_empty() {
-        return c!("none");
+        return Cow::Borrowed("none");
     }
 
-    unsafe {
-        #[rustfmt::skip]
-        let len: isize = xsnprintf_!(
-            &raw mut BUF as _,
-            size_of::<buffer>(),
-            "{}{}{}{}{}{}{}{}{}{}{}{}{}{}",
-            if attr.intersects(grid_attr::GRID_ATTR_CHARSET) { "acs," } else { "" },
-            if attr.intersects(grid_attr::GRID_ATTR_BRIGHT) { "bright," } else { "" },
-            if attr.intersects(grid_attr::GRID_ATTR_DIM ) { "dim," } else { "" },
-            if attr.intersects(grid_attr::GRID_ATTR_UNDERSCORE) { "underscore," } else { "" },
-            if attr.intersects(grid_attr::GRID_ATTR_BLINK) { "blink," } else { "" },
-            if attr.intersects(grid_attr::GRID_ATTR_REVERSE ) { "reverse," } else { "" },
-            if attr.intersects(grid_attr::GRID_ATTR_HIDDEN) { "hidden," } else { "" },
-            if attr.intersects(grid_attr::GRID_ATTR_ITALICS ) { "italics," } else { "" },
-            if attr.intersects(grid_attr::GRID_ATTR_STRIKETHROUGH) { "strikethrough," } else { "" },
-            if attr.intersects(grid_attr::GRID_ATTR_UNDERSCORE_2) { "double-underscore," } else { "" },
-            if attr.intersects(grid_attr::GRID_ATTR_UNDERSCORE_3) { "curly-underscore," } else { "" },
-            if attr.intersects(grid_attr::GRID_ATTR_UNDERSCORE_4) { "dotted-underscore," } else { "" },
-            if attr.intersects(grid_attr::GRID_ATTR_UNDERSCORE_5) { "dashed-underscore," } else { "" },
-            if attr.intersects(grid_attr::GRID_ATTR_OVERLINE) { "overline," } else { "" },
-        ).unwrap() as isize;
-        if len > 0 {
-            BUF[len as usize - 1] = b'\0';
-        }
-
-        &raw mut BUF as _
-    }
+    Cow::Owned(format!(
+        "{}{}{}{}{}{}{}{}{}{}{}{}{}{}",
+        if attr.intersects(grid_attr::GRID_ATTR_CHARSET) { "acs," } else { "" },
+        if attr.intersects(grid_attr::GRID_ATTR_BRIGHT) { "bright," } else { "" },
+        if attr.intersects(grid_attr::GRID_ATTR_DIM ) { "dim," } else { "" },
+        if attr.intersects(grid_attr::GRID_ATTR_UNDERSCORE) { "underscore," } else { "" },
+        if attr.intersects(grid_attr::GRID_ATTR_BLINK) { "blink," } else { "" },
+        if attr.intersects(grid_attr::GRID_ATTR_REVERSE ) { "reverse," } else { "" },
+        if attr.intersects(grid_attr::GRID_ATTR_HIDDEN) { "hidden," } else { "" },
+        if attr.intersects(grid_attr::GRID_ATTR_ITALICS ) { "italics," } else { "" },
+        if attr.intersects(grid_attr::GRID_ATTR_STRIKETHROUGH) { "strikethrough," } else { "" },
+        if attr.intersects(grid_attr::GRID_ATTR_UNDERSCORE_2) { "double-underscore," } else { "" },
+        if attr.intersects(grid_attr::GRID_ATTR_UNDERSCORE_3) { "curly-underscore," } else { "" },
+        if attr.intersects(grid_attr::GRID_ATTR_UNDERSCORE_4) { "dotted-underscore," } else { "" },
+        if attr.intersects(grid_attr::GRID_ATTR_UNDERSCORE_5) { "dashed-underscore," } else { "" },
+        if attr.intersects(grid_attr::GRID_ATTR_OVERLINE) { "overline," } else { "" },
+    ))
 }
 
 #[allow(clippy::result_unit_err)]

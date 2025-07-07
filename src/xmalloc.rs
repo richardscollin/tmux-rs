@@ -25,14 +25,13 @@ use crate::{
 pub extern "C" fn xmalloc(size: usize) -> NonNull<c_void> {
     debug_assert_ne!(size, 0, "xmalloc: zero size");
 
-    NonNull::new(unsafe { libc::malloc(size) })
-        .unwrap_or_else(|| panic!("xmalloc: allocating {size}"))
-}
-
-// note this function definition is safe
-#[inline]
-fn malloc_(size: NonZero<usize>) -> *mut c_void {
-    unsafe { ::libc::malloc(size.get()) }
+    // Allocate using max_align_t to have the same allignment as malloc.
+    // We allocate a bit too much when size is not a multiple of max_align_t.
+    let count = size.div_ceil(size_of::<libc::max_align_t>());
+    let alloc = vec![MaybeUninit::<libc::max_align_t>::uninit(); count].into_boxed_slice();
+    NonNull::new(Box::into_raw(alloc))
+        .expect("box pointer is not null")
+        .cast()
 }
 
 pub fn xmalloc_<T>() -> NonNull<T> {

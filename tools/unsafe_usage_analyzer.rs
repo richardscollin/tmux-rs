@@ -10,81 +10,95 @@ serde_json = "1.0"
 colored = "3.0"
 ---
 use std::{
-    collections::{HashMap, HashSet, VecDeque},
+    collections::{HashMap, HashSet},
     fs,
     path::Path,
 };
 
 use colored::{Color, ColoredString, Colorize};
 use serde::{Deserialize, Serialize};
-use syn::{ExprUnsafe, ItemFn, ItemStatic, StaticMutability, Stmt, visit::Visit};
+use syn::{ExprMethodCall, ExprUnsafe, ItemFn, ItemStatic, StaticMutability, Stmt, visit::Visit};
 use walkdir::WalkDir;
 
 #[derive(Clone, Default, Debug, Serialize, Deserialize)]
-struct UnsafeStats {
-    unsafe_fns: isize,
-    unsafe_statements: isize,
-
+struct CodeStats {
+    #[serde(rename = "tf")]
     total_fns: isize,
+
+    #[serde(rename = "ts")]
     total_statements: isize,
 
+    #[serde(rename = "uf")]
+    unsafe_fns: isize,
+
+    #[serde(rename = "us")]
+    unsafe_statements: isize,
+
+    #[serde(rename = "un")]
+    unwraps: isize,
+
+    #[serde(rename = "sm")]
     static_mut_items: isize,
 }
 
-impl UnsafeStats {
+impl CodeStats {
     fn should_report_change(&self, rhs: &Self) -> bool {
         let Self {
+            total_fns: _,        // ignore
+            total_statements: _, // ignore
+
             unsafe_fns,
             unsafe_statements,
             static_mut_items,
-            total_fns: _,        // ignore
-            total_statements: _, // ignore
+            unwraps,
         } = rhs;
 
         self.unsafe_fns != *unsafe_fns
             || self.unsafe_statements != *unsafe_statements
             || self.static_mut_items != *static_mut_items
+            || self.unwraps != *unwraps
     }
 }
 
-impl std::ops::AddAssign for UnsafeStats {
+impl std::ops::AddAssign for CodeStats {
     fn add_assign(
         &mut self,
-        UnsafeStats {
-            unsafe_fns,
-            unsafe_statements,
-
+        Self {
             total_fns,
             total_statements,
 
+            unsafe_fns,
+            unsafe_statements,
             static_mut_items,
-        }: UnsafeStats,
+            unwraps,
+        }: Self,
     ) {
         self.unsafe_fns += unsafe_fns;
         self.unsafe_statements += unsafe_statements;
         self.total_fns += total_fns;
         self.total_statements += total_statements;
         self.static_mut_items += static_mut_items;
+        self.unwraps += unwraps;
     }
 }
 
 #[derive(Clone, Default, Serialize, Deserialize)]
 struct FileStats {
     filename: String,
-    stats: UnsafeStats,
+    stats: CodeStats,
 }
 
 #[derive(Clone, Serialize, Deserialize)]
 struct Report {
     files: Vec<FileStats>,
-    total: UnsafeStats,
+    total: CodeStats,
 }
 
-struct UnsafeAnalyzer<'a> {
-    stats: &'a mut UnsafeStats,
+struct CodeAnalyzer<'a> {
+    stats: &'a mut CodeStats,
 }
 
-impl<'a, 'ast> Visit<'ast> for UnsafeAnalyzer<'a> {
+impl<'a, 'ast> Visit<'ast> for CodeAnalyzer<'a> {
     fn visit_item_fn(&mut self, i: &'ast ItemFn) {
         self.stats.total_fns += 1;
         if i.sig.unsafety.is_some() {
@@ -109,14 +123,21 @@ impl<'a, 'ast> Visit<'ast> for UnsafeAnalyzer<'a> {
         self.stats.total_statements += 1;
         syn::visit::visit_stmt(self, i);
     }
+
+    fn visit_expr_method_call(&mut self, i: &'ast ExprMethodCall) {
+        if i.method == "unwrap" {
+            self.stats.unwraps += 1;
+        }
+        syn::visit::visit_expr_method_call(self, i);
+    }
 }
 
 fn analyze_file(path: &Path) -> Option<FileStats> {
     let content = fs::read_to_string(path).ok()?;
     let syntax = syn::parse_file(&content).ok()?;
 
-    let mut stats = UnsafeStats::default();
-    let mut visitor = UnsafeAnalyzer { stats: &mut stats };
+    let mut stats = CodeStats::default();
+    let mut visitor = CodeAnalyzer { stats: &mut stats };
     visitor.visit_file(&syntax);
 
     Some(FileStats {
@@ -127,7 +148,7 @@ fn analyze_file(path: &Path) -> Option<FileStats> {
 
 fn generate_report(root: &str) -> Report {
     let mut file_reports = Vec::new();
-    let mut total = UnsafeStats::default();
+    let mut total = CodeStats::default();
 
     for entry in WalkDir::new(root)
         .into_iter()
@@ -166,31 +187,28 @@ fn generate_report(root: &str) -> Report {
 }
 
 fn print_report(report: &Report) {
-    let mut table: VecDeque<Vec<ColoredString>> = report
-        .files
-        .iter()
-        .map(|file_report| {
-            vec![
-                file_report.filename.clone().into(), // filename
-                colorize_ratio(file_report.stats.unsafe_fns, file_report.stats.total_fns), // unsafe fns
-                format!(
-                    "{}/{}",
-                    file_report.stats.unsafe_statements, file_report.stats.total_statements
-                )
-                .into(), // unsafe statements
-                colorize_static_mut_count(file_report.stats.static_mut_items), // static mut
-            ]
-        })
-        .collect();
-
-    table.push_front(vec![
+    let mut table = vec![[
         "".into(),
         " (unsafe/total) fns".into(),
         "statements".into(),
         "static mut".into(),
-    ]);
-    display_table(table);
+        "unwrap".into(),
+    ]];
+    table.extend(report.files.iter().map(|file_report| {
+        [
+            file_report.filename.clone().into(), // filename
+            colorize_ratio(file_report.stats.unsafe_fns, file_report.stats.total_fns), // unsafe fns
+            format!(
+                "{}/{}",
+                file_report.stats.unsafe_statements, file_report.stats.total_statements
+            )
+            .into(), // unsafe statements
+            colorize_simple(file_report.stats.static_mut_items), // static mut
+            colorize_simple(file_report.stats.unwraps), // unwraps
+        ]
+    }));
 
+    display_table(&table);
     println!();
     println!("== Summary ==");
     println!(
@@ -202,35 +220,31 @@ fn print_report(report: &Report) {
         report.total.unsafe_statements
     );
     println!("Total static mut items: {}", report.total.static_mut_items);
+    println!("Total unwrap calls: {}", report.total.unwraps);
 }
 
-fn display_table(table: VecDeque<Vec<ColoredString>>) {
-    let n_cols = table.front().unwrap().len();
+fn display_table(table: &[[ColoredString; 5]]) {
+    let mut column_widths = table[0].iter().map(|e| e.len()).collect::<Vec<_>>();
 
-    let mut column_widths = table
-        .front()
-        .unwrap()
-        .iter()
-        .map(|e| e.len())
-        .collect::<Vec<_>>();
-    for row in &table {
+    for row in table {
         for (col_idx, text) in row.iter().enumerate() {
             column_widths[col_idx] = column_widths[col_idx].max(text.len());
         }
     }
 
-    assert!(n_cols == 4);
     for row in table {
         println!(
-            "{:<w0$} {:>w1$} {:>w2$} {:>w3$}",
+            "{:<w0$} {:>w1$} {:>w2$} {:>w3$} {:>w4$}",
             row[0],
             row[1],
             row[2],
             row[3],
+            row[4],
             w0 = column_widths[0],
             w1 = column_widths[1],
             w2 = column_widths[2],
             w3 = column_widths[3],
+            w4 = column_widths[4],
         )
     }
 }
@@ -268,6 +282,7 @@ fn print_report_diff(old: &Report, new: &Report) {
         Total funcs: {}
   Unsafe Statements: {}
          static mut: {}
+            unwraps: {}
 ",
                         format_diff(old.stats.unsafe_fns, new.stats.unsafe_fns, DecreaseIs::Good),
                         format_diff(
@@ -285,6 +300,7 @@ fn print_report_diff(old: &Report, new: &Report) {
                             new.stats.static_mut_items,
                             DecreaseIs::Good
                         ),
+                        format_diff(old.stats.unwraps, new.stats.unwraps, DecreaseIs::Good),
                     )
                 }
             }
@@ -293,6 +309,7 @@ fn print_report_diff(old: &Report, new: &Report) {
                 println!("  Unsafe funcs: {}", new.stats.unsafe_fns);
                 println!("   Total funcs: {}", new.stats.total_fns);
                 println!("  Unsafe stmts: {}", new.stats.unsafe_statements);
+                println!("       unwraps: {}", new.stats.unwraps);
                 println!();
             }
             (Some(old), None) => {
@@ -314,6 +331,7 @@ Unsafe funcs: {}
 Total funcs: {}
 Total statements: {}
 static mut: {}
+unwraps: {}
 ",
             format_diff(old.total.unsafe_fns, new.total.unsafe_fns, DecreaseIs::Good),
             format_diff(
@@ -331,6 +349,7 @@ static mut: {}
                 new.total.static_mut_items,
                 DecreaseIs::Good
             ),
+            format_diff(old.total.unwraps, new.total.unwraps, DecreaseIs::Good),
         );
     } else {
         println!("No safety changes.")
@@ -377,7 +396,8 @@ fn colorize_ratio(unsafe_count: isize, total_count: isize) -> ColoredString {
     format!("{unsafe_count}/{total_count}").color(color)
 }
 
-fn colorize_static_mut_count(count: isize) -> ColoredString {
+/// colorize such that zero is green, single digit is yellow, more then that is red
+fn colorize_simple(count: isize) -> ColoredString {
     let color = if count == 0 {
         Color::Green
     } else if count < 10 {
@@ -410,7 +430,7 @@ fn main() {
         std::fs::write(output_file, json_report).unwrap();
     }
 
-    println!("== Unsafe Report ==");
+    println!("== Code Report ==");
     print_report(&report);
 
     if let Some(baseline_file) = flags_with_args.get("--baseline") {

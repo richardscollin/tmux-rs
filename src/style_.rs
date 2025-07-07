@@ -61,7 +61,6 @@ pub unsafe fn style_parse(sy: *mut style, base: *const grid_cell, mut in_: *cons
 
         let mut found: *mut u8 = null_mut();
         let mut end: usize = 0;
-        let mut n: u32 = 0;
 
         if *in_ == b'\0' as _ {
             return 0;

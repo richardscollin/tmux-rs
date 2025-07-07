@@ -21,7 +21,7 @@ use crate::compat::{
         tailq_next, tailq_remove,
     },
     strlcat,
-    tree::{rb_find, rb_foreach, rb_init, rb_insert, rb_min, rb_next, rb_remove},
+    tree::{rb_find, rb_foreach, rb_insert, rb_min, rb_next, rb_remove},
 };
 
 pub type args_values = tailq_head<args_value>;

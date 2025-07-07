@@ -16,7 +16,8 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libncurses-dev libevent-dev
       - uses: dtolnay/rust-toolchain@nightly
-      - run: ./tools/unsafe_usage_analyzer.rs .
+      - run: |
+         CLICOLOR_FORCE=1 ./tools/unsafe_usage_analyzer.rs . --json docs/data/$(date -u +"%Y-%m-%d-%H%M").json --baseline docs/data/latest.json
 
   clippy:
     runs-on: ${{ matrix.os }}

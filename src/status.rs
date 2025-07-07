@@ -1745,7 +1745,7 @@ pub unsafe fn status_prompt_key(c: *mut client, mut key: key_code) -> i32 {
             if key <= 0x7f {
                 utf8_set(&raw mut tmp, key as u8);
             } else if KEYC_IS_UNICODE(key) {
-                utf8_to_data(key as u32, &raw mut tmp);
+                tmp = utf8_to_data(key as u32);
             } else {
                 return 0;
             }

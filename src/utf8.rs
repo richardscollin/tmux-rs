@@ -118,14 +118,15 @@ pub unsafe fn utf8_item_by_data(data: *const [u8; UTF8_SIZE], size: usize) -> *m
     }
 }
 
-pub unsafe fn utf8_item_by_index(index: u32) -> *mut utf8_item {
+pub fn utf8_item_by_index(index: u32) -> Option<&'static utf8_item> {
     unsafe {
         let mut ui = MaybeUninit::<utf8_item>::uninit();
         let ui = ui.as_mut_ptr();
 
         (*ui).index = index;
 
-        rb_find::<_, discr_index_entry>(&raw mut UTF8_INDEX_TREE, ui)
+        let ptr = rb_find::<_, discr_index_entry>(&raw mut UTF8_INDEX_TREE, ui);
+        NonNull::new(ptr).map(|x| unsafe { x.as_ref() })
     }
 }
 
@@ -233,44 +234,37 @@ pub unsafe fn utf8_from_data(ud: *const utf8_data, uc: *mut utf8_char) -> utf8_s
     }
 }
 
-pub unsafe fn utf8_to_data(uc: utf8_char, ud: *mut utf8_data) {
-    unsafe {
-        core::ptr::write(ud, zeroed());
-        (*ud).size = utf8_get_size(uc);
-        (*ud).have = utf8_get_size(uc);
-        (*ud).width = utf8_get_width(uc);
+pub fn utf8_to_data(uc: utf8_char) -> utf8_data {
+    let mut ud = utf8_data {
+        data: [0; UTF8_SIZE],
+        size: utf8_get_size(uc),
+        have: utf8_get_size(uc),
+        width: utf8_get_width(uc),
+    };
 
-        if (*ud).size <= 3 {
-            (*ud).data[2] = (uc >> 16) as u8;
-            (*ud).data[1] = ((uc >> 8) & 0xff) as u8;
-            (*ud).data[0] = (uc & 0xff) as u8;
+    if ud.size <= 3 {
+        ud.data[2] = (uc >> 16) as u8;
+        ud.data[1] = ((uc >> 8) & 0xff) as u8;
+        ud.data[0] = (uc & 0xff) as u8;
+    } else {
+        let index = uc & 0xffffff;
+        if let Some(ui) = utf8_item_by_index(index) {
+            ud.data[..ud.size as usize].copy_from_slice(&ui.data[..ud.size as usize]);
         } else {
-            let index = uc & 0xffffff;
-            let ui = utf8_item_by_index(index);
-            if ui.is_null() {
-                memset(
-                    (*ud).data.as_mut_ptr().cast(),
-                    b' ' as i32,
-                    (*ud).size as usize,
-                );
-            } else {
-                memcpy(
-                    (*ud).data.as_mut_ptr().cast(),
-                    (*ui).data.as_mut_ptr().cast(),
-                    (*ud).size as usize,
-                );
-            }
+            ud.data[..ud.size as usize].fill(b' ');
         }
-
-        log_debug!(
-            "utf8_to_data: {0:08x} -> ({1} {2} {4:3$})",
-            uc,
-            (*ud).width,
-            (*ud).size,
-            (*ud).size as usize,
-            _s((&raw const (*ud).data).cast::<u8>()),
-        );
     }
+
+    log_debug!(
+        "utf8_to_data: {0:08x} -> ({1} {2} {4:3$})",
+        uc,
+        ud.width,
+        ud.size,
+        ud.size as usize,
+        unsafe { _s(ud.data.as_ptr()) },
+    );
+
+    ud
 }
 
 pub fn utf8_build_one(ch: c_uchar) -> u32 {

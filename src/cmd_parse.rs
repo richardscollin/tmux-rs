@@ -688,11 +688,17 @@ mod lexer {
                 Tok::Elif => write!(f, "%elif"),
                 Tok::Endif => write!(f, "%endif"),
                 Tok::Format(non_null) => {
-                    write!(f, "format({})", crate::_s(transmute_ptr(*non_null)))
+                    write!(f, "format({})", unsafe {
+                        crate::_s(transmute_ptr(*non_null))
+                    })
                 }
-                Tok::Token(non_null) => write!(f, "token({})", crate::_s(transmute_ptr(*non_null))),
+                Tok::Token(non_null) => write!(f, "token({})", unsafe {
+                    crate::_s(transmute_ptr(*non_null))
+                }),
                 Tok::Equals(non_null) => {
-                    write!(f, "equals({})", crate::_s(transmute_ptr(*non_null)))
+                    write!(f, "equals({})", unsafe {
+                        crate::_s(transmute_ptr(*non_null))
+                    })
                 }
             }
         }

@@ -21,7 +21,7 @@
 )]
 #![allow(clippy::missing_safety_doc, reason = "currently using too much unsafe")]
 // will fix:
-#![allow(unused)] // TODO 2000
+#![allow(unused)] // TODO 900
 #![allow(unpredictable_function_pointer_comparisons)] // TODO 2
 // extra enabled:
 #![warn(clippy::multiple_crate_versions)]
@@ -3126,7 +3126,7 @@ impl SyncCharPtr {
     }
 }
 
-fn _s(ptr: impl ToU8Ptr) -> DisplayCStrPtr {
+unsafe fn _s(ptr: impl ToU8Ptr) -> DisplayCStrPtr {
     DisplayCStrPtr(ptr.to_u8_ptr())
 }
 trait ToU8Ptr {
@@ -3249,6 +3249,7 @@ pub(crate) unsafe fn cstr_to_str<'a>(ptr: *const u8) -> &'a str {
 macro_rules! c {
     ($s:literal) => {{
         const S: &str = concat!($s, "\0");
+        #[allow(unused_unsafe)]
         unsafe { std::ffi::CStr::from_bytes_with_nul_unchecked(S.as_bytes()) }
             .as_ptr()
             .cast::<u8>()

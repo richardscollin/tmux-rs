@@ -168,7 +168,7 @@ pub unsafe fn environ_unset(env: *mut environ, name: *const u8) {
 
 pub unsafe fn environ_update(oo: *mut options, src: *mut environ, dst: *mut environ) {
     unsafe {
-        let mut found: i32 = 0;
+        let mut found;
 
         let o = options_get(oo, c!("update-environment"));
         if o.is_null() {
@@ -177,7 +177,7 @@ pub unsafe fn environ_update(oo: *mut options, src: *mut environ, dst: *mut envi
         let mut a = options_array_first(o);
         while !a.is_null() {
             let ov = options_array_item_value(a);
-            found = 0;
+            found = false;
             for envent in rb_foreach(src).map(NonNull::as_ptr) {
                 if libc::fnmatch((*ov).string, transmute_ptr((*envent).name), 0) == 0 {
                     environ_set!(
@@ -187,10 +187,10 @@ pub unsafe fn environ_update(oo: *mut options, src: *mut environ, dst: *mut envi
                         "{}",
                         _s(transmute_ptr((*envent).value)),
                     );
-                    found = 1;
+                    found = true;
                 }
             }
-            if found == 0 {
+            if !found {
                 environ_clear(dst, (*ov).string);
             }
             a = options_array_next(a);
@@ -200,8 +200,6 @@ pub unsafe fn environ_update(oo: *mut options, src: *mut environ, dst: *mut envi
 
 pub unsafe fn environ_push(env: *mut environ) {
     unsafe {
-        let mut envent: *mut environ_entry;
-
         environ = xcalloc_::<*mut u8>(1).as_ptr();
         for envent in rb_foreach(env).map(NonNull::as_ptr) {
             if (*envent).value.is_some()

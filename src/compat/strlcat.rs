@@ -1,5 +1,3 @@
-use crate::compat::strlcpy::strlcpy;
-
 use crate::libc;
 
 /// The strlcat() function appends the NUL-terminated string src to the end of dst.

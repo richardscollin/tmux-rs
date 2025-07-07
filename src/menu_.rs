@@ -432,7 +432,7 @@ pub unsafe fn menu_key_cb(c: *mut client, data: *mut c_void, mut event: *mut key
                                             (*c).flags |= client_flag::REDRAWOVERLAY;
                                             return 0;
 
-                                            break 'outer;
+                                            // break 'outer;
                                         }
 
                                         // 'backspace:

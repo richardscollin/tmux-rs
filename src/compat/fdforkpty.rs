@@ -1,4 +1,4 @@
-use core::ffi::{c_char, c_int};
+use core::ffi::c_int;
 use libc::{pid_t, termios, winsize};
 
 pub extern "C" fn getptmfd() -> c_int {

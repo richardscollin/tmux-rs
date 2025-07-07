@@ -19,14 +19,14 @@ use crate::libc;
 // this is for osdep-linux.c
 
 #[cfg(target_os = "linux")]
-pub unsafe fn osdep_get_name(fd: i32, tty: *const u8) -> *mut u8 {
+pub unsafe fn osdep_get_name(fd: i32, _tty: *const u8) -> *mut u8 {
     unsafe {
         let pgrp = libc::tcgetpgrp(fd);
         if pgrp == -1 {
             return null_mut();
         }
 
-        let mut path = format_nul!("/proc/{pgrp}/cmdline");
+        let path = format_nul!("/proc/{pgrp}/cmdline");
         let f = fopen(path, c!("r"));
         if f.is_null() {
             free_(path);

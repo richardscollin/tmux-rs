@@ -290,10 +290,7 @@ pub unsafe fn grid_reader_cursor_previous_word(
     stop_at_eol: i32,
 ) {
     unsafe {
-        // int oldx, oldy, at_eol, word_is_letters;
         let mut oldx: i32;
-        let mut oldy: i32;
-        let mut at_eol: i32 = 0;
         let word_is_letters;
 
         if already != 0 || grid_reader_in_set(gr, WHITESPACE) != 0 {
@@ -314,7 +311,7 @@ pub unsafe fn grid_reader_cursor_previous_word(
                     if stop_at_eol != 0 && (*gr).cx > 0 {
                         oldx = (*gr).cx as i32;
                         (*gr).cx -= 1;
-                        at_eol = grid_reader_in_set(gr, WHITESPACE);
+                        let at_eol = grid_reader_in_set(gr, WHITESPACE);
                         (*gr).cx = oldx as u32;
                         if at_eol != 0 {
                             word_is_letters = 0;

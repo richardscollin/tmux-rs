@@ -42,15 +42,12 @@ pub unsafe fn regsub_expand(
     n: c_uint,
 ) {
     unsafe {
-        let mut cp: *const u8 = null();
-        let mut i: u32 = 0;
-
-        cp = with;
+        let mut cp = with;
         while *cp != b'\0' {
             if *cp == b'\\' {
                 cp = cp.add(1);
                 if *cp >= b'0' as _ && *cp <= b'9' as _ {
-                    i = (*cp - b'0') as u32;
+                    let i = (*cp - b'0') as u32;
                     if i < n && (*m.add(i as _)).rm_so != (*m.add(i as _)).rm_eo {
                         regsub_copy(
                             buf,

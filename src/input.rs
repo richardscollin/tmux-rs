@@ -35,7 +35,7 @@
 //!
 use crate::*;
 
-use crate::libc::{strchr, strcmp, strpbrk, strtol};
+use crate::libc::{strchr, strpbrk, strtol};
 
 use crate::compat::{
     b64::{b64_ntop, b64_pton},
@@ -873,7 +873,7 @@ unsafe extern "C" fn input_table_compare(key: *const c_void, value: *const c_voi
 /// Timer
 ///
 /// if this expires then have been waiting for a terminator for too long, so reset to ground.
-unsafe extern "C" fn input_timer_callback(_fd: i32, events: i16, arg: *mut c_void) {
+unsafe extern "C" fn input_timer_callback(_fd: i32, _events: i16, arg: *mut c_void) {
     unsafe {
         let ictx: *mut input_ctx = arg as *mut input_ctx;
 
@@ -1182,7 +1182,6 @@ unsafe fn input_split(ictx: *mut input_ctx) -> i32 {
         let mut ip = &raw mut (*ictx).param_list[0];
 
         let mut out;
-        let mut errstr: *const u8 = null();
 
         let mut ptr: *mut u8 = (&raw mut (*ictx).param_buf).cast();
         while {
@@ -1522,7 +1521,7 @@ unsafe fn input_csi_dispatch(ictx: *mut input_ctx) -> i32 {
         let sctx = &raw mut (*ictx).ctx;
         let s = (*sctx).s;
         // int i, n, m, ek;
-        let mut cx: u32 = 0;
+        let mut cx: u32;
         let bg: u32 = (*ictx).cell.cell.bg as u32;
 
         if (*ictx).flags.intersects(input_flags::INPUT_DISCARD) {
@@ -1754,7 +1753,7 @@ unsafe fn input_csi_dispatch(ictx: *mut input_ctx) -> i32 {
 
                     if (*ictx).flags.intersects(input_flags::INPUT_LAST) {
                         utf8_copy(&raw mut (*ictx).cell.cell.data, &raw const (*ictx).last);
-                        for i in 0..n {
+                        for _ in 0..n {
                             screen_write_collect_add(sctx, &raw const (*ictx).cell.cell);
                         }
                     }
@@ -1953,22 +1952,20 @@ unsafe fn input_csi_dispatch_sm_private(ictx: *mut input_ctx) {
 }
 
 /// Handle CSI graphics SM.
-unsafe fn input_csi_dispatch_sm_graphics(ictx: *mut input_ctx) {
+unsafe fn input_csi_dispatch_sm_graphics(_ictx: *mut input_ctx) {
+    #[cfg(feature = "sixel")]
     unsafe {
-        #[cfg(feature = "sixel")]
-        {
-            if (*ictx).param_list_len > 3 {
-                return;
-            }
-            let n = input_get(ictx, 0, 0, 0);
-            let m = input_get(ictx, 1, 0, 0);
-            let o = input_get(ictx, 2, 0, 0);
+        if (*ictx).param_list_len > 3 {
+            return;
+        }
+        let n = input_get(ictx, 0, 0, 0);
+        let m = input_get(ictx, 1, 0, 0);
+        let o = input_get(ictx, 2, 0, 0);
 
-            if n == 1 && (m == 1 || m == 2 || m == 4) {
-                input_reply(ictx, c!("\x1b[?%d;0;%uS"), n, SIXEL_COLOUR_REGISTERS);
-            } else {
-                input_reply(ictx, c!("\x1b[?%d;3;%dS"), n, o);
-            }
+        if n == 1 && (m == 1 || m == 2 || m == 4) {
+            input_reply(ictx, c!("\x1b[?%d;0;%uS"), n, SIXEL_COLOUR_REGISTERS);
+        } else {
+            input_reply(ictx, c!("\x1b[?%d;3;%dS"), n, o);
         }
     }
 }
@@ -1987,7 +1984,7 @@ unsafe fn input_csi_dispatch_winops(ictx: *mut input_ctx) {
             w = (*wp).window;
         }
 
-        let mut n: i32 = 0;
+        let mut n: i32;
         let mut m: i32 = 0;
         while {
             n = input_get(ictx, m as u32, 0, -1);
@@ -2141,18 +2138,13 @@ unsafe fn input_csi_dispatch_sgr_colon(ictx: *mut input_ctx, mut i: u32) {
     unsafe {
         let gc = &raw mut (*ictx).cell.cell;
         let s = (*ictx).param_list[i as usize].union_.str;
-        // *copy, *ptr, *out;
-        // int p[8];
-        // u_int n;
-        // const char *errstr;
 
         let mut n = 0;
         let mut p: [i32; 8] = [-1; 8];
 
-        let mut errstr: *const u8 = null();
         let mut ptr = xstrdup(s).as_ptr();
         let copy = ptr;
-        let mut out: *mut u8 = null_mut();
+        let mut out: *mut u8;
         while {
             out = strsep(&raw mut ptr, c!(":"));
             !out.is_null()
@@ -2163,7 +2155,7 @@ unsafe fn input_csi_dispatch_sgr_colon(ictx: *mut input_ctx, mut i: u32) {
                         p[n] = x;
                         n += 1;
                     }
-                    Err(errstr) => {
+                    Err(_) => {
                         free_(copy);
                         return;
                     }
@@ -2361,8 +2353,6 @@ unsafe fn input_dcs_dispatch(ictx: *mut input_ctx) -> i32 {
 
         let prefix = c"tmux;";
         let prefixlen: u32 = 5;
-
-        let allow_passthrough: i64 = 0;
 
         if wp.is_null() {
             return 0;
@@ -2647,16 +2637,15 @@ unsafe fn input_osc_4(ictx: *mut input_ctx, p: *mut u8) {
         // char *copy, *s, *next = NULL;
         // long idx;
         // int c, bad = 0, redraw = 0;
-        let mut c = 0;
+        let mut c;
         let mut next = null_mut();
-        let mut idx: i64 = 0;
         let mut bad = false;
         let mut redraw = false;
 
         let mut s: *mut u8 = xstrdup(p).as_ptr();
         let copy = s;
         while !s.is_null() && *s != b'\0' {
-            idx = strtol(s, &raw mut next, 10);
+            let idx = strtol(s, &raw mut next, 10);
 
             let tmp = *next;
             next = next.add(1);
@@ -2703,14 +2692,11 @@ unsafe fn input_osc_8(ictx: *mut input_ctx, p: *mut u8) {
         let hl: *mut hyperlinks = (*(*ictx).ctx.s).hyperlinks;
         let gc = &raw mut (*ictx).cell.cell;
 
-        let start: *const u8 = null();
-        let mut end: *mut u8 = null_mut();
-        let mut uri: *const u8 = null();
-
         let mut id: *mut u8 = null_mut();
 
         'bad: {
             let mut start = p;
+            let mut end: *mut u8;
             while {
                 end = strpbrk(start, c!(":;"));
                 !end.is_null()
@@ -2731,7 +2717,7 @@ unsafe fn input_osc_8(ictx: *mut input_ctx, p: *mut u8) {
             if end.is_null() || *end != b';' {
                 break 'bad;
             }
-            uri = end.add(1);
+            let uri = end.add(1);
             if *uri == b'\0' {
                 (*gc).link = 0;
                 free_(id);
@@ -2838,7 +2824,7 @@ unsafe fn input_osc_10(ictx: *mut input_ctx, p: *mut u8) {
     unsafe {
         let wp = (*ictx).wp;
         let mut defaults: grid_cell = zeroed();
-        let mut c = 0;
+        let mut c;
 
         if streq_(p, "?") {
             if wp.is_null() {
@@ -2898,7 +2884,7 @@ unsafe fn input_osc_11(ictx: *mut input_ctx, p: *const u8) {
         let wp = (*ictx).wp;
         let mut defaults: grid_cell = zeroed();
 
-        let mut c = 0;
+        let mut c;
 
         if streq_(p, "?") {
             if wp.is_null() {
@@ -2954,7 +2940,7 @@ unsafe fn input_osc_111(ictx: *mut input_ctx, p: *mut u8) {
 unsafe fn input_osc_12(ictx: *mut input_ctx, p: *const u8) {
     unsafe {
         let wp = (*ictx).wp;
-        let mut c = 0;
+        let mut c;
 
         if streq_(p, "?") {
             if !wp.is_null() {
@@ -3011,14 +2997,10 @@ unsafe fn input_osc_52(ictx: *mut input_ctx, p: *const u8) {
 
     unsafe {
         let wp = (*ictx).wp;
-        let mut end: *const u8 = null();
         let mut buf: *const u8 = null_mut();
         let mut len: usize = 0;
-        let mut out: *mut u8 = null_mut();
-        let mut outlen: i32 = 0;
 
         let mut ctx: screen_write_ctx = zeroed();
-        let mut pb: *mut paste_buffer = null_mut();
         let allow: *const u8 = c!("cpqs01234567");
         let mut flags: [u8; 13] = [0; 13];
         let mut j = 0;
@@ -3031,7 +3013,7 @@ unsafe fn input_osc_52(ictx: *mut input_ctx, p: *const u8) {
             return;
         }
 
-        end = strchr(p, b';' as i32);
+        let mut end = strchr(p, b';' as i32);
         if end.is_null() {
             return;
         }
@@ -3054,7 +3036,7 @@ unsafe fn input_osc_52(ictx: *mut input_ctx, p: *const u8) {
         // log_debug("%s: %.*s %s", __func__, (int)(end - p - 1), p, flags);
 
         if streq_(end, "?") {
-            pb = paste_get_top(null_mut());
+            let pb = paste_get_top(null_mut());
             if !pb.is_null() {
                 buf = paste_buffer_data(pb, &raw mut len);
             }
@@ -3071,8 +3053,8 @@ unsafe fn input_osc_52(ictx: *mut input_ctx, p: *const u8) {
             return;
         }
 
-        out = xmalloc(len).as_ptr().cast();
-        outlen = b64_pton(end, out, len);
+        let out: *mut u8 = xmalloc(len).as_ptr().cast();
+        let outlen = b64_pton(end, out, len);
         if outlen == -1 {
             free_(out);
             return;

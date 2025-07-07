@@ -556,7 +556,7 @@ pub unsafe fn popup_key_cb(c: *mut client, data: *mut c_void, event: *mut key_ev
                     Right,
                     Top,
                     Bottom,
-                };
+                }
                 let mut border = Border::None;
 
                 if !(*pd).md.is_null() {
@@ -988,8 +988,7 @@ pub unsafe fn popup_editor(
         let px = ((*c).tty.sx / 2).wrapping_sub(sx / 2);
         let py = ((*c).tty.sy / 2).wrapping_sub(sy / 2);
 
-        let mut cmd: *mut u8 = null_mut();
-        cmd = format_nul!("{} {}", _s(editor), _s(path.as_ptr()));
+        let cmd = format_nul!("{} {}", _s(editor), _s(path.as_ptr()));
         if popup_display(
             POPUP_INTERNAL | POPUP_CLOSEEXIT,
             box_lines::BOX_LINES_DEFAULT,

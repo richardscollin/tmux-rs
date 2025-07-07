@@ -154,12 +154,12 @@ pub unsafe extern "C" fn window_buffer_cmp(a0: *const c_void, b0: *const c_void)
 pub unsafe fn window_buffer_build(
     modedata: NonNull<c_void>,
     sort_crit: *mut mode_tree_sort_criteria,
-    tag: *mut u64,
+    _tag: *mut u64,
     filter: *const u8,
 ) {
     unsafe {
         let data: NonNull<window_buffer_modedata> = modedata.cast();
-        let mut item: *mut window_buffer_itemdata = null_mut();
+        let mut item: *mut window_buffer_itemdata;
         let data = data.as_ptr();
         // char *text, *cp;
         // struct format_tree *ft;
@@ -236,7 +236,7 @@ pub unsafe fn window_buffer_build(
 }
 
 pub unsafe fn window_buffer_draw(
-    modedata: *mut c_void,
+    _modedata: *mut c_void,
     itemdata: Option<NonNull<c_void>>,
     ctx: *mut screen_write_ctx,
     sx: u32,
@@ -290,7 +290,7 @@ pub unsafe fn window_buffer_draw(
 }
 
 pub unsafe fn window_buffer_search(
-    modedata: *mut c_void,
+    _modedata: *mut c_void,
     itemdata: NonNull<c_void>,
     ss: *const u8,
 ) -> bool {
@@ -452,8 +452,8 @@ pub unsafe fn window_buffer_update(wme: NonNull<window_mode_entry>) {
 pub unsafe fn window_buffer_do_delete(
     modedata: NonNull<c_void>,
     itemdata: NonNull<c_void>,
-    c: *mut client,
-    key: key_code,
+    _c: *mut client,
+    _key: key_code,
 ) {
     unsafe {
         let data: NonNull<window_buffer_modedata> = modedata.cast();
@@ -481,7 +481,7 @@ pub unsafe fn window_buffer_do_paste(
     modedata: NonNull<c_void>,
     itemdata: NonNull<c_void>,
     c: *mut client,
-    key: key_code,
+    _key: key_code,
 ) {
     unsafe {
         let data: NonNull<window_buffer_modedata> = modedata.cast();
@@ -576,8 +576,8 @@ pub unsafe fn window_buffer_start_edit(
 pub unsafe fn window_buffer_key(
     wme: NonNull<window_mode_entry>,
     c: *mut client,
-    s: *mut session,
-    wl: *mut winlink,
+    _s: *mut session,
+    _wl: *mut winlink,
     mut key: key_code,
     m: *mut mouse_event,
 ) {
@@ -585,7 +585,7 @@ pub unsafe fn window_buffer_key(
         let wp = (*wme.as_ptr()).wp;
         let data = (*wme.as_ptr()).data as *mut window_buffer_modedata;
         let mtd: *mut mode_tree_data = (*data).data;
-        let mut finished = false;
+        let mut finished;
 
         'out: {
             if paste_is_empty() != 0 {

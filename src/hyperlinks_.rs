@@ -119,11 +119,8 @@ pub unsafe fn hyperlinks_put(
     mut internal_id_in: *const u8,
 ) -> u32 {
     unsafe {
-        // struct hyperlinks_uri	 find, *hlu;
-        // char			*uri, *internal_id, *external_id;
         let mut uri = null_mut();
         let mut internal_id = null_mut();
-        let mut external_id: *mut u8 = null_mut();
 
         /*
          * Anonymous URI are stored with an empty internal ID and the tree
@@ -160,7 +157,7 @@ pub unsafe fn hyperlinks_put(
         }
 
         let id = HYPERLINKS_NEXT_EXTERNAL_ID;
-        external_id = format_nul!("tmux{:X}", id);
+        let external_id: *mut u8 = format_nul!("tmux{:X}", id);
         HYPERLINKS_NEXT_EXTERNAL_ID += 1;
 
         let hlu = xcalloc1::<hyperlinks_uri>() as *mut hyperlinks_uri;

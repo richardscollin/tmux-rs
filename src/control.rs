@@ -19,7 +19,6 @@ use crate::compat::{
     queue::{tailq_empty, tailq_first, tailq_foreach, tailq_init, tailq_insert_tail, tailq_remove},
     tree::{rb_empty, rb_find, rb_foreach, rb_init, rb_insert, rb_remove},
 };
-use crate::log::fatalx_c;
 
 #[repr(C)]
 pub struct control_block {
@@ -539,7 +538,7 @@ pub unsafe fn control_error(item: *mut cmdq_item, data: *mut c_void) -> cmd_retv
 
 pub unsafe extern "C" fn control_error_callback(
     _bufev: *mut bufferevent,
-    what: i16,
+    _what: i16,
     data: *mut c_void,
 ) {
     let c: *mut client = data.cast();
@@ -549,7 +548,7 @@ pub unsafe extern "C" fn control_error_callback(
     }
 }
 
-pub unsafe extern "C" fn control_read_callback(bufev: *mut bufferevent, data: *mut c_void) {
+pub unsafe extern "C" fn control_read_callback(_bufev: *mut bufferevent, data: *mut c_void) {
     let __func__ = "control_read_callback";
     let c: *mut client = data.cast();
 
@@ -681,7 +680,7 @@ pub unsafe fn control_write_pending(c: *mut client, cp: *mut control_pane, limit
         let mut message: *mut evbuffer = null_mut();
         let mut used = 0;
         let mut size;
-        let mut cb = null_mut();
+        let mut cb;
         let t = get_timer();
 
         let wp = control_window_pane(c, (*cp).pane);
@@ -747,7 +746,7 @@ pub unsafe fn control_write_pending(c: *mut client, cp: *mut control_pane, limit
     }
 }
 
-pub unsafe extern "C" fn control_write_callback(bufev: *mut bufferevent, data: *mut c_void) {
+pub unsafe extern "C" fn control_write_callback(_bufev: *mut bufferevent, data: *mut c_void) {
     unsafe {
         let c: *mut client = data.cast();
         let cs = (*c).control_state;
@@ -1098,7 +1097,7 @@ pub unsafe fn control_check_subs_all_windows(c: *mut client, csub: *mut control_
     }
 }
 
-pub unsafe extern "C" fn control_check_subs_timer(fd: i32, events: i16, data: *mut c_void) {
+pub unsafe extern "C" fn control_check_subs_timer(_fd: i32, _events: i16, data: *mut c_void) {
     unsafe {
         let c: *mut client = data.cast();
         let cs = (*c).control_state;

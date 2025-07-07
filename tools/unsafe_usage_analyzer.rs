@@ -1,59 +1,83 @@
 #!/usr/bin/env -S cargo +nightly -Zscript
 ---
 [package]
-name = "unsafe_usage_analyzer"
-version = "0.1.0"
 edition = "2024"
-
 [dependencies]
 syn = { version = "2.0.104", features = ["full", "visit"] }
 walkdir = "2.5.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-chrono = { version = "0.4", features = ["serde"] }
+colored = "3.0"
 ---
+use std::{
+    collections::{HashMap, HashSet, VecDeque},
+    fs,
+    path::Path,
+};
 
-use std::collections::HashMap;
-use std::fs;
-use std::path::Path;
-
+use colored::{Color, ColoredString, Colorize};
 use serde::{Deserialize, Serialize};
-use syn::{ExprUnsafe, ItemFn, visit::Visit};
+use syn::{ExprUnsafe, ItemFn, ItemStatic, StaticMutability, Stmt, visit::Visit};
 use walkdir::WalkDir;
 
-fn colorize_percentage(unsafe_count: usize, total_count: usize) -> String {
-    if total_count == 0 {
-        format!("\x1b[90m{}/{}\x1b[0m", unsafe_count, total_count)
-    } else if unsafe_count == 0 {
-        format!("\x1b[32m{}/{}\x1b[0m", unsafe_count, total_count)
-    } else {
-        let percentage = (unsafe_count as f64 / total_count as f64) * 100.0;
-        if percentage < 50.0 {
-            format!("\x1b[33m{}/{}\x1b[0m", unsafe_count, total_count)
-        } else {
-            format!("\x1b[31m{}/{}\x1b[0m", unsafe_count, total_count)
-        }
+#[derive(Clone, Default, Debug, Serialize, Deserialize)]
+struct UnsafeStats {
+    unsafe_fns: isize,
+    unsafe_statements: isize,
+
+    total_fns: isize,
+    total_statements: isize,
+
+    static_mut_items: isize,
+}
+
+impl UnsafeStats {
+    fn should_report_change(&self, rhs: &Self) -> bool {
+        let Self {
+            unsafe_fns,
+            unsafe_statements,
+            static_mut_items,
+            total_fns: _,        // ignore
+            total_statements: _, // ignore
+        } = rhs;
+
+        self.unsafe_fns != *unsafe_fns
+            || self.unsafe_statements != *unsafe_statements
+            || self.static_mut_items != *static_mut_items
     }
 }
 
-#[derive(Default, Serialize, Deserialize, Clone)]
-struct UnsafeStats {
-    unsafe_fns: usize,
-    total_fns: usize,
-    unsafe_lines: usize,
+impl std::ops::AddAssign for UnsafeStats {
+    fn add_assign(
+        &mut self,
+        UnsafeStats {
+            unsafe_fns,
+            unsafe_statements,
+
+            total_fns,
+            total_statements,
+
+            static_mut_items,
+        }: UnsafeStats,
+    ) {
+        self.unsafe_fns += unsafe_fns;
+        self.unsafe_statements += unsafe_statements;
+        self.total_fns += total_fns;
+        self.total_statements += total_statements;
+        self.static_mut_items += static_mut_items;
+    }
 }
 
-#[derive(Default, Serialize, Deserialize, Clone)]
+#[derive(Clone, Default, Serialize, Deserialize)]
 struct FileStats {
     filename: String,
     stats: UnsafeStats,
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Clone, Serialize, Deserialize)]
 struct Report {
     files: Vec<FileStats>,
     total: UnsafeStats,
-    timestamp: String,
 }
 
 struct UnsafeAnalyzer<'a> {
@@ -70,11 +94,20 @@ impl<'a, 'ast> Visit<'ast> for UnsafeAnalyzer<'a> {
     }
 
     fn visit_expr_unsafe(&mut self, i: &'ast ExprUnsafe) {
-        // Count lines in unsafe block - use a simple heuristic since span info isn't available
-        // Count the number of statements and expressions in the unsafe block
-        self.stats.unsafe_lines += 1 + i.block.stmts.len();
-
+        self.stats.unsafe_statements += i.block.stmts.len() as isize;
         syn::visit::visit_expr_unsafe(self, i);
+    }
+
+    fn visit_item_static(&mut self, i: &'ast ItemStatic) {
+        if !matches!(i.mutability, StaticMutability::None) {
+            self.stats.static_mut_items += 1;
+        }
+        syn::visit::visit_item_static(self, i);
+    }
+
+    fn visit_stmt(&mut self, i: &'ast Stmt) {
+        self.stats.total_statements += 1;
+        syn::visit::visit_stmt(self, i);
     }
 }
 
@@ -96,12 +129,12 @@ fn generate_report(root: &str) -> Report {
     let mut file_reports = Vec::new();
     let mut total = UnsafeStats::default();
 
-    for entry in WalkDir::new(&root)
+    for entry in WalkDir::new(root)
         .into_iter()
         .filter_entry(|e| {
             e.file_name()
                 .to_str()
-                .map(|s| s != "target")
+                .map(|s| s != "target" && s != "tools") // skipping our own tool dir
                 .unwrap_or(true)
         })
         .filter_map(|e| e.ok())
@@ -109,21 +142,16 @@ fn generate_report(root: &str) -> Report {
     {
         let path = entry.path();
         if let Some(file_stats) = analyze_file(path) {
-            total.unsafe_fns += file_stats.stats.unsafe_fns;
-            total.total_fns += file_stats.stats.total_fns;
-            total.unsafe_lines += file_stats.stats.unsafe_lines;
-
+            total += file_stats.stats.clone();
             file_reports.push(file_stats);
         }
     }
 
     // Strip common root prefix and find max filename length for alignment
-    let root_path = std::path::Path::new(&root);
+    let root_path = Path::new(&root);
     let mut max_filename_len = 0;
     for file_report in &mut file_reports {
-        if let Ok(relative_path) =
-            std::path::Path::new(&file_report.filename).strip_prefix(root_path)
-        {
+        if let Ok(relative_path) = Path::new(&file_report.filename).strip_prefix(root_path) {
             file_report.filename = relative_path.display().to_string();
         }
         max_filename_len = max_filename_len.max(file_report.filename.len());
@@ -134,72 +162,87 @@ fn generate_report(root: &str) -> Report {
     Report {
         files: file_reports,
         total,
-        timestamp: chrono::Utc::now().to_rfc3339(),
     }
 }
 
 fn print_report(report: &Report) {
-    let max_filename_len = report
-        .files
-        .iter()
-        .map(|f| f.filename.len())
-        .max()
-        .unwrap_or_default();
-
-    let max_line_width = report
+    let mut table: VecDeque<Vec<ColoredString>> = report
         .files
         .iter()
         .map(|file_report| {
-            format!(
-                "{}/{}",
-                file_report.stats.unsafe_fns, file_report.stats.total_fns
-            )
-            .len()
+            vec![
+                file_report.filename.clone().into(), // filename
+                colorize_ratio(file_report.stats.unsafe_fns, file_report.stats.total_fns), // unsafe fns
+                format!(
+                    "{}/{}",
+                    file_report.stats.unsafe_statements, file_report.stats.total_statements
+                )
+                .into(), // unsafe statements
+                colorize_static_mut_count(file_report.stats.static_mut_items), // static mut
+            ]
         })
-        .max()
-        .unwrap_or_default();
+        .collect();
 
-    println!(
-        "{:<width$} {:>max_line_width$}  lines",
-        "",
-        "fns",
-        width = max_filename_len,
-        max_line_width = max_line_width
-    );
-    for file_report in &report.files {
-        let plain_text = format!(
-            "{}/{}",
-            file_report.stats.unsafe_fns, file_report.stats.total_fns
-        );
-        let colored_text =
-            colorize_percentage(file_report.stats.unsafe_fns, file_report.stats.total_fns);
-        println!(
-            "{:<width$} {:>max_line_width$} {:>line_width$}",
-            file_report.filename,
-            colored_text,
-            file_report.stats.unsafe_lines,
-            width = max_filename_len,
-            max_line_width = max_line_width + (colored_text.len() - plain_text.len()),
-            line_width = 6,
-        );
-    }
+    table.push_front(vec![
+        "".into(),
+        " (unsafe/total) fns".into(),
+        "statements".into(),
+        "static mut".into(),
+    ]);
+    display_table(table);
 
+    println!();
     println!("== Summary ==");
     println!(
         "Total unsafe functions: {}",
-        colorize_percentage(report.total.unsafe_fns, report.total.total_fns)
+        colorize_ratio(report.total.unsafe_fns, report.total.total_fns)
     );
-    println!("Total unsafe lines: {}", report.total.unsafe_lines);
+    println!(
+        "Total statements in unsafe blocks: {}",
+        report.total.unsafe_statements
+    );
+    println!("Total static mut items: {}", report.total.static_mut_items);
 }
 
-fn compare_reports(old_report: &Report, new_report: &Report) {
+fn display_table(table: VecDeque<Vec<ColoredString>>) {
+    let n_cols = table.front().unwrap().len();
+
+    let mut column_widths = table
+        .front()
+        .unwrap()
+        .iter()
+        .map(|e| e.len())
+        .collect::<Vec<_>>();
+    for row in &table {
+        for (col_idx, text) in row.iter().enumerate() {
+            column_widths[col_idx] = column_widths[col_idx].max(text.len());
+        }
+    }
+
+    assert!(n_cols == 4);
+    for row in table {
+        println!(
+            "{:<w0$} {:>w1$} {:>w2$} {:>w3$}",
+            row[0],
+            row[1],
+            row[2],
+            row[3],
+            w0 = column_widths[0],
+            w1 = column_widths[1],
+            w2 = column_widths[2],
+            w3 = column_widths[3],
+        )
+    }
+}
+
+fn print_report_diff(old: &Report, new: &Report) {
     let mut old_files: HashMap<String, &FileStats> = HashMap::new();
     let mut new_files: HashMap<String, &FileStats> = HashMap::new();
 
-    for file in &old_report.files {
+    for file in &old.files {
         old_files.insert(file.filename.clone(), file);
     }
-    for file in &new_report.files {
+    for file in &new.files {
         new_files.insert(file.filename.clone(), file);
     }
 
@@ -208,9 +251,8 @@ fn compare_reports(old_report: &Report, new_report: &Report) {
     all_files.extend(new_files.keys().cloned());
 
     println!("== Diff Report ==");
-    println!("Old report: {}", old_report.timestamp);
-    println!("New report: {}", new_report.timestamp);
-    println!();
+
+    let mut change = false;
 
     for filename in all_files {
         let old_stats = old_files.get(&filename);
@@ -218,75 +260,46 @@ fn compare_reports(old_report: &Report, new_report: &Report) {
 
         match (old_stats, new_stats) {
             (Some(old), Some(new)) => {
-                let old_unsafe = old.stats.unsafe_fns;
-                let old_total = old.stats.total_fns;
-                let old_lines = old.stats.unsafe_lines;
-                let new_unsafe = new.stats.unsafe_fns;
-                let new_total = new.stats.total_fns;
-                let new_lines = new.stats.unsafe_lines;
-
-                if old_unsafe != new_unsafe || old_total != new_total || old_lines != new_lines {
-                    let unsafe_diff = new_unsafe as i32 - old_unsafe as i32;
-                    let total_diff = new_total as i32 - old_total as i32;
-                    let lines_diff = new_lines as i32 - old_lines as i32;
-
-                    println!("{}", filename);
-
-                    let unsafe_color = if unsafe_diff < 0 {
-                        "\x1b[32m" // Green for less unsafe
-                    } else if unsafe_diff > 0 {
-                        "\x1b[31m" // Red for more unsafe
-                    } else {
-                        ""
-                    };
-
-                    let lines_color = if lines_diff < 0 {
-                        "\x1b[32m" // Green for fewer unsafe lines
-                    } else if lines_diff > 0 {
-                        "\x1b[31m" // Red for more unsafe lines
-                    } else {
-                        ""
-                    };
-
+                if old.stats.should_report_change(&new.stats) {
+                    change = true;
                     println!(
-                        "  Unsafe funcs: {} -> {} ({}{}{}{})\x1b[0m",
-                        old_unsafe,
-                        new_unsafe,
-                        unsafe_color,
-                        if unsafe_diff >= 0 { "+" } else { "" },
-                        unsafe_diff,
-                        if unsafe_diff != 0 { "\x1b[0m" } else { "" }
-                    );
-                    println!(
-                        "   Total funcs: {} -> {} ({}{})",
-                        old_total,
-                        new_total,
-                        if total_diff >= 0 { "+" } else { "" },
-                        total_diff
-                    );
-                    println!(
-                        "  Unsafe stmts: {} -> {} ({}{}{})\x1b[0m",
-                        old_lines,
-                        new_lines,
-                        lines_color,
-                        if lines_diff >= 0 { "+" } else { "" },
-                        lines_diff
-                    );
-                    println!();
+                        "{filename}
+       Unsafe funcs: {}
+        Total funcs: {}
+  Unsafe Statements: {}
+         static mut: {}
+",
+                        format_diff(old.stats.unsafe_fns, new.stats.unsafe_fns, DecreaseIs::Good),
+                        format_diff(
+                            old.stats.total_fns,
+                            new.stats.total_fns,
+                            DecreaseIs::Neutral
+                        ),
+                        format_diff(
+                            old.stats.unsafe_statements,
+                            new.stats.unsafe_statements,
+                            DecreaseIs::Good
+                        ),
+                        format_diff(
+                            old.stats.static_mut_items,
+                            new.stats.static_mut_items,
+                            DecreaseIs::Good
+                        ),
+                    )
                 }
             }
             (None, Some(new)) => {
-                println!("{} [NEW FILE]", filename);
+                println!("{filename} [NEW FILE]");
                 println!("  Unsafe funcs: {}", new.stats.unsafe_fns);
                 println!("   Total funcs: {}", new.stats.total_fns);
-                println!("  Unsafe stmts: {}", new.stats.unsafe_lines);
+                println!("  Unsafe stmts: {}", new.stats.unsafe_statements);
                 println!();
             }
             (Some(old), None) => {
-                println!("{} [REMOVED]", filename);
+                println!("{filename} [REMOVED]");
                 println!(
                     "  Had {} unsafe / {} total fns, {} unsafe lines",
-                    old.stats.unsafe_fns, old.stats.total_fns, old.stats.unsafe_lines
+                    old.stats.unsafe_fns, old.stats.total_fns, old.stats.unsafe_statements
                 );
                 println!();
             }
@@ -294,105 +307,139 @@ fn compare_reports(old_report: &Report, new_report: &Report) {
         }
     }
 
-    let old_total_unsafe = old_report.total.unsafe_fns;
-    let old_total_fns = old_report.total.total_fns;
-    let old_total_lines = old_report.total.unsafe_lines;
-    let new_total_unsafe = new_report.total.unsafe_fns;
-    let new_total_fns = new_report.total.total_fns;
-    let new_total_lines = new_report.total.unsafe_lines;
-
-    let unsafe_diff = new_total_unsafe as i32 - old_total_unsafe as i32;
-    let total_diff = new_total_fns as i32 - old_total_fns as i32;
-    let lines_diff = new_total_lines as i32 - old_total_lines as i32;
-
-    println!("== Summary ==");
-
-    let summary_unsafe_color = if unsafe_diff < 0 {
-        "\x1b[32m" // Green for less unsafe
-    } else if unsafe_diff > 0 {
-        "\x1b[31m" // Red for more unsafe
+    if change {
+        println!(
+            "== Summary ==
+Unsafe funcs: {}
+Total funcs: {}
+Total statements: {}
+static mut: {}
+",
+            format_diff(old.total.unsafe_fns, new.total.unsafe_fns, DecreaseIs::Good),
+            format_diff(
+                old.total.total_fns,
+                new.total.total_fns,
+                DecreaseIs::Neutral
+            ),
+            format_diff(
+                old.total.unsafe_statements,
+                new.total.unsafe_statements,
+                DecreaseIs::Good
+            ),
+            format_diff(
+                old.total.static_mut_items,
+                new.total.static_mut_items,
+                DecreaseIs::Good
+            ),
+        );
     } else {
-        ""
+        println!("No safety changes.")
+    }
+}
+
+enum DecreaseIs {
+    Neutral,
+    Good,
+}
+fn format_diff(old: isize, new: isize, decrease_is: DecreaseIs) -> String {
+    let delta = new - old;
+    let plus = if delta > 0 { "+" } else { "" };
+
+    let color = match decrease_is {
+        DecreaseIs::Neutral => Color::BrightBlack,
+        DecreaseIs::Good => {
+            if delta > 0 {
+                Color::Red
+            } else if delta < 0 {
+                Color::Green
+            } else {
+                Color::BrightBlack
+            }
+        }
     };
 
-    let summary_lines_color = if lines_diff < 0 {
-        "\x1b[32m" // Green for fewer unsafe lines
-    } else if lines_diff > 0 {
-        "\x1b[31m" // Red for more unsafe lines
+    format!("{old} -> {new} ({plus}{delta})")
+        .color(color)
+        .to_string()
+}
+
+fn colorize_ratio(unsafe_count: isize, total_count: isize) -> ColoredString {
+    let color = if total_count == 0 {
+        Color::BrightBlack
+    } else if unsafe_count == 0 {
+        Color::Green
+    } else if (unsafe_count as f64 / total_count as f64) < 0.5 {
+        Color::Yellow
     } else {
-        ""
+        Color::Red
     };
 
-    println!(
-        "Unsafe funcs: {} -> {} ({}{}{})\x1b[0m",
-        old_total_unsafe,
-        new_total_unsafe,
-        summary_unsafe_color,
-        if unsafe_diff >= 0 { "+" } else { "" },
-        unsafe_diff
-    );
-    println!(
-        " Total funcs: {} -> {} ({}{})",
-        old_total_fns,
-        new_total_fns,
-        if total_diff >= 0 { "+" } else { "" },
-        total_diff
-    );
-    println!(
-        "Unsafe lines: {} -> {} ({}{}{})\x1b[0m",
-        old_total_lines,
-        new_total_lines,
-        summary_lines_color,
-        if lines_diff >= 0 { "+" } else { "" },
-        lines_diff
-    );
+    format!("{unsafe_count}/{total_count}").color(color)
+}
+
+fn colorize_static_mut_count(count: isize) -> ColoredString {
+    let color = if count == 0 {
+        Color::Green
+    } else if count < 10 {
+        Color::Yellow
+    } else {
+        Color::Red
+    };
+
+    count.to_string().color(color)
 }
 
 fn main() {
-    let args: Vec<String> = std::env::args().collect();
+    let flags = flags();
+    let flags_with_args = flags_with_args();
 
-    if args.len() < 2 {
-        eprintln!("Usage:");
-        eprintln!(
-            r#"
-{0} <path-to-crate>                    # Generate report
-{0} <path-to-crate> --json <output>    # Export to JSON
-{0} --diff <old.json> <new.json>       # Compare reports
-"#,
-            args[0]
+    let args = std::env::args().collect::<Vec<String>>();
+
+    if args.len() < 2 || flags.contains("-h") || flags.contains("--help") {
+        println!(
+            "Usage: ./unsafe_usage_analyzer.rs <crate-root> [--baseline baseline-report.json] [--json report-output.json]"
         );
-        std::process::exit(1);
-    }
-
-    if args.len() >= 4 && args[1] == "--diff" {
-        let old_content = fs::read_to_string(&args[2]).expect("Failed to read old report file");
-        let new_content = fs::read_to_string(&args[3]).expect("Failed to read new report file");
-
-        let old_report: Report =
-            serde_json::from_str(&old_content).expect("Failed to parse old report JSON");
-        let new_report: Report =
-            serde_json::from_str(&new_content).expect("Failed to parse new report JSON");
-
-        compare_reports(&old_report, &new_report);
         return;
     }
 
     let root = &args[1];
     let report = generate_report(root);
 
-    if args.len() >= 4 && args[2] == "--json" {
-        let mut serializer = serde_json::Serializer::with_formatter(
-            Vec::new(),
-            serde_json::ser::PrettyFormatter::with_indent(b" "),
-        );
-        report
-            .serialize(&mut serializer)
-            .expect("Failed to serialize report");
-        let json_output =
-            String::from_utf8(serializer.into_inner()).expect("Failed to convert JSON to string");
-        fs::write(&args[3], json_output).expect("Failed to write JSON file");
-        println!("Report exported to {}", args[3]);
-    } else {
-        print_report(&report);
+    if let Some(output_file) = flags_with_args.get("--json") {
+        let json_report = serde_json::to_string(&report).unwrap();
+        std::fs::write(output_file, json_report).unwrap();
     }
+
+    println!("== Unsafe Report ==");
+    print_report(&report);
+
+    if let Some(baseline_file) = flags_with_args.get("--baseline") {
+        let old_content =
+            fs::read_to_string(baseline_file).expect("Failed to read old report file");
+        let old_report =
+            serde_json::from_str::<Report>(&old_content).expect("Failed to parse old report JSON");
+
+        println!();
+        println!();
+        print_report_diff(&old_report, &report);
+    }
+}
+
+pub fn flags() -> HashSet<String> {
+    let flags: HashSet<String> = std::env::args()
+        .filter(|arg| arg.starts_with('-'))
+        .collect();
+    flags
+}
+
+pub fn flags_with_args() -> HashMap<String, String> {
+    let flags_with_args: HashMap<String, String> = std::env::args()
+        .collect::<Vec<_>>()
+        .windows(2)
+        .filter_map(|e| {
+            e[0].starts_with('-')
+                .then_some((e[0].clone(), e[1].clone()))
+        })
+        .collect();
+    flags_with_args
 }

@@ -6,44 +6,53 @@ edition = "2024"
 syn = { version = "2.0.104", features = ["full", "visit"] }
 walkdir = "2.5.0"
 serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
+csv = "1.3.1"
 colored = "3.0"
 ---
 use std::{
-    collections::{HashMap, HashSet},
+    collections::{BTreeMap, HashMap, HashSet},
+    fmt::Write,
     fs,
     path::Path,
 };
 
 use colored::{Color, ColoredString, Colorize};
-use serde::{Deserialize, Serialize};
 use syn::{ExprMethodCall, ExprUnsafe, ItemFn, ItemStatic, StaticMutability, Stmt, visit::Visit};
 use walkdir::WalkDir;
 
-#[derive(Clone, Default, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 struct CodeStats {
-    #[serde(rename = "tf")]
+    filename: String,
     total_fns: isize,
-
-    #[serde(rename = "ts")]
     total_statements: isize,
-
-    #[serde(rename = "uf")]
     unsafe_fns: isize,
-
-    #[serde(rename = "us")]
     unsafe_statements: isize,
-
-    #[serde(rename = "un")]
     unwraps: isize,
-
-    #[serde(rename = "sm")]
     static_mut_items: isize,
 }
 
+#[derive(Clone)]
+struct Report {
+    total: CodeStats,
+    files: BTreeMap<String, CodeStats>,
+}
+
 impl CodeStats {
+    fn new(filename: String) -> Self {
+        Self {
+            filename,
+            total_fns: 0,
+            total_statements: 0,
+            unsafe_fns: 0,
+            unsafe_statements: 0,
+            unwraps: 0,
+            static_mut_items: 0,
+        }
+    }
+
     fn should_report_change(&self, rhs: &Self) -> bool {
         let Self {
+            filename: _,
             total_fns: _,        // ignore
             total_statements: _, // ignore
 
@@ -60,44 +69,37 @@ impl CodeStats {
     }
 }
 
-impl std::ops::AddAssign for CodeStats {
-    fn add_assign(
-        &mut self,
-        Self {
-            total_fns,
-            total_statements,
+use std::iter::Iterator;
+fn calc_total<'a>(stats: impl Iterator<Item = &'a CodeStats>) -> CodeStats {
+    let mut unsafe_fns = 0;
+    let mut unsafe_statements = 0;
+    let mut total_fns = 0;
+    let mut total_statements = 0;
+    let mut static_mut_items = 0;
+    let mut unwraps = 0;
 
-            unsafe_fns,
-            unsafe_statements,
-            static_mut_items,
-            unwraps,
-        }: Self,
-    ) {
-        self.unsafe_fns += unsafe_fns;
-        self.unsafe_statements += unsafe_statements;
-        self.total_fns += total_fns;
-        self.total_statements += total_statements;
-        self.static_mut_items += static_mut_items;
-        self.unwraps += unwraps;
+    for e in stats {
+        unsafe_fns += e.unsafe_fns;
+        unsafe_statements += e.unsafe_statements;
+        total_fns += e.total_fns;
+        total_statements += e.total_statements;
+        static_mut_items += e.static_mut_items;
+        unwraps += e.unwraps;
     }
-}
-
-#[derive(Clone, Default, Serialize, Deserialize)]
-struct FileStats {
-    filename: String,
-    stats: CodeStats,
-}
-
-#[derive(Clone, Serialize, Deserialize)]
-struct Report {
-    files: Vec<FileStats>,
-    total: CodeStats,
+    CodeStats {
+        filename: "total".into(),
+        unsafe_fns,
+        unsafe_statements,
+        total_fns,
+        total_statements,
+        static_mut_items,
+        unwraps,
+    }
 }
 
 struct CodeAnalyzer<'a> {
     stats: &'a mut CodeStats,
 }
-
 impl<'a, 'ast> Visit<'ast> for CodeAnalyzer<'a> {
     fn visit_item_fn(&mut self, i: &'ast ItemFn) {
         self.stats.total_fns += 1;
@@ -132,23 +134,19 @@ impl<'a, 'ast> Visit<'ast> for CodeAnalyzer<'a> {
     }
 }
 
-fn analyze_file(path: &Path) -> Option<FileStats> {
+fn analyze_file(path: &Path) -> Option<CodeStats> {
     let content = fs::read_to_string(path).ok()?;
     let syntax = syn::parse_file(&content).ok()?;
 
-    let mut stats = CodeStats::default();
+    let mut stats = CodeStats::new(path.display().to_string());
     let mut visitor = CodeAnalyzer { stats: &mut stats };
     visitor.visit_file(&syntax);
 
-    Some(FileStats {
-        filename: path.display().to_string(),
-        stats,
-    })
+    Some(stats)
 }
 
 fn generate_report(root: &str) -> Report {
-    let mut file_reports = Vec::new();
-    let mut total = CodeStats::default();
+    let mut file_reports = BTreeMap::new();
 
     for entry in WalkDir::new(root)
         .into_iter()
@@ -162,27 +160,20 @@ fn generate_report(root: &str) -> Report {
         .filter(|e| e.path().extension().map(|ext| ext == "rs").unwrap_or(false))
     {
         let path = entry.path();
-        if let Some(file_stats) = analyze_file(path) {
-            total += file_stats.stats.clone();
-            file_reports.push(file_stats);
+        if let Some(mut stats) = analyze_file(path) {
+            let root_path = Path::new(root);
+            if let Ok(relative_path) = path.strip_prefix(&root_path) {
+                stats.filename = relative_path.display().to_string();
+                file_reports.insert(relative_path.display().to_string(), stats);
+            } else {
+                file_reports.insert(path.display().to_string(), stats);
+            }
         }
     }
-
-    // Strip common root prefix and find max filename length for alignment
-    let root_path = Path::new(&root);
-    let mut max_filename_len = 0;
-    for file_report in &mut file_reports {
-        if let Ok(relative_path) = Path::new(&file_report.filename).strip_prefix(root_path) {
-            file_report.filename = relative_path.display().to_string();
-        }
-        max_filename_len = max_filename_len.max(file_report.filename.len());
-    }
-
-    file_reports.sort_by(|a, b| a.filename.cmp(&b.filename));
 
     Report {
+        total: calc_total(file_reports.values()),
         files: file_reports,
-        total,
     }
 }
 
@@ -194,17 +185,17 @@ fn print_report(report: &Report) {
         "static mut".into(),
         "unwrap".into(),
     ]];
-    table.extend(report.files.iter().map(|file_report| {
+    table.extend(report.files.values().map(|file_report| {
         [
             file_report.filename.clone().into(), // filename
-            colorize_ratio(file_report.stats.unsafe_fns, file_report.stats.total_fns), // unsafe fns
+            colorize_ratio(file_report.unsafe_fns, file_report.total_fns), // unsafe fns
             format!(
                 "{}/{}",
-                file_report.stats.unsafe_statements, file_report.stats.total_statements
+                file_report.unsafe_statements, file_report.total_statements
             )
             .into(), // unsafe statements
-            colorize_simple(file_report.stats.static_mut_items), // static mut
-            colorize_simple(file_report.stats.unwraps), // unwraps
+            colorize_simple(file_report.static_mut_items), // static mut
+            colorize_simple(file_report.unwraps), // unwraps
         ]
     }));
 
@@ -223,58 +214,47 @@ fn print_report(report: &Report) {
     println!("Total unwrap calls: {}", report.total.unwraps);
 }
 
-fn display_table(table: &[[ColoredString; 5]]) {
-    let mut column_widths = table[0].iter().map(|e| e.len()).collect::<Vec<_>>();
-
+fn display_table<const N: usize>(table: &[[ColoredString; N]]) {
+    let mut column_widths = vec![0; N];
     for row in table {
-        for (col_idx, text) in row.iter().enumerate() {
-            column_widths[col_idx] = column_widths[col_idx].max(text.len());
+        for (c, text) in row.iter().enumerate() {
+            column_widths[c] = column_widths[c].max(text.len());
         }
     }
 
     for row in table {
-        println!(
-            "{:<w0$} {:>w1$} {:>w2$} {:>w3$} {:>w4$}",
-            row[0],
-            row[1],
-            row[2],
-            row[3],
-            row[4],
-            w0 = column_widths[0],
-            w1 = column_widths[1],
-            w2 = column_widths[2],
-            w3 = column_widths[3],
-            w4 = column_widths[4],
-        )
+        let mut out = String::new();
+        let mut it = row.iter().zip(&column_widths);
+
+        // left align first column
+        let (col, width) = it.next().unwrap();
+        _ = write!(&mut out, "{col:<width$}");
+
+        // right align other columns
+        for (col, width) in it {
+            _ = write!(&mut out, " {col:>width$}");
+        }
+        println!("{out}")
     }
 }
 
 fn print_report_diff(old: &Report, new: &Report) {
-    let mut old_files: HashMap<String, &FileStats> = HashMap::new();
-    let mut new_files: HashMap<String, &FileStats> = HashMap::new();
+    let old_files = &old.files;
+    let new_files = &new.files;
 
-    for file in &old.files {
-        old_files.insert(file.filename.clone(), file);
-    }
-    for file in &new.files {
-        new_files.insert(file.filename.clone(), file);
-    }
+    let mut all_files: std::collections::BTreeSet<&String> = std::collections::BTreeSet::new();
 
-    let mut all_files: std::collections::BTreeSet<String> = std::collections::BTreeSet::new();
-    all_files.extend(old_files.keys().cloned());
-    all_files.extend(new_files.keys().cloned());
+    all_files.extend(old_files.keys());
+    all_files.extend(new_files.keys());
 
     println!("== Diff Report ==");
 
     let mut change = false;
 
     for filename in all_files {
-        let old_stats = old_files.get(&filename);
-        let new_stats = new_files.get(&filename);
-
-        match (old_stats, new_stats) {
+        match (old_files.get(filename), new_files.get(filename)) {
             (Some(old), Some(new)) => {
-                if old.stats.should_report_change(&new.stats) {
+                if old.should_report_change(&new) {
                     change = true;
                     println!(
                         "{filename}
@@ -284,39 +264,31 @@ fn print_report_diff(old: &Report, new: &Report) {
          static mut: {}
             unwraps: {}
 ",
-                        format_diff(old.stats.unsafe_fns, new.stats.unsafe_fns, DecreaseIs::Good),
+                        format_diff(old.unsafe_fns, new.unsafe_fns, DecreaseIs::Good),
+                        format_diff(old.total_fns, new.total_fns, DecreaseIs::Neutral),
                         format_diff(
-                            old.stats.total_fns,
-                            new.stats.total_fns,
-                            DecreaseIs::Neutral
-                        ),
-                        format_diff(
-                            old.stats.unsafe_statements,
-                            new.stats.unsafe_statements,
+                            old.unsafe_statements,
+                            new.unsafe_statements,
                             DecreaseIs::Good
                         ),
-                        format_diff(
-                            old.stats.static_mut_items,
-                            new.stats.static_mut_items,
-                            DecreaseIs::Good
-                        ),
-                        format_diff(old.stats.unwraps, new.stats.unwraps, DecreaseIs::Good),
+                        format_diff(old.static_mut_items, new.static_mut_items, DecreaseIs::Good),
+                        format_diff(old.unwraps, new.unwraps, DecreaseIs::Good),
                     )
                 }
             }
             (None, Some(new)) => {
                 println!("{filename} [NEW FILE]");
-                println!("  Unsafe funcs: {}", new.stats.unsafe_fns);
-                println!("   Total funcs: {}", new.stats.total_fns);
-                println!("  Unsafe stmts: {}", new.stats.unsafe_statements);
-                println!("       unwraps: {}", new.stats.unwraps);
+                println!("  Unsafe funcs: {}", new.unsafe_fns);
+                println!("   Total funcs: {}", new.total_fns);
+                println!("  Unsafe stmts: {}", new.unsafe_statements);
+                println!("       unwraps: {}", new.unwraps);
                 println!();
             }
             (Some(old), None) => {
                 println!("{filename} [REMOVED]");
                 println!(
                     "  Had {} unsafe / {} total fns, {} unsafe lines",
-                    old.stats.unsafe_fns, old.stats.total_fns, old.stats.unsafe_statements
+                    old.unsafe_fns, old.total_fns, old.unsafe_statements
                 );
                 println!();
             }
@@ -425,19 +397,31 @@ fn main() {
     let root = &args[1];
     let report = generate_report(root);
 
-    if let Some(output_file) = flags_with_args.get("--json") {
-        let json_report = serde_json::to_string(&report).unwrap();
-        std::fs::write(output_file, json_report).unwrap();
+    if let Some(output_file) = flags_with_args.get("--csv") {
+        let mut writer = csv::WriterBuilder::new().from_path(output_file).unwrap();
+        for record in report.files.values() {
+            writer.serialize(&record).unwrap();
+        }
     }
 
     println!("== Code Report ==");
     print_report(&report);
 
     if let Some(baseline_file) = flags_with_args.get("--baseline") {
-        let old_content =
-            fs::read_to_string(baseline_file).expect("Failed to read old report file");
-        let old_report =
-            serde_json::from_str::<Report>(&old_content).expect("Failed to parse old report JSON");
+        let mut reader = csv::Reader::from_path(baseline_file).unwrap();
+
+        let files = reader
+            .records()
+            .map(|result| {
+                let record = result.unwrap();
+                let row: CodeStats = record.deserialize(None).unwrap();
+                (row.filename.clone(), row)
+            })
+            .collect::<BTreeMap<String, CodeStats>>();
+        let old_report = Report {
+            total: calc_total(files.values()),
+            files,
+        };
 
         println!();
         println!();

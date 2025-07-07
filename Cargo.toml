@@ -19,6 +19,7 @@ paste        = { version = "1.0.15"  }
 
 [build-dependencies]
 lalrpop      = { version = "0.22.2", default-features = false  }
+pkg-config   = "0.3.32"
 
 # Note: none of these features are supported yet
 # they just exist to make matching upstream's

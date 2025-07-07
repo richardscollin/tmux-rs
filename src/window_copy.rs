@@ -3419,7 +3419,6 @@ pub unsafe fn window_copy_command(
         let mut cs: window_copy_cmd_state = zeroed();
         let mut clear = window_copy_cmd_clear::WINDOW_COPY_CMD_CLEAR_NEVER;
         let count = args_count(args);
-        let keys: i32 = 0;
 
         if count == 0 {
             return;

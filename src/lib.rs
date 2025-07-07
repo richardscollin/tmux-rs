@@ -13,14 +13,15 @@
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #![expect(rustdoc::broken_intra_doc_links, reason = "github markdown callout")]
 #![doc = include_str!("../README.md")]
-// won't fix:
-#![allow(non_camel_case_types, reason = "match upstream")]
-#![allow(clippy::manual_range_contains, reason = "match upstream")]
+#![allow(
+    non_camel_case_types,
+    clippy::manual_range_contains,
+    clippy::too_many_arguments,
+    reason = "won't fix: match upstream"
+)]
 #![allow(clippy::missing_safety_doc, reason = "currently using too much unsafe")]
-// maybe fix:
-#![allow(clippy::too_many_arguments)]
 // will fix:
-#![allow(unused)] // TODO 5000
+#![allow(unused)] // TODO 2000
 #![allow(unpredictable_function_pointer_comparisons)] // TODO 2
 // extra enabled:
 #![warn(clippy::multiple_crate_versions)]

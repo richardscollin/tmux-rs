@@ -13,20 +13,21 @@
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 use crate::*;
 
-use libc::{getpwnam, getuid};
+use crate::libc::{getpwnam, getuid};
 
 use crate::compat::queue::tailq_foreach;
 
-pub static mut cmd_server_access_entry: cmd_entry = cmd_entry {
-    name: c"server-access".as_ptr(),
-    alias: null(),
+pub static CMD_SERVER_ACCESS_ENTRY: cmd_entry = cmd_entry {
+    name: SyncCharPtr::new(c"server-access"),
+    alias: SyncCharPtr::null(),
 
     args: args_parse::new(c"adlrw", 0, 1, None),
-    usage: c"[-adlrw] [-t target-pane] [user]".as_ptr(),
+    usage: SyncCharPtr::new(c"[-adlrw] [-t target-pane] [user]"),
 
     flags: cmd_flag::CMD_CLIENT_CANFAIL,
-    exec: Some(cmd_server_access_exec),
-    ..unsafe { zeroed() }
+    exec: cmd_server_access_exec,
+    source: cmd_entry_flag::zeroed(),
+    target: cmd_entry_flag::zeroed(),
 };
 
 unsafe fn cmd_server_access_deny(item: *mut cmdq_item, pw: *mut libc::passwd) -> cmd_retval {
@@ -36,7 +37,7 @@ unsafe fn cmd_server_access_deny(item: *mut cmdq_item, pw: *mut libc::passwd) ->
             cmdq_error!(item, "user {} not found", _s((*pw).pw_name));
             return cmd_retval::CMD_RETURN_ERROR;
         }
-        for loop_ in tailq_foreach(&raw mut clients).map(NonNull::as_ptr) {
+        for loop_ in tailq_foreach(&raw mut CLIENTS).map(NonNull::as_ptr) {
             let uid = proc_get_peer_uid((*loop_).peer);
             if uid == server_acl_get_uid(user) {
                 (*loop_).exit_message = xstrdup_(c"access not allowed").as_ptr();
@@ -73,7 +74,7 @@ unsafe fn cmd_server_access_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
         );
         let mut pw = null_mut();
         if *name != b'\0' as _ {
-            pw = getpwnam(name);
+            pw = getpwnam(name.cast());
         }
         if pw.is_null() {
             cmdq_error!(item, "unknown user: {}", _s(name));

@@ -24,7 +24,7 @@ use crate::log::fatalx_c;
 #[repr(C)]
 pub struct control_block {
     pub size: usize,
-    pub line: *mut c_char,
+    pub line: *mut u8,
     pub t: u64,
 
     pub entry: tailq_entry<control_block>,
@@ -74,7 +74,7 @@ impl Entry<control_pane, discr_pending_entry> for control_pane {
 pub struct control_sub_pane {
     pane: u32,
     idx: u32,
-    last: *mut c_char,
+    last: *mut u8,
 
     entry: rb_entry<control_sub_pane>,
 }
@@ -84,7 +84,7 @@ pub type control_sub_panes = rb_head<control_sub_pane>;
 pub struct control_sub_window {
     window: u32,
     idx: u32,
-    last: *mut c_char,
+    last: *mut u8,
 
     entry: rb_entry<control_sub_window>,
 }
@@ -92,12 +92,12 @@ pub type control_sub_windows = rb_head<control_sub_window>;
 
 #[repr(C)]
 pub struct control_sub {
-    pub name: *mut c_char,
-    pub format: *mut c_char,
+    pub name: *mut u8,
+    pub format: *mut u8,
     pub type_: control_sub_type,
     pub id: u32,
 
-    pub last: *mut c_char,
+    pub last: *mut u8,
 
     pub panes: control_sub_panes,
     pub windows: control_sub_windows,
@@ -355,7 +355,7 @@ pub unsafe fn control_vwrite(c: *mut client, args: std::fmt::Arguments) {
 
         let mut s = args.to_string();
         s.push('\0');
-        let s = s.as_mut_ptr().cast();
+        let s: *mut u8 = s.as_mut_ptr().cast();
 
         log_debug!(
             "{}: {}: writing line: {}",
@@ -365,7 +365,7 @@ pub unsafe fn control_vwrite(c: *mut client, args: std::fmt::Arguments) {
         );
 
         bufferevent_write((*cs).write_event, s.cast(), strlen(s));
-        bufferevent_write((*cs).write_event, c"\n".as_ptr().cast(), 1);
+        bufferevent_write((*cs).write_event, c!("\n").cast(), 1);
 
         bufferevent_enable((*cs).write_event, EV_WRITE);
         free_(s);
@@ -526,11 +526,11 @@ pub unsafe fn control_write_output(c: *mut client, wp: *mut window_pane) {
 pub unsafe fn control_error(item: *mut cmdq_item, data: *mut c_void) -> cmd_retval {
     unsafe {
         let c = cmdq_get_client(item);
-        let error = data as *mut c_char;
+        let error = data as *mut u8;
 
-        cmdq_guard(item, c"begin".as_ptr(), true);
+        cmdq_guard(item, c!("begin"), true);
         control_write!(c, "parse error: {}", _s(error));
-        cmdq_guard(item, c"error".as_ptr(), true);
+        cmdq_guard(item, c!("error"), true);
 
         free_(error);
     }
@@ -564,7 +564,7 @@ pub unsafe extern "C" fn control_read_callback(bufev: *mut bufferevent, data: *m
                 break;
             }
             log_debug!("{}: {}: {}", __func__, _s((*c).name), _s(line));
-            if *line == b'\0' as c_char {
+            if *line == b'\0' {
                 free_(line);
                 (*c).flags |= client_flag::EXIT;
                 break;
@@ -613,7 +613,7 @@ pub unsafe fn control_flush_all_blocks(c: *mut client) {
             );
 
             bufferevent_write((*cs).write_event, (*cb).line.cast(), strlen((*cb).line));
-            bufferevent_write((*cs).write_event, c"\n".as_ptr().cast(), 1);
+            bufferevent_write((*cs).write_event, c!("\n").cast(), 1);
             control_free_block(cs, cb);
         }
     }
@@ -631,7 +631,7 @@ pub unsafe fn control_append_data(
         if message.is_null() {
             message = evbuffer_new();
             if message.is_null() {
-                fatalx(c"out of memory");
+                fatalx("out of memory");
             }
             if (*c).flags.intersects(client_flag::CONTROL_PAUSEAFTER) {
                 evbuffer_add_printf!(message, "%extended-output %{} {} : ", (*wp).id, age);
@@ -666,10 +666,10 @@ pub unsafe fn control_write_data(c: *mut client, message: *mut evbuffer) {
             "control_write_data: {0}: {2:1$}",
             _s((*c).name),
             EVBUFFER_LENGTH(message),
-            _s(EVBUFFER_DATA(message).cast()),
+            _s(EVBUFFER_DATA(message).cast::<u8>()),
         );
 
-        evbuffer_add(message, c"\n".as_ptr().cast(), 1);
+        evbuffer_add(message, c!("\n").cast(), 1);
         bufferevent_write_buffer((*cs).write_event, message);
         evbuffer_free(message);
     }
@@ -818,7 +818,7 @@ pub unsafe fn control_start(c: *mut client) {
             c.cast(),
         );
         if (*cs).read_event.is_null() {
-            fatalx(c"out of memory");
+            fatalx("out of memory");
         }
 
         if (*c).flags.intersects(client_flag::CONTROLCONTROL) {
@@ -832,13 +832,13 @@ pub unsafe fn control_start(c: *mut client) {
                 c.cast(),
             );
             if (*cs).write_event.is_null() {
-                fatalx(c"out of memory");
+                fatalx("out of memory");
             }
         }
         bufferevent_setwatermark((*cs).write_event, EV_WRITE, CONTROL_BUFFER_LOW as usize, 0);
 
         if (*c).flags.intersects(client_flag::CONTROLCONTROL) {
-            bufferevent_write((*cs).write_event, c"\x1bP1000p".as_ptr().cast(), 7);
+            bufferevent_write((*cs).write_event, c!("\x1bP1000p").cast(), 7);
             bufferevent_enable((*cs).write_event, EV_WRITE);
         }
     }
@@ -1126,10 +1126,10 @@ pub unsafe extern "C" fn control_check_subs_timer(fd: i32, events: i16, data: *m
 
 pub unsafe fn control_add_sub(
     c: *mut client,
-    name: *mut c_char,
+    name: *mut u8,
     type_: control_sub_type,
     id: i32,
-    format: *const c_char,
+    format: *const u8,
 ) {
     unsafe {
         let cs = (*c).control_state;
@@ -1169,7 +1169,7 @@ pub unsafe fn control_add_sub(
     }
 }
 
-pub unsafe fn control_remove_sub(c: *mut client, name: *mut c_char) {
+pub unsafe fn control_remove_sub(c: *mut client, name: *mut u8) {
     unsafe {
         let cs = (*c).control_state;
 

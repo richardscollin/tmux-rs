@@ -60,7 +60,7 @@ pub unsafe fn layout_free_cell(lc: *mut layout_cell) {
     }
 }
 
-pub unsafe fn layout_print_cell(lc: *mut layout_cell, hdr: *const c_char, n: u32) {
+pub unsafe fn layout_print_cell(lc: *mut layout_cell, hdr: *const u8, n: u32) {
     unsafe {
         let type_str = match (*lc).type_ {
             layout_type::LAYOUT_LEFTRIGHT => c"LEFTRIGHT",
@@ -157,7 +157,7 @@ pub unsafe fn layout_make_leaf(lc: *mut layout_cell, wp: *mut window_pane) {
 pub unsafe fn layout_make_node(lc: *mut layout_cell, type_: layout_type) {
     unsafe {
         if type_ == layout_type::LAYOUT_WINDOWPANE {
-            fatalx(c"bad layout type");
+            fatalx("bad layout type");
         }
         (*lc).type_ = type_;
         tailq_init(&raw mut (*lc).cells);
@@ -970,7 +970,7 @@ pub unsafe fn layout_split_pane(
                     return null_mut();
                 }
             }
-            _ => fatalx(c"bad layout type"),
+            _ => fatalx("bad layout type"),
         }
 
         // Calculate new cell sizes. size is the target size or -1 for middle

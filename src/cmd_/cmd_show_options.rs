@@ -13,48 +13,48 @@
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 use crate::*;
 
-pub static mut cmd_show_options_entry: cmd_entry = cmd_entry {
-    name: c"show-options".as_ptr(),
-    alias: c"show".as_ptr(),
+pub static CMD_SHOW_OPTIONS_ENTRY: cmd_entry = cmd_entry {
+    name: SyncCharPtr::new(c"show-options"),
+    alias: SyncCharPtr::new(c"show"),
 
     args: args_parse::new(c"AgHpqst:vw", 0, 1, None),
-    usage: c"[-AgHpqsvw] [-t target-pane] [option]".as_ptr(),
+    usage: SyncCharPtr::new(c"[-AgHpqsvw] [-t target-pane] [option]"),
 
     target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_PANE, CMD_FIND_CANFAIL),
 
     flags: cmd_flag::CMD_AFTERHOOK,
-    exec: Some(cmd_show_options_exec),
-    ..unsafe { zeroed() }
+    exec: cmd_show_options_exec,
+    source: cmd_entry_flag::zeroed(),
 };
 
-pub static mut cmd_show_window_options_entry: cmd_entry = cmd_entry {
-    name: c"show-window-options".as_ptr(),
-    alias: c"showw".as_ptr(),
+pub static CMD_SHOW_WINDOW_OPTIONS_ENTRY: cmd_entry = cmd_entry {
+    name: SyncCharPtr::new(c"show-window-options"),
+    alias: SyncCharPtr::new(c"showw"),
 
     args: args_parse::new(c"gvt:", 0, 1, None),
-    usage: c"[-gv] [-t target-window] [option]".as_ptr(),
+    usage: SyncCharPtr::new(c"[-gv] [-t target-window] [option]"),
 
     target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_WINDOW, CMD_FIND_CANFAIL),
 
     flags: cmd_flag::CMD_AFTERHOOK,
-    exec: Some(cmd_show_options_exec),
+    exec: cmd_show_options_exec,
 
-    ..unsafe { zeroed() }
+    source: cmd_entry_flag::zeroed(),
 };
 
-pub static mut cmd_show_hooks_entry: cmd_entry = cmd_entry {
-    name: c"show-hooks".as_ptr(),
-    alias: null(),
+pub static CMD_SHOW_HOOKS_ENTRY: cmd_entry = cmd_entry {
+    name: SyncCharPtr::new(c"show-hooks"),
+    alias: SyncCharPtr::null(),
 
     args: args_parse::new(c"gpt:w", 0, 1, None),
-    usage: c"[-gpw] [-t target-pane]".as_ptr(),
+    usage: SyncCharPtr::new(c"[-gpw] [-t target-pane]"),
 
     target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_PANE, CMD_FIND_CANFAIL),
 
     flags: cmd_flag::CMD_AFTERHOOK,
-    exec: Some(cmd_show_options_exec),
+    exec: cmd_show_options_exec,
 
-    ..unsafe { zeroed() }
+    source: cmd_entry_flag::zeroed(),
 };
 
 unsafe fn cmd_show_options_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retval {
@@ -62,9 +62,9 @@ unsafe fn cmd_show_options_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
         let args = cmd_get_args(self_);
         let target = cmdq_get_target(item);
         let mut oo: *mut options = null_mut();
-        let mut argument: *mut c_char = null_mut();
-        let mut name: *mut c_char = null_mut();
-        let mut cause: *mut c_char = null_mut();
+        let mut argument: *mut u8 = null_mut();
+        let mut name: *mut u8 = null_mut();
+        let mut cause: *mut u8 = null_mut();
 
         let window = 0;
         let mut idx = 0;
@@ -72,7 +72,7 @@ unsafe fn cmd_show_options_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
         let mut parent = 0;
         let mut o: *mut options_entry = null_mut();
 
-        let window = (cmd_get_entry(self_) == &raw mut cmd_show_window_options_entry) as i32;
+        let window = std::ptr::eq(cmd_get_entry(self_), &CMD_SHOW_WINDOW_OPTIONS_ENTRY) as i32;
 
         'fail: {
             'out: {
@@ -215,7 +215,7 @@ pub unsafe fn cmd_show_options_all(
         let mut o: *mut options_entry = null_mut();
         let mut parent = 0;
 
-        if cmd_get_entry(self_) != &raw mut cmd_show_hooks_entry {
+        if !std::ptr::eq(cmd_get_entry(self_), &CMD_SHOW_HOOKS_ENTRY) {
             o = options_first(oo);
             while !o.is_null() {
                 if options_table_entry(o).is_null() {
@@ -224,17 +224,17 @@ pub unsafe fn cmd_show_options_all(
                 o = options_next(o);
             }
         }
-        let mut oe = &raw const options_table as *const options_table_entry;
+        let mut oe = &raw const OPTIONS_TABLE as *const options_table_entry;
         while !(*oe).name.is_null() {
             if !(*oe).scope & scope != 0 {
                 oe = oe.add(1);
                 continue;
             }
 
-            if (cmd_get_entry(self_) != &raw mut cmd_show_hooks_entry
+            if !std::ptr::eq(cmd_get_entry(self_), &CMD_SHOW_HOOKS_ENTRY)
                 && !args_has_(args, 'H')
-                && ((*oe).flags & OPTIONS_TABLE_IS_HOOK != 0))
-                || (cmd_get_entry(self_) == &raw mut cmd_show_hooks_entry
+                && ((*oe).flags & OPTIONS_TABLE_IS_HOOK != 0)
+                || (std::ptr::eq(cmd_get_entry(self_), &CMD_SHOW_HOOKS_ENTRY)
                     && (!(*oe).flags & OPTIONS_TABLE_IS_HOOK != 0))
             {
                 oe = oe.add(1);

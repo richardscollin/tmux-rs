@@ -14,18 +14,18 @@
 
 use crate::*;
 
-pub static mut cmd_find_window_entry: cmd_entry = cmd_entry {
-    name: c"find-window".as_ptr(),
-    alias: c"findw".as_ptr(),
+pub static CMD_FIND_WINDOW_ENTRY: cmd_entry = cmd_entry {
+    name: SyncCharPtr::new(c"find-window"),
+    alias: SyncCharPtr::new(c"findw"),
 
     args: args_parse::new(c"CiNrt:TZ", 1, 1, None),
-    usage: c"[-CiNrTZ] [-t target-pane] match-string".as_ptr(),
+    usage: SyncCharPtr::new(c"[-CiNrTZ] [-t target-pane] match-string"),
 
     target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_PANE, 0),
 
     flags: cmd_flag::empty(),
-    exec: Some(cmd_find_window_exec),
-    ..unsafe { zeroed() }
+    exec: cmd_find_window_exec,
+    source: cmd_entry_flag::zeroed(),
 };
 
 unsafe fn cmd_find_window_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retval {
@@ -34,22 +34,22 @@ unsafe fn cmd_find_window_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
         let target = cmdq_get_target(item);
         let wp = (*target).wp;
         let s = args_string(args, 0);
-        let mut suffix = c"".as_ptr();
-        let mut star = c"*".as_ptr();
+        let mut suffix = c!("");
+        let mut star = c!("*");
 
         let mut c = args_has_(args, 'C');
         let mut n = args_has_(args, 'N');
         let mut t = args_has_(args, 'T');
 
         if args_has(args, b'r') != 0 {
-            star = c"".as_ptr();
+            star = c!("");
         }
         if args_has(args, b'r') != 0 && args_has(args, b'i') != 0 {
-            suffix = c"/ri".as_ptr();
+            suffix = c!("/ri");
         } else if args_has(args, b'r') != 0 {
-            suffix = c"/r".as_ptr();
+            suffix = c!("/r");
         } else if args_has(args, b'i') != 0 {
-            suffix = c"/i".as_ptr();
+            suffix = c!("/i");
         }
 
         if !c && !n && !t {
@@ -136,7 +136,7 @@ unsafe fn cmd_find_window_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
         window_pane_set_mode(
             wp,
             null_mut(),
-            &raw const window_tree_mode,
+            &raw const WINDOW_TREE_MODE,
             target,
             new_args,
         );

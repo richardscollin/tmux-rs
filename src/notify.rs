@@ -15,7 +15,7 @@ use crate::*;
 
 #[repr(C)]
 pub struct notify_entry {
-    pub name: *mut c_char,
+    pub name: *mut u8,
     pub fs: cmd_find_state,
     pub formats: *mut format_tree,
 
@@ -23,7 +23,7 @@ pub struct notify_entry {
     pub session: *mut session,
     pub window: *mut window,
     pub pane: i32,
-    pub pbname: *mut c_char,
+    pub pbname: *mut u8,
 }
 
 pub unsafe fn notify_insert_one_hook(
@@ -67,7 +67,7 @@ pub unsafe fn notify_insert_hook(mut item: *mut cmdq_item, ne: *mut notify_entry
         }
 
         let mut oo = if fs.s.is_null() {
-            global_s_options
+            GLOBAL_S_OPTIONS
         } else {
             (*fs.s).options
         };
@@ -92,7 +92,7 @@ pub unsafe fn notify_insert_hook(mut item: *mut cmdq_item, ne: *mut notify_entry
         );
         cmdq_add_formats(state, (*ne).formats);
 
-        if *(*ne).name == b'@' as c_char {
+        if *(*ne).name == b'@' {
             let value = options_get_string(oo, (*ne).name);
             match cmd_parse_from_string(cstr_to_str(value), None) {
                 Err(error) => {
@@ -125,7 +125,7 @@ pub unsafe fn notify_insert_hook(mut item: *mut cmdq_item, ne: *mut notify_entry
 // notify_add
 
 pub unsafe fn notify_callback(item: *mut cmdq_item, data: *mut c_void) -> cmd_retval {
-    let __func__ = c"notify_callback".as_ptr();
+    let __func__ = c!("notify_callback");
     unsafe {
         let ne = data as *mut notify_entry;
 
@@ -206,9 +206,9 @@ pub unsafe fn notify_add(
     s: *mut session,
     w: *mut window,
     wp: *mut window_pane,
-    pbname: *const c_char,
+    pbname: *const u8,
 ) {
-    let __func__ = c"notify_add".as_ptr();
+    let __func__ = c!("notify_add");
     unsafe {
         let item = cmdq_running(null_mut());
         if !item.is_null() && cmdq_get_flags(item).intersects(cmdq_state_flags::CMDQ_STATE_NOHOOKS)
@@ -217,7 +217,7 @@ pub unsafe fn notify_add(
         }
 
         let ne = xcalloc1::<notify_entry>() as *mut notify_entry;
-        (*ne).name = xstrdup(name.as_ptr()).as_ptr();
+        (*ne).name = xstrdup(name.as_ptr().cast()).as_ptr();
 
         (*ne).client = c;
         (*ne).session = s;
@@ -230,30 +230,20 @@ pub unsafe fn notify_add(
         };
 
         (*ne).formats = format_create(null_mut(), null_mut(), 0, format_flags::FORMAT_NOJOBS);
-        format_add!((*ne).formats, c"hook".as_ptr(), "{}", _s(name.as_ptr()));
+        format_add!((*ne).formats, c!("hook"), "{}", _s(name.as_ptr()));
         if !c.is_null() {
-            format_add!((*ne).formats, c"hook_client".as_ptr(), "{}", _s((*c).name),);
+            format_add!((*ne).formats, c!("hook_client"), "{}", _s((*c).name),);
         }
         if !s.is_null() {
-            format_add!((*ne).formats, c"hook_session".as_ptr(), "${}", (*s).id);
-            format_add!(
-                (*ne).formats,
-                c"hook_session_name".as_ptr(),
-                "{}",
-                _s((*s).name),
-            );
+            format_add!((*ne).formats, c!("hook_session"), "${}", (*s).id);
+            format_add!((*ne).formats, c!("hook_session_name"), "{}", _s((*s).name),);
         }
         if !w.is_null() {
-            format_add!((*ne).formats, c"hook_window".as_ptr(), "@{}", (*w).id,);
-            format_add!(
-                (*ne).formats,
-                c"hook_window_name".as_ptr(),
-                "{}",
-                _s((*w).name),
-            );
+            format_add!((*ne).formats, c!("hook_window"), "@{}", (*w).id,);
+            format_add!((*ne).formats, c!("hook_window_name"), "{}", _s((*w).name),);
         }
         if !wp.is_null() {
-            format_add!((*ne).formats, c"hook_pane".as_ptr(), "%%{}", (*wp).id,);
+            format_add!((*ne).formats, c!("hook_pane"), "%%{}", (*wp).id,);
         }
         format_log_debug((*ne).formats, __func__);
 
@@ -279,8 +269,8 @@ pub unsafe fn notify_add(
     }
 }
 
-pub unsafe fn notify_hook(item: *mut cmdq_item, name: *mut c_char) {
-    let __func__ = c"notify_hook".as_ptr();
+pub unsafe fn notify_hook(item: *mut cmdq_item, name: *mut u8) {
+    let __func__ = c!("notify_hook");
     unsafe {
         let target = cmdq_get_target(item);
         let mut ne: notify_entry = zeroed();
@@ -298,7 +288,7 @@ pub unsafe fn notify_hook(item: *mut cmdq_item, name: *mut c_char) {
         };
 
         ne.formats = format_create(null_mut(), null_mut(), 0, format_flags::FORMAT_NOJOBS);
-        format_add!(ne.formats, c"hook".as_ptr(), "{}", _s(name));
+        format_add!(ne.formats, c!("hook"), "{}", _s(name));
         format_log_debug(ne.formats, __func__);
 
         notify_insert_hook(item, &raw mut ne);
@@ -404,7 +394,7 @@ pub unsafe fn notify_pane(name: &'static CStr, wp: *mut window_pane) {
     }
 }
 
-pub unsafe fn notify_paste_buffer(pbname: *const c_char, deleted: i32) {
+pub unsafe fn notify_paste_buffer(pbname: *const u8, deleted: i32) {
     unsafe {
         let mut fs: cmd_find_state = zeroed();
 

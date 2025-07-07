@@ -13,28 +13,30 @@
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 use crate::*;
 
-pub static mut cmd_show_prompt_history_entry: cmd_entry = cmd_entry {
-    name: c"show-prompt-history".as_ptr(),
-    alias: c"showphist".as_ptr(),
+pub static CMD_SHOW_PROMPT_HISTORY_ENTRY: cmd_entry = cmd_entry {
+    name: SyncCharPtr::new(c"show-prompt-history"),
+    alias: SyncCharPtr::new(c"showphist"),
 
     args: args_parse::new(c"T:", 0, 0, None),
-    usage: c"[-T type]".as_ptr(),
+    usage: SyncCharPtr::new(c"[-T type]"),
 
     flags: cmd_flag::CMD_AFTERHOOK,
-    exec: Some(cmd_show_prompt_history_exec),
-    ..unsafe { zeroed() }
+    exec: cmd_show_prompt_history_exec,
+    source: cmd_entry_flag::zeroed(),
+    target: cmd_entry_flag::zeroed(),
 };
 
-pub static mut cmd_clear_prompt_history_entry: cmd_entry = cmd_entry {
-    name: c"clear-prompt-history".as_ptr(),
-    alias: c"clearphist".as_ptr(),
+pub static CMD_CLEAR_PROMPT_HISTORY_ENTRY: cmd_entry = cmd_entry {
+    name: SyncCharPtr::new(c"clear-prompt-history"),
+    alias: SyncCharPtr::new(c"clearphist"),
 
     args: args_parse::new(c"T:", 0, 0, None),
-    usage: c"[-T type]".as_ptr(),
+    usage: SyncCharPtr::new(c"[-T type]"),
 
     flags: cmd_flag::CMD_AFTERHOOK,
-    exec: Some(cmd_show_prompt_history_exec),
-    ..unsafe { zeroed() }
+    exec: cmd_show_prompt_history_exec,
+    source: cmd_entry_flag::zeroed(),
+    target: cmd_entry_flag::zeroed(),
 };
 
 unsafe fn cmd_show_prompt_history_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retval {
@@ -43,12 +45,12 @@ unsafe fn cmd_show_prompt_history_exec(self_: *mut cmd, item: *mut cmdq_item) ->
         let typestr = args_get(args, b'T');
         let type_: prompt_type;
 
-        if cmd_get_entry(self_) == &raw mut cmd_clear_prompt_history_entry {
+        if std::ptr::eq(cmd_get_entry(self_), &CMD_CLEAR_PROMPT_HISTORY_ENTRY) {
             if typestr.is_null() {
                 for tidx in 0..PROMPT_NTYPES {
-                    free_(status_prompt_hlist[tidx as usize]);
-                    status_prompt_hlist[tidx as usize] = null_mut();
-                    status_prompt_hsize[tidx as usize] = 0;
+                    free_(STATUS_PROMPT_HLIST[tidx as usize]);
+                    STATUS_PROMPT_HLIST[tidx as usize] = null_mut();
+                    STATUS_PROMPT_HSIZE[tidx as usize] = 0;
                 }
             } else {
                 type_ = status_prompt_type(typestr);
@@ -56,9 +58,9 @@ unsafe fn cmd_show_prompt_history_exec(self_: *mut cmd, item: *mut cmdq_item) ->
                     cmdq_error!(item, "invalid type: {}", _s(typestr));
                     return cmd_retval::CMD_RETURN_ERROR;
                 }
-                free_(status_prompt_hlist[type_ as usize]);
-                status_prompt_hlist[type_ as usize] = null_mut();
-                status_prompt_hsize[type_ as usize] = 0;
+                free_(STATUS_PROMPT_HLIST[type_ as usize]);
+                STATUS_PROMPT_HLIST[type_ as usize] = null_mut();
+                STATUS_PROMPT_HSIZE[type_ as usize] = 0;
             }
 
             return cmd_retval::CMD_RETURN_NORMAL;
@@ -71,12 +73,12 @@ unsafe fn cmd_show_prompt_history_exec(self_: *mut cmd, item: *mut cmdq_item) ->
                     "History for {}:\n",
                     _s(status_prompt_type_string(tidx)),
                 );
-                for hidx in 0u32..status_prompt_hsize[tidx as usize] {
+                for hidx in 0u32..STATUS_PROMPT_HSIZE[tidx as usize] {
                     cmdq_print!(
                         item,
                         "{}: {}",
                         hidx + 1,
-                        _s(*status_prompt_hlist[tidx as usize].add(hidx as usize)),
+                        _s(*STATUS_PROMPT_HLIST[tidx as usize].add(hidx as usize)),
                     );
                 }
                 cmdq_print!(item, "");
@@ -92,12 +94,12 @@ unsafe fn cmd_show_prompt_history_exec(self_: *mut cmd, item: *mut cmdq_item) ->
                 "History for {}:\n",
                 _s(status_prompt_type_string(type_ as u32)),
             );
-            for hidx in 0u32..status_prompt_hsize[type_ as usize] {
+            for hidx in 0u32..STATUS_PROMPT_HSIZE[type_ as usize] {
                 cmdq_print!(
                     item,
                     "{}: {}",
                     hidx + 1,
-                    _s(*status_prompt_hlist[type_ as usize].add(hidx as usize)),
+                    _s(*STATUS_PROMPT_HLIST[type_ as usize].add(hidx as usize)),
                 );
             }
             cmdq_print!(item, "");

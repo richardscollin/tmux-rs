@@ -14,18 +14,18 @@
 
 use crate::*;
 
-pub static mut cmd_kill_pane_entry: cmd_entry = cmd_entry {
-    name: c"kill-pane".as_ptr(),
-    alias: c"killp".as_ptr(),
+pub static CMD_KILL_PANE_ENTRY: cmd_entry = cmd_entry {
+    name: SyncCharPtr::new(c"kill-pane"),
+    alias: SyncCharPtr::new(c"killp"),
 
     args: args_parse::new(c"at:", 0, 0, None),
-    usage: c"[-a] [-t target-client]".as_ptr(),
+    usage: SyncCharPtr::new(c"[-a] [-t target-client]"),
 
     target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_PANE, 0),
 
     flags: cmd_flag::CMD_AFTERHOOK,
-    exec: Some(cmd_kill_pane_exec),
-    ..unsafe { zeroed() }
+    exec: cmd_kill_pane_exec,
+    source: cmd_entry_flag::zeroed(),
 };
 
 unsafe fn cmd_kill_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retval {

@@ -17,7 +17,7 @@ use std::cmp::Ordering;
 
 use crate::*;
 
-use libc::{getpwuid, getuid};
+use crate::libc::{getpwuid, getuid};
 
 use crate::compat::{
     queue::tailq_foreach,
@@ -45,7 +45,7 @@ pub fn server_acl_cmp(user1: &server_acl_user, user2: &server_acl_user) -> Order
 }
 
 pub type server_acl_entries = rb_head<server_acl_user>;
-static mut server_acl_entries: server_acl_entries = unsafe { zeroed() };
+static mut SERVER_ACL_ENTRIES: server_acl_entries = unsafe { zeroed() };
 
 RB_GENERATE!(
     server_acl_entries,
@@ -57,7 +57,7 @@ RB_GENERATE!(
 
 pub unsafe fn server_acl_init() {
     unsafe {
-        rb_init(&raw mut server_acl_entries);
+        rb_init(&raw mut SERVER_ACL_ENTRIES);
 
         if getuid() != 0 {
             server_acl_user_allow(0);
@@ -70,22 +70,22 @@ pub unsafe fn server_acl_user_find(uid: uid_t) -> *mut server_acl_user {
     unsafe {
         let mut find: server_acl_user = server_acl_user { uid, ..zeroed() };
 
-        rb_find::<_, _>(&raw mut server_acl_entries, &raw mut find)
+        rb_find::<_, _>(&raw mut SERVER_ACL_ENTRIES, &raw mut find)
     }
 }
 
 pub unsafe fn server_acl_display(item: *mut cmdq_item) {
     unsafe {
         // server_acl_entries
-        for loop_ in rb_foreach(&raw mut server_acl_entries).map(NonNull::as_ptr) {
+        for loop_ in rb_foreach(&raw mut SERVER_ACL_ENTRIES).map(NonNull::as_ptr) {
             if (*loop_).uid == 0 {
                 continue;
             }
             let pw = getpwuid((*loop_).uid);
-            let name = if !pw.is_null() {
-                (*pw).pw_name
+            let name: *const u8 = if !pw.is_null() {
+                (*pw).pw_name.cast()
             } else {
-                c"unknown".as_ptr()
+                c!("unknown")
             };
             if (*loop_).flags == server_acl_user_flags::SERVER_ACL_READONLY {
                 cmdq_print!(item, "{} (R)", _s(name));
@@ -103,7 +103,7 @@ pub unsafe fn server_acl_user_allow(uid: uid_t) {
             user = xcalloc1();
             (*user).uid = uid;
             // server_acl_entries
-            rb_insert(&raw mut server_acl_entries, user);
+            rb_insert(&raw mut SERVER_ACL_ENTRIES, user);
         }
     }
 }
@@ -113,7 +113,7 @@ pub unsafe fn server_acl_user_deny(uid: uid_t) {
         let user = server_acl_user_find(uid);
         if !user.is_null() {
             // server_acl_entries
-            rb_remove(&raw mut server_acl_entries, user);
+            rb_remove(&raw mut SERVER_ACL_ENTRIES, user);
             free_(user);
         }
     }
@@ -127,7 +127,7 @@ pub unsafe fn server_acl_user_allow_write(mut uid: uid_t) {
         }
         (*user).flags &= !server_acl_user_flags::SERVER_ACL_READONLY;
 
-        for c in tailq_foreach(&raw mut clients).map(NonNull::as_ptr) {
+        for c in tailq_foreach(&raw mut CLIENTS).map(NonNull::as_ptr) {
             uid = proc_get_peer_uid((*c).peer);
             if uid != -1i32 as uid_t && uid == (*user).uid {
                 (*c).flags &= !client_flag::READONLY;
@@ -145,7 +145,7 @@ pub unsafe fn server_acl_user_deny_write(mut uid: uid_t) {
             }
             (*user).flags |= server_acl_user_flags::SERVER_ACL_READONLY;
 
-            for c in tailq_foreach(&raw mut clients).map(NonNull::as_ptr) {
+            for c in tailq_foreach(&raw mut CLIENTS).map(NonNull::as_ptr) {
                 uid = proc_get_peer_uid((*c).peer);
                 if uid != -1i32 as uid_t && uid == (*user).uid {
                     (*c).flags &= !client_flag::READONLY;

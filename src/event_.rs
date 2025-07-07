@@ -1,5 +1,6 @@
+#![allow(non_upper_case_globals)]
 use ::core::{
-    ffi::{c_char, c_int, c_short, c_uchar, c_void},
+    ffi::{c_int, c_short, c_void},
     option::Option,
 };
 use ::libc::timeval;
@@ -89,7 +90,7 @@ pub unsafe fn EVBUFFER_LENGTH(x: *mut evbuffer) -> usize {
 
 #[allow(non_snake_case)]
 #[inline]
-pub unsafe fn EVBUFFER_DATA(x: *mut evbuffer) -> *mut c_uchar {
+pub unsafe fn EVBUFFER_DATA(x: *mut evbuffer) -> *mut u8 {
     unsafe { evbuffer_pullup(x, -1) }
 }
 
@@ -263,7 +264,7 @@ pub struct bufferevent {
     pub timeout_write: timeval,
     pub enabled: c_short,
 }
-pub type event_log_cb = Option<unsafe extern "C" fn(severity: c_int, msg: *const c_char)>;
+pub type event_log_cb = Option<unsafe extern "C" fn(severity: c_int, msg: *const u8)>;
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct bufferevent_ops {
@@ -279,14 +280,14 @@ unsafe extern "C" {
 
     pub fn evbuffer_write(buffer: *mut evbuffer, fd: i32) -> i32;
     pub fn evbuffer_read(buffer: *mut evbuffer, fd: i32, howmuch: i32) -> i32;
-    pub fn evbuffer_readline(buffer: *mut evbuffer) -> *mut c_char;
+    pub fn evbuffer_readline(buffer: *mut evbuffer) -> *mut u8;
     pub fn evbuffer_readln(
         buffer: *mut evbuffer,
         n_read_out: *mut usize,
         eol_style: evbuffer_eol_style,
-    ) -> *mut c_char;
+    ) -> *mut u8;
     pub fn evbuffer_drain(buf: *mut evbuffer, len: usize) -> c_int;
-    pub fn evbuffer_pullup(buf: *mut evbuffer, size: isize) -> *mut ::core::ffi::c_uchar;
+    pub fn evbuffer_pullup(buf: *mut evbuffer, size: isize) -> *mut u8;
     pub fn bufferevent_free(bufev: *mut bufferevent);
     pub fn bufferevent_write(bufev: *mut bufferevent, data: *const c_void, size: usize) -> c_int;
     pub fn bufferevent_write_buffer(bufev: *mut bufferevent, buf: *mut evbuffer) -> c_int;
@@ -314,7 +315,7 @@ unsafe extern "C" {
     pub fn event_active(ev: *mut event, res: c_int, ncalls: c_short);
     pub fn event_pending(ev: *const event, events: c_short, tv: *mut timeval) -> c_int;
     pub fn event_initialized(ev: *const event) -> c_int;
-    pub fn event_get_version() -> *const c_char;
+    pub fn event_get_version() -> *const u8;
     pub fn event_loop(arg1: c_int) -> c_int;
     pub fn event_once(
         arg1: c_int,
@@ -323,7 +324,7 @@ unsafe extern "C" {
         arg4: *mut c_void,
         arg5: *const timeval,
     ) -> c_int;
-    pub fn event_get_method() -> *const c_char;
+    pub fn event_get_method() -> *const u8;
     pub fn event_set(
         arg1: *mut event,
         arg2: c_int,

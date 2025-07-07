@@ -14,7 +14,7 @@
 
 use crate::*;
 
-use libc::{strchr, strcmp, strlen, strncmp};
+use crate::libc::{strchr, strcmp, strlen, strncmp};
 
 use crate::compat::{
     queue::{
@@ -89,190 +89,189 @@ pub mod cmd_switch_client;
 pub mod cmd_unbind_key;
 pub mod cmd_wait_for;
 
-use cmd_attach_session::cmd_attach_session_entry;
-use cmd_bind_key::cmd_bind_key_entry;
-use cmd_break_pane::cmd_break_pane_entry;
-use cmd_capture_pane::{cmd_capture_pane_entry, cmd_clear_history_entry};
+use cmd_attach_session::CMD_ATTACH_SESSION_ENTRY;
+use cmd_bind_key::CMD_BIND_KEY_ENTRY;
+use cmd_break_pane::CMD_BREAK_PANE_ENTRY;
+use cmd_capture_pane::{CMD_CAPTURE_PANE_ENTRY, CMD_CLEAR_HISTORY_ENTRY};
 use cmd_choose_tree::{
-    cmd_choose_buffer_entry, cmd_choose_client_entry, cmd_choose_tree_entry,
-    cmd_customize_mode_entry,
+    CMD_CHOOSE_BUFFER_ENTRY, CMD_CHOOSE_CLIENT_ENTRY, CMD_CHOOSE_TREE_ENTRY,
+    CMD_CUSTOMIZE_MODE_ENTRY,
 };
-use cmd_command_prompt::cmd_command_prompt_entry;
-use cmd_confirm_before::cmd_confirm_before_entry;
-use cmd_copy_mode::{cmd_clock_mode_entry, cmd_copy_mode_entry};
-use cmd_detach_client::cmd_detach_client_entry;
-use cmd_detach_client::cmd_suspend_client_entry;
-use cmd_display_menu::{cmd_display_menu_entry, cmd_display_popup_entry};
-use cmd_display_message::cmd_display_message_entry;
-use cmd_display_panes::cmd_display_panes_entry;
-use cmd_find_window::cmd_find_window_entry;
-use cmd_if_shell::cmd_if_shell_entry;
-use cmd_join_pane::{cmd_join_pane_entry, cmd_move_pane_entry};
-use cmd_kill_pane::cmd_kill_pane_entry;
-use cmd_kill_server::cmd_kill_server_entry;
-use cmd_kill_server::cmd_start_server_entry;
-use cmd_kill_session::cmd_kill_session_entry;
-use cmd_kill_window::cmd_kill_window_entry;
-use cmd_kill_window::cmd_unlink_window_entry;
-use cmd_list_buffers::cmd_list_buffers_entry;
-use cmd_list_clients::cmd_list_clients_entry;
-use cmd_list_keys::{cmd_list_commands_entry, cmd_list_keys_entry};
-use cmd_list_panes::cmd_list_panes_entry;
-use cmd_list_sessions::cmd_list_sessions_entry;
-use cmd_list_windows::cmd_list_windows_entry;
-use cmd_load_buffer::cmd_load_buffer_entry;
-use cmd_lock_server::{cmd_lock_client_entry, cmd_lock_server_entry, cmd_lock_session_entry};
-use cmd_move_window::cmd_link_window_entry;
-use cmd_move_window::cmd_move_window_entry;
-use cmd_new_session::cmd_has_session_entry;
-use cmd_new_session::cmd_new_session_entry;
-use cmd_new_window::cmd_new_window_entry;
-use cmd_paste_buffer::cmd_paste_buffer_entry;
-use cmd_pipe_pane::cmd_pipe_pane_entry;
-use cmd_refresh_client::cmd_refresh_client_entry;
-use cmd_rename_session::cmd_rename_session_entry;
-use cmd_rename_window::cmd_rename_window_entry;
-use cmd_resize_pane::cmd_resize_pane_entry;
-use cmd_resize_window::cmd_resize_window_entry;
-use cmd_respawn_pane::cmd_respawn_pane_entry;
-use cmd_respawn_window::cmd_respawn_window_entry;
-use cmd_rotate_window::cmd_rotate_window_entry;
-use cmd_run_shell::cmd_run_shell_entry;
-use cmd_save_buffer::cmd_save_buffer_entry;
-use cmd_save_buffer::cmd_show_buffer_entry;
-use cmd_select_layout::cmd_next_layout_entry;
-use cmd_select_layout::cmd_previous_layout_entry;
-use cmd_select_layout::cmd_select_layout_entry;
-use cmd_select_pane::cmd_last_pane_entry;
-use cmd_select_pane::cmd_select_pane_entry;
-use cmd_select_window::cmd_last_window_entry;
-use cmd_select_window::cmd_next_window_entry;
-use cmd_select_window::cmd_previous_window_entry;
-use cmd_select_window::cmd_select_window_entry;
-use cmd_send_keys::cmd_send_keys_entry;
-use cmd_send_keys::cmd_send_prefix_entry;
-use cmd_server_access::cmd_server_access_entry;
-use cmd_set_buffer::cmd_delete_buffer_entry;
-use cmd_set_buffer::cmd_set_buffer_entry;
-use cmd_set_environment::cmd_set_environment_entry;
-use cmd_set_option::cmd_set_hook_entry;
-use cmd_set_option::cmd_set_option_entry;
-use cmd_set_option::cmd_set_window_option_entry;
-use cmd_show_environment::cmd_show_environment_entry;
-use cmd_show_messages::cmd_show_messages_entry;
-use cmd_show_options::cmd_show_hooks_entry;
-use cmd_show_options::cmd_show_options_entry;
-use cmd_show_options::cmd_show_window_options_entry;
-use cmd_show_prompt_history::{cmd_clear_prompt_history_entry, cmd_show_prompt_history_entry};
-use cmd_source_file::cmd_source_file_entry;
-use cmd_split_window::cmd_split_window_entry;
-use cmd_swap_pane::cmd_swap_pane_entry;
-use cmd_swap_window::cmd_swap_window_entry;
-use cmd_switch_client::cmd_switch_client_entry;
-use cmd_unbind_key::cmd_unbind_key_entry;
-use cmd_wait_for::cmd_wait_for_entry;
+use cmd_command_prompt::CMD_COMMAND_PROMPT_ENTRY;
+use cmd_confirm_before::CMD_CONFIRM_BEFORE_ENTRY;
+use cmd_copy_mode::{CMD_CLOCK_MODE_ENTRY, CMD_COPY_MODE_ENTRY};
+use cmd_detach_client::CMD_DETACH_CLIENT_ENTRY;
+use cmd_detach_client::CMD_SUSPEND_CLIENT_ENTRY;
+use cmd_display_menu::{CMD_DISPLAY_MENU_ENTRY, CMD_DISPLAY_POPUP_ENTRY};
+use cmd_display_message::CMD_DISPLAY_MESSAGE_ENTRY;
+use cmd_display_panes::CMD_DISPLAY_PANES_ENTRY;
+use cmd_find_window::CMD_FIND_WINDOW_ENTRY;
+use cmd_if_shell::CMD_IF_SHELL_ENTRY;
+use cmd_join_pane::{CMD_JOIN_PANE_ENTRY, CMD_MOVE_PANE_ENTRY};
+use cmd_kill_pane::CMD_KILL_PANE_ENTRY;
+use cmd_kill_server::CMD_KILL_SERVER_ENTRY;
+use cmd_kill_server::CMD_START_SERVER_ENTRY;
+use cmd_kill_session::CMD_KILL_SESSION_ENTRY;
+use cmd_kill_window::CMD_KILL_WINDOW_ENTRY;
+use cmd_kill_window::CMD_UNLINK_WINDOW_ENTRY;
+use cmd_list_buffers::CMD_LIST_BUFFERS_ENTRY;
+use cmd_list_clients::CMD_LIST_CLIENTS_ENTRY;
+use cmd_list_keys::{CMD_LIST_COMMANDS_ENTRY, CMD_LIST_KEYS_ENTRY};
+use cmd_list_panes::CMD_LIST_PANES_ENTRY;
+use cmd_list_sessions::CMD_LIST_SESSIONS_ENTRY;
+use cmd_list_windows::CMD_LIST_WINDOWS_ENTRY;
+use cmd_load_buffer::CMD_LOAD_BUFFER_ENTRY;
+use cmd_lock_server::{CMD_LOCK_CLIENT_ENTRY, CMD_LOCK_SERVER_ENTRY, CMD_LOCK_SESSION_ENTRY};
+use cmd_move_window::CMD_LINK_WINDOW_ENTRY;
+use cmd_move_window::CMD_MOVE_WINDOW_ENTRY;
+use cmd_new_session::CMD_HAS_SESSION_ENTRY;
+use cmd_new_session::CMD_NEW_SESSION_ENTRY;
+use cmd_new_window::CMD_NEW_WINDOW_ENTRY;
+use cmd_paste_buffer::CMD_PASTE_BUFFER_ENTRY;
+use cmd_pipe_pane::CMD_PIPE_PANE_ENTRY;
+use cmd_refresh_client::CMD_REFRESH_CLIENT_ENTRY;
+use cmd_rename_session::CMD_RENAME_SESSION_ENTRY;
+use cmd_rename_window::CMD_RENAME_WINDOW_ENTRY;
+use cmd_resize_pane::CMD_RESIZE_PANE_ENTRY;
+use cmd_resize_window::CMD_RESIZE_WINDOW_ENTRY;
+use cmd_respawn_pane::CMD_RESPAWN_PANE_ENTRY;
+use cmd_respawn_window::CMD_RESPAWN_WINDOW_ENTRY;
+use cmd_rotate_window::CMD_ROTATE_WINDOW_ENTRY;
+use cmd_run_shell::CMD_RUN_SHELL_ENTRY;
+use cmd_save_buffer::CMD_SAVE_BUFFER_ENTRY;
+use cmd_save_buffer::CMD_SHOW_BUFFER_ENTRY;
+use cmd_select_layout::CMD_NEXT_LAYOUT_ENTRY;
+use cmd_select_layout::CMD_PREVIOUS_LAYOUT_ENTRY;
+use cmd_select_layout::CMD_SELECT_LAYOUT_ENTRY;
+use cmd_select_pane::CMD_LAST_PANE_ENTRY;
+use cmd_select_pane::CMD_SELECT_PANE_ENTRY;
+use cmd_select_window::CMD_LAST_WINDOW_ENTRY;
+use cmd_select_window::CMD_NEXT_WINDOW_ENTRY;
+use cmd_select_window::CMD_PREVIOUS_WINDOW_ENTRY;
+use cmd_select_window::CMD_SELECT_WINDOW_ENTRY;
+use cmd_send_keys::CMD_SEND_KEYS_ENTRY;
+use cmd_send_keys::CMD_SEND_PREFIX_ENTRY;
+use cmd_server_access::CMD_SERVER_ACCESS_ENTRY;
+use cmd_set_buffer::CMD_DELETE_BUFFER_ENTRY;
+use cmd_set_buffer::CMD_SET_BUFFER_ENTRY;
+use cmd_set_environment::CMD_SET_ENVIRONMENT_ENTRY;
+use cmd_set_option::CMD_SET_HOOK_ENTRY;
+use cmd_set_option::CMD_SET_OPTION_ENTRY;
+use cmd_set_option::CMD_SET_WINDOW_OPTION_ENTRY;
+use cmd_show_environment::CMD_SHOW_ENVIRONMENT_ENTRY;
+use cmd_show_messages::CMD_SHOW_MESSAGES_ENTRY;
+use cmd_show_options::CMD_SHOW_HOOKS_ENTRY;
+use cmd_show_options::CMD_SHOW_OPTIONS_ENTRY;
+use cmd_show_options::CMD_SHOW_WINDOW_OPTIONS_ENTRY;
+use cmd_show_prompt_history::{CMD_CLEAR_PROMPT_HISTORY_ENTRY, CMD_SHOW_PROMPT_HISTORY_ENTRY};
+use cmd_source_file::CMD_SOURCE_FILE_ENTRY;
+use cmd_split_window::CMD_SPLIT_WINDOW_ENTRY;
+use cmd_swap_pane::CMD_SWAP_PANE_ENTRY;
+use cmd_swap_window::CMD_SWAP_WINDOW_ENTRY;
+use cmd_switch_client::CMD_SWITCH_CLIENT_ENTRY;
+use cmd_unbind_key::CMD_UNBIND_KEY_ENTRY;
+use cmd_wait_for::CMD_WAIT_FOR_ENTRY;
 
-pub static mut cmd_table: [*const cmd_entry; 91] = [
-    &raw const cmd_attach_session_entry,
-    &raw const cmd_bind_key_entry,
-    &raw const cmd_break_pane_entry,
-    &raw const cmd_capture_pane_entry,
-    &raw const cmd_choose_buffer_entry,
-    &raw const cmd_choose_client_entry,
-    &raw const cmd_choose_tree_entry,
-    &raw const cmd_clear_history_entry,
-    &raw const cmd_clear_prompt_history_entry,
-    &raw const cmd_clock_mode_entry,
-    &raw const cmd_command_prompt_entry,
-    &raw const cmd_confirm_before_entry,
-    &raw const cmd_copy_mode_entry,
-    &raw const cmd_customize_mode_entry,
-    &raw const cmd_delete_buffer_entry,
-    &raw const cmd_detach_client_entry,
-    &raw const cmd_display_menu_entry,
-    &raw const cmd_display_message_entry,
-    &raw const cmd_display_popup_entry,
-    &raw const cmd_display_panes_entry,
-    &raw const cmd_find_window_entry,
-    &raw const cmd_has_session_entry,
-    &raw const cmd_if_shell_entry,
-    &raw const cmd_join_pane_entry,
-    &raw const cmd_kill_pane_entry,
-    &raw const cmd_kill_server_entry,
-    &raw const cmd_kill_session_entry,
-    &raw const cmd_kill_window_entry,
-    &raw const cmd_last_pane_entry,
-    &raw const cmd_last_window_entry,
-    &raw const cmd_link_window_entry,
-    &raw const cmd_list_buffers_entry,
-    &raw const cmd_list_clients_entry,
-    &raw const cmd_list_commands_entry,
-    &raw const cmd_list_keys_entry,
-    &raw const cmd_list_panes_entry,
-    &raw const cmd_list_sessions_entry,
-    &raw const cmd_list_windows_entry,
-    &raw const cmd_load_buffer_entry,
-    &raw const cmd_lock_client_entry,
-    &raw const cmd_lock_server_entry,
-    &raw const cmd_lock_session_entry,
-    &raw const cmd_move_pane_entry,
-    &raw const cmd_move_window_entry,
-    &raw const cmd_new_session_entry,
-    &raw const cmd_new_window_entry,
-    &raw const cmd_next_layout_entry,
-    &raw const cmd_next_window_entry,
-    &raw const cmd_paste_buffer_entry,
-    &raw const cmd_pipe_pane_entry,
-    &raw const cmd_previous_layout_entry,
-    &raw const cmd_previous_window_entry,
-    &raw const cmd_refresh_client_entry,
-    &raw const cmd_rename_session_entry,
-    &raw const cmd_rename_window_entry,
-    &raw const cmd_resize_pane_entry,
-    &raw const cmd_resize_window_entry,
-    &raw const cmd_respawn_pane_entry,
-    &raw const cmd_respawn_window_entry,
-    &raw const cmd_rotate_window_entry,
-    &raw const cmd_run_shell_entry,
-    &raw const cmd_save_buffer_entry,
-    &raw const cmd_select_layout_entry,
-    &raw const cmd_select_pane_entry,
-    &raw const cmd_select_window_entry,
-    &raw const cmd_send_keys_entry,
-    &raw const cmd_send_prefix_entry,
-    &raw const cmd_server_access_entry,
-    &raw const cmd_set_buffer_entry,
-    &raw const cmd_set_environment_entry,
-    &raw const cmd_set_hook_entry,
-    &raw const cmd_set_option_entry,
-    &raw const cmd_set_window_option_entry,
-    &raw const cmd_show_buffer_entry,
-    &raw const cmd_show_environment_entry,
-    &raw const cmd_show_hooks_entry,
-    &raw const cmd_show_messages_entry,
-    &raw const cmd_show_options_entry,
-    &raw const cmd_show_prompt_history_entry,
-    &raw const cmd_show_window_options_entry,
-    &raw const cmd_source_file_entry,
-    &raw const cmd_split_window_entry,
-    &raw const cmd_start_server_entry,
-    &raw const cmd_suspend_client_entry,
-    &raw const cmd_swap_pane_entry,
-    &raw const cmd_swap_window_entry,
-    &raw const cmd_switch_client_entry,
-    &raw const cmd_unbind_key_entry,
-    &raw const cmd_unlink_window_entry,
-    &raw const cmd_wait_for_entry,
-    null(),
+pub static CMD_TABLE: [&cmd_entry; 90] = [
+    &CMD_ATTACH_SESSION_ENTRY,
+    &CMD_BIND_KEY_ENTRY,
+    &CMD_BREAK_PANE_ENTRY,
+    &CMD_CAPTURE_PANE_ENTRY,
+    &CMD_CHOOSE_BUFFER_ENTRY,
+    &CMD_CHOOSE_CLIENT_ENTRY,
+    &CMD_CHOOSE_TREE_ENTRY,
+    &CMD_CLEAR_HISTORY_ENTRY,
+    &CMD_CLEAR_PROMPT_HISTORY_ENTRY,
+    &CMD_CLOCK_MODE_ENTRY,
+    &CMD_COMMAND_PROMPT_ENTRY,
+    &CMD_CONFIRM_BEFORE_ENTRY,
+    &CMD_COPY_MODE_ENTRY,
+    &CMD_CUSTOMIZE_MODE_ENTRY,
+    &CMD_DELETE_BUFFER_ENTRY,
+    &CMD_DETACH_CLIENT_ENTRY,
+    &CMD_DISPLAY_MENU_ENTRY,
+    &CMD_DISPLAY_MESSAGE_ENTRY,
+    &CMD_DISPLAY_POPUP_ENTRY,
+    &CMD_DISPLAY_PANES_ENTRY,
+    &CMD_FIND_WINDOW_ENTRY,
+    &CMD_HAS_SESSION_ENTRY,
+    &CMD_IF_SHELL_ENTRY,
+    &CMD_JOIN_PANE_ENTRY,
+    &CMD_KILL_PANE_ENTRY,
+    &CMD_KILL_SERVER_ENTRY,
+    &CMD_KILL_SESSION_ENTRY,
+    &CMD_KILL_WINDOW_ENTRY,
+    &CMD_LAST_PANE_ENTRY,
+    &CMD_LAST_WINDOW_ENTRY,
+    &CMD_LINK_WINDOW_ENTRY,
+    &CMD_LIST_BUFFERS_ENTRY,
+    &CMD_LIST_CLIENTS_ENTRY,
+    &CMD_LIST_COMMANDS_ENTRY,
+    &CMD_LIST_KEYS_ENTRY,
+    &CMD_LIST_PANES_ENTRY,
+    &CMD_LIST_SESSIONS_ENTRY,
+    &CMD_LIST_WINDOWS_ENTRY,
+    &CMD_LOAD_BUFFER_ENTRY,
+    &CMD_LOCK_CLIENT_ENTRY,
+    &CMD_LOCK_SERVER_ENTRY,
+    &CMD_LOCK_SESSION_ENTRY,
+    &CMD_MOVE_PANE_ENTRY,
+    &CMD_MOVE_WINDOW_ENTRY,
+    &CMD_NEW_SESSION_ENTRY,
+    &CMD_NEW_WINDOW_ENTRY,
+    &CMD_NEXT_LAYOUT_ENTRY,
+    &CMD_NEXT_WINDOW_ENTRY,
+    &CMD_PASTE_BUFFER_ENTRY,
+    &CMD_PIPE_PANE_ENTRY,
+    &CMD_PREVIOUS_LAYOUT_ENTRY,
+    &CMD_PREVIOUS_WINDOW_ENTRY,
+    &CMD_REFRESH_CLIENT_ENTRY,
+    &CMD_RENAME_SESSION_ENTRY,
+    &CMD_RENAME_WINDOW_ENTRY,
+    &CMD_RESIZE_PANE_ENTRY,
+    &CMD_RESIZE_WINDOW_ENTRY,
+    &CMD_RESPAWN_PANE_ENTRY,
+    &CMD_RESPAWN_WINDOW_ENTRY,
+    &CMD_ROTATE_WINDOW_ENTRY,
+    &CMD_RUN_SHELL_ENTRY,
+    &CMD_SAVE_BUFFER_ENTRY,
+    &CMD_SELECT_LAYOUT_ENTRY,
+    &CMD_SELECT_PANE_ENTRY,
+    &CMD_SELECT_WINDOW_ENTRY,
+    &CMD_SEND_KEYS_ENTRY,
+    &CMD_SEND_PREFIX_ENTRY,
+    &CMD_SERVER_ACCESS_ENTRY,
+    &CMD_SET_BUFFER_ENTRY,
+    &CMD_SET_ENVIRONMENT_ENTRY,
+    &CMD_SET_HOOK_ENTRY,
+    &CMD_SET_OPTION_ENTRY,
+    &CMD_SET_WINDOW_OPTION_ENTRY,
+    &CMD_SHOW_BUFFER_ENTRY,
+    &CMD_SHOW_ENVIRONMENT_ENTRY,
+    &CMD_SHOW_HOOKS_ENTRY,
+    &CMD_SHOW_MESSAGES_ENTRY,
+    &CMD_SHOW_OPTIONS_ENTRY,
+    &CMD_SHOW_PROMPT_HISTORY_ENTRY,
+    &CMD_SHOW_WINDOW_OPTIONS_ENTRY,
+    &CMD_SOURCE_FILE_ENTRY,
+    &CMD_SPLIT_WINDOW_ENTRY,
+    &CMD_START_SERVER_ENTRY,
+    &CMD_SUSPEND_CLIENT_ENTRY,
+    &CMD_SWAP_PANE_ENTRY,
+    &CMD_SWAP_WINDOW_ENTRY,
+    &CMD_SWITCH_CLIENT_ENTRY,
+    &CMD_UNBIND_KEY_ENTRY,
+    &CMD_UNLINK_WINDOW_ENTRY,
+    &CMD_WAIT_FOR_ENTRY,
 ];
 
 // Instance of a command.
 #[repr(C)]
 pub struct cmd {
-    pub entry: *mut cmd_entry,
+    pub entry: &'static cmd_entry,
     pub args: *mut args,
     pub group: u32,
-    pub file: *mut c_char,
+    pub file: *mut u8,
     pub line: u32,
 
     pub qentry: tailq_entry<cmd>,
@@ -287,7 +286,7 @@ impl Entry<cmd, qentry> for cmd {
 }
 
 /// Next group number for new command list.
-static cmd_list_next_group: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(1);
+static CMD_LIST_NEXT_GROUP: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(1);
 
 macro_rules! cmd_log_argv {
    ($argc:expr, $argv:expr, $fmt:literal $(, $args:expr)* $(,)?) => {
@@ -297,7 +296,7 @@ macro_rules! cmd_log_argv {
 pub(crate) use cmd_log_argv;
 
 // Log an argument vector.
-pub unsafe fn cmd_log_argv_(argc: i32, argv: *mut *mut c_char, args: std::fmt::Arguments) {
+pub unsafe fn cmd_log_argv_(argc: i32, argv: *mut *mut u8, args: std::fmt::Arguments) {
     unsafe {
         let prefix = args.to_string();
         for i in 0..argc {
@@ -306,9 +305,9 @@ pub unsafe fn cmd_log_argv_(argc: i32, argv: *mut *mut c_char, args: std::fmt::A
     }
 }
 
-pub unsafe fn cmd_append_argv(argc: *mut c_int, argv: *mut *mut *mut c_char, arg: *const c_char) {
+pub unsafe fn cmd_append_argv(argc: *mut c_int, argv: *mut *mut *mut u8, arg: *const u8) {
     unsafe {
-        *argv = xreallocarray_::<*mut c_char>(*argv, (*argc) as usize + 1).as_ptr();
+        *argv = xreallocarray_::<*mut u8>(*argv, (*argc) as usize + 1).as_ptr();
         *(*argv).add((*argc) as usize) = xstrdup(arg).as_ptr();
         *argc += 1;
     }
@@ -316,8 +315,8 @@ pub unsafe fn cmd_append_argv(argc: *mut c_int, argv: *mut *mut *mut c_char, arg
 
 pub unsafe fn cmd_pack_argv(
     argc: c_int,
-    argv: *mut *mut c_char,
-    mut buf: *mut c_char,
+    argv: *mut *mut u8,
+    mut buf: *mut u8,
     mut len: usize,
 ) -> c_int {
     unsafe {
@@ -327,7 +326,7 @@ pub unsafe fn cmd_pack_argv(
         }
         cmd_log_argv!(argc, argv, "cmd_pack_argv");
 
-        *buf = b'\0' as c_char;
+        *buf = b'\0';
         for i in 0..argc {
             if strlcpy(buf, *argv.add(i as usize), len) >= len {
                 return -1;
@@ -342,18 +341,18 @@ pub unsafe fn cmd_pack_argv(
 }
 
 pub unsafe fn cmd_unpack_argv(
-    mut buf: *mut c_char,
+    mut buf: *mut u8,
     mut len: usize,
     argc: c_int,
-    argv: *mut *mut *mut c_char,
+    argv: *mut *mut *mut u8,
 ) -> c_int {
     unsafe {
         if argc == 0 {
             return 0;
         }
-        *argv = xcalloc_::<*mut c_char>(argc as usize).as_ptr();
+        *argv = xcalloc_::<*mut u8>(argc as usize).as_ptr();
 
-        *buf.add(len - 1) = b'\0' as c_char;
+        *buf.add(len - 1) = b'\0';
         for i in 0..argc {
             if len == 0 {
                 cmd_free_argv(argc, *argv);
@@ -372,12 +371,12 @@ pub unsafe fn cmd_unpack_argv(
     }
 }
 
-pub unsafe fn cmd_copy_argv(argc: c_int, argv: *mut *mut c_char) -> *mut *mut c_char {
+pub unsafe fn cmd_copy_argv(argc: c_int, argv: *mut *mut u8) -> *mut *mut u8 {
     unsafe {
         if argc == 0 {
             return null_mut();
         }
-        let new_argv: *mut *mut c_char = xcalloc(argc as usize + 1, size_of::<*mut c_char>())
+        let new_argv: *mut *mut u8 = xcalloc(argc as usize + 1, size_of::<*mut u8>())
             .cast()
             .as_ptr();
         for i in 0..argc {
@@ -389,7 +388,7 @@ pub unsafe fn cmd_copy_argv(argc: c_int, argv: *mut *mut c_char) -> *mut *mut c_
     }
 }
 
-pub unsafe fn cmd_free_argv(argc: c_int, argv: *mut *mut c_char) {
+pub unsafe fn cmd_free_argv(argc: c_int, argv: *mut *mut u8) {
     unsafe {
         if argc == 0 {
             return;
@@ -401,13 +400,13 @@ pub unsafe fn cmd_free_argv(argc: c_int, argv: *mut *mut c_char) {
     }
 }
 
-pub unsafe fn cmd_stringify_argv(argc: c_int, argv: *mut *mut c_char) -> *mut c_char {
+pub unsafe fn cmd_stringify_argv(argc: c_int, argv: *mut *mut u8) -> *mut u8 {
     unsafe {
-        let mut buf: *mut c_char = null_mut();
+        let mut buf: *mut u8 = null_mut();
         let mut len: usize = 0;
 
         if argc == 0 {
-            return xstrdup(c"".as_ptr()).as_ptr();
+            return xstrdup(c!("")).as_ptr();
         }
 
         for i in 0..argc {
@@ -424,9 +423,9 @@ pub unsafe fn cmd_stringify_argv(argc: c_int, argv: *mut *mut c_char) -> *mut c_
             buf = xrealloc_(buf, len).as_ptr();
 
             if i == 0 {
-                *buf = b'\0' as c_char;
+                *buf = b'\0';
             } else {
-                strlcat(buf, c" ".as_ptr(), len);
+                strlcat(buf, c!(" "), len);
             }
             strlcat(buf, s, len);
 
@@ -436,7 +435,7 @@ pub unsafe fn cmd_stringify_argv(argc: c_int, argv: *mut *mut c_char) -> *mut c_
     }
 }
 
-pub unsafe fn cmd_get_entry(cmd: *mut cmd) -> *mut cmd_entry {
+pub unsafe fn cmd_get_entry(cmd: *mut cmd) -> &'static cmd_entry {
     unsafe { (*cmd).entry }
 }
 
@@ -448,7 +447,7 @@ pub unsafe fn cmd_get_group(cmd: *mut cmd) -> c_uint {
     unsafe { (*cmd).group }
 }
 
-pub unsafe fn cmd_get_source(cmd: *mut cmd, file: *mut *const c_char, line: &AtomicU32) {
+pub unsafe fn cmd_get_source(cmd: *mut cmd, file: *mut *const u8, line: &AtomicU32) {
     unsafe {
         if !file.is_null() {
             *file = (*cmd).file;
@@ -457,9 +456,9 @@ pub unsafe fn cmd_get_source(cmd: *mut cmd, file: *mut *const c_char, line: &Ato
     }
 }
 
-pub unsafe fn cmd_get_alias(name: *const c_char) -> *mut c_char {
+pub unsafe fn cmd_get_alias(name: *const u8) -> *mut u8 {
     unsafe {
-        let o = options_get_only(global_options, c"command-alias".as_ptr());
+        let o = options_get_only(GLOBAL_OPTIONS, c!("command-alias"));
         if o.is_null() {
             return null_mut();
         }
@@ -483,74 +482,67 @@ pub unsafe fn cmd_get_alias(name: *const c_char) -> *mut c_char {
     }
 }
 
-pub unsafe fn cmd_find(name: *const c_char) -> Result<*mut cmd_entry, *mut c_char> {
+pub unsafe fn cmd_find(name: *const u8) -> Result<&'static cmd_entry, *mut u8> {
     let mut loop_: *mut *mut cmd_entry;
     let mut entry: *mut cmd_entry;
-    let mut found: *mut cmd_entry = null_mut();
+    let mut found = None;
 
     let mut ambiguous: i32 = 0;
-    type s_buf = [c_char; 8192];
+    type s_buf = [u8; 8192];
     let mut s: s_buf = [0; 8192];
 
     unsafe {
         'ambiguous: {
-            loop_ = &raw mut cmd_table as _; // TODO casting const pointer to mut ptr
-            while !(*loop_).is_null() {
-                entry = *loop_;
-                if !(*entry).alias.is_null() && strcmp((*entry).alias, name) == 0 {
+            for entry in CMD_TABLE {
+                if !entry.alias.is_null() && strcmp(entry.alias.as_ptr(), name) == 0 {
                     ambiguous = 0;
-                    found = entry;
+                    found = Some(entry);
                     break;
                 }
 
-                if strncmp((*entry).name, name, strlen(name)) != 0 {
-                    loop_ = loop_.add(1);
+                if strncmp(entry.name.as_ptr(), name, strlen(name)) != 0 {
                     continue;
                 }
-                if !found.is_null() {
+                if found.is_some() {
                     ambiguous = 1;
                 }
-                found = entry;
+                found = Some(entry);
 
-                if strcmp((*entry).name, name) == 0 {
+                if strcmp(entry.name.as_ptr(), name) == 0 {
                     break;
                 }
-
-                loop_ = loop_.add(1);
             }
             if ambiguous != 0 {
                 break 'ambiguous;
             }
-            if found.is_null() {
-                // TODO BUG, for some reason name isn't properly NUL terminated
-                return Err(format_nul!("unknown command: {}", _s(name)));
-            }
 
-            return Ok(found);
+            return match found {
+                Some(value) => Ok(value),
+                None => Err(format_nul!("unknown command: {}", _s(name))),
+            };
         }
 
         // ambiguous:
-        s[0] = b'\0' as c_char;
-        loop_ = &raw mut cmd_table as _;
-        while !(*loop_).is_null() {
-            entry = *loop_;
-            if strncmp((*entry).name, name, strlen(name)) != 0 {
+        s[0] = b'\0';
+        for entry in CMD_TABLE {
+            if strncmp(entry.name.as_ptr(), name, strlen(name)) != 0 {
                 continue;
             }
-            if strlcat(&raw mut s as _, (*entry).name, size_of::<s_buf>()) >= size_of::<s_buf>() {
+            if strlcat(&raw mut s as _, entry.name.as_ptr(), size_of::<s_buf>())
+                >= size_of::<s_buf>()
+            {
                 break;
             }
-            if strlcat(&raw mut s as _, c", ".as_ptr(), size_of::<s_buf>()) >= size_of::<s_buf>() {
+            if strlcat(&raw mut s as _, c!(", "), size_of::<s_buf>()) >= size_of::<s_buf>() {
                 break;
             }
-            loop_ = loop_.add(1);
         }
-        s[strlen(&raw mut s as _) - 2] = b'\0' as c_char;
+        s[strlen(&raw mut s as _) - 2] = b'\0';
 
         Err(format_nul!(
             "ambiguous command: {}, could be: {}",
             _s(name),
-            _s((&raw const s).cast()),
+            _s((&raw const s).cast::<u8>()),
         ))
     }
 }
@@ -560,29 +552,41 @@ pub unsafe fn cmd_parse(
     count: c_uint,
     file: Option<&str>,
     line: c_uint,
-) -> Result<*mut cmd, *mut c_char> {
+) -> Result<*mut cmd, *mut u8> {
     unsafe {
-        let mut error: *mut c_char = null_mut();
+        let mut error: *mut u8 = null_mut();
 
         if count == 0 || (*values).type_ != args_type::ARGS_STRING {
             return Err(format_nul!("no command"));
         }
         let entry = cmd_find((*values).union_.string)?;
 
-        let args = args_parse(&raw mut (*entry).args, values, count, &raw mut error);
+        let args = args_parse(&entry.args, values, count, &raw mut error);
         if args.is_null() && error.is_null() {
-            let cause = format_nul!("usage: {} {}", _s((*entry).name), _s((*entry).usage));
+            let cause = format_nul!(
+                "usage: {} {}",
+                _s(entry.name.as_ptr()),
+                _s(entry.usage.as_ptr())
+            );
             return Err(cause);
         }
         if args.is_null() {
-            let cause = format_nul!("command {}: {}", _s((*entry).name), _s(error));
+            let cause = format_nul!("command {}: {}", _s(entry.name.as_ptr()), _s(error));
             free(error as _);
             return Err(cause);
         }
 
-        let cmd: *mut cmd = xcalloc(1, size_of::<cmd>()).cast().as_ptr();
-        (*cmd).entry = entry;
-        (*cmd).args = args;
+        let cmd: *mut cmd = Box::leak(Box::new(cmd {
+            entry,
+            args,
+            group: 0,
+            file: null_mut(),
+            line: 0,
+            qentry: tailq_entry {
+                tqe_next: null_mut(),
+                tqe_prev: null_mut(),
+            },
+        }));
 
         if let Some(file) = file {
             let mut file = file.to_string();
@@ -604,11 +608,19 @@ pub unsafe fn cmd_free(cmd: *mut cmd) {
     }
 }
 
-pub unsafe fn cmd_copy(cmd: *mut cmd, argc: c_int, argv: *mut *mut c_char) -> *mut cmd {
+pub unsafe fn cmd_copy(cmd: *mut cmd, argc: c_int, argv: *mut *mut u8) -> *mut cmd {
     unsafe {
-        let new_cmd: *mut cmd = xcalloc(1, size_of::<cmd>()).cast().as_ptr();
-        (*new_cmd).entry = (*cmd).entry;
-        (*new_cmd).args = args_copy((*cmd).args, argc, argv);
+        let new_cmd: *mut cmd = Box::leak(Box::new(cmd {
+            entry: (*cmd).entry,
+            args: args_copy((*cmd).args, argc, argv),
+            group: 0,
+            file: null_mut(),
+            line: 0,
+            qentry: tailq_entry {
+                tqe_next: null_mut(),
+                tqe_prev: null_mut(),
+            },
+        }));
 
         if !(*cmd).file.is_null() {
             (*new_cmd).file = xstrdup((*cmd).file).as_ptr();
@@ -619,13 +631,13 @@ pub unsafe fn cmd_copy(cmd: *mut cmd, argc: c_int, argv: *mut *mut c_char) -> *m
     }
 }
 
-pub unsafe fn cmd_print(cmd: *mut cmd) -> *mut c_char {
+pub unsafe fn cmd_print(cmd: *mut cmd) -> *mut u8 {
     unsafe {
         let s = args_print((*cmd).args);
-        let out = if *s != b'\0' as c_char {
-            format_nul!("{} {}", _s((*(*cmd).entry).name), _s(s))
+        let out = if *s != b'\0' {
+            format_nul!("{} {}", _s((*cmd).entry.name.as_ptr()), _s(s))
         } else {
-            xstrdup((*(*cmd).entry).name).as_ptr()
+            xstrdup((*cmd).entry.name.as_ptr()).as_ptr()
         };
         free(s as _);
 
@@ -635,7 +647,7 @@ pub unsafe fn cmd_print(cmd: *mut cmd) -> *mut c_char {
 
 pub unsafe fn cmd_list_new<'a>() -> &'a mut cmd_list {
     unsafe {
-        let group = cmd_list_next_group.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        let group = CMD_LIST_NEXT_GROUP.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
 
         let cmdlist = Box::leak(Box::new(cmd_list {
             references: 1,
@@ -667,7 +679,7 @@ pub unsafe fn cmd_list_append_all(cmdlist: *mut cmd_list, from: *mut cmd_list) {
 pub unsafe fn cmd_list_move(cmdlist: *mut cmd_list, from: *mut cmd_list) {
     unsafe {
         tailq_concat::<_, qentry>((*cmdlist).list, (*from).list);
-        (*cmdlist).group = cmd_list_next_group.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        (*cmdlist).group = CMD_LIST_NEXT_GROUP.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
     }
 }
 
@@ -690,7 +702,7 @@ pub unsafe fn cmd_list_free(cmdlist: *mut cmd_list) {
 pub unsafe fn cmd_list_copy(
     cmdlist: &mut cmd_list,
     argc: c_int,
-    argv: *mut *mut c_char,
+    argv: *mut *mut u8,
 ) -> *mut cmd_list {
     unsafe {
         let mut group: u32 = cmdlist.group;
@@ -702,7 +714,7 @@ pub unsafe fn cmd_list_copy(
         for cmd in tailq_foreach(cmdlist.list).map(NonNull::as_ptr) {
             if (*cmd).group != group {
                 new_cmdlist.group =
-                    cmd_list_next_group.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+                    CMD_LIST_NEXT_GROUP.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
                 group = (*cmd).group;
             }
             let new_cmd = cmd_copy(cmd, argc, argv);
@@ -717,10 +729,10 @@ pub unsafe fn cmd_list_copy(
     }
 }
 
-pub fn cmd_list_print(cmdlist: &mut cmd_list, escaped: c_int) -> *mut c_char {
+pub fn cmd_list_print(cmdlist: &mut cmd_list, escaped: c_int) -> *mut u8 {
     unsafe {
         let mut len = 1;
-        let mut buf: *mut c_char = xcalloc(1, len).cast().as_ptr();
+        let mut buf: *mut u8 = xcalloc(1, len).cast().as_ptr();
 
         for cmd in tailq_foreach::<_, qentry>(cmdlist.list).map(NonNull::as_ptr) {
             let this = cmd_print(cmd);
@@ -734,16 +746,16 @@ pub fn cmd_list_print(cmdlist: &mut cmd_list, escaped: c_int) -> *mut c_char {
             if !next.is_null() {
                 if (*cmd).group != (*next).group {
                     if escaped != 0 {
-                        strlcat(buf, c" \\;\\; ".as_ptr(), len);
+                        strlcat(buf, c!(" \\;\\; "), len);
                     } else {
-                        strlcat(buf, c" ;; ".as_ptr(), len);
+                        strlcat(buf, c!(" ;; "), len);
                     }
                 } else {
                     #[allow(clippy::collapsible_else_if)]
                     if escaped != 0 {
-                        strlcat(buf, c" \\; ".as_ptr(), len);
+                        strlcat(buf, c!(" \\; "), len);
                     } else {
-                        strlcat(buf, c" ; ".as_ptr(), len);
+                        strlcat(buf, c!(" ; "), len);
                     }
                 }
             }
@@ -765,13 +777,13 @@ pub unsafe fn cmd_list_next(cmd: *mut cmd) -> *mut cmd {
 
 pub unsafe fn cmd_list_all_have(cmdlist: *mut cmd_list, flag: cmd_flag) -> bool {
     unsafe {
-        tailq_foreach((*cmdlist).list).all(|cmd| (*(*cmd.as_ptr()).entry).flags.intersects(flag))
+        tailq_foreach((*cmdlist).list).all(|cmd| (*cmd.as_ptr()).entry.flags.intersects(flag))
     }
 }
 
 pub unsafe fn cmd_list_any_have(cmdlist: *mut cmd_list, flag: cmd_flag) -> bool {
     unsafe {
-        tailq_foreach((*cmdlist).list).any(|cmd| (*(*cmd.as_ptr()).entry).flags.intersects(flag))
+        tailq_foreach((*cmdlist).list).any(|cmd| (*cmd.as_ptr()).entry.flags.intersects(flag))
     }
 }
 
@@ -882,62 +894,55 @@ pub unsafe fn cmd_mouse_pane(
     }
 }
 
-pub unsafe fn cmd_template_replace(
-    template: *const c_char,
-    s: *const c_char,
-    idx: c_int,
-) -> *mut c_char {
+pub unsafe fn cmd_template_replace(template: *const u8, s: *const u8, idx: c_int) -> *mut u8 {
     unsafe {
-        let quote = c"\"\\$;~";
+        let quote = c!("\"\\$;~");
 
         if strchr(template, b'%' as i32).is_null() {
             return xstrdup(template).cast().as_ptr();
         }
 
-        let mut buf: *mut c_char = xmalloc(1).cast().as_ptr();
-        *buf = b'\0' as c_char;
+        let mut buf: *mut u8 = xmalloc(1).cast().as_ptr();
+        *buf = b'\0';
         let mut len = 0;
         let mut replaced = 0;
 
         let mut ptr = template;
-        while *ptr != b'\0' as c_char {
+        while *ptr != b'\0' {
             let ch = *ptr;
             ptr = ptr.add(1);
             if matches!(ch as c_uchar, b'%') {
-                if *ptr < b'1' as c_char
-                    || *ptr > b'9' as c_char
-                    || *ptr as i32 - b'0' as i32 != idx
-                {
-                    if *ptr != b'%' as c_char || replaced != 0 {
+                if *ptr < b'1' || *ptr > b'9' || *ptr as i32 - b'0' as i32 != idx {
+                    if *ptr != b'%' || replaced != 0 {
                         break;
                     }
                     replaced = 1;
                 }
                 ptr = ptr.add(1);
 
-                let quoted = *ptr == b'%' as c_char;
+                let quoted = *ptr == b'%';
                 if !quoted {
                     ptr = ptr.add(1);
                 }
 
                 buf = xrealloc_(buf, len + (strlen(s) * 3) + 1).as_ptr();
                 let mut cp = s;
-                while *cp != b'\0' as c_char {
-                    if quoted && !strchr(quote.as_ptr(), *cp as i32).is_null() {
-                        *buf.add(len) = b'\\' as c_char;
+                while *cp != b'\0' {
+                    if quoted && !strchr(quote, *cp as i32).is_null() {
+                        *buf.add(len) = b'\\';
                         len += 1;
                     }
                     *buf.add(len) = *cp;
                     len += 1;
                     cp = cp.add(1);
                 }
-                *buf.add(len) = b'\0' as c_char;
+                *buf.add(len) = b'\0';
                 continue;
             }
             buf = xrealloc_(buf, len + 2).as_ptr();
             *buf.add(len) = ch;
             len += 1;
-            *buf.add(len) = b'\0' as c_char;
+            *buf.add(len) = b'\0';
         }
 
         buf

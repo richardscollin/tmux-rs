@@ -13,20 +13,20 @@
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 use crate::*;
 
-use libc::{EINVAL, ENOENT, ENOMEM, GLOB_NOMATCH, GLOB_NOSPACE, glob, glob_t, globfree};
+use crate::libc::{EINVAL, ENOENT, ENOMEM, GLOB_NOMATCH, GLOB_NOSPACE, glob, glob_t, globfree};
 
-pub static mut cmd_source_file_entry: cmd_entry = cmd_entry {
-    name: c"source-file".as_ptr(),
-    alias: c"source".as_ptr(),
+pub static CMD_SOURCE_FILE_ENTRY: cmd_entry = cmd_entry {
+    name: SyncCharPtr::new(c"source-file"),
+    alias: SyncCharPtr::new(c"source"),
 
     args: args_parse::new(c"t:Fnqv", 1, -1, None),
-    usage: c"[-Fnqv] [-t target-pane] path ...".as_ptr(),
+    usage: SyncCharPtr::new(c"[-Fnqv] [-t target-pane] path ..."),
 
     target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_PANE, CMD_FIND_CANFAIL),
 
     flags: cmd_flag::empty(),
-    exec: Some(cmd_source_file_exec),
-    ..unsafe { zeroed() }
+    exec: cmd_source_file_exec,
+    source: cmd_entry_flag::zeroed(),
 };
 
 #[repr(C)]
@@ -38,7 +38,7 @@ pub struct cmd_source_file_data {
     pub retval: cmd_retval,
 
     pub current: u32,
-    pub files: *mut *mut c_char,
+    pub files: *mut *mut u8,
     pub nfiles: u32,
 }
 
@@ -51,7 +51,7 @@ unsafe fn cmd_source_file_complete_cb(item: *mut cmdq_item, data: *mut c_void) -
 
 unsafe fn cmd_source_file_complete(c: *mut client, cdata: *mut cmd_source_file_data) {
     unsafe {
-        if cfg_finished != 0 {
+        if CFG_FINISHED != 0 {
             if (*cdata).retval == cmd_retval::CMD_RETURN_ERROR
                 && !c.is_null()
                 && (*c).session.is_null()
@@ -72,7 +72,7 @@ unsafe fn cmd_source_file_complete(c: *mut client, cdata: *mut cmd_source_file_d
 
 unsafe fn cmd_source_file_done(
     c: *mut client,
-    path: *mut c_char,
+    path: *mut u8,
     error: i32,
     closed: i32,
     buffer: *mut evbuffer,
@@ -125,7 +125,7 @@ unsafe fn cmd_source_file_done(
     }
 }
 
-unsafe fn cmd_source_file_add(cdata: *mut cmd_source_file_data, path: *const c_char) {
+unsafe fn cmd_source_file_add(cdata: *mut cmd_source_file_data, path: *const u8) {
     unsafe {
         let mut __func__ = "cmd_source_file_add";
         log_debug!("{}: {}", __func__, _s(path));
@@ -142,11 +142,11 @@ unsafe fn cmd_source_file_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
         let args = cmd_get_args(self_);
         let c = cmdq_get_client(item);
         let mut retval = cmd_retval::CMD_RETURN_NORMAL;
-        let mut pattern: *mut c_char = null_mut();
+        let mut pattern: *mut u8 = null_mut();
         let mut cwd = null_mut();
-        let mut expanded: *mut c_char = null_mut();
-        let path: *mut c_char = null_mut();
-        let mut error: *mut c_char = null_mut();
+        let mut expanded: *mut u8 = null_mut();
+        let path: *mut u8 = null_mut();
+        let mut error: *mut u8 = null_mut();
         let mut g = MaybeUninit::<glob_t>::uninit();
         let mut result = 0i32;
 
@@ -177,11 +177,11 @@ unsafe fn cmd_source_file_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
                 path = expanded;
             }
             if streq_(path, "-") {
-                cmd_source_file_add(cdata, c"-".as_ptr());
+                cmd_source_file_add(cdata, c!("-"));
                 continue;
             }
 
-            if *path == b'/' as c_char {
+            if *path == b'/' {
                 pattern = xstrdup(path).as_ptr();
             } else {
                 pattern = format_nul!("{}/{}", _s(cwd), _s(path));
@@ -212,7 +212,7 @@ unsafe fn cmd_source_file_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
             free_(pattern);
 
             for j in 0..(*g.as_ptr()).gl_pathc {
-                cmd_source_file_add(cdata, *(*g.as_ptr()).gl_pathv.add(j));
+                cmd_source_file_add(cdata, *(*g.as_ptr()).gl_pathv.add(j).cast());
             }
             globfree(g.as_mut_ptr());
         }

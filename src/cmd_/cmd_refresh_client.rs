@@ -11,26 +11,26 @@
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-
 use crate::*;
 
-use libc::{sscanf, strchr, strcmp};
+use crate::libc::{sscanf, strchr, strcmp};
 
-pub static mut cmd_refresh_client_entry: cmd_entry = cmd_entry {
-    name: c"refresh-client".as_ptr(),
-    alias: c"refresh".as_ptr(),
+pub static CMD_REFRESH_CLIENT_ENTRY: cmd_entry = cmd_entry {
+    name: SyncCharPtr::new(c"refresh-client"),
+    alias: SyncCharPtr::new(c"refresh"),
 
     args: args_parse::new(c"A:B:cC:Df:r:F:l::LRSt:U", 0, 1, None),
-    usage: c"[-cDlLRSU] [-A pane:state] [-B name:what:format] [-C XxY] [-f flags] [-r pane:report] [-t target-client] [adjustment]".as_ptr(),
+    usage: SyncCharPtr::new(c"[-cDlLRSU] [-A pane:state] [-B name:what:format] [-C XxY] [-f flags] [-r pane:report] [-t target-client] [adjustment]"),
 
     flags: cmd_flag::CMD_AFTERHOOK.union(cmd_flag::CMD_CLIENT_TFLAG),
-    exec: Some(cmd_refresh_client_exec),
-    ..unsafe { zeroed() }
+    exec: cmd_refresh_client_exec,
+    source: cmd_entry_flag::zeroed(),
+    target: cmd_entry_flag::zeroed(),
 };
 
-pub unsafe fn cmd_refresh_client_update_subscription(tc: *mut client, value: *const c_char) {
+pub unsafe fn cmd_refresh_client_update_subscription(tc: *mut client, value: *const u8) {
     unsafe {
-        let mut split = null_mut::<c_char>();
+        let mut split = null_mut::<u8>();
         let subid = -1;
         let mut copy = null_mut();
         'out: {
@@ -49,16 +49,16 @@ pub unsafe fn cmd_refresh_client_update_subscription(tc: *mut client, value: *co
             if split.is_null() {
                 break 'out;
             }
-            *split = b'\0' as c_char;
+            *split = b'\0';
             split = split.add(1);
 
             let subtype = if streq_(what, "%*") {
                 control_sub_type::CONTROL_SUB_ALL_PANES
-            } else if sscanf(what, c"%%%d".as_ptr(), &subid) == 1 && subid >= 0 {
+            } else if sscanf(what.cast(), c"%%%d".as_ptr(), &subid) == 1 && subid >= 0 {
                 control_sub_type::CONTROL_SUB_PANE
             } else if streq_(what, "@*") {
                 control_sub_type::CONTROL_SUB_ALL_WINDOWS
-            } else if sscanf(what, c"@%d".as_ptr(), &subid) == 1 && subid >= 0 {
+            } else if sscanf(what.cast(), c"@%d".as_ptr(), &subid) == 1 && subid >= 0 {
                 control_sub_type::CONTROL_SUB_WINDOW
             } else {
                 control_sub_type::CONTROL_SUB_SESSION
@@ -87,7 +87,7 @@ pub unsafe fn cmd_refresh_client_control_client_size(
         // struct client_window *cw;
 
         if sscanf(
-            size,
+            size.cast(),
             c"@%u:%ux%u".as_ptr(),
             &raw mut w,
             &raw mut x,
@@ -114,7 +114,7 @@ pub unsafe fn cmd_refresh_client_control_client_size(
             recalculate_sizes_now(1);
             return cmd_retval::CMD_RETURN_NORMAL;
         }
-        if sscanf(size, c"@%u:".as_ptr(), &w) == 1 {
+        if sscanf(size.cast(), c"@%u:".as_ptr(), &w) == 1 {
             let cw = server_client_get_client_window(tc, w);
             if !cw.is_null() {
                 log_debug!(
@@ -130,8 +130,8 @@ pub unsafe fn cmd_refresh_client_control_client_size(
             return cmd_retval::CMD_RETURN_NORMAL;
         }
 
-        if sscanf(size, c"%u,%u".as_ptr(), &x, &y) != 2
-            && sscanf(size, c"%ux%u".as_ptr(), &x, &y) != 2
+        if sscanf(size.cast(), c"%u,%u".as_ptr(), &x, &y) != 2
+            && sscanf(size.cast(), c"%ux%u".as_ptr(), &x, &y) != 2
         {
             cmdq_error!(item, "bad size argument");
             return cmd_retval::CMD_RETURN_ERROR;
@@ -147,11 +147,11 @@ pub unsafe fn cmd_refresh_client_control_client_size(
     cmd_retval::CMD_RETURN_NORMAL
 }
 
-pub unsafe fn cmd_refresh_client_update_offset(tc: *mut client, value: *const c_char) {
+pub unsafe fn cmd_refresh_client_update_offset(tc: *mut client, value: *const u8) {
     unsafe {
         let mut pane: u32 = 0;
 
-        if *value != b'%' as c_char {
+        if *value != b'%' {
             return;
         }
         let copy = xstrdup(value).as_ptr();
@@ -160,10 +160,10 @@ pub unsafe fn cmd_refresh_client_update_offset(tc: *mut client, value: *const c_
             if split.is_null() {
                 break 'out;
             }
-            *split = b'\0' as c_char;
+            *split = b'\0';
             split = split.add(1);
 
-            if sscanf(copy, c"%%%u".as_ptr(), &raw mut pane) != 1 {
+            if sscanf(copy.cast(), c"%%%u".as_ptr(), &raw mut pane) != 1 {
                 break 'out;
             }
             let wp = window_pane_find_by_id(pane);
@@ -226,7 +226,7 @@ pub unsafe fn cmd_refresh_client_clipboard(self_: *mut cmd, item: *mut cmdq_item
     cmd_retval::CMD_RETURN_NORMAL
 }
 
-pub unsafe fn cmd_refresh_report(tty: *mut tty, value: *const c_char) {
+pub unsafe fn cmd_refresh_report(tty: *mut tty, value: *const u8) {
     unsafe {
         let pane: u32 = 0;
         let mut size: usize = 0;
@@ -243,7 +243,7 @@ pub unsafe fn cmd_refresh_report(tty: *mut tty, value: *const c_char) {
             *split = b'\0' as _;
             split = split.add(1);
 
-            if sscanf(copy, c"%%%u".as_ptr(), &pane) != 1 {
+            if sscanf(copy.cast(), c"%%%u".as_ptr(), &pane) != 1 {
                 break 'out;
             }
             let wp = window_pane_find_by_id(pane);
@@ -270,7 +270,7 @@ pub unsafe fn cmd_refresh_client_exec(self_: *mut cmd, item: *mut cmdq_item) -> 
         let args = cmd_get_args(self_);
         let tc = cmdq_get_target_client(item);
         let tty = &raw mut (*tc).tty;
-        let mut errstr: *const c_char = null();
+        let mut errstr: *const u8 = null();
         let mut adjust: u32 = 0;
 
         'not_control_client: {

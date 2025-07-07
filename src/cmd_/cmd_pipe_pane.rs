@@ -11,28 +11,27 @@
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-
 use crate::*;
 
-use libc::{
+use crate::libc::{
     _exit, AF_UNIX, O_WRONLY, PF_UNSPEC, SIG_BLOCK, SIG_SETMASK, STDERR_FILENO, STDIN_FILENO,
     STDOUT_FILENO, close, dup2, execl, open, sigfillset, sigprocmask, sigset_t, socketpair,
 };
 
 use crate::compat::closefrom;
 
-pub static mut cmd_pipe_pane_entry: cmd_entry = cmd_entry {
-    name: c"pipe-pane".as_ptr(),
-    alias: c"pipep".as_ptr(),
+pub static CMD_PIPE_PANE_ENTRY: cmd_entry = cmd_entry {
+    name: SyncCharPtr::new(c"pipe-pane"),
+    alias: SyncCharPtr::new(c"pipep"),
 
     args: args_parse::new(c"IOot:", 0, 1, None),
-    usage: c"[-IOo] [-t target-pane] [shell-command]".as_ptr(),
+    usage: SyncCharPtr::new(c"[-IOo] [-t target-pane] [shell-command]"),
 
     target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_PANE, 0),
-    source: unsafe { zeroed() },
+    source: cmd_entry_flag::zeroed(),
 
     flags: cmd_flag::CMD_AFTERHOOK,
-    exec: Some(cmd_pipe_pane_exec),
+    exec: cmd_pipe_pane_exec,
 };
 
 pub unsafe fn cmd_pipe_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retval {
@@ -44,14 +43,10 @@ pub unsafe fn cmd_pipe_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
         let s = (*target).s;
         let wl = (*target).wl;
         let wpo = &raw mut (*wp).pipe_offset;
-        // char *cmd;
-        // int old_fd, pipe_fd[2], null_fd, in, out;
         let old_fd = 0;
         let mut pipe_fd: [i32; 2] = [0; 2];
         let mut in_: i32 = 0;
         let mut out: i32 = 0;
-        // struct format_tree *ft;
-        // sigset_t set, oldset;
         let mut set: sigset_t = zeroed(); // TODO uninit
         let mut oldset: sigset_t = zeroed(); // TODO uninit
 
@@ -127,11 +122,11 @@ pub unsafe fn cmd_pipe_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
                 cmd_retval::CMD_RETURN_ERROR
             }
             0 => {
-                proc_clear_signals(server_proc, 1);
+                proc_clear_signals(SERVER_PROC, 1);
                 sigprocmask(SIG_SETMASK, &oldset, null_mut());
                 close(pipe_fd[0]);
 
-                let null_fd = open(_PATH_DEVNULL, O_WRONLY);
+                let null_fd = open(_PATH_DEVNULL, O_WRONLY, 0);
                 if out != 0 {
                     if dup2(pipe_fd[1], STDIN_FILENO) == -1 {
                         _exit(1);
@@ -161,7 +156,7 @@ pub unsafe fn cmd_pipe_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
                 closefrom(STDERR_FILENO + 1);
 
                 execl(
-                    _PATH_BSHELL,
+                    _PATH_BSHELL.cast(),
                     c"sh".as_ptr(),
                     c"-c".as_ptr(),
                     cmd,
@@ -186,7 +181,7 @@ pub unsafe fn cmd_pipe_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
                     wp.cast(),
                 );
                 if (*wp).pipe_event.is_null() {
-                    fatalx(c"out of memory");
+                    fatalx("out of memory");
                 }
                 if out != 0 {
                     bufferevent_enable((*wp).pipe_event, EV_WRITE);

@@ -14,26 +14,29 @@
 
 use crate::*;
 
-const DISPLAY_MESSAGE_TEMPLATE: &CStr = c"[#{session_name}] #{window_index}:#{window_name}, current pane #{pane_index} - (%H:%M %d-%b-%y)";
+const DISPLAY_MESSAGE_TEMPLATE: *const u8 = c!(
+    "[#{session_name}] #{window_index}:#{window_name}, current pane #{pane_index} - (%H:%M %d-%b-%y)"
+);
 
-pub static mut cmd_display_message_entry: cmd_entry = cmd_entry {
-    name: c"display-message".as_ptr(),
-    alias: c"display".as_ptr(),
+pub static CMD_DISPLAY_MESSAGE_ENTRY: cmd_entry = cmd_entry {
+    name: SyncCharPtr::new(c"display-message"),
+    alias: SyncCharPtr::new(c"display"),
 
     args: args_parse::new(c"ac:d:lINpt:F:v", 0, 1, None),
-    usage: c"[-aIlNpv] [-c target-client] [-d delay] [-F format] [-t target-pane] [message]"
-        .as_ptr(),
+    usage: SyncCharPtr::new(
+        c"[-aIlNpv] [-c target-client] [-d delay] [-F format] [-t target-pane] [message]",
+    ),
 
     target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_PANE, CMD_FIND_CANFAIL),
 
     flags: cmd_flag::CMD_AFTERHOOK
         .union(cmd_flag::CMD_CLIENT_CFLAG)
         .union(cmd_flag::CMD_CLIENT_CANFAIL),
-    exec: Some(cmd_display_message_exec),
-    ..unsafe { zeroed() }
+    exec: cmd_display_message_exec,
+    source: cmd_entry_flag::zeroed(),
 };
 
-unsafe fn cmd_display_message_each(key: *const c_char, value: *const c_char, arg: *mut c_void) {
+unsafe fn cmd_display_message_each(key: *const u8, value: *const u8, arg: *mut c_void) {
     let item = arg as *mut cmdq_item;
 
     unsafe {
@@ -49,7 +52,7 @@ unsafe fn cmd_display_message_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd
         let s = (*target).s;
         let wl = (*target).wl;
         let wp = (*target).wp;
-        let mut cause: *mut c_char = null_mut();
+        let mut cause: *mut u8 = null_mut();
         let mut delay = -1;
         let nflag = args_has(args, b'N');
         let count = args_count(args);
@@ -94,7 +97,7 @@ unsafe fn cmd_display_message_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd
             args_get_(args, 'F')
         };
         if template.is_null() {
-            template = DISPLAY_MESSAGE_TEMPLATE.as_ptr();
+            template = DISPLAY_MESSAGE_TEMPLATE;
         }
 
         /*
@@ -137,7 +140,7 @@ unsafe fn cmd_display_message_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd
         } else if !tc.is_null() && (*tc).flags.intersects(client_flag::CONTROL) {
             let evb = evbuffer_new();
             if evb.is_null() {
-                fatalx(c"out of memory");
+                fatalx("out of memory");
             }
             evbuffer_add_printf!(evb, "%message {}", _s(msg));
             server_client_print(tc, 0, evb);

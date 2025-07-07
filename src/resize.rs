@@ -11,10 +11,9 @@
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-
 use crate::*;
 
-use libc::sscanf;
+use crate::libc::sscanf;
 
 use crate::compat::{queue::tailq_foreach, tree::rb_foreach};
 
@@ -79,7 +78,7 @@ pub unsafe fn ignore_client_size(c: *mut client) -> i32 {
              * Ignore flagged clients if there are any attached clients
              * that aren't flagged.
              */
-            for loop_ in tailq_foreach(&raw mut clients).map(NonNull::as_ptr) {
+            for loop_ in tailq_foreach(&raw mut CLIENTS).map(NonNull::as_ptr) {
                 if (*loop_).session.is_null() {
                     continue;
                 }
@@ -104,7 +103,7 @@ pub unsafe fn ignore_client_size(c: *mut client) -> i32 {
 pub unsafe fn clients_with_window(w: *mut window) -> u32 {
     let mut n = 0u32;
     unsafe {
-        for loop_ in tailq_foreach(&raw mut clients).map(NonNull::as_ptr) {
+        for loop_ in tailq_foreach(&raw mut CLIENTS).map(NonNull::as_ptr) {
             if ignore_client_size(loop_) != 0 || session_has((*loop_).session, w) == 0 {
                 continue;
             }
@@ -172,7 +171,7 @@ pub unsafe fn clients_calculate_size(
             }
 
             /* loop_ over the clients and work out the size. */
-            for loop_ in tailq_foreach(&raw mut clients).map(NonNull::as_ptr) {
+            for loop_ in tailq_foreach(&raw mut CLIENTS).map(NonNull::as_ptr) {
                 if loop_ != c && ignore_client_size(loop_) != 0 {
                     log_debug!("{}: ignoring {} (1)", __func__, _s((*loop_).name));
                     continue;
@@ -259,7 +258,7 @@ pub unsafe fn clients_calculate_size(
          * if one exists.
          */
         if w.is_null() {
-            for loop_ in tailq_foreach(&raw mut clients).map(NonNull::as_ptr) {
+            for loop_ in tailq_foreach(&raw mut CLIENTS).map(NonNull::as_ptr) {
                 if loop_ != c && ignore_client_size(loop_) != 0 {
                     continue;
                 }
@@ -362,7 +361,7 @@ pub unsafe fn default_window_size(
             /* Get type_ if not provided. */
             let type_ = type_.unwrap_or_else(|| {
                 window_size_option::try_from(
-                    options_get_number_(global_w_options, c"window-size") as i32
+                    options_get_number_(GLOBAL_W_OPTIONS, c"window-size") as i32
                 )
                 .unwrap()
             });
@@ -409,7 +408,7 @@ pub unsafe fn default_window_size(
             ) == 0
             {
                 let value = options_get_string_((*s).options, c"default-size");
-                if sscanf(value, c"%ux%u".as_ptr(), sx, sy) != 2 {
+                if sscanf(value.cast(), c"%ux%u".as_ptr(), sx, sy) != 2 {
                     *sx = 80;
                     *sy = 24;
                 }
@@ -550,7 +549,7 @@ pub unsafe fn recalculate_sizes_now(now: i32) {
          * Clear attached count and update saved status line information for
          * each session.
          */
-        for s in rb_foreach(&raw mut sessions).map(NonNull::as_ptr) {
+        for s in rb_foreach(&raw mut SESSIONS).map(NonNull::as_ptr) {
             (*s).attached = 0;
             status_update_cache(s);
         }
@@ -559,7 +558,7 @@ pub unsafe fn recalculate_sizes_now(now: i32) {
          * Increment attached count and check the status line size for each
          * client.
          */
-        for c in tailq_foreach(&raw mut clients).map(NonNull::as_ptr) {
+        for c in tailq_foreach(&raw mut CLIENTS).map(NonNull::as_ptr) {
             let s = (*c).session;
             if !s.is_null() && !((*c).flags.intersects(CLIENT_UNATTACHEDFLAGS)) {
                 (*s).attached += 1;
@@ -575,7 +574,7 @@ pub unsafe fn recalculate_sizes_now(now: i32) {
         }
 
         /* Walk each window and adjust the size. */
-        for w in rb_foreach(&raw mut windows) {
+        for w in rb_foreach(&raw mut WINDOWS) {
             recalculate_size(w.as_ptr(), now);
         }
     }

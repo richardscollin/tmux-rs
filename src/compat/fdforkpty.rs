@@ -1,5 +1,5 @@
 use core::ffi::{c_char, c_int};
-use libc::{forkpty, pid_t, termios, winsize};
+use libc::{pid_t, termios, winsize};
 
 pub extern "C" fn getptmfd() -> c_int {
     c_int::MAX
@@ -8,9 +8,9 @@ pub extern "C" fn getptmfd() -> c_int {
 pub unsafe fn fdforkpty(
     _ptmfd: c_int,
     master: *mut c_int,
-    name: *mut c_char,
+    name: *mut u8,
     tio: *mut termios,
     ws: *mut winsize,
 ) -> pid_t {
-    unsafe { forkpty(master, name, tio, ws) }
+    unsafe { ::libc::forkpty(master, name.cast(), tio, ws) }
 }

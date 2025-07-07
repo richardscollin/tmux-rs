@@ -14,22 +14,23 @@
 
 use crate::*;
 
-pub static mut cmd_bind_key_entry: cmd_entry = cmd_entry {
-    name: c"bind-key".as_ptr(),
-    alias: c"bind".as_ptr(),
+pub static CMD_BIND_KEY_ENTRY: cmd_entry = cmd_entry {
+    name: SyncCharPtr::new(c"bind-key"),
+    alias: SyncCharPtr::new(c"bind"),
 
     args: args_parse::new(c"nrN:T:", 1, -1, Some(cmd_bind_key_args_parse)),
-    usage: c"[-nr] [-T key-table] [-N note] key [command [arguments]]".as_ptr(),
+    usage: SyncCharPtr::new(c"[-nr] [-T key-table] [-N note] key [command [arguments]]"),
 
     flags: cmd_flag::CMD_AFTERHOOK,
-    exec: Some(cmd_bind_key_exec),
-    ..unsafe { zeroed() }
+    exec: cmd_bind_key_exec,
+    source: cmd_entry_flag::zeroed(),
+    target: cmd_entry_flag::zeroed(),
 };
 
 unsafe fn cmd_bind_key_args_parse(
     _args: *mut args,
     _idx: u32,
-    _cause: *mut *mut c_char,
+    _cause: *mut *mut u8,
 ) -> args_parse_type {
     args_parse_type::ARGS_PARSE_COMMANDS_OR_STRING
 }
@@ -49,12 +50,12 @@ unsafe fn cmd_bind_key_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retval
             return cmd_retval::CMD_RETURN_ERROR;
         }
 
-        let tablename: *const c_char = if args_has(args, b'T') != 0 {
+        let tablename: *const u8 = if args_has(args, b'T') != 0 {
             args_get(args, b'T')
         } else if args_has(args, b'n') != 0 {
-            c"root".as_ptr()
+            c!("root")
         } else {
-            c"prefix".as_ptr()
+            c!("prefix")
         };
         repeat = args_has(args, b'r');
 

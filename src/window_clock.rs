@@ -16,7 +16,7 @@ use crate::*;
 
 use crate::compat::{queue::tailq_first, strlcat};
 
-pub static window_clock_mode: window_mode = window_mode {
+pub static WINDOW_CLOCK_MODE: window_mode = window_mode {
     name: SyncCharPtr::new(c"clock-mode"),
 
     init: window_clock_init,
@@ -38,7 +38,7 @@ pub struct window_clock_mode_data {
 }
 
 #[rustfmt::skip]
-pub static mut window_clock_table: [[[c_char; 5]; 5]; 14] = [
+pub static mut WINDOW_CLOCK_TABLE: [[[u8; 5]; 5]; 14] = [
     [
         [1, 1, 1, 1, 1], /* 0 */
         [1, 0, 0, 0, 1],
@@ -251,8 +251,8 @@ pub unsafe fn window_clock_draw_screen(wme: NonNull<window_mode_entry>) {
         let mut colour: i32;
         let mut style: i32;
         let s = &raw mut (*data).screen;
-        const sizeof_tim: usize = 64;
-        let mut tim: [c_char; 64] = [0; 64];
+        const SIZEOF_TIM: usize = 64;
+        let mut tim: [u8; 64] = [0; 64];
         let mut x: u32 = 0;
         let mut y: u32 = 0;
         let mut idx: u32 = 0;
@@ -267,17 +267,17 @@ pub unsafe fn window_clock_draw_screen(wme: NonNull<window_mode_entry>) {
         if style == 0 {
             libc::strftime(
                 &raw mut tim as _,
-                sizeof_tim,
-                c"%l:%M ".as_ptr(),
+                SIZEOF_TIM,
+                c!("%l:%M "),
                 libc::localtime(&raw mut t),
             );
             if (*tm).tm_hour >= 12 {
-                strlcat(&raw mut tim as _, c"PM".as_ptr(), sizeof_tim);
+                strlcat(&raw mut tim as _, c!("PM"), SIZEOF_TIM);
             } else {
-                strlcat(&raw mut tim as _, c"AM".as_ptr(), sizeof_tim);
+                strlcat(&raw mut tim as _, c!("AM"), SIZEOF_TIM);
             }
         } else {
-            libc::strftime(&raw mut tim as _, sizeof_tim, c"%H:%M".as_ptr(), tm);
+            libc::strftime(&raw mut tim as _, SIZEOF_TIM, c!("%H:%M"), tm);
         }
 
         screen_write_clearscreen(&raw mut ctx, 8);
@@ -290,14 +290,14 @@ pub unsafe fn window_clock_draw_screen(wme: NonNull<window_mode_entry>) {
                 y = screen_size_y(s) / 2;
                 screen_write_cursormove(&raw mut ctx, x as i32, y as i32, 0);
 
-                gc.write(grid_default_cell);
+                gc.write(GRID_DEFAULT_CELL);
                 (*gc.as_mut_ptr()).flags |= grid_flag::NOPALETTE;
                 (*gc.as_mut_ptr()).fg = colour as i32;
                 screen_write_puts!(
                     &raw mut ctx,
                     gc.as_mut_ptr(),
                     "{}",
-                    _s((&raw const tim).cast())
+                    _s((&raw const tim).cast::<u8>())
                 );
             }
 
@@ -308,20 +308,20 @@ pub unsafe fn window_clock_draw_screen(wme: NonNull<window_mode_entry>) {
         x = (screen_size_x(s) / 2) - 3 * tim_len;
         y = (screen_size_y(s) / 2) - 3;
 
-        gc.write(grid_default_cell);
+        gc.write(GRID_DEFAULT_CELL);
         (*gc.as_mut_ptr()).flags |= grid_flag::NOPALETTE;
         (*gc.as_mut_ptr()).bg = colour as i32;
-        let mut ptr = &raw mut tim as *mut i8;
-        while *ptr != b'\0' as c_char {
-            if *ptr >= b'0' as c_char && *ptr <= b'9' as c_char {
-                idx = (*ptr - b'0' as i8) as u32;
-            } else if *ptr == b':' as c_char {
+        let mut ptr = &raw mut tim as *mut u8;
+        while *ptr != b'\0' {
+            if *ptr >= b'0' && *ptr <= b'9' {
+                idx = (*ptr - b'0') as u32;
+            } else if *ptr == b':' {
                 idx = 10;
-            } else if *ptr == b'A' as c_char {
+            } else if *ptr == b'A' {
                 idx = 11;
-            } else if *ptr == b'P' as c_char {
+            } else if *ptr == b'P' {
                 idx = 12;
-            } else if *ptr == b'M' as c_char {
+            } else if *ptr == b'M' {
                 idx = 13;
             } else {
                 x += 6;
@@ -332,7 +332,7 @@ pub unsafe fn window_clock_draw_screen(wme: NonNull<window_mode_entry>) {
             for j in 0..5 {
                 for i in 0..5 {
                     screen_write_cursormove(&raw mut ctx, (x + i) as i32, (y + j) as i32, 0);
-                    if window_clock_table[idx as usize][j as usize][i as usize] != 0 {
+                    if WINDOW_CLOCK_TABLE[idx as usize][j as usize][i as usize] != 0 {
                         screen_write_putc(&raw mut ctx, gc.as_ptr(), b' ');
                     }
                 }

@@ -19,7 +19,6 @@
 #![allow(clippy::missing_safety_doc, reason = "currently using too much unsafe")]
 // maybe fix:
 #![allow(clippy::too_many_arguments)]
-#![allow(non_upper_case_globals)]
 // will fix:
 #![allow(unused)] // TODO 5000
 #![allow(unpredictable_function_pointer_comparisons)] // TODO 2
@@ -28,7 +27,6 @@
 #![warn(clippy::shadow_same)]
 #![allow(clippy::shadow_unrelated)] // TODO, 134 instances probably some latent bugs
 #![allow(clippy::shadow_reuse)] // 145 instances
-#![allow(clippy::manual_is_multiple_of)]
 
 mod compat;
 use compat::strtonum;
@@ -37,8 +35,10 @@ use compat::vis_flags;
 mod ncurses_;
 use ncurses_::*;
 
-mod libc_;
-use libc_::*;
+pub(crate) mod libc;
+pub(crate) use libc::errno;
+pub(crate) use libc::*;
+pub(crate) use libc::{free_, memcpy_, memcpy__, strcaseeq_, streq_};
 
 #[cfg(feature = "sixel")]
 mod image_;
@@ -52,20 +52,13 @@ mod utempter;
 
 use core::{
     ffi::{
-        CStr, c_char, c_int, c_long, c_longlong, c_short, c_uchar, c_uint, c_ulonglong, c_ushort,
-        c_void,
+        CStr, c_int, c_long, c_longlong, c_short, c_uchar, c_uint, c_ulonglong, c_ushort, c_void,
     },
     mem::{ManuallyDrop, MaybeUninit, size_of, zeroed},
     ops::ControlFlow,
     ptr::{NonNull, null, null_mut},
 };
 use std::sync::atomic::AtomicU32;
-
-use libc::{
-    FILE, REG_EXTENDED, REG_ICASE, SEEK_END, SEEK_SET, SIGHUP, WEXITSTATUS, WIFEXITED, WIFSIGNALED,
-    WTERMSIG, fclose, fdopen, fopen, fread, free, fseeko, ftello, fwrite, malloc, memcmp, mkstemp,
-    pid_t, strcpy, strerror, strlen, termios, time_t, timeval, uid_t, unlink,
-};
 
 // libevent2
 mod event_;
@@ -81,8 +74,8 @@ use crate::compat::{
 };
 
 unsafe extern "C" {
-    static mut environ: *mut *mut c_char;
-    fn strsep(_: *mut *mut c_char, _delim: *const c_char) -> *mut c_char;
+    static mut environ: *mut *mut u8;
+    fn strsep(_: *mut *mut u8, _delim: *const u8) -> *mut u8;
 }
 
 #[inline]
@@ -112,11 +105,6 @@ unsafe extern "C" {
 
     #[link_name = "__stderrp"]
     static mut stderr: *mut FILE;
-}
-
-// TODO move to compat
-unsafe fn strchr_(cs: *const c_char, c: char) -> *mut c_char {
-    unsafe { libc::strchr(cs, c as i32) }
 }
 
 // use crate::tmux_protocol_h::*;
@@ -180,17 +168,17 @@ struct discr_tree_entry;
 struct discr_wentry;
 
 // /usr/include/paths.h
-const _PATH_TTY: *const c_char = c"/dev/tty".as_ptr();
-const _PATH_BSHELL: *const c_char = c"/bin/sh".as_ptr();
-const _PATH_DEFPATH: *const c_char = c"/usr/bin:/bin".as_ptr();
-const _PATH_DEV: *const c_char = c"/dev/".as_ptr();
-const _PATH_DEVNULL: *const c_char = c"/dev/null".as_ptr();
-const _PATH_VI: *const c_char = c"/usr/bin/vi".as_ptr();
+const _PATH_TTY: *const u8 = c!("/dev/tty");
+const _PATH_BSHELL: *const u8 = c!("/bin/sh");
+const _PATH_DEFPATH: *const u8 = c!("/usr/bin:/bin");
+const _PATH_DEV: *const u8 = c!("/dev/");
+const _PATH_DEVNULL: *const u8 = c!("/dev/null");
+const _PATH_VI: *const u8 = c!("/usr/bin/vi");
 
 const SIZEOF_PATH_DEV: usize = 6;
 
-const TMUX_CONF: &CStr = c"/etc/tmux.conf:~/.tmux.conf";
-const TMUX_SOCK: &CStr = c"$TMUX_TMPDIR:/tmp/";
+const TMUX_CONF: *const u8 = c!("/etc/tmux.conf:~/.tmux.conf");
+const TMUX_SOCK: *const u8 = c!("$TMUX_TMPDIR:/tmp/");
 const TMUX_TERM: &CStr = c"screen";
 const TMUX_LOCK_CMD: &CStr = c"lock -np";
 
@@ -571,7 +559,7 @@ enum tty_code_code {
     TTYC_XT,
 }
 
-const WHITESPACE: &CStr = c" ";
+const WHITESPACE: *const u8 = c!(" ");
 
 #[repr(i32)]
 #[derive(Copy, Clone, Eq, PartialEq, num_enum::TryFromPrimitive)]
@@ -949,7 +937,7 @@ crate::compat::impl_tailq_entry!(style_range, entry, tailq_entry<style_range>);
 struct style_range {
     type_: style_range_type,
     argument: u32,
-    string: [c_char; 16],
+    string: [u8; 16],
     start: u32,
     /// not included
     end: u32,
@@ -981,7 +969,7 @@ struct style {
 
     range_type: style_range_type,
     range_argument: u32,
-    range_string: [c_char; 16],
+    range_string: [u8; 16],
 
     default_type: style_default_type,
 }
@@ -996,7 +984,7 @@ crate::compat::impl_tailq_entry!(image, entry, tailq_entry<image>);
 struct image {
     s: *mut screen,
     data: *mut sixel_image,
-    fallback: *mut c_char,
+    fallback: *mut u8,
     px: u32,
     py: u32,
     sx: u32,
@@ -1023,8 +1011,8 @@ enum screen_cursor_style {
 #[repr(C)]
 #[derive(Clone)]
 struct screen {
-    title: *mut c_char,
-    path: *mut c_char,
+    title: *mut u8,
+    path: *mut u8,
     titles: *mut screen_titles,
 
     /// grid data
@@ -1183,12 +1171,9 @@ struct menu_item {
     command: SyncCharPtr,
 }
 impl menu_item {
-    const fn new(name: Option<&'static CStr>, key: key_code, command: *const c_char) -> Self {
+    const fn new(name: &'static CStr, key: key_code, command: *const u8) -> Self {
         Self {
-            name: match name {
-                Some(n) => SyncCharPtr::new(n),
-                None => SyncCharPtr::null(),
-            },
+            name: SyncCharPtr::new(name),
             key,
             command: SyncCharPtr(command),
         }
@@ -1197,7 +1182,7 @@ impl menu_item {
 
 #[repr(C)]
 struct menu {
-    title: *const c_char,
+    title: *const u8,
     items: *mut menu_item,
     count: u32,
     width: u32,
@@ -1227,7 +1212,7 @@ struct window_mode {
         ),
     >,
 
-    key_table: Option<unsafe fn(*mut window_mode_entry) -> *const c_char>,
+    key_table: Option<unsafe fn(*mut window_mode_entry) -> *const u8>,
     command: Option<
         unsafe fn(
             NonNull<window_mode_entry>,
@@ -1321,12 +1306,12 @@ struct window_pane {
     flags: window_pane_flags,
 
     argc: i32,
-    argv: *mut *mut c_char,
-    shell: *mut c_char,
-    cwd: *mut c_char,
+    argv: *mut *mut u8,
+    shell: *mut u8,
+    cwd: *mut u8,
 
     pid: pid_t,
-    tty: [c_char; TTY_NAME_MAX],
+    tty: [u8; TTY_NAME_MAX],
     status: i32,
     dead_time: timeval,
 
@@ -1357,7 +1342,7 @@ struct window_pane {
 
     modes: tailq_head<window_mode_entry>,
 
-    searchstr: *mut c_char,
+    searchstr: *mut u8,
     searchregex: i32,
 
     border_gc_set: i32,
@@ -1408,7 +1393,7 @@ struct window {
     id: u32,
     latest: *mut c_void,
 
-    name: *mut c_char,
+    name: *mut u8,
     name_event: event,
     name_time: timeval,
 
@@ -1424,7 +1409,7 @@ struct window {
     lastlayout: i32,
     layout_root: *mut layout_cell,
     saved_layout_root: *mut layout_cell,
-    old_layout: *mut c_char,
+    old_layout: *mut u8,
 
     sx: u32,
     sy: u32,
@@ -1561,8 +1546,8 @@ const ENVIRON_HIDDEN: i32 = 0x1;
 /// Environment variable.
 #[repr(C)]
 struct environ_entry {
-    name: Option<NonNull<c_char>>,
-    value: Option<NonNull<c_char>>,
+    name: Option<NonNull<u8>>,
+    value: Option<NonNull<u8>>,
 
     flags: i32,
     entry: rb_entry<environ_entry>,
@@ -1571,7 +1556,7 @@ struct environ_entry {
 /// Client session.
 #[repr(C)]
 struct session_group {
-    name: *const c_char,
+    name: *const u8,
     sessions: tailq_head<session>,
 
     entry: rb_entry<session_group>,
@@ -1584,8 +1569,8 @@ const SESSION_ALERTED: i32 = 0x2;
 #[repr(C)]
 struct session {
     id: u32,
-    name: *mut c_char,
-    cwd: *mut c_char,
+    name: *mut u8,
+    cwd: *mut u8,
 
     creation_time: timeval,
     last_attached_time: timeval,
@@ -1718,11 +1703,11 @@ bitflags::bitflags! {
 /// Terminal definition.
 #[repr(C)]
 struct tty_term {
-    name: *mut c_char,
+    name: *mut u8,
     tty: *mut tty,
     features: i32,
 
-    acs: [[c_char; 2]; c_uchar::MAX as usize + 1],
+    acs: [[u8; 2]; c_uchar::MAX as usize + 1],
 
     codes: *mut tty_code,
 
@@ -1880,7 +1865,7 @@ crate::compat::impl_tailq_entry!(message_entry, entry, tailq_entry<message_entry
 // #[derive(Copy, Clone, crate::compat::TailQEntry)]
 #[repr(C)]
 struct message_entry {
-    msg: *mut c_char,
+    msg: *mut u8,
     msg_num: u32,
     msg_time: timeval,
 
@@ -1900,7 +1885,7 @@ enum args_type {
 
 #[repr(C)]
 union args_value_union {
-    string: *mut c_char,
+    string: *mut u8,
     cmdlist: *mut cmd_list,
 }
 
@@ -1911,7 +1896,7 @@ crate::compat::impl_tailq_entry!(args_value, entry, tailq_entry<args_value>);
 struct args_value {
     type_: args_type,
     union_: args_value_union,
-    cached: *mut c_char,
+    cached: *mut u8,
     // #[entry]
     entry: tailq_entry<args_value>,
 }
@@ -1927,19 +1912,19 @@ enum args_parse_type {
     ARGS_PARSE_COMMANDS,
 }
 
-type args_parse_cb = Option<unsafe fn(*mut args, u32, *mut *mut c_char) -> args_parse_type>;
+type args_parse_cb = Option<unsafe fn(*mut args, u32, *mut *mut u8) -> args_parse_type>;
 #[repr(C)]
 struct args_parse {
-    template: *const c_char,
+    template: SyncCharPtr,
     lower: i32,
     upper: i32,
     cb: args_parse_cb,
 }
 
 impl args_parse {
-    const fn new(template: &CStr, lower: i32, upper: i32, cb: args_parse_cb) -> Self {
+    const fn new(template: &'static CStr, lower: i32, upper: i32, cb: args_parse_cb) -> Self {
         Self {
-            template: template.as_ptr(),
+            template: SyncCharPtr::new(template),
             lower,
             upper,
             cb,
@@ -1949,8 +1934,9 @@ impl args_parse {
 
 /// Command find structures.
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Default)]
 enum cmd_find_type {
+    #[default]
     CMD_FIND_PANE,
     CMD_FIND_WINDOW,
     CMD_FIND_SESSION,
@@ -2005,7 +1991,7 @@ enum cmd_parse_status {
     CMD_PARSE_SUCCESS,
 }
 
-type cmd_parse_result = Result<*mut cmd_list /* cmdlist */, *mut c_char /* error */>;
+type cmd_parse_result = Result<*mut cmd_list /* cmdlist */, *mut u8 /* error */>;
 
 bitflags::bitflags! {
     #[repr(transparent)]
@@ -2074,19 +2060,23 @@ type cmdq_cb = Option<unsafe fn(*mut cmdq_item, *mut c_void) -> cmd_retval>;
 
 // Command definition flag.
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Default)]
 struct cmd_entry_flag {
-    flag: c_char,
+    flag: u8,
     type_: cmd_find_type,
     flags: i32,
 }
 
 impl cmd_entry_flag {
     const fn new(flag: u8, type_: cmd_find_type, flags: i32) -> Self {
+        Self { flag, type_, flags }
+    }
+
+    const fn zeroed() -> Self {
         Self {
-            flag: flag as c_char,
-            type_,
-            flags,
+            flag: b'\0',
+            type_: cmd_find_type::CMD_FIND_PANE,
+            flags: 0,
         }
     }
 }
@@ -2107,25 +2097,25 @@ bitflags::bitflags! {
 // Command definition.
 #[repr(C)]
 struct cmd_entry {
-    name: *const c_char,
-    alias: *const c_char,
+    name: SyncCharPtr,
+    alias: SyncCharPtr,
 
     args: args_parse,
-    usage: *const c_char,
+    usage: SyncCharPtr,
 
     source: cmd_entry_flag,
     target: cmd_entry_flag,
 
     flags: cmd_flag,
 
-    exec: Option<unsafe fn(*mut cmd, *mut cmdq_item) -> cmd_retval>,
+    exec: unsafe fn(*mut cmd, *mut cmdq_item) -> cmd_retval,
 }
 
 /* Status line. */
 const STATUS_LINES_LIMIT: usize = 5;
 #[repr(C)]
 struct status_line_entry {
-    expanded: *mut c_char,
+    expanded: *mut u8,
     ranges: style_ranges,
 }
 #[repr(C)]
@@ -2153,8 +2143,7 @@ enum prompt_type {
 }
 
 /* File in client. */
-type client_file_cb =
-    Option<unsafe fn(*mut client, *mut c_char, i32, i32, *mut evbuffer, *mut c_void)>;
+type client_file_cb = Option<unsafe fn(*mut client, *mut u8, i32, i32, *mut evbuffer, *mut c_void)>;
 #[repr(C)]
 struct client_file {
     c: *mut client,
@@ -2164,7 +2153,7 @@ struct client_file {
     references: i32,
     stream: i32,
 
-    path: *mut c_char,
+    path: *mut u8,
     buffer: *mut evbuffer,
     event: *mut bufferevent,
 
@@ -2208,7 +2197,7 @@ struct overlay_ranges {
     nx: [u32; OVERLAY_MAX_RANGES],
 }
 
-type prompt_input_cb = Option<unsafe fn(*mut client, NonNull<c_void>, *const c_char, i32) -> i32>;
+type prompt_input_cb = Option<unsafe fn(*mut client, NonNull<c_void>, *const u8, i32) -> i32>;
 type prompt_free_cb = Option<unsafe fn(NonNull<c_void>)>;
 type overlay_check_cb =
     Option<unsafe fn(*mut client, *mut c_void, u32, u32, u32, *mut overlay_ranges)>;
@@ -2288,7 +2277,7 @@ crate::compat::impl_tailq_entry!(client, entry, tailq_entry<client>);
 // #[derive(crate::compat::TailQEntry)]
 #[repr(C)]
 struct client {
-    name: *const c_char,
+    name: *const u8,
     peer: *mut tmuxpeer,
     queue: *mut cmdq_list,
 
@@ -2309,17 +2298,17 @@ struct client {
     environ: *mut environ,
     jobs: *mut format_job_tree,
 
-    title: *mut c_char,
-    path: *mut c_char,
-    cwd: *const c_char,
+    title: *mut u8,
+    path: *mut u8,
+    cwd: *const u8,
 
-    term_name: *mut c_char,
+    term_name: *mut u8,
     term_features: c_int,
-    term_type: *mut c_char,
-    term_caps: *mut *mut c_char,
+    term_type: *mut u8,
+    term_caps: *mut *mut u8,
     term_ncaps: c_uint,
 
-    ttyname: *mut c_char,
+    ttyname: *mut u8,
     tty: tty,
 
     written: usize,
@@ -2338,8 +2327,8 @@ struct client {
 
     exit_type: exit_type,
     exit_msgtype: msgtype,
-    exit_session: *mut c_char,
-    exit_message: *mut c_char,
+    exit_session: *mut u8,
+    exit_message: *mut u8,
 
     keytable: *mut key_table,
 
@@ -2347,12 +2336,12 @@ struct client {
 
     message_ignore_keys: c_int,
     message_ignore_styles: c_int,
-    message_string: *mut c_char,
+    message_string: *mut u8,
     message_timer: event,
 
-    prompt_string: *mut c_char,
+    prompt_string: *mut u8,
     prompt_buffer: *mut utf8_data,
-    prompt_last: *mut c_char,
+    prompt_last: *mut u8,
     prompt_index: usize,
     prompt_inputcb: prompt_input_cb,
     prompt_freecb: prompt_free_cb,
@@ -2410,7 +2399,7 @@ const KEY_BINDING_REPEAT: i32 = 0x1;
 struct key_binding {
     key: key_code,
     cmdlist: *mut cmd_list,
-    note: *mut c_char,
+    note: *mut u8,
 
     flags: i32,
 
@@ -2420,7 +2409,7 @@ type key_bindings = rb_head<key_binding>;
 
 #[repr(C)]
 struct key_table {
-    name: *mut c_char,
+    name: *mut u8,
     activity_time: timeval,
     key_bindings: key_bindings,
     default_key_bindings: key_bindings,
@@ -2437,7 +2426,7 @@ type options_array = rb_head<options_array_item>;
 #[repr(C)]
 #[derive(Copy, Clone)]
 union options_value {
-    string: *mut c_char,
+    string: *mut u8,
     number: c_longlong,
     style: style,
     array: options_array,
@@ -2469,34 +2458,34 @@ const OPTIONS_TABLE_IS_STYLE: i32 = 0x4;
 
 #[repr(C)]
 struct options_table_entry {
-    name: *const c_char,
-    alternative_name: *mut c_char,
+    name: *const u8,
+    alternative_name: *mut u8,
     type_: options_table_type,
     scope: i32,
     flags: i32,
     minimum: u32,
     maximum: u32,
 
-    choices: *const *const c_char,
+    choices: *const *const u8,
 
-    default_str: *const c_char,
+    default_str: *const u8,
     default_num: c_longlong,
-    default_arr: *const *const c_char,
+    default_arr: *const *const u8,
 
-    separator: *const c_char,
-    pattern: *const c_char,
+    separator: *const u8,
+    pattern: *const u8,
 
-    text: *const c_char,
-    unit: *const c_char,
+    text: *const u8,
+    unit: *const u8,
 }
 
 #[repr(C)]
 struct options_name_map {
-    from: *const c_char,
-    to: *const c_char,
+    from: *const u8,
+    to: *const u8,
 }
 impl options_name_map {
-    const fn new(from: *const c_char, to: *const c_char) -> Self {
+    const fn new(from: *const u8, to: *const u8) -> Self {
         Self { from, to }
     }
 }
@@ -2533,13 +2522,13 @@ struct spawn_context {
     wp0: *mut window_pane,
     lc: *mut layout_cell,
 
-    name: *const c_char,
-    argv: *mut *mut c_char,
+    name: *const u8,
+    argv: *mut *mut u8,
     argc: i32,
     environ: *mut environ,
 
     idx: i32,
-    cwd: *const c_char,
+    cwd: *const u8,
 
     flags: i32,
 }
@@ -2573,9 +2562,9 @@ mod tmux;
 pub use crate::tmux::tmux_main;
 
 use crate::tmux::{
-    checkshell, find_cwd, find_home, get_timer, getversion, global_environ, global_options,
-    global_s_options, global_w_options, ptm_fd, setblocking, shell_argv0, shell_command,
-    socket_path, start_time,
+    GLOBAL_ENVIRON, GLOBAL_OPTIONS, GLOBAL_S_OPTIONS, GLOBAL_W_OPTIONS, PTM_FD, SHELL_COMMAND,
+    SOCKET_PATH, START_TIME, checkshell, find_cwd, find_home, get_timer, getversion, setblocking,
+    shell_argv0,
 };
 
 mod proc;
@@ -2587,7 +2576,7 @@ use crate::proc::{
 
 mod cfg_;
 use crate::cfg_::{
-    cfg_client, cfg_files, cfg_finished, cfg_nfiles, cfg_print_causes, cfg_quiet, cfg_show_causes,
+    CFG_CLIENT, CFG_FILES, CFG_FINISHED, CFG_NFILES, CFG_QUIET, cfg_print_causes, cfg_show_causes,
     load_cfg, load_cfg_from_buffer, start_cfg,
 };
 
@@ -2635,7 +2624,7 @@ use crate::options_::{
 };
 
 mod options_table;
-use crate::options_table::{options_other_names, options_table};
+use crate::options_table::{OPTIONS_OTHER_NAMES, OPTIONS_TABLE};
 
 bitflags::bitflags! {
     #[repr(transparent)]
@@ -2680,10 +2669,10 @@ use crate::tty_::{
 
 mod tty_term_;
 use crate::tty_term_::{
-    tty_code, tty_term_apply, tty_term_apply_overrides, tty_term_create, tty_term_describe,
-    tty_term_flag, tty_term_free, tty_term_free_list, tty_term_has, tty_term_ncodes,
-    tty_term_number, tty_term_read_list, tty_term_string, tty_term_string_i, tty_term_string_ii,
-    tty_term_string_iii, tty_term_string_s, tty_term_string_ss, tty_terms,
+    TTY_TERMS, tty_code, tty_term_apply, tty_term_apply_overrides, tty_term_create,
+    tty_term_describe, tty_term_flag, tty_term_free, tty_term_free_list, tty_term_has,
+    tty_term_ncodes, tty_term_number, tty_term_read_list, tty_term_string, tty_term_string_i,
+    tty_term_string_ii, tty_term_string_iii, tty_term_string_s, tty_term_string_ss,
 };
 
 mod tty_features;
@@ -2709,7 +2698,7 @@ unsafe fn args_has_(args: *mut args, flag: char) -> bool {
 }
 
 // unsafe fn args_get(_: *mut args, _: c_uchar) -> *const c_char;
-unsafe fn args_get_(args: *mut args, flag: char) -> *const c_char {
+unsafe fn args_get_(args: *mut args, flag: char) -> *const u8 {
     debug_assert!(flag.is_ascii());
     unsafe { args_get(args, flag as u8) }
 }
@@ -2727,12 +2716,12 @@ use crate::arguments::{
 mod cmd_;
 use crate::cmd_::cmd_log_argv;
 use crate::cmd_::{
-    cmd, cmd_append_argv, cmd_copy, cmd_copy_argv, cmd_free, cmd_free_argv, cmd_get_alias,
-    cmd_get_args, cmd_get_entry, cmd_get_group, cmd_get_source, cmd_list_all_have,
+    CMD_TABLE, cmd, cmd_append_argv, cmd_copy, cmd_copy_argv, cmd_free, cmd_free_argv,
+    cmd_get_alias, cmd_get_args, cmd_get_entry, cmd_get_group, cmd_get_source, cmd_list_all_have,
     cmd_list_any_have, cmd_list_append, cmd_list_append_all, cmd_list_copy, cmd_list_first,
     cmd_list_free, cmd_list_move, cmd_list_new, cmd_list_next, cmd_list_print, cmd_mouse_at,
     cmd_mouse_pane, cmd_mouse_window, cmd_pack_argv, cmd_parse, cmd_print, cmd_stringify_argv,
-    cmd_table, cmd_template_replace, cmd_unpack_argv, cmds,
+    cmd_template_replace, cmd_unpack_argv, cmds,
 };
 
 use crate::cmd_::cmd_attach_session::cmd_attach_session;
@@ -2790,9 +2779,9 @@ use crate::file::{
 
 mod server;
 use crate::server::{
-    clients, current_time, marked_pane, message_log, server_add_accept, server_add_message,
-    server_check_marked, server_clear_marked, server_create_socket, server_is_marked, server_proc,
-    server_set_marked, server_start, server_update_socket,
+    CLIENTS, CURRENT_TIME, MARKED_PANE, MESSAGE_LOG, SERVER_PROC, server_add_accept,
+    server_add_message, server_check_marked, server_clear_marked, server_create_socket,
+    server_is_marked, server_set_marked, server_start, server_update_socket,
 };
 
 mod server_client;
@@ -2820,12 +2809,12 @@ use crate::server_fn::{
 
 mod status;
 use crate::status::{
-    status_at_line, status_free, status_get_range, status_init, status_line_size,
-    status_message_clear, status_message_redraw, status_message_set, status_prompt_clear,
-    status_prompt_hlist, status_prompt_hsize, status_prompt_key, status_prompt_load_history,
-    status_prompt_redraw, status_prompt_save_history, status_prompt_set, status_prompt_type,
-    status_prompt_type_string, status_prompt_update, status_redraw, status_timer_start,
-    status_timer_start_all, status_update_cache,
+    STATUS_PROMPT_HLIST, STATUS_PROMPT_HSIZE, status_at_line, status_free, status_get_range,
+    status_init, status_line_size, status_message_clear, status_message_redraw, status_message_set,
+    status_prompt_clear, status_prompt_key, status_prompt_load_history, status_prompt_redraw,
+    status_prompt_save_history, status_prompt_set, status_prompt_type, status_prompt_type_string,
+    status_prompt_update, status_redraw, status_timer_start, status_timer_start_all,
+    status_update_cache,
 };
 
 mod resize;
@@ -2855,8 +2844,8 @@ use crate::attributes::{attributes_fromstring, attributes_tostring};
 
 mod grid_;
 use crate::grid_::{
-    grid_adjust_lines, grid_cells_equal, grid_cells_look_equal, grid_clear, grid_clear_history,
-    grid_clear_lines, grid_collect_history, grid_compare, grid_create, grid_default_cell,
+    GRID_DEFAULT_CELL, grid_adjust_lines, grid_cells_equal, grid_cells_look_equal, grid_clear,
+    grid_clear_history, grid_clear_lines, grid_collect_history, grid_compare, grid_create,
     grid_destroy, grid_duplicate_lines, grid_empty_line, grid_get_cell, grid_get_line,
     grid_line_length, grid_move_cells, grid_move_lines, grid_peek_line, grid_reflow,
     grid_remove_history, grid_scroll_history, grid_scroll_history_region, grid_set_cell,
@@ -2921,7 +2910,7 @@ use crate::screen_::{
 
 mod window_;
 use crate::window_::{
-    all_window_panes, window_add_pane, window_add_ref, window_cmp, window_count_panes,
+    ALL_WINDOW_PANES, WINDOWS, window_add_pane, window_add_ref, window_cmp, window_count_panes,
     window_create, window_destroy_panes, window_find_by_id, window_find_by_id_str,
     window_find_string, window_get_active_at, window_has_pane, window_lost_pane,
     window_pane_at_index, window_pane_cmp, window_pane_default_cursor, window_pane_destroy_ready,
@@ -2935,8 +2924,8 @@ use crate::window_::{
     window_pane_visible, window_pop_zoom, window_printable_flags, window_push_zoom,
     window_redraw_active_switch, window_remove_pane, window_remove_ref, window_resize,
     window_set_active_pane, window_set_fill_character, window_set_name, window_unzoom,
-    window_update_activity, window_update_focus, window_zoom, windows, winlink_add,
-    winlink_clear_flags, winlink_cmp, winlink_count, winlink_find_by_index, winlink_find_by_window,
+    window_update_activity, window_update_focus, window_zoom, winlink_add, winlink_clear_flags,
+    winlink_cmp, winlink_count, winlink_find_by_index, winlink_find_by_window,
     winlink_find_by_window_id, winlink_next, winlink_next_by_number, winlink_previous,
     winlink_previous_by_number, winlink_remove, winlink_set_window, winlink_shuffle_up,
     winlink_stack_push, winlink_stack_remove,
@@ -2973,26 +2962,26 @@ use crate::mode_tree::{
 };
 
 mod window_buffer;
-use crate::window_buffer::window_buffer_mode;
+use crate::window_buffer::WINDOW_BUFFER_MODE;
 
 mod window_tree;
-use crate::window_tree::window_tree_mode;
+use crate::window_tree::WINDOW_TREE_MODE;
 
 mod window_clock;
-use crate::window_clock::{window_clock_mode, window_clock_table};
+use crate::window_clock::{WINDOW_CLOCK_MODE, WINDOW_CLOCK_TABLE};
 
 mod window_client;
-use crate::window_client::window_client_mode;
+use crate::window_client::WINDOW_CLIENT_MODE;
 
 mod window_copy;
 use crate::window_copy::window_copy_add;
 use crate::window_copy::{
-    window_copy_get_line, window_copy_get_word, window_copy_mode, window_copy_pagedown,
-    window_copy_pageup, window_copy_start_drag, window_copy_vadd, window_view_mode,
+    WINDOW_COPY_MODE, WINDOW_VIEW_MODE, window_copy_get_line, window_copy_get_word,
+    window_copy_pagedown, window_copy_pageup, window_copy_start_drag, window_copy_vadd,
 };
 
 mod window_customize;
-use crate::window_customize::window_customize_mode;
+use crate::window_customize::WINDOW_CUSTOMIZE_MODE;
 
 mod names;
 use crate::names::{check_window_name, default_window_name, parse_window_name};
@@ -3019,14 +3008,14 @@ use crate::control_notify::{
 
 mod session_;
 use crate::session_::{
-    next_session_id, session_add_ref, session_alive, session_attach, session_check_name,
+    NEXT_SESSION_ID, SESSIONS, session_add_ref, session_alive, session_attach, session_check_name,
     session_cmp, session_create, session_destroy, session_detach, session_find, session_find_by_id,
     session_find_by_id_str, session_group_add, session_group_attached_count,
     session_group_contains, session_group_count, session_group_find, session_group_new,
     session_group_synchronize_from, session_group_synchronize_to, session_has, session_is_linked,
     session_last, session_next, session_next_session, session_previous, session_previous_session,
     session_remove_ref, session_renumber_windows, session_select, session_set_current,
-    session_update_activity, sessions,
+    session_update_activity,
 };
 
 mod utf8;
@@ -3045,8 +3034,8 @@ use crate::utf8_combined::{utf8_has_zwj, utf8_is_modifier, utf8_is_vs, utf8_is_z
 
 // procname.c
 unsafe extern "C" {
-    unsafe fn get_proc_name(_: c_int, _: *mut c_char) -> *mut c_char;
-    unsafe fn get_proc_cwd(_: c_int) -> *mut c_char;
+    unsafe fn get_proc_name(_: c_int, _: *mut u8) -> *mut u8;
+    unsafe fn get_proc_cwd(_: c_int) -> *mut u8;
 }
 
 #[macro_use] // log_debug
@@ -3099,8 +3088,8 @@ use crate::hyperlinks_::{
 mod xmalloc;
 use crate::xmalloc::{format_nul, xsnprintf_};
 use crate::xmalloc::{
-    free_, memcpy_, memcpy__, xcalloc, xcalloc_, xcalloc1, xmalloc, xmalloc_, xrealloc, xrealloc_,
-    xreallocarray_, xstrdup, xstrdup_,
+    xcalloc, xcalloc_, xcalloc1, xmalloc, xmalloc_, xrealloc, xrealloc_, xreallocarray_, xstrdup,
+    xstrdup_,
 };
 
 mod tmux_protocol;
@@ -3110,39 +3099,68 @@ use crate::tmux_protocol::{
 };
 
 unsafe extern "C-unwind" {
-    fn vsnprintf(_: *mut c_char, _: usize, _: *const c_char, _: ...) -> c_int;
-    fn vasprintf(_: *mut *mut c_char, _: *const c_char, _: ...) -> c_int;
+    fn vsnprintf(_: *mut u8, _: usize, _: *const u8, _: ...) -> c_int;
+    fn vasprintf(_: *mut *mut u8, _: *const u8, _: ...) -> c_int;
 }
 
 unsafe impl Sync for SyncCharPtr {}
 #[repr(transparent)]
 #[derive(Copy, Clone)]
-struct SyncCharPtr(*const c_char);
+struct SyncCharPtr(*const u8);
 impl SyncCharPtr {
     const fn new(value: &'static CStr) -> Self {
-        Self(value.as_ptr())
+        Self(value.as_ptr().cast())
     }
-    const fn from_ptr(value: *const c_char) -> Self {
+    const fn from_ptr(value: *const u8) -> Self {
         Self(value)
     }
     const fn null() -> Self {
         Self(null())
     }
-    const fn as_ptr(&self) -> *const c_char {
+    const fn as_ptr(&self) -> *const u8 {
         self.0
+    }
+    const fn is_null(&self) -> bool {
+        self.0.is_null()
     }
 }
 
+fn _s(ptr: impl ToU8Ptr) -> DisplayCStrPtr {
+    DisplayCStrPtr(ptr.to_u8_ptr())
+}
+trait ToU8Ptr {
+    fn to_u8_ptr(self) -> *const u8;
+}
+impl ToU8Ptr for *mut u8 {
+    fn to_u8_ptr(self) -> *const u8 {
+        self.cast()
+    }
+}
+impl ToU8Ptr for *const u8 {
+    fn to_u8_ptr(self) -> *const u8 {
+        self
+    }
+}
+impl ToU8Ptr for *mut i8 {
+    fn to_u8_ptr(self) -> *const u8 {
+        self.cast()
+    }
+}
+impl ToU8Ptr for *const i8 {
+    fn to_u8_ptr(self) -> *const u8 {
+        self.cast()
+    }
+}
 // TODO struct should have some sort of lifetime
 /// Display wrapper for a *c_char pointer
 #[repr(transparent)]
-struct _s(*const i8);
-impl _s {
-    unsafe fn from_raw(s: *const c_char) -> Self {
-        _s(s)
+struct DisplayCStrPtr(*const u8);
+impl DisplayCStrPtr {
+    unsafe fn from_raw(s: *const u8) -> Self {
+        Self(s)
     }
 }
-impl std::fmt::Display for _s {
+impl std::fmt::Display for DisplayCStrPtr {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         if self.0.is_null() {
             return f.write_str("(null)");
@@ -3158,7 +3176,7 @@ impl std::fmt::Display for _s {
             unsafe { libc::strlen(self.0) }
         };
 
-        let s: &[u8] = unsafe { std::slice::from_raw_parts(self.0 as *const u8, len) };
+        let s: &[u8] = unsafe { std::slice::from_raw_parts(self.0, len) };
         let s = std::str::from_utf8(s).unwrap_or("%s-invalid-utf8");
         f.write_str(s)
     }
@@ -3215,7 +3233,7 @@ pub(crate) fn i32_to_ordering(value: i32) -> std::cmp::Ordering {
     }
 }
 
-pub(crate) unsafe fn cstr_to_str<'a>(ptr: *const c_char) -> &'a str {
+pub(crate) unsafe fn cstr_to_str<'a>(ptr: *const u8) -> &'a str {
     unsafe {
         let len = libc::strlen(ptr);
 
@@ -3225,11 +3243,14 @@ pub(crate) unsafe fn cstr_to_str<'a>(ptr: *const c_char) -> &'a str {
     }
 }
 
-#[cfg(target_os = "macos")]
-pub(crate) unsafe fn basename(path: *mut c_char) -> *mut c_char {
-    unsafe { libc::basename(path) }
+// ideally we could just use c string literal until we transition to &str everywhere
+// unfortunately, some platforms people use have
+macro_rules! c {
+    ($s:literal) => {{
+        const S: &str = concat!($s, "\0");
+        unsafe { std::ffi::CStr::from_bytes_with_nul_unchecked(S.as_bytes()) }
+            .as_ptr()
+            .cast::<u8>()
+    }};
 }
-#[cfg(target_os = "linux")]
-pub(crate) unsafe fn basename(path: *mut c_char) -> *mut c_char {
-    unsafe { libc::posix_basename(path) }
-}
+pub(crate) use c;

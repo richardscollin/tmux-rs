@@ -14,60 +14,60 @@
 
 use crate::*;
 
-pub static mut cmd_select_window_entry: cmd_entry = cmd_entry {
-    name: c"select-window".as_ptr(),
-    alias: c"selectw".as_ptr(),
+pub static CMD_SELECT_WINDOW_ENTRY: cmd_entry = cmd_entry {
+    name: SyncCharPtr::new(c"select-window"),
+    alias: SyncCharPtr::new(c"selectw"),
 
     args: args_parse::new(c"lnpTt:", 0, 0, None),
-    usage: c"[-lnpT] [-t target-window]".as_ptr(),
+    usage: SyncCharPtr::new(c"[-lnpT] [-t target-window]"),
 
     target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_WINDOW, 0),
 
     flags: cmd_flag::empty(),
-    exec: Some(cmd_select_window_exec),
-    ..unsafe { zeroed() }
+    exec: cmd_select_window_exec,
+    source: cmd_entry_flag::zeroed(),
 };
 
-pub static mut cmd_next_window_entry: cmd_entry = cmd_entry {
-    name: c"next-window".as_ptr(),
-    alias: c"next".as_ptr(),
+pub static CMD_NEXT_WINDOW_ENTRY: cmd_entry = cmd_entry {
+    name: SyncCharPtr::new(c"next-window"),
+    alias: SyncCharPtr::new(c"next"),
 
     args: args_parse::new(c"at:", 0, 0, None),
-    usage: c"[-a] [-t target-session]".as_ptr(),
+    usage: SyncCharPtr::new(c"[-a] [-t target-session]"),
 
     target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_SESSION, 0),
 
     flags: cmd_flag::empty(),
-    exec: Some(cmd_select_window_exec),
-    ..unsafe { zeroed() }
+    exec: cmd_select_window_exec,
+    source: cmd_entry_flag::zeroed(),
 };
 
-pub static mut cmd_previous_window_entry: cmd_entry = cmd_entry {
-    name: c"previous-window".as_ptr(),
-    alias: c"prev".as_ptr(),
+pub static CMD_PREVIOUS_WINDOW_ENTRY: cmd_entry = cmd_entry {
+    name: SyncCharPtr::new(c"previous-window"),
+    alias: SyncCharPtr::new(c"prev"),
 
     args: args_parse::new(c"at:", 0, 0, None),
-    usage: c"[-a] [-t target-session]".as_ptr(),
+    usage: SyncCharPtr::new(c"[-a] [-t target-session]"),
 
     target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_SESSION, 0),
 
     flags: cmd_flag::empty(),
-    exec: Some(cmd_select_window_exec),
-    ..unsafe { zeroed() }
+    exec: cmd_select_window_exec,
+    source: cmd_entry_flag::zeroed(),
 };
 
-pub static mut cmd_last_window_entry: cmd_entry = cmd_entry {
-    name: c"last-window".as_ptr(),
-    alias: c"last".as_ptr(),
+pub static CMD_LAST_WINDOW_ENTRY: cmd_entry = cmd_entry {
+    name: SyncCharPtr::new(c"last-window"),
+    alias: SyncCharPtr::new(c"last"),
 
     args: args_parse::new(c"t:", 0, 0, None),
-    usage: c"[-t target-session]".as_ptr(),
+    usage: SyncCharPtr::new(c"[-t target-session]"),
 
     target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_SESSION, 0),
 
     flags: cmd_flag::empty(),
-    exec: Some(cmd_select_window_exec),
-    ..unsafe { zeroed() }
+    exec: cmd_select_window_exec,
+    source: cmd_entry_flag::zeroed(),
 };
 
 unsafe fn cmd_select_window_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retval {
@@ -78,17 +78,16 @@ unsafe fn cmd_select_window_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
         let target = cmdq_get_target(item);
         let wl = (*target).wl;
         let s = (*target).s;
-        //int			 next, previous, last, activity;
 
-        let mut next = cmd_get_entry(self_) == &raw mut cmd_next_window_entry;
+        let mut next = std::ptr::eq(cmd_get_entry(self_), &CMD_NEXT_WINDOW_ENTRY);
         if args_has_(args, 'n') {
             next = true;
         }
-        let mut previous = cmd_get_entry(self_) == &raw mut cmd_previous_window_entry;
+        let mut previous = std::ptr::eq(cmd_get_entry(self_), &CMD_PREVIOUS_WINDOW_ENTRY);
         if args_has_(args, 'p') {
             previous = true;
         }
-        let mut last = cmd_get_entry(self_) == &raw mut cmd_last_window_entry;
+        let mut last = std::ptr::eq(cmd_get_entry(self_), &CMD_LAST_WINDOW_ENTRY);
         if args_has_(args, 'l') {
             last = true;
         }

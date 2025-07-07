@@ -5,40 +5,81 @@ on:
   push:
     branches: [main]
 name: build
+
 jobs:
-  lint:
+  unsafe-report:
     runs-on: ubuntu-latest
     steps:
-      - run: |
+      - uses: actions/checkout@v4
+      - name: Install system dependencies (ubuntu)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libncurses-dev libevent-dev
+      - uses: dtolnay/rust-toolchain@nightly
+      - run: ./tools/unsafe_usage_analyzer.rs .
+
+  clippy:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - toolchain: stable
+            os: ubuntu-latest
+          - toolchain: stable
+            os: macos-latest
+          - toolchain: stable
+            os: ubuntu-24.04-arm
+          - toolchain: beta
+            os: ubuntu-latest
+    steps:
+      - name: Install system dependencies (ubuntu)
+        if: startsWith(matrix.os, 'ubuntu')
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libncurses-dev libevent-dev
+      - name: Install system dependencies (macOS)
+        if: matrix.os == 'macos-latest'
+        run: |
+          brew update
+          brew install ncurses libevent
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ matrix.toolchain }}
+          components: clippy
+      - run: cargo clippy -- -Dwarnings
+
+  fmt:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install system dependencies (ubuntu)
+        run: |
           sudo apt-get update
           sudo apt-get install -y libncurses-dev libevent-dev
       - uses: dtolnay/rust-toolchain@stable
-      - uses: actions/checkout@v4
       - run: cargo fmt --check
 
   build:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os: [ubuntu-latest, macos-latest, ubuntu-24.04-arm]
     env:
       LIBRARY_PATH: /opt/homebrew/lib
     steps:
-      - name: Install system dependencies (Linux)
-        if: matrix.os == 'ubuntu-latest'
+      - name: Install system dependencies (ubuntu)
+        if: startsWith(matrix.os, 'ubuntu')
         run: |
           sudo apt-get update
           sudo apt-get install -y libncurses-dev libevent-dev
-
       - name: Install system dependencies (macOS)
         if: matrix.os == 'macos-latest'
         run: |
           brew update
           brew install ncurses libevent
-
-      - uses: dtolnay/rust-toolchain@stable
       - uses: actions/checkout@v4
-
+      - uses: dtolnay/rust-toolchain@stable
       - run: cargo build
-      - run: cargo clippy
       - run: cargo test

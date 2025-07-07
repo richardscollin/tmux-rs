@@ -14,7 +14,7 @@
 
 use crate::*;
 
-use libc::{qsort, strcmp};
+use crate::libc::{qsort, strcmp};
 
 use crate::compat::queue::tailq_first;
 
@@ -23,19 +23,18 @@ static WINDOW_CLIENT_DEFAULT_FORMAT: &CStr = c"#{t/p:client_activity}: session #
 static WINDOW_CLIENT_DEFAULT_KEY_FORMAT: &CStr =
     c"#{?#{e|<:#{line},10},#{line},#{?#{e|<:#{line},36},M-#{a:#{e|+:97,#{e|-:#{line},10}}},}}";
 
-static window_client_menu_items: [menu_item; 9] = [
-    menu_item::new(Some(c"Detach"), b'd' as _, null()),
-    menu_item::new(Some(c"Detach Tagged"), b'D' as _, null()),
-    menu_item::new(Some(c""), KEYC_NONE, null()),
-    menu_item::new(Some(c"Tag"), b't' as _, null()),
-    menu_item::new(Some(c"Tag All"), b'\x14' as _, null()),
-    menu_item::new(Some(c"Tag None"), b'T' as _, null()),
-    menu_item::new(Some(c""), KEYC_NONE, null()),
-    menu_item::new(Some(c"Cancel"), b'q' as _, null()),
-    menu_item::new(None, KEYC_NONE, null()),
+static WINDOW_CLIENT_MENU_ITEMS: [menu_item; 8] = [
+    menu_item::new(c"Detach", b'd' as _, null()),
+    menu_item::new(c"Detach Tagged", b'D' as _, null()),
+    menu_item::new(c"", KEYC_NONE, null()),
+    menu_item::new(c"Tag", b't' as _, null()),
+    menu_item::new(c"Tag All", b'\x14' as _, null()),
+    menu_item::new(c"Tag None", b'T' as _, null()),
+    menu_item::new(c"", KEYC_NONE, null()),
+    menu_item::new(c"Cancel", b'q' as _, null()),
 ];
 
-pub static window_client_mode: window_mode = window_mode {
+pub static WINDOW_CLIENT_MODE: window_mode = window_mode {
     name: SyncCharPtr::new(c"client-mode"),
     default_format: SyncCharPtr::new(WINDOW_CLIENT_DEFAULT_FORMAT),
 
@@ -58,14 +57,10 @@ pub enum window_client_sort_type {
     WINDOW_CLIENT_BY_ACTIVITY_TIME,
 }
 const WINDOW_CLIENT_SORT_LIST_LEN: u32 = 4;
-static mut window_client_sort_list: [*const c_char; 4] = [
-    c"name".as_ptr(),
-    c"size".as_ptr(),
-    c"creation".as_ptr(),
-    c"activity".as_ptr(),
-];
+static mut WINDOW_CLIENT_SORT_LIST: [*const u8; 4] =
+    [c!("name"), c!("size"), c!("creation"), c!("activity")];
 
-static mut window_client_sort: *mut mode_tree_sort_criteria = null_mut();
+static mut WINDOW_CLIENT_SORT: *mut mode_tree_sort_criteria = null_mut();
 
 #[repr(C)]
 pub struct window_client_itemdata {
@@ -77,9 +72,9 @@ pub struct window_client_modedata {
     wp: *mut window_pane,
 
     data: *mut mode_tree_data,
-    format: *mut c_char,
-    key_format: *mut c_char,
-    command: *mut c_char,
+    format: *mut u8,
+    key_format: *mut u8,
+    command: *mut u8,
 
     item_list: *mut *mut window_client_itemdata,
     item_size: u32,
@@ -116,7 +111,7 @@ pub unsafe extern "C" fn window_client_cmp(a0: *const c_void, b0: *const c_void)
         let cb = (*itemb).c;
         let mut result: i32 = 0;
 
-        match window_client_sort_type::try_from((*window_client_sort).field) {
+        match window_client_sort_type::try_from((*WINDOW_CLIENT_SORT).field) {
             Ok(window_client_sort_type::WINDOW_CLIENT_BY_SIZE) => {
                 result = (*ca).tty.sx.wrapping_sub((*cb).tty.sx) as i32;
                 if result == 0 {
@@ -153,7 +148,7 @@ pub unsafe extern "C" fn window_client_cmp(a0: *const c_void, b0: *const c_void)
             result = strcmp((*ca).name, (*cb).name);
         }
 
-        if (*window_client_sort).reversed != 0 {
+        if (*WINDOW_CLIENT_SORT).reversed != 0 {
             result = -result;
         }
 
@@ -165,7 +160,7 @@ pub unsafe fn window_client_build(
     modedata: NonNull<c_void>,
     sort_crit: *mut mode_tree_sort_criteria,
     _tag: *mut u64,
-    filter: *const c_char,
+    filter: *const u8,
 ) {
     unsafe {
         let data: NonNull<window_client_modedata> = modedata.cast();
@@ -179,7 +174,7 @@ pub unsafe fn window_client_build(
         (*data).item_list = null_mut();
         (*data).item_size = 0;
 
-        for c in crate::compat::queue::tailq_foreach(&raw mut clients).map(NonNull::as_ptr) {
+        for c in crate::compat::queue::tailq_foreach(&raw mut CLIENTS).map(NonNull::as_ptr) {
             if (*c).session.is_null() || (*c).flags.intersects(CLIENT_UNATTACHEDFLAGS) {
                 continue;
             }
@@ -190,7 +185,7 @@ pub unsafe fn window_client_build(
             (*c).references += 1;
         }
 
-        window_client_sort = sort_crit;
+        WINDOW_CLIENT_SORT = sort_crit;
         qsort(
             (*data).item_list.cast(),
             (*data).item_size as usize,
@@ -302,7 +297,7 @@ pub unsafe fn window_client_get_key(
 
         let ft = format_create(null_mut(), null_mut(), FORMAT_NONE, format_flags::empty());
         format_defaults(ft, (*item.as_ptr()).c, None, None, None);
-        format_add!(ft, c"line".as_ptr(), "{line}");
+        format_add!(ft, c!("line"), "{line}");
 
         let expanded = format_expand(ft, (*data.as_ptr()).key_format);
         let key = key_string_lookup_string(expanded);
@@ -352,8 +347,8 @@ pub unsafe fn window_client_init(
             None,
             Some(window_client_get_key),
             data.cast(),
-            &raw const window_client_menu_items as *const menu_item,
-            &raw mut window_client_sort_list as *mut *const i8,
+            WINDOW_CLIENT_MENU_ITEMS.as_slice(),
+            &raw mut WINDOW_CLIENT_SORT_LIST as *mut *const u8,
             WINDOW_CLIENT_SORT_LIST_LEN,
             &raw mut s,
         );

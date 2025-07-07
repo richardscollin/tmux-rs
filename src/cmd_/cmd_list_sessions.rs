@@ -15,19 +15,22 @@ use crate::*;
 
 use crate::compat::tree::rb_foreach;
 
-pub static mut cmd_list_sessions_entry: cmd_entry = cmd_entry {
-    name: c"list-sessions".as_ptr(),
-    alias: c"ls".as_ptr(),
+pub static CMD_LIST_SESSIONS_ENTRY: cmd_entry = cmd_entry {
+    name: SyncCharPtr::new(c"list-sessions"),
+    alias: SyncCharPtr::new(c"ls"),
 
     args: args_parse::new(c"F:f:", 0, 0, None),
-    usage: c"[-F format] [-f filter]".as_ptr(),
+    usage: SyncCharPtr::new(c"[-F format] [-f filter]"),
 
     flags: cmd_flag::CMD_AFTERHOOK,
-    exec: Some(cmd_list_sessions_exec),
-    ..unsafe { zeroed() }
+    exec: cmd_list_sessions_exec,
+    source: cmd_entry_flag::zeroed(),
+    target: cmd_entry_flag::zeroed(),
 };
 
-const LIST_SESSIONS_TEMPLATE: *const i8 = c"#{session_name}: #{session_windows} windows (created #{t:session_created})#{?session_grouped, (group ,}#{session_group}#{?session_grouped,),}#{?session_attached, (attached),}".as_ptr();
+const LIST_SESSIONS_TEMPLATE: *const u8 = c!(
+    "#{session_name}: #{session_windows} windows (created #{t:session_created})#{?session_grouped, (group ,}#{session_group}#{?session_grouped,),}#{?session_attached, (attached),}"
+);
 
 unsafe fn cmd_list_sessions_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retval {
     unsafe {
@@ -39,14 +42,14 @@ unsafe fn cmd_list_sessions_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
         }
         let filter = args_get(args, b'f');
 
-        for (n, s) in rb_foreach(&raw mut sessions).enumerate() {
+        for (n, s) in rb_foreach(&raw mut SESSIONS).enumerate() {
             let ft = format_create(
                 cmdq_get_client(item),
                 item,
                 FORMAT_NONE,
                 format_flags::empty(),
             );
-            format_add!(ft, c"line".as_ptr(), "{n}");
+            format_add!(ft, c!("line"), "{n}");
             format_defaults(ft, null_mut(), Some(s), None, None);
 
             let mut flag = 0;

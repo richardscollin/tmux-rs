@@ -16,39 +16,40 @@ use super::*;
 use crate::compat::queue::tailq_foreach;
 use crate::compat::tree::rb_empty;
 
-pub static mut cmd_attach_session_entry: cmd_entry = cmd_entry {
-    name: c"attach-session".as_ptr(),
-    alias: c"attach".as_ptr(),
+pub static CMD_ATTACH_SESSION_ENTRY: cmd_entry = cmd_entry {
+    name: SyncCharPtr::new(c"attach-session"),
+    alias: SyncCharPtr::new(c"attach"),
 
     args: args_parse::new(c"c:dEf:rt:x", 0, 0, None),
-    usage: c"[-dErx] [-c working-directory] [-f flags] [-t target-session]".as_ptr(),
+    usage: SyncCharPtr::new(c"[-dErx] [-c working-directory] [-f flags] [-t target-session]"),
 
     flags: cmd_flag::CMD_STARTSERVER.union(cmd_flag::CMD_READONLY),
-    exec: Some(cmd_attach_session_exec),
-    ..unsafe { zeroed() }
+    exec: cmd_attach_session_exec,
+    source: cmd_entry_flag::zeroed(),
+    target: cmd_entry_flag::zeroed(),
 };
 
 pub unsafe fn cmd_attach_session(
     item: *mut cmdq_item,
-    tflag: *const c_char,
+    tflag: *const u8,
     dflag: c_int,
     xflag: c_int,
     rflag: c_int,
-    cflag: *const c_char,
+    cflag: *const u8,
     eflag: c_int,
-    fflag: *const c_char,
+    fflag: *const u8,
 ) -> cmd_retval {
     unsafe {
         let current: *mut cmd_find_state = cmdq_get_current(item);
         let mut target: cmd_find_state = zeroed(); // TODO can be uninit
         let c: *mut client = cmdq_get_client(item);
 
-        let cwd: *mut c_char;
-        let mut cause: *mut c_char = null_mut();
+        let cwd: *mut u8;
+        let mut cause: *mut u8 = null_mut();
 
         let msgtype: msgtype;
 
-        if rb_empty(&raw mut sessions) {
+        if rb_empty(&raw mut SESSIONS) {
             cmdq_error!(item, "no sessions");
             return cmd_retval::CMD_RETURN_ERROR;
         }
@@ -65,13 +66,12 @@ pub unsafe fn cmd_attach_session(
             return cmd_retval::CMD_RETURN_ERROR;
         }
 
-        let (type_, flags) = if !tflag.is_null()
-            && *tflag.add(libc::strcspn(tflag, c":.".as_ptr())) != b'\0' as c_char
-        {
-            (cmd_find_type::CMD_FIND_PANE, 0)
-        } else {
-            (cmd_find_type::CMD_FIND_SESSION, CMD_FIND_PREFER_UNATTACHED)
-        };
+        let (type_, flags) =
+            if !tflag.is_null() && *tflag.add(libc::strcspn(tflag, c!(":."))) != b'\0' {
+                (cmd_find_type::CMD_FIND_PANE, 0)
+            } else {
+                (cmd_find_type::CMD_FIND_SESSION, CMD_FIND_PREFER_UNATTACHED)
+            };
         if cmd_find_target(&raw mut target, item, tflag, type_, flags) != 0 {
             return cmd_retval::CMD_RETURN_ERROR;
         }
@@ -112,7 +112,7 @@ pub unsafe fn cmd_attach_session(
                 } else {
                     msgtype = msgtype::MSG_DETACH;
                 }
-                for c_loop in tailq_foreach(&raw mut clients).map(NonNull::as_ptr) {
+                for c_loop in tailq_foreach(&raw mut CLIENTS).map(NonNull::as_ptr) {
                     {
                         if (*c_loop).session != s || c == c_loop {
                             continue;
@@ -142,7 +142,7 @@ pub unsafe fn cmd_attach_session(
                 } else {
                     msgtype::MSG_DETACH
                 };
-                for c_loop in tailq_foreach(&raw mut clients).map(NonNull::as_ptr) {
+                for c_loop in tailq_foreach(&raw mut CLIENTS).map(NonNull::as_ptr) {
                     if (*c_loop).session != s || c == c_loop {
                         continue;
                     }
@@ -162,7 +162,7 @@ pub unsafe fn cmd_attach_session(
             notify_client(c"client-attached", c);
             (*c).flags |= client_flag::ATTACHED;
 
-            if cfg_finished != 0 {
+            if CFG_FINISHED != 0 {
                 cfg_show_causes(s);
             }
         }

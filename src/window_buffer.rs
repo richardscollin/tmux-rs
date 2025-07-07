@@ -14,14 +14,14 @@
 use super::*;
 
 use crate::compat::queue::tailq_first;
-use libc::{memmem, qsort, strcmp, strstr};
+use crate::libc::{memmem, qsort, strcmp, strstr};
 
 use crate::xmalloc::xreallocarray;
 
-const WINDOW_BUFFER_DEFAULT_COMMAND: *const i8 = c"paste-buffer -p -b '%%'".as_ptr();
-const WINDOW_BUFFER_DEFAULT_FORMAT: *const i8 = c"#{t/p:buffer_created}: #{buffer_sample}".as_ptr();
+const WINDOW_BUFFER_DEFAULT_COMMAND: *const u8 = c!("paste-buffer -p -b '%%'");
+const WINDOW_BUFFER_DEFAULT_FORMAT: *const u8 = c!("#{t/p:buffer_created}: #{buffer_sample}");
 
-const WINDOW_BUFFER_DEFAULT_KEY_FORMAT: *const i8 = concat!(
+const WINDOW_BUFFER_DEFAULT_KEY_FORMAT: *const u8 = concat!(
     "#{?#{e|<:#{line},10},", //
     "#{line}",
     ",",
@@ -35,22 +35,21 @@ const WINDOW_BUFFER_DEFAULT_KEY_FORMAT: *const i8 = concat!(
 .as_ptr()
 .cast();
 
-static mut window_buffer_menu_items: [menu_item; 12] = [
-    menu_item::new(Some(c"Paste"), 'p' as u64, null_mut()),
-    menu_item::new(Some(c"Paste Tagged"), 'P' as u64, null_mut()),
-    menu_item::new(Some(c""), KEYC_NONE, null_mut()),
-    menu_item::new(Some(c"Tag"), 't' as u64, null_mut()),
-    menu_item::new(Some(c"Tag All"), '\x14' as u64, null_mut()),
-    menu_item::new(Some(c"Tag None"), 'T' as u64, null_mut()),
-    menu_item::new(Some(c""), KEYC_NONE, null_mut()),
-    menu_item::new(Some(c"Delete"), 'd' as u64, null_mut()),
-    menu_item::new(Some(c"Delete Tagged"), 'D' as u64, null_mut()),
-    menu_item::new(Some(c""), KEYC_NONE, null_mut()),
-    menu_item::new(Some(c"Cancel"), 'q' as u64, null_mut()),
-    menu_item::new(None, KEYC_NONE, null_mut()),
+static WINDOW_BUFFER_MENU_ITEMS: [menu_item; 11] = [
+    menu_item::new(c"Paste", 'p' as u64, null_mut()),
+    menu_item::new(c"Paste Tagged", 'P' as u64, null_mut()),
+    menu_item::new(c"", KEYC_NONE, null_mut()),
+    menu_item::new(c"Tag", 't' as u64, null_mut()),
+    menu_item::new(c"Tag All", '\x14' as u64, null_mut()),
+    menu_item::new(c"Tag None", 'T' as u64, null_mut()),
+    menu_item::new(c"", KEYC_NONE, null_mut()),
+    menu_item::new(c"Delete", 'd' as u64, null_mut()),
+    menu_item::new(c"Delete Tagged", 'D' as u64, null_mut()),
+    menu_item::new(c"", KEYC_NONE, null_mut()),
+    menu_item::new(c"Cancel", 'q' as u64, null_mut()),
 ];
 
-pub static window_buffer_mode: window_mode = window_mode {
+pub static WINDOW_BUFFER_MODE: window_mode = window_mode {
     name: SyncCharPtr::new(c"buffer-mode"),
     default_format: SyncCharPtr::from_ptr(WINDOW_BUFFER_DEFAULT_FORMAT),
 
@@ -71,17 +70,17 @@ enum window_buffer_sort_type {
     WINDOW_BUFFER_BY_SIZE,
 }
 
-const window_buffer_sort_list_len: u32 = 3;
-static mut window_buffer_sort_list: [SyncCharPtr; 3] = [
+const WINDOW_BUFFER_SORT_LIST_LEN: u32 = 3;
+static mut WINDOW_BUFFER_SORT_LIST: [SyncCharPtr; 3] = [
     SyncCharPtr::new(c"time"),
     SyncCharPtr::new(c"name"),
     SyncCharPtr::new(c"size"),
 ];
 
-static mut window_buffer_sort: *mut mode_tree_sort_criteria = null_mut();
+static mut WINDOW_BUFFER_SORT: *mut mode_tree_sort_criteria = null_mut();
 
 pub struct window_buffer_itemdata {
-    pub name: *mut c_char,
+    pub name: *mut u8,
     pub order: u32,
     pub size: usize,
 }
@@ -91,9 +90,9 @@ pub struct window_buffer_modedata {
     pub fs: cmd_find_state,
 
     pub data: *mut mode_tree_data,
-    pub command: *mut c_char,
-    pub format: *mut c_char,
-    pub key_format: *mut c_char,
+    pub command: *mut u8,
+    pub format: *mut u8,
+    pub key_format: *mut u8,
 
     pub item_list: *mut *mut window_buffer_itemdata,
     pub item_size: u32,
@@ -101,7 +100,7 @@ pub struct window_buffer_modedata {
 
 pub struct window_buffer_editdata {
     pub wp_id: u32,
-    pub name: *mut c_char,
+    pub name: *mut u8,
     pub pb: *mut paste_buffer,
 }
 
@@ -131,9 +130,9 @@ pub unsafe extern "C" fn window_buffer_cmp(a0: *const c_void, b0: *const c_void)
         let b = b0 as *const *const window_buffer_itemdata;
         let mut result = 0i32;
 
-        if (*window_buffer_sort).field == window_buffer_sort_type::WINDOW_BUFFER_BY_TIME as u32 {
+        if (*WINDOW_BUFFER_SORT).field == window_buffer_sort_type::WINDOW_BUFFER_BY_TIME as u32 {
             result = (*(*b)).order as i32 - (*(*a)).order as i32;
-        } else if (*window_buffer_sort).field
+        } else if (*WINDOW_BUFFER_SORT).field
             == window_buffer_sort_type::WINDOW_BUFFER_BY_SIZE as u32
         {
             result = ((*(*b)).size as isize - (*(*a)).size as isize) as i32;
@@ -144,7 +143,7 @@ pub unsafe extern "C" fn window_buffer_cmp(a0: *const c_void, b0: *const c_void)
             result = strcmp((*(*a)).name, (*(*b)).name);
         }
 
-        if (*window_buffer_sort).reversed != 0 {
+        if (*WINDOW_BUFFER_SORT).reversed != 0 {
             result = -result;
         }
 
@@ -156,7 +155,7 @@ pub unsafe fn window_buffer_build(
     modedata: NonNull<c_void>,
     sort_crit: *mut mode_tree_sort_criteria,
     tag: *mut u64,
-    filter: *const c_char,
+    filter: *const u8,
 ) {
     unsafe {
         let data: NonNull<window_buffer_modedata> = modedata.cast();
@@ -184,7 +183,7 @@ pub unsafe fn window_buffer_build(
             pb = paste_walk(pb);
         }
 
-        window_buffer_sort = sort_crit;
+        WINDOW_BUFFER_SORT = sort_crit;
         qsort(
             (*data).item_list.cast(),
             (*data).item_size as usize,
@@ -253,12 +252,12 @@ pub unsafe fn window_buffer_draw(
         };
 
         let mut psize: usize = 0;
-        let mut buf: *mut c_char = null_mut();
+        let mut buf: *mut u8 = null_mut();
         let mut end = paste_buffer_data_(pb, &mut psize);
         let pdata = end;
         for i in 0..sy {
             let start = end;
-            while end != pdata.add(psize) && *end != b'\n' as c_char {
+            while end != pdata.add(psize) && *end != b'\n' {
                 end = end.add(1);
             }
             buf = xreallocarray(buf.cast(), 4, end.offset_from(start) as usize + 1)
@@ -270,12 +269,12 @@ pub unsafe fn window_buffer_draw(
                 end.offset_from(start) as usize,
                 vis_flags::VIS_OCTAL | vis_flags::VIS_CSTYLE | vis_flags::VIS_TAB,
             );
-            if *buf != b'\0' as c_char {
+            if *buf != b'\0' {
                 screen_write_cursormove(ctx, cx as i32, (cy + i) as i32, 0);
                 screen_write_nputs!(
                     ctx,
                     sx as isize,
-                    &raw const grid_default_cell,
+                    &raw const GRID_DEFAULT_CELL,
                     "{}",
                     _s(buf),
                 );
@@ -293,7 +292,7 @@ pub unsafe fn window_buffer_draw(
 pub unsafe fn window_buffer_search(
     modedata: *mut c_void,
     itemdata: NonNull<c_void>,
-    ss: *const c_char,
+    ss: *const u8,
 ) -> bool {
     unsafe {
         let item: NonNull<window_buffer_itemdata> = itemdata.cast();
@@ -347,7 +346,7 @@ pub unsafe fn window_buffer_get_key(
         format_defaults(ft, null_mut(), None, None, None);
         format_defaults(ft, null_mut(), s, wl, wp);
         format_defaults_paste_buffer(ft, pb.as_ptr());
-        format_add!(ft, c"line".as_ptr(), "{line}");
+        format_add!(ft, c!("line"), "{line}");
 
         let expanded = format_expand(ft, (*data.as_ptr()).key_format);
         let key = key_string_lookup_string(expanded);
@@ -396,9 +395,9 @@ pub unsafe fn window_buffer_init(
             None,
             Some(window_buffer_get_key),
             data as *mut window_buffer_modedata as *mut c_void,
-            &raw const window_buffer_menu_items as *const menu_item,
-            &raw mut window_buffer_sort_list as *mut *const c_char,
-            window_buffer_sort_list_len,
+            WINDOW_BUFFER_MENU_ITEMS.as_slice(),
+            &raw mut WINDOW_BUFFER_SORT_LIST as *mut *const u8,
+            WINDOW_BUFFER_SORT_LIST_LEN,
             &raw mut s,
         );
         mode_tree_zoom(data.data, args);
@@ -506,7 +505,7 @@ pub unsafe fn window_buffer_finish_edit(ed: *mut window_buffer_editdata) {
     }
 }
 
-pub unsafe fn window_buffer_edit_close_cb(buf: *mut c_char, mut len: usize, arg: *mut c_void) {
+pub unsafe fn window_buffer_edit_close_cb(buf: *mut u8, mut len: usize, arg: *mut c_void) {
     unsafe {
         let ed = arg as *mut window_buffer_editdata;
 
@@ -524,10 +523,7 @@ pub unsafe fn window_buffer_edit_close_cb(buf: *mut c_char, mut len: usize, arg:
 
         let mut oldlen = 0;
         let oldbuf = paste_buffer_data_(pb, &mut oldlen);
-        if oldlen != 0
-            && *oldbuf.add(oldlen - 1) != b'\n' as c_char
-            && *buf.add(len - 1) == b'\n' as c_char
-        {
+        if oldlen != 0 && *oldbuf.add(oldlen - 1) != b'\n' && *buf.add(len - 1) == b'\n' {
             len -= 1;
         }
         if len != 0 {
@@ -537,7 +533,7 @@ pub unsafe fn window_buffer_edit_close_cb(buf: *mut c_char, mut len: usize, arg:
         let wp = window_pane_find_by_id((*ed).wp_id);
         if !wp.is_null() {
             let wme = tailq_first(&raw mut (*wp).modes);
-            if (*wme).mode == &raw const window_buffer_mode {
+            if (*wme).mode == &raw const WINDOW_BUFFER_MODE {
                 let data = (*wme).data as *mut window_buffer_modedata;
                 mode_tree_build((*data).data);
                 mode_tree_draw((*data).data);

@@ -16,32 +16,32 @@ use crate::*;
 
 use crate::compat::tree::{rb_foreach, rb_next, rb_prev};
 
-pub static mut cmd_kill_window_entry: cmd_entry = cmd_entry {
-    name: c"kill-window".as_ptr(),
-    alias: c"killw".as_ptr(),
+pub static CMD_KILL_WINDOW_ENTRY: cmd_entry = cmd_entry {
+    name: SyncCharPtr::new(c"kill-window"),
+    alias: SyncCharPtr::new(c"killw"),
 
     args: args_parse::new(c"at:", 0, 0, None),
-    usage: c"[-a] [-t target-window]".as_ptr(),
+    usage: SyncCharPtr::new(c"[-a] [-t target-window]"),
 
     target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_WINDOW, 0),
 
     flags: cmd_flag::empty(),
-    exec: Some(cmd_kill_window_exec),
-    ..unsafe { zeroed() }
+    exec: cmd_kill_window_exec,
+    source: cmd_entry_flag::zeroed(),
 };
 
-pub static mut cmd_unlink_window_entry: cmd_entry = cmd_entry {
-    name: c"unlink-window".as_ptr(),
-    alias: c"unlinkw".as_ptr(),
+pub static CMD_UNLINK_WINDOW_ENTRY: cmd_entry = cmd_entry {
+    name: SyncCharPtr::new(c"unlink-window"),
+    alias: SyncCharPtr::new(c"unlinkw"),
 
     args: args_parse::new(c"kt:", 0, 0, None),
-    usage: c"[-k] [-t target-window]".as_ptr(),
+    usage: SyncCharPtr::new(c"[-k] [-t target-window]"),
 
     target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_WINDOW, 0),
 
     flags: cmd_flag::empty(),
-    exec: Some(cmd_kill_window_exec),
-    ..unsafe { zeroed() }
+    exec: cmd_kill_window_exec,
+    source: cmd_entry_flag::zeroed(),
 };
 
 unsafe fn cmd_kill_window_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retval {
@@ -54,7 +54,7 @@ unsafe fn cmd_kill_window_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
         let s = (*target).s;
         let mut found = 0u32;
 
-        if cmd_get_entry(self_) == &raw mut cmd_unlink_window_entry {
+        if std::ptr::eq(cmd_get_entry(self_), &CMD_UNLINK_WINDOW_ENTRY) {
             if !args_has(args, b'k') != 0 && session_is_linked(s, w) == 0 {
                 cmdq_error!(item, "window only linked to one session");
                 return cmd_retval::CMD_RETURN_ERROR;

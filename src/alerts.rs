@@ -20,9 +20,9 @@ use crate::compat::{
 
 use std::sync::atomic;
 
-static alerts_fired: atomic::AtomicI32 = atomic::AtomicI32::new(0);
+static ALERTS_FIRED: atomic::AtomicI32 = atomic::AtomicI32::new(0);
 
-static mut alerts_list: tailq_head<window> = compat::TAILQ_HEAD_INITIALIZER!(alerts_list);
+static mut ALERTS_LIST: tailq_head<window> = compat::TAILQ_HEAD_INITIALIZER!(ALERTS_LIST);
 
 unsafe extern "C" fn alerts_timer(_fd: i32, _events: i16, arg: *mut c_void) {
     let w = arg as *mut window;
@@ -35,19 +35,19 @@ unsafe extern "C" fn alerts_timer(_fd: i32, _events: i16, arg: *mut c_void) {
 
 unsafe extern "C" fn alerts_callback(_fd: c_int, _events: c_short, _arg: *mut c_void) {
     unsafe {
-        for w in tailq_foreach::<_, crate::discr_alerts_entry>(&raw mut alerts_list) {
+        for w in tailq_foreach::<_, crate::discr_alerts_entry>(&raw mut ALERTS_LIST) {
             let alerts = alerts_check_all(w);
 
             let w = w.as_ptr();
             log_debug!("@{} alerts check, alerts {:#x}", (*w).id, alerts);
 
             (*w).alerts_queued = 0;
-            tailq_remove::<_, crate::discr_alerts_entry>(&raw mut alerts_list, w);
+            tailq_remove::<_, crate::discr_alerts_entry>(&raw mut ALERTS_LIST, w);
 
             (*w).flags &= !WINDOW_ALERTFLAGS;
-            window_remove_ref(w, c"alerts_callback".as_ptr());
+            window_remove_ref(w, c!("alerts_callback"));
         }
-        alerts_fired.store(0, atomic::Ordering::Release);
+        ALERTS_FIRED.store(0, atomic::Ordering::Release);
     }
 }
 
@@ -98,7 +98,7 @@ unsafe fn alerts_enabled(w: *mut window, flags: window_flag) -> c_int {
 
 pub(crate) unsafe fn alerts_reset_all() {
     unsafe {
-        for w in rb_foreach(&raw mut windows) {
+        for w in rb_foreach(&raw mut WINDOWS) {
             alerts_reset(w);
         }
     }
@@ -139,11 +139,11 @@ pub(crate) unsafe fn alerts_queue(w: NonNull<window>, flags: window_flag) {
         if alerts_enabled(w, flags) != 0 {
             if (*w).alerts_queued == 0 {
                 (*w).alerts_queued = 1;
-                tailq_insert_tail::<_, discr_alerts_entry>(&raw mut alerts_list, w);
-                window_add_ref(w, c"alerts_queue".as_ptr());
+                tailq_insert_tail::<_, discr_alerts_entry>(&raw mut ALERTS_LIST, w);
+                window_add_ref(w, c!("alerts_queue"));
             }
 
-            if alerts_fired.load(atomic::Ordering::Acquire) == 0 {
+            if ALERTS_FIRED.load(atomic::Ordering::Acquire) == 0 {
                 log_debug!("alerts check queued (by @{})", (*w).id);
                 event_once(
                     -1,
@@ -152,7 +152,7 @@ pub(crate) unsafe fn alerts_queue(w: NonNull<window>, flags: window_flag) {
                     null_mut(),
                     null_mut(),
                 );
-                alerts_fired.store(1, atomic::Ordering::Release);
+                ALERTS_FIRED.store(1, atomic::Ordering::Release);
             }
         }
     }
@@ -290,7 +290,7 @@ unsafe fn alerts_set_message(wl: *mut winlink, type_: &'static CStr, option: &'s
             visual_option::try_from(options_get_number_((*(*wl).session).options, option) as i32)
                 .unwrap();
 
-        for c in tailq_foreach(&raw mut clients).map(NonNull::as_ptr) {
+        for c in tailq_foreach(&raw mut CLIENTS).map(NonNull::as_ptr) {
             if (*c).session != (*wl).session || (*c).flags.intersects(client_flag::CONTROL) {
                 continue;
             }
@@ -302,7 +302,14 @@ unsafe fn alerts_set_message(wl: *mut winlink, type_: &'static CStr, option: &'s
                 continue;
             }
             if (*(*c).session).curw == wl {
-                status_message_set!(c, -1, 1, 0, "{} in current window", _s(type_.as_ptr()));
+                status_message_set!(
+                    c,
+                    -1,
+                    1,
+                    0,
+                    "{} in current window",
+                    _s(type_.as_ptr().cast::<u8>())
+                );
             } else {
                 status_message_set!(
                     c,
@@ -310,7 +317,7 @@ unsafe fn alerts_set_message(wl: *mut winlink, type_: &'static CStr, option: &'s
                     1,
                     0,
                     "{} in window {}",
-                    _s(type_.as_ptr()),
+                    _s(type_.as_ptr().cast::<u8>()),
                     (*wl).idx
                 );
             }

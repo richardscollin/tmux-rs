@@ -12,24 +12,24 @@
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 use core::{
-    ffi::{CStr, c_char},
+    ffi::CStr,
     mem::{size_of, zeroed},
 };
 
-use crate::{grid_attr, strcaseeq_, xsnprintf_};
+use crate::{c, grid_attr, xsnprintf_};
 
-pub unsafe fn attributes_tostring(attr: grid_attr) -> *const c_char {
-    type buffer = [c_char; 512];
-    static mut buf: buffer = unsafe { zeroed() };
+pub unsafe fn attributes_tostring(attr: grid_attr) -> *const u8 {
+    type buffer = [u8; 512];
+    static mut BUF: buffer = unsafe { zeroed() };
 
     if attr.is_empty() {
-        return c"none".as_ptr();
+        return c!("none");
     }
 
     unsafe {
         #[rustfmt::skip]
         let len: isize = xsnprintf_!(
-            &raw mut buf as _,
+            &raw mut BUF as _,
             size_of::<buffer>(),
             "{}{}{}{}{}{}{}{}{}{}{}{}{}{}",
             if attr.intersects(grid_attr::GRID_ATTR_CHARSET) { "acs," } else { "" },
@@ -48,15 +48,15 @@ pub unsafe fn attributes_tostring(attr: grid_attr) -> *const c_char {
             if attr.intersects(grid_attr::GRID_ATTR_OVERLINE) { "overline," } else { "" },
         ).unwrap() as isize;
         if len > 0 {
-            buf[len as usize - 1] = b'\0' as c_char;
+            BUF[len as usize - 1] = b'\0';
         }
 
-        &raw mut buf as _
+        &raw mut BUF as _
     }
 }
 
 #[allow(clippy::result_unit_err)]
-pub unsafe fn attributes_fromstring(str: *const c_char) -> Result<grid_attr, ()> {
+pub unsafe fn attributes_fromstring(str: *const u8) -> Result<grid_attr, ()> {
     struct table_entry {
         name: &'static str,
         attr: grid_attr,
@@ -83,7 +83,7 @@ pub unsafe fn attributes_fromstring(str: *const c_char) -> Result<grid_attr, ()>
 
     let delimiters = &[' ', ',', '|'];
 
-    let str = unsafe { std::ffi::CStr::from_ptr(str) }
+    let str = unsafe { std::ffi::CStr::from_ptr(str.cast()) }
         .to_str()
         .expect("invalid utf8");
 

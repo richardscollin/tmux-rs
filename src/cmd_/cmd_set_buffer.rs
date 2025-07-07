@@ -13,30 +13,32 @@
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 use crate::*;
 
-pub static mut cmd_set_buffer_entry: cmd_entry = cmd_entry {
-    name: c"set-buffer".as_ptr(),
-    alias: c"setb".as_ptr(),
+pub static CMD_SET_BUFFER_ENTRY: cmd_entry = cmd_entry {
+    name: SyncCharPtr::new(c"set-buffer"),
+    alias: SyncCharPtr::new(c"setb"),
 
     args: args_parse::new(c"ab:t:n:w", 0, 1, None),
-    usage: c"[-aw] [-b buffer-name] [-n new-buffer-name] [-t target-client] data".as_ptr(),
+    usage: SyncCharPtr::new(c"[-aw] [-b buffer-name] [-n new-buffer-name] [-t target-client] data"),
 
     flags: cmd_flag::CMD_AFTERHOOK
         .union(cmd_flag::CMD_CLIENT_TFLAG)
         .union(cmd_flag::CMD_CLIENT_CANFAIL),
-    exec: Some(cmd_set_buffer_exec),
-    ..unsafe { zeroed() }
+    exec: cmd_set_buffer_exec,
+    source: cmd_entry_flag::zeroed(),
+    target: cmd_entry_flag::zeroed(),
 };
 
-pub static mut cmd_delete_buffer_entry: cmd_entry = cmd_entry {
-    name: c"delete-buffer".as_ptr(),
-    alias: c"deleteb".as_ptr(),
+pub static CMD_DELETE_BUFFER_ENTRY: cmd_entry = cmd_entry {
+    name: SyncCharPtr::new(c"delete-buffer"),
+    alias: SyncCharPtr::new(c"deleteb"),
 
     args: args_parse::new(c"b:", 0, 0, None),
-    usage: CMD_BUFFER_USAGE.as_ptr(),
+    usage: SyncCharPtr::new(CMD_BUFFER_USAGE),
 
     flags: cmd_flag::CMD_AFTERHOOK,
-    exec: Some(cmd_set_buffer_exec),
-    ..unsafe { zeroed() }
+    exec: cmd_set_buffer_exec,
+    source: cmd_entry_flag::zeroed(),
+    target: cmd_entry_flag::zeroed(),
 };
 
 unsafe fn cmd_set_buffer_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retval {
@@ -55,7 +57,7 @@ unsafe fn cmd_set_buffer_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retv
             pb = paste_get_name(bufname);
         }
 
-        if cmd_get_entry(self_) == &raw mut cmd_delete_buffer_entry {
+        if std::ptr::eq(cmd_get_entry(self_), &CMD_DELETE_BUFFER_ENTRY) {
             if pb.is_null() {
                 if !bufname.is_null() {
                     cmdq_error!(item, "unknown buffer: {}", _s(bufname));
@@ -122,7 +124,7 @@ unsafe fn cmd_set_buffer_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retv
             return cmd_retval::CMD_RETURN_ERROR;
         }
         if args_has_(args, 'w') && !tc.is_null() {
-            tty_set_selection(&raw mut (*tc).tty, c"".as_ptr(), bufdata, bufsize);
+            tty_set_selection(&raw mut (*tc).tty, c!(""), bufdata, bufsize);
         }
 
         cmd_retval::CMD_RETURN_NORMAL

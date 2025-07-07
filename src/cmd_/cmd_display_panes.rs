@@ -15,16 +15,17 @@ use crate::*;
 
 use crate::compat::queue::tailq_foreach;
 
-pub static mut cmd_display_panes_entry: cmd_entry = cmd_entry {
-    name: c"display-panes".as_ptr(),
-    alias: c"displayp".as_ptr(),
+pub static CMD_DISPLAY_PANES_ENTRY: cmd_entry = cmd_entry {
+    name: SyncCharPtr::new(c"display-panes"),
+    alias: SyncCharPtr::new(c"displayp"),
 
     args: args_parse::new(c"bd:Nt:", 0, 1, Some(cmd_display_panes_args_parse)),
-    usage: c"[-bN] [-d duration] [-t target-client] [template]".as_ptr(),
+    usage: SyncCharPtr::new(c"[-bN] [-d duration] [-t target-client] [template]"),
 
     flags: cmd_flag::CMD_AFTERHOOK.union(cmd_flag::CMD_CLIENT_TFLAG),
-    exec: Some(cmd_display_panes_exec),
-    ..unsafe { zeroed() }
+    exec: cmd_display_panes_exec,
+    source: cmd_entry_flag::zeroed(),
+    target: cmd_entry_flag::zeroed(),
 };
 
 #[repr(C)]
@@ -33,11 +34,7 @@ pub struct cmd_display_panes_data<'a> {
     pub state: *mut args_command_state<'a>,
 }
 
-unsafe fn cmd_display_panes_args_parse(
-    _: *mut args,
-    _: u32,
-    _: *mut *mut c_char,
-) -> args_parse_type {
+unsafe fn cmd_display_panes_args_parse(_: *mut args, _: u32, _: *mut *mut u8) -> args_parse_type {
     args_parse_type::ARGS_PARSE_COMMANDS_OR_STRING
 }
 
@@ -109,7 +106,7 @@ unsafe fn cmd_display_panes_draw_pane(ctx: *mut screen_redraw_ctx, wp: *mut wind
 
             let mut pane = 0;
             if window_pane_index(wp, &raw mut pane) != 0 {
-                fatalx(c"index not found");
+                fatalx("index not found");
             }
             let mut buf = [0i8; 16];
             let bufsize = 16;
@@ -122,8 +119,8 @@ unsafe fn cmd_display_panes_draw_pane(ctx: *mut screen_redraw_ctx, wp: *mut wind
             let colour: i32 = options_get_number_(oo, c"display-panes-colour") as _;
             let active_colour: i32 = options_get_number_(oo, c"display-panes-active-colour") as _;
 
-            let mut fgc = grid_default_cell;
-            let mut bgc = grid_default_cell;
+            let mut fgc = GRID_DEFAULT_CELL;
+            let mut bgc = GRID_DEFAULT_CELL;
             if (*w).active == wp {
                 fgc.fg = active_colour;
                 bgc.bg = active_colour;
@@ -152,7 +149,7 @@ unsafe fn cmd_display_panes_draw_pane(ctx: *mut screen_redraw_ctx, wp: *mut wind
                 tty_attributes(
                     tty,
                     &raw mut fgc,
-                    &raw const grid_default_cell,
+                    &raw const GRID_DEFAULT_CELL,
                     null_mut(),
                     null_mut(),
                 );
@@ -161,7 +158,7 @@ unsafe fn cmd_display_panes_draw_pane(ctx: *mut screen_redraw_ctx, wp: *mut wind
                     len += llen + 1;
                     tty_cursor(tty, xoff + px - (len / 2) as u32, yoff + py);
                     tty_putn(tty, &raw mut buf as _, len, len as _);
-                    tty_putn(tty, c" ".as_ptr().cast(), 1, 1);
+                    tty_putn(tty, c!(" ").cast(), 1, 1);
                     tty_putn(tty, &raw mut lbuf as _, llen, llen as _);
                 } else {
                     tty_cursor(tty, xoff + px - (len / 2) as u32, yoff + py);
@@ -176,7 +173,7 @@ unsafe fn cmd_display_panes_draw_pane(ctx: *mut screen_redraw_ctx, wp: *mut wind
             tty_attributes(
                 tty,
                 &raw mut bgc,
-                &raw const grid_default_cell,
+                &raw const GRID_DEFAULT_CELL,
                 null_mut(),
                 null_mut(),
             );
@@ -192,7 +189,7 @@ unsafe fn cmd_display_panes_draw_pane(ctx: *mut screen_redraw_ctx, wp: *mut wind
                     let mut i = px;
                     while i < px + 5 {
                         tty_cursor(tty, xoff + i, yoff + py + j);
-                        if window_clock_table[idx as usize][j as usize][(i - px) as usize] != 0 {
+                        if WINDOW_CLOCK_TABLE[idx as usize][j as usize][(i - px) as usize] != 0 {
                             tty_putc(tty, b' ');
                         }
                         i += 1;
@@ -208,7 +205,7 @@ unsafe fn cmd_display_panes_draw_pane(ctx: *mut screen_redraw_ctx, wp: *mut wind
             tty_attributes(
                 tty,
                 &raw mut fgc,
-                &raw const grid_default_cell,
+                &raw const GRID_DEFAULT_CELL,
                 null_mut(),
                 null_mut(),
             );
@@ -343,7 +340,7 @@ unsafe fn cmd_display_panes_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
             (*cdata).item = item;
         }
         (*cdata).state =
-            args_make_commands_prepare(self_, item, 0, c"select-pane -t \"%%%\"".as_ptr(), wait, 0);
+            args_make_commands_prepare(self_, item, 0, c!("select-pane -t \"%%%\""), wait, 0);
 
         if args_has_(args, 'N') {
             server_client_set_overlay(

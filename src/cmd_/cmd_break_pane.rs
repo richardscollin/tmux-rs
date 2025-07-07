@@ -16,18 +16,18 @@ use crate::*;
 
 use crate::compat::{queue::tailq_remove, tailq_insert_head};
 
-pub static mut cmd_break_pane_entry: cmd_entry = cmd_entry {
-    name: c"break-pane".as_ptr(),
-    alias: c"breakp".as_ptr(),
+pub static CMD_BREAK_PANE_ENTRY: cmd_entry = cmd_entry {
+    name: SyncCharPtr::new(c"break-pane"),
+    alias: SyncCharPtr::new(c"breakp"),
 
     args: args_parse::new(c"abdPF:n:s:t:", 0, 0, None),
-    usage: c"[-abdP] [-F format] [-n window-name] [-s src-pane] [-t dst-window]".as_ptr(),
+    usage: SyncCharPtr::new(c"[-abdP] [-F format] [-n window-name] [-s src-pane] [-t dst-window]"),
 
     source: cmd_entry_flag::new(b's', cmd_find_type::CMD_FIND_PANE, 0),
     target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_WINDOW, CMD_FIND_WINDOW_INDEX),
 
     flags: cmd_flag::empty(),
-    exec: Some(cmd_break_pane_exec),
+    exec: cmd_break_pane_exec,
 };
 
 pub unsafe fn cmd_break_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retval {
@@ -43,11 +43,11 @@ pub unsafe fn cmd_break_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
         let wp = (*source).wp;
         let mut w = (*wl).window;
 
-        let mut name: *mut c_char = null_mut();
-        let mut cause: *mut c_char = null_mut();
-        let mut cp: *mut c_char = null_mut();
+        let mut name: *mut u8 = null_mut();
+        let mut cause: *mut u8 = null_mut();
+        let mut cp: *mut u8 = null_mut();
         let mut idx = (*target).idx;
-        let mut template: *const c_char = null_mut();
+        let mut template: *const u8 = null_mut();
 
         let before = args_has(args, b'b');
         if args_has(args, b'a') != 0 || before != 0 {
@@ -79,7 +79,7 @@ pub unsafe fn cmd_break_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
             }
             if args_has(args, b'n') != 0 {
                 window_set_name(w, args_get(args, b'n'));
-                options_set_number((*w).options, c"automatic-rename".as_ptr(), 0);
+                options_set_number((*w).options, c!("automatic-rename"), 0);
             }
             server_unlink_window(src_s, wl);
             return cmd_retval::CMD_RETURN_NORMAL;
@@ -109,7 +109,7 @@ pub unsafe fn cmd_break_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
             free_(name);
         } else {
             window_set_name(w, args_get(args, b'n'));
-            options_set_number((*w).options, c"automatic-rename".as_ptr(), 0);
+            options_set_number((*w).options, c!("automatic-rename"), 0);
         }
 
         layout_init(w, wp);
@@ -137,7 +137,7 @@ pub unsafe fn cmd_break_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
         if args_has(args, b'P') != 0 {
             template = args_get(args, b'F');
             if template.is_null() {
-                template = c"#{session_name}:#{window_index}.#{pane_index}".as_ptr();
+                template = c!("#{session_name}:#{window_index}.#{pane_index}");
             }
             cp = format_single(item, template, tc, dst_s, wl, wp);
             cmdq_print!(item, "{}", _s(cp));

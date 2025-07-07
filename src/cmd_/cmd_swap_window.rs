@@ -16,12 +16,12 @@ use crate::*;
 
 use crate::compat::queue::{tailq_insert_tail, tailq_remove};
 
-pub static mut cmd_swap_window_entry: cmd_entry = cmd_entry {
-    name: c"swap-window".as_ptr(),
-    alias: c"swapw".as_ptr(),
+pub static CMD_SWAP_WINDOW_ENTRY: cmd_entry = cmd_entry {
+    name: SyncCharPtr::new(c"swap-window"),
+    alias: SyncCharPtr::new(c"swapw"),
 
     args: args_parse::new(c"ds:t:", 0, 0, None),
-    usage: c"[-d] [-s src-window] [-t dst-window]".as_ptr(),
+    usage: SyncCharPtr::new(c"[-d] [-s src-window] [-t dst-window]"),
 
     source: cmd_entry_flag::new(
         b's',
@@ -31,7 +31,7 @@ pub static mut cmd_swap_window_entry: cmd_entry = cmd_entry {
     target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_WINDOW, 0),
 
     flags: cmd_flag::empty(),
-    exec: Some(cmd_swap_window_exec),
+    exec: cmd_swap_window_exec,
 };
 
 unsafe fn cmd_swap_window_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retval {

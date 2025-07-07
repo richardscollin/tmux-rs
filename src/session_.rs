@@ -33,11 +33,11 @@ RB_GENERATE!(
     session_group_cmp
 );
 
-pub static mut sessions: sessions = unsafe { zeroed() };
+pub static mut SESSIONS: sessions = unsafe { zeroed() };
 
-pub static mut next_session_id: u32 = 0;
+pub static mut NEXT_SESSION_ID: u32 = 0;
 
-pub static mut session_groups: session_groups = rb_initializer();
+pub static mut SESSION_GROUPS: session_groups = rb_initializer();
 
 pub fn session_cmp(s1: &session, s2: &session) -> Ordering {
     unsafe { i32_to_ordering(libc::strcmp(s1.name, s2.name)) }
@@ -48,28 +48,28 @@ pub fn session_group_cmp(s1: &session_group, s2: &session_group) -> Ordering {
 }
 
 pub unsafe fn session_alive(s: *mut session) -> bool {
-    unsafe { rb_foreach(&raw mut sessions).any(|s_loop| s_loop.as_ptr() == s) }
+    unsafe { rb_foreach(&raw mut SESSIONS).any(|s_loop| s_loop.as_ptr() == s) }
 }
 
 /// Find session by name.
-pub unsafe fn session_find(name: *mut c_char) -> *mut session {
+pub unsafe fn session_find(name: *mut u8) -> *mut session {
     let mut s = MaybeUninit::<session>::uninit();
     let s = s.as_mut_ptr();
 
     unsafe {
         (*s).name = name;
-        rb_find(&raw mut sessions, s)
+        rb_find(&raw mut SESSIONS, s)
     }
 }
 
 /// Find session by id parsed from a string.
-pub unsafe fn session_find_by_id_str(s: *const c_char) -> *mut session {
+pub unsafe fn session_find_by_id_str(s: *const u8) -> *mut session {
     unsafe {
-        if *s != b'$' as c_char {
+        if *s != b'$' {
             return null_mut();
         }
 
-        let mut errstr: *const c_char = null();
+        let mut errstr: *const u8 = null();
         let Ok(id) = strtonum(s.add(1), 0, u32::MAX) else {
             return null_mut();
         };
@@ -79,14 +79,14 @@ pub unsafe fn session_find_by_id_str(s: *const c_char) -> *mut session {
 
 /// Find session by id.
 pub unsafe fn session_find_by_id(id: u32) -> Option<NonNull<session>> {
-    unsafe { rb_foreach(&raw mut sessions).find(|s| (*s.as_ptr()).id == id) }
+    unsafe { rb_foreach(&raw mut SESSIONS).find(|s| (*s.as_ptr()).id == id) }
 }
 
 impl session {
     fn create(
-        prefix: *const c_char,
-        name: *const c_char,
-        cwd: *const c_char,
+        prefix: *const u8,
+        name: *const u8,
+        cwd: *const u8,
         env: *mut environ,
         oo: *mut options,
         tio: *mut termios,
@@ -114,12 +114,12 @@ impl session {
 
             if !name.is_null() {
                 s.name = xstrdup(name).as_ptr();
-                s.id = next_session_id;
-                next_session_id += 1;
+                s.id = NEXT_SESSION_ID;
+                NEXT_SESSION_ID += 1;
             } else {
                 loop {
-                    s.id = next_session_id;
-                    next_session_id += 1;
+                    s.id = NEXT_SESSION_ID;
+                    NEXT_SESSION_ID += 1;
                     free_(s.name);
                     s.name = if !prefix.is_null() {
                         format_nul!("{}-{}", _s(prefix), s.id)
@@ -127,12 +127,12 @@ impl session {
                         format_nul!("{}", s.id)
                     };
 
-                    if rb_find(&raw mut sessions, s.as_mut()).is_null() {
+                    if rb_find(&raw mut SESSIONS, s.as_mut()).is_null() {
                         break;
                     }
                 }
             }
-            rb_insert(&raw mut sessions, s.as_mut());
+            rb_insert(&raw mut SESSIONS, s.as_mut());
 
             log_debug!("new session {} ${}", _s(s.name), s.id);
 
@@ -148,9 +148,9 @@ impl session {
 
 /// Create a new session.
 pub unsafe fn session_create(
-    prefix: *const c_char,
-    name: *const c_char,
-    cwd: *const c_char,
+    prefix: *const u8,
+    name: *const u8,
+    cwd: *const u8,
     env: *mut environ,
     oo: *mut options,
     tio: *mut termios,
@@ -159,7 +159,7 @@ pub unsafe fn session_create(
 }
 
 /// Add a reference to a session.
-pub unsafe fn session_add_ref(s: *mut session, from: *const c_char) {
+pub unsafe fn session_add_ref(s: *mut session, from: *const u8) {
     let __func__ = "session_add_ref";
     unsafe {
         (*s).references += 1;
@@ -174,7 +174,7 @@ pub unsafe fn session_add_ref(s: *mut session, from: *const c_char) {
 }
 
 /// Remove a reference from a session.
-pub unsafe fn session_remove_ref(s: *mut session, from: *const c_char) {
+pub unsafe fn session_remove_ref(s: *mut session, from: *const u8) {
     let __func__ = "session_remove_ref";
     unsafe {
         (*s).references -= 1;
@@ -213,8 +213,8 @@ pub unsafe extern "C" fn session_free(_fd: i32, _events: i16, arg: *mut c_void) 
 }
 
 /// Destroy a session.
-pub unsafe fn session_destroy(s: *mut session, notify: i32, from: *const c_char) {
-    let __func__ = c"session_destroy".as_ptr();
+pub unsafe fn session_destroy(s: *mut session, notify: i32, from: *const u8) {
+    let __func__ = c!("session_destroy");
     unsafe {
         log_debug!("session {} destroyed ({})", _s((*s).name), _s(from));
 
@@ -223,7 +223,7 @@ pub unsafe fn session_destroy(s: *mut session, notify: i32, from: *const c_char)
         }
         (*s).curw = null_mut();
 
-        rb_remove(&raw mut sessions, s);
+        rb_remove(&raw mut SESSIONS, s);
         if notify != 0 {
             notify_session(c"session-closed", s);
         }
@@ -252,17 +252,17 @@ pub unsafe fn session_destroy(s: *mut session, notify: i32, from: *const c_char)
 }
 
 /// Sanitize session name.
-pub unsafe fn session_check_name(name: *const c_char) -> *mut c_char {
+pub unsafe fn session_check_name(name: *const u8) -> *mut u8 {
     unsafe {
         let mut new_name = null_mut();
-        if *name == b'\0' as c_char {
+        if *name == b'\0' {
             return null_mut();
         }
         let copy = xstrdup(name).as_ptr();
         let mut cp = copy;
-        while *cp != b'\0' as c_char {
-            if *cp == b':' as c_char || *cp == b'.' as c_char {
-                *cp = b'_' as c_char;
+        while *cp != b'\0' {
+            if *cp == b':' || *cp == b'.' {
+                *cp = b'_';
             }
             cp = cp.add(1);
         }
@@ -340,13 +340,13 @@ pub unsafe fn session_update_activity(s: *mut session, from: *mut timeval) {
 /// Find the next usable session.
 pub unsafe fn session_next_session(s: *mut session) -> *mut session {
     unsafe {
-        if rb_empty(&raw mut sessions) || !session_alive(s) {
+        if rb_empty(&raw mut SESSIONS) || !session_alive(s) {
             return null_mut();
         }
 
         let mut s2 = rb_next(s);
         if s2.is_null() {
-            s2 = rb_min(&raw mut sessions);
+            s2 = rb_min(&raw mut SESSIONS);
         }
         if s2 == s {
             return null_mut();
@@ -359,13 +359,13 @@ pub unsafe fn session_next_session(s: *mut session) -> *mut session {
 /// Find the previous usable session.
 pub unsafe fn session_previous_session(s: *mut session) -> *mut session {
     unsafe {
-        if rb_empty(&raw mut sessions) || !session_alive(s) {
+        if rb_empty(&raw mut SESSIONS) || !session_alive(s) {
             return null_mut();
         }
 
         let mut s2 = rb_prev(s);
         if s2.is_null() {
-            s2 = rb_max(&raw mut sessions);
+            s2 = rb_max(&raw mut SESSIONS);
         }
         if s2 == s {
             return null_mut();
@@ -379,7 +379,7 @@ pub unsafe fn session_attach(
     s: *mut session,
     w: *mut window,
     idx: i32,
-    cause: *mut *mut c_char,
+    cause: *mut *mut u8,
 ) -> *mut winlink {
     unsafe {
         let wl = winlink_add(&raw mut (*s).windows, idx);
@@ -551,7 +551,7 @@ pub unsafe fn session_set_current(s: *mut session, wl: *mut winlink) -> i32 {
         winlink_stack_remove(&raw mut (*s).lastw, wl);
         winlink_stack_push(&raw mut (*s).lastw, (*s).curw);
         (*s).curw = wl;
-        if options_get_number_(global_options, c"focus-events") != 0 {
+        if options_get_number_(GLOBAL_OPTIONS, c"focus-events") != 0 {
             if !old.is_null() {
                 window_update_focus((*old).window);
             }
@@ -568,7 +568,7 @@ pub unsafe fn session_set_current(s: *mut session, wl: *mut winlink) -> i32 {
 /// Find the session group containing a session.
 pub unsafe fn session_group_contains(target: *mut session) -> *mut session_group {
     unsafe {
-        for sg in rb_foreach(&raw mut session_groups) {
+        for sg in rb_foreach(&raw mut SESSION_GROUPS) {
             for s in tailq_foreach(&raw mut (*sg.as_ptr()).sessions) {
                 if s.as_ptr() == target {
                     return sg.as_ptr();
@@ -581,18 +581,18 @@ pub unsafe fn session_group_contains(target: *mut session) -> *mut session_group
 }
 
 /// Find session group by name.
-pub unsafe fn session_group_find(name: *const c_char) -> *mut session_group {
+pub unsafe fn session_group_find(name: *const u8) -> *mut session_group {
     unsafe {
         let mut sg = MaybeUninit::<session_group>::uninit();
         let sg = sg.as_mut_ptr();
 
         (*sg).name = name;
-        rb_find(&raw mut session_groups, sg)
+        rb_find(&raw mut SESSION_GROUPS, sg)
     }
 }
 
 /// Create a new session group.
-pub unsafe fn session_group_new(name: *const c_char) -> *mut session_group {
+pub unsafe fn session_group_new(name: *const u8) -> *mut session_group {
     unsafe {
         let mut sg = session_group_find(name);
         if !sg.is_null() {
@@ -603,7 +603,7 @@ pub unsafe fn session_group_new(name: *const c_char) -> *mut session_group {
         (*sg).name = xstrdup(name).as_ptr();
         tailq_init(&raw mut (*sg).sessions);
 
-        rb_insert(&raw mut session_groups, sg);
+        rb_insert(&raw mut SESSION_GROUPS, sg);
         sg
     }
 }
@@ -627,7 +627,7 @@ pub unsafe fn session_group_remove(s: *mut session) {
         }
         tailq_remove(&raw mut (*sg).sessions, s);
         if tailq_empty(&raw mut (*sg).sessions) {
-            rb_remove(&raw mut session_groups, sg);
+            rb_remove(&raw mut SESSION_GROUPS, sg);
             free_((*sg).name.cast_mut());
             free_(sg);
         }
@@ -776,7 +776,7 @@ pub unsafe fn session_renumber_windows(s: *mut session) {
             winlink_set_window(wl_new, (*wl).window);
             (*wl_new).flags |= (*wl).flags & WINLINK_ALERTFLAGS;
 
-            if wl == marked_pane.wl {
+            if wl == MARKED_PANE.wl {
                 marked_idx = (*wl_new).idx;
             }
             if wl == (*s).curw {
@@ -800,8 +800,8 @@ pub unsafe fn session_renumber_windows(s: *mut session) {
 
         // Set the current window.
         if marked_idx != -1 {
-            marked_pane.wl = winlink_find_by_index(&raw mut (*s).windows, marked_idx);
-            if marked_pane.wl.is_null() {
+            MARKED_PANE.wl = winlink_find_by_index(&raw mut (*s).windows, marked_idx);
+            if MARKED_PANE.wl.is_null() {
                 server_clear_marked();
             }
         }

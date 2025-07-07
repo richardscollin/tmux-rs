@@ -13,7 +13,7 @@
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 use crate::*;
 
-use libc::{isdigit, sscanf};
+use crate::libc::sscanf;
 
 use crate::compat::{
     queue::{tailq_first, tailq_foreach, tailq_insert_tail, tailq_last, tailq_next},
@@ -30,7 +30,7 @@ pub unsafe fn layout_find_bottomright(mut lc: *mut layout_cell) -> *mut layout_c
     }
 }
 
-pub unsafe fn layout_checksum(mut layout: *const c_char) -> u16 {
+pub unsafe fn layout_checksum(mut layout: *const u8) -> u16 {
     unsafe {
         let mut csum = 0u16;
         while *layout != b'\0' as _ {
@@ -43,10 +43,10 @@ pub unsafe fn layout_checksum(mut layout: *const c_char) -> u16 {
 }
 
 /// Dump layout as a string.
-pub unsafe fn layout_dump(root: *mut layout_cell) -> *mut c_char {
+pub unsafe fn layout_dump(root: *mut layout_cell) -> *mut u8 {
     unsafe {
-        let mut layout: MaybeUninit<[c_char; 8192]> = MaybeUninit::<[c_char; 8192]>::uninit();
-        let layout = layout.as_mut_ptr() as *mut i8;
+        let mut layout: MaybeUninit<[u8; 8192]> = MaybeUninit::<[u8; 8192]>::uninit();
+        let layout = layout.as_mut_ptr() as *mut u8;
 
         *layout = b'\0' as _;
         if layout_append(root, layout, 8192) != 0 {
@@ -57,16 +57,13 @@ pub unsafe fn layout_dump(root: *mut layout_cell) -> *mut c_char {
     }
 }
 
-pub unsafe fn layout_append(lc: *mut layout_cell, buf: *mut c_char, len: usize) -> i32 {
+pub unsafe fn layout_append(lc: *mut layout_cell, buf: *mut u8, len: usize) -> i32 {
     unsafe {
         let sizeof_tmp = 64;
-        let mut tmp = MaybeUninit::<[c_char; 64]>::uninit();
-        let tmp = tmp.as_mut_ptr() as *mut i8;
-        // struct layout_cell *lcchild;
-        // char tmp[64];
-        // size_t tmplen;
+        let mut tmp = MaybeUninit::<[u8; 64]>::uninit();
+        let tmp = tmp.as_mut_ptr() as *mut u8;
 
-        let mut brackets = c"][".as_ptr();
+        let mut brackets = c!("][");
 
         if len == 0 {
             return -1;
@@ -105,7 +102,7 @@ pub unsafe fn layout_append(lc: *mut layout_cell, buf: *mut c_char, len: usize) 
         }
 
         if ((*lc).type_) == layout_type::LAYOUT_LEFTRIGHT {
-            brackets = c"}{".as_ptr();
+            brackets = c!("}{");
         }
 
         match (*lc).type_ {
@@ -117,7 +114,7 @@ pub unsafe fn layout_append(lc: *mut layout_cell, buf: *mut c_char, len: usize) 
                     if layout_append(lcchild.as_ptr(), buf, len) != 0 {
                         return -1;
                     }
-                    if strlcat(buf, c",".as_ptr(), len) >= len {
+                    if strlcat(buf, c!(","), len) >= len {
                         return -1;
                     }
                 }
@@ -169,23 +166,15 @@ pub unsafe fn layout_check(lc: *mut layout_cell) -> i32 {
     1
 }
 
-pub unsafe fn layout_parse(
-    w: *mut window,
-    mut layout: *const c_char,
-    cause: *mut *mut c_char,
-) -> i32 {
-    let __func__ = c"layout_parse".as_ptr();
+pub unsafe fn layout_parse(w: *mut window, mut layout: *const u8, cause: *mut *mut u8) -> i32 {
+    let __func__ = c!("layout_parse");
     unsafe {
         let mut lc: *mut layout_cell = null_mut();
-        // struct layout_cell *lc, *lcchild;
-        // struct window_pane *wp;
-        // u_int npanes, ncells, sx = 0, sy = 0;
-        // u_short csum;
         let mut csum: u16 = 0;
 
         'fail: {
             /* Check validity. */
-            if sscanf(layout, c"%hx,".as_ptr(), &raw mut csum) != 1 {
+            if sscanf(layout.cast(), c"%hx,".as_ptr(), &raw mut csum) != 1 {
                 *cause = xstrdup_(c"invalid layout").as_ptr();
                 return -1;
             }
@@ -306,28 +295,21 @@ unsafe fn layout_assign(wp: *mut *mut window_pane, lc: *mut layout_cell) {
     }
 }
 
-/* Construct a cell from all or part of a layout tree. */
-
-unsafe fn layout_construct(
-    lcparent: *mut layout_cell,
-    layout: *mut *const c_char,
-) -> *mut layout_cell {
+/// Construct a cell from all or part of a layout tree.
+unsafe fn layout_construct(lcparent: *mut layout_cell, layout: *mut *const u8) -> *mut layout_cell {
     unsafe {
         let mut lc = null_mut();
-        // struct layout_cell *lc, *lcchild;
-        // u_int sx, sy, xoff, yoff;
-        // const char *saved;
         let mut sx = 0u32;
         let mut sy = 0u32;
         let mut xoff = 0u32;
         let mut yoff = 0u32;
 
         'fail: {
-            if isdigit(**layout as i32) == 0 {
+            if !(**layout).is_ascii_digit() {
                 return null_mut();
             }
             if sscanf(
-                *layout,
+                (*layout).cast(),
                 c"%ux%u,%u,%u".as_ptr(),
                 &raw mut sx,
                 &raw mut sy,
@@ -379,7 +361,7 @@ unsafe fn layout_construct(
             (*lc).xoff = xoff;
             (*lc).yoff = yoff;
 
-            match **layout as u8 {
+            match (**layout) {
                 b',' | b'}' | b']' | b'\0' => return lc,
                 b'{' => (*lc).type_ = layout_type::LAYOUT_LEFTRIGHT,
                 b'[' => (*lc).type_ = layout_type::LAYOUT_TOPBOTTOM,

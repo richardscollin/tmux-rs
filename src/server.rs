@@ -13,7 +13,7 @@
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 use crate::*;
 
-use libc::{
+use crate::libc::{
     AF_UNIX, ECHILD, ENAMETOOLONG, S_IRGRP, S_IROTH, S_IRUSR, S_IRWXG, S_IRWXO, S_IXGRP, S_IXOTH,
     S_IXUSR, SIG_BLOCK, SIG_SETMASK, SIGCONT, SIGTTIN, SIGTTOU, SOCK_STREAM, WIFEXITED,
     WIFSIGNALED, WIFSTOPPED, WNOHANG, WSTOPSIG, WUNTRACED, accept, bind, chmod, close, fprintf,
@@ -28,41 +28,31 @@ use crate::compat::{
     tree::{rb_empty, rb_foreach, rb_init},
 };
 
-pub static mut clients: clients = unsafe { zeroed() };
-
-pub static mut server_proc: *mut tmuxproc = null_mut();
-// TODO remove
-pub static mut server_fd: c_int = -1;
-// TODO remove
-pub static mut server_client_flags: client_flag = client_flag::empty();
-// TODO remove
-pub static mut server_exit: c_int = 0;
-// TODO remove
-pub static mut server_ev_accept: event = unsafe { zeroed() };
-// TODO remove
-pub static mut server_ev_tidy: event = unsafe { zeroed() };
-
-pub static mut marked_pane: cmd_find_state = unsafe { zeroed() };
-
-pub static mut message_next: c_uint = 0;
-
-pub static mut message_log: message_list = unsafe { zeroed() };
-
-pub static mut current_time: time_t = unsafe { zeroed() };
+pub static mut CLIENTS: clients = unsafe { zeroed() };
+pub static mut SERVER_PROC: *mut tmuxproc = null_mut();
+pub static mut SERVER_FD: c_int = -1;
+pub static mut SERVER_CLIENT_FLAGS: client_flag = client_flag::empty();
+pub static mut SERVER_EXIT: c_int = 0;
+pub static mut SERVER_EV_ACCEPT: event = unsafe { zeroed() };
+pub static mut SERVER_EV_TIDY: event = unsafe { zeroed() };
+pub static mut MARKED_PANE: cmd_find_state = unsafe { zeroed() };
+pub static mut MESSAGE_NEXT: c_uint = 0;
+pub static mut MESSAGE_LOG: message_list = unsafe { zeroed() };
+pub static mut CURRENT_TIME: time_t = unsafe { zeroed() };
 
 pub unsafe fn server_set_marked(s: *mut session, wl: *mut winlink, wp: *mut window_pane) {
     unsafe {
-        cmd_find_clear_state(&raw mut marked_pane, 0);
-        marked_pane.s = s;
-        marked_pane.wl = wl;
-        marked_pane.w = (*wl).window;
-        marked_pane.wp = wp;
+        cmd_find_clear_state(&raw mut MARKED_PANE, 0);
+        MARKED_PANE.s = s;
+        MARKED_PANE.wl = wl;
+        MARKED_PANE.w = (*wl).window;
+        MARKED_PANE.wp = wp;
     }
 }
 
 pub unsafe fn server_clear_marked() {
     unsafe {
-        cmd_find_clear_state(&raw mut marked_pane, 0);
+        cmd_find_clear_state(&raw mut MARKED_PANE, 0);
     }
 }
 
@@ -72,10 +62,10 @@ pub unsafe fn server_is_marked(s: *mut session, wl: *mut winlink, wp: *mut windo
     }
 
     unsafe {
-        if marked_pane.s != s || marked_pane.wl != wl {
+        if MARKED_PANE.s != s || MARKED_PANE.wl != wl {
             return false;
         }
-        if marked_pane.wp != wp {
+        if MARKED_PANE.wp != wp {
             return false;
         }
         server_check_marked()
@@ -83,24 +73,24 @@ pub unsafe fn server_is_marked(s: *mut session, wl: *mut winlink, wp: *mut windo
 }
 
 pub unsafe fn server_check_marked() -> bool {
-    unsafe { cmd_find_valid_state(&raw mut marked_pane) }
+    unsafe { cmd_find_valid_state(&raw mut MARKED_PANE) }
 }
 
-pub unsafe fn server_create_socket(flags: client_flag, cause: *mut *mut c_char) -> c_int {
+pub unsafe fn server_create_socket(flags: client_flag, cause: *mut *mut u8) -> c_int {
     unsafe {
         'fail: {
             let mut sa: sockaddr_un = zeroed();
             sa.sun_family = AF_UNIX as _;
             let size = strlcpy(
-                sa.sun_path.as_mut_ptr(),
-                socket_path,
+                sa.sun_path.as_mut_ptr().cast(),
+                SOCKET_PATH,
                 size_of_val(&sa.sun_path),
             );
             if size >= size_of_val(&sa.sun_path) {
                 errno!() = ENAMETOOLONG;
                 break 'fail;
             }
-            unlink(sa.sun_path.as_ptr());
+            unlink(sa.sun_path.as_ptr().cast());
 
             let fd = socket(AF_UNIX, SOCK_STREAM, 0);
             if fd == -1 {
@@ -137,7 +127,7 @@ pub unsafe fn server_create_socket(flags: client_flag, cause: *mut *mut c_char) 
         if !cause.is_null() {
             *cause = format_nul!(
                 "error creating {} ({})",
-                _s(socket_path),
+                _s(SOCKET_PATH),
                 _s(strerror(errno!()))
             );
         }
@@ -166,7 +156,7 @@ unsafe extern "C" fn server_tidy_event(_fd: i32, _events: i16, _data: *mut c_voi
             "server_tidy_event",
             get_timer() - t
         );
-        event_add(&raw mut server_ev_tidy, &raw const tv);
+        event_add(&raw mut SERVER_EV_TIDY, &raw const tv);
     }
 }
 
@@ -175,7 +165,7 @@ pub unsafe fn server_start(
     flags: client_flag,
     base: *mut event_base,
     lockfd: c_int,
-    lockfile: *mut c_char,
+    lockfile: *mut u8,
 ) -> c_int {
     unsafe {
         let mut fd = 0;
@@ -183,7 +173,7 @@ pub unsafe fn server_start(
         let mut oldset: sigset_t = zeroed();
 
         let mut c: *mut client = null_mut();
-        let mut cause: *mut c_char = null_mut();
+        let mut cause: *mut u8 = null_mut();
         let tv: timeval = timeval {
             tv_sec: 3600,
             tv_usec: 0,
@@ -212,14 +202,14 @@ pub unsafe fn server_start(
 
         // now in child process i.e. server
         proc_clear_signals(client, 0);
-        server_client_flags = flags;
+        SERVER_CLIENT_FLAGS = flags;
 
         if event_reinit(base) != 0 {
-            fatalx(c"event_reinit failed");
+            fatalx("event_reinit failed");
         }
-        server_proc = proc_start("server");
+        SERVER_PROC = proc_start("server");
 
-        proc_set_signals(server_proc, Some(server_signal));
+        proc_set_signals(SERVER_PROC, Some(server_signal));
         sigprocmask(SIG_SETMASK, &raw mut oldset, null_mut());
 
         if log_get_level() > 1 {
@@ -229,28 +219,28 @@ pub unsafe fn server_start(
         // TODO pledge
 
         input_key_build();
-        rb_init(&raw mut windows);
-        rb_init(&raw mut all_window_panes);
-        tailq_init(&raw mut clients);
-        rb_init(&raw mut sessions);
+        rb_init(&raw mut WINDOWS);
+        rb_init(&raw mut ALL_WINDOW_PANES);
+        tailq_init(&raw mut CLIENTS);
+        rb_init(&raw mut SESSIONS);
         key_bindings_init();
-        tailq_init(&raw mut message_log);
-        gettimeofday(&raw mut start_time, null_mut());
+        tailq_init(&raw mut MESSAGE_LOG);
+        gettimeofday(&raw mut START_TIME, null_mut());
 
         if cfg!(feature = "systemd") {
             // TODO we could be truncating important bits
-            server_fd =
+            SERVER_FD =
                 crate::compat::systemd::systemd_create_socket(flags.bits() as i32, &raw mut cause);
         } else {
-            server_fd = server_create_socket(flags, &raw mut cause);
+            SERVER_FD = server_create_socket(flags, &raw mut cause);
         }
-        if server_fd != -1 {
+        if SERVER_FD != -1 {
             server_update_socket();
         }
         if !flags.intersects(client_flag::NOFORK) {
             c = server_client_create(fd);
         } else {
-            options_set_number(global_options, c"exit-empty".as_ptr(), 0);
+            options_set_number(GLOBAL_OPTIONS, c!("exit-empty"), 0);
         }
 
         if lockfd >= 0 {
@@ -269,13 +259,13 @@ pub unsafe fn server_start(
             }
         }
 
-        evtimer_set(&raw mut server_ev_tidy, Some(server_tidy_event), null_mut());
-        evtimer_add(&raw mut server_ev_tidy, &raw const tv);
+        evtimer_set(&raw mut SERVER_EV_TIDY, Some(server_tidy_event), null_mut());
+        evtimer_add(&raw mut SERVER_EV_TIDY, &raw const tv);
 
         server_acl_init();
 
         server_add_accept(0);
-        proc_loop(server_proc, Some(server_loop));
+        proc_loop(SERVER_PROC, Some(server_loop));
 
         job_kill_all();
         status_prompt_save_history();
@@ -286,11 +276,11 @@ pub unsafe fn server_start(
 
 pub unsafe fn server_loop() -> i32 {
     unsafe {
-        current_time = libc::time(null_mut());
+        CURRENT_TIME = libc::time(null_mut());
 
         loop {
             let mut items = cmdq_next(null_mut());
-            for c in tailq_foreach(&raw mut clients).map(NonNull::as_ptr) {
+            for c in tailq_foreach(&raw mut CLIENTS).map(NonNull::as_ptr) {
                 if (*c).flags.intersects(client_flag::IDENTIFIED) {
                     items += cmdq_next(c);
                 }
@@ -303,17 +293,17 @@ pub unsafe fn server_loop() -> i32 {
 
         server_client_loop();
 
-        if options_get_number_(global_options, c"exit-empty") == 0 && server_exit == 0 {
+        if options_get_number_(GLOBAL_OPTIONS, c"exit-empty") == 0 && SERVER_EXIT == 0 {
             return 0;
         }
 
-        if options_get_number_(global_options, c"exit-unattached") == 0
-            && !rb_empty(&raw mut sessions)
+        if options_get_number_(GLOBAL_OPTIONS, c"exit-unattached") == 0
+            && !rb_empty(&raw mut SESSIONS)
         {
             return 0;
         }
 
-        for c in tailq_foreach(&raw mut clients) {
+        for c in tailq_foreach(&raw mut CLIENTS) {
             if !(*c.as_ptr()).session.is_null() {
                 return 0;
             }
@@ -324,7 +314,7 @@ pub unsafe fn server_loop() -> i32 {
          * clients but don't actually exit until they've gone.
          */
         cmd_wait_for_flush();
-        if !tailq_empty(&raw const clients) {
+        if !tailq_empty(&raw const CLIENTS) {
             return 0;
         }
 
@@ -340,7 +330,7 @@ unsafe fn server_send_exit() {
     unsafe {
         cmd_wait_for_flush();
 
-        for c in tailq_foreach(&raw mut clients).map(NonNull::as_ptr) {
+        for c in tailq_foreach(&raw mut CLIENTS).map(NonNull::as_ptr) {
             if (*c).flags.intersects(client_flag::SUSPENDED) {
                 server_client_lost(c);
             } else {
@@ -350,29 +340,29 @@ unsafe fn server_send_exit() {
             (*c).session = null_mut();
         }
 
-        for s in rb_foreach(&raw mut sessions).map(NonNull::as_ptr) {
-            session_destroy(s, 1, c"server_send_exit".as_ptr());
+        for s in rb_foreach(&raw mut SESSIONS).map(NonNull::as_ptr) {
+            session_destroy(s, 1, c!("server_send_exit"));
         }
     }
 }
 
 pub unsafe fn server_update_socket() {
-    static mut last: c_int = -1;
+    static mut LAST: c_int = -1;
     unsafe {
         let mut sb: stat = zeroed(); // TODO remove unecessary init
 
         let mut n = 0;
-        for s in rb_foreach(&raw mut sessions).map(|s| s.as_ptr()) {
+        for s in rb_foreach(&raw mut SESSIONS).map(|s| s.as_ptr()) {
             if (*s).attached != 0 {
                 n += 1;
                 break;
             }
         }
 
-        if n != last {
-            last = n;
+        if n != LAST {
+            LAST = n;
 
-            if stat(socket_path, &raw mut sb) != 0 {
+            if stat(SOCKET_PATH.cast(), &raw mut sb) != 0 {
                 return;
             }
             let mut mode = sb.st_mode & ACCESSPERMS;
@@ -389,7 +379,7 @@ pub unsafe fn server_update_socket() {
             } else {
                 mode &= !(S_IXUSR | S_IXGRP | S_IXOTH);
             }
-            chmod(socket_path, mode);
+            chmod(SOCKET_PATH.cast(), mode);
         }
     }
 }
@@ -417,15 +407,13 @@ unsafe extern "C" fn server_accept(fd: i32, events: i16, _data: *mut c_void) {
             }
         }
 
-        if server_exit != 0 {
+        if SERVER_EXIT != 0 {
             close(newfd);
             return;
         }
         let c = server_client_create(newfd);
         if server_acl_join(c) == 0 {
-            (*c).exit_message = xmalloc::xstrdup(c"access not allowed".as_ptr())
-                .cast()
-                .as_ptr();
+            (*c).exit_message = xmalloc::xstrdup(c!("access not allowed")).cast().as_ptr();
             (*c).flags |= client_flag::EXIT;
         }
     }
@@ -438,32 +426,32 @@ pub unsafe fn server_add_accept(timeout: c_int) {
             tv_usec: 0,
         };
 
-        if server_fd == -1 {
+        if SERVER_FD == -1 {
             return;
         }
 
-        if event_initialized(&raw mut server_ev_accept) != 0 {
-            event_del(&raw mut server_ev_accept);
+        if event_initialized(&raw mut SERVER_EV_ACCEPT) != 0 {
+            event_del(&raw mut SERVER_EV_ACCEPT);
         }
 
         if timeout == 0 {
             event_set(
-                &raw mut server_ev_accept,
-                server_fd,
+                &raw mut SERVER_EV_ACCEPT,
+                SERVER_FD,
                 EV_READ,
                 Some(server_accept),
                 null_mut(),
             );
-            event_add(&raw mut server_ev_accept, null_mut());
+            event_add(&raw mut SERVER_EV_ACCEPT, null_mut());
         } else {
             event_set(
-                &raw mut server_ev_accept,
-                server_fd,
+                &raw mut SERVER_EV_ACCEPT,
+                SERVER_FD,
                 EV_TIMEOUT,
                 Some(server_accept),
                 null_mut(),
             );
-            event_add(&raw mut server_ev_accept, &raw mut tv);
+            event_add(&raw mut SERVER_EV_ACCEPT, &raw mut tv);
         }
     }
 }
@@ -472,24 +460,24 @@ pub unsafe fn server_add_accept(timeout: c_int) {
 
 unsafe fn server_signal(sig: i32) {
     unsafe {
-        log_debug!("{}: {}", "server_signal", _s(strsignal(sig)));
+        log_debug!("{}: {}", "server_signal", _s(strsignal(sig).cast::<u8>()));
         match sig {
             libc::SIGINT | libc::SIGTERM => {
-                server_exit = 1;
+                SERVER_EXIT = 1;
                 server_send_exit();
             }
             libc::SIGCHLD => server_child_signal(),
             libc::SIGUSR1 => {
-                event_del(&raw mut server_ev_accept);
-                let fd = server_create_socket(server_client_flags, null_mut());
+                event_del(&raw mut SERVER_EV_ACCEPT);
+                let fd = server_create_socket(SERVER_CLIENT_FLAGS, null_mut());
                 if fd != -1 {
-                    close(server_fd);
-                    server_fd = fd;
+                    close(SERVER_FD);
+                    SERVER_FD = fd;
                     server_update_socket();
                 }
                 server_add_accept(0);
             }
-            libc::SIGUSR2 => proc_toggle_log(server_proc),
+            libc::SIGUSR2 => proc_toggle_log(SERVER_PROC),
             _ => {
                 // nop
             }
@@ -530,7 +518,7 @@ unsafe fn server_child_signal() {
 
 unsafe fn server_child_exited(pid: pid_t, status: i32) {
     unsafe {
-        for w in rb_foreach(&raw mut windows).map(NonNull::as_ptr) {
+        for w in rb_foreach(&raw mut WINDOWS).map(NonNull::as_ptr) {
             for wp in tailq_foreach::<_, discr_entry>(&raw mut (*w).panes).map(NonNull::as_ptr) {
                 if (*wp).pid == pid {
                     (*wp).status = status;
@@ -556,7 +544,7 @@ unsafe fn server_child_stopped(pid: pid_t, status: i32) {
             return;
         }
 
-        for w in rb_foreach(&raw mut windows).map(NonNull::as_ptr) {
+        for w in rb_foreach(&raw mut WINDOWS).map(NonNull::as_ptr) {
             for wp in tailq_foreach::<_, discr_entry>(&raw mut (*w).panes).map(NonNull::as_ptr) {
                 if (*wp).pid == pid && killpg(pid, SIGCONT) != 0 {
                     kill(pid, SIGCONT);
@@ -583,19 +571,19 @@ pub unsafe fn server_add_message_(args: std::fmt::Arguments) {
 
         let msg: *mut message_entry = xcalloc1::<message_entry>() as *mut message_entry;
         gettimeofday(&raw mut (*msg).msg_time, null_mut());
-        (*msg).msg_num = message_next + 1;
-        message_next += 1;
+        (*msg).msg_num = MESSAGE_NEXT + 1;
+        MESSAGE_NEXT += 1;
         (*msg).msg = s;
 
-        tailq_insert_tail(&raw mut message_log, msg);
+        tailq_insert_tail(&raw mut MESSAGE_LOG, msg);
 
-        let limit = options_get_number_(global_options, c"message-limit") as u32;
-        for msg in tailq_foreach(&raw mut message_log).map(NonNull::as_ptr) {
-            if (*msg).msg_num + limit >= message_next {
+        let limit = options_get_number_(GLOBAL_OPTIONS, c"message-limit") as u32;
+        for msg in tailq_foreach(&raw mut MESSAGE_LOG).map(NonNull::as_ptr) {
+            if (*msg).msg_num + limit >= MESSAGE_NEXT {
                 continue;
             }
             free_((*msg).msg);
-            tailq_remove(&raw mut message_log, msg);
+            tailq_remove(&raw mut MESSAGE_LOG, msg);
             free_(msg);
         }
     }

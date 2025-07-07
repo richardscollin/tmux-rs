@@ -12,23 +12,22 @@
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-
-use libc::{WEXITSTATUS, WIFEXITED, toupper};
-
 use crate::*;
 
-pub static mut cmd_if_shell_entry: cmd_entry = cmd_entry {
-    name: c"if-shell".as_ptr(),
-    alias: c"if".as_ptr(),
+use crate::libc::{WEXITSTATUS, WIFEXITED, toupper};
+
+pub static CMD_IF_SHELL_ENTRY: cmd_entry = cmd_entry {
+    name: SyncCharPtr::new(c"if-shell"),
+    alias: SyncCharPtr::new(c"if"),
 
     args: args_parse::new(c"bFt:", 2, 3, Some(cmd_if_shell_args_parse)),
-    usage: c"[-bF] [-t target-pane] shell-command command [command]".as_ptr(),
+    usage: SyncCharPtr::new(c"[-bF] [-t target-pane] shell-command command [command]"),
 
     target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_PANE, CMD_FIND_CANFAIL),
 
     flags: cmd_flag::empty(),
-    exec: Some(cmd_if_shell_exec),
-    ..unsafe { zeroed() }
+    exec: cmd_if_shell_exec,
+    source: cmd_entry_flag::zeroed(),
 };
 
 #[repr(C)]
@@ -40,7 +39,7 @@ pub struct cmd_if_shell_data<'a> {
     pub item: *mut cmdq_item,
 }
 
-unsafe fn cmd_if_shell_args_parse(_: *mut args, idx: u32, _: *mut *mut c_char) -> args_parse_type {
+unsafe fn cmd_if_shell_args_parse(_: *mut args, idx: u32, _: *mut *mut u8) -> args_parse_type {
     if idx == 1 || idx == 2 {
         args_parse_type::ARGS_PARSE_COMMANDS_OR_STRING
     } else {
@@ -129,7 +128,7 @@ unsafe fn cmd_if_shell_callback(job: *mut job) {
         let cdata = job_get_data(job) as *mut cmd_if_shell_data;
         let c = (*cdata).client;
         let item = (*cdata).item;
-        let mut error: *mut c_char = null_mut();
+        let mut error: *mut u8 = null_mut();
 
         let mut state: *mut args_command_state = null_mut();
         let status = job_get_status(job);
@@ -147,7 +146,7 @@ unsafe fn cmd_if_shell_callback(job: *mut job) {
             let cmdlist = args_make_commands(state, 0, null_mut(), &raw mut error);
             if cmdlist.is_null() {
                 if (*cdata).item.is_null() {
-                    *error = toupper(*error as i32) as i8;
+                    *error = (*error).to_ascii_uppercase();
                     status_message_set!(c, -1, 1, 0, "{}", _s(error));
                 } else {
                     cmdq_error!((*cdata).item, "{}", _s(error));

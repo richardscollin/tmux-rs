@@ -13,18 +13,18 @@
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 use crate::*;
 
-pub static mut cmd_resize_window_entry: cmd_entry = cmd_entry {
-    name: c"resize-window".as_ptr(),
-    alias: c"resizew".as_ptr(),
+pub static CMD_RESIZE_WINDOW_ENTRY: cmd_entry = cmd_entry {
+    name: SyncCharPtr::new(c"resize-window"),
+    alias: SyncCharPtr::new(c"resizew"),
 
     args: args_parse::new(c"aADLRt:Ux:y:", 0, 1, None),
-    usage: c"[-aADLRU] [-x width] [-y height] [-t target-window] [adjustment]".as_ptr(),
+    usage: SyncCharPtr::new(c"[-aADLRU] [-x width] [-y height] [-t target-window] [adjustment]"),
 
     target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_WINDOW, 0),
 
     flags: cmd_flag::CMD_AFTERHOOK,
-    exec: Some(cmd_resize_window_exec),
-    ..unsafe { zeroed() }
+    exec: cmd_resize_window_exec,
+    source: cmd_entry_flag::zeroed(),
 };
 
 unsafe fn cmd_resize_window_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retval {
@@ -122,7 +122,7 @@ unsafe fn cmd_resize_window_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
 
         options_set_number(
             (*w).options,
-            c"window-size".as_ptr(),
+            c!("window-size"),
             window_size_option::WINDOW_SIZE_MANUAL as i64,
         );
         (*w).manual_sx = sx;

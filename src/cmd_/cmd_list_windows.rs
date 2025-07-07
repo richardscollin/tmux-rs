@@ -15,21 +15,25 @@ use crate::*;
 
 use crate::compat::tree::rb_foreach;
 
-const LIST_WINDOWS_TEMPLATE: &CStr = c"#{window_index}: #{window_name}#{window_raw_flags} (#{window_panes} panes) [#{window_width}x#{window_height}] [layout #{window_layout}] #{window_id}#{?window_active, (active),}";
-const LIST_WINDOWS_WITH_SESSION_TEMPLATE: &CStr = c"#{session_name}:#{window_index}: #{window_name}#{window_raw_flags} (#{window_panes} panes) [#{window_width}x#{window_height}] ";
+const LIST_WINDOWS_TEMPLATE: *const u8 = c!(
+    "#{window_index}: #{window_name}#{window_raw_flags} (#{window_panes} panes) [#{window_width}x#{window_height}] [layout #{window_layout}] #{window_id}#{?window_active, (active),}"
+);
+const LIST_WINDOWS_WITH_SESSION_TEMPLATE: *const u8 = c!(
+    "#{session_name}:#{window_index}: #{window_name}#{window_raw_flags} (#{window_panes} panes) [#{window_width}x#{window_height}] "
+);
 
-pub static mut cmd_list_windows_entry: cmd_entry = cmd_entry {
-    name: c"list-windows".as_ptr(),
-    alias: c"lsw".as_ptr(),
+pub static CMD_LIST_WINDOWS_ENTRY: cmd_entry = cmd_entry {
+    name: SyncCharPtr::new(c"list-windows"),
+    alias: SyncCharPtr::new(c"lsw"),
 
     args: args_parse::new(c"F:f:at:", 0, 0, None),
-    usage: c"[-a] [-F format] [-f filter] [-t target-session]".as_ptr(),
+    usage: SyncCharPtr::new(c"[-a] [-F format] [-f filter] [-t target-session]"),
 
     target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_SESSION, 0),
 
     flags: cmd_flag::CMD_AFTERHOOK,
-    exec: Some(cmd_list_windows_exec),
-    ..unsafe { zeroed() }
+    exec: cmd_list_windows_exec,
+    source: cmd_entry_flag::zeroed(),
 };
 
 unsafe fn cmd_list_windows_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retval {
@@ -49,7 +53,7 @@ unsafe fn cmd_list_windows_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
 
 unsafe fn cmd_list_windows_server(self_: *mut cmd, item: *mut cmdq_item) {
     unsafe {
-        for s in rb_foreach(&raw mut sessions) {
+        for s in rb_foreach(&raw mut SESSIONS) {
             cmd_list_windows_session(self_, s, item, 1);
         }
     }
@@ -69,10 +73,10 @@ unsafe fn cmd_list_windows_session(
         if template.is_null() {
             match type_ {
                 0 => {
-                    template = LIST_WINDOWS_TEMPLATE.as_ptr();
+                    template = LIST_WINDOWS_TEMPLATE;
                 }
                 1 => {
-                    template = LIST_WINDOWS_WITH_SESSION_TEMPLATE.as_ptr();
+                    template = LIST_WINDOWS_WITH_SESSION_TEMPLATE;
                 }
                 _ => (),
             }
@@ -86,7 +90,7 @@ unsafe fn cmd_list_windows_session(
                 FORMAT_NONE,
                 format_flags::empty(),
             );
-            format_add!(ft, c"line".as_ptr(), "{n}");
+            format_add!(ft, c!("line"), "{n}");
             format_defaults(ft, null_mut(), Some(s), Some(wl), None);
 
             if !filter.is_null() {

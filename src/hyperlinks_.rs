@@ -24,8 +24,8 @@ use std::cmp::Ordering;
 
 const MAX_HYPERLINKS: u32 = 5000;
 
-static mut hyperlinks_next_external_id: c_longlong = 1;
-static mut global_hyperlinks_count: u32 = 0;
+static mut HYPERLINKS_NEXT_EXTERNAL_ID: c_longlong = 1;
+static mut GLOBAL_HYPERLINKS_COUNT: u32 = 0;
 
 crate::compat::impl_tailq_entry!(hyperlinks_uri, list_entry, tailq_entry<hyperlinks_uri>);
 #[repr(C)]
@@ -33,9 +33,9 @@ pub struct hyperlinks_uri {
     pub tree: *mut hyperlinks,
 
     pub inner: u32,
-    pub internal_id: *mut c_char,
-    pub external_id: *mut c_char,
-    pub uri: *mut c_char,
+    pub internal_id: *mut u8,
+    pub external_id: *mut u8,
+    pub uri: *mut u8,
 
     // #[entry]
     pub list_entry: tailq_entry<hyperlinks_uri>,
@@ -49,7 +49,7 @@ pub type hyperlinks_by_inner_tree = rb_head<hyperlinks_uri>;
 
 pub type hyperlinks_list = tailq_head<hyperlinks_uri>;
 
-static mut global_hyperlinks: hyperlinks_list = TAILQ_HEAD_INITIALIZER!(global_hyperlinks);
+static mut GLOBAL_HYPERLINKS: hyperlinks_list = TAILQ_HEAD_INITIALIZER!(GLOBAL_HYPERLINKS);
 
 #[repr(C)]
 pub struct hyperlinks {
@@ -72,7 +72,7 @@ fn hyperlinks_by_uri_cmp(left: &hyperlinks_uri, right: &hyperlinks_uri) -> std::
         }
 
         i32_to_ordering(libc::strcmp(left.internal_id, right.internal_id))
-            .then_with(|| i32_to_ordering(libc::strcmp(left.uri, right.uri)))
+            .then_with(|| i32_to_ordering(crate::libc::strcmp(left.uri, right.uri)))
     }
 }
 
@@ -100,8 +100,8 @@ unsafe fn hyperlinks_remove(hlu: *mut hyperlinks_uri) {
     unsafe {
         let hl = (*hlu).tree;
 
-        tailq_remove::<_, _>(&raw mut global_hyperlinks, hlu);
-        global_hyperlinks_count -= 1;
+        tailq_remove::<_, _>(&raw mut GLOBAL_HYPERLINKS, hlu);
+        GLOBAL_HYPERLINKS_COUNT -= 1;
 
         rb_remove::<_, discr_by_inner_entry>(&raw mut (*hl).by_inner, hlu);
         rb_remove::<_, discr_by_uri_entry>(&raw mut (*hl).by_uri, hlu);
@@ -115,15 +115,15 @@ unsafe fn hyperlinks_remove(hlu: *mut hyperlinks_uri) {
 
 pub unsafe fn hyperlinks_put(
     hl: *mut hyperlinks,
-    uri_in: *const c_char,
-    mut internal_id_in: *const c_char,
+    uri_in: *const u8,
+    mut internal_id_in: *const u8,
 ) -> u32 {
     unsafe {
         // struct hyperlinks_uri	 find, *hlu;
         // char			*uri, *internal_id, *external_id;
         let mut uri = null_mut();
         let mut internal_id = null_mut();
-        let mut external_id = null_mut();
+        let mut external_id: *mut u8 = null_mut();
 
         /*
          * Anonymous URI are stored with an empty internal ID and the tree
@@ -131,7 +131,7 @@ pub unsafe fn hyperlinks_put(
          * anonymous URI is unique).
          */
         if internal_id_in.is_null() {
-            internal_id_in = c"".as_ptr();
+            internal_id_in = c!("");
         }
 
         utf8_stravis(
@@ -159,9 +159,9 @@ pub unsafe fn hyperlinks_put(
             }
         }
 
-        let id = hyperlinks_next_external_id;
+        let id = HYPERLINKS_NEXT_EXTERNAL_ID;
         external_id = format_nul!("tmux{:X}", id);
-        hyperlinks_next_external_id += 1;
+        HYPERLINKS_NEXT_EXTERNAL_ID += 1;
 
         let hlu = xcalloc1::<hyperlinks_uri>() as *mut hyperlinks_uri;
         (*hlu).inner = (*hl).next_inner;
@@ -173,10 +173,10 @@ pub unsafe fn hyperlinks_put(
         rb_insert::<_, discr_by_uri_entry>(&raw mut (*hl).by_uri, hlu);
         rb_insert::<_, discr_by_inner_entry>(&raw mut (*hl).by_inner, hlu);
 
-        tailq_insert_tail(&raw mut global_hyperlinks, hlu);
-        global_hyperlinks_count += 1;
-        if global_hyperlinks_count == MAX_HYPERLINKS {
-            hyperlinks_remove(tailq_first(&raw mut global_hyperlinks));
+        tailq_insert_tail(&raw mut GLOBAL_HYPERLINKS, hlu);
+        GLOBAL_HYPERLINKS_COUNT += 1;
+        if GLOBAL_HYPERLINKS_COUNT == MAX_HYPERLINKS {
+            hyperlinks_remove(tailq_first(&raw mut GLOBAL_HYPERLINKS));
         }
 
         (*hlu).inner
@@ -186,9 +186,9 @@ pub unsafe fn hyperlinks_put(
 pub unsafe fn hyperlinks_get(
     hl: *mut hyperlinks,
     inner: u32,
-    uri_out: *mut *const c_char,
-    internal_id_out: *mut *const c_char,
-    external_id_out: *mut *const c_char,
+    uri_out: *mut *const u8,
+    internal_id_out: *mut *const u8,
+    external_id_out: *mut *const u8,
 ) -> bool {
     unsafe {
         let mut find = MaybeUninit::<hyperlinks_uri>::uninit();

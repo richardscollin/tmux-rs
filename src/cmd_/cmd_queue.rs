@@ -11,7 +11,6 @@
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-
 use crate::*;
 
 use crate::cfg_::cfg_add_cause;
@@ -27,8 +26,8 @@ macro_rules! cmdq_get_callback {
         $crate::cmd_::cmd_queue::cmdq_get_callback1(stringify!($cb), Some($cb), $data)
     };
 }
+use crate::libc::{getpwuid, getuid, toupper};
 pub(crate) use cmdq_get_callback;
-use libc::{getpwuid, getuid, toupper};
 
 /* Command queue flags. */
 pub const CMDQ_FIRED: i32 = 0x1;
@@ -46,7 +45,7 @@ pub enum cmdq_type {
 crate::compat::impl_tailq_entry!(cmdq_item, entry, tailq_entry<cmdq_item>);
 #[repr(C)]
 pub struct cmdq_item {
-    pub name: *mut c_char,
+    pub name: *mut u8,
     pub queue: *mut cmdq_list,
     pub next: *mut cmdq_item,
 
@@ -94,12 +93,12 @@ pub struct cmdq_list {
     pub list: cmdq_item_list,
 }
 
-pub unsafe fn cmdq_name(c: *const client) -> *const c_char {
-    static mut buf: [c_char; 256] = [0; 256];
-    let s = &raw mut buf as *mut i8;
+pub unsafe fn cmdq_name(c: *const client) -> *const u8 {
+    static mut BUF: [u8; 256] = [0; 256];
+    let s = &raw mut BUF as *mut u8;
 
     if c.is_null() {
-        return c"<global>".as_ptr();
+        return c!("<global>");
     }
 
     unsafe {
@@ -114,14 +113,14 @@ pub unsafe fn cmdq_name(c: *const client) -> *const c_char {
 }
 
 pub unsafe fn cmdq_get(c: *mut client) -> *mut cmdq_list {
-    static mut global_queue: *mut cmdq_list = null_mut();
+    static mut GLOBAL_QUEUE: *mut cmdq_list = null_mut();
 
     unsafe {
         if c.is_null() {
-            if global_queue.is_null() {
-                global_queue = cmdq_new().as_ptr();
+            if GLOBAL_QUEUE.is_null() {
+                GLOBAL_QUEUE = cmdq_new().as_ptr();
             }
-            return global_queue;
+            return GLOBAL_QUEUE;
         }
 
         (*c).queue
@@ -139,13 +138,13 @@ pub unsafe fn cmdq_new() -> NonNull<cmdq_list> {
 pub unsafe fn cmdq_free(queue: *mut cmdq_list) {
     unsafe {
         if !tailq_empty(&raw mut (*queue).list) {
-            fatalx(c"queue not empty");
+            fatalx("queue not empty");
         }
         free_(queue);
     }
 }
 
-pub unsafe fn cmdq_get_name(item: *mut cmdq_item) -> *mut c_char {
+pub unsafe fn cmdq_get_name(item: *mut cmdq_item) -> *mut u8 {
     unsafe { (*item).name }
 }
 
@@ -251,11 +250,7 @@ macro_rules! cmdq_add_format {
 }
 pub(crate) use cmdq_add_format;
 
-pub unsafe fn cmdq_add_format_(
-    state: *mut cmdq_state,
-    key: *const c_char,
-    args: std::fmt::Arguments,
-) {
+pub unsafe fn cmdq_add_format_(state: *mut cmdq_state, key: *const u8, args: std::fmt::Arguments) {
     unsafe {
         let value = args.to_string();
 
@@ -281,7 +276,7 @@ pub unsafe fn cmdq_merge_formats(item: *mut cmdq_item, ft: *mut format_tree) {
     unsafe {
         if !(*item).cmd.is_null() {
             let entry = cmd_get_entry((*item).cmd);
-            format_add!(ft, c"command".as_ptr(), "{}", _s((*entry).name));
+            format_add!(ft, c!("command"), "{}", _s(entry.name.as_ptr()));
         }
 
         if !(*(*item).state).formats.is_null() {
@@ -378,9 +373,9 @@ pub unsafe fn cmdq_insert_hook_(
         let args = cmd_get_args(cmd);
         let mut ae: *mut args_entry = null_mut();
         let mut flag: c_uchar = 0;
-        const sizeof_tmp: usize = 32;
-        let mut buf: [c_char; 32] = zeroed();
-        let tmp = &raw mut buf as *mut c_char;
+        const SIZEOF_TMP: usize = 32;
+        let mut buf: [u8; 32] = zeroed();
+        let tmp = &raw mut buf as *mut u8;
 
         if (*(*item).state)
             .flags
@@ -389,7 +384,7 @@ pub unsafe fn cmdq_insert_hook_(
             return;
         }
         let oo = if s.is_null() {
-            global_s_options
+            GLOBAL_S_OPTIONS
         } else {
             (*s).options
         };
@@ -412,31 +407,31 @@ pub unsafe fn cmdq_insert_hook_(
             &raw mut (*state).event,
             cmdq_state_flags::CMDQ_STATE_NOHOOKS,
         );
-        cmdq_add_format!(new_state, c"hook".as_ptr(), "{}", name);
+        cmdq_add_format!(new_state, c!("hook"), "{}", name);
 
         let arguments = args_print(args);
-        cmdq_add_format!(new_state, c"hook_arguments".as_ptr(), "{}", _s(arguments),);
+        cmdq_add_format!(new_state, c!("hook_arguments"), "{}", _s(arguments),);
         free_(arguments);
 
         for i in 0..args_count(args) {
-            xsnprintf_!(tmp, sizeof_tmp, "hook_argument_{}", i);
+            xsnprintf_!(tmp, SIZEOF_TMP, "hook_argument_{}", i);
             cmdq_add_format!(new_state, tmp, "{}", _s(args_string(args, i)));
         }
         flag = args_first(args, &raw mut ae);
         while flag != 0 {
             let value = args_get(args, flag);
             if value.is_null() {
-                xsnprintf_!(tmp, sizeof_tmp, "hook_flag_{}", flag as char);
+                xsnprintf_!(tmp, SIZEOF_TMP, "hook_flag_{}", flag as char);
                 cmdq_add_format!(new_state, tmp, "1");
             } else {
-                xsnprintf_!(tmp, sizeof_tmp, "hook_flag_{}", flag as char);
+                xsnprintf_!(tmp, SIZEOF_TMP, "hook_flag_{}", flag as char);
                 cmdq_add_format!(new_state, tmp, "{}", _s(value));
             }
 
             let mut i = 0;
             let mut av = args_first_value(args, flag);
             while !av.is_null() {
-                xsnprintf_!(tmp, sizeof_tmp, "hook_flag_{}_{}", flag as char, i);
+                xsnprintf_!(tmp, SIZEOF_TMP, "hook_flag_{}_{}", flag as char, i);
                 cmdq_add_format!(new_state, tmp, "{}", _s((*av).union_.string));
                 i += 1;
                 av = args_next_value(av);
@@ -529,7 +524,7 @@ pub unsafe fn cmdq_get_command(
             let entry = cmd_get_entry(cmd);
 
             let item = xcalloc1::<cmdq_item>() as *mut cmdq_item;
-            (*item).name = format_nul!("[{}/{:p}]", _s((*entry).name), item,);
+            (*item).name = format_nul!("[{}/{:p}]", _s(entry.name.as_ptr()), item,);
             (*item).type_ = cmdq_type::CMDQ_COMMAND;
 
             (*item).group = cmd_get_group(cmd);
@@ -562,7 +557,7 @@ pub unsafe fn cmdq_get_command(
 pub unsafe fn cmdq_find_flag(
     item: *mut cmdq_item,
     fs: *mut cmd_find_state,
-    flag: *mut cmd_entry_flag,
+    flag: *const cmd_entry_flag,
 ) -> cmd_retval {
     unsafe {
         if (*flag).flag == 0 {
@@ -570,7 +565,7 @@ pub unsafe fn cmdq_find_flag(
             return cmd_retval::CMD_RETURN_NORMAL;
         }
 
-        let value = args_get(cmd_get_args((*item).cmd), (*flag).flag as u8);
+        let value = args_get(cmd_get_args((*item).cmd), (*flag).flag);
         if cmd_find_target(fs, item, value, (*flag).type_, (*flag).flags) != 0 {
             cmd_find_clear_state(fs, 0);
             return cmd_retval::CMD_RETURN_ERROR;
@@ -594,10 +589,10 @@ pub unsafe fn cmdq_add_message(item: *mut cmdq_item) {
                 if !pw.is_null() {
                     user = format_nul!("[{}]", _s((*pw).pw_name));
                 } else {
-                    user = xstrdup(c"[unknown]".as_ptr()).as_ptr();
+                    user = xstrdup(c!("[unknown]")).as_ptr();
                 }
             } else {
-                user = xstrdup(c"".as_ptr()).as_ptr();
+                user = xstrdup(c!("")).as_ptr();
             }
             if !(*c).session.is_null() && (*state).event.key != KEYC_NONE {
                 let key = key_string_lookup_key((*state).event.key, 0);
@@ -631,7 +626,7 @@ pub unsafe fn cmdq_fire_command(item: *mut cmdq_item) -> cmd_retval {
         let mut flags = false;
 
         'out: {
-            if cfg_finished != 0 {
+            if CFG_FINISHED != 0 {
                 cmdq_add_message(item);
             }
             if log_get_level() > 1 {
@@ -643,22 +638,22 @@ pub unsafe fn cmdq_fire_command(item: *mut cmdq_item) -> cmd_retval {
             flags = (*state)
                 .flags
                 .intersects(cmdq_state_flags::CMDQ_STATE_CONTROL);
-            cmdq_guard(item, c"begin".as_ptr(), flags);
+            cmdq_guard(item, c!("begin"), flags);
 
             if (*item).client.is_null() {
                 (*item).client = cmd_find_client(item, null_mut(), 1);
             }
 
-            if (*entry).flags.intersects(cmd_flag::CMD_CLIENT_CANFAIL) {
+            if entry.flags.intersects(cmd_flag::CMD_CLIENT_CANFAIL) {
                 quiet = 1;
             }
-            if (*entry).flags.intersects(cmd_flag::CMD_CLIENT_CFLAG) {
+            if entry.flags.intersects(cmd_flag::CMD_CLIENT_CFLAG) {
                 tc = cmd_find_client(item, args_get_(args, 'c'), quiet);
                 if tc.is_null() && quiet == 0 {
                     retval = cmd_retval::CMD_RETURN_ERROR;
                     break 'out;
                 }
-            } else if (*entry).flags.intersects(cmd_flag::CMD_CLIENT_TFLAG) {
+            } else if entry.flags.intersects(cmd_flag::CMD_CLIENT_TFLAG) {
                 tc = cmd_find_client(item, args_get_(args, 't'), quiet);
                 if tc.is_null() && quiet == 0 {
                     retval = cmd_retval::CMD_RETURN_ERROR;
@@ -669,23 +664,23 @@ pub unsafe fn cmdq_fire_command(item: *mut cmdq_item) -> cmd_retval {
             }
             (*item).target_client = tc;
 
-            retval = cmdq_find_flag(item, &raw mut (*item).source, &raw mut (*entry).source);
+            retval = cmdq_find_flag(item, &raw mut (*item).source, &entry.source);
             if retval == cmd_retval::CMD_RETURN_ERROR {
                 break 'out;
             }
-            retval = cmdq_find_flag(item, &raw mut (*item).target, &raw mut (*entry).target);
+            retval = cmdq_find_flag(item, &raw mut (*item).target, &entry.target);
             if retval == cmd_retval::CMD_RETURN_ERROR {
                 break 'out;
             }
 
             // log_debug_!("entry_name: {}", PercentS((*entry).name));
 
-            retval = ((*entry).exec.unwrap())(cmd, item);
+            retval = (entry.exec)(cmd, item);
             if retval == cmd_retval::CMD_RETURN_ERROR {
                 break 'out;
             }
 
-            if (*entry).flags.intersects(cmd_flag::CMD_AFTERHOOK) {
+            if entry.flags.intersects(cmd_flag::CMD_AFTERHOOK) {
                 fsp = if cmd_find_valid_state(&raw mut (*item).target) {
                     &raw mut (*item).target
                 } else if cmd_find_valid_state(&raw mut (*(*item).state).current) {
@@ -695,7 +690,7 @@ pub unsafe fn cmdq_fire_command(item: *mut cmdq_item) -> cmd_retval {
                 } else {
                     break 'out;
                 };
-                cmdq_insert_hook!((*fsp).s, item, fsp, "after-{}", _s((*entry).name));
+                cmdq_insert_hook!((*fsp).s, item, fsp, "after-{}", _s(entry.name.as_ptr()));
             }
         }
 
@@ -715,15 +710,15 @@ pub unsafe fn cmdq_fire_command(item: *mut cmdq_item) -> cmd_retval {
                 fsp,
                 "command-error"
             );
-            cmdq_guard(item, c"error".as_ptr(), flags);
+            cmdq_guard(item, c!("error"), flags);
         } else {
-            cmdq_guard(item, c"end".as_ptr(), flags);
+            cmdq_guard(item, c!("end"), flags);
         }
         retval
     }
 }
 
-pub unsafe fn cmdq_get_callback1(name: &str, cb: cmdq_cb, data: *mut c_char) -> NonNull<cmdq_item> {
+pub unsafe fn cmdq_get_callback1(name: &str, cb: cmdq_cb, data: *mut u8) -> NonNull<cmdq_item> {
     let item = xcalloc_::<cmdq_item>(1).as_ptr();
 
     unsafe {
@@ -741,7 +736,7 @@ pub unsafe fn cmdq_get_callback1(name: &str, cb: cmdq_cb, data: *mut c_char) -> 
 }
 
 pub unsafe fn cmdq_error_callback(item: *mut cmdq_item, data: *mut c_void) -> cmd_retval {
-    let error = data as *mut c_char;
+    let error = data as *mut u8;
 
     unsafe {
         cmdq_error!(item, "{}", _s(error));
@@ -751,7 +746,7 @@ pub unsafe fn cmdq_error_callback(item: *mut cmdq_item, data: *mut c_void) -> cm
     cmd_retval::CMD_RETURN_NORMAL
 }
 
-pub unsafe fn cmdq_get_error(error: *const c_char) -> NonNull<cmdq_item> {
+pub unsafe fn cmdq_get_error(error: *const u8) -> NonNull<cmdq_item> {
     unsafe { cmdq_get_callback!(cmdq_error_callback, xstrdup(error).as_ptr()) }
 }
 
@@ -761,7 +756,7 @@ pub unsafe fn cmdq_fire_callback(item: *mut cmdq_item) -> cmd_retval {
 
 pub unsafe fn cmdq_next(c: *mut client) -> u32 {
     let __func__ = "cmdq_next";
-    static mut number: u32 = 0;
+    static mut NUMBER: u32 = 0;
     let mut items = 0;
     let mut retval: cmd_retval = cmd_retval::CMD_RETURN_NORMAL;
 
@@ -801,8 +796,8 @@ pub unsafe fn cmdq_next(c: *mut client) -> u32 {
 
                 if !(*item).flags & CMDQ_FIRED != 0 {
                     (*item).time = libc::time(null_mut());
-                    number += 1;
-                    (*item).number = number;
+                    NUMBER += 1;
+                    (*item).number = NUMBER;
 
                     match (*item).type_ {
                         cmdq_type::CMDQ_COMMAND => {
@@ -850,7 +845,7 @@ pub unsafe fn cmdq_running(c: *mut client) -> *mut cmdq_item {
     }
 }
 
-pub unsafe fn cmdq_guard(item: *mut cmdq_item, guard: *const c_char, flags: bool) {
+pub unsafe fn cmdq_guard(item: *mut cmdq_item, guard: *const u8, flags: bool) {
     unsafe {
         let c = (*item).client;
         let t = (*item).time;
@@ -878,7 +873,7 @@ pub unsafe fn cmdq_print_(item: *mut cmdq_item, args: std::fmt::Arguments) {
     unsafe {
         let evb = evbuffer_new();
         if evb.is_null() {
-            fatalx(c"out of memory");
+            fatalx("out of memory");
         }
 
         evbuffer_add_vprintf(evb, args);

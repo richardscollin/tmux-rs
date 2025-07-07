@@ -1,1 +1,4 @@
+# Rust build cache and outputs
 /target
+# Nix outputs
+/result

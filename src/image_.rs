@@ -71,7 +71,7 @@ pub unsafe fn image_fallback(ret: *mut *mut c_char, sx: u32, sy: u32) {
             buf = buf.add(lsize as usize - 3);
             libc::memset(buf.cast(), b'+' as i32, (sx - lsize + 3) as usize);
             buf = buf.add((sx - lsize + 3) as usize);
-            libc::snprintf(buf, 3, c"\r\n".as_ptr());
+            libc::snprintf(buf, 3, c!("\r\n"));
             buf = buf.add(2);
         }
 
@@ -79,7 +79,7 @@ pub unsafe fn image_fallback(ret: *mut *mut c_char, sx: u32, sy: u32) {
         for py in 1..sy {
             libc::memset(buf.cast(), b'+' as i32, sx as usize);
             buf = buf.add(sx as usize);
-            libc::snprintf(buf, 3, c"\r\n".as_ptr());
+            libc::snprintf(buf, 3, c!("\r\n"));
             buf = buf.add(2);
         }
 

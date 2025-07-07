@@ -14,31 +14,31 @@
 
 use crate::*;
 
-pub static mut cmd_show_environment_entry: cmd_entry = cmd_entry {
-    name: c"show-environment".as_ptr(),
-    alias: c"showenv".as_ptr(),
+pub static CMD_SHOW_ENVIRONMENT_ENTRY: cmd_entry = cmd_entry {
+    name: SyncCharPtr::new(c"show-environment"),
+    alias: SyncCharPtr::new(c"showenv"),
 
     args: args_parse::new(c"hgst:", 0, 1, None),
-    usage: c"[-hgs] [-t target-session] [name]".as_ptr(),
+    usage: SyncCharPtr::new(c"[-hgs] [-t target-session] [name]"),
 
     target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_SESSION, CMD_FIND_CANFAIL),
 
     flags: cmd_flag::CMD_AFTERHOOK,
-    exec: Some(cmd_show_environment_exec),
-    ..unsafe { zeroed() }
+    exec: cmd_show_environment_exec,
+    source: cmd_entry_flag::zeroed(),
 };
 
-unsafe fn cmd_show_environment_escape(envent: *mut environ_entry) -> *mut c_char {
+unsafe fn cmd_show_environment_escape(envent: *mut environ_entry) -> *mut u8 {
     unsafe {
         let mut value = transmute_ptr((*envent).value);
-        let ret: *mut i8 = xmalloc(strlen(value) * 2 + 1).as_ptr().cast(); /* at most twice the size */
+        let ret: *mut u8 = xmalloc(strlen(value) * 2 + 1).as_ptr().cast(); /* at most twice the size */
         let mut out = ret;
 
         let mut c = 0;
         while {
             c = *value;
             value = value.add(1);
-            c != b'\0' as c_char
+            c != b'\0'
         } {
             /* POSIX interprets $ ` " and \ in double quotes. */
             if c == b'$' as _ || c == b'`' as _ || c == b'"' as _ || c == b'\\' as _ {
@@ -48,7 +48,7 @@ unsafe fn cmd_show_environment_escape(envent: *mut environ_entry) -> *mut c_char
             *out = c;
             out = out.add(1);
         }
-        *out = b'\0' as c_char;
+        *out = b'\0';
 
         ret
     }
@@ -114,7 +114,7 @@ unsafe fn cmd_show_environment_exec(self_: *mut cmd, item: *mut cmdq_item) -> cm
         }
 
         if args_has_(args, 'g') {
-            env = global_environ;
+            env = GLOBAL_ENVIRON;
         } else {
             if (*target).s.is_null() {
                 tflag = args_get_(args, 't');

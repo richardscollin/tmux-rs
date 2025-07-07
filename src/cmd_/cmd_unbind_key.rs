@@ -14,22 +14,23 @@
 
 use crate::*;
 
-pub static mut cmd_unbind_key_entry: cmd_entry = cmd_entry {
-    name: c"unbind-key".as_ptr(),
-    alias: c"unbind".as_ptr(),
+pub static CMD_UNBIND_KEY_ENTRY: cmd_entry = cmd_entry {
+    name: SyncCharPtr::new(c"unbind-key"),
+    alias: SyncCharPtr::new(c"unbind"),
 
     args: args_parse::new(c"anqT:", 0, 1, None),
-    usage: c"[-anq] [-T key-table] key".as_ptr(),
+    usage: SyncCharPtr::new(c"[-anq] [-T key-table] key"),
 
     flags: cmd_flag::CMD_AFTERHOOK,
-    exec: Some(cmd_unbind_key_exec),
-    ..unsafe { zeroed() }
+    exec: cmd_unbind_key_exec,
+    source: cmd_entry_flag::zeroed(),
+    target: cmd_entry_flag::zeroed(),
 };
 
 unsafe fn cmd_unbind_key_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retval {
     unsafe {
         let args = cmd_get_args(self_);
-        let mut tablename: *const c_char = null_mut();
+        let mut tablename: *const u8 = null_mut();
         let keystr = args_string(args, 0);
         let quiet = args_has(args, b'q');
 
@@ -44,9 +45,9 @@ unsafe fn cmd_unbind_key_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retv
             tablename = args_get(args, b'T');
             if tablename.is_null() {
                 if args_has(args, b'n') != 0 {
-                    tablename = c"root".as_ptr();
+                    tablename = c!("root");
                 } else {
-                    tablename = c"prefix".as_ptr();
+                    tablename = c!("prefix");
                 }
             }
             if key_bindings_get_table(tablename, 0).is_null() {
@@ -84,9 +85,9 @@ unsafe fn cmd_unbind_key_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retv
                 return cmd_retval::CMD_RETURN_ERROR;
             }
         } else if args_has(args, b'n') != 0 {
-            tablename = c"root".as_ptr();
+            tablename = c!("root");
         } else {
-            tablename = c"prefix".as_ptr();
+            tablename = c!("prefix");
         }
         key_bindings_remove(tablename, key);
         cmd_retval::CMD_RETURN_NORMAL

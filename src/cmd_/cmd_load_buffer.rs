@@ -13,30 +13,31 @@
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 use crate::*;
 
-pub static mut cmd_load_buffer_entry: cmd_entry = cmd_entry {
-    name: c"load-buffer".as_ptr(),
-    alias: c"loadb".as_ptr(),
+pub static CMD_LOAD_BUFFER_ENTRY: cmd_entry = cmd_entry {
+    name: SyncCharPtr::new(c"load-buffer"),
+    alias: SyncCharPtr::new(c"loadb"),
 
     args: args_parse::new(c"b:t:w", 1, 1, None),
-    usage: c"[-b buffer-name] [-t target-client] path".as_ptr(),
+    usage: SyncCharPtr::new(c"[-b buffer-name] [-t target-client] path"),
 
     flags: cmd_flag::CMD_AFTERHOOK
         .union(cmd_flag::CMD_CLIENT_TFLAG)
         .union(cmd_flag::CMD_CLIENT_CANFAIL),
-    exec: Some(cmd_load_buffer_exec),
-    ..unsafe { zeroed() }
+    exec: cmd_load_buffer_exec,
+    source: cmd_entry_flag::zeroed(),
+    target: cmd_entry_flag::zeroed(),
 };
 
 #[repr(C)]
 pub struct cmd_load_buffer_data {
     pub client: *mut client,
     pub item: *mut cmdq_item,
-    pub name: *mut c_char,
+    pub name: *mut u8,
 }
 
 unsafe fn cmd_load_buffer_done(
     _c: *mut client,
-    path: *mut c_char,
+    path: *mut u8,
     error: i32,
     closed: i32,
     buffer: *mut evbuffer,
@@ -67,7 +68,7 @@ unsafe fn cmd_load_buffer_done(
                 && !(*tc).session.is_null()
                 && !(*tc).flags.intersects(client_flag::DEAD)
             {
-                tty_set_selection(&raw mut (*tc).tty, c"".as_ptr(), copy as _, bsize);
+                tty_set_selection(&raw mut (*tc).tty, c!(""), copy as _, bsize);
             }
             if !tc.is_null() {
                 server_client_unref(tc);

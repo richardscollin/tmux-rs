@@ -13,7 +13,7 @@
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 use crate::*;
 
-use libc::{
+use crate::libc::{
     AF_UNIX, EAGAIN, PF_UNSPEC, SA_RESTART, SIG_DFL, SIG_IGN, SIGCHLD, SIGCONT, SIGHUP, SIGINT,
     SIGPIPE, SIGQUIT, SIGTERM, SIGTSTP, SIGTTIN, SIGTTOU, SIGUSR1, SIGUSR2, SIGWINCH, close, gid_t,
     sigaction, sigemptyset, socketpair, uname, utsname,
@@ -197,7 +197,7 @@ pub unsafe fn proc_start(name: &str) -> *mut tmuxproc {
     unsafe {
         log_open(name);
         // TODO: Modify setproctitle_ to use &str
-        setproctitle_(c"%s (%s)".as_ptr(), name.as_ptr() as *const i8, socket_path);
+        setproctitle_(c"%s (%s)".as_ptr().cast(), name.as_ptr(), SOCKET_PATH);
 
         let mut u = MaybeUninit::<utsname>::uninit();
         if uname(u.as_mut_ptr()) < 0 {
@@ -210,7 +210,7 @@ pub unsafe fn proc_start(name: &str) -> *mut tmuxproc {
             name,
             std::process::id(),
             getversion(),
-            _s(socket_path),
+            _s(SOCKET_PATH),
             PROTOCOL_VERSION,
         );
         log_debug!(

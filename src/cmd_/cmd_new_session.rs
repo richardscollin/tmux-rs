@@ -13,43 +13,43 @@
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 use crate::*;
 
-use libc::{sscanf, tcgetattr};
+use crate::libc::{sscanf, tcgetattr};
 
 use crate::compat::tree::rb_min;
 
-const NEW_SESSION_TEMPLATE: &CStr = c"#{session_name}:";
+const NEW_SESSION_TEMPLATE: *const u8 = c!("#{session_name}:");
 
-pub static mut cmd_new_session_entry: cmd_entry = cmd_entry {
-    name: c"new-session".as_ptr(),
-    alias: c"new".as_ptr(),
+pub static CMD_NEW_SESSION_ENTRY: cmd_entry = cmd_entry {
+    name: SyncCharPtr::new(c"new-session"),
+    alias: SyncCharPtr::new(c"new"),
 
     args: args_parse::new(c"Ac:dDe:EF:f:n:Ps:t:x:Xy:", 0, -1, None),
-    usage: c"[-AdDEPX] [-c start-directory] [-e environment] [-F format] [-f flags] [-n window-name] [-s session-name] [-t target-session] [-x width] [-y height] [shell-command]".as_ptr(),
+    usage: SyncCharPtr::new(c"[-AdDEPX] [-c start-directory] [-e environment] [-F format] [-f flags] [-n window-name] [-s session-name] [-t target-session] [-x width] [-y height] [shell-command]"),
 
     target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_SESSION, CMD_FIND_CANFAIL),
 
     flags: cmd_flag::CMD_STARTSERVER,
-    exec: Some(cmd_new_session_exec),
-    ..unsafe { zeroed() }
+    exec: cmd_new_session_exec,
+    source: cmd_entry_flag::zeroed(),
 };
 
-pub static mut cmd_has_session_entry: cmd_entry = cmd_entry {
-    name: c"has-session".as_ptr(),
-    alias: c"has".as_ptr(),
+pub static CMD_HAS_SESSION_ENTRY: cmd_entry = cmd_entry {
+    name: SyncCharPtr::new(c"has-session"),
+    alias: SyncCharPtr::new(c"has"),
 
     args: args_parse::new(c"t:", 0, 0, None),
-    usage: c"[-t target-session]".as_ptr(),
+    usage: SyncCharPtr::new(c"[-t target-session]"),
 
     target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_SESSION, 0),
 
     flags: cmd_flag::empty(),
-    exec: Some(cmd_new_session_exec),
+    exec: cmd_new_session_exec,
 
-    ..unsafe { zeroed() }
+    source: cmd_entry_flag::zeroed(),
 };
 
 unsafe fn cmd_new_session_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retval {
-    let __func__ = c"cmd_new_session_exec".as_ptr();
+    let __func__ = c!("cmd_new_session_exec");
 
     unsafe {
         let args = cmd_get_args(self_);
@@ -64,9 +64,9 @@ unsafe fn cmd_new_session_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
         let mut tio: termios = zeroed();
         let mut tiop = null_mut();
         let mut sg: *mut session_group = null_mut();
-        let mut errstr: *const c_char = null();
-        let mut group: *const c_char = null();
-        let mut tmp: *const c_char = null();
+        let mut errstr: *const u8 = null();
+        let mut group: *const u8 = null();
+        let mut tmp: *const u8 = null();
         let mut cause = null_mut();
         let mut cwd = null_mut();
         let mut cp = null_mut();
@@ -86,7 +86,7 @@ unsafe fn cmd_new_session_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
         let mut av: *mut args_value;
 
         'fail: {
-            if cmd_get_entry(self_) == &raw mut cmd_has_session_entry {
+            if std::ptr::eq(cmd_get_entry(self_), &CMD_HAS_SESSION_ENTRY) {
                 /*
                  * cmd_find_target() will fail if the session cannot be found,
                  * so always return success here.
@@ -253,12 +253,12 @@ unsafe fn cmd_new_session_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
             if !detached && !is_control {
                 sx = (*c).tty.sx;
                 sy = (*c).tty.sy;
-                if sy > 0 && options_get_number_(global_s_options, c"status") != 0 {
+                if sy > 0 && options_get_number_(GLOBAL_S_OPTIONS, c"status") != 0 {
                     sy -= 1;
                 }
             } else {
-                tmp = options_get_string_(global_s_options, c"default-size");
-                if sscanf(tmp, c"%ux%u".as_ptr(), &raw mut sx, &raw mut sy) != 2 {
+                tmp = options_get_string_(GLOBAL_S_OPTIONS, c"default-size");
+                if sscanf(tmp.cast(), c"%ux%u".as_ptr(), &raw mut sx, &raw mut sy) != 2 {
                     sx = dsx;
                     sy = dsy;
                 } else {
@@ -278,7 +278,7 @@ unsafe fn cmd_new_session_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
             }
 
             /* Create the new session. */
-            oo = options_create(global_s_options);
+            oo = options_create(GLOBAL_S_OPTIONS);
             if args_has_(args, 'x') || args_has_(args, 'y') {
                 if !args_has_(args, 'x') {
                     dsx = sx;
@@ -286,11 +286,11 @@ unsafe fn cmd_new_session_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
                 if !args_has_(args, 'y') {
                     dsy = sy;
                 }
-                options_set_string!(oo, c"default-size".as_ptr(), 0, "{dsx}x{dsy}");
+                options_set_string!(oo, c!("default-size"), 0, "{dsx}x{dsy}");
             }
             env = environ_create().as_ptr();
             if !c.is_null() && !args_has_(args, 'E') {
-                environ_update(global_s_options, (*c).environ, env);
+                environ_update(GLOBAL_S_OPTIONS, (*c).environ, env);
             }
             av = args_first_value(args, b'e');
             while !av.is_null() {
@@ -363,9 +363,9 @@ unsafe fn cmd_new_session_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
 
             /* Print if requested. */
             if args_has_(args, 'P') {
-                let mut template: *const c_char = args_get_(args, 'F');
+                let mut template: *const u8 = args_get_(args, 'F');
                 if template.is_null() {
-                    template = NEW_SESSION_TEMPLATE.as_ptr();
+                    template = NEW_SESSION_TEMPLATE;
                 }
                 cp = format_single(item, template, c, s, (*s).curw, null_mut());
                 cmdq_print!(item, "{}", _s(cp));
@@ -383,7 +383,7 @@ unsafe fn cmd_new_session_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
             cmd_find_from_session(fs.as_mut_ptr(), s, 0);
             cmdq_insert_hook!(s, item, fs.as_mut_ptr(), "after-new-session");
 
-            if cfg_finished != 0 {
+            if CFG_FINISHED != 0 {
                 cfg_show_causes(s);
             }
 

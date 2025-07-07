@@ -15,20 +15,20 @@ use crate::*;
 
 use crate::compat::tree::rb_foreach;
 
-const NEW_WINDOW_TEMPLATE: &CStr = c"#{session_name}:#{window_index}.#{pane_index}";
+const NEW_WINDOW_TEMPLATE: *const u8 = c!("#{session_name}:#{window_index}.#{pane_index}");
 
-pub static mut cmd_new_window_entry: cmd_entry = cmd_entry {
-    name: c"new-window".as_ptr(),
-    alias: c"neww".as_ptr(),
+pub static CMD_NEW_WINDOW_ENTRY: cmd_entry = cmd_entry {
+    name: SyncCharPtr::new(c"new-window"),
+    alias: SyncCharPtr::new(c"neww"),
 
     args: args_parse::new(c"abc:de:F:kn:PSt:", 0, -1, None),
-    usage: c"[-abdkPS] [-c start-directory] [-e environment] [-F format] [-n window-name] [-t target-window] [shell-command]".as_ptr(),
+    usage: SyncCharPtr::new(c"[-abdkPS] [-c start-directory] [-e environment] [-F format] [-n window-name] [-t target-window] [shell-command]"),
 
     target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_WINDOW, CMD_FIND_WINDOW_INDEX),
 
     flags: cmd_flag::empty(),
-    exec: Some(cmd_new_window_exec),
-    ..unsafe { zeroed() }
+    exec: cmd_new_window_exec,
+    source: cmd_entry_flag::zeroed(),
 };
 
 unsafe fn cmd_new_window_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retval {
@@ -45,10 +45,6 @@ unsafe fn cmd_new_window_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retv
         let mut idx = (*target).idx;
         // before;
         let mut cause = null_mut();
-        //char			*cause = NULL, *cp, *expanded;
-        //const char		*template, *name;
-        //struct cmd_find_state	 fs;
-        //struct args_value	*av;
 
         /*
          * If -S and -n are given and -t is not and a single window with this
@@ -139,7 +135,7 @@ unsafe fn cmd_new_window_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retv
         if args_has_(args, 'P') {
             let mut template = args_get_(args, 'F');
             if template.is_null() {
-                template = NEW_WINDOW_TEMPLATE.as_ptr();
+                template = NEW_WINDOW_TEMPLATE;
             }
             let cp = format_single(item, template, tc, s, new_wl, (*(*new_wl).window).active);
             cmdq_print!(item, "{}", _s(cp));

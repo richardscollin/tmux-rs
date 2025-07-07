@@ -13,7 +13,7 @@
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 use super::*;
 
-pub static window_copy_mode: window_mode = window_mode {
+pub static WINDOW_COPY_MODE: window_mode = window_mode {
     name: SyncCharPtr::new(c"copy-mode"),
     init: window_copy_init,
     free: window_copy_free,
@@ -26,7 +26,7 @@ pub static window_copy_mode: window_mode = window_mode {
     key: None,
 };
 
-pub static window_view_mode: window_mode = window_mode {
+pub static WINDOW_VIEW_MODE: window_mode = window_mode {
     name: SyncCharPtr::new(c"view-mode"),
     init: window_copy_view_init,
     free: window_copy_free,
@@ -166,7 +166,7 @@ pub struct window_copy_mode_data {
     selflag: selflag,
 
     /// word separators
-    separators: *const c_char,
+    separators: *const u8,
 
     /// drag start position x
     dx: u32,
@@ -195,7 +195,7 @@ pub struct window_copy_mode_data {
     searchtype: window_copy,
     searchdirection: i32,
     searchregex: i32,
-    searchstr: *mut c_char,
+    searchstr: *mut u8,
     searchmark: *mut u8,
     searchcount: i32,
     searchmore: i32,
@@ -473,7 +473,7 @@ pub(crate) use window_copy_add;
 
 pub unsafe fn window_copy_init_ctx_cb(ctx: *mut screen_write_ctx, ttyctx: *mut tty_ctx) {
     unsafe {
-        memcpy__(&raw mut (*ttyctx).defaults, &raw const grid_default_cell);
+        memcpy__(&raw mut (*ttyctx).defaults, &raw const GRID_DEFAULT_CELL);
         (*ttyctx).palette = null_mut();
         (*ttyctx).redraw_cb = None;
         (*ttyctx).set_client_cb = None;
@@ -528,7 +528,7 @@ pub unsafe fn window_copy_vadd(wp: *mut window_pane, parse: i32, args: std::fmt:
         if parse != 0 {
             screen_write_fast_copy(&raw mut backing_ctx, writing, 0, 0, sx, 1);
         } else {
-            memcpy__(&raw mut gc, &raw const grid_default_cell);
+            memcpy__(&raw mut gc, &raw const GRID_DEFAULT_CELL);
             screen_write_vnputs_(&raw mut backing_ctx, 0, &raw const gc, args);
         }
         screen_write_stop(&raw mut backing_ctx);
@@ -715,7 +715,7 @@ pub unsafe fn window_copy_next_paragraph(wme: *mut window_mode_entry) {
     }
 }
 
-pub unsafe fn window_copy_get_word(wp: *mut window_pane, x: u32, y: u32) -> *mut c_char {
+pub unsafe fn window_copy_get_word(wp: *mut window_pane, x: u32, y: u32) -> *mut u8 {
     unsafe {
         let wme: *mut window_mode_entry = tailq_first(&raw mut (*wp).modes);
         let data: *mut window_copy_mode_data = (*wme).data.cast();
@@ -725,7 +725,7 @@ pub unsafe fn window_copy_get_word(wp: *mut window_pane, x: u32, y: u32) -> *mut
     }
 }
 
-pub unsafe fn window_copy_get_line(wp: *mut window_pane, y: u32) -> *mut c_char {
+pub unsafe fn window_copy_get_line(wp: *mut window_pane, y: u32) -> *mut u8 {
     unsafe {
         let wme: *mut window_mode_entry = tailq_first(&raw mut (*wp).modes);
         let data: *mut window_copy_mode_data = (*wme).data.cast();
@@ -786,67 +786,50 @@ pub unsafe fn window_copy_formats(wme: *mut window_mode_entry, ft: *mut format_t
     unsafe {
         let data: *mut window_copy_mode_data = (*wme).data.cast();
 
-        format_add!(ft, c"scroll_position".as_ptr(), "{}", (*data).oy);
-        format_add!(ft, c"rectangle_toggle".as_ptr(), "{}", (*data).rectflag,);
+        format_add!(ft, c!("scroll_position"), "{}", (*data).oy);
+        format_add!(ft, c!("rectangle_toggle"), "{}", (*data).rectflag,);
 
-        format_add!(ft, c"copy_cursor_x".as_ptr(), "{}", (*data).cx);
-        format_add!(ft, c"copy_cursor_y".as_ptr(), "{}", (*data).cy);
+        format_add!(ft, c!("copy_cursor_x"), "{}", (*data).cx);
+        format_add!(ft, c!("copy_cursor_y"), "{}", (*data).cy);
 
         if !(*data).screen.sel.is_null() {
-            format_add!(ft, c"selection_start_x".as_ptr(), "{}", (*data).selx,);
-            format_add!(ft, c"selection_start_y".as_ptr(), "{}", (*data).sely,);
-            format_add!(ft, c"selection_end_x".as_ptr(), "{}", (*data).endselx,);
-            format_add!(ft, c"selection_end_y".as_ptr(), "{}", (*data).endsely,);
+            format_add!(ft, c!("selection_start_x"), "{}", (*data).selx,);
+            format_add!(ft, c!("selection_start_y"), "{}", (*data).sely,);
+            format_add!(ft, c!("selection_end_x"), "{}", (*data).endselx,);
+            format_add!(ft, c!("selection_end_y"), "{}", (*data).endsely,);
 
             if (*data).cursordrag != cursordrag::CURSORDRAG_NONE {
-                format_add!(ft, c"selection_active".as_ptr(), "1");
+                format_add!(ft, c!("selection_active"), "1");
             } else {
-                format_add!(ft, c"selection_active".as_ptr(), "0");
+                format_add!(ft, c!("selection_active"), "0");
             }
             if (*data).endselx != (*data).selx || (*data).endsely != (*data).sely {
-                format_add!(ft, c"selection_present".as_ptr(), "1");
+                format_add!(ft, c!("selection_present"), "1");
             } else {
-                format_add!(ft, c"selection_present".as_ptr(), "0");
+                format_add!(ft, c!("selection_present"), "0");
             }
         } else {
-            format_add!(ft, c"selection_active".as_ptr(), "0");
-            format_add!(ft, c"selection_present".as_ptr(), "0");
+            format_add!(ft, c!("selection_active"), "0");
+            format_add!(ft, c!("selection_present"), "0");
         }
 
         format_add!(
             ft,
-            c"search_present".as_ptr(),
+            c!("search_present"),
             "{}",
             !(*data).searchmark.is_null() as i32,
         );
         if (*data).searchcount != -1 {
-            format_add!(ft, c"search_count".as_ptr(), "{}", (*data).searchcount,);
-            format_add!(
-                ft,
-                c"search_count_partial".as_ptr(),
-                "{}",
-                (*data).searchmore,
-            );
+            format_add!(ft, c!("search_count"), "{}", (*data).searchcount,);
+            format_add!(ft, c!("search_count_partial"), "{}", (*data).searchmore,);
         }
-        format_add_cb(
-            ft,
-            c"search_match".as_ptr(),
-            Some(window_copy_search_match_cb),
-        );
+        format_add_cb(ft, c!("search_match"), Some(window_copy_search_match_cb));
 
+        format_add_cb(ft, c!("copy_cursor_word"), Some(window_copy_cursor_word_cb));
+        format_add_cb(ft, c!("copy_cursor_line"), Some(window_copy_cursor_line_cb));
         format_add_cb(
             ft,
-            c"copy_cursor_word".as_ptr(),
-            Some(window_copy_cursor_word_cb),
-        );
-        format_add_cb(
-            ft,
-            c"copy_cursor_line".as_ptr(),
-            Some(window_copy_cursor_line_cb),
-        );
-        format_add_cb(
-            ft,
-            c"copy_cursor_hyperlink".as_ptr(),
+            c!("copy_cursor_hyperlink"),
             Some(window_copy_cursor_hyperlink_cb),
         );
     }
@@ -911,7 +894,7 @@ pub unsafe fn window_copy_resize(wme: NonNull<window_mode_entry>, sx: u32, sy: u
     }
 }
 
-pub unsafe fn window_copy_key_table(wme: *mut window_mode_entry) -> *const c_char {
+pub unsafe fn window_copy_key_table(wme: *mut window_mode_entry) -> *const u8 {
     unsafe {
         if matches!(
             modekey::try_from(
@@ -919,9 +902,9 @@ pub unsafe fn window_copy_key_table(wme: *mut window_mode_entry) -> *const c_cha
             ),
             Ok(modekey::MODEKEY_VI)
         ) {
-            c"copy-mode-vi".as_ptr()
+            c!("copy-mode-vi")
         } else {
-            c"copy-mode".as_ptr()
+            c!("copy-mode")
         }
     }
 }
@@ -932,7 +915,7 @@ pub unsafe fn window_copy_expand_search_string(cs: *mut window_copy_cmd_state) -
         let data: *mut window_copy_mode_data = (*wme).data.cast();
         let ss = args_string((*cs).args, 1);
 
-        if ss.is_null() || *ss == b'\0' as i8 {
+        if ss.is_null() || *ss == b'\0' {
             return 0;
         }
 
@@ -945,7 +928,7 @@ pub unsafe fn window_copy_expand_search_string(cs: *mut window_copy_cmd_state) -
                 null_mut(),
                 (*wme).wp,
             );
-            if *expanded == b'\0' as i8 {
+            if *expanded == b'\0' {
                 free_(expanded);
                 return 0;
             }
@@ -1086,7 +1069,7 @@ pub unsafe fn window_copy_do_copy_end_of_line(
             if count == 3 {
                 prefix = format_single(null_mut(), arg2, c, s, wl, wp);
             }
-            if !s.is_null() && count > 1 && *arg1 != b'\0' as i8 {
+            if !s.is_null() && count > 1 && *arg1 != b'\0' {
                 command = format_single(null_mut(), arg1, c, s, wl, wp);
             }
         } else if count == 2 {
@@ -1178,7 +1161,7 @@ pub unsafe fn window_copy_do_copy_line(
             if count == 3 {
                 prefix = format_single(null_mut(), arg2, c, s, wl, wp);
             }
-            if !s.is_null() && count > 1 && *arg1 != b'\0' as i8 {
+            if !s.is_null() && count > 1 && *arg1 != b'\0' {
                 command = format_single(null_mut(), arg1, c, s, wl, wp);
             }
         } else if count == 2 {
@@ -1660,14 +1643,11 @@ pub unsafe fn window_copy_cmd_previous_matching_bracket(
         let mut np = (*wme).prefix;
         let data: *mut window_copy_mode_data = (*wme).data.cast();
         let s: *mut screen = (*data).backing;
-        let open: [c_char; 4] = [b'{' as i8, b'[' as i8, b'(' as i8, b'\0' as i8];
-        let close: [c_char; 4] = [b'}' as i8, b']' as i8, b')' as i8, b'\0' as i8];
+        let open: [u8; 4] = [b'{', b'[', b'(', b'\0'];
+        let close: [u8; 4] = [b'}', b']', b')', b'\0'];
 
-        let mut found: c_char = b'\0' as i8;
-        // char tried, found, start, *cp;
-        // u_int px, py, xx, n;
-        // struct grid_cell gc;
-        let mut cp: *mut c_char = null_mut();
+        let mut found: u8 = b'\0';
+        let mut cp: *mut u8 = null_mut();
         let mut gc: grid_cell = zeroed();
         let failed = false;
 
@@ -1690,7 +1670,7 @@ pub unsafe fn window_copy_cmd_previous_matching_bracket(
                 if gc.data.size != 1 || gc.flags.intersects(grid_flag::PADDING) {
                     cp = null_mut();
                 } else {
-                    found = gc.data.data[0] as i8;
+                    found = gc.data.data[0];
                     cp = libc::strchr((&raw const close).cast(), found as i32);
                 }
                 if cp.is_null() {
@@ -1735,9 +1715,9 @@ pub unsafe fn window_copy_cmd_previous_matching_bracket(
 
                     grid_get_cell((*s).grid, px, py, &raw mut gc);
                     if gc.data.size == 1 && !gc.flags.intersects(grid_flag::PADDING) {
-                        if gc.data.data[0] == found as u8 {
+                        if gc.data.data[0] == found {
                             n += 1;
-                        } else if gc.data.data[0] == start as u8 {
+                        } else if gc.data.data[0] == start {
                             n -= 1;
                         }
                     }
@@ -1767,14 +1747,9 @@ pub unsafe fn window_copy_cmd_next_matching_bracket(
         let mut np = (*wme).prefix;
         let data: *mut window_copy_mode_data = (*wme).data.cast();
         let s: *mut screen = (*data).backing;
-        let open: [c_char; 4] = [b'{' as i8, b'[' as i8, b'(' as i8, b'\0' as i8];
-        let close: [c_char; 4] = [b'}' as i8, b']' as i8, b')' as i8, b'\0' as i8];
+        let open: [u8; 4] = [b'{', b'[', b'(', b'\0'];
+        let close: [u8; 4] = [b'}', b']', b')', b'\0'];
 
-        // char tried, found, end, *cp;
-        // u_int px, py, xx, yy, sx, sy, n;
-        // struct grid_cell gc;
-        // int failed;
-        // struct grid_line *gl;
         let mut found = b'\0';
         let mut gc: grid_cell = zeroed();
         let mut cp = null_mut();
@@ -1885,7 +1860,7 @@ pub unsafe fn window_copy_cmd_next_matching_bracket(
                     if gc.data.size == 1 && !gc.flags.intersects(grid_flag::PADDING) {
                         if gc.data.data[0] == found {
                             n += 1;
-                        } else if gc.data.data[0] == end as u8 {
+                        } else if gc.data.data[0] == end {
                             n -= 1;
                         }
                     }
@@ -1928,7 +1903,7 @@ pub unsafe fn window_copy_cmd_next_space(cs: *mut window_copy_cmd_state) -> wind
         let mut np = (*wme).prefix;
 
         while np != 0 {
-            window_copy_cursor_next_word(wme, c"".as_ptr());
+            window_copy_cursor_next_word(wme, c!(""));
             np -= 1;
         }
         window_copy_cmd_action::WINDOW_COPY_CMD_NOTHING
@@ -1943,7 +1918,7 @@ pub unsafe fn window_copy_cmd_next_space_end(
         let mut np: u32 = (*wme).prefix;
 
         while np != 0 {
-            window_copy_cursor_next_word_end(wme, c"".as_ptr(), 0);
+            window_copy_cursor_next_word_end(wme, c!(""), 0);
             np -= 1;
         }
         window_copy_cmd_action::WINDOW_COPY_CMD_NOTHING
@@ -2065,7 +2040,7 @@ pub unsafe fn window_copy_cmd_previous_space(
         let mut np = (*wme).prefix;
 
         while np != 0 {
-            window_copy_cursor_previous_word(wme, c"".as_ptr(), 1);
+            window_copy_cursor_previous_word(wme, c!(""), 1);
             np -= 1;
         }
         window_copy_cmd_action::WINDOW_COPY_CMD_NOTHING
@@ -2297,7 +2272,7 @@ pub unsafe fn window_copy_cmd_select_word(
             nexty += 1;
         }
         if px >= window_copy_find_length(wme, py)
-            || window_copy_in_set(wme, nextx, nexty, WHITESPACE.as_ptr()) == 0
+            || window_copy_in_set(wme, nextx, nexty, WHITESPACE) == 0
         {
             window_copy_cursor_next_word_end(wme, (*data).separators, 1);
         } else {
@@ -2370,7 +2345,7 @@ pub unsafe fn window_copy_cmd_copy_pipe_no_clear(
             prefix = format_single(null_mut(), arg2, c, s, wl, wp);
         }
 
-        if !s.is_null() && !arg1.is_null() && *arg1 != b'\0' as i8 {
+        if !s.is_null() && !arg1.is_null() && *arg1 != b'\0' {
             command = format_single(null_mut(), arg1, c, s, wl, wp);
         }
         window_copy_copy_pipe(wme, s, prefix, command);
@@ -2415,7 +2390,7 @@ pub unsafe fn window_copy_cmd_pipe_no_clear(
         let mut command = null_mut();
         let arg1 = args_string((*cs).args, 1);
 
-        if !s.is_null() && !arg1.is_null() && *arg1 != b'\0' as i8 {
+        if !s.is_null() && !arg1.is_null() && *arg1 != b'\0' {
             command = format_single(null_mut(), arg1, c, s, wl, wp);
         }
         window_copy_pipe(wme, s, command);
@@ -2452,7 +2427,7 @@ pub unsafe fn window_copy_cmd_goto_line(cs: *mut window_copy_cmd_state) -> windo
         let wme: *mut window_mode_entry = (*cs).wme;
         let arg1 = args_string((*cs).args, 1);
 
-        if *arg1 != b'\0' as i8 {
+        if *arg1 != b'\0' {
             window_copy_goto_line(wme, arg1);
         }
         window_copy_cmd_action::WINDOW_COPY_CMD_NOTHING
@@ -2468,7 +2443,7 @@ pub unsafe fn window_copy_cmd_jump_backward(
         let mut np = (*wme).prefix;
         let arg1 = args_string((*cs).args, 1);
 
-        if *arg1 != b'\0' as i8 {
+        if *arg1 != b'\0' {
             (*data).jumptype = window_copy::WINDOW_COPY_JUMPBACKWARD;
             free_((*data).jumpchar);
             (*data).jumpchar = utf8_fromcstr(arg1);
@@ -2490,7 +2465,7 @@ pub unsafe fn window_copy_cmd_jump_forward(
         let mut np = (*wme).prefix;
         let arg1 = args_string((*cs).args, 1);
 
-        if *arg1 != b'\0' as i8 {
+        if *arg1 != b'\0' {
             (*data).jumptype = window_copy::WINDOW_COPY_JUMPFORWARD;
             free_((*data).jumpchar);
             (*data).jumpchar = utf8_fromcstr(arg1);
@@ -2512,7 +2487,7 @@ pub unsafe fn window_copy_cmd_jump_to_backward(
         let mut np = (*wme).prefix;
         let arg1 = args_string((*cs).args, 1);
 
-        if *arg1 != b'\0' as i8 {
+        if *arg1 != b'\0' {
             (*data).jumptype = window_copy::WINDOW_COPY_JUMPTOBACKWARD;
             free_((*data).jumpchar);
             (*data).jumpchar = utf8_fromcstr(arg1);
@@ -2534,7 +2509,7 @@ pub unsafe fn window_copy_cmd_jump_to_forward(
         let mut np = (*wme).prefix;
         let arg1 = args_string((*cs).args, 1);
 
-        if *arg1 != b'\0' as i8 {
+        if *arg1 != b'\0' {
             (*data).jumptype = window_copy::WINDOW_COPY_JUMPTOFORWARD;
             free_((*data).jumpchar);
             (*data).jumpchar = utf8_fromcstr(arg1);
@@ -2708,7 +2683,7 @@ pub unsafe fn window_copy_cmd_search_backward_incremental(
             (*data).oy = (*data).searcho as u32;
             action = window_copy_cmd_action::WINDOW_COPY_CMD_REDRAW;
         }
-        if *arg1 == b'\0' as i8 {
+        if *arg1 == b'\0' {
             window_copy_clear_marks(wme);
             return window_copy_cmd_action::WINDOW_COPY_CMD_REDRAW;
         }
@@ -2765,7 +2740,7 @@ pub unsafe fn window_copy_cmd_search_forward_incremental(
             (*data).oy = (*data).searcho as u32;
             action = window_copy_cmd_action::WINDOW_COPY_CMD_REDRAW;
         }
-        if *arg1 == b'\0' as i8 {
+        if *arg1 == b'\0' {
             window_copy_clear_marks(wme);
             return window_copy_cmd_action::WINDOW_COPY_CMD_REDRAW;
         }
@@ -2832,7 +2807,7 @@ struct window_copy_cmd_table_entry {
     f: unsafe fn(*mut window_copy_cmd_state) -> window_copy_cmd_action,
 }
 
-static window_copy_cmd_table: [window_copy_cmd_table_entry; 85] = [
+static WINDOW_COPY_CMD_TABLE: [window_copy_cmd_table_entry; 85] = [
     window_copy_cmd_table_entry {
         command: SyncCharPtr::new(c"append-selection"),
         minargs: 0,
@@ -3464,7 +3439,7 @@ pub unsafe fn window_copy_command(
         cs.wl = wl;
 
         let mut action = window_copy_cmd_action::WINDOW_COPY_CMD_NOTHING;
-        for window_copy_cmd_table_i in &window_copy_cmd_table {
+        for window_copy_cmd_table_i in &WINDOW_COPY_CMD_TABLE {
             if libc::strcmp(window_copy_cmd_table_i.command.as_ptr(), command) == 0 {
                 if count - 1 < window_copy_cmd_table_i.minargs
                     || count - 1 > window_copy_cmd_table_i.maxargs
@@ -3477,7 +3452,7 @@ pub unsafe fn window_copy_command(
             }
         }
 
-        if libc::strncmp(command, c"search-".as_ptr(), 7) != 0 && !(*data).searchmark.is_null() {
+        if libc::strncmp(command, c!("search-"), 7) != 0 && !(*data).searchmark.is_null() {
             let keys = modekey::try_from(options_get_number_(
                 (*(*(*wme).wp).window).options,
                 c"mode-keys",
@@ -3709,8 +3684,8 @@ pub unsafe fn window_copy_search_lr_regex(
         }
 
         /* Need to look at the entire string. */
-        let mut buf = xmalloc(size as usize).cast::<i8>().as_ptr();
-        *buf = b'\0' as i8;
+        let mut buf = xmalloc(size as usize).cast::<u8>().as_ptr();
+        *buf = b'\0';
         buf = window_copy_stringify(gd, py, first, (*gd).sx, buf, &raw mut size);
         let mut len = (*gd).sx - first;
         let endline = (*gd).hsize + (*gd).sy - 1;
@@ -3787,8 +3762,8 @@ pub unsafe fn window_copy_search_rl_regex(
         }
 
         /* Need to look at the entire string. */
-        let mut buf = xmalloc(size as usize).cast::<i8>().as_ptr();
-        *buf = b'\0' as i8;
+        let mut buf = xmalloc(size as usize).cast::<u8>().as_ptr();
+        *buf = b'\0';
         buf = window_copy_stringify(gd, py, first, (*gd).sx, buf, &raw mut size);
         let mut len = (*gd).sx - first;
         let endline = (*gd).hsize + (*gd).sy - 1;
@@ -3820,8 +3795,8 @@ pub unsafe fn window_copy_cellstring(
     px: u32,
     size: *mut usize,
     allocated: *mut i32,
-) -> *mut c_char {
-    static mut ud: utf8_data = unsafe { zeroed() };
+) -> *mut u8 {
+    static mut UD: utf8_data = unsafe { zeroed() };
 
     unsafe {
         // struct grid_cell_entry *gce;
@@ -3829,7 +3804,7 @@ pub unsafe fn window_copy_cellstring(
         if px >= (*gl).cellsize {
             *size = 1;
             *allocated = 0;
-            return c" ".as_ptr() as *mut c_char; // TODO think of a better type-safe way to represent returning a MaybeAllocated type
+            return c!(" ") as *mut u8; // TODO think of a better type-safe way to represent returning a MaybeAllocated type
         }
 
         let gce = (*gl).celldata.add(px as usize);
@@ -3846,18 +3821,18 @@ pub unsafe fn window_copy_cellstring(
 
         utf8_to_data(
             (*(*gl).extddata.add((*gce).union_.offset as usize)).data,
-            &raw mut ud,
+            &raw mut UD,
         );
-        if ud.size == 0 {
+        if UD.size == 0 {
             *size = 0;
             *allocated = 0;
             return null_mut();
         }
-        *size = ud.size as usize;
+        *size = UD.size as usize;
         *allocated = 1;
 
-        let copy: *mut i8 = xmalloc(ud.size as usize).as_ptr().cast();
-        libc::memcpy(copy.cast(), (&raw const ud.data).cast(), ud.size as usize);
+        let copy: *mut u8 = xmalloc(UD.size as usize).as_ptr().cast();
+        libc::memcpy(copy.cast(), (&raw const UD.data).cast(), UD.size as usize);
         copy
     }
 }
@@ -3872,7 +3847,7 @@ pub unsafe fn window_copy_last_regex(
     mut len: u32,
     ppx: *mut u32,
     psx: *mut u32,
-    buf: *const c_char,
+    buf: *const u8,
     preg: *const libc::regex_t,
     eflags: i32,
 ) -> i32 {
@@ -3945,9 +3920,9 @@ pub unsafe fn window_copy_stringify(
     py: u32,
     first: u32,
     last: u32,
-    mut buf: *mut c_char,
+    mut buf: *mut u8,
     size: *mut u32,
-) -> *mut c_char {
+) -> *mut u8 {
     unsafe {
         let ax = 0;
         let mut bx = 0;
@@ -3983,21 +3958,20 @@ pub unsafe fn window_copy_stringify(
                 free_(d);
             }
         }
-        *buf.add(newsize as usize - 1) = b'\0' as i8;
+        *buf.add(newsize as usize - 1) = b'\0';
 
         *size = newsize;
         buf
     }
 }
 
-/* Map start of C string containing UTF-8 data to grid cell position. */
-
+/// Map start of C string containing UTF-8 data to grid cell position.
 pub unsafe fn window_copy_cstrtocellpos(
     gd: *mut grid,
     ncells: u32,
     ppx: *mut u32,
     ppy: *mut u32,
-    str: *const c_char,
+    str: *const u8,
 ) {
     unsafe {
         let mut ccell: u32 = 0;
@@ -4013,7 +3987,7 @@ pub unsafe fn window_copy_cstrtocellpos(
 
         #[repr(C)]
         struct cell {
-            d: *const c_char,
+            d: *const u8,
             dlen: usize,
             allocated: i32,
         };
@@ -4048,7 +4022,7 @@ pub unsafe fn window_copy_cstrtocellpos(
             let mut pos = 0;
             match_ = 1;
             while ccell < ncells {
-                if *str.add(pos) == b'\0' as i8 {
+                if *str.add(pos) == b'\0' {
                     match_ = 0;
                     break;
                 }
@@ -4139,10 +4113,10 @@ pub unsafe fn window_copy_move_right(s: *mut screen, fx: *mut u32, fy: *mut u32,
     }
 }
 
-pub unsafe fn window_copy_is_lowercase(mut ptr: *const c_char) -> bool {
+pub unsafe fn window_copy_is_lowercase(mut ptr: *const u8) -> bool {
     unsafe {
-        while *ptr != b'\0' as i8 {
-            if *ptr as u8 != (*ptr as u8).to_ascii_lowercase() {
+        while *ptr != b'\0' {
+            if *ptr != (*ptr).to_ascii_lowercase() {
                 return false;
             }
             ptr = ptr.add(1);
@@ -4255,7 +4229,7 @@ pub unsafe fn window_copy_search_jump(
         let mut sbuf = null_mut();
         if regex != 0 {
             sbuf = xmalloc(ssize as usize).as_ptr().cast();
-            *sbuf = b'\0' as i8;
+            *sbuf = b'\0';
             sbuf = window_copy_stringify(sgd, 0, 0, (*sgd).sx, sbuf, &raw mut ssize);
             if cis != 0 {
                 cflags |= REG_ICASE;
@@ -4403,7 +4377,7 @@ pub unsafe fn window_copy_search(
         let mut ss: screen = zeroed();
         let mut ctx: screen_write_ctx = zeroed();
         let gd: *mut grid = (*s).grid;
-        let str: *mut c_char = (*data).searchstr;
+        let str: *mut u8 = (*data).searchstr;
         let mut at: u32 = 0;
         let mut endline: u32 = 0;
         let mut fx: u32 = 0;
@@ -4414,7 +4388,7 @@ pub unsafe fn window_copy_search(
         let mut visible_only: i32 = 0;
         let mut wrapflag: i32 = 0;
 
-        if regex != 0 && *str.add(libc::strcspn(str, c"^$*+()?[].\\".as_ptr())) == b'\0' as i8 {
+        if regex != 0 && *str.add(libc::strcspn(str, c!("^$*+()?[].\\"))) == b'\0' {
             regex = 0;
         }
 
@@ -4450,7 +4424,7 @@ pub unsafe fn window_copy_search(
         screen_write_nputs!(
             &raw mut ctx,
             -1,
-            &raw const grid_default_cell,
+            &raw const GRID_DEFAULT_CELL,
             "{}",
             _s(str),
         );
@@ -4635,7 +4609,7 @@ pub unsafe fn window_copy_search_marks(
                 screen_write_nputs!(
                     &raw mut ctx,
                     -1,
-                    &raw const grid_default_cell,
+                    &raw const GRID_DEFAULT_CELL,
                     "{}",
                     _s((*data).searchstr),
                 );
@@ -4649,7 +4623,7 @@ pub unsafe fn window_copy_search_marks(
 
             if regex != 0 {
                 sbuf = xmalloc(ssize as usize).as_ptr().cast();
-                *sbuf = b'\0' as i8;
+                *sbuf = b'\0';
                 sbuf = window_copy_stringify(
                     (*ssp).grid,
                     0,
@@ -4805,10 +4779,10 @@ pub unsafe fn window_copy_search_down(wme: *mut window_mode_entry, regex: i32) -
     unsafe { window_copy_search(wme, 1, regex) }
 }
 
-pub unsafe fn window_copy_goto_line(wme: *mut window_mode_entry, linestr: *const c_char) {
+pub unsafe fn window_copy_goto_line(wme: *mut window_mode_entry, linestr: *const u8) {
     unsafe {
         let data: *mut window_copy_mode_data = (*wme).data.cast();
-        let mut errstr: *const c_char = null();
+        let mut errstr: *const u8 = null();
 
         let Ok(mut lineno) = strtonum(linestr, -1, i32::MAX) else {
             return;
@@ -4851,7 +4825,7 @@ pub unsafe fn window_copy_match_start_end(
     }
 }
 
-pub unsafe fn window_copy_match_at_cursor(data: *mut window_copy_mode_data) -> *mut c_char {
+pub unsafe fn window_copy_match_at_cursor(data: *mut window_copy_mode_data) -> *mut u8 {
     unsafe {
         let gd: *mut grid = (*(*data).backing).grid;
         let mut gc: grid_cell = zeroed();
@@ -4862,7 +4836,7 @@ pub unsafe fn window_copy_match_at_cursor(data: *mut window_copy_mode_data) -> *
         let mut px: u32 = 0;
         let mut py: u32 = 0;
         let sx = screen_size_x((*data).backing);
-        let mut buf: *mut c_char = null_mut();
+        let mut buf: *mut u8 = null_mut();
         let mut len: usize = 0;
 
         if (*data).searchmark.is_null() {
@@ -4904,7 +4878,7 @@ pub unsafe fn window_copy_match_at_cursor(data: *mut window_copy_mode_data) -> *
             len += gc.data.size as usize;
         }
         if len != 0 {
-            *buf.add(len) = b'\0' as i8;
+            *buf.add(len) = b'\0';
         }
         buf
     }
@@ -5038,34 +5012,24 @@ pub unsafe fn window_copy_write_line(
         let mut mgc: grid_cell = zeroed();
         let mut cgc: grid_cell = zeroed();
         let mut mkgc: grid_cell = zeroed();
-        let mut hdr: [c_char; 512] = zeroed();
-        let mut tmp: [c_char; 512] = zeroed();
-        let mut t: *mut i8 = null_mut();
+        let mut hdr: [u8; 512] = zeroed();
+        let mut tmp: [u8; 512] = zeroed();
+        let mut t: *mut u8 = null_mut();
         let mut size: usize = 0;
         let hsize = screen_hsize((*data).backing);
 
-        style_apply(&raw mut gc, oo, c"mode-style".as_ptr(), null_mut());
+        style_apply(&raw mut gc, oo, c!("mode-style"), null_mut());
         gc.flags |= grid_flag::NOPALETTE;
-        style_apply(
-            &raw mut mgc,
-            oo,
-            c"copy-mode-match-style".as_ptr(),
-            null_mut(),
-        );
+        style_apply(&raw mut mgc, oo, c!("copy-mode-match-style"), null_mut());
         mgc.flags |= grid_flag::NOPALETTE;
         style_apply(
             &raw mut cgc,
             oo,
-            c"copy-mode-current-match-style".as_ptr(),
+            c!("copy-mode-current-match-style"),
             null_mut(),
         );
         cgc.flags |= grid_flag::NOPALETTE;
-        style_apply(
-            &raw mut mkgc,
-            oo,
-            c"copy-mode-mark-style".as_ptr(),
-            null_mut(),
-        );
+        style_apply(&raw mut mkgc, oo, c!("copy-mode-mark-style"), null_mut());
         mkgc.flags |= grid_flag::NOPALETTE;
 
         if py == 0 && (*s).rupper < (*s).rlower && (*data).hide_position == 0 {
@@ -5091,16 +5055,26 @@ pub unsafe fn window_copy_write_line(
                         (&raw mut hdr).cast(),
                         512,
                         "(timed out) {}",
-                        _s(&raw const tmp as _)
+                        _s(&raw const tmp as *mut u8)
                     )
                     .unwrap() as usize;
                 } else {
-                    size = xsnprintf_!((&raw mut hdr).cast(), 512, "{}", _s(&raw const tmp as _))
-                        .unwrap() as usize;
+                    size = xsnprintf_!(
+                        (&raw mut hdr).cast(),
+                        512,
+                        "{}",
+                        _s(&raw const tmp as *const u8)
+                    )
+                    .unwrap() as usize;
                 }
             } else if (*data).searchcount == -1 {
-                size = xsnprintf_!((&raw mut hdr).cast(), 512, "{}", _s(&raw const tmp as _))
-                    .unwrap() as usize;
+                size = xsnprintf_!(
+                    (&raw mut hdr).cast(),
+                    512,
+                    "{}",
+                    _s(&raw const tmp as *const u8)
+                )
+                .unwrap() as usize;
             } else {
                 size = xsnprintf_!(
                     (&raw mut hdr).cast(),
@@ -5108,7 +5082,7 @@ pub unsafe fn window_copy_write_line(
                     "({}{} results) {}",
                     (*data).searchcount,
                     if (*data).searchmore != 0 { "+" } else { "" },
-                    _s(&raw const tmp as _)
+                    _s(&raw const tmp as *const u8)
                 )
                 .unwrap() as usize;
             }
@@ -5116,7 +5090,7 @@ pub unsafe fn window_copy_write_line(
                 size = screen_size_x(s) as usize;
             }
             screen_write_cursormove(ctx, screen_size_x(s) as i32 - size as i32, 0, 0);
-            screen_write_puts!(ctx, &raw mut gc, "{}", _s((&raw const hdr).cast()));
+            screen_write_puts!(ctx, &raw mut gc, "{}", _s((&raw const hdr).cast::<u8>()));
         } else {
             size = 0;
         }
@@ -5136,7 +5110,7 @@ pub unsafe fn window_copy_write_line(
 
         if py == (*data).cy && (*data).cx == screen_size_x(s) {
             screen_write_cursormove(ctx, screen_size_x(s) as i32 - 1, py as i32, 0);
-            screen_write_putc(ctx, &raw const grid_default_cell, b'$');
+            screen_write_putc(ctx, &raw const GRID_DEFAULT_CELL, b'$');
         }
     }
 }
@@ -5230,7 +5204,7 @@ pub unsafe fn window_copy_synchronize_cursor_end(
                     } else {
                         /* Left to right selection. */
                         if xx >= window_copy_find_length(wme, yy)
-                            || window_copy_in_set(wme, xx + 1, yy, WHITESPACE.as_ptr()) == 0
+                            || window_copy_in_set(wme, xx + 1, yy, WHITESPACE) == 0
                         {
                             window_copy_cursor_next_word_end_pos(
                                 wme,
@@ -5422,7 +5396,7 @@ pub unsafe fn window_copy_set_selection(
         }
 
         /* Set colours and selection. */
-        style_apply(&raw mut gc, oo, c"mode-style".as_ptr(), null_mut());
+        style_apply(&raw mut gc, oo, c!("mode-style"), null_mut());
         gc.flags |= grid_flag::NOPALETTE;
         screen_set_selection(
             s,
@@ -5459,16 +5433,13 @@ pub unsafe fn window_copy_set_selection(
     }
 }
 
-pub unsafe fn window_copy_get_selection(
-    wme: *mut window_mode_entry,
-    len: *mut usize,
-) -> *mut c_char {
+pub unsafe fn window_copy_get_selection(wme: *mut window_mode_entry, len: *mut usize) -> *mut u8 {
     unsafe {
         let wp: *mut window_pane = (*wme).wp;
         let data: *mut window_copy_mode_data = (*wme).data.cast();
         let s: *mut screen = &raw mut (*data).screen;
 
-        let mut buf: *mut c_char = null_mut();
+        let mut buf: *mut u8 = null_mut();
         let mut off: usize = 0;
 
         // u_int i, xx, yy, sx, sy, ex, ey, ey_last;
@@ -5492,7 +5463,7 @@ pub unsafe fn window_copy_get_selection(
         buf = xmalloc(1).as_ptr().cast();
         off = 0;
 
-        *buf = b'\0' as i8;
+        *buf = b'\0';
 
         /*
          * The selection extends from selx,sely to (adjusted) cx,cy on
@@ -5604,7 +5575,7 @@ pub unsafe fn window_copy_get_selection(
 
 pub unsafe fn window_copy_copy_buffer(
     wme: *mut window_mode_entry,
-    prefix: *const c_char,
+    prefix: *const u8,
     buf: *mut c_void,
     len: usize,
 ) {
@@ -5612,9 +5583,9 @@ pub unsafe fn window_copy_copy_buffer(
         let wp: *mut window_pane = (*wme).wp;
         let mut ctx: screen_write_ctx = zeroed();
 
-        if options_get_number_(global_options, c"set-clipboard") != 0 {
+        if options_get_number_(GLOBAL_OPTIONS, c"set-clipboard") != 0 {
             screen_write_start_pane(&raw mut ctx, wp, null_mut());
-            screen_write_setselection(&raw mut ctx, c"".as_ptr(), buf.cast(), len as u32);
+            screen_write_setselection(&raw mut ctx, c!(""), buf.cast(), len as u32);
             screen_write_stop(&raw mut ctx);
             notify_pane(c"pane-set-clipboard", wp);
         }
@@ -5626,15 +5597,15 @@ pub unsafe fn window_copy_copy_buffer(
 pub unsafe fn window_copy_pipe_run(
     wme: *mut window_mode_entry,
     s: *mut session,
-    mut cmd: *const c_char,
+    mut cmd: *const u8,
     len: *mut usize,
 ) -> *mut c_void {
     unsafe {
         let buf = window_copy_get_selection(wme, len);
-        if cmd.is_null() || *cmd == b'\0' as i8 {
-            cmd = options_get_string_(global_options, c"copy-command");
+        if cmd.is_null() || *cmd == b'\0' {
+            cmd = options_get_string_(GLOBAL_OPTIONS, c"copy-command");
         }
-        if !cmd.is_null() && *cmd != b'\0' as i8 {
+        if !cmd.is_null() && *cmd != b'\0' {
             let job = job_run(
                 cmd,
                 0,
@@ -5656,7 +5627,7 @@ pub unsafe fn window_copy_pipe_run(
     }
 }
 
-pub unsafe fn window_copy_pipe(wme: *mut window_mode_entry, s: *mut session, cmd: *const c_char) {
+pub unsafe fn window_copy_pipe(wme: *mut window_mode_entry, s: *mut session, cmd: *const u8) {
     unsafe {
         let mut len: usize = 0;
 
@@ -5667,8 +5638,8 @@ pub unsafe fn window_copy_pipe(wme: *mut window_mode_entry, s: *mut session, cmd
 pub unsafe fn window_copy_copy_pipe(
     wme: *mut window_mode_entry,
     s: *mut session,
-    prefix: *const c_char,
-    cmd: *const c_char,
+    prefix: *const u8,
+    cmd: *const u8,
 ) {
     unsafe {
         let mut len: usize = 0;
@@ -5679,7 +5650,7 @@ pub unsafe fn window_copy_copy_pipe(
     }
 }
 
-pub unsafe fn window_copy_copy_selection(wme: *mut window_mode_entry, prefix: *const c_char) {
+pub unsafe fn window_copy_copy_selection(wme: *mut window_mode_entry, prefix: *const u8) {
     unsafe {
         let mut len: usize = 0;
         let buf = window_copy_get_selection(wme, &raw mut len);
@@ -5693,8 +5664,8 @@ pub unsafe fn window_copy_append_selection(wme: *mut window_mode_entry) {
     unsafe {
         let wp: *mut window_pane = (*wme).wp;
         let mut pb: *mut paste_buffer = null_mut();
-        let mut bufdata: *const c_char = null_mut();
-        let mut bufname: *const c_char = null();
+        let mut bufdata: *const u8 = null_mut();
+        let mut bufname: *const u8 = null();
         let mut ctx: screen_write_ctx = zeroed();
         let mut bufsize = 0;
         let mut len: usize = 0;
@@ -5703,9 +5674,9 @@ pub unsafe fn window_copy_append_selection(wme: *mut window_mode_entry) {
             return;
         }
 
-        if options_get_number_(global_options, c"set-clipboard") != 0 {
+        if options_get_number_(GLOBAL_OPTIONS, c"set-clipboard") != 0 {
             screen_write_start_pane(&raw mut ctx, wp, null_mut());
-            screen_write_setselection(&raw mut ctx, c"".as_ptr(), buf.cast(), len as u32);
+            screen_write_setselection(&raw mut ctx, c!(""), buf.cast(), len as u32);
             screen_write_stop(&raw mut ctx);
             notify_pane(c"pane-set-clipboard", wp);
         }
@@ -5726,7 +5697,7 @@ pub unsafe fn window_copy_append_selection(wme: *mut window_mode_entry) {
 
 pub unsafe fn window_copy_copy_line(
     wme: *mut window_mode_entry,
-    buf: *mut *mut c_char,
+    buf: *mut *mut u8,
     off: *mut usize,
     sy: u32,
     mut sx: u32,
@@ -5797,7 +5768,7 @@ pub unsafe fn window_copy_copy_line(
         /* Only add a newline if the line wasn't wrapped. */
         if wrapped == 0 || ex != xx {
             *buf = xrealloc((*buf).cast(), (*off) + 1).as_ptr().cast();
-            *(*buf).add(*off) = b'\n' as i8;
+            *(*buf).add(*off) = b'\n';
             (*off) += 1;
         }
     }
@@ -5825,7 +5796,7 @@ pub unsafe fn window_copy_in_set(
     wme: *mut window_mode_entry,
     px: u32,
     py: u32,
-    set: *const c_char,
+    set: *const u8,
 ) -> i32 {
     unsafe {
         let data: *mut window_copy_mode_data = (*wme).data.cast();
@@ -6257,7 +6228,7 @@ pub unsafe fn window_copy_cursor_jump_to_back(wme: *mut window_mode_entry) {
     }
 }
 
-pub unsafe fn window_copy_cursor_next_word(wme: *mut window_mode_entry, separators: *const c_char) {
+pub unsafe fn window_copy_cursor_next_word(wme: *mut window_mode_entry, separators: *const u8) {
     unsafe {
         let data: *mut window_copy_mode_data = (*wme).data.cast();
         let back_s: *mut screen = (*data).backing;
@@ -6288,7 +6259,7 @@ pub unsafe fn window_copy_cursor_next_word(wme: *mut window_mode_entry, separato
 
 pub unsafe fn window_copy_cursor_next_word_end_pos(
     wme: *mut window_mode_entry,
-    separators: *const c_char,
+    separators: *const u8,
     ppx: *mut u32,
     ppy: *mut u32,
 ) {
@@ -6307,7 +6278,7 @@ pub unsafe fn window_copy_cursor_next_word_end_pos(
         if modekey::try_from(options_get_number_(oo, c"mode-keys") as i32)
             == Ok(modekey::MODEKEY_VI)
         {
-            if grid_reader_in_set(&raw mut gr, WHITESPACE.as_ptr()) == 0 {
+            if grid_reader_in_set(&raw mut gr, WHITESPACE) == 0 {
                 grid_reader_cursor_right(&raw mut gr, 0, 0);
             }
             grid_reader_cursor_next_word_end(&raw mut gr, separators);
@@ -6325,7 +6296,7 @@ pub unsafe fn window_copy_cursor_next_word_end_pos(
 
 pub unsafe fn window_copy_cursor_next_word_end(
     wme: *mut window_mode_entry,
-    separators: *const c_char,
+    separators: *const u8,
     no_reset: i32,
 ) {
     unsafe {
@@ -6344,7 +6315,7 @@ pub unsafe fn window_copy_cursor_next_word_end(
         if modekey::try_from(options_get_number_(oo, c"mode-keys") as i32)
             == Ok(modekey::MODEKEY_VI)
         {
-            if grid_reader_in_set(&raw mut gr, WHITESPACE.as_ptr()) == 0 {
+            if grid_reader_in_set(&raw mut gr, WHITESPACE) == 0 {
                 grid_reader_cursor_right(&raw mut gr, 0, 0);
             }
             grid_reader_cursor_next_word_end(&raw mut gr, separators);
@@ -6370,7 +6341,7 @@ pub unsafe fn window_copy_cursor_next_word_end(
 
 pub unsafe fn window_copy_cursor_previous_word_pos(
     wme: *mut window_mode_entry,
-    separators: *const c_char,
+    separators: *const u8,
     ppx: *mut u32,
     ppy: *mut u32,
 ) {
@@ -6400,7 +6371,7 @@ pub unsafe fn window_copy_cursor_previous_word_pos(
 
 pub unsafe fn window_copy_cursor_previous_word(
     wme: *mut window_mode_entry,
-    separators: *const c_char,
+    separators: *const u8,
     already: i32,
 ) {
     unsafe {
@@ -6433,7 +6404,7 @@ pub unsafe fn window_copy_cursor_previous_word(
 pub unsafe fn window_copy_cursor_prompt(
     wme: *mut window_mode_entry,
     direction: i32,
-    args: *const c_char,
+    args: *const u8,
 ) {
     unsafe {
         let data: *mut window_copy_mode_data = (*wme).data.cast();
@@ -6590,7 +6561,7 @@ pub unsafe fn window_copy_move_mouse(m: *mut mouse_event) {
         if wme.is_null() {
             return;
         }
-        if (*wme).mode != &window_copy_mode && (*wme).mode != &window_view_mode {
+        if (*wme).mode != &WINDOW_COPY_MODE && (*wme).mode != &WINDOW_VIEW_MODE {
             return;
         }
 
@@ -6620,7 +6591,7 @@ pub unsafe fn window_copy_start_drag(c: *mut client, m: *mut mouse_event) {
         if wme.is_null() {
             return;
         }
-        if (*wme).mode != &window_copy_mode && (*wme).mode != &window_view_mode {
+        if (*wme).mode != &WINDOW_COPY_MODE && (*wme).mode != &WINDOW_VIEW_MODE {
             return;
         }
 
@@ -6686,7 +6657,7 @@ pub unsafe fn window_copy_drag_update(c: *mut client, m: *mut mouse_event) {
         if wme.is_null() {
             return;
         }
-        if (*wme).mode != &window_copy_mode && (*wme).mode != &window_view_mode {
+        if (*wme).mode != &WINDOW_COPY_MODE && (*wme).mode != &WINDOW_VIEW_MODE {
             return;
         }
 
@@ -6728,7 +6699,7 @@ pub unsafe fn window_copy_drag_release(c: *mut client, m: *mut mouse_event) {
         if wme.is_null() {
             return;
         }
-        if (*wme).mode != &raw const window_copy_mode && (*wme).mode != &raw const window_view_mode
+        if (*wme).mode != &raw const WINDOW_COPY_MODE && (*wme).mode != &raw const WINDOW_VIEW_MODE
         {
             return;
         }

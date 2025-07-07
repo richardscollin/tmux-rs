@@ -13,20 +13,20 @@
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 use crate::*;
 
-const SPLIT_WINDOW_TEMPLATE: &CStr = c"#{session_name}:#{window_index}.#{pane_index}";
+const SPLIT_WINDOW_TEMPLATE: *const u8 = c!("#{session_name}:#{window_index}.#{pane_index}");
 
-pub static mut cmd_split_window_entry: cmd_entry = cmd_entry {
-    name: c"split-window".as_ptr(),
-    alias: c"splitw".as_ptr(),
+pub static CMD_SPLIT_WINDOW_ENTRY: cmd_entry = cmd_entry {
+    name: SyncCharPtr::new(c"split-window"),
+    alias: SyncCharPtr::new(c"splitw"),
 
     args: args_parse::new(c"bc:de:fF:hIl:p:Pt:vZ", 0, -1, None),
-    usage: c"[-bdefhIPvZ] [-c start-directory] [-e environment] [-F format] [-l size] [-t target-pane][shell-command]".as_ptr(),
+    usage: SyncCharPtr::new(c"[-bdefhIPvZ] [-c start-directory] [-e environment] [-F format] [-l size] [-t target-pane][shell-command]"),
 
     target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_PANE, 0),
 
     flags: cmd_flag::empty(),
-    exec: Some(cmd_split_window_exec),
-    ..unsafe { zeroed() }
+    exec: cmd_split_window_exec,
+    source: cmd_entry_flag::zeroed(),
 };
 
 unsafe fn cmd_split_window_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retval {
@@ -39,14 +39,7 @@ unsafe fn cmd_split_window_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
         let wl = (*target).wl;
         let w = (*wl).window;
         let wp = (*target).wp;
-        //*new_wp;
-        //enum layout_type type;
-        //struct layout_cell *lc;
-        //int size, flags, input;
-        //const char *template;
-        //char *cause = NULL, *cp;
         let mut cause = null_mut();
-        //struct args_value *av;
         let count = args_count(args);
         let mut curval = 0;
 
@@ -184,7 +177,7 @@ unsafe fn cmd_split_window_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
         if args_has_(args, 'P') {
             let mut template = args_get_(args, 'F');
             if template.is_null() {
-                template = SPLIT_WINDOW_TEMPLATE.as_ptr();
+                template = SPLIT_WINDOW_TEMPLATE;
             }
             let cp = format_single(item, template, tc, s, wl, new_wp);
             cmdq_print!(item, "{}", _s(cp));

@@ -15,18 +15,18 @@ use crate::*;
 
 use crate::compat::queue::tailq_empty;
 
-pub static mut cmd_resize_pane_entry: cmd_entry = cmd_entry {
-    name: c"resize-pane".as_ptr(),
-    alias: c"resizep".as_ptr(),
+pub static CMD_RESIZE_PANE_ENTRY: cmd_entry = cmd_entry {
+    name: SyncCharPtr::new(c"resize-pane"),
+    alias: SyncCharPtr::new(c"resizep"),
 
     args: args_parse::new(c"DLMRTt:Ux:y:Z", 0, 1, None),
-    usage: c"[-DLMRTUZ] [-x width] [-y height] [-t target-pane] [adjustment]".as_ptr(),
+    usage: SyncCharPtr::new(c"[-DLMRTUZ] [-x width] [-y height] [-t target-pane] [adjustment]"),
 
     target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_PANE, 0),
 
     flags: cmd_flag::CMD_AFTERHOOK,
-    exec: Some(cmd_resize_pane_exec),
-    ..unsafe { zeroed() }
+    exec: cmd_resize_pane_exec,
+    source: cmd_entry_flag::zeroed(),
 };
 
 unsafe fn cmd_resize_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retval {
@@ -39,8 +39,8 @@ unsafe fn cmd_resize_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
         let w = (*wl).window;
         let c = cmdq_get_client(item);
         let mut s = (*target).s;
-        let mut cause: *mut c_char = null_mut();
-        let mut errstr: *const c_char = null();
+        let mut cause: *mut u8 = null_mut();
+        let mut errstr: *const u8 = null();
         let mut adjust = 0u32;
         let mut x: i32 = 0;
         let mut y: i32 = 0;
@@ -166,9 +166,9 @@ unsafe fn cmd_resize_pane_mouse_update(c: *mut client, m: *mut mouse_event) {
         let mut ly: u32 = 0;
         let mut x: u32 = 0;
         let mut lx: u32 = 0;
-        const offsets: [[c_int; 2]; 5] = [[0, 0], [0, 1], [1, 0], [0, -1], [-1, 0]];
+        const OFFSETS: [[c_int; 2]; 5] = [[0, 0], [0, 1], [1, 0], [0, -1], [-1, 0]];
         let mut ncells: u32 = 0;
-        let mut cells: [*mut layout_cell; offsets.len()] = zeroed();
+        let mut cells: [*mut layout_cell; OFFSETS.len()] = zeroed();
         let mut resizes: u32 = 0;
 
         let wl: *mut winlink = transmute_ptr(cmd_mouse_window(m, null_mut()));
@@ -193,7 +193,7 @@ unsafe fn cmd_resize_pane_mouse_update(c: *mut client, m: *mut mouse_event) {
             ly = ((*m).statusat - 1) as u32;
         }
 
-        for offset in offsets {
+        for offset in OFFSETS {
             let mut lc = layout_search_by_border(
                 (*w).layout_root,
                 (lx as i32 + offset[0]).max(0) as u32,

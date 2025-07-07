@@ -15,30 +15,31 @@ use crate::*;
 
 use crate::compat::queue::tailq_foreach;
 
-pub static mut cmd_detach_client_entry: cmd_entry = cmd_entry {
-    name: c"detach-client".as_ptr(),
-    alias: c"detach".as_ptr(),
+pub static CMD_DETACH_CLIENT_ENTRY: cmd_entry = cmd_entry {
+    name: SyncCharPtr::new(c"detach-client"),
+    alias: SyncCharPtr::new(c"detach"),
 
     args: args_parse::new(c"aE:s:t:P", 0, 0, None),
-    usage: c"[-aP] [-E shell-command] [-s target-session] [-t target-client]".as_ptr(),
+    usage: SyncCharPtr::new(c"[-aP] [-E shell-command] [-s target-session] [-t target-client]"),
 
     source: cmd_entry_flag::new(b's', cmd_find_type::CMD_FIND_SESSION, CMD_FIND_CANFAIL),
 
     flags: cmd_flag::CMD_READONLY.union(cmd_flag::CMD_CLIENT_TFLAG),
-    exec: Some(cmd_detach_client_exec),
-    ..unsafe { zeroed() }
+    exec: cmd_detach_client_exec,
+    target: cmd_entry_flag::zeroed(),
 };
 
-pub static mut cmd_suspend_client_entry: cmd_entry = cmd_entry {
-    name: c"suspend-client".as_ptr(),
-    alias: c"suspendc".as_ptr(),
+pub static CMD_SUSPEND_CLIENT_ENTRY: cmd_entry = cmd_entry {
+    name: SyncCharPtr::new(c"suspend-client"),
+    alias: SyncCharPtr::new(c"suspendc"),
 
     args: args_parse::new(c"t:", 0, 0, None),
-    usage: c"[-t target-client]".as_ptr(),
+    usage: SyncCharPtr::new(c"[-t target-client]"),
 
     flags: cmd_flag::CMD_CLIENT_TFLAG,
-    exec: Some(cmd_detach_client_exec),
-    ..unsafe { zeroed() }
+    exec: cmd_detach_client_exec,
+    source: cmd_entry_flag::zeroed(),
+    target: cmd_entry_flag::zeroed(),
 };
 
 pub unsafe fn cmd_detach_client_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retval {
@@ -48,7 +49,7 @@ pub unsafe fn cmd_detach_client_exec(self_: *mut cmd, item: *mut cmdq_item) -> c
         let tc = cmdq_get_target_client(item);
         let cmd = args_get(args, b'E');
 
-        if cmd_get_entry(self_) == &raw mut cmd_suspend_client_entry {
+        if std::ptr::eq(cmd_get_entry(self_), &CMD_SUSPEND_CLIENT_ENTRY) {
             server_client_suspend(tc);
             return cmd_retval::CMD_RETURN_NORMAL;
         }
@@ -65,7 +66,7 @@ pub unsafe fn cmd_detach_client_exec(self_: *mut cmd, item: *mut cmdq_item) -> c
             if s.is_null() {
                 return cmd_retval::CMD_RETURN_NORMAL;
             }
-            for loop_ in tailq_foreach(&raw mut clients).map(NonNull::as_ptr) {
+            for loop_ in tailq_foreach(&raw mut CLIENTS).map(NonNull::as_ptr) {
                 if (*loop_).session == s {
                     if !cmd.is_null() {
                         server_client_exec(loop_, cmd);
@@ -78,7 +79,7 @@ pub unsafe fn cmd_detach_client_exec(self_: *mut cmd, item: *mut cmdq_item) -> c
         }
 
         if args_has(args, b'a') != 0 {
-            for loop_ in tailq_foreach(&raw mut clients).map(NonNull::as_ptr) {
+            for loop_ in tailq_foreach(&raw mut CLIENTS).map(NonNull::as_ptr) {
                 if !(*loop_).session.is_null() && loop_ != tc {
                     if !cmd.is_null() {
                         server_client_exec(loop_, cmd);

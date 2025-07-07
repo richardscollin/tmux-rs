@@ -25,7 +25,7 @@ macro_rules! CONTROL_SHOULD_NOTIFY_CLIENT {
 
 pub unsafe fn control_notify_pane_mode_changed(pane: c_int) {
     unsafe {
-        for c in tailq_foreach(&raw mut clients).map(NonNull::as_ptr) {
+        for c in tailq_foreach(&raw mut CLIENTS).map(NonNull::as_ptr) {
             {
                 if !CONTROL_SHOULD_NOTIFY_CLIENT!(c) {
                     continue;
@@ -38,10 +38,12 @@ pub unsafe fn control_notify_pane_mode_changed(pane: c_int) {
 }
 
 pub unsafe fn control_notify_window_layout_changed(w: *mut window) {
-    let template = c"%layout-change #{window_id} #{window_layout} #{window_visible_layout} #{window_raw_flags}".as_ptr();
+    let template = c!(
+        "%layout-change #{window_id} #{window_layout} #{window_visible_layout} #{window_raw_flags}"
+    );
 
     unsafe {
-        for c in tailq_foreach(&raw mut clients).map(NonNull::as_ptr) {
+        for c in tailq_foreach(&raw mut CLIENTS).map(NonNull::as_ptr) {
             {
                 if !CONTROL_SHOULD_NOTIFY_CLIENT!(c) || (*c).session.is_null() {
                     continue;
@@ -72,7 +74,7 @@ pub unsafe fn control_notify_window_layout_changed(w: *mut window) {
 
 pub unsafe fn control_notify_window_pane_changed(w: *mut window) {
     unsafe {
-        for c in tailq_foreach(&raw mut clients).map(NonNull::as_ptr) {
+        for c in tailq_foreach(&raw mut CLIENTS).map(NonNull::as_ptr) {
             {
                 if !CONTROL_SHOULD_NOTIFY_CLIENT!(c) {
                     continue;
@@ -91,7 +93,7 @@ pub unsafe fn control_notify_window_pane_changed(w: *mut window) {
 
 pub unsafe fn control_notify_window_unlinked(s: *mut session, w: *mut window) {
     unsafe {
-        for c in tailq_foreach(&raw mut clients).map(NonNull::as_ptr) {
+        for c in tailq_foreach(&raw mut CLIENTS).map(NonNull::as_ptr) {
             {
                 if !CONTROL_SHOULD_NOTIFY_CLIENT!(c) || (*c).session.is_null() {
                     continue;
@@ -110,7 +112,7 @@ pub unsafe fn control_notify_window_unlinked(s: *mut session, w: *mut window) {
 
 pub unsafe fn control_notify_window_linked(s: *mut session, w: *mut window) {
     unsafe {
-        for c in tailq_foreach(&raw mut clients).map(NonNull::as_ptr) {
+        for c in tailq_foreach(&raw mut CLIENTS).map(NonNull::as_ptr) {
             {
                 if !CONTROL_SHOULD_NOTIFY_CLIENT!(c) || (*c).session.is_null() {
                     continue;
@@ -129,7 +131,7 @@ pub unsafe fn control_notify_window_linked(s: *mut session, w: *mut window) {
 
 pub unsafe fn control_notify_window_renamed(w: *mut window) {
     unsafe {
-        for c in tailq_foreach(&raw mut clients).map(NonNull::as_ptr) {
+        for c in tailq_foreach(&raw mut CLIENTS).map(NonNull::as_ptr) {
             {
                 if !CONTROL_SHOULD_NOTIFY_CLIENT!(c) || (*c).session.is_null() {
                     continue;
@@ -153,7 +155,7 @@ pub unsafe fn control_notify_client_session_changed(cc: *mut client) {
         }
         let s = (*cc).session;
 
-        for c in tailq_foreach(&raw mut clients).map(NonNull::as_ptr) {
+        for c in tailq_foreach(&raw mut CLIENTS).map(NonNull::as_ptr) {
             {
                 if !CONTROL_SHOULD_NOTIFY_CLIENT!(c) || (*c).session.is_null() {
                     continue;
@@ -177,7 +179,7 @@ pub unsafe fn control_notify_client_session_changed(cc: *mut client) {
 
 pub unsafe fn control_notify_client_detached(cc: *mut client) {
     unsafe {
-        for c in tailq_foreach(&raw mut clients).map(NonNull::as_ptr) {
+        for c in tailq_foreach(&raw mut CLIENTS).map(NonNull::as_ptr) {
             {
                 if CONTROL_SHOULD_NOTIFY_CLIENT!(c) {
                     control_write!(c, "%client-detached {}", _s((*cc).name));
@@ -189,7 +191,7 @@ pub unsafe fn control_notify_client_detached(cc: *mut client) {
 
 pub unsafe fn control_notify_session_renamed(s: *mut session) {
     unsafe {
-        for c in tailq_foreach(&raw mut clients).map(NonNull::as_ptr) {
+        for c in tailq_foreach(&raw mut CLIENTS).map(NonNull::as_ptr) {
             {
                 if !CONTROL_SHOULD_NOTIFY_CLIENT!(c) {
                     continue;
@@ -203,7 +205,7 @@ pub unsafe fn control_notify_session_renamed(s: *mut session) {
 
 pub unsafe fn control_notify_session_created(_: *mut session) {
     unsafe {
-        for c in tailq_foreach(&raw mut clients).map(NonNull::as_ptr) {
+        for c in tailq_foreach(&raw mut CLIENTS).map(NonNull::as_ptr) {
             {
                 if !CONTROL_SHOULD_NOTIFY_CLIENT!(c) {
                     continue;
@@ -217,7 +219,7 @@ pub unsafe fn control_notify_session_created(_: *mut session) {
 
 pub unsafe fn control_notify_session_closed(_: *mut session) {
     unsafe {
-        for c in tailq_foreach(&raw mut clients).map(NonNull::as_ptr) {
+        for c in tailq_foreach(&raw mut CLIENTS).map(NonNull::as_ptr) {
             {
                 if !CONTROL_SHOULD_NOTIFY_CLIENT!(c) {
                     continue;
@@ -231,7 +233,7 @@ pub unsafe fn control_notify_session_closed(_: *mut session) {
 
 pub unsafe fn control_notify_session_window_changed(s: *mut session) {
     unsafe {
-        for c in tailq_foreach(&raw mut clients).map(NonNull::as_ptr) {
+        for c in tailq_foreach(&raw mut CLIENTS).map(NonNull::as_ptr) {
             {
                 if !CONTROL_SHOULD_NOTIFY_CLIENT!(c) {
                     continue;
@@ -248,9 +250,9 @@ pub unsafe fn control_notify_session_window_changed(s: *mut session) {
     }
 }
 
-pub unsafe fn control_notify_paste_buffer_changed(name: *const c_char) {
+pub unsafe fn control_notify_paste_buffer_changed(name: *const u8) {
     unsafe {
-        for c in tailq_foreach(&raw mut clients).map(NonNull::as_ptr) {
+        for c in tailq_foreach(&raw mut CLIENTS).map(NonNull::as_ptr) {
             {
                 if !CONTROL_SHOULD_NOTIFY_CLIENT!(c) {
                     continue;
@@ -262,9 +264,9 @@ pub unsafe fn control_notify_paste_buffer_changed(name: *const c_char) {
     }
 }
 
-pub unsafe fn control_notify_paste_buffer_deleted(name: *const c_char) {
+pub unsafe fn control_notify_paste_buffer_deleted(name: *const u8) {
     unsafe {
-        for c in tailq_foreach(&raw mut clients).map(NonNull::as_ptr) {
+        for c in tailq_foreach(&raw mut CLIENTS).map(NonNull::as_ptr) {
             {
                 if !CONTROL_SHOULD_NOTIFY_CLIENT!(c) {
                     continue;

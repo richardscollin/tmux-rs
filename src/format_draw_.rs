@@ -28,7 +28,7 @@ struct format_range {
     end: u32,
     type_: style_range_type,
     argument: u32,
-    string: [c_char; 16],
+    string: [u8; 16],
     entry: tailq_entry<format_range>,
 }
 type format_ranges = tailq_head<format_range>;
@@ -851,17 +851,17 @@ unsafe fn format_draw_absolute_centre(
 
 // Get width and count of any leading #s.
 
-unsafe fn format_leading_hashes(cp: *const c_char, n: *mut u32, width: *mut u32) -> *const c_char {
+unsafe fn format_leading_hashes(cp: *const u8, n: *mut u32, width: *mut u32) -> *const u8 {
     unsafe {
         *n = 0;
-        while *cp.add(*n as usize) == b'#' as i8 {
+        while *cp.add(*n as usize) == b'#' {
             *n += 1;
         }
         if *n == 0 {
             *width = 0;
             return cp;
         }
-        if *cp.add(*n as usize) != b'[' as i8 {
+        if *cp.add(*n as usize) != b'[' {
             if *n % 2 == 0 {
                 *width = *n / 2;
             } else {
@@ -884,11 +884,11 @@ unsafe fn format_leading_hashes(cp: *const c_char, n: *mut u32, width: *mut u32)
 }
 
 /// Draw multiple characters.
-unsafe fn format_draw_many(ctx: *mut screen_write_ctx, sy: *mut style, ch: c_char, n: u32) {
+unsafe fn format_draw_many(ctx: *mut screen_write_ctx, sy: *mut style, ch: u8, n: u32) {
     unsafe {
         let mut i: u32;
 
-        utf8_set(&raw mut (*sy).gc.data, ch as u8);
+        utf8_set(&raw mut (*sy).gc.data, ch);
         for i in 0..n {
             screen_write_cell(ctx, &raw mut (*sy).gc);
         }
@@ -900,13 +900,13 @@ pub unsafe fn format_draw(
     octx: *mut screen_write_ctx,
     base: *const grid_cell,
     available: c_uint,
-    expanded: *const c_char,
+    expanded: *const u8,
     srs: *mut style_ranges,
     default_colours: c_int,
 ) {
     unsafe {
         let func = "format_draw";
-        let mut __func__ = c"format_draw".as_ptr();
+        let mut __func__ = c!("format_draw");
         unsafe {
             #[derive(Copy, Clone, Eq, PartialEq)]
             #[repr(u32)]
@@ -925,7 +925,7 @@ pub unsafe fn format_draw(
             let mut current = Current::Left;
             let mut last = Current::Left;
 
-            static names: [&str; TOTAL] = [
+            static NAMES: [&str; TOTAL] = [
                 "LEFT",
                 "CENTRE",
                 "RIGHT",
@@ -994,36 +994,26 @@ pub unsafe fn format_draw(
                 // Walk the string and add to the corresponding screens,
                 // parsing styles as we go.
                 let mut cp = expanded;
-                while *cp != b'\0' as i8 {
+                while *cp != b'\0' {
                     // Handle sequences of #.
-                    if *cp == b'#' as i8 && *cp.add(1) != b'[' as i8 && *cp.add(1) != b'\0' as i8 {
+                    if *cp == b'#' && *cp.add(1) != b'[' && *cp.add(1) != b'\0' {
                         let mut n: u32 = 1;
-                        while *cp.add(n as usize) == b'#' as i8 {
+                        while *cp.add(n as usize) == b'#' {
                             n += 1;
                         }
                         let even = n % 2 == 0;
-                        if *cp.add(n as usize) != b'[' as i8 {
+                        if *cp.add(n as usize) != b'[' {
                             cp = cp.add(n as usize);
                             n = n.div_ceil(2);
                             width[current as usize] += n;
-                            format_draw_many(
-                                &raw mut ctx[current as usize],
-                                &raw mut sy,
-                                b'#' as i8,
-                                n,
-                            );
+                            format_draw_many(&raw mut ctx[current as usize], &raw mut sy, b'#', n);
                             continue;
                         }
                         cp = cp.add(if even { n as usize + 1 } else { n as usize - 1 });
                         if sy.ignore != 0 {
                             continue;
                         }
-                        format_draw_many(
-                            &raw mut ctx[current as usize],
-                            &raw mut sy,
-                            b'#' as i8,
-                            n / 2,
-                        );
+                        format_draw_many(&raw mut ctx[current as usize], &raw mut sy, b'#', n / 2);
                         width[current as usize] += n / 2;
                         if even {
                             utf8_set(ud, b'[');
@@ -1034,16 +1024,16 @@ pub unsafe fn format_draw(
                     }
 
                     // Is this not a style?
-                    if *cp != b'#' as i8 || *cp.add(1) != b'[' as i8 || sy.ignore != 0 {
+                    if *cp != b'#' || *cp.add(1) != b'[' || sy.ignore != 0 {
                         // See if this is a UTF-8 character.
-                        more = utf8_open(ud, *cp as u8);
+                        more = utf8_open(ud, (*cp));
                         if more == utf8_state::UTF8_MORE {
                             while ({
                                 cp = cp.add(1);
-                                *cp != b'\0' as i8
+                                *cp != b'\0'
                             }) && more == utf8_state::UTF8_MORE
                             {
-                                more = utf8_append(ud, *cp as u8);
+                                more = utf8_append(ud, (*cp));
                             }
                             if more != utf8_state::UTF8_DONE {
                                 cp = cp.wrapping_sub((*ud).have as usize);
@@ -1057,7 +1047,7 @@ pub unsafe fn format_draw(
                                 cp = cp.add(1);
                                 continue;
                             }
-                            utf8_set(ud, *cp as u8);
+                            utf8_set(ud, (*cp));
                             cp = cp.add(1);
                         }
 
@@ -1068,7 +1058,7 @@ pub unsafe fn format_draw(
                     }
 
                     /* This is a style. Work out where the end is and parse it. */
-                    let end = format_skip(cp.add(2), c"]".as_ptr());
+                    let end = format_skip(cp.add(2), c!("]"));
                     if end.is_null() {
                         // log_debug("%s: no terminating ] at '%s'", __func__, cp + 2);
                         for fr_ in tailq_foreach(&raw mut frs).map(NonNull::as_ptr) {
@@ -1078,7 +1068,7 @@ pub unsafe fn format_draw(
                         }
                         break 'out;
                     }
-                    let tmp: *mut i8 = xstrndup(cp.add(2), end.offset_from(cp.add(2)) as usize)
+                    let tmp: *mut u8 = xstrndup(cp.add(2), end.offset_from(cp.add(2)) as usize)
                         .as_ptr()
                         .cast();
                     style_copy(&raw mut saved_sy, &raw const sy);
@@ -1208,8 +1198,8 @@ pub unsafe fn format_draw(
                         log_debug!(
                             "{}: change {} -> {}",
                             func,
-                            names[last as usize],
-                            names[current as usize]
+                            NAMES[last as usize],
+                            NAMES[current as usize]
                         );
                         last = current;
                     }
@@ -1240,7 +1230,7 @@ pub unsafe fn format_draw(
                             strlcpy(
                                 (*fr).string.as_mut_ptr(),
                                 sy.range_string.as_ptr(),
-                                size_of::<[c_char; 16]>(),
+                                size_of::<[u8; 16]>(),
                             );
                         }
                     }
@@ -1251,7 +1241,7 @@ pub unsafe fn format_draw(
 
                 for i in 0..TOTAL {
                     screen_write_stop(&raw mut ctx[i]);
-                    log_debug!("{}: width {} is {}", func, names[i], width[i]);
+                    log_debug!("{}: width {} is {}", func, NAMES[i], width[i]);
                 }
                 if focus_start != -1 && focus_end != -1 {
                     log_debug!("{}: focus {}-{}", func, focus_start, focus_end);
@@ -1262,7 +1252,7 @@ pub unsafe fn format_draw(
                         func,
                         (*fr).type_ as u32,
                         (*fr).argument,
-                        names[(*fr).index as usize],
+                        NAMES[(*fr).index as usize],
                         (*fr).start,
                         (*fr).end
                     );
@@ -1270,7 +1260,7 @@ pub unsafe fn format_draw(
 
                 // Clear the available area.
                 if fill != -1 {
-                    memcpy__(&raw mut gc, &raw const grid_default_cell);
+                    memcpy__(&raw mut gc, &raw const GRID_DEFAULT_CELL);
                     gc.bg = fill;
                     for i in 0..available {
                         screen_write_putc(octx, &raw mut gc, b' ');
@@ -1376,7 +1366,7 @@ pub unsafe fn format_draw(
                     strlcpy(
                         sr.string.as_mut_ptr(),
                         (*fr).string.as_ptr(),
-                        size_of::<[c_char; 16]>(),
+                        size_of::<[u8; 16]>(),
                     );
                     sr.start = (*fr).start;
                     sr.end = (*fr).end;
@@ -1443,9 +1433,9 @@ pub unsafe fn format_draw(
 }
 
 /// Get width, taking #[] into account.
-pub unsafe fn format_width(expanded: *const c_char) -> u32 {
+pub unsafe fn format_width(expanded: *const u8) -> u32 {
     unsafe {
-        let mut cp: *const c_char = expanded;
+        let mut cp: *const u8 = expanded;
 
         let mut n: u32 = 0;
         let mut leading_width: u32 = 0;
@@ -1453,27 +1443,27 @@ pub unsafe fn format_width(expanded: *const c_char) -> u32 {
 
         let mut ud: utf8_data = zeroed();
 
-        while *cp != b'\0' as i8 {
-            if *cp == b'#' as i8 {
+        while *cp != b'\0' {
+            if *cp == b'#' {
                 let mut end = format_leading_hashes(cp, &raw mut n, &raw mut leading_width);
                 width += leading_width;
                 cp = end;
-                if *cp == b'#' as i8 {
-                    end = format_skip(cp.add(2), c"]".as_ptr());
+                if *cp == b'#' {
+                    end = format_skip(cp.add(2), c!("]"));
                     if end.is_null() {
                         return 0;
                     }
                     cp = end.add(1);
                 }
-            } else if let mut more = utf8_open(&raw mut ud, *cp as u8)
+            } else if let mut more = utf8_open(&raw mut ud, (*cp))
                 && more == utf8_state::UTF8_MORE
             {
                 while ({
                     cp = cp.add(1);
-                    *cp != b'\0' as i8
+                    *cp != b'\0'
                 } && more == utf8_state::UTF8_MORE)
                 {
-                    more = utf8_append(&raw mut ud, *cp as u8);
+                    more = utf8_append(&raw mut ud, (*cp));
                 }
                 if more == utf8_state::UTF8_DONE {
                     width += ud.width as u32;
@@ -1495,7 +1485,7 @@ pub unsafe fn format_width(expanded: *const c_char) -> u32 {
 ///
 /// Note, we copy the whole set of unescaped #s, but only add their escaped size to width.
 /// This is because the format_draw function will actually do the escaping when it runs
-pub unsafe fn format_trim_left(expanded: *const c_char, limit: u32) -> *mut c_char {
+pub unsafe fn format_trim_left(expanded: *const u8, limit: u32) -> *mut u8 {
     unsafe {
         // char *copy, *out;
         // const char *cp = expanded, *end;
@@ -1503,7 +1493,7 @@ pub unsafe fn format_trim_left(expanded: *const c_char, limit: u32) -> *mut c_ch
         // enum utf8_state more;
 
         let mut cp = expanded;
-        let end: *const i8 = null_mut();
+        let end: *const u8 = null_mut();
 
         let mut n: u32 = 0;
         let mut width: u32 = 0;
@@ -1512,21 +1502,21 @@ pub unsafe fn format_trim_left(expanded: *const c_char, limit: u32) -> *mut c_ch
         let mut ud: utf8_data = zeroed();
         let mut more = utf8_state::UTF8_ERROR;
 
-        let mut out: *mut i8 = xcalloc(2, strlen(expanded) + 1).as_ptr().cast();
+        let mut out: *mut u8 = xcalloc(2, strlen(expanded) + 1).as_ptr().cast();
         let copy = out;
 
-        while *cp != b'\0' as i8 {
+        while *cp != b'\0' {
             if width >= limit {
                 break;
             }
-            if *cp == b'#' as i8 {
+            if *cp == b'#' {
                 let mut end = format_leading_hashes(cp, &raw mut n, &raw mut leading_width);
                 if leading_width > limit - width {
                     leading_width = limit - width;
                 }
                 if leading_width != 0 {
                     if n == 1 {
-                        *out = b'#' as i8;
+                        *out = b'#';
                         out = out.add(1);
                     } else {
                         libc::memset(out.cast(), b'#' as i32, 2 * leading_width as usize);
@@ -1535,8 +1525,8 @@ pub unsafe fn format_trim_left(expanded: *const c_char, limit: u32) -> *mut c_ch
                     width += leading_width;
                 }
                 cp = end;
-                if *cp == b'#' as i8 {
-                    end = format_skip(cp.add(2), c"]".as_ptr());
+                if *cp == b'#' {
+                    end = format_skip(cp.add(2), c!("]"));
                     if end.is_null() {
                         break;
                     }
@@ -1544,15 +1534,15 @@ pub unsafe fn format_trim_left(expanded: *const c_char, limit: u32) -> *mut c_ch
                     out = out.offset(end.add(1).offset_from(cp));
                     cp = end.add(1);
                 }
-            } else if let mut more = utf8_open(&raw mut ud, *cp as u8)
+            } else if let mut more = utf8_open(&raw mut ud, (*cp))
                 && more == utf8_state::UTF8_MORE
             {
                 while ({
                     cp = cp.add(1);
-                    *cp != b'\0' as i8
+                    *cp != b'\0'
                 }) && more == utf8_state::UTF8_MORE
                 {
-                    more = utf8_append(&raw mut ud, *cp as u8);
+                    more = utf8_append(&raw mut ud, (*cp));
                 }
                 if more == utf8_state::UTF8_DONE {
                     if width + ud.width as u32 <= limit {
@@ -1574,14 +1564,14 @@ pub unsafe fn format_trim_left(expanded: *const c_char, limit: u32) -> *mut c_ch
                 cp = cp.add(1);
             }
         }
-        *out = b'\0' as i8;
+        *out = b'\0';
         copy
     }
 }
 
 // Trim on the right, taking #[] into account.
 
-pub unsafe fn format_trim_right(expanded: *const c_char, limit: u32) -> *mut c_char {
+pub unsafe fn format_trim_right(expanded: *const u8, limit: u32) -> *mut u8 {
     unsafe {
         //char *copy, *out;
         //const char *cp = expanded, *end;
@@ -1608,11 +1598,11 @@ pub unsafe fn format_trim_right(expanded: *const c_char, limit: u32) -> *mut c_c
         }
         let skip: u32 = total_width - limit;
 
-        let mut out: *mut i8 = xcalloc(2, strlen(expanded) + 1).as_ptr().cast();
-        let copy: *mut i8 = out;
-        while *cp != b'\0' as i8 {
-            if *cp == b'#' as i8 {
-                let mut end: *const c_char =
+        let mut out: *mut u8 = xcalloc(2, strlen(expanded) + 1).as_ptr().cast();
+        let copy: *mut u8 = out;
+        while *cp != b'\0' {
+            if *cp == b'#' {
+                let mut end: *const u8 =
                     format_leading_hashes(cp, &raw mut n, &raw mut leading_width);
                 copy_width = leading_width;
                 if width <= skip {
@@ -1624,7 +1614,7 @@ pub unsafe fn format_trim_right(expanded: *const c_char, limit: u32) -> *mut c_c
                 }
                 if copy_width != 0 {
                     if n == 1 {
-                        *out = b'#' as i8;
+                        *out = b'#';
                         out = out.add(1);
                     } else {
                         libc::memset(out.cast(), b'#' as i32, 2 * copy_width as usize);
@@ -1633,8 +1623,8 @@ pub unsafe fn format_trim_right(expanded: *const c_char, limit: u32) -> *mut c_c
                 }
                 width += leading_width;
                 cp = end;
-                if *cp == b'#' as i8 {
-                    end = format_skip(cp.add(2), c"]".as_ptr());
+                if *cp == b'#' {
+                    end = format_skip(cp.add(2), c!("]"));
                     if end.is_null() {
                         break;
                     }
@@ -1642,15 +1632,15 @@ pub unsafe fn format_trim_right(expanded: *const c_char, limit: u32) -> *mut c_c
                     out = out.offset(end.add(1).offset_from(cp));
                     cp = end.add(1);
                 }
-            } else if let mut more = utf8_open(&raw mut ud, *cp as u8)
+            } else if let mut more = utf8_open(&raw mut ud, (*cp))
                 && more == utf8_state::UTF8_MORE
             {
                 while ({
                     cp = cp.add(1);
-                    *(cp) != b'\0' as i8
+                    *(cp) != b'\0'
                 }) && more == utf8_state::UTF8_MORE
                 {
-                    more = utf8_append(&raw mut ud, *cp as u8);
+                    more = utf8_append(&raw mut ud, (*cp));
                 }
                 if more == utf8_state::UTF8_DONE {
                     if width >= skip {
@@ -1672,7 +1662,7 @@ pub unsafe fn format_trim_right(expanded: *const c_char, limit: u32) -> *mut c_c
                 cp = cp.add(1);
             }
         }
-        *out = b'\0' as i8;
+        *out = b'\0';
         copy
     }
 }

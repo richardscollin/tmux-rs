@@ -11,7 +11,7 @@
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-use super::*;
+use crate::*;
 
 use std::ptr::{addr_of, addr_of_mut};
 
@@ -41,7 +41,7 @@ impl_tailq_entry!(screen_title_entry, entry, tailq_entry<screen_title_entry>);
 /// Entry on title stack.
 #[repr(C)]
 pub struct screen_title_entry {
-    pub text: *mut c_char,
+    pub text: *mut u8,
 
     pub entry: tailq_entry<screen_title_entry>,
 }
@@ -107,7 +107,7 @@ pub unsafe fn screen_reinit(s: *mut screen) {
         (*s).mode =
             mode_flag::MODE_CURSOR | mode_flag::MODE_WRAP | ((*s).mode & mode_flag::MODE_CRLF);
 
-        if options_get_number_(global_options, c"extended-keys") == 2 {
+        if options_get_number_(GLOBAL_OPTIONS, c"extended-keys") == 2 {
             (*s).mode = ((*s).mode & !EXTENDED_KEY_MODES) | mode_flag::MODE_KEYS_EXTENDED;
         }
 
@@ -244,7 +244,7 @@ pub unsafe fn screen_set_cursor_colour(s: *mut screen, colour: c_int) {
 }
 
 /// Set screen title.
-pub unsafe fn screen_set_title(s: *mut screen, title: *const c_char) -> c_int {
+pub unsafe fn screen_set_title(s: *mut screen, title: *const u8) -> c_int {
     unsafe {
         if !utf8_isvalid(title) {
             return 0;
@@ -256,7 +256,7 @@ pub unsafe fn screen_set_title(s: *mut screen, title: *const c_char) -> c_int {
 }
 
 /// Set screen path.
-pub unsafe fn screen_set_path(s: *mut screen, path: *const c_char) {
+pub unsafe fn screen_set_path(s: *mut screen, path: *const u8) {
     unsafe {
         free_((*s).path);
         utf8_stravis(
@@ -386,7 +386,7 @@ unsafe fn screen_resize_y(s: *mut screen, sy: u32, eat_empty: i32, cy: *mut u32)
         let gd = (*s).grid;
 
         if sy == 0 {
-            fatalx(c"zero size");
+            fatalx("zero size");
         }
         let oldy = screen_size_y(s);
 
@@ -770,99 +770,83 @@ pub unsafe fn screen_alternate_off(s: *mut screen, gc: *mut grid_cell, cursor: i
 }
 
 /// Get mode as a string.
-pub unsafe fn screen_mode_to_string(mode: mode_flag) -> *const c_char {
+pub unsafe fn screen_mode_to_string(mode: mode_flag) -> *const u8 {
     const TMP_LEN: usize = 1024;
-    static mut TMP: [MaybeUninit<c_char>; 1024] = [MaybeUninit::uninit(); 1024];
+    static mut TMP: [MaybeUninit<u8>; 1024] = [MaybeUninit::uninit(); 1024];
 
     unsafe {
         if mode == mode_flag::empty() {
-            return c"NONE".as_ptr();
+            return c!("NONE");
         }
         if mode.is_all() {
-            return c"ALL".as_ptr();
+            return c!("ALL");
         }
 
         *TMP[0].as_mut_ptr().cast() = 0i8;
 
         if mode.intersects(mode_flag::MODE_CURSOR) {
-            strlcat(addr_of_mut!(TMP).cast(), c"CURSOR,".as_ptr(), TMP_LEN);
+            strlcat(addr_of_mut!(TMP).cast(), c!("CURSOR,"), TMP_LEN);
         }
         if mode.intersects(mode_flag::MODE_INSERT) {
-            strlcat(addr_of_mut!(TMP).cast(), c"INSERT,".as_ptr(), TMP_LEN);
+            strlcat(addr_of_mut!(TMP).cast(), c!("INSERT,"), TMP_LEN);
         }
         if mode.intersects(mode_flag::MODE_KCURSOR) {
-            strlcat(addr_of_mut!(TMP).cast(), c"KCURSOR,".as_ptr(), TMP_LEN);
+            strlcat(addr_of_mut!(TMP).cast(), c!("KCURSOR,"), TMP_LEN);
         }
         if mode.intersects(mode_flag::MODE_KKEYPAD) {
-            strlcat(addr_of_mut!(TMP).cast(), c"KKEYPAD,".as_ptr(), TMP_LEN);
+            strlcat(addr_of_mut!(TMP).cast(), c!("KKEYPAD,"), TMP_LEN);
         }
         if mode.intersects(mode_flag::MODE_WRAP) {
-            strlcat(addr_of_mut!(TMP).cast(), c"WRAP,".as_ptr(), TMP_LEN);
+            strlcat(addr_of_mut!(TMP).cast(), c!("WRAP,"), TMP_LEN);
         }
         if mode.intersects(mode_flag::MODE_MOUSE_STANDARD) {
-            strlcat(
-                addr_of_mut!(TMP).cast(),
-                c"MOUSE_STANDARD,".as_ptr(),
-                TMP_LEN,
-            );
+            strlcat(addr_of_mut!(TMP).cast(), c!("MOUSE_STANDARD,"), TMP_LEN);
         }
         if mode.intersects(mode_flag::MODE_MOUSE_BUTTON) {
-            strlcat(addr_of_mut!(TMP).cast(), c"MOUSE_BUTTON,".as_ptr(), TMP_LEN);
+            strlcat(addr_of_mut!(TMP).cast(), c!("MOUSE_BUTTON,"), TMP_LEN);
         }
         if mode.intersects(mode_flag::MODE_CURSOR_BLINKING) {
-            strlcat(
-                addr_of_mut!(TMP).cast(),
-                c"CURSOR_BLINKING,".as_ptr(),
-                TMP_LEN,
-            );
+            strlcat(addr_of_mut!(TMP).cast(), c!("CURSOR_BLINKING,"), TMP_LEN);
         }
         if mode.intersects(mode_flag::MODE_CURSOR_VERY_VISIBLE) {
             strlcat(
                 addr_of_mut!(TMP).cast(),
-                c"CURSOR_VERY_VISIBLE,".as_ptr(),
+                c!("CURSOR_VERY_VISIBLE,"),
                 TMP_LEN,
             );
         }
         if mode.intersects(mode_flag::MODE_MOUSE_UTF8) {
-            strlcat(addr_of_mut!(TMP).cast(), c"MOUSE_UTF8,".as_ptr(), TMP_LEN);
+            strlcat(addr_of_mut!(TMP).cast(), c!("MOUSE_UTF8,"), TMP_LEN);
         }
         if mode.intersects(mode_flag::MODE_MOUSE_SGR) {
-            strlcat(addr_of_mut!(TMP).cast(), c"MOUSE_SGR,".as_ptr(), TMP_LEN);
+            strlcat(addr_of_mut!(TMP).cast(), c!("MOUSE_SGR,"), TMP_LEN);
         }
         if mode.intersects(mode_flag::MODE_BRACKETPASTE) {
-            strlcat(addr_of_mut!(TMP).cast(), c"BRACKETPASTE,".as_ptr(), TMP_LEN);
+            strlcat(addr_of_mut!(TMP).cast(), c!("BRACKETPASTE,"), TMP_LEN);
         }
         if mode.intersects(mode_flag::MODE_FOCUSON) {
-            strlcat(addr_of_mut!(TMP).cast(), c"FOCUSON,".as_ptr(), TMP_LEN);
+            strlcat(addr_of_mut!(TMP).cast(), c!("FOCUSON,"), TMP_LEN);
         }
         if mode.intersects(mode_flag::MODE_MOUSE_ALL) {
-            strlcat(addr_of_mut!(TMP).cast(), c"MOUSE_ALL,".as_ptr(), TMP_LEN);
+            strlcat(addr_of_mut!(TMP).cast(), c!("MOUSE_ALL,"), TMP_LEN);
         }
         if mode.intersects(mode_flag::MODE_ORIGIN) {
-            strlcat(addr_of_mut!(TMP).cast(), c"ORIGIN,".as_ptr(), TMP_LEN);
+            strlcat(addr_of_mut!(TMP).cast(), c!("ORIGIN,"), TMP_LEN);
         }
         if mode.intersects(mode_flag::MODE_CRLF) {
-            strlcat(addr_of_mut!(TMP).cast(), c"CRLF,".as_ptr(), TMP_LEN);
+            strlcat(addr_of_mut!(TMP).cast(), c!("CRLF,"), TMP_LEN);
         }
         if mode.intersects(mode_flag::MODE_KEYS_EXTENDED) {
-            strlcat(
-                addr_of_mut!(TMP).cast(),
-                c"KEYS_EXTENDED,".as_ptr(),
-                TMP_LEN,
-            );
+            strlcat(addr_of_mut!(TMP).cast(), c!("KEYS_EXTENDED,"), TMP_LEN);
         }
         if mode.intersects(mode_flag::MODE_KEYS_EXTENDED_2) {
-            strlcat(
-                addr_of_mut!(TMP).cast(),
-                c"KEYS_EXTENDED_2,".as_ptr(),
-                TMP_LEN,
-            );
+            strlcat(addr_of_mut!(TMP).cast(), c!("KEYS_EXTENDED_2,"), TMP_LEN);
         }
 
         let len = strlen(addr_of!(TMP).cast());
         if len > 0 {
             *TMP[len - 1].as_mut_ptr().cast() = 0i8;
         }
-        &raw mut TMP as *mut c_char
+        &raw mut TMP as *mut u8
     }
 }

@@ -159,7 +159,6 @@ struct discr_alerts_entry;
 struct discr_all_entry;
 struct discr_by_uri_entry;
 struct discr_by_inner_entry;
-struct discr_data_entry;
 struct discr_entry;
 struct discr_gentry;
 struct discr_index_entry;

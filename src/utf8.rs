@@ -12,6 +12,9 @@
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
+use std::cell::RefCell;
+use std::collections::BTreeSet;
+
 use crate::*;
 
 use crate::libc::{memcpy, memset};
@@ -54,25 +57,48 @@ pub struct utf8_item {
     pub index_entry: rb_entry<utf8_item>,
     pub index: u32,
 
-    pub data_entry: rb_entry<utf8_item>,
     pub data: [u8; UTF8_SIZE],
     pub size: c_uchar,
 }
 
-pub fn utf8_data_cmp(ui1: &utf8_item, ui2: &utf8_item) -> std::cmp::Ordering {
-    ui1.size
-        .cmp(&ui2.size)
-        .then_with(|| ui1.data[..ui1.size as usize].cmp(&ui2.data[..ui2.size as usize]))
+#[repr(transparent)]
+struct DataCmp(utf8_item);
+
+thread_local! {
+    static UTF8_DATA_TREE: RefCell<BTreeSet<&'static DataCmp>> = const { RefCell::new(BTreeSet::new()) };
 }
-pub type utf8_data_tree = rb_head<utf8_item>;
-RB_GENERATE!(
-    utf8_data_tree,
-    utf8_item,
-    data_entry,
-    discr_data_entry,
-    utf8_data_cmp
-);
-static mut UTF8_DATA_TREE: utf8_data_tree = rb_initializer();
+
+mod data_cmp {
+    use super::{DataCmp, utf8_item};
+
+    fn utf8_data_cmp(ui1: &utf8_item, ui2: &utf8_item) -> std::cmp::Ordering {
+        ui1.size
+            .cmp(&ui2.size)
+            .then_with(|| ui1.data[..ui1.size as usize].cmp(&ui2.data[..ui2.size as usize]))
+    }
+    impl DataCmp {
+        pub fn from_ref(val: &utf8_item) -> &Self {
+            // SAFETY: DataCmp is `repr(transparent)`
+            unsafe { std::mem::transmute(val) }
+        }
+    }
+    impl Ord for DataCmp {
+        fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+            utf8_data_cmp(&self.0, &other.0)
+        }
+    }
+    impl PartialEq for DataCmp {
+        fn eq(&self, other: &Self) -> bool {
+            self.cmp(other).is_eq()
+        }
+    }
+    impl Eq for DataCmp {}
+    impl PartialOrd for DataCmp {
+        fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+            Some(self.cmp(other))
+        }
+    }
+}
 
 pub fn utf8_index_cmp(ui1: &utf8_item, ui2: &utf8_item) -> std::cmp::Ordering {
     ui1.index.cmp(&ui2.index)
@@ -102,20 +128,20 @@ fn utf8_set_width(width: u8) -> utf8_char {
     (width as utf8_char + 1) << 29
 }
 
-pub unsafe fn utf8_item_by_data(data: *const [u8; UTF8_SIZE], size: usize) -> *mut utf8_item {
+pub unsafe fn utf8_item_by_data(
+    data: *const [u8; UTF8_SIZE],
+    size: usize,
+) -> Option<&'static utf8_item> {
+    let mut ui = utf8_item {
+        index_entry: Default::default(),
+        index: 0,
+        data: [0; UTF8_SIZE],
+        size: size as u8,
+    };
     unsafe {
-        let mut ui = MaybeUninit::<utf8_item>::uninit();
-        let ui = ui.as_mut_ptr();
-
-        memcpy(
-            (*ui).data.as_mut_ptr().cast(),
-            (&raw const data).cast(),
-            size,
-        );
-        (*ui).size = size as u8;
-
-        rb_find::<_, discr_data_entry>(&raw mut UTF8_DATA_TREE, ui)
+        memcpy((&raw mut ui.data).cast(), (&raw const data).cast(), size);
     }
+    UTF8_DATA_TREE.with(|tree| tree.borrow().get(&DataCmp(ui)).map(|x| &x.0))
 }
 
 pub fn utf8_item_by_index(index: u32) -> Option<&'static utf8_item> {
@@ -133,8 +159,8 @@ pub fn utf8_item_by_index(index: u32) -> Option<&'static utf8_item> {
 pub unsafe fn utf8_put_item(data: *const [u8; UTF8_SIZE], size: usize, index: *mut u32) -> i32 {
     unsafe {
         let ui = utf8_item_by_data(data, size);
-        if !ui.is_null() {
-            *index = (*ui).index;
+        if let Some(ui) = ui {
+            *index = ui.index;
             log_debug!(
                 "utf8_put_item: found {1:0$} = {2}",
                 size,
@@ -155,7 +181,8 @@ pub unsafe fn utf8_put_item(data: *const [u8; UTF8_SIZE], size: usize, index: *m
 
         memcpy(ui.data.as_mut_ptr().cast(), data.cast(), size);
         ui.size = size as u8;
-        rb_insert::<_, discr_data_entry>(&raw mut UTF8_DATA_TREE, ui);
+
+        UTF8_DATA_TREE.with(|tree| tree.borrow_mut().insert(DataCmp::from_ref(ui)));
 
         *index = ui.index;
         log_debug!(

@@ -132,25 +132,29 @@ pub unsafe fn status_prompt_save_history() {
         let Some(history_file) = status_prompt_find_history_file() else {
             return;
         };
-        let history_file = std::ffi::CString::new(history_file).unwrap();
 
-        log_debug!("saving history to {}", _s(history_file.as_ptr()));
+        log_debug!("saving history to {}", &history_file);
 
-        let Some(f) = NonNull::new(fopen(history_file.as_ptr().cast(), c!("w"))) else {
-            log_debug!("{}: {}", _s(history_file.as_ptr()), _s(strerror(errno!())));
+        let Ok(mut file) = std::fs::OpenOptions::new()
+            .write(true)
+            .create(true)
+            .truncate(true)
+            .open(&history_file)
+        else {
+            log_debug!("{}: failed to open file for writing", &history_file);
             return;
         };
-        let f = f.as_ptr();
 
         for type_ in 0..PROMPT_NTYPES {
             for i in 0..STATUS_PROMPT_HSIZE[type_ as usize] {
-                libc::fputs(PROMPT_TYPE_STRINGS[type_ as usize].as_ptr(), f);
-                libc::fputc(b':' as i32, f);
-                libc::fputs(*STATUS_PROMPT_HLIST[type_ as usize].add(i as usize), f);
-                libc::fputc(b'\n' as i32, f);
+                writeln!(
+                    file,
+                    "{}:{}",
+                    _s(PROMPT_TYPE_STRINGS[type_ as usize].as_ptr()),
+                    _s(*STATUS_PROMPT_HLIST[type_ as usize].add(i as usize))
+                );
             }
         }
-        fclose(f);
     }
 }
 

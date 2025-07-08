@@ -277,7 +277,7 @@ pub unsafe fn session_check_name(name: *const u8) -> *mut u8 {
 }
 
 /// Lock session if it has timed out.
-pub unsafe extern "C" fn session_lock_timer(fd: i32, events: i16, arg: *mut c_void) {
+pub unsafe extern "C-unwind" fn session_lock_timer(fd: i32, events: i16, arg: *mut c_void) {
     unsafe {
         let s = arg as *mut session;
 

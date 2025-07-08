@@ -214,7 +214,7 @@ pub struct window_copy_mode_data {
     dragtimer: event,
 }
 
-pub unsafe extern "C" fn window_copy_scroll_timer(_fd: i32, _events: i16, arg: *mut c_void) {
+pub unsafe extern "C-unwind" fn window_copy_scroll_timer(_fd: i32, _events: i16, arg: *mut c_void) {
     unsafe {
         let wme: *mut window_mode_entry = arg.cast();
         let wp: *mut window_pane = (*wme).wp;

@@ -70,7 +70,7 @@ unsafe fn screen_write_free_citem(ci: *mut screen_write_citem) {
     }
 }
 
-unsafe extern "C" fn screen_write_offset_timer(_fd: i32, _events: i16, data: *mut c_void) {
+unsafe extern "C-unwind" fn screen_write_offset_timer(_fd: i32, _events: i16, data: *mut c_void) {
     unsafe {
         tty_update_window_offset(data.cast());
     }

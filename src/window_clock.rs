@@ -139,7 +139,11 @@ pub static mut WINDOW_CLOCK_TABLE: [[[u8; 5]; 5]; 14] = [
     ],
 ];
 
-pub unsafe extern "C" fn window_clock_timer_callback(fd: i32, events: i16, arg: *mut c_void) {
+pub unsafe extern "C-unwind" fn window_clock_timer_callback(
+    fd: i32,
+    events: i16,
+    arg: *mut c_void,
+) {
     unsafe {
         let wme = arg as *mut window_mode_entry;
         let wp = (*wme).wp;

@@ -373,31 +373,24 @@ unsafe fn cmd_list_keys_commands(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
         format_defaults(ft, null_mut(), None, None, None);
 
         let command = args_string(args, 0);
-        let mut entryp = &raw const CMD_TABLE as *const *const cmd_entry;
-        while !(*entryp).is_null() {
-            let entry = *entryp;
+
+        for entry in CMD_TABLE {
             if !command.is_null()
-                && (strcmp((*entry).name.as_ptr(), command) != 0
-                    && ((*entry).alias.is_null() || strcmp((*entry).alias.as_ptr(), command) != 0))
+                && (strcmp(entry.name.as_ptr(), command) != 0
+                    && (entry.alias.is_null() || strcmp(entry.alias.as_ptr(), command) != 0))
             {
-                entryp = entryp.add(1);
                 continue;
             }
 
-            format_add!(
-                ft,
-                c!("command_list_name"),
-                "{}",
-                _s((*entry).name.as_ptr()),
-            );
-            let s = if !(*entry).alias.is_null() {
-                (*entry).alias.as_ptr()
+            format_add!(ft, c!("command_list_name"), "{}", _s(entry.name.as_ptr()),);
+            let s = if !entry.alias.is_null() {
+                entry.alias.as_ptr()
             } else {
                 c!("")
             };
             format_add!(ft, c!("command_list_alias"), "{}", _s(s));
-            let s = if !(*entry).usage.is_null() {
-                (*entry).usage.as_ptr()
+            let s = if !entry.usage.is_null() {
+                entry.usage.as_ptr()
             } else {
                 c!("")
             };
@@ -408,7 +401,6 @@ unsafe fn cmd_list_keys_commands(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
                 cmdq_print!(item, "{}", _s(line));
             }
             free_(line);
-            entryp = entryp.add(1);
         }
 
         format_free(ft);

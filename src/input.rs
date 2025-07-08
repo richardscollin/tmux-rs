@@ -873,7 +873,7 @@ unsafe extern "C" fn input_table_compare(key: *const c_void, value: *const c_voi
 /// Timer
 ///
 /// if this expires then have been waiting for a terminator for too long, so reset to ground.
-unsafe extern "C" fn input_timer_callback(_fd: i32, _events: i16, arg: *mut c_void) {
+unsafe extern "C-unwind" fn input_timer_callback(_fd: i32, _events: i16, arg: *mut c_void) {
     unsafe {
         let ictx: *mut input_ctx = arg as *mut input_ctx;
 

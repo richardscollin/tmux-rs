@@ -34,7 +34,7 @@ pub const EV_WRITE: i16 = 0x04;
 // #define evtimer_set(ev, cb, arg)	event_set((ev), -1, 0, (cb), (arg))
 pub unsafe fn evtimer_set(
     ev: *mut event,
-    cb: Option<unsafe extern "C" fn(_: c_int, _: c_short, _: *mut c_void)>,
+    cb: Option<unsafe extern "C-unwind" fn(_: c_int, _: c_short, _: *mut c_void)>,
     arg: *mut c_void,
 ) {
     unsafe {
@@ -72,7 +72,7 @@ pub unsafe fn signal_add(ev: *mut event, tv: *const timeval) -> i32 {
 pub unsafe fn signal_set(
     ev: *mut event,
     x: i32,
-    cb: Option<unsafe extern "C" fn(c_int, c_short, *mut c_void)>,
+    cb: Option<unsafe extern "C-unwind" fn(c_int, c_short, *mut c_void)>,
     arg: *mut c_void,
 ) {
     unsafe { event_set(ev, x, EV_SIGNAL | EV_PERSIST, cb, arg) }
@@ -329,31 +329,7 @@ unsafe extern "C" {
         arg1: *mut event,
         arg2: c_int,
         arg3: c_short,
-        arg4: Option<unsafe extern "C" fn(arg1: c_int, arg2: c_short, arg3: *mut c_void)>,
+        arg4: Option<unsafe extern "C-unwind" fn(arg1: c_int, arg2: c_short, arg3: *mut c_void)>,
         arg5: *mut c_void,
     );
-}
-
-#[inline]
-pub unsafe fn event_set_<T>(
-    arg1: *mut event,
-    arg2: c_int,
-    arg3: c_short,
-    arg4: Option<unsafe extern "C" fn(arg1: c_int, arg2: c_short, arg3: *mut T)>,
-    arg5: *mut T,
-) {
-    // with this we can start changing the interface of all the event set calls and modify
-    // the callbacks to be more typesafe instead of using void pointers.
-    unsafe {
-        event_set(
-            arg1,
-            arg2,
-            arg3,
-            std::mem::transmute::<
-                Option<unsafe extern "C" fn(arg1: c_int, arg2: c_short, arg3: *mut T)>,
-                Option<unsafe extern "C" fn(arg1: c_int, arg2: c_short, arg3: *mut c_void)>,
-            >(arg4),
-            arg5.cast(),
-        )
-    }
 }

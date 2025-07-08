@@ -166,7 +166,7 @@ pub unsafe fn status_prompt_save_history() {
 }
 
 /// Status timer callback.
-unsafe extern "C" fn status_timer_callback(_fd: i32, _events: i16, arg: *mut c_void) {
+unsafe extern "C-unwind" fn status_timer_callback(_fd: i32, _events: i16, arg: *mut c_void) {
     unsafe {
         let c: *mut client = arg.cast();
         let s: *mut session = (*c).session;
@@ -594,7 +594,7 @@ pub unsafe fn status_message_clear(c: *mut client) {
 }
 
 /// Clear status line message after timer expires.
-unsafe extern "C" fn status_message_callback(_fd: i32, _event: i16, data: *mut c_void) {
+unsafe extern "C-unwind" fn status_message_callback(_fd: i32, _event: i16, data: *mut c_void) {
     unsafe {
         status_message_clear(data.cast());
     }
@@ -1927,15 +1927,13 @@ unsafe fn status_prompt_complete_list(size: *mut u32, s: *const u8, at_start: i3
         ];
 
         *size = 0;
-        let mut cmdent: *const *const cmd_entry = (&raw const CMD_TABLE) as *const *const cmd_entry;
-        while !(*cmdent).is_null() {
-            if strncmp((*(*cmdent)).name.as_ptr(), s, slen) == 0 {
-                status_prompt_add_list(&raw mut list, size, (*(*cmdent)).name.as_ptr());
+        for cmdent in CMD_TABLE {
+            if strncmp(cmdent.name.as_ptr(), s, slen) == 0 {
+                status_prompt_add_list(&raw mut list, size, cmdent.name.as_ptr());
             }
-            if !(*(*cmdent)).alias.is_null() && strncmp((*(*cmdent)).alias.as_ptr(), s, slen) == 0 {
-                status_prompt_add_list(&raw mut list, size, (*(*cmdent)).alias.as_ptr());
+            if !cmdent.alias.is_null() && strncmp(cmdent.alias.as_ptr(), s, slen) == 0 {
+                status_prompt_add_list(&raw mut list, size, cmdent.alias.as_ptr());
             }
-            cmdent = cmdent.add(1);
         }
         let o = options_get_only(GLOBAL_OPTIONS, c!("command-alias"));
         if !o.is_null() {

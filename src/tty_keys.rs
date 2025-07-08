@@ -1351,7 +1351,7 @@ pub unsafe fn tty_keys_next(tty: *mut tty) -> i32 {
 }
 
 /// Key timer callback.
-unsafe extern "C" fn tty_keys_callback(_fd: i32, _events: i16, data: *mut c_void) {
+unsafe extern "C-unwind" fn tty_keys_callback(_fd: i32, _events: i16, data: *mut c_void) {
     let tty: *mut tty = data.cast();
 
     unsafe {

@@ -183,7 +183,7 @@ pub unsafe fn cmd_run_shell_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
     cmd_retval::CMD_RETURN_WAIT
 }
 
-pub unsafe extern "C" fn cmd_run_shell_timer(_fd: i32, _events: i16, arg: *mut c_void) {
+pub unsafe extern "C-unwind" fn cmd_run_shell_timer(_fd: i32, _events: i16, arg: *mut c_void) {
     unsafe {
         let cdata = arg as *mut cmd_run_shell_data;
         let c = (*cdata).client;

@@ -1097,7 +1097,11 @@ pub unsafe fn control_check_subs_all_windows(c: *mut client, csub: *mut control_
     }
 }
 
-pub unsafe extern "C" fn control_check_subs_timer(_fd: i32, _events: i16, data: *mut c_void) {
+pub unsafe extern "C-unwind" fn control_check_subs_timer(
+    _fd: i32,
+    _events: i16,
+    data: *mut c_void,
+) {
     unsafe {
         let c: *mut client = data.cast();
         let cs = (*c).control_state;

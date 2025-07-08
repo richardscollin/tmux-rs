@@ -70,7 +70,7 @@ pub struct tmuxpeer {
     pub entry: tailq_entry<tmuxpeer>,
 }
 
-pub unsafe extern "C" fn proc_event_cb(_fd: i32, events: i16, arg: *mut c_void) {
+pub unsafe extern "C-unwind" fn proc_event_cb(_fd: i32, events: i16, arg: *mut c_void) {
     unsafe {
         let peer = arg as *mut tmuxpeer;
         let mut imsg: MaybeUninit<imsg> = MaybeUninit::<imsg>::uninit();
@@ -125,7 +125,7 @@ pub unsafe extern "C" fn proc_event_cb(_fd: i32, events: i16, arg: *mut c_void) 
     }
 }
 
-pub unsafe extern "C" fn proc_signal_cb(signo: i32, _events: i16, arg: *mut c_void) {
+pub unsafe extern "C-unwind" fn proc_signal_cb(signo: i32, _events: i16, arg: *mut c_void) {
     unsafe {
         let tp = arg as *mut tmuxproc;
 

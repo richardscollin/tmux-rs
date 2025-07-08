@@ -136,7 +136,7 @@ pub unsafe fn server_create_socket(flags: client_flag, cause: *mut *mut u8) -> c
 }
 
 /// Tidy up every hour.
-unsafe extern "C" fn server_tidy_event(_fd: i32, _events: i16, _data: *mut c_void) {
+unsafe extern "C-unwind" fn server_tidy_event(_fd: i32, _events: i16, _data: *mut c_void) {
     let tv = timeval {
         tv_sec: 3600,
         tv_usec: 0,
@@ -188,11 +188,33 @@ pub unsafe fn server_start(
             return fd;
         }
 
-        std::panic::set_hook(Box::new(|_panic_info| {
-            let backtrace = std::backtrace::Backtrace::capture();
-            let err_str = format!("{backtrace:#?}");
-            log_debug!("{err_str}");
+        std::panic::set_hook(Box::new(|panic_info| {
+            use std::fmt::Write;
+            let backtrace = std::backtrace::Backtrace::force_capture();
+            let location = panic_info.location();
+
+            let mut err_str = String::new();
+
+            if let Some(s) = panic_info.payload().downcast_ref::<&str>() {
+                write!(&mut err_str, "panic! {s:?}\n{backtrace:#?}");
+                log_debug!(
+                    "panic{}: {s}",
+                    location
+                        .map(|loc| format!(" at {}:{}", loc.file(), loc.line()))
+                        .unwrap_or_default()
+                );
+            } else if let Some(s) = panic_info.payload().downcast_ref::<String>() {
+                write!(&mut err_str, "panic! {s:?}\n{backtrace:#?}");
+                log_debug!(
+                    "panic{}: {s}",
+                    location
+                        .map(|loc| format!(" at {}:{}", loc.file(), loc.line()))
+                        .unwrap_or_default()
+                );
+            }
+
             log_close();
+
             if let Err(err) =
                 std::fs::write(format!("server-panic-{}.txt", std::process::id()), err_str)
             {
@@ -384,7 +406,7 @@ pub unsafe fn server_update_socket() {
     }
 }
 
-unsafe extern "C" fn server_accept(fd: i32, events: i16, _data: *mut c_void) {
+unsafe extern "C-unwind" fn server_accept(fd: i32, events: i16, _data: *mut c_void) {
     unsafe {
         let mut sa: sockaddr_storage = zeroed(); // TODO remove this init
         let mut slen: socklen_t = size_of::<sockaddr_storage>() as socklen_t;

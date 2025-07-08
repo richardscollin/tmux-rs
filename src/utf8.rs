@@ -13,7 +13,7 @@
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 use std::cell::RefCell;
-use std::collections::BTreeSet;
+use std::collections::BTreeMap;
 
 use crate::*;
 
@@ -52,45 +52,37 @@ static UTF8_FORCE_WIDE: [wchar_t; 162] = [
     0x1FAF7, 0x1FAF8,
 ];
 
-#[repr(C)]
-pub struct utf8_item {
-    pub index: u32,
-
+#[derive(Clone, Copy)]
+pub struct utf8_item_data {
     pub data: [u8; UTF8_SIZE],
     pub size: c_uchar,
 }
 
-ref_cast! {
-    #[repr(transparent)]
-    struct DataCmp(utf8_item);
-}
+impl_ord!(utf8_item_data as utf8_data_cmp);
 
-impl_ord!(DataCmp as utf8_data_cmp);
-
-fn utf8_data_cmp(ui1: &DataCmp, ui2: &DataCmp) -> std::cmp::Ordering {
-    let (ui1, ui2) = (&ui1.0, &ui2.0);
+fn utf8_data_cmp(ui1: &utf8_item_data, ui2: &utf8_item_data) -> std::cmp::Ordering {
     ui1.size
         .cmp(&ui2.size)
         .then_with(|| ui1.data[..ui1.size as usize].cmp(&ui2.data[..ui2.size as usize]))
 }
 
 thread_local! {
-    static UTF8_DATA_TREE: RefCell<BTreeSet<&'static DataCmp>> = const { RefCell::new(BTreeSet::new()) };
+    static UTF8_DATA_TREE: RefCell<BTreeMap<utf8_item_data, utf8_item_index>> = const { RefCell::new(BTreeMap::new()) };
 }
 
-ref_cast! {
-    #[repr(transparent)]
-    struct IndexCmp(utf8_item);
+#[derive(Clone, Copy)]
+pub struct utf8_item_index {
+    pub index: u32,
 }
 
-impl_ord!(IndexCmp as utf8_index_cmp);
+impl_ord!(utf8_item_index as utf8_index_cmp);
 
-fn utf8_index_cmp(ui1: &IndexCmp, ui2: &IndexCmp) -> std::cmp::Ordering {
-    ui1.0.index.cmp(&ui2.0.index)
+fn utf8_index_cmp(ui1: &utf8_item_index, ui2: &utf8_item_index) -> std::cmp::Ordering {
+    ui1.index.cmp(&ui2.index)
 }
 
 thread_local! {
-    static UTF8_INDEX_TREE: RefCell<BTreeSet<&'static IndexCmp>> = const { RefCell::new(BTreeSet::new()) };
+    static UTF8_INDEX_TREE: RefCell<BTreeMap<utf8_item_index, utf8_item_data>> = const { RefCell::new(BTreeMap::new()) };
 }
 
 static mut UTF8_NEXT_INDEX: u32 = 0;
@@ -111,26 +103,21 @@ fn utf8_set_width(width: u8) -> utf8_char {
 pub unsafe fn utf8_item_by_data(
     data: *const [u8; UTF8_SIZE],
     size: usize,
-) -> Option<&'static utf8_item> {
-    let mut ui = utf8_item {
-        index: 0,
+) -> Option<utf8_item_index> {
+    let mut ui = utf8_item_data {
         data: [0; UTF8_SIZE],
         size: size as u8,
     };
     unsafe {
         memcpy((&raw mut ui.data).cast(), (&raw const data).cast(), size);
     }
-    UTF8_DATA_TREE.with(|tree| tree.borrow().get(&DataCmp(ui)).map(|x| &x.0))
+    UTF8_DATA_TREE.with(|tree| tree.borrow().get(&ui).copied())
 }
 
-pub fn utf8_item_by_index(index: u32) -> Option<&'static utf8_item> {
-    let ui = utf8_item {
-        index,
-        data: [0; UTF8_SIZE],
-        size: 0,
-    };
+pub fn utf8_item_by_index(index: u32) -> Option<utf8_item_data> {
+    let ui = utf8_item_index { index };
 
-    UTF8_INDEX_TREE.with(|tree| tree.borrow().get(&IndexCmp(ui)).map(|x| &x.0))
+    UTF8_INDEX_TREE.with(|tree| tree.borrow().get(&ui).copied())
 }
 
 pub unsafe fn utf8_put_item(data: *const [u8; UTF8_SIZE], size: usize, index: *mut u32) -> i32 {
@@ -151,17 +138,21 @@ pub unsafe fn utf8_put_item(data: *const [u8; UTF8_SIZE], size: usize, index: *m
             return -1;
         }
 
-        let ui: &mut utf8_item = xcalloc1();
-        ui.index = UTF8_NEXT_INDEX;
+        let ui_index = utf8_item_index {
+            index: UTF8_NEXT_INDEX,
+        };
         UTF8_NEXT_INDEX += 1;
 
-        memcpy(ui.data.as_mut_ptr().cast(), data.cast(), size);
-        ui.size = size as u8;
+        let mut ui_data = utf8_item_data {
+            size: size as u8,
+            data: [0; UTF8_SIZE],
+        };
+        memcpy((&raw mut ui_data.data).cast(), data.cast(), size);
 
-        UTF8_INDEX_TREE.with(|tree| tree.borrow_mut().insert(IndexCmp::from_ref(ui)));
-        UTF8_DATA_TREE.with(|tree| tree.borrow_mut().insert(DataCmp::from_ref(ui)));
+        UTF8_INDEX_TREE.with(|tree| tree.borrow_mut().insert(ui_index, ui_data));
+        UTF8_DATA_TREE.with(|tree| tree.borrow_mut().insert(ui_data, ui_index));
 
-        *index = ui.index;
+        *index = ui_index.index;
         log_debug!(
             "utf8_put_item: added {1:0$} = {2}",
             size,

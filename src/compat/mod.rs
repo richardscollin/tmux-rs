@@ -12,7 +12,6 @@ pub mod systemd;
 pub mod tree;
 
 mod closefrom;
-mod fgetln;
 mod freezero;
 mod getpeereid;
 mod reallocarray;
@@ -25,7 +24,6 @@ mod unvis;
 mod vis;
 
 pub use closefrom::closefrom;
-pub use fgetln::fgetln;
 pub use freezero::freezero;
 pub use getpeereid::getpeereid;
 pub(crate) use reallocarray::reallocarray;

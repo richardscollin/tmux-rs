@@ -11,51 +11,14 @@
 // WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
 // ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 // OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-use core::ptr::null_mut;
+use std::io::{BufRead, BufReader, Result};
 
-/// portable fgetln() version, NOT reentrant
-pub unsafe fn fgetln(fp: *mut libc::FILE, len: *mut usize) -> *mut u8 {
-    unsafe {
-        static mut BUF: *mut u8 = null_mut();
-        static mut BUFSZ: usize = 0;
-        let mut r = 0usize;
+pub fn fgetln_safe<R: BufRead>(reader: &mut R) -> Result<Option<Vec<u8>>> {
+    let mut buffer = Vec::new();
 
-        if fp.is_null() || len.is_null() {
-            crate::errno!() = libc::EINVAL;
-            return null_mut();
-        }
-        if BUF.is_null() {
-            BUF = libc::calloc(1, libc::BUFSIZ as usize).cast();
-            if BUF.is_null() {
-                return null_mut();
-            }
-            BUFSZ = libc::BUFSIZ as usize;
-        }
-
-        let mut c = libc::fgetc(fp);
-        while c != libc::EOF {
-            *BUF.add(r) = c as u8;
-            r += 1;
-            if r == BUFSZ {
-                let p = super::reallocarray(BUF.cast(), 2, BUFSZ);
-                if p.is_null() {
-                    let e = crate::errno!();
-                    libc::free(BUF.cast());
-                    crate::errno!() = e;
-                    BUF = null_mut();
-                    BUFSZ = 0;
-                    return null_mut();
-                }
-                BUF = p.cast();
-                BUFSZ *= 2;
-            }
-            if c == b'\n' as i32 {
-                break;
-            }
-            c = libc::fgetc(fp);
-        }
-
-        *len = r;
-        if r == 0 { null_mut() } else { BUF }
+    match reader.read_until(b'\n', &mut buffer) {
+        Ok(0) => Ok(None), // EOF
+        Ok(_) => Ok(Some(buffer)),
+        Err(e) => Err(e),
     }
 }

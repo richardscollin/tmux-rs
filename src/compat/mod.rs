@@ -25,7 +25,7 @@ mod unvis;
 mod vis;
 
 pub use closefrom::closefrom;
-pub use fgetln::fgetln;
+pub use fgetln::fgetln_safe;
 pub use freezero::freezero;
 pub use getpeereid::getpeereid;
 pub(crate) use reallocarray::reallocarray;

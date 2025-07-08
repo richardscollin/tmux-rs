@@ -14,7 +14,7 @@
 use crate::*;
 
 use crate::compat::{
-    fgetln,
+    fgetln_safe,
     queue::{tailq_init, tailq_remove},
     tree::rb_foreach,
 };
@@ -93,8 +93,6 @@ unsafe fn status_prompt_add_typed_history(mut line: *mut u8) {
 /// Load status prompt history from file.
 pub unsafe fn status_prompt_load_history() {
     unsafe {
-        let mut length: usize = 0;
-
         let Some(history_file) = NonNull::new(status_prompt_find_history_file()) else {
             return;
         };
@@ -102,36 +100,26 @@ pub unsafe fn status_prompt_load_history() {
 
         log_debug!("loading history from {}", _s(history_file));
 
-        // std::fs::OpenOptions::read(true).open()
-
-        let Some(f) = NonNull::new(libc::fopen(history_file, c!("r"))) else {
-            log_debug!("{}: {}", _s(history_file), _s(strerror(errno!())));
+        let Ok(file) = std::fs::OpenOptions::new().read(true).open(
+            std::ffi::CStr::from_ptr(history_file.cast())
+                .to_str()
+                .unwrap(),
+        ) else {
+            log_debug!("{}: failed to open file", _s(history_file));
             free_(history_file);
             return;
         };
-        let f = f.as_ptr();
+        let mut reader = std::io::BufReader::new(file);
         free_(history_file);
 
-        loop {
-            let line: *mut u8 = fgetln(f, &raw mut length).cast();
-            if line.is_null() {
-                break;
+        while let Some(mut line) = fgetln_safe(&mut reader).unwrap() {
+            if line.ends_with(b"\n") {
+                line.pop();
             }
+            line.push(b'\0');
 
-            if length > 0 {
-                if *line.add(length - 1) == b'\n' {
-                    *line.add(length - 1) = b'\0';
-                    status_prompt_add_typed_history(line);
-                } else {
-                    let tmp: *mut u8 = xmalloc(length + 1).as_ptr().cast();
-                    libc::memcpy(tmp.cast(), line.cast(), length);
-                    *tmp.add(length) = b'\0';
-                    status_prompt_add_typed_history(tmp.cast());
-                    free_(tmp);
-                }
-            }
+            status_prompt_add_typed_history(line.as_mut_ptr());
         }
-        libc::fclose(f);
     }
 }
 

@@ -132,10 +132,8 @@ struct discr_alerts_entry;
 struct discr_all_entry;
 struct discr_by_uri_entry;
 struct discr_by_inner_entry;
-struct discr_data_entry;
 struct discr_entry;
 struct discr_gentry;
-struct discr_index_entry;
 struct discr_name_entry;
 struct discr_pending_entry;
 struct discr_sentry;
@@ -3286,3 +3284,25 @@ macro_rules! enum_try_from {
     };
 }
 pub(crate) use enum_try_from;
+
+macro_rules! impl_ord {
+    ($ty:ty as $func:ident) => {
+        impl Ord for $ty {
+            fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+                $func(&self, &other)
+            }
+        }
+        impl PartialEq for $ty {
+            fn eq(&self, other: &Self) -> bool {
+                self.cmp(other).is_eq()
+            }
+        }
+        impl Eq for $ty {}
+        impl PartialOrd for $ty {
+            fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+                Some(self.cmp(other))
+            }
+        }
+    };
+}
+pub(crate) use impl_ord;

@@ -3154,6 +3154,11 @@ impl ToU8Ptr for *const i8 {
         self.cast()
     }
 }
+impl ToU8Ptr for SyncCharPtr {
+    fn to_u8_ptr(self) -> *const u8 {
+        self.as_ptr()
+    }
+}
 // TODO struct should have some sort of lifetime
 /// Display wrapper for a *c_char pointer
 #[repr(transparent)]

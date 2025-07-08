@@ -44,18 +44,17 @@ pub struct tty_code {
     pub value: tty_code_union,
 }
 
-unsafe impl Sync for tty_term_code_entry {}
 #[repr(C)]
 pub struct tty_term_code_entry {
     pub type_: tty_code_type,
-    pub name: *const u8,
+    pub name: SyncCharPtr,
 }
 
 impl tty_term_code_entry {
     const fn new(type_: tty_code_type, name: &'static CStr) -> Self {
         Self {
             type_,
-            name: name.as_ptr().cast(),
+            name: SyncCharPtr::new(name),
         }
     }
 }
@@ -434,7 +433,7 @@ pub unsafe fn tty_term_apply(term: *mut tty_term, capabilities: *const u8, quiet
 
             for i in 0..tty_term_ncodes() {
                 let ent = &raw const TTY_TERM_CODES[i as usize];
-                if strcmp(s, (*ent).name) != 0 {
+                if strcmp(s, (*ent).name.as_ptr()) != 0 {
                     continue;
                 }
                 code = (*term).codes.add(i as usize);
@@ -626,10 +625,10 @@ pub unsafe fn tty_term_create(
                 let value = (*caps.add(i)).add(namelen + 1);
 
                 for (j, ent) in TTY_TERM_CODES.iter().enumerate() {
-                    if strncmp(ent.name, *caps.add(i), namelen) != 0 {
+                    if strncmp(ent.name.as_ptr(), *caps.add(i), namelen) != 0 {
                         continue;
                     }
-                    if *ent.name.add(namelen) != b'\0' {
+                    if *ent.name.as_ptr().add(namelen) != b'\0' {
                         continue;
                     }
 
@@ -647,7 +646,11 @@ pub unsafe fn tty_term_create(
                                 (*code).value.number = n;
                             }
                             Err(errstr) => {
-                                log_debug!("{}: {}", _s(ent.name), errstr.to_string_lossy());
+                                log_debug!(
+                                    "{}: {}",
+                                    _s(ent.name.as_ptr()),
+                                    errstr.to_string_lossy()
+                                );
                             }
                         },
                         tty_code_type::Flag => {
@@ -789,13 +792,13 @@ pub unsafe fn tty_term_read_list(
             match ent.type_ {
                 tty_code_type::None => (),
                 tty_code_type::String => {
-                    s = tigetstr(ent.name);
+                    s = tigetstr(ent.name.as_ptr());
                     if s.is_null() || s == (-1i32 as *const u8) {
                         continue;
                     }
                 }
                 tty_code_type::Number => {
-                    let n = tigetnum(ent.name);
+                    let n = tigetnum(ent.name.as_ptr());
                     if n == -1 || n == -2 {
                         continue;
                     }
@@ -803,7 +806,7 @@ pub unsafe fn tty_term_read_list(
                     s = &raw mut tmp as *const u8;
                 }
                 tty_code_type::Flag => {
-                    let n = tigetflag(ent.name);
+                    let n = tigetflag(ent.name.as_ptr());
                     if n == -1 {
                         continue;
                     }
@@ -818,7 +821,7 @@ pub unsafe fn tty_term_read_list(
             *caps = xreallocarray((*caps).cast(), (*ncaps) as usize + 1, size_of::<*mut u8>())
                 .as_ptr()
                 .cast();
-            *(*caps).add(*ncaps as usize) = format_nul!("{}={}", _s(ent.name), _s(s));
+            *(*caps).add(*ncaps as usize) = format_nul!("{}={}", _s(ent.name.as_ptr()), _s(s));
             (*ncaps) += 1;
         }
 
@@ -868,7 +871,7 @@ pub unsafe fn tty_term_string_i(term: *mut tty_term, code: tty_code_code, a: i32
         if s.is_null() {
             log_debug!(
                 "could not expand {}",
-                _s(TTY_TERM_CODES[code as usize].name)
+                _s(TTY_TERM_CODES[code as usize].name.as_ptr())
             );
             return c!("c");
         }

@@ -52,6 +52,10 @@ static UTF8_FORCE_WIDE: [wchar_t; 162] = [
     0x1FAF7, 0x1FAF8,
 ];
 
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub struct utf8_item_index {
+    pub index: u32,
+}
 #[derive(Clone, Copy)]
 pub struct utf8_item_data {
     pub data: [u8; UTF8_SIZE],
@@ -68,14 +72,6 @@ fn utf8_data_cmp(ui1: &utf8_item_data, ui2: &utf8_item_data) -> std::cmp::Orderi
 
 thread_local! {
     static UTF8_DATA_TREE: RefCell<BTreeMap<utf8_item_data, utf8_item_index>> = const { RefCell::new(BTreeMap::new()) };
-}
-
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub struct utf8_item_index {
-    pub index: u32,
-}
-
-thread_local! {
     static UTF8_INDEX_TREE: RefCell<BTreeMap<utf8_item_index, utf8_item_data>> = const { RefCell::new(BTreeMap::new()) };
 }
 

@@ -54,7 +54,6 @@ static UTF8_FORCE_WIDE: [wchar_t; 162] = [
 
 #[repr(C)]
 pub struct utf8_item {
-    pub index_entry: rb_entry<utf8_item>,
     pub index: u32,
 
     pub data: [u8; UTF8_SIZE],
@@ -100,18 +99,43 @@ mod data_cmp {
     }
 }
 
-pub fn utf8_index_cmp(ui1: &utf8_item, ui2: &utf8_item) -> std::cmp::Ordering {
-    ui1.index.cmp(&ui2.index)
+#[repr(transparent)]
+struct IndexCmp(utf8_item);
+
+thread_local! {
+    static UTF8_INDEX_TREE: RefCell<BTreeSet<&'static IndexCmp>> = const { RefCell::new(BTreeSet::new()) };
 }
-pub type utf8_index_tree = rb_head<utf8_item>;
-RB_GENERATE!(
-    utf8_index_tree,
-    utf8_item,
-    index_entry,
-    discr_index_entry,
-    utf8_index_cmp
-);
-static mut UTF8_INDEX_TREE: utf8_index_tree = rb_initializer();
+
+mod index_cmp {
+    use super::{IndexCmp, utf8_item};
+
+    pub fn utf8_index_cmp(ui1: &utf8_item, ui2: &utf8_item) -> std::cmp::Ordering {
+        ui1.index.cmp(&ui2.index)
+    }
+
+    impl IndexCmp {
+        pub fn from_ref(val: &utf8_item) -> &Self {
+            // SAFETY: IndexCmp is `repr(transparent)`
+            unsafe { std::mem::transmute(val) }
+        }
+    }
+    impl Ord for IndexCmp {
+        fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+            utf8_index_cmp(&self.0, &other.0)
+        }
+    }
+    impl PartialEq for IndexCmp {
+        fn eq(&self, other: &Self) -> bool {
+            self.cmp(other).is_eq()
+        }
+    }
+    impl Eq for IndexCmp {}
+    impl PartialOrd for IndexCmp {
+        fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+            Some(self.cmp(other))
+        }
+    }
+}
 
 static mut UTF8_NEXT_INDEX: u32 = 0;
 
@@ -133,7 +157,6 @@ pub unsafe fn utf8_item_by_data(
     size: usize,
 ) -> Option<&'static utf8_item> {
     let mut ui = utf8_item {
-        index_entry: Default::default(),
         index: 0,
         data: [0; UTF8_SIZE],
         size: size as u8,
@@ -145,15 +168,13 @@ pub unsafe fn utf8_item_by_data(
 }
 
 pub fn utf8_item_by_index(index: u32) -> Option<&'static utf8_item> {
-    unsafe {
-        let mut ui = MaybeUninit::<utf8_item>::uninit();
-        let ui = ui.as_mut_ptr();
+    let ui = utf8_item {
+        index,
+        data: [0; UTF8_SIZE],
+        size: 0,
+    };
 
-        (*ui).index = index;
-
-        let ptr = rb_find::<_, discr_index_entry>(&raw mut UTF8_INDEX_TREE, ui);
-        NonNull::new(ptr).map(|x| unsafe { x.as_ref() })
-    }
+    UTF8_INDEX_TREE.with(|tree| tree.borrow().get(&IndexCmp(ui)).map(|x| &x.0))
 }
 
 pub unsafe fn utf8_put_item(data: *const [u8; UTF8_SIZE], size: usize, index: *mut u32) -> i32 {
@@ -177,11 +198,11 @@ pub unsafe fn utf8_put_item(data: *const [u8; UTF8_SIZE], size: usize, index: *m
         let ui: &mut utf8_item = xcalloc1();
         ui.index = UTF8_NEXT_INDEX;
         UTF8_NEXT_INDEX += 1;
-        rb_insert::<_, discr_index_entry>(&raw mut UTF8_INDEX_TREE, ui);
 
         memcpy(ui.data.as_mut_ptr().cast(), data.cast(), size);
         ui.size = size as u8;
 
+        UTF8_INDEX_TREE.with(|tree| tree.borrow_mut().insert(IndexCmp::from_ref(ui)));
         UTF8_DATA_TREE.with(|tree| tree.borrow_mut().insert(DataCmp::from_ref(ui)));
 
         *index = ui.index;

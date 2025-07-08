@@ -161,7 +161,6 @@ struct discr_by_uri_entry;
 struct discr_by_inner_entry;
 struct discr_entry;
 struct discr_gentry;
-struct discr_index_entry;
 struct discr_name_entry;
 struct discr_pending_entry;
 struct discr_sentry;

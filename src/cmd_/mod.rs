@@ -967,6 +967,8 @@ mod test {
             // note the real test is that the return value is properly nul terminated
             let n = libc::strlen(out);
 
+            free_(out);
+
             assert_eq!(n, m);
         }
     }

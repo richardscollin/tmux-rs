@@ -70,7 +70,7 @@ pub static CMD_CUSTOMIZE_MODE_ENTRY: cmd_entry = cmd_entry {
     exec: cmd_choose_tree_exec,
 };
 
-unsafe fn cmd_choose_tree_args_parse(
+fn cmd_choose_tree_args_parse(
     _args: *mut args,
     _idx: u32,
     _cause: *mut *mut u8,

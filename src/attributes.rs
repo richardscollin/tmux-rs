@@ -42,7 +42,7 @@ pub fn attributes_tostring(attr: grid_attr) -> Cow<'static, str> {
 }
 
 #[allow(clippy::result_unit_err)]
-pub unsafe fn attributes_fromstring(str: *const u8) -> Result<grid_attr, ()> {
+pub fn attributes_fromstring(str: &str) -> Result<grid_attr, ()> {
     struct table_entry {
         name: &'static str,
         attr: grid_attr,
@@ -68,10 +68,6 @@ pub unsafe fn attributes_fromstring(str: *const u8) -> Result<grid_attr, ()> {
     ];
 
     let delimiters = &[' ', ',', '|'];
-
-    let str = unsafe { std::ffi::CStr::from_ptr(str.cast()) }
-        .to_str()
-        .expect("invalid utf8");
 
     if str.is_empty() || str.find(delimiters) == Some(0) {
         return Err(());

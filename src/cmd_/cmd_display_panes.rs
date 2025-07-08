@@ -34,7 +34,7 @@ pub struct cmd_display_panes_data<'a> {
     pub state: *mut args_command_state<'a>,
 }
 
-unsafe fn cmd_display_panes_args_parse(_: *mut args, _: u32, _: *mut *mut u8) -> args_parse_type {
+fn cmd_display_panes_args_parse(_: *mut args, _: u32, _: *mut *mut u8) -> args_parse_type {
     args_parse_type::ARGS_PARSE_COMMANDS_OR_STRING
 }
 

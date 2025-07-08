@@ -14,12 +14,13 @@
 use crate::*;
 
 use crate::compat::{
-    fgetln_safe,
     queue::{tailq_init, tailq_remove},
     tree::rb_foreach,
 };
 use crate::libc::strncmp;
 
+use std::io::BufRead;
+use std::io::Write;
 #[repr(C)]
 struct status_prompt_menu {
     c: *mut client,
@@ -43,25 +44,32 @@ pub static mut STATUS_PROMPT_HLIST: [*mut *mut u8; PROMPT_NTYPES as usize] =
 pub static mut STATUS_PROMPT_HSIZE: [u32; PROMPT_NTYPES as usize] = [0; PROMPT_NTYPES as usize];
 
 /// Find the history file to load/save from/to.
-unsafe fn status_prompt_find_history_file() -> *mut u8 {
+unsafe fn status_prompt_find_history_file() -> Option<String> {
     unsafe {
         let history_file = options_get_string_(GLOBAL_OPTIONS, c"history-file");
         if *history_file == b'\0' {
-            return null_mut();
+            return None;
         }
         if *history_file == b'/' {
-            return xstrdup(history_file).as_ptr();
+            return Some(
+                std::ffi::CStr::from_ptr(history_file.cast())
+                    .to_string_lossy()
+                    .into_owned(),
+            );
         }
 
         if *history_file != b'~' || *history_file.add(1) != b'/' {
-            return null_mut();
+            return None;
         }
 
-        let Some(home) = NonNull::new(find_home()) else {
-            return null_mut();
-        };
+        let home = NonNull::new(find_home())?;
 
-        format_nul!("{}{}", _s(home.as_ptr()), _s(history_file.add(1)))
+        let str = format_nul!("{}{}", _s(home.as_ptr()), _s(history_file.add(1)));
+        Some(
+            std::ffi::CStr::from_ptr(str.cast())
+                .to_string_lossy()
+                .into_owned(),
+        )
     }
 }
 
@@ -91,34 +99,29 @@ unsafe fn status_prompt_add_typed_history(mut line: *mut u8) {
 }
 
 /// Load status prompt history from file.
-pub unsafe fn status_prompt_load_history() {
+pub fn status_prompt_load_history() {
     unsafe {
-        let Some(history_file) = NonNull::new(status_prompt_find_history_file()) else {
+        let Some(history_file) = status_prompt_find_history_file() else {
             return;
         };
-        let history_file = history_file.as_ptr();
 
-        log_debug!("loading history from {}", _s(history_file));
+        log_debug!("loading history from {}", &history_file);
 
-        let Ok(file) = std::fs::OpenOptions::new().read(true).open(
-            std::ffi::CStr::from_ptr(history_file.cast())
-                .to_str()
-                .unwrap(),
-        ) else {
-            log_debug!("{}: failed to open file", _s(history_file));
-            free_(history_file);
+        let Ok(file) = std::fs::OpenOptions::new().read(true).open(&history_file) else {
+            log_debug!("{}: failed to open file", &history_file);
             return;
         };
         let mut reader = std::io::BufReader::new(file);
-        free_(history_file);
 
-        while let Some(mut line) = fgetln_safe(&mut reader).unwrap() {
-            if line.ends_with(b"\n") {
-                line.pop();
-            }
-            line.push(b'\0');
+        for line in reader.lines() {
+            if let Ok(line) = line {
+                let mut line_bytes = line.into_bytes();
+                line_bytes.push(b'\0');
 
-            status_prompt_add_typed_history(line.as_mut_ptr());
+                status_prompt_add_typed_history(line_bytes.as_mut_ptr());
+            } else {
+                break;
+            };
         }
     }
 }
@@ -126,20 +129,18 @@ pub unsafe fn status_prompt_load_history() {
 /// Save status prompt history to file.
 pub unsafe fn status_prompt_save_history() {
     unsafe {
-        let Some(history_file) = NonNull::new(status_prompt_find_history_file()) else {
+        let Some(history_file) = status_prompt_find_history_file() else {
             return;
         };
-        let history_file = history_file.as_ptr();
+        let history_file = std::ffi::CString::new(history_file).unwrap();
 
-        log_debug!("saving history to {}", _s(history_file));
+        log_debug!("saving history to {}", _s(history_file.as_ptr()));
 
-        let Some(f) = NonNull::new(fopen(history_file, c!("w"))) else {
-            log_debug!("{}: {}", _s(history_file), _s(strerror(errno!())));
-            free_(history_file);
+        let Some(f) = NonNull::new(fopen(history_file.as_ptr().cast(), c!("w"))) else {
+            log_debug!("{}: {}", _s(history_file.as_ptr()), _s(strerror(errno!())));
             return;
         };
         let f = f.as_ptr();
-        free_(history_file);
 
         for type_ in 0..PROMPT_NTYPES {
             for i in 0..STATUS_PROMPT_HSIZE[type_ as usize] {

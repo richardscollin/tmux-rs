@@ -60,412 +60,237 @@ impl tty_term_code_entry {
     }
 }
 
+#[rustfmt::skip]
 static TTY_TERM_CODES: [tty_term_code_entry; 232] = const {
     let mut tmp: [tty_term_code_entry; 232] = unsafe { zeroed() };
 
-    tmp[tty_code_code::TTYC_ACSC as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"acsc");
+    tmp[tty_code_code::TTYC_ACSC as usize] = tty_term_code_entry::new(tty_code_type::String, c"acsc");
     tmp[tty_code_code::TTYC_AM as usize] = tty_term_code_entry::new(tty_code_type::Flag, c"am");
     tmp[tty_code_code::TTYC_AX as usize] = tty_term_code_entry::new(tty_code_type::Flag, c"AX");
     tmp[tty_code_code::TTYC_BCE as usize] = tty_term_code_entry::new(tty_code_type::Flag, c"bce");
     tmp[tty_code_code::TTYC_BEL as usize] = tty_term_code_entry::new(tty_code_type::String, c"bel");
-    tmp[tty_code_code::TTYC_BIDI as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"Bidi");
-    tmp[tty_code_code::TTYC_BLINK as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"blink");
-    tmp[tty_code_code::TTYC_BOLD as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"bold");
-    tmp[tty_code_code::TTYC_CIVIS as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"civis");
-    tmp[tty_code_code::TTYC_CLEAR as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"clear");
-    tmp[tty_code_code::TTYC_CLMG as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"Clmg");
+    tmp[tty_code_code::TTYC_BIDI as usize] = tty_term_code_entry::new(tty_code_type::String, c"Bidi");
+    tmp[tty_code_code::TTYC_BLINK as usize] = tty_term_code_entry::new(tty_code_type::String, c"blink");
+    tmp[tty_code_code::TTYC_BOLD as usize] = tty_term_code_entry::new(tty_code_type::String, c"bold");
+    tmp[tty_code_code::TTYC_CIVIS as usize] = tty_term_code_entry::new(tty_code_type::String, c"civis");
+    tmp[tty_code_code::TTYC_CLEAR as usize] = tty_term_code_entry::new(tty_code_type::String, c"clear");
+    tmp[tty_code_code::TTYC_CLMG as usize] = tty_term_code_entry::new(tty_code_type::String, c"Clmg");
     tmp[tty_code_code::TTYC_CMG as usize] = tty_term_code_entry::new(tty_code_type::String, c"Cmg");
-    tmp[tty_code_code::TTYC_CNORM as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"cnorm");
-    tmp[tty_code_code::TTYC_COLORS as usize] =
-        tty_term_code_entry::new(tty_code_type::Number, c"colors");
+    tmp[tty_code_code::TTYC_CNORM as usize] = tty_term_code_entry::new(tty_code_type::String, c"cnorm");
+    tmp[tty_code_code::TTYC_COLORS as usize] = tty_term_code_entry::new(tty_code_type::Number, c"colors");
     tmp[tty_code_code::TTYC_CR as usize] = tty_term_code_entry::new(tty_code_type::String, c"Cr");
     tmp[tty_code_code::TTYC_CSR as usize] = tty_term_code_entry::new(tty_code_type::String, c"csr");
     tmp[tty_code_code::TTYC_CS as usize] = tty_term_code_entry::new(tty_code_type::String, c"Cs");
-    tmp[tty_code_code::TTYC_CUB1 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"cub1");
+    tmp[tty_code_code::TTYC_CUB1 as usize] = tty_term_code_entry::new(tty_code_type::String, c"cub1");
     tmp[tty_code_code::TTYC_CUB as usize] = tty_term_code_entry::new(tty_code_type::String, c"cub");
-    tmp[tty_code_code::TTYC_CUD1 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"cud1");
+    tmp[tty_code_code::TTYC_CUD1 as usize] = tty_term_code_entry::new(tty_code_type::String, c"cud1");
     tmp[tty_code_code::TTYC_CUD as usize] = tty_term_code_entry::new(tty_code_type::String, c"cud");
-    tmp[tty_code_code::TTYC_CUF1 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"cuf1");
+    tmp[tty_code_code::TTYC_CUF1 as usize] = tty_term_code_entry::new(tty_code_type::String, c"cuf1");
     tmp[tty_code_code::TTYC_CUF as usize] = tty_term_code_entry::new(tty_code_type::String, c"cuf");
     tmp[tty_code_code::TTYC_CUP as usize] = tty_term_code_entry::new(tty_code_type::String, c"cup");
-    tmp[tty_code_code::TTYC_CUU1 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"cuu1");
+    tmp[tty_code_code::TTYC_CUU1 as usize] = tty_term_code_entry::new(tty_code_type::String, c"cuu1");
     tmp[tty_code_code::TTYC_CUU as usize] = tty_term_code_entry::new(tty_code_type::String, c"cuu");
-    tmp[tty_code_code::TTYC_CVVIS as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"cvvis");
-    tmp[tty_code_code::TTYC_DCH1 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"dch1");
+    tmp[tty_code_code::TTYC_CVVIS as usize] = tty_term_code_entry::new(tty_code_type::String, c"cvvis");
+    tmp[tty_code_code::TTYC_DCH1 as usize] = tty_term_code_entry::new(tty_code_type::String, c"dch1");
     tmp[tty_code_code::TTYC_DCH as usize] = tty_term_code_entry::new(tty_code_type::String, c"dch");
     tmp[tty_code_code::TTYC_DIM as usize] = tty_term_code_entry::new(tty_code_type::String, c"dim");
     tmp[tty_code_code::TTYC_DL1 as usize] = tty_term_code_entry::new(tty_code_type::String, c"dl1");
     tmp[tty_code_code::TTYC_DL as usize] = tty_term_code_entry::new(tty_code_type::String, c"dl");
-    tmp[tty_code_code::TTYC_DSEKS as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"Dseks");
-    tmp[tty_code_code::TTYC_DSFCS as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"Dsfcs");
-    tmp[tty_code_code::TTYC_DSBP as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"Dsbp");
-    tmp[tty_code_code::TTYC_DSMG as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"Dsmg");
+    tmp[tty_code_code::TTYC_DSEKS as usize] = tty_term_code_entry::new(tty_code_type::String, c"Dseks");
+    tmp[tty_code_code::TTYC_DSFCS as usize] = tty_term_code_entry::new(tty_code_type::String, c"Dsfcs");
+    tmp[tty_code_code::TTYC_DSBP as usize] = tty_term_code_entry::new(tty_code_type::String, c"Dsbp");
+    tmp[tty_code_code::TTYC_DSMG as usize] = tty_term_code_entry::new(tty_code_type::String, c"Dsmg");
     tmp[tty_code_code::TTYC_E3 as usize] = tty_term_code_entry::new(tty_code_type::String, c"E3");
     tmp[tty_code_code::TTYC_ECH as usize] = tty_term_code_entry::new(tty_code_type::String, c"ech");
     tmp[tty_code_code::TTYC_ED as usize] = tty_term_code_entry::new(tty_code_type::String, c"ed");
     tmp[tty_code_code::TTYC_EL1 as usize] = tty_term_code_entry::new(tty_code_type::String, c"el1");
     tmp[tty_code_code::TTYC_EL as usize] = tty_term_code_entry::new(tty_code_type::String, c"el");
-    tmp[tty_code_code::TTYC_ENACS as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"enacs");
-    tmp[tty_code_code::TTYC_ENBP as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"Enbp");
-    tmp[tty_code_code::TTYC_ENEKS as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"Eneks");
-    tmp[tty_code_code::TTYC_ENFCS as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"Enfcs");
-    tmp[tty_code_code::TTYC_ENMG as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"Enmg");
+    tmp[tty_code_code::TTYC_ENACS as usize] = tty_term_code_entry::new(tty_code_type::String, c"enacs");
+    tmp[tty_code_code::TTYC_ENBP as usize] = tty_term_code_entry::new(tty_code_type::String, c"Enbp");
+    tmp[tty_code_code::TTYC_ENEKS as usize] = tty_term_code_entry::new(tty_code_type::String, c"Eneks");
+    tmp[tty_code_code::TTYC_ENFCS as usize] = tty_term_code_entry::new(tty_code_type::String, c"Enfcs");
+    tmp[tty_code_code::TTYC_ENMG as usize] = tty_term_code_entry::new(tty_code_type::String, c"Enmg");
     tmp[tty_code_code::TTYC_FSL as usize] = tty_term_code_entry::new(tty_code_type::String, c"fsl");
     tmp[tty_code_code::TTYC_HLS as usize] = tty_term_code_entry::new(tty_code_type::String, c"Hls");
-    tmp[tty_code_code::TTYC_HOME as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"home");
+    tmp[tty_code_code::TTYC_HOME as usize] = tty_term_code_entry::new(tty_code_type::String, c"home");
     tmp[tty_code_code::TTYC_HPA as usize] = tty_term_code_entry::new(tty_code_type::String, c"hpa");
-    tmp[tty_code_code::TTYC_ICH1 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"ich1");
+    tmp[tty_code_code::TTYC_ICH1 as usize] = tty_term_code_entry::new(tty_code_type::String, c"ich1");
     tmp[tty_code_code::TTYC_ICH as usize] = tty_term_code_entry::new(tty_code_type::String, c"ich");
     tmp[tty_code_code::TTYC_IL1 as usize] = tty_term_code_entry::new(tty_code_type::String, c"il1");
     tmp[tty_code_code::TTYC_IL as usize] = tty_term_code_entry::new(tty_code_type::String, c"il");
-    tmp[tty_code_code::TTYC_INDN as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"indn");
-    tmp[tty_code_code::TTYC_INVIS as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"invis");
-    tmp[tty_code_code::TTYC_KCBT as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"kcbt");
-    tmp[tty_code_code::TTYC_KCUB1 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"kcub1");
-    tmp[tty_code_code::TTYC_KCUD1 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"kcud1");
-    tmp[tty_code_code::TTYC_KCUF1 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"kcuf1");
-    tmp[tty_code_code::TTYC_KCUU1 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"kcuu1");
-    tmp[tty_code_code::TTYC_KDC2 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"kDC");
-    tmp[tty_code_code::TTYC_KDC3 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"kDC3");
-    tmp[tty_code_code::TTYC_KDC4 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"kDC4");
-    tmp[tty_code_code::TTYC_KDC5 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"kDC5");
-    tmp[tty_code_code::TTYC_KDC6 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"kDC6");
-    tmp[tty_code_code::TTYC_KDC7 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"kDC7");
-    tmp[tty_code_code::TTYC_KDCH1 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"kdch1");
-    tmp[tty_code_code::TTYC_KDN2 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"kDN"); // not kDN2
-    tmp[tty_code_code::TTYC_KDN3 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"kDN3");
-    tmp[tty_code_code::TTYC_KDN4 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"kDN4");
-    tmp[tty_code_code::TTYC_KDN5 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"kDN5");
-    tmp[tty_code_code::TTYC_KDN6 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"kDN6");
-    tmp[tty_code_code::TTYC_KDN7 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"kDN7");
-    tmp[tty_code_code::TTYC_KEND2 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"kEND");
-    tmp[tty_code_code::TTYC_KEND3 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"kEND3");
-    tmp[tty_code_code::TTYC_KEND4 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"kEND4");
-    tmp[tty_code_code::TTYC_KEND5 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"kEND5");
-    tmp[tty_code_code::TTYC_KEND6 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"kEND6");
-    tmp[tty_code_code::TTYC_KEND7 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"kEND7");
-    tmp[tty_code_code::TTYC_KEND as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"kend");
-    tmp[tty_code_code::TTYC_KF10 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"kf10");
-    tmp[tty_code_code::TTYC_KF11 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"kf11");
-    tmp[tty_code_code::TTYC_KF12 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"kf12");
-    tmp[tty_code_code::TTYC_KF13 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"kf13");
-    tmp[tty_code_code::TTYC_KF14 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"kf14");
-    tmp[tty_code_code::TTYC_KF15 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"kf15");
-    tmp[tty_code_code::TTYC_KF16 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"kf16");
-    tmp[tty_code_code::TTYC_KF17 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"kf17");
-    tmp[tty_code_code::TTYC_KF18 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"kf18");
-    tmp[tty_code_code::TTYC_KF19 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"kf19");
+    tmp[tty_code_code::TTYC_INDN as usize] = tty_term_code_entry::new(tty_code_type::String, c"indn");
+    tmp[tty_code_code::TTYC_INVIS as usize] = tty_term_code_entry::new(tty_code_type::String, c"invis");
+    tmp[tty_code_code::TTYC_KCBT as usize] = tty_term_code_entry::new(tty_code_type::String, c"kcbt");
+    tmp[tty_code_code::TTYC_KCUB1 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kcub1");
+    tmp[tty_code_code::TTYC_KCUD1 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kcud1");
+    tmp[tty_code_code::TTYC_KCUF1 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kcuf1");
+    tmp[tty_code_code::TTYC_KCUU1 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kcuu1");
+    tmp[tty_code_code::TTYC_KDC2 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kDC");
+    tmp[tty_code_code::TTYC_KDC3 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kDC3");
+    tmp[tty_code_code::TTYC_KDC4 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kDC4");
+    tmp[tty_code_code::TTYC_KDC5 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kDC5");
+    tmp[tty_code_code::TTYC_KDC6 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kDC6");
+    tmp[tty_code_code::TTYC_KDC7 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kDC7");
+    tmp[tty_code_code::TTYC_KDCH1 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kdch1");
+    tmp[tty_code_code::TTYC_KDN2 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kDN"); // not kDN2
+    tmp[tty_code_code::TTYC_KDN3 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kDN3");
+    tmp[tty_code_code::TTYC_KDN4 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kDN4");
+    tmp[tty_code_code::TTYC_KDN5 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kDN5");
+    tmp[tty_code_code::TTYC_KDN6 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kDN6");
+    tmp[tty_code_code::TTYC_KDN7 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kDN7");
+    tmp[tty_code_code::TTYC_KEND2 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kEND");
+    tmp[tty_code_code::TTYC_KEND3 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kEND3");
+    tmp[tty_code_code::TTYC_KEND4 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kEND4");
+    tmp[tty_code_code::TTYC_KEND5 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kEND5");
+    tmp[tty_code_code::TTYC_KEND6 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kEND6");
+    tmp[tty_code_code::TTYC_KEND7 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kEND7");
+    tmp[tty_code_code::TTYC_KEND as usize] = tty_term_code_entry::new(tty_code_type::String, c"kend");
+    tmp[tty_code_code::TTYC_KF10 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kf10");
+    tmp[tty_code_code::TTYC_KF11 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kf11");
+    tmp[tty_code_code::TTYC_KF12 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kf12");
+    tmp[tty_code_code::TTYC_KF13 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kf13");
+    tmp[tty_code_code::TTYC_KF14 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kf14");
+    tmp[tty_code_code::TTYC_KF15 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kf15");
+    tmp[tty_code_code::TTYC_KF16 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kf16");
+    tmp[tty_code_code::TTYC_KF17 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kf17");
+    tmp[tty_code_code::TTYC_KF18 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kf18");
+    tmp[tty_code_code::TTYC_KF19 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kf19");
     tmp[tty_code_code::TTYC_KF1 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kf1");
-    tmp[tty_code_code::TTYC_KF20 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"kf20");
-    tmp[tty_code_code::TTYC_KF21 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"kf21");
-    tmp[tty_code_code::TTYC_KF22 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"kf22");
-    tmp[tty_code_code::TTYC_KF23 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"kf23");
-    tmp[tty_code_code::TTYC_KF24 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"kf24");
-    tmp[tty_code_code::TTYC_KF25 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"kf25");
-    tmp[tty_code_code::TTYC_KF26 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"kf26");
-    tmp[tty_code_code::TTYC_KF27 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"kf27");
-    tmp[tty_code_code::TTYC_KF28 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"kf28");
-    tmp[tty_code_code::TTYC_KF29 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"kf29");
+    tmp[tty_code_code::TTYC_KF20 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kf20");
+    tmp[tty_code_code::TTYC_KF21 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kf21");
+    tmp[tty_code_code::TTYC_KF22 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kf22");
+    tmp[tty_code_code::TTYC_KF23 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kf23");
+    tmp[tty_code_code::TTYC_KF24 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kf24");
+    tmp[tty_code_code::TTYC_KF25 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kf25");
+    tmp[tty_code_code::TTYC_KF26 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kf26");
+    tmp[tty_code_code::TTYC_KF27 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kf27");
+    tmp[tty_code_code::TTYC_KF28 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kf28");
+    tmp[tty_code_code::TTYC_KF29 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kf29");
     tmp[tty_code_code::TTYC_KF2 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kf2");
-    tmp[tty_code_code::TTYC_KF30 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"kf30");
-    tmp[tty_code_code::TTYC_KF31 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"kf31");
-    tmp[tty_code_code::TTYC_KF32 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"kf32");
-    tmp[tty_code_code::TTYC_KF33 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"kf33");
-    tmp[tty_code_code::TTYC_KF34 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"kf34");
-    tmp[tty_code_code::TTYC_KF35 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"kf35");
-    tmp[tty_code_code::TTYC_KF36 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"kf36");
-    tmp[tty_code_code::TTYC_KF37 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"kf37");
-    tmp[tty_code_code::TTYC_KF38 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"kf38");
-    tmp[tty_code_code::TTYC_KF39 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"kf39");
+    tmp[tty_code_code::TTYC_KF30 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kf30");
+    tmp[tty_code_code::TTYC_KF31 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kf31");
+    tmp[tty_code_code::TTYC_KF32 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kf32");
+    tmp[tty_code_code::TTYC_KF33 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kf33");
+    tmp[tty_code_code::TTYC_KF34 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kf34");
+    tmp[tty_code_code::TTYC_KF35 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kf35");
+    tmp[tty_code_code::TTYC_KF36 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kf36");
+    tmp[tty_code_code::TTYC_KF37 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kf37");
+    tmp[tty_code_code::TTYC_KF38 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kf38");
+    tmp[tty_code_code::TTYC_KF39 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kf39");
     tmp[tty_code_code::TTYC_KF3 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kf3");
-    tmp[tty_code_code::TTYC_KF40 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"kf40");
-    tmp[tty_code_code::TTYC_KF41 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"kf41");
-    tmp[tty_code_code::TTYC_KF42 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"kf42");
-    tmp[tty_code_code::TTYC_KF43 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"kf43");
-    tmp[tty_code_code::TTYC_KF44 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"kf44");
-    tmp[tty_code_code::TTYC_KF45 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"kf45");
-    tmp[tty_code_code::TTYC_KF46 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"kf46");
-    tmp[tty_code_code::TTYC_KF47 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"kf47");
-    tmp[tty_code_code::TTYC_KF48 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"kf48");
-    tmp[tty_code_code::TTYC_KF49 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"kf49");
+    tmp[tty_code_code::TTYC_KF40 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kf40");
+    tmp[tty_code_code::TTYC_KF41 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kf41");
+    tmp[tty_code_code::TTYC_KF42 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kf42");
+    tmp[tty_code_code::TTYC_KF43 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kf43");
+    tmp[tty_code_code::TTYC_KF44 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kf44");
+    tmp[tty_code_code::TTYC_KF45 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kf45");
+    tmp[tty_code_code::TTYC_KF46 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kf46");
+    tmp[tty_code_code::TTYC_KF47 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kf47");
+    tmp[tty_code_code::TTYC_KF48 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kf48");
+    tmp[tty_code_code::TTYC_KF49 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kf49");
     tmp[tty_code_code::TTYC_KF4 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kf4");
-    tmp[tty_code_code::TTYC_KF50 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"kf50");
-    tmp[tty_code_code::TTYC_KF51 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"kf51");
-    tmp[tty_code_code::TTYC_KF52 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"kf52");
-    tmp[tty_code_code::TTYC_KF53 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"kf53");
-    tmp[tty_code_code::TTYC_KF54 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"kf54");
-    tmp[tty_code_code::TTYC_KF55 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"kf55");
-    tmp[tty_code_code::TTYC_KF56 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"kf56");
-    tmp[tty_code_code::TTYC_KF57 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"kf57");
-    tmp[tty_code_code::TTYC_KF58 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"kf58");
-    tmp[tty_code_code::TTYC_KF59 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"kf59");
+    tmp[tty_code_code::TTYC_KF50 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kf50");
+    tmp[tty_code_code::TTYC_KF51 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kf51");
+    tmp[tty_code_code::TTYC_KF52 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kf52");
+    tmp[tty_code_code::TTYC_KF53 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kf53");
+    tmp[tty_code_code::TTYC_KF54 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kf54");
+    tmp[tty_code_code::TTYC_KF55 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kf55");
+    tmp[tty_code_code::TTYC_KF56 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kf56");
+    tmp[tty_code_code::TTYC_KF57 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kf57");
+    tmp[tty_code_code::TTYC_KF58 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kf58");
+    tmp[tty_code_code::TTYC_KF59 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kf59");
     tmp[tty_code_code::TTYC_KF5 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kf5");
-    tmp[tty_code_code::TTYC_KF60 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"kf60");
-    tmp[tty_code_code::TTYC_KF61 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"kf61");
-    tmp[tty_code_code::TTYC_KF62 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"kf62");
-    tmp[tty_code_code::TTYC_KF63 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"kf63");
+    tmp[tty_code_code::TTYC_KF60 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kf60");
+    tmp[tty_code_code::TTYC_KF61 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kf61");
+    tmp[tty_code_code::TTYC_KF62 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kf62");
+    tmp[tty_code_code::TTYC_KF63 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kf63");
     tmp[tty_code_code::TTYC_KF6 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kf6");
     tmp[tty_code_code::TTYC_KF7 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kf7");
     tmp[tty_code_code::TTYC_KF8 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kf8");
     tmp[tty_code_code::TTYC_KF9 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kf9");
-    tmp[tty_code_code::TTYC_KHOM2 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"kHOM");
-    tmp[tty_code_code::TTYC_KHOM3 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"kHOM3");
-    tmp[tty_code_code::TTYC_KHOM4 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"kHOM4");
-    tmp[tty_code_code::TTYC_KHOM5 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"kHOM5");
-    tmp[tty_code_code::TTYC_KHOM6 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"kHOM6");
-    tmp[tty_code_code::TTYC_KHOM7 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"kHOM7");
-    tmp[tty_code_code::TTYC_KHOME as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"khome");
-    tmp[tty_code_code::TTYC_KIC2 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"kIC");
-    tmp[tty_code_code::TTYC_KIC3 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"kIC3");
-    tmp[tty_code_code::TTYC_KIC4 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"kIC4");
-    tmp[tty_code_code::TTYC_KIC5 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"kIC5");
-    tmp[tty_code_code::TTYC_KIC6 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"kIC6");
-    tmp[tty_code_code::TTYC_KIC7 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"kIC7");
-    tmp[tty_code_code::TTYC_KICH1 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"kich1");
-    tmp[tty_code_code::TTYC_KIND as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"kind");
-    tmp[tty_code_code::TTYC_KLFT2 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"kLFT");
-    tmp[tty_code_code::TTYC_KLFT3 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"kLFT3");
-    tmp[tty_code_code::TTYC_KLFT4 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"kLFT4");
-    tmp[tty_code_code::TTYC_KLFT5 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"kLFT5");
-    tmp[tty_code_code::TTYC_KLFT6 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"kLFT6");
-    tmp[tty_code_code::TTYC_KLFT7 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"kLFT7");
-    tmp[tty_code_code::TTYC_KMOUS as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"kmous");
+    tmp[tty_code_code::TTYC_KHOM2 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kHOM");
+    tmp[tty_code_code::TTYC_KHOM3 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kHOM3");
+    tmp[tty_code_code::TTYC_KHOM4 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kHOM4");
+    tmp[tty_code_code::TTYC_KHOM5 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kHOM5");
+    tmp[tty_code_code::TTYC_KHOM6 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kHOM6");
+    tmp[tty_code_code::TTYC_KHOM7 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kHOM7");
+    tmp[tty_code_code::TTYC_KHOME as usize] = tty_term_code_entry::new(tty_code_type::String, c"khome");
+    tmp[tty_code_code::TTYC_KIC2 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kIC");
+    tmp[tty_code_code::TTYC_KIC3 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kIC3");
+    tmp[tty_code_code::TTYC_KIC4 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kIC4");
+    tmp[tty_code_code::TTYC_KIC5 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kIC5");
+    tmp[tty_code_code::TTYC_KIC6 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kIC6");
+    tmp[tty_code_code::TTYC_KIC7 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kIC7");
+    tmp[tty_code_code::TTYC_KICH1 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kich1");
+    tmp[tty_code_code::TTYC_KIND as usize] = tty_term_code_entry::new(tty_code_type::String, c"kind");
+    tmp[tty_code_code::TTYC_KLFT2 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kLFT");
+    tmp[tty_code_code::TTYC_KLFT3 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kLFT3");
+    tmp[tty_code_code::TTYC_KLFT4 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kLFT4");
+    tmp[tty_code_code::TTYC_KLFT5 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kLFT5");
+    tmp[tty_code_code::TTYC_KLFT6 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kLFT6");
+    tmp[tty_code_code::TTYC_KLFT7 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kLFT7");
+    tmp[tty_code_code::TTYC_KMOUS as usize] = tty_term_code_entry::new(tty_code_type::String, c"kmous");
     tmp[tty_code_code::TTYC_KNP as usize] = tty_term_code_entry::new(tty_code_type::String, c"knp");
-    tmp[tty_code_code::TTYC_KNXT2 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"kNXT");
-    tmp[tty_code_code::TTYC_KNXT3 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"kNXT3");
-    tmp[tty_code_code::TTYC_KNXT4 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"kNXT4");
-    tmp[tty_code_code::TTYC_KNXT5 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"kNXT5");
-    tmp[tty_code_code::TTYC_KNXT6 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"kNXT6");
-    tmp[tty_code_code::TTYC_KNXT7 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"kNXT7");
+    tmp[tty_code_code::TTYC_KNXT2 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kNXT");
+    tmp[tty_code_code::TTYC_KNXT3 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kNXT3");
+    tmp[tty_code_code::TTYC_KNXT4 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kNXT4");
+    tmp[tty_code_code::TTYC_KNXT5 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kNXT5");
+    tmp[tty_code_code::TTYC_KNXT6 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kNXT6");
+    tmp[tty_code_code::TTYC_KNXT7 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kNXT7");
     tmp[tty_code_code::TTYC_KPP as usize] = tty_term_code_entry::new(tty_code_type::String, c"kpp");
-    tmp[tty_code_code::TTYC_KPRV2 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"kPRV");
-    tmp[tty_code_code::TTYC_KPRV3 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"kPRV3");
-    tmp[tty_code_code::TTYC_KPRV4 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"kPRV4");
-    tmp[tty_code_code::TTYC_KPRV5 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"kPRV5");
-    tmp[tty_code_code::TTYC_KPRV6 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"kPRV6");
-    tmp[tty_code_code::TTYC_KPRV7 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"kPRV7");
-    tmp[tty_code_code::TTYC_KRIT2 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"kRIT");
-    tmp[tty_code_code::TTYC_KRIT3 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"kRIT3");
-    tmp[tty_code_code::TTYC_KRIT4 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"kRIT4");
-    tmp[tty_code_code::TTYC_KRIT5 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"kRIT5");
-    tmp[tty_code_code::TTYC_KRIT6 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"kRIT6");
-    tmp[tty_code_code::TTYC_KRIT7 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"kRIT7");
+    tmp[tty_code_code::TTYC_KPRV2 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kPRV");
+    tmp[tty_code_code::TTYC_KPRV3 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kPRV3");
+    tmp[tty_code_code::TTYC_KPRV4 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kPRV4");
+    tmp[tty_code_code::TTYC_KPRV5 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kPRV5");
+    tmp[tty_code_code::TTYC_KPRV6 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kPRV6");
+    tmp[tty_code_code::TTYC_KPRV7 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kPRV7");
+    tmp[tty_code_code::TTYC_KRIT2 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kRIT");
+    tmp[tty_code_code::TTYC_KRIT3 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kRIT3");
+    tmp[tty_code_code::TTYC_KRIT4 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kRIT4");
+    tmp[tty_code_code::TTYC_KRIT5 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kRIT5");
+    tmp[tty_code_code::TTYC_KRIT6 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kRIT6");
+    tmp[tty_code_code::TTYC_KRIT7 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kRIT7");
     tmp[tty_code_code::TTYC_KRI as usize] = tty_term_code_entry::new(tty_code_type::String, c"kri");
-    tmp[tty_code_code::TTYC_KUP2 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"kUP"); // not kUP2
-    tmp[tty_code_code::TTYC_KUP3 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"kUP3");
-    tmp[tty_code_code::TTYC_KUP4 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"kUP4");
-    tmp[tty_code_code::TTYC_KUP5 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"kUP5");
-    tmp[tty_code_code::TTYC_KUP6 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"kUP6");
-    tmp[tty_code_code::TTYC_KUP7 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"kUP7");
+    tmp[tty_code_code::TTYC_KUP2 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kUP"); // not kUP2
+    tmp[tty_code_code::TTYC_KUP3 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kUP3");
+    tmp[tty_code_code::TTYC_KUP4 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kUP4");
+    tmp[tty_code_code::TTYC_KUP5 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kUP5");
+    tmp[tty_code_code::TTYC_KUP6 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kUP6");
+    tmp[tty_code_code::TTYC_KUP7 as usize] = tty_term_code_entry::new(tty_code_type::String, c"kUP7");
     tmp[tty_code_code::TTYC_MS as usize] = tty_term_code_entry::new(tty_code_type::String, c"Ms");
-    tmp[tty_code_code::TTYC_NOBR as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"Nobr");
+    tmp[tty_code_code::TTYC_NOBR as usize] = tty_term_code_entry::new(tty_code_type::String, c"Nobr");
     tmp[tty_code_code::TTYC_OL as usize] = tty_term_code_entry::new(tty_code_type::String, c"ol");
     tmp[tty_code_code::TTYC_OP as usize] = tty_term_code_entry::new(tty_code_type::String, c"op");
-    tmp[tty_code_code::TTYC_RECT as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"Rect");
+    tmp[tty_code_code::TTYC_RECT as usize] = tty_term_code_entry::new(tty_code_type::String, c"Rect");
     tmp[tty_code_code::TTYC_REV as usize] = tty_term_code_entry::new(tty_code_type::String, c"rev");
     tmp[tty_code_code::TTYC_RGB as usize] = tty_term_code_entry::new(tty_code_type::Flag, c"RGB");
     tmp[tty_code_code::TTYC_RIN as usize] = tty_term_code_entry::new(tty_code_type::String, c"rin");
     tmp[tty_code_code::TTYC_RI as usize] = tty_term_code_entry::new(tty_code_type::String, c"ri");
-    tmp[tty_code_code::TTYC_RMACS as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"rmacs");
-    tmp[tty_code_code::TTYC_RMCUP as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"rmcup");
-    tmp[tty_code_code::TTYC_RMKX as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"rmkx");
-    tmp[tty_code_code::TTYC_SETAB as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"setab");
-    tmp[tty_code_code::TTYC_SETAF as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"setaf");
-    tmp[tty_code_code::TTYC_SETAL as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"setal");
-    tmp[tty_code_code::TTYC_SETRGBB as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"setrgbb");
-    tmp[tty_code_code::TTYC_SETRGBF as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"setrgbf");
-    tmp[tty_code_code::TTYC_SETULC as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"Setulc");
-    tmp[tty_code_code::TTYC_SETULC1 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"Setulc1");
+    tmp[tty_code_code::TTYC_RMACS as usize] = tty_term_code_entry::new(tty_code_type::String, c"rmacs");
+    tmp[tty_code_code::TTYC_RMCUP as usize] = tty_term_code_entry::new(tty_code_type::String, c"rmcup");
+    tmp[tty_code_code::TTYC_RMKX as usize] = tty_term_code_entry::new(tty_code_type::String, c"rmkx");
+    tmp[tty_code_code::TTYC_SETAB as usize] = tty_term_code_entry::new(tty_code_type::String, c"setab");
+    tmp[tty_code_code::TTYC_SETAF as usize] = tty_term_code_entry::new(tty_code_type::String, c"setaf");
+    tmp[tty_code_code::TTYC_SETAL as usize] = tty_term_code_entry::new(tty_code_type::String, c"setal");
+    tmp[tty_code_code::TTYC_SETRGBB as usize] = tty_term_code_entry::new(tty_code_type::String, c"setrgbb");
+    tmp[tty_code_code::TTYC_SETRGBF as usize] = tty_term_code_entry::new(tty_code_type::String, c"setrgbf");
+    tmp[tty_code_code::TTYC_SETULC as usize] = tty_term_code_entry::new(tty_code_type::String, c"Setulc");
+    tmp[tty_code_code::TTYC_SETULC1 as usize] = tty_term_code_entry::new(tty_code_type::String, c"Setulc1");
     tmp[tty_code_code::TTYC_SE as usize] = tty_term_code_entry::new(tty_code_type::String, c"Se");
     tmp[tty_code_code::TTYC_SXL as usize] = tty_term_code_entry::new(tty_code_type::Flag, c"Sxl");
-    tmp[tty_code_code::TTYC_SGR0 as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"sgr0");
-    tmp[tty_code_code::TTYC_SITM as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"sitm");
-    tmp[tty_code_code::TTYC_SMACS as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"smacs");
-    tmp[tty_code_code::TTYC_SMCUP as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"smcup");
-    tmp[tty_code_code::TTYC_SMKX as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"smkx");
-    tmp[tty_code_code::TTYC_SMOL as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"Smol");
-    tmp[tty_code_code::TTYC_SMSO as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"smso");
-    tmp[tty_code_code::TTYC_SMULX as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"Smulx");
-    tmp[tty_code_code::TTYC_SMUL as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"smul");
-    tmp[tty_code_code::TTYC_SMXX as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"smxx");
+    tmp[tty_code_code::TTYC_SGR0 as usize] = tty_term_code_entry::new(tty_code_type::String, c"sgr0");
+    tmp[tty_code_code::TTYC_SITM as usize] = tty_term_code_entry::new(tty_code_type::String, c"sitm");
+    tmp[tty_code_code::TTYC_SMACS as usize] = tty_term_code_entry::new(tty_code_type::String, c"smacs");
+    tmp[tty_code_code::TTYC_SMCUP as usize] = tty_term_code_entry::new(tty_code_type::String, c"smcup");
+    tmp[tty_code_code::TTYC_SMKX as usize] = tty_term_code_entry::new(tty_code_type::String, c"smkx");
+    tmp[tty_code_code::TTYC_SMOL as usize] = tty_term_code_entry::new(tty_code_type::String, c"Smol");
+    tmp[tty_code_code::TTYC_SMSO as usize] = tty_term_code_entry::new(tty_code_type::String, c"smso");
+    tmp[tty_code_code::TTYC_SMULX as usize] = tty_term_code_entry::new(tty_code_type::String, c"Smulx");
+    tmp[tty_code_code::TTYC_SMUL as usize] = tty_term_code_entry::new(tty_code_type::String, c"smul");
+    tmp[tty_code_code::TTYC_SMXX as usize] = tty_term_code_entry::new(tty_code_type::String, c"smxx");
     tmp[tty_code_code::TTYC_SS as usize] = tty_term_code_entry::new(tty_code_type::String, c"Ss");
     tmp[tty_code_code::TTYC_SWD as usize] = tty_term_code_entry::new(tty_code_type::String, c"Swd");
-    tmp[tty_code_code::TTYC_SYNC as usize] =
-        tty_term_code_entry::new(tty_code_type::String, c"Sync");
+    tmp[tty_code_code::TTYC_SYNC as usize] = tty_term_code_entry::new(tty_code_type::String, c"Sync");
     tmp[tty_code_code::TTYC_TC as usize] = tty_term_code_entry::new(tty_code_type::Flag, c"Tc");
     tmp[tty_code_code::TTYC_TSL as usize] = tty_term_code_entry::new(tty_code_type::String, c"tsl");
     tmp[tty_code_code::TTYC_U8 as usize] = tty_term_code_entry::new(tty_code_type::Number, c"U8");

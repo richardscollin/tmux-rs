@@ -3261,3 +3261,25 @@ macro_rules! c {
     }};
 }
 pub(crate) use c;
+
+macro_rules! impl_ord {
+    ($ty:ty as $func:ident) => {
+        impl Ord for $ty {
+            fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+                $func(&self, &other)
+            }
+        }
+        impl PartialEq for $ty {
+            fn eq(&self, other: &Self) -> bool {
+                self.cmp(other).is_eq()
+            }
+        }
+        impl Eq for $ty {}
+        impl PartialOrd for $ty {
+            fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+                Some(self.cmp(other))
+            }
+        }
+    };
+}
+pub(crate) use impl_ord;

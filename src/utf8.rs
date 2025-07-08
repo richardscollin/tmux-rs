@@ -63,78 +63,42 @@ pub struct utf8_item {
 #[repr(transparent)]
 struct DataCmp(utf8_item);
 
-thread_local! {
-    static UTF8_DATA_TREE: RefCell<BTreeSet<&'static DataCmp>> = const { RefCell::new(BTreeSet::new()) };
+impl_ord!(DataCmp as utf8_data_cmp);
+fn utf8_data_cmp(ui1: &DataCmp, ui2: &DataCmp) -> std::cmp::Ordering {
+    let (ui1, ui2) = (&ui1.0, &ui2.0);
+    ui1.size
+        .cmp(&ui2.size)
+        .then_with(|| ui1.data[..ui1.size as usize].cmp(&ui2.data[..ui2.size as usize]))
 }
 
-mod data_cmp {
-    use super::{DataCmp, utf8_item};
-
-    fn utf8_data_cmp(ui1: &utf8_item, ui2: &utf8_item) -> std::cmp::Ordering {
-        ui1.size
-            .cmp(&ui2.size)
-            .then_with(|| ui1.data[..ui1.size as usize].cmp(&ui2.data[..ui2.size as usize]))
+impl DataCmp {
+    pub fn from_ref(val: &utf8_item) -> &Self {
+        // SAFETY: DataCmp is `repr(transparent)`
+        unsafe { std::mem::transmute(val) }
     }
-    impl DataCmp {
-        pub fn from_ref(val: &utf8_item) -> &Self {
-            // SAFETY: DataCmp is `repr(transparent)`
-            unsafe { std::mem::transmute(val) }
-        }
-    }
-    impl Ord for DataCmp {
-        fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-            utf8_data_cmp(&self.0, &other.0)
-        }
-    }
-    impl PartialEq for DataCmp {
-        fn eq(&self, other: &Self) -> bool {
-            self.cmp(other).is_eq()
-        }
-    }
-    impl Eq for DataCmp {}
-    impl PartialOrd for DataCmp {
-        fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-            Some(self.cmp(other))
-        }
-    }
+}
+thread_local! {
+    static UTF8_DATA_TREE: RefCell<BTreeSet<&'static DataCmp>> = const { RefCell::new(BTreeSet::new()) };
 }
 
 #[repr(transparent)]
 struct IndexCmp(utf8_item);
 
-thread_local! {
-    static UTF8_INDEX_TREE: RefCell<BTreeSet<&'static IndexCmp>> = const { RefCell::new(BTreeSet::new()) };
+impl_ord!(IndexCmp as utf8_index_cmp);
+
+fn utf8_index_cmp(ui1: &IndexCmp, ui2: &IndexCmp) -> std::cmp::Ordering {
+    ui1.0.index.cmp(&ui2.0.index)
 }
 
-mod index_cmp {
-    use super::{IndexCmp, utf8_item};
+impl IndexCmp {
+    pub fn from_ref(val: &utf8_item) -> &Self {
+        // SAFETY: IndexCmp is `repr(transparent)`
+        unsafe { std::mem::transmute(val) }
+    }
+}
 
-    pub fn utf8_index_cmp(ui1: &utf8_item, ui2: &utf8_item) -> std::cmp::Ordering {
-        ui1.index.cmp(&ui2.index)
-    }
-
-    impl IndexCmp {
-        pub fn from_ref(val: &utf8_item) -> &Self {
-            // SAFETY: IndexCmp is `repr(transparent)`
-            unsafe { std::mem::transmute(val) }
-        }
-    }
-    impl Ord for IndexCmp {
-        fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-            utf8_index_cmp(&self.0, &other.0)
-        }
-    }
-    impl PartialEq for IndexCmp {
-        fn eq(&self, other: &Self) -> bool {
-            self.cmp(other).is_eq()
-        }
-    }
-    impl Eq for IndexCmp {}
-    impl PartialOrd for IndexCmp {
-        fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-            Some(self.cmp(other))
-        }
-    }
+thread_local! {
+    static UTF8_INDEX_TREE: RefCell<BTreeSet<&'static IndexCmp>> = const { RefCell::new(BTreeSet::new()) };
 }
 
 static mut UTF8_NEXT_INDEX: u32 = 0;

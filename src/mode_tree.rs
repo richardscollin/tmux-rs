@@ -370,7 +370,8 @@ pub unsafe fn mode_tree_set_current(mtd: *mut mode_tree_data, tag: u64) -> i32 {
 
         if mode_tree_get_tag(mtd, tag, &raw mut found) != 0 {
             (*mtd).current = found;
-            if (*mtd).current > (*mtd).height - 1 {
+            // TODO does this same problem exist in upstream?
+            if (*mtd).current > (*mtd).height.saturating_sub(1) {
                 (*mtd).offset = (*mtd).current - (*mtd).height + 1;
             } else {
                 (*mtd).offset = 0;

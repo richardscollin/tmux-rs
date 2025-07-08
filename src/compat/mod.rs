@@ -33,7 +33,7 @@ pub use recallocarray::recallocarray;
 pub use setproctitle::setproctitle_;
 pub use strlcat::strlcat;
 pub use strlcpy::strlcpy;
-pub use strtonum::strtonum;
+pub use strtonum::{strtonum, strtonum_};
 pub use systemd::systemd_create_socket;
 pub use unvis::strunvis;
 pub use vis::*;

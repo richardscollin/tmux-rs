@@ -228,12 +228,19 @@ pub unsafe fn cmd_set_option_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
                         if append == 0 {
                             options_array_clear(o);
                         }
-                        if options_array_assign(o, value, &raw mut cause) != 0 {
+                        if options_array_assign(o, cstr_to_str(value), &raw mut cause) != 0 {
                             cmdq_error!(item, "{}", _s(cause));
                             free_(cause);
                             break 'fail;
                         }
-                    } else if options_array_set(o, idx as u32, value, append, &raw mut cause) != 0 {
+                    } else if options_array_set(
+                        o,
+                        idx as u32,
+                        Some(cstr_to_str(value)),
+                        append,
+                        &raw mut cause,
+                    ) != 0
+                    {
                         cmdq_error!(item, "{}", _s(cause));
                         free_(cause);
                         break 'fail;

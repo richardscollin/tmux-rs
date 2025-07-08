@@ -1320,7 +1320,7 @@ pub unsafe fn window_customize_set_option_callback(
                         }
                     }
                 }
-                if options_array_set(o, idx as u32, s, 0, &raw mut cause) != 0 {
+                if options_array_set(o, idx as u32, Some(cstr_to_str(s)), 0, &raw mut cause) != 0 {
                     break 'fail;
                 }
             } else if options_from_string(oo, oe, name, s, 0, &raw mut cause) != 0 {

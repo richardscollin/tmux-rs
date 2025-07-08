@@ -32,8 +32,8 @@
 pub(crate) use std::sync::atomic;
 
 mod compat;
-use compat::strtonum;
 use compat::vis_flags;
+use compat::{strtonum, strtonum_};
 
 mod ncurses_;
 use ncurses_::*;
@@ -172,18 +172,34 @@ struct discr_wentry;
 
 // /usr/include/paths.h
 const _PATH_TTY: *const u8 = c!("/dev/tty");
+
 const _PATH_BSHELL: *const u8 = c!("/bin/sh");
+const _PATH_BSHELL_STR: &str = "/bin/sh";
+
 const _PATH_DEFPATH: *const u8 = c!("/usr/bin:/bin");
 const _PATH_DEV: *const u8 = c!("/dev/");
 const _PATH_DEVNULL: *const u8 = c!("/dev/null");
-const _PATH_VI: *const u8 = c!("/usr/bin/vi");
+const _PATH_VI: &str = "/usr/bin/vi";
 
 const SIZEOF_PATH_DEV: usize = 6;
 
-const TMUX_CONF: *const u8 = c!("/etc/tmux.conf:~/.tmux.conf");
-const TMUX_SOCK: *const u8 = c!("$TMUX_TMPDIR:/tmp/");
-const TMUX_TERM: &CStr = c"screen";
-const TMUX_LOCK_CMD: &CStr = c"lock -np";
+macro_rules! env_or {
+    ($key:literal, $default:expr) => {
+        match std::option_env!($key) {
+            Some(value) => value,
+            None => $default,
+        }
+    };
+}
+
+const TMUX_VERSION: &str = env_or!("TMUX_VERSION", env!("CARGO_PKG_VERSION"));
+const TMUX_CONF: &str = env_or!(
+    "TMUX_CONF",
+    "/etc/tmux.conf:~/.tmux.conf:$XDG_CONFIG_HOME/tmux/tmux.conf:~/.config/tmux/tmux.conf"
+);
+const TMUX_SOCK: &str = env_or!("TMUX_SOCK", "$TMUX_TMPDIR:/tmp/");
+const TMUX_TERM: &str = env_or!("TMUX_TERM", "screen");
+const TMUX_LOCK_CMD: &str = env_or!("TMUX_LOCK_CMD", "lock -np");
 
 /// Minimum layout cell size, NOT including border lines.
 const PANE_MINIMUM: u32 = 1;
@@ -2471,7 +2487,7 @@ struct options_table_entry {
 
     choices: *const *const u8,
 
-    default_str: *const u8,
+    default_str: Option<&'static str>,
     default_num: c_longlong,
     default_arr: *const *const u8,
 
@@ -2837,9 +2853,9 @@ use crate::input_keys::{input_key, input_key_build, input_key_get_mouse, input_k
 mod colour;
 use crate::colour::{
     colour_256to16, colour_byname, colour_find_rgb, colour_force_rgb, colour_fromstring,
-    colour_join_rgb, colour_palette_clear, colour_palette_free, colour_palette_from_option,
-    colour_palette_get, colour_palette_init, colour_palette_set, colour_parse_x11,
-    colour_split_rgb, colour_tostring,
+    colour_fromstring_, colour_join_rgb, colour_palette_clear, colour_palette_free,
+    colour_palette_from_option, colour_palette_get, colour_palette_init, colour_palette_set,
+    colour_parse_x11, colour_split_rgb, colour_tostring,
 };
 
 mod attributes;
@@ -3092,7 +3108,7 @@ mod xmalloc;
 use crate::xmalloc::{format_nul, xsnprintf_};
 use crate::xmalloc::{
     xcalloc, xcalloc_, xcalloc1, xmalloc, xmalloc_, xrealloc, xrealloc_, xreallocarray_, xstrdup,
-    xstrdup_,
+    xstrdup_, xstrdup__, xstrdup___,
 };
 
 mod tmux_protocol;

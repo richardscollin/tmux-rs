@@ -11,7 +11,6 @@
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-
 use crate::*;
 
 use crate::libc::{strchr, strcmp, strlen, strncmp};
@@ -483,8 +482,6 @@ pub unsafe fn cmd_get_alias(name: *const u8) -> *mut u8 {
 }
 
 pub unsafe fn cmd_find(name: *const u8) -> Result<&'static cmd_entry, *mut u8> {
-    let mut loop_: *mut *mut cmd_entry;
-    let mut entry: *mut cmd_entry;
     let mut found = None;
 
     let mut ambiguous: i32 = 0;
@@ -894,51 +891,53 @@ pub unsafe fn cmd_mouse_pane(
     }
 }
 
+/// Replace the first %% or %idx in template by s.
 pub unsafe fn cmd_template_replace(template: *const u8, s: *const u8, idx: c_int) -> *mut u8 {
     unsafe {
         let quote = c!("\"\\$;~");
 
         if strchr(template, b'%' as i32).is_null() {
-            return xstrdup(template).cast().as_ptr();
+            return xstrdup(template).as_ptr();
         }
 
-        let mut buf: *mut u8 = xmalloc(1).cast().as_ptr();
-        *buf = b'\0';
+        let mut buf: *mut u8 = xcalloc1::<u8>();
         let mut len = 0;
         let mut replaced = 0;
 
         let mut ptr = template;
-        while *ptr != b'\0' {
+        'outer: while *ptr != b'\0' {
             let ch = *ptr;
             ptr = ptr.add(1);
-            if matches!(ch as c_uchar, b'%') {
-                if *ptr < b'1' || *ptr > b'9' || *ptr as i32 - b'0' as i32 != idx {
-                    if *ptr != b'%' || replaced != 0 {
-                        break;
+            'switch: {
+                if matches!(ch, b'%') {
+                    if *ptr < b'1' || *ptr > b'9' || *ptr as i32 - b'0' as i32 != idx {
+                        if *ptr != b'%' || replaced != 0 {
+                            break 'switch;
+                        }
+                        replaced = 1;
                     }
-                    replaced = 1;
-                }
-                ptr = ptr.add(1);
-
-                let quoted = *ptr == b'%';
-                if !quoted {
                     ptr = ptr.add(1);
-                }
 
-                buf = xrealloc_(buf, len + (strlen(s) * 3) + 1).as_ptr();
-                let mut cp = s;
-                while *cp != b'\0' {
-                    if quoted && !strchr(quote, *cp as i32).is_null() {
-                        *buf.add(len) = b'\\';
-                        len += 1;
+                    let quoted = *ptr == b'%';
+                    if quoted {
+                        ptr = ptr.add(1);
                     }
-                    *buf.add(len) = *cp;
-                    len += 1;
-                    cp = cp.add(1);
+
+                    buf = xrealloc_(buf, len + (strlen(s) * 3) + 1).as_ptr();
+                    let mut cp = s;
+                    while *cp != b'\0' {
+                        if quoted && !strchr(quote, *cp as i32).is_null() {
+                            *buf.add(len) = b'\\';
+                            len += 1;
+                        }
+                        *buf.add(len) = *cp;
+                        len += 1;
+                        cp = cp.add(1);
+                    }
+                    *buf.add(len) = b'\0';
+                    continue 'outer;
                 }
-                *buf.add(len) = b'\0';
-                continue;
-            }
+            } // 'switch
             buf = xrealloc_(buf, len + 2).as_ptr();
             *buf.add(len) = ch;
             len += 1;
@@ -946,5 +945,29 @@ pub unsafe fn cmd_template_replace(template: *const u8, s: *const u8, idx: c_int
         }
 
         buf
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    // <https://github.com/richardscollin/tmux-rs/issues/50>
+    #[test]
+    fn test_template_replace() {
+        unsafe {
+            let out = cmd_template_replace(
+                c"%1".as_ptr().cast(),
+                b"resize-pane -D 3\0asdf".as_ptr().cast(),
+                1,
+            );
+
+            let m = libc::strlen(b"resize-pane -D 3\0junk".as_ptr().cast());
+
+            // note the real test is that the return value is properly nul terminated
+            let n = libc::strlen(out);
+
+            assert_eq!(n, m);
+        }
     }
 }

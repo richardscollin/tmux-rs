@@ -23,13 +23,15 @@ unsafe extern "C" {
     fn tzset();
 }
 
-use crate::compat::{S_ISDIR, fdforkpty::getptmfd, getprogname::getprogname, optarg, optind};
+use crate::compat::{S_ISDIR, fdforkpty::getptmfd, getprogname::getprogname};
 use crate::libc::{
     CLOCK_MONOTONIC, CLOCK_REALTIME, CODESET, EEXIST, F_GETFL, F_SETFL, LC_CTYPE, LC_TIME,
     O_NONBLOCK, PATH_MAX, S_IRWXO, S_IRWXU, X_OK, access, clock_gettime, fcntl, getcwd, getenv,
-    getopt, getpwuid, getuid, lstat, mkdir, nl_langinfo, printf, realpath, setlocale, stat,
-    strcasecmp, strcasestr, strchr, strcspn, strerror, strncmp, strrchr, strstr, timespec,
+    getpwuid, getuid, lstat, mkdir, nl_langinfo, printf, realpath, setlocale, stat, strcasecmp,
+    strcasestr, strchr, strcspn, strerror, strncmp, strrchr, strstr, timespec,
 };
+
+use crate::compat::getopt::{OPTARG, OPTIND, getopt};
 
 pub static mut GLOBAL_OPTIONS: *mut options = null_mut();
 
@@ -422,12 +424,12 @@ pub unsafe fn tmux_main(mut argc: i32, mut argv: *mut *mut u8, env: *mut *mut u8
 
         let mut opt;
         while {
-            opt = getopt(argc, argv.cast(), c"2c:CDdf:lL:NqS:T:uUvV".as_ptr());
+            opt = getopt(argc, argv.cast(), c"2c:CDdf:lL:NqS:T:uUvV".as_ptr().cast());
             opt != -1
         } {
             match opt as u8 {
                 b'2' => tty_add_features(&raw mut feat, c!("256"), c!(":,")),
-                b'c' => SHELL_COMMAND = optarg.cast(),
+                b'c' => SHELL_COMMAND = OPTARG.cast(),
                 b'D' => flags |= client_flag::NOFORK,
                 b'C' => {
                     if flags.intersects(client_flag::CONTROL) {
@@ -446,7 +448,7 @@ pub unsafe fn tmux_main(mut argc: i32, mut argv: *mut *mut u8, env: *mut *mut u8
                     }
                     CFG_FILES =
                         xreallocarray_::<*mut u8>(CFG_FILES, CFG_NFILES as usize + 1).as_ptr();
-                    *CFG_FILES.add(CFG_NFILES as usize) = xstrdup(optarg.cast()).cast().as_ptr();
+                    *CFG_FILES.add(CFG_NFILES as usize) = xstrdup(OPTARG.cast()).cast().as_ptr();
                     CFG_NFILES += 1;
                     CFG_QUIET.store(false, atomic::Ordering::Relaxed);
                 }
@@ -457,22 +459,22 @@ pub unsafe fn tmux_main(mut argc: i32, mut argv: *mut *mut u8, env: *mut *mut u8
                 b'l' => flags |= client_flag::LOGIN,
                 b'L' => {
                     free(label as _);
-                    label = xstrdup(optarg.cast()).cast().as_ptr();
+                    label = xstrdup(OPTARG.cast()).cast().as_ptr();
                 }
                 b'N' => flags |= client_flag::NOSTARTSERVER,
                 b'q' => (),
                 b'S' => {
                     free(path as _);
-                    path = xstrdup(optarg.cast()).cast().as_ptr();
+                    path = xstrdup(OPTARG.cast()).cast().as_ptr();
                 }
-                b'T' => tty_add_features(&raw mut feat, optarg.cast(), c!(":,")),
+                b'T' => tty_add_features(&raw mut feat, OPTARG.cast(), c!(":,")),
                 b'u' => flags |= client_flag::UTF8,
                 b'v' => log_add_level(),
                 _ => usage(),
             }
         }
-        argc -= optind;
-        argv = argv.add(optind as usize);
+        argc -= OPTIND;
+        argv = argv.add(OPTIND as usize);
 
         if !SHELL_COMMAND.is_null() && argc != 0 {
             usage();

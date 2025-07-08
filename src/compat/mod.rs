@@ -3,6 +3,7 @@ use core::ffi::{c_char, c_int};
 pub mod b64;
 pub mod fdforkpty;
 pub mod getdtablecount;
+pub mod getopt;
 pub mod getprogname;
 pub mod imsg;
 pub mod imsg_buffer;
@@ -40,14 +41,14 @@ pub use vis::*;
 pub(crate) use queue::{TAILQ_HEAD_INITIALIZER, impl_tailq_entry, tailq_insert_head};
 pub(crate) use tree::RB_GENERATE;
 
-#[rustfmt::skip]
-unsafe extern "C" {
-    pub static mut optreset: c_int;
-    pub static mut optarg: *mut c_char;
-    pub static mut optind: c_int;
-    pub fn getopt(___argc: c_int, ___argv: *const *mut c_char, __shortopts: *const c_char) -> c_int;
-    pub fn bsd_getopt(argc: c_int, argv: *const *mut c_char, shortopts: *const c_char) -> c_int;
-}
+// #[rustfmt::skip]
+// unsafe extern "C" {
+//     pub static mut optreset: c_int;
+//     pub static mut optarg: *mut c_char;
+//     pub static mut optind: c_int;
+//     pub fn getopt(___argc: c_int, ___argv: *const *mut c_char, __shortopts: *const c_char) -> c_int;
+//     pub fn bsd_getopt(argc: c_int, argv: *const *mut c_char, shortopts: *const c_char) -> c_int;
+// }
 
 pub const HOST_NAME_MAX: usize = 255;
 
@@ -62,6 +63,3 @@ pub const ACCESSPERMS: libc::mode_t = libc::S_IRWXU | libc::S_IRWXG | libc::S_IR
 pub fn S_ISDIR(mode: libc::mode_t) -> bool {
     mode & libc::S_IFMT == libc::S_IFDIR
 }
-
-// extern crate compat_derive;
-// pub use compat_derive::TailQEntry;

@@ -3262,6 +3262,24 @@ macro_rules! c {
 }
 pub(crate) use c;
 
+macro_rules! ref_cast {
+    {
+        #[repr(transparent)]
+        struct $ty:ident($inner:ty);
+    } => {
+        #[repr(transparent)]
+        struct $ty($inner);
+
+        impl $ty {
+            fn from_ref(val: &$inner) -> &Self {
+                // SAFETY: Self is `repr(transparent)`
+                unsafe { std::mem::transmute(val) }
+            }
+        }
+    }
+}
+pub(crate) use ref_cast;
+
 macro_rules! impl_ord {
     ($ty:ty as $func:ident) => {
         impl Ord for $ty {

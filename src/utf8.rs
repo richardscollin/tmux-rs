@@ -60,10 +60,13 @@ pub struct utf8_item {
     pub size: c_uchar,
 }
 
-#[repr(transparent)]
-struct DataCmp(utf8_item);
+ref_cast! {
+    #[repr(transparent)]
+    struct DataCmp(utf8_item);
+}
 
 impl_ord!(DataCmp as utf8_data_cmp);
+
 fn utf8_data_cmp(ui1: &DataCmp, ui2: &DataCmp) -> std::cmp::Ordering {
     let (ui1, ui2) = (&ui1.0, &ui2.0);
     ui1.size
@@ -71,30 +74,19 @@ fn utf8_data_cmp(ui1: &DataCmp, ui2: &DataCmp) -> std::cmp::Ordering {
         .then_with(|| ui1.data[..ui1.size as usize].cmp(&ui2.data[..ui2.size as usize]))
 }
 
-impl DataCmp {
-    pub fn from_ref(val: &utf8_item) -> &Self {
-        // SAFETY: DataCmp is `repr(transparent)`
-        unsafe { std::mem::transmute(val) }
-    }
-}
 thread_local! {
     static UTF8_DATA_TREE: RefCell<BTreeSet<&'static DataCmp>> = const { RefCell::new(BTreeSet::new()) };
 }
 
-#[repr(transparent)]
-struct IndexCmp(utf8_item);
+ref_cast! {
+    #[repr(transparent)]
+    struct IndexCmp(utf8_item);
+}
 
 impl_ord!(IndexCmp as utf8_index_cmp);
 
 fn utf8_index_cmp(ui1: &IndexCmp, ui2: &IndexCmp) -> std::cmp::Ordering {
     ui1.0.index.cmp(&ui2.0.index)
-}
-
-impl IndexCmp {
-    pub fn from_ref(val: &utf8_item) -> &Self {
-        // SAFETY: IndexCmp is `repr(transparent)`
-        unsafe { std::mem::transmute(val) }
-    }
 }
 
 thread_local! {

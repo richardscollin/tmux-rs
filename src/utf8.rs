@@ -70,15 +70,9 @@ thread_local! {
     static UTF8_DATA_TREE: RefCell<BTreeMap<utf8_item_data, utf8_item_index>> = const { RefCell::new(BTreeMap::new()) };
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct utf8_item_index {
     pub index: u32,
-}
-
-impl_ord!(utf8_item_index as utf8_index_cmp);
-
-fn utf8_index_cmp(ui1: &utf8_item_index, ui2: &utf8_item_index) -> std::cmp::Ordering {
-    ui1.index.cmp(&ui2.index)
 }
 
 thread_local! {

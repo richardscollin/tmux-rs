@@ -27,7 +27,7 @@ pub static CMD_BIND_KEY_ENTRY: cmd_entry = cmd_entry {
     target: cmd_entry_flag::zeroed(),
 };
 
-unsafe fn cmd_bind_key_args_parse(
+fn cmd_bind_key_args_parse(
     _args: *mut args,
     _idx: u32,
     _cause: *mut *mut u8,

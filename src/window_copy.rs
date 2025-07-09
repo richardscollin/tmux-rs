@@ -6467,7 +6467,7 @@ pub unsafe fn window_copy_scroll_up(wme: *mut window_mode_entry, mut ny: u32) {
         }
         (*data).oy -= ny;
 
-        if (*data).searchmark.is_null() && (*data).timeout == 0 {
+        if !(*data).searchmark.is_null() && (*data).timeout == 0 {
             window_copy_search_marks(wme, null_mut(), (*data).searchregex, 1);
         }
         window_copy_update_selection(wme, 0, 0);

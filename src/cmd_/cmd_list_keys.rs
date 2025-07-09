@@ -288,11 +288,9 @@ unsafe fn cmd_list_keys_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retva
                         "-r "
                     } else {
                         "   "
-                    }
-                    .as_ptr();
+                    };
                     let mut tmpused: usize =
-                        xsnprintf_!(tmp.as_ptr(), tmpsize, "{}-T ", _s(r.cast::<u8>())).unwrap()
-                            as _;
+                        xsnprintf_!(tmp.as_ptr(), tmpsize, "{}-T ", r).unwrap() as _;
 
                     let mut cp = utf8_padcstr((*table).name, tablewidth as _);
                     let mut cplen = strlen(cp) + 1;

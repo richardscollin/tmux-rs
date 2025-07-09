@@ -511,7 +511,7 @@ pub unsafe fn server_client_unref(c: *mut client) {
 }
 
 /// Free dead client.
-pub unsafe extern "C" fn server_client_free(_fd: i32, _events: i16, arg: *mut c_void) {
+pub unsafe extern "C-unwind" fn server_client_free(_fd: i32, _events: i16, arg: *mut c_void) {
     unsafe {
         let c: *mut client = arg.cast();
         log_debug!("free client {:p} ({} references)", c, (*c).references);

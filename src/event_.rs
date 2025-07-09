@@ -160,9 +160,9 @@ pub struct event_base {
     _unused: [u8; 0],
 }
 pub type bufferevent_data_cb =
-    Option<unsafe extern "C" fn(bev: *mut bufferevent, ctx: *mut c_void)>;
+    Option<unsafe extern "C-unwind" fn(bev: *mut bufferevent, ctx: *mut c_void)>;
 pub type bufferevent_event_cb =
-    Option<unsafe extern "C" fn(bev: *mut bufferevent, what: c_short, ctx: *mut c_void)>;
+    Option<unsafe extern "C-unwind" fn(bev: *mut bufferevent, what: c_short, ctx: *mut c_void)>;
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub struct event_callback {
@@ -182,10 +182,13 @@ pub struct event_callback__bindgen_ty_1 {
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub union event_callback__bindgen_ty_2 {
-    pub evcb_callback: Option<unsafe extern "C" fn(arg1: c_int, arg2: c_short, arg3: *mut c_void)>,
-    pub evcb_selfcb: Option<unsafe extern "C" fn(arg1: *mut event_callback, arg2: *mut c_void)>,
-    pub evcb_evfinalize: Option<unsafe extern "C" fn(arg1: *mut event, arg2: *mut c_void)>,
-    pub evcb_cbfinalize: Option<unsafe extern "C" fn(arg1: *mut event_callback, arg2: *mut c_void)>,
+    pub evcb_callback:
+        Option<unsafe extern "C-unwind" fn(arg1: c_int, arg2: c_short, arg3: *mut c_void)>,
+    pub evcb_selfcb:
+        Option<unsafe extern "C-unwind" fn(arg1: *mut event_callback, arg2: *mut c_void)>,
+    pub evcb_evfinalize: Option<unsafe extern "C-unwind" fn(arg1: *mut event, arg2: *mut c_void)>,
+    pub evcb_cbfinalize:
+        Option<unsafe extern "C-unwind" fn(arg1: *mut event_callback, arg2: *mut c_void)>,
 }
 #[repr(C)]
 pub struct event {
@@ -264,7 +267,7 @@ pub struct bufferevent {
     pub timeout_write: timeval,
     pub enabled: c_short,
 }
-pub type event_log_cb = Option<unsafe extern "C" fn(severity: c_int, msg: *const u8)>;
+pub type event_log_cb = Option<unsafe extern "C-unwind" fn(severity: c_int, msg: *const u8)>;
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct bufferevent_ops {
@@ -320,7 +323,7 @@ unsafe extern "C" {
     pub fn event_once(
         arg1: c_int,
         arg2: c_short,
-        arg3: Option<unsafe extern "C" fn(arg1: c_int, arg2: c_short, arg3: *mut c_void)>,
+        arg3: Option<unsafe extern "C-unwind" fn(arg1: c_int, arg2: c_short, arg3: *mut c_void)>,
         arg4: *mut c_void,
         arg5: *const timeval,
     ) -> c_int;

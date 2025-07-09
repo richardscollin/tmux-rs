@@ -193,7 +193,7 @@ pub unsafe fn session_remove_ref(s: *mut session, from: *const u8) {
 }
 
 /// Free session.
-pub unsafe extern "C" fn session_free(_fd: i32, _events: i16, arg: *mut c_void) {
+pub unsafe extern "C-unwind" fn session_free(_fd: i32, _events: i16, arg: *mut c_void) {
     unsafe {
         let s = arg as *mut session;
 

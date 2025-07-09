@@ -766,7 +766,7 @@ pub unsafe fn cmdq_next(c: *mut client) -> u32 {
 
         'waiting: {
             if tailq_empty(&raw mut (*queue).list) {
-                log_debug!("{} {}: empty", __func__, _s(name));
+                // log_debug!("{} {}: empty", __func__, _s(name));
                 return 0;
             }
             if (*tailq_first(&raw mut (*queue).list)).flags & CMDQ_WAITING != 0 {

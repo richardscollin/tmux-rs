@@ -536,7 +536,7 @@ pub unsafe fn control_error(item: *mut cmdq_item, data: *mut c_void) -> cmd_retv
     cmd_retval::CMD_RETURN_NORMAL
 }
 
-pub unsafe extern "C" fn control_error_callback(
+pub unsafe extern "C-unwind" fn control_error_callback(
     _bufev: *mut bufferevent,
     _what: i16,
     data: *mut c_void,
@@ -548,7 +548,7 @@ pub unsafe extern "C" fn control_error_callback(
     }
 }
 
-pub unsafe extern "C" fn control_read_callback(_bufev: *mut bufferevent, data: *mut c_void) {
+pub unsafe extern "C-unwind" fn control_read_callback(_bufev: *mut bufferevent, data: *mut c_void) {
     let __func__ = "control_read_callback";
     let c: *mut client = data.cast();
 
@@ -746,7 +746,10 @@ pub unsafe fn control_write_pending(c: *mut client, cp: *mut control_pane, limit
     }
 }
 
-pub unsafe extern "C" fn control_write_callback(_bufev: *mut bufferevent, data: *mut c_void) {
+pub unsafe extern "C-unwind" fn control_write_callback(
+    _bufev: *mut bufferevent,
+    data: *mut c_void,
+) {
     unsafe {
         let c: *mut client = data.cast();
         let cs = (*c).control_state;

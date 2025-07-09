@@ -244,12 +244,12 @@ pub unsafe fn style_parse(sy: *mut style, base: *const grid_cell, mut in_: *cons
                 } else if strcasecmp(tmp, c!("none")) == 0 {
                     (*sy).gc.attr = grid_attr::empty();
                 } else if end > 2 && strncasecmp(tmp, c!("no"), 2) == 0 {
-                    let Ok(value) = attributes_fromstring(tmp.add(2)) else {
+                    let Ok(value) = attributes_fromstring(cstr_to_str(tmp.add(2))) else {
                         break 'error;
                     };
                     (*sy).gc.attr &= !value;
                 } else {
-                    let Ok(value) = attributes_fromstring(tmp) else {
+                    let Ok(value) = attributes_fromstring(cstr_to_str(tmp)) else {
                         break 'error;
                     };
                     (*sy).gc.attr |= value;

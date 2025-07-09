@@ -3197,7 +3197,7 @@ pub unsafe fn tty_cursor(tty: *mut tty, mut cx: u32, cy: u32) {
 
                     /* One above. */
                     if thisy != (*tty).rupper
-                        && cy == thisy - 1
+                        && cy + 1 == thisy // note avoids underflow in dev
                         && tty_term_has(term, tty_code_code::TTYC_CUU1)
                     {
                         tty_putcode(tty, tty_code_code::TTYC_CUU1);

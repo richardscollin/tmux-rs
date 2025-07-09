@@ -146,7 +146,7 @@ pub unsafe fn expand_path(path: *const u8, home: *const u8) -> *mut u8 {
     }
 }
 
-unsafe fn expand_paths(s: *const u8, paths: *mut *mut *mut u8, n: *mut u32, ignore_errors: i32) {
+unsafe fn expand_paths(s: &str, paths: *mut *mut *mut u8, n: *mut u32, ignore_errors: i32) {
     unsafe {
         let home = find_home();
         let mut next: *const u8 = null_mut();
@@ -158,7 +158,7 @@ unsafe fn expand_paths(s: *const u8, paths: *mut *mut *mut u8, n: *mut u32, igno
         *paths = null_mut();
         *n = 0;
 
-        let mut tmp: *mut u8 = xstrdup(s).cast().as_ptr();
+        let mut tmp: *mut u8 = xstrdup__(s);
         let copy = tmp;
         while {
             next = strsep(&raw mut tmp as _, c!(":").cast());
@@ -365,11 +365,7 @@ pub unsafe fn find_home() -> *mut u8 {
 }
 
 pub fn getversion() -> &'static str {
-    "3.5rs"
-}
-
-pub fn getversion_c() -> *const u8 {
-    c!("3.5rs")
+    crate::TMUX_VERSION
 }
 
 /// entrypoint for tmux binary

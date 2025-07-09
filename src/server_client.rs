@@ -511,7 +511,7 @@ pub unsafe fn server_client_unref(c: *mut client) {
 }
 
 /// Free dead client.
-pub unsafe extern "C" fn server_client_free(_fd: i32, _events: i16, arg: *mut c_void) {
+pub unsafe extern "C-unwind" fn server_client_free(_fd: i32, _events: i16, arg: *mut c_void) {
     unsafe {
         let c: *mut client = arg.cast();
         log_debug!("free client {:p} ({} references)", c, (*c).references);
@@ -1894,7 +1894,7 @@ pub unsafe fn server_client_key_callback(item: *mut cmdq_item, data: *mut c_void
                  * the mode table instead of the default key table.
                  */
                 table = if server_client_is_default_key_table(c, (*c).keytable) != 0
-                    && wp.is_null()
+                    && !wp.is_null()
                     && ({
                         wme = tailq_first(&raw mut (*wp).modes);
                         !wme.is_null()
@@ -3513,7 +3513,6 @@ pub unsafe fn server_client_print(c: *mut client, parse: i32, evb: *mut evbuffer
         let data = EVBUFFER_DATA(evb);
         let mut size = EVBUFFER_LENGTH(evb);
         let mut msg = null_mut();
-        let mut line = null_mut();
 
         'out: {
             if parse == 0 {
@@ -3565,7 +3564,7 @@ pub unsafe fn server_client_print(c: *mut client, parse: i32, evb: *mut evbuffer
             }
             if parse != 0 {
                 loop {
-                    line = evbuffer_readln(evb, null_mut(), evbuffer_eol_style_EVBUFFER_EOL_LF);
+                    let line = evbuffer_readln(evb, null_mut(), evbuffer_eol_style_EVBUFFER_EOL_LF);
                     if !line.is_null() {
                         window_copy_add!(wp, 1, "{}", _s(line));
                         free_(line);
@@ -3577,7 +3576,7 @@ pub unsafe fn server_client_print(c: *mut client, parse: i32, evb: *mut evbuffer
 
                 size = EVBUFFER_LENGTH(evb);
                 if size != 0 {
-                    line = EVBUFFER_DATA(evb).cast();
+                    let line = EVBUFFER_DATA(evb);
                     window_copy_add!(wp, 1, "{:1$}", _s(line), size);
                 }
             } else {

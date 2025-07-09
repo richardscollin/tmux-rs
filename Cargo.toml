@@ -1,18 +1,18 @@
 # https://doc.rust-lang.org/cargo/reference/manifest.html
 [package]
 name = "tmux-rs"
-version = "0.0.1"
+version = "0.0.2"
 edition = "2024"
 authors = ["Collin Richards"]
 repository = "https://github.com/richardscollin/tmux-rs"
 description = "A Rust port of tmux"
 license = "ISC"
 rust-version = "1.88" # let chains
-exclude = ["/docs", "/.cargo", "/tools"]
+exclude = ["/docs", "/.cargo", "/tools", "CHANGELOG.md", "flake.lock", "flake.nix"]
 
 [dependencies]
 bitflags     = { version = "2.9.1"   }
-lalrpop-util = { version = "0.22.2", default-features = false, features = ["lexer", "unicode"] }
+lalrpop-util = { version = "0.22.2", default-features = false, features = ["unicode"] }
 libc         = { version = "0.2.174" }
 num_enum     = { version = "0.7.4"   }
 paste        = { version = "1.0.15"  }

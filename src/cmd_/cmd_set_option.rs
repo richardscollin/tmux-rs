@@ -57,15 +57,15 @@ pub static CMD_SET_HOOK_ENTRY: cmd_entry = cmd_entry {
     source: cmd_entry_flag::zeroed(),
 };
 
-pub unsafe fn cmd_set_option_args_parse(
+pub fn cmd_set_option_args_parse(
     _args: *mut args,
     idx: u32,
     cause: *mut *mut u8,
 ) -> args_parse_type {
-    if idx == 1 {
-        return args_parse_type::ARGS_PARSE_COMMANDS_OR_STRING;
+    match idx {
+        1 => args_parse_type::ARGS_PARSE_COMMANDS_OR_STRING,
+        _ => args_parse_type::ARGS_PARSE_STRING,
     }
-    args_parse_type::ARGS_PARSE_STRING
 }
 
 pub unsafe fn cmd_set_option_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retval {
@@ -228,12 +228,19 @@ pub unsafe fn cmd_set_option_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
                         if append == 0 {
                             options_array_clear(o);
                         }
-                        if options_array_assign(o, value, &raw mut cause) != 0 {
+                        if options_array_assign(o, cstr_to_str(value), &raw mut cause) != 0 {
                             cmdq_error!(item, "{}", _s(cause));
                             free_(cause);
                             break 'fail;
                         }
-                    } else if options_array_set(o, idx as u32, value, append, &raw mut cause) != 0 {
+                    } else if options_array_set(
+                        o,
+                        idx as u32,
+                        Some(cstr_to_str(value)),
+                        append,
+                        &raw mut cause,
+                    ) != 0
+                    {
                         cmdq_error!(item, "{}", _s(cause));
                         free_(cause);
                         break 'fail;

@@ -364,7 +364,7 @@ pub unsafe fn job_resize(job: *mut job, sx: c_uint, sy: c_uint) {
     }
 }
 
-unsafe extern "C" fn job_read_callback(bufev: *mut bufferevent, data: *mut c_void) {
+unsafe extern "C-unwind" fn job_read_callback(bufev: *mut bufferevent, data: *mut c_void) {
     let job = data as *mut job;
 
     unsafe {
@@ -373,7 +373,7 @@ unsafe extern "C" fn job_read_callback(bufev: *mut bufferevent, data: *mut c_voi
         }
     }
 }
-unsafe extern "C" fn job_write_callback(bufev: *mut bufferevent, data: *mut c_void) {
+unsafe extern "C-unwind" fn job_write_callback(bufev: *mut bufferevent, data: *mut c_void) {
     unsafe {
         let job = data as *mut job;
         let len = EVBUFFER_LENGTH(EVBUFFER_OUTPUT((*job).event));
@@ -393,7 +393,7 @@ unsafe extern "C" fn job_write_callback(bufev: *mut bufferevent, data: *mut c_vo
     }
 }
 
-unsafe extern "C" fn job_error_callback(
+unsafe extern "C-unwind" fn job_error_callback(
     bufev: *mut bufferevent,
     events: libc::c_short,
     data: *mut c_void,

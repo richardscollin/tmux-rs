@@ -9,8 +9,8 @@
 // software must be clearly marked as such, and if the derived work is
 // incompatible with the protocol description in the RFC file, it must be
 // called by a name other than "ssh" or "Secure Shell".
-
-use ::core::{
+use std::{
+    alloc::{Layout, alloc},
     ffi::{CStr, c_int, c_void},
     mem::MaybeUninit,
     num::NonZero,
@@ -160,8 +160,16 @@ pub fn xstrdup_(str: &CStr) -> NonNull<u8> {
     unsafe { xstrdup(str.as_ptr().cast()) }
 }
 
-pub fn xstrdup__<'a>(str: &CStr) -> &'a CStr {
-    unsafe { CStr::from_ptr(xstrdup(str.as_ptr().cast()).as_ptr().cast()) }
+pub fn xstrdup__(str: &str) -> *mut u8 {
+    let mut out = str.to_string();
+    out.push('\0');
+    out.leak().as_mut_ptr()
+}
+pub fn xstrdup___(str: Option<&str>) -> *mut u8 {
+    let Some(str) = str else {
+        return std::ptr::null_mut();
+    };
+    xstrdup__(str)
 }
 
 pub unsafe fn xstrndup(str: *const u8, maxlen: usize) -> NonNull<u8> {

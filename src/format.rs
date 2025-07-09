@@ -11,7 +11,6 @@
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-use crate::tmux::getversion_c;
 use crate::*;
 
 use std::cmp::Ordering;
@@ -2499,7 +2498,7 @@ pub unsafe fn format_cb_socket_path(_ft: *mut format_tree) -> *mut c_void {
 
 /// Callback for version.
 pub unsafe fn format_cb_version(_ft: *mut format_tree) -> *mut c_void {
-    unsafe { xstrdup(getversion_c()).as_ptr().cast() }
+    unsafe { xstrdup__(getversion()).cast() }
 }
 
 /// Callback for active_window_index.

@@ -37,7 +37,7 @@ static LOG_LEVEL: AtomicI32 = AtomicI32::new(0);
 
 const DEFAULT_ORDERING: Ordering = Ordering::SeqCst;
 
-unsafe extern "C" fn log_event_cb(_severity: c_int, msg: *const u8) {
+unsafe extern "C-unwind" fn log_event_cb(_severity: c_int, msg: *const u8) {
     unsafe { log_debug!("{}", _s(msg)) }
 }
 

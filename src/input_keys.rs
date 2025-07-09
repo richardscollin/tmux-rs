@@ -247,7 +247,7 @@ pub unsafe fn input_key_write(
     size: usize,
 ) {
     unsafe {
-        log_debug!("{0}: {2:1$}", _s(from), size, _s(data));
+        log_debug!("input_key_write {0}: {2:1$}", _s(from), size, _s(data));
         bufferevent_write(bev, data.cast(), size);
     }
 }

@@ -313,12 +313,18 @@ pub unsafe fn options_default(
 
         if (*oe).flags & OPTIONS_TABLE_IS_ARRAY != 0 {
             if (*oe).default_arr.is_null() {
-                options_array_assign(o, (*oe).default_str, null_mut());
+                options_array_assign(o, (*oe).default_str.unwrap(), null_mut());
                 return o;
             }
             let mut i = 0usize;
             while !(*(*oe).default_arr.add(i)).is_null() {
-                options_array_set(o, i as u32, *(*oe).default_arr.add(i), 0, null_mut());
+                options_array_set(
+                    o,
+                    i as u32,
+                    Some(cstr_to_str(*(*oe).default_arr.add(i))),
+                    0,
+                    null_mut(),
+                );
                 i += 1;
             }
             return o;
@@ -326,7 +332,7 @@ pub unsafe fn options_default(
 
         match (*oe).type_ {
             options_table_type::OPTIONS_TABLE_STRING => {
-                (*ov).string = xstrdup((*oe).default_str).as_ptr();
+                (*ov).string = xstrdup___((*oe).default_str);
             }
             _ => {
                 (*ov).number = (*oe).default_num;
@@ -340,7 +346,9 @@ pub unsafe fn options_default_to_string(oe: *const options_table_entry) -> NonNu
     unsafe {
         match (*oe).type_ {
             options_table_type::OPTIONS_TABLE_STRING
-            | options_table_type::OPTIONS_TABLE_COMMAND => xstrdup((*oe).default_str),
+            | options_table_type::OPTIONS_TABLE_COMMAND => {
+                NonNull::new_unchecked(xstrdup___((*oe).default_str))
+            }
             options_table_type::OPTIONS_TABLE_NUMBER => {
                 NonNull::new(format_nul!("{}", (*oe).default_num)).unwrap()
             }
@@ -463,7 +471,7 @@ pub unsafe fn options_array_get(o: *mut options_entry, idx: u32) -> *mut options
 pub unsafe fn options_array_set(
     o: *mut options_entry,
     idx: u32,
-    value: *const u8,
+    value: Option<&str>,
     append: i32,
     cause: *mut *mut u8,
 ) -> i32 {
@@ -475,16 +483,16 @@ pub unsafe fn options_array_set(
             return -1;
         }
 
-        if value.is_null() {
+        let Some(value) = value else {
             let a = options_array_item(o, idx);
             if !a.is_null() {
                 options_array_free(o, a);
             }
             return 0;
-        }
+        };
 
         if OPTIONS_IS_COMMAND(o) {
-            let cmdlist = match cmd_parse_from_string(cstr_to_str(value), None) {
+            let cmdlist = match cmd_parse_from_string(value, None) {
                 Err(error) => {
                     if !cause.is_null() {
                         *cause = error;
@@ -509,9 +517,9 @@ pub unsafe fn options_array_set(
         if OPTIONS_IS_STRING(o) {
             let mut a = options_array_item(o, idx);
             let new = if !a.is_null() && append != 0 {
-                format_nul!("{}{}", _s((*a).value.string), _s(value))
+                format_nul!("{}{}", _s((*a).value.string), value)
             } else {
-                xstrdup(value).as_ptr()
+                xstrdup__(value)
             };
 
             if a.is_null() {
@@ -526,9 +534,9 @@ pub unsafe fn options_array_set(
         if !(*o).tableentry.is_null()
             && (*(*o).tableentry).type_ == options_table_type::OPTIONS_TABLE_COLOUR
         {
-            let number = colour_fromstring(value);
+            let number = colour_fromstring_(value);
             if number == -1 {
-                *cause = format_nul!("bad colour: {}", _s(value));
+                *cause = format_nul!("bad colour: {}", value);
                 return -1;
             }
             let mut a = options_array_item(o, idx);
@@ -548,18 +556,14 @@ pub unsafe fn options_array_set(
     }
 }
 
-pub unsafe fn options_array_assign(
-    o: *mut options_entry,
-    s: *const u8,
-    cause: *mut *mut u8,
-) -> i32 {
+pub unsafe fn options_array_assign(o: *mut options_entry, s: &str, cause: *mut *mut u8) -> i32 {
     unsafe {
         let mut separator = (*(*o).tableentry).separator;
         if separator.is_null() {
             separator = c!(" ,");
         }
         if *separator == 0 {
-            if *s == 0 {
+            if s.is_empty() {
                 return 0;
             }
             let mut i = 0;
@@ -569,13 +573,13 @@ pub unsafe fn options_array_assign(
                 }
                 i += 1;
             }
-            return options_array_set(o, i, s, 0, cause);
+            return options_array_set(o, i, Some(s), 0, cause);
         }
 
-        if *s == 0 {
+        if s.is_empty() {
             return 0;
         }
-        let copy = xstrdup(s).as_ptr();
+        let copy = xstrdup__(s);
         let mut string = copy;
         while let Some(next) = NonNull::new(strsep(&raw mut string, separator)) {
             let next = next.as_ptr();
@@ -592,7 +596,7 @@ pub unsafe fn options_array_assign(
             if i == u32::MAX {
                 break;
             }
-            if options_array_set(o, i, next, 0, cause) != 0 {
+            if options_array_set(o, i, Some(cstr_to_str(next)), 0, cause) != 0 {
                 free_(copy);
                 return -1;
             }
@@ -1438,7 +1442,7 @@ pub unsafe fn options_remove_or_default(
             } else {
                 options_remove(o);
             }
-        } else if options_array_set(o, idx as u32, null(), 0, cause) != 0 {
+        } else if options_array_set(o, idx as u32, None, 0, cause) != 0 {
             return -1;
         }
         0

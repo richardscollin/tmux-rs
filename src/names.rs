@@ -55,7 +55,7 @@ pub unsafe fn check_window_name(w: *mut window) {
             .flags
             .intersects(window_pane_flags::PANE_CHANGED)
         {
-            log_debug!("@{} pane not changed", (*w).id);
+            // log_debug!("@{} pane not changed", (*w).id);
             return;
         }
         log_debug!("@{} pane changed", (*w).id);

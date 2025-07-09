@@ -132,7 +132,7 @@ pub unsafe fn file_free(cf: *mut client_file) {
     }
 }
 
-pub unsafe extern "C" fn file_fire_done_cb(_fd: i32, _events: i16, arg: *mut c_void) {
+pub unsafe extern "C-unwind" fn file_fire_done_cb(_fd: i32, _events: i16, arg: *mut c_void) {
     unsafe {
         let cf: *mut client_file = arg as _;
         let c: *mut client = (*cf).c;
@@ -501,7 +501,7 @@ pub unsafe fn file_cancel(cf: *mut client_file) {
     }
 }
 
-pub unsafe extern "C" fn file_push_cb(_fd: i32, _events: i16, arg: *mut c_void) {
+pub unsafe extern "C-unwind" fn file_push_cb(_fd: i32, _events: i16, arg: *mut c_void) {
     let cf = arg as *mut client_file;
 
     unsafe {
@@ -588,7 +588,7 @@ pub unsafe fn file_write_left(files: *mut client_files) -> c_int {
     (waiting != 0) as i32
 }
 
-pub unsafe extern "C" fn file_write_error_callback(
+pub unsafe extern "C-unwind" fn file_write_error_callback(
     bev: *mut bufferevent,
     what: i16,
     arg: *mut c_void,
@@ -610,7 +610,7 @@ pub unsafe extern "C" fn file_write_error_callback(
     }
 }
 
-pub unsafe extern "C" fn file_write_callback(bev: *mut bufferevent, arg: *mut c_void) {
+pub unsafe extern "C-unwind" fn file_write_callback(bev: *mut bufferevent, arg: *mut c_void) {
     unsafe {
         let cf = arg as *mut client_file;
 
@@ -769,7 +769,7 @@ pub unsafe fn file_write_close(files: *mut client_files, imsg: *mut imsg) {
     }
 }
 
-pub unsafe extern "C" fn file_read_error_callback(
+pub unsafe extern "C-unwind" fn file_read_error_callback(
     _bev: *mut bufferevent,
     what: i16,
     arg: *mut c_void,
@@ -798,7 +798,7 @@ pub unsafe extern "C" fn file_read_error_callback(
     }
 }
 
-pub unsafe extern "C" fn file_read_callback(bev: *mut bufferevent, arg: *mut c_void) {
+pub unsafe extern "C-unwind" fn file_read_callback(bev: *mut bufferevent, arg: *mut c_void) {
     let cf = arg as *mut client_file;
     unsafe {
         let mut msg = xmalloc_::<msg_read_data>();

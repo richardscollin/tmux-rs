@@ -169,87 +169,80 @@ pub unsafe fn colour_tostring(c: i32) -> *const u8 {
 }
 
 /// Convert colour from string.
-pub unsafe fn colour_fromstring_(s: &str) -> c_int {
+#[unsafe(no_mangle)]
+pub fn colour_fromstring_(s: &str) -> c_int {
     let orig = s;
-    unsafe {
-        if s.chars().next().is_some_and(|c| c == '#') && s.len() == 7 {
-            let cp = s.trim_start_matches(|c: char| c.is_ascii_hexdigit());
-            if cp.is_empty() {
-                return -1;
-            }
-
-            if s.len() < 7 {
-                return -1;
-            }
-            if let Ok(r) = u8::from_str_radix(&s[1..3], 16)
-                && let Ok(g) = u8::from_str_radix(&s[3..5], 16)
-                && let Ok(b) = u8::from_str_radix(&s[5..6], 16)
-            {
-                return colour_join_rgb(r, g, b);
-            } else {
-                return -1;
-            }
+    if s.chars().next().is_some_and(|c| c == '#') && s.len() == 7 {
+        let cp = s.trim_start_matches(|c: char| c.is_ascii_hexdigit());
+        if cp.is_empty() {
+            return -1;
         }
 
-        if s.eq_ignore_ascii_case("colour") {
-            if s.len() == 6 {
-                return -1;
-            }
-            let Ok(n) = strtonum_(&s[6..], 0i32, 255) else {
-                return -1;
-            };
-            return n | COLOUR_FLAG_256;
+        if s.len() < 7 {
+            return -1;
         }
-
-        if s.eq_ignore_ascii_case("color") {
-            if s.len() == 5 {
-                return -1;
-            }
-            let Ok(n) = strtonum_(&s[5..], 0i32, 255) else {
-                return -1;
-            };
-            return n | COLOUR_FLAG_256;
-        }
-
-        if s.eq_ignore_ascii_case("default") {
-            8
-        } else if s.eq_ignore_ascii_case("terminal") {
-            9
-        } else if s.eq_ignore_ascii_case("black") || s == "0" {
-            0
-        } else if s.eq_ignore_ascii_case("red") || s == "1" {
-            1
-        } else if s.eq_ignore_ascii_case("green") || s == "2" {
-            2
-        } else if s.eq_ignore_ascii_case("yellow") || s == "3" {
-            3
-        } else if s.eq_ignore_ascii_case("blue") || s == "4" {
-            4
-        } else if s.eq_ignore_ascii_case("magenta") || s == "5" {
-            5
-        } else if s.eq_ignore_ascii_case("cyan") || s == "6" {
-            6
-        } else if s.eq_ignore_ascii_case("white") || s == "7" {
-            7
-        } else if s.eq_ignore_ascii_case("brightblack") || s == "90" {
-            90
-        } else if s.eq_ignore_ascii_case("brightred") || s == "91" {
-            91
-        } else if s.eq_ignore_ascii_case("brightgreen") || s == "92" {
-            92
-        } else if s.eq_ignore_ascii_case("brightyellow") || s == "93" {
-            93
-        } else if s.eq_ignore_ascii_case("brightblue") || s == "94" {
-            94
-        } else if s.eq_ignore_ascii_case("brightmagenta") || s == "95" {
-            95
-        } else if s.eq_ignore_ascii_case("brightcyan") || s == "96" {
-            96
-        } else if s.eq_ignore_ascii_case("brightwhite") || s == "97" {
-            97
+        if let Ok(r) = u8::from_str_radix(&s[1..3], 16)
+            && let Ok(g) = u8::from_str_radix(&s[3..5], 16)
+            && let Ok(b) = u8::from_str_radix(&s[5..6], 16)
+        {
+            return colour_join_rgb(r, g, b);
         } else {
-            colour_byname(s)
+            return -1;
         }
+    }
+
+    if s.len() > 6 && s[..6].eq_ignore_ascii_case("colour") {
+        let Ok(n) = strtonum_(&s[6..], 0i32, 255) else {
+            return -1;
+        };
+        return n | COLOUR_FLAG_256;
+    }
+
+    if s.len() > 5 && s[..5].eq_ignore_ascii_case("color") {
+        let Ok(n) = strtonum_(&s[5..], 0i32, 255) else {
+            return -1;
+        };
+        return n | COLOUR_FLAG_256;
+    }
+
+    if s.eq_ignore_ascii_case("default") {
+        8
+    } else if s.eq_ignore_ascii_case("terminal") {
+        9
+    } else if s.eq_ignore_ascii_case("black") || s == "0" {
+        0
+    } else if s.eq_ignore_ascii_case("red") || s == "1" {
+        1
+    } else if s.eq_ignore_ascii_case("green") || s == "2" {
+        2
+    } else if s.eq_ignore_ascii_case("yellow") || s == "3" {
+        3
+    } else if s.eq_ignore_ascii_case("blue") || s == "4" {
+        4
+    } else if s.eq_ignore_ascii_case("magenta") || s == "5" {
+        5
+    } else if s.eq_ignore_ascii_case("cyan") || s == "6" {
+        6
+    } else if s.eq_ignore_ascii_case("white") || s == "7" {
+        7
+    } else if s.eq_ignore_ascii_case("brightblack") || s == "90" {
+        90
+    } else if s.eq_ignore_ascii_case("brightred") || s == "91" {
+        91
+    } else if s.eq_ignore_ascii_case("brightgreen") || s == "92" {
+        92
+    } else if s.eq_ignore_ascii_case("brightyellow") || s == "93" {
+        93
+    } else if s.eq_ignore_ascii_case("brightblue") || s == "94" {
+        94
+    } else if s.eq_ignore_ascii_case("brightmagenta") || s == "95" {
+        95
+    } else if s.eq_ignore_ascii_case("brightcyan") || s == "96" {
+        96
+    } else if s.eq_ignore_ascii_case("brightwhite") || s == "97" {
+        97
+    } else {
+        colour_byname(s)
     }
 }
 
@@ -311,7 +304,7 @@ pub fn colour_256to16(c: i32) -> i32 {
     TABLE[c as u8 as usize] as i32
 }
 
-pub unsafe fn colour_byname(name: &str) -> i32 {
+pub fn colour_byname(name: &str) -> i32 {
     const COLOURS: [(&str, i32); 578] = [
         ("AliceBlue", 0xf0f8ff),
         ("AntiqueWhite", 0xfaebd7),

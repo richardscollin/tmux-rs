@@ -65,18 +65,16 @@ pub struct utf8_item_data {
 }
 
 impl utf8_item_data {
-    fn init_from_slice<'a>(this: &'a mut MaybeUninit<Self>, data: &'_ [u8]) -> &'a mut Self {
-        assert!(data.len() <= UTF8_SIZE);
+    fn new(bytes: &[u8]) -> Self {
+        assert!(bytes.len() <= UTF8_SIZE);
 
-        unsafe {
-            let ptr = this.as_mut_ptr();
-
-            for (i, ch) in data.iter().enumerate() {
-                (*ptr).data[i] = MaybeUninit::new(*ch);
-            }
-
-            (*ptr).size = data.len() as u8;
-            this.assume_init_mut()
+        let mut data = [MaybeUninit::new(0); UTF8_SIZE];
+        for (i, ch) in bytes.iter().enumerate() {
+            data[i] = MaybeUninit::new(*ch);
+        }
+        Self {
+            data,
+            size: data.len() as u8,
         }
     }
 }
@@ -104,9 +102,7 @@ impl utf8_item_data {
 impl_ord!(utf8_item_data as utf8_data_cmp);
 
 fn utf8_data_cmp(ui1: &utf8_item_data, ui2: &utf8_item_data) -> std::cmp::Ordering {
-    ui1.size
-        .cmp(&ui2.size)
-        .then_with(|| ui1.initialized_slice().cmp(ui2.initialized_slice()))
+    ui1.initialized_slice().cmp(ui2.initialized_slice())
 }
 
 thread_local! {
@@ -192,11 +188,7 @@ pub unsafe fn utf8_from_data(ud: &utf8_data) -> Result<utf8_char, utf8_char> {
                 index =
                     ((ud.data[2] as u32) << 16) | ((ud.data[1] as u32) << 8) | (ud.data[0] as u32);
             } else {
-                let mut item_data = MaybeUninit::<utf8_item_data>::uninit();
-                utf8_item_data::init_from_slice(&mut item_data, ud.initialized_slice());
-                let item_data = item_data.assume_init_ref();
-
-                match utf8_put_item(item_data) {
+                match utf8_put_item(&utf8_item_data::new(ud.initialized_slice())) {
                     Ok(value) => index = value,
                     Err(()) => break 'fail,
                 }

@@ -142,12 +142,12 @@ pub unsafe fn grid_extended_cell(
         }
         (*gl).flags |= grid_line_flag::EXTENDED;
 
-        let mut uc = MaybeUninit::<utf8_char>::uninit();
-        let uc = uc.as_mut_ptr();
-        utf8_from_data(&raw const (*gc).data, uc);
+        let uc = match utf8_from_data(&(*gc).data) {
+            Ok(value) | Err(value) => value,
+        };
 
         let gee = &mut *(*gl).extddata.offset((*gce).union_.offset as isize);
-        gee.data = *uc;
+        gee.data = uc;
         gee.attr = (*gc).attr.bits();
         gee.flags = flags.bits();
         gee.fg = (*gc).fg;

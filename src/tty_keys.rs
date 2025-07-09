@@ -973,7 +973,6 @@ unsafe fn tty_keys_next1(
         let mut tk1: *mut tty_key = null_mut();
         let mut ud: utf8_data = zeroed();
         let mut more: utf8_state;
-        let mut uc: utf8_char = zeroed();
         let mut i: u32;
 
         // log_debug!("{}: next key is {} (%.*s) (expired=%d)", _s((*c).name), len, len as i32, buf, expired);
@@ -1013,9 +1012,9 @@ unsafe fn tty_keys_next1(
                 return -1;
             }
 
-            if utf8_from_data(&raw const ud, &raw mut uc) != utf8_state::UTF8_DONE {
+            let Ok(uc) = utf8_from_data(&ud) else {
                 return -1;
-            }
+            };
             *key = uc as u64;
 
             // log_debug!("{}: UTF-8 key %.*s %#llx".as_ptr(), (*c).name, ud.size as i32, ud.data, *key);
@@ -1381,7 +1380,6 @@ unsafe fn tty_keys_extended_key(
         let mut nkey: key_code = 0;
 
         let mut ud: utf8_data = zeroed();
-        let mut uc: utf8_char = zeroed();
 
         *size = 0;
 
@@ -1456,7 +1454,7 @@ unsafe fn tty_keys_extended_key(
         /* Convert UTF-32 codepoint into internal representation. */
         if nkey != keyc::KEYC_BSPACE as key_code && (nkey & !0x7f) != 0 {
             if utf8_fromwc(nkey as wchar_t, &raw mut ud) == utf8_state::UTF8_DONE
-                && utf8_from_data(&raw const ud, &raw mut uc) == utf8_state::UTF8_DONE
+                && let Ok(uc) = utf8_from_data(&ud)
             {
                 nkey = uc as key_code;
             } else {

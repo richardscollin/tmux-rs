@@ -719,10 +719,10 @@ pub unsafe fn status_prompt_set(
 
         if (flags & PROMPT_INCREMENTAL) != 0 {
             (*c).prompt_last = xstrdup(tmp).as_ptr();
-            (*c).prompt_buffer = utf8_fromcstr(c!(""));
+            (*c).prompt_buffer = Box::leak(utf8_fromcstr(c!(""))).as_mut_ptr();
         } else {
             (*c).prompt_last = null_mut();
-            (*c).prompt_buffer = utf8_fromcstr(tmp);
+            (*c).prompt_buffer = Box::leak(utf8_fromcstr(tmp)).as_mut_ptr();
         }
         (*c).prompt_index = utf8_strlen((*c).prompt_buffer);
 
@@ -798,7 +798,7 @@ pub unsafe fn status_prompt_update(c: *mut client, msg: *const u8, input: *const
         (*c).prompt_string = format_expand_time(ft, msg);
 
         free_((*c).prompt_buffer);
-        (*c).prompt_buffer = utf8_fromcstr(tmp);
+        (*c).prompt_buffer = Box::leak(utf8_fromcstr(tmp)).as_mut_ptr();
         (*c).prompt_index = utf8_strlen((*c).prompt_buffer);
 
         libc::memset(
@@ -1645,7 +1645,7 @@ pub unsafe fn status_prompt_key(c: *mut client, mut key: key_code) -> i32 {
                         );
                         if !histstr.is_null() {
                             free_((*c).prompt_buffer);
-                            (*c).prompt_buffer = utf8_fromcstr(histstr);
+                            (*c).prompt_buffer = Box::leak(utf8_fromcstr(histstr)).as_mut_ptr();
                             (*c).prompt_index = utf8_strlen((*c).prompt_buffer);
                             break 'changed;
                         }
@@ -1657,7 +1657,7 @@ pub unsafe fn status_prompt_key(c: *mut client, mut key: key_code) -> i32 {
                         );
                         if !histstr.is_null() {
                             free_((*c).prompt_buffer);
-                            (*c).prompt_buffer = utf8_fromcstr(histstr);
+                            (*c).prompt_buffer = Box::leak(utf8_fromcstr(histstr)).as_mut_ptr();
                             (*c).prompt_index = utf8_strlen((*c).prompt_buffer);
                             break 'changed;
                         }
@@ -1715,7 +1715,8 @@ pub unsafe fn status_prompt_key(c: *mut client, mut key: key_code) -> i32 {
                             if (*(*c).prompt_buffer).size == 0 {
                                 prefix = b'=';
                                 free_((*c).prompt_buffer);
-                                (*c).prompt_buffer = utf8_fromcstr((*c).prompt_last);
+                                (*c).prompt_buffer =
+                                    Box::leak(utf8_fromcstr((*c).prompt_last)).as_mut_ptr();
                                 (*c).prompt_index = utf8_strlen((*c).prompt_buffer);
                             } else {
                                 prefix = b'-';
@@ -1728,7 +1729,8 @@ pub unsafe fn status_prompt_key(c: *mut client, mut key: key_code) -> i32 {
                             if (*(*c).prompt_buffer).size == 0 {
                                 prefix = b'=';
                                 free_((*c).prompt_buffer);
-                                (*c).prompt_buffer = utf8_fromcstr((*c).prompt_last);
+                                (*c).prompt_buffer =
+                                    Box::leak(utf8_fromcstr((*c).prompt_last)).as_mut_ptr();
                                 (*c).prompt_index = utf8_strlen((*c).prompt_buffer);
                             } else {
                                 prefix = b'+';
@@ -2027,7 +2029,7 @@ unsafe fn status_prompt_menu_callback(
             };
             if (*c).prompt_type == prompt_type::PROMPT_TYPE_WINDOW_TARGET {
                 free_((*c).prompt_buffer);
-                (*c).prompt_buffer = utf8_fromcstr(s);
+                (*c).prompt_buffer = Box::leak(utf8_fromcstr(s)).as_mut_ptr();
                 (*c).prompt_index = utf8_strlen((*c).prompt_buffer);
                 (*c).flags |= client_flag::REDRAWSTATUS;
             } else if status_prompt_replace_complete(c, s) != 0 {

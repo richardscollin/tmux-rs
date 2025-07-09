@@ -15,6 +15,12 @@ pub unsafe fn free_<T>(p: *mut T) {
     unsafe { ::libc::free(p as *mut c_void) }
 }
 
+pub unsafe fn free_take<T: ?Sized>(value: &mut Option<&mut T>) {
+    if let Some(ptr) = value.take() {
+        unsafe { ::libc::free(ptr as *mut T as *mut c_void) }
+    }
+}
+
 #[allow(
     clippy::unnecessary_cast,
     reason = "mode_t is u16 on macos so cast is required for some platforms only"

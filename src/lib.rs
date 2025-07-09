@@ -617,22 +617,16 @@ const UTF8_SIZE: usize = 21;
 #[repr(C)]
 #[derive(Copy, Clone)]
 struct utf8_data {
-    data: [c_uchar; UTF8_SIZE],
+    data: [u8; UTF8_SIZE],
 
-    have: c_uchar,
-    size: c_uchar,
-
+    have: u8,
+    size: u8, // TODO check the codebase for things checking if size == 0, which is the sentinal value
     /// 0xff if invalid
-    width: c_uchar,
+    width: u8,
 }
 
 impl utf8_data {
-    const fn new<const N: usize>(
-        data: [u8; N],
-        have: c_uchar,
-        size: c_uchar,
-        width: c_uchar,
-    ) -> Self {
+    const fn new<const N: usize>(data: [u8; N], have: u8, size: u8, width: u8) -> Self {
         if N >= UTF8_SIZE {
             panic!("invalid size");
         }
@@ -650,6 +644,10 @@ impl utf8_data {
             size,
             width,
         }
+    }
+
+    fn initialized_slice(&self) -> &[u8] {
+        &self.data[..self.size as usize]
     }
 }
 

@@ -91,25 +91,6 @@ const fn transmute_ptr<T>(value: Option<NonNull<T>>) -> *mut T {
 
 use compat::imsg::imsg; // TODO move
 
-type wchar_t = core::ffi::c_int;
-#[cfg(target_os = "linux")]
-unsafe extern "C" {
-    static mut stdin: *mut FILE;
-    static mut stdout: *mut FILE;
-    static mut stderr: *mut FILE;
-}
-#[cfg(target_os = "macos")]
-unsafe extern "C" {
-    #[link_name = "__stdinp"]
-    static mut stdin: *mut FILE;
-
-    #[link_name = "__stdoutp"]
-    static mut stdout: *mut FILE;
-
-    #[link_name = "__stderrp"]
-    static mut stderr: *mut FILE;
-}
-
 // use crate::tmux_protocol_h::*;
 
 type bitstr_t = u8;
@@ -3086,10 +3067,9 @@ use crate::spawn::{spawn_pane, spawn_window};
 mod regsub;
 use crate::regsub::regsub;
 
-/* image.c */
-unsafe extern "C" {}
-/* image-sixel.c */
-unsafe extern "C" {}
+// TODO
+// image.c
+// image-sixel.c
 
 mod server_acl;
 use crate::server_acl::{

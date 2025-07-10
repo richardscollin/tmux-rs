@@ -22,7 +22,7 @@ use crate::{
     fatalx, vasprintf, vsnprintf,
 };
 
-pub extern "C" fn xmalloc(size: usize) -> NonNull<c_void> {
+pub fn xmalloc(size: usize) -> NonNull<c_void> {
     debug_assert_ne!(size, 0, "xmalloc: zero size");
 
     // Allocate using max_align_t to have the same allignment as malloc.
@@ -50,7 +50,7 @@ pub fn xmalloc__<T>() -> &'static mut MaybeUninit<T> {
     Box::leak(alloc)
 }
 
-pub extern "C" fn xcalloc(nmemb: usize, size: usize) -> NonNull<c_void> {
+pub fn xcalloc(nmemb: usize, size: usize) -> NonNull<c_void> {
     debug_assert!(size != 0 && nmemb != 0, "xcalloc: zero size");
 
     NonNull::new(unsafe { ::libc::calloc(nmemb, size) })

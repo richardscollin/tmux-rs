@@ -3,9 +3,25 @@
 // reexport everything in libc from this module, then override things we want to change the interface for
 pub use ::libc::*;
 
-use ::core::ffi::c_void;
-
 pub type wchar_t = core::ffi::c_int;
+
+#[cfg(target_os = "linux")]
+unsafe extern "C" {
+    pub(crate) static mut stdin: *mut FILE;
+    pub(crate) static mut stdout: *mut FILE;
+    pub(crate) static mut stderr: *mut FILE;
+}
+#[cfg(target_os = "macos")]
+unsafe extern "C" {
+    #[link_name = "__stdinp"]
+    pub(crate) static mut stdin: *mut FILE;
+
+    #[link_name = "__stdoutp"]
+    pub(crate) static mut stdout: *mut FILE;
+
+    #[link_name = "__stderrp"]
+    pub(crate) static mut stderr: *mut FILE;
+}
 
 pub unsafe fn chdir(dir: *const u8) -> i32 {
     unsafe { ::libc::chdir(dir.cast()) }
@@ -55,6 +71,10 @@ pub unsafe fn memcpy__<T>(dest: *mut T, src: *const T) -> *mut T {
 
 pub unsafe fn realpath(pathname: *const u8, resolved: *mut u8) -> *mut u8 {
     unsafe { ::libc::realpath(pathname.cast(), resolved.cast()).cast() }
+}
+
+pub unsafe fn setlocale(category: i32, locale: *const u8) -> *mut u8 {
+    unsafe { ::libc::setlocale(category, locale.cast()).cast() }
 }
 
 pub unsafe fn strftime(s: *mut u8, max: usize, format: *const u8, tm: *const tm) -> usize {
@@ -123,6 +143,13 @@ pub unsafe fn strtoul(s: *const u8, endp: *mut *mut u8, base: i32) -> u64 {
 
 pub unsafe fn strtod(s: *const u8, endp: *mut *mut u8) -> f64 {
     unsafe { ::libc::strtod(s.cast(), endp.cast()) }
+}
+
+pub unsafe fn tzset() {
+    unsafe extern "C" {
+        fn tzset();
+    }
+    unsafe { tzset() }
 }
 
 pub unsafe fn unlink(c: *const u8) -> i32 {
@@ -356,7 +383,7 @@ pub unsafe fn strcaseeq_(left: *const u8, right: &'static str) -> bool {
     unsafe { matches!(strcasecmp_(left, right), std::cmp::Ordering::Equal) }
 }
 
-pub unsafe fn ttyname(fd: c_int) -> *mut u8 {
+pub unsafe fn ttyname(fd: i32) -> *mut u8 {
     unsafe { ::libc::ttyname(fd).cast() }
 }
 

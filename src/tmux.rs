@@ -15,14 +15,6 @@ use crate::*;
 
 use crate::xmalloc::xstrndup;
 
-unsafe extern "C" {
-    // TODO move/remove
-    fn errx(_: c_int, _: *const u8, ...);
-    fn err(_: c_int, _: *const u8, ...);
-
-    fn tzset();
-}
-
 use crate::compat::{S_ISDIR, fdforkpty::getptmfd, getprogname::getprogname};
 use crate::libc::{
     CLOCK_MONOTONIC, CLOCK_REALTIME, CODESET, EEXIST, F_GETFL, F_SETFL, LC_CTYPE, LC_TIME,
@@ -385,19 +377,21 @@ pub unsafe fn tmux_main(mut argc: i32, mut argv: *mut *mut u8, env: *mut *mut u8
         let mut fflag: i32 = 0;
         let mut flags: client_flag = client_flag::empty();
 
-        if setlocale(LC_CTYPE, c"en_US.UTF-8".as_ptr()).is_null()
-            && setlocale(LC_CTYPE, c"C.UTF-8".as_ptr()).is_null()
+        if setlocale(LC_CTYPE, c!("en_US.UTF-8")).is_null()
+            && setlocale(LC_CTYPE, c!("C.UTF-8")).is_null()
         {
-            if setlocale(LC_CTYPE, c"".as_ptr()).is_null() {
-                errx(1, c!("invalid LC_ALL, LC_CTYPE or LANG"));
+            if setlocale(LC_CTYPE, c!("")).is_null() {
+                eprintln!("invalid LC_ALL, LC_CTYPE or LANG");
+                std::process::exit(1);
             }
             let s: *mut u8 = nl_langinfo(CODESET).cast();
             if strcasecmp(s, c!("UTF-8")) != 0 && strcasecmp(s, c!("UTF8")) != 0 {
-                errx(1, c!("need UTF-8 locale (LC_CTYPE) but have %s"), s);
+                eprintln!("need UTF-8 locale (LC_CTYPE) but have {}", _s(s));
+                std::process::exit(1);
             }
         }
 
-        setlocale(LC_TIME, c"".as_ptr());
+        setlocale(LC_TIME, c!(""));
         tzset();
 
         if **argv == b'-' {
@@ -420,7 +414,7 @@ pub unsafe fn tmux_main(mut argc: i32, mut argv: *mut *mut u8, env: *mut *mut u8
 
         let mut opt;
         while {
-            opt = getopt(argc, argv.cast(), c"2c:CDdf:lL:NqS:T:uUvV".as_ptr().cast());
+            opt = getopt(argc, argv.cast(), c!("2c:CDdf:lL:NqS:T:uUvV"));
             opt != -1
         } {
             match opt as u8 {
@@ -481,7 +475,8 @@ pub unsafe fn tmux_main(mut argc: i32, mut argv: *mut *mut u8, env: *mut *mut u8
 
         PTM_FD = getptmfd();
         if PTM_FD == -1 {
-            err(1, c!("getptmfd"));
+            eprintln!("getptmfd failed!");
+            std::process::exit(1);
         }
 
         /*

@@ -173,19 +173,13 @@ pub unsafe fn tty_acs_heavy_borders(cell_type: cell_type) -> *const utf8_data {
     unsafe { &raw const TTY_ACS_HEAVY_BORDERS_LIST[cell_type as usize] }
 }
 
-/* Get cell border character for rounded style. */
-
+/// Get cell border character for rounded style.
 pub unsafe fn tty_acs_rounded_borders(cell_type: cell_type) -> *const utf8_data {
     unsafe { &raw const TTY_ACS_ROUNDED_BORDERS_LIST[cell_type as usize] }
 }
 
-pub unsafe extern "C" fn tty_acs_cmp(key: *const c_void, value: *const c_void) -> i32 {
-    unsafe {
-        let entry = value as *const tty_acs_entry;
-        let test = *(key as *const u8);
-
-        test as i32 - (*entry).key as i32
-    }
+pub fn tty_acs_cmp(test: &u8, entry: &tty_acs_entry) -> std::cmp::Ordering {
+    test.cmp(&entry.key)
 }
 
 pub unsafe extern "C" fn tty_acs_reverse_cmp(key: *const c_void, value: *const c_void) -> i32 {
@@ -197,8 +191,7 @@ pub unsafe extern "C" fn tty_acs_reverse_cmp(key: *const c_void, value: *const c
     }
 }
 
-/* Should this terminal use ACS instead of UTF-8 line drawing? */
-
+/// Should this terminal use ACS instead of UTF-8 line drawing?
 pub unsafe fn tty_acs_needed(tty: *const tty) -> i32 {
     unsafe {
         if tty.is_null() {
@@ -218,13 +211,10 @@ pub unsafe fn tty_acs_needed(tty: *const tty) -> i32 {
     }
 }
 
-/* Retrieve ACS to output as UTF-8. */
-
+/// Retrieve ACS to output as UTF-8.
 pub unsafe fn tty_acs_get(tty: *mut tty, ch: u8) -> *const u8 {
     unsafe {
-        // const struct tty_acs_entry	*entry;
-
-        /* Use the ACS set instead of UTF-8 if needed. */
+        // Use the ACS set instead of UTF-8 if needed.
         if tty_acs_needed(tty) != 0 {
             if (*(*tty).term).acs[ch as usize][0] == b'\0' as _ {
                 return null();
@@ -232,24 +222,15 @@ pub unsafe fn tty_acs_get(tty: *mut tty, ch: u8) -> *const u8 {
             return &raw const (*(*tty).term).acs[ch as usize][0];
         }
 
-        /* Otherwise look up the UTF-8 translation. */
-        let entry: *mut tty_acs_entry = libc::bsearch(
-            &raw const ch as *const c_void,
-            &raw const TTY_ACS_TABLE as *const c_void,
-            TTY_ACS_TABLE.len(),
-            size_of::<tty_acs_entry>(),
-            Some(tty_acs_cmp),
-        )
-        .cast();
-        if entry.is_null() {
+        let Ok(entry) = TTY_ACS_TABLE.binary_search_by(|e| tty_acs_cmp(&ch, e).reverse()) else {
             return null_mut();
-        }
-        (*entry).string.as_ptr().cast()
+        };
+
+        TTY_ACS_TABLE[entry].string.as_ptr().cast()
     }
 }
 
-/* Reverse UTF-8 into ACS. */
-
+/// Reverse UTF-8 into ACS.
 pub unsafe fn tty_acs_reverse_get(tty: *const tty, s: *const u8, slen: usize) -> i32 {
     unsafe {
         let table;

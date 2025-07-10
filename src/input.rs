@@ -854,19 +854,17 @@ static mut INPUT_STATE_CONSUME_ST_TABLE: [input_transition; 8] = concat_array(
     ],
 );
 
-unsafe extern "C" fn input_table_compare(key: *const c_void, value: *const c_void) -> i32 {
+unsafe fn input_table_compare(
+    ictx: *const input_ctx,
+    entry: &input_table_entry,
+) -> std::cmp::Ordering {
     unsafe {
-        let ictx: *const input_ctx = key.cast();
-        let entry: *const input_table_entry = value.cast();
-
-        if (*ictx).ch != (*entry).ch {
-            (*ictx).ch - (*entry).ch
-        } else {
-            libc::strcmp(
+        (*ictx).ch.cmp(&entry.ch).then_with(|| {
+            i32_to_ordering(libc::strcmp(
                 (&raw const (*ictx).interm_buf).cast(),
-                (*entry).interm.as_ptr().cast(),
-            )
-        }
+                entry.interm.as_ptr().cast(),
+            ))
+        })
     }
 }
 
@@ -1456,20 +1454,14 @@ unsafe fn input_esc_dispatch(ictx: *mut input_ctx) -> i32 {
             _s((*ictx).interm_buf.as_ptr().cast::<u8>())
         );
 
-        let entry: *const input_table_entry = libc::bsearch(
-            ictx.cast(),
-            (&raw const INPUT_ESC_TABLE).cast(),
-            INPUT_ESC_TABLE.len(),
-            size_of_val(&INPUT_ESC_TABLE[0]),
-            Some(input_table_compare),
-        )
-        .cast();
-        if entry.is_null() {
+        let Ok(entry) =
+            INPUT_ESC_TABLE.binary_search_by(|e| input_table_compare(ictx, e).reverse())
+        else {
             log_debug!("{}: unknown '{}'", __func__, (*ictx).ch);
             return 0;
-        }
+        };
 
-        match input_esc_type::try_from((*entry).type_) {
+        match input_esc_type::try_from((INPUT_ESC_TABLE[entry]).type_) {
             Ok(input_esc_type::INPUT_ESC_RIS) => {
                 colour_palette_clear((*ictx).palette);
                 input_reset_cell(ictx);
@@ -1540,18 +1532,14 @@ unsafe fn input_csi_dispatch(ictx: *mut input_ctx) -> i32 {
             return 0;
         }
 
-        let entry: *mut input_table_entry = bsearch__(
-            ictx.cast(),
-            (&raw const INPUT_CSI_TABLE).cast(),
-            INPUT_CSI_TABLE.len(),
-            input_table_compare,
-        );
-        if entry.is_null() {
-            log_debug!("{}: unknown '{}'", __func__, (*ictx).ch as u8 as char);
+        let Ok(entry) =
+            INPUT_CSI_TABLE.binary_search_by(|e| input_table_compare(ictx.cast(), e).reverse())
+        else {
+            log_debug!("{}: unknown '{}'", __func__, (*ictx).ch);
             return 0;
-        }
+        };
 
-        match input_csi_type::try_from((*entry).type_) {
+        match input_csi_type::try_from(INPUT_CSI_TABLE[entry].type_) {
             Ok(input_csi_type::INPUT_CSI_CBT) => {
                 // Find the previous tab point, n times.
                 cx = (*s).cx;

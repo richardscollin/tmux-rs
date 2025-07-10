@@ -31,10 +31,6 @@ use crate::compat::{
     tree::rb_initializer,
 };
 
-unsafe extern "C" {
-    fn ttyname(fd: i32) -> *mut u8;
-}
-
 pub static mut CLIENT_PROC: *mut tmuxproc = null_mut();
 
 pub static mut CLIENT_PEER: *mut tmuxpeer = null_mut();

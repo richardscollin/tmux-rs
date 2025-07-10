@@ -156,27 +156,6 @@ pub unsafe fn unlink(c: *const u8) -> i32 {
     unsafe { ::libc::unlink(c.cast()) }
 }
 
-#[inline]
-pub unsafe fn bsearch_<T>(
-    key: *const T,
-    base: *const T,
-    num: usize,
-    size: usize,
-    compar: unsafe extern "C" fn(*const c_void, *const c_void) -> i32,
-) -> *mut T {
-    unsafe { ::libc::bsearch(key.cast(), base.cast(), num, size, Some(compar)).cast() }
-}
-
-#[inline]
-pub unsafe fn bsearch__<T>(
-    key: *const T,
-    base: *const T,
-    num: usize,
-    compar: unsafe extern "C" fn(*const c_void, *const c_void) -> i32,
-) -> *mut T {
-    unsafe { ::libc::bsearch(key.cast(), base.cast(), num, size_of::<T>(), Some(compar)).cast() }
-}
-
 #[cfg(target_os = "linux")]
 macro_rules! errno {
     () => {

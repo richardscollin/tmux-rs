@@ -229,7 +229,7 @@ pub unsafe fn server_start(
         if event_reinit(base) != 0 {
             fatalx("event_reinit failed");
         }
-        SERVER_PROC = proc_start(c"server");
+        SERVER_PROC = proc_start("server");
 
         proc_set_signals(SERVER_PROC, Some(server_signal));
         sigprocmask(SIG_SETMASK, &raw mut oldset, null_mut());

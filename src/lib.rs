@@ -184,9 +184,10 @@ const NAME_INTERVAL: libc::suseconds_t = 500000;
 const DEFAULT_XPIXEL: u32 = 16;
 const DEFAULT_YPIXEL: u32 = 32;
 
-// Alert option values
+enum_try_from!(alert_option, i32, alert_option::ALERT_OTHER);
+/// Alert option values
 #[repr(i32)]
-#[derive(Copy, Clone, num_enum::TryFromPrimitive)]
+#[derive(Copy, Clone)]
 enum alert_option {
     ALERT_NONE,
     ALERT_ANY,
@@ -194,9 +195,10 @@ enum alert_option {
     ALERT_OTHER,
 }
 
-// Visual option values
+enum_try_from!(visual_option, i32, visual_option::VISUAL_BOTH);
+/// Visual option values
 #[repr(i32)]
-#[derive(Copy, Clone, Eq, PartialEq, num_enum::TryFromPrimitive)]
+#[derive(Copy, Clone, Eq, PartialEq)]
 enum visual_option {
     VISUAL_OFF,
     VISUAL_ON,
@@ -313,9 +315,10 @@ enum mouse_keys {
 */
 include!("keyc_mouse_key.rs");
 
+enum_try_from!(tty_code_code, u32, tty_code_code::TTYC_XT);
 /// Termcap codes.
 #[repr(u32)]
-#[derive(Copy, Clone, num_enum::TryFromPrimitive)]
+#[derive(Copy, Clone)]
 enum tty_code_code {
     TTYC_ACSC,
     TTYC_AM,
@@ -553,8 +556,9 @@ enum tty_code_code {
 
 const WHITESPACE: *const u8 = c!(" ");
 
+enum_try_from!(modekey, i32, modekey::MODEKEY_VI);
 #[repr(i32)]
-#[derive(Copy, Clone, Eq, PartialEq, num_enum::TryFromPrimitive)]
+#[derive(Copy, Clone, Eq, PartialEq)]
 enum modekey {
     MODEKEY_EMACS = 0,
     MODEKEY_VI = 1,
@@ -1068,9 +1072,10 @@ struct screen_write_ctx {
     bg: u32,
 }
 
+enum_try_from!(box_lines, i32, box_lines::BOX_LINES_NONE);
 /// Box border lines option.
 #[repr(i32)]
-#[derive(Copy, Clone, Default, Eq, PartialEq, num_enum::TryFromPrimitive)]
+#[derive(Copy, Clone, Default, Eq, PartialEq)]
 enum box_lines {
     #[default]
     BOX_LINES_DEFAULT = -1,
@@ -1083,9 +1088,10 @@ enum box_lines {
     BOX_LINES_NONE,
 }
 
+enum_try_from!(pane_lines, i32, pane_lines::PANE_LINES_NUMBER);
 /// Pane border lines option.
 #[repr(i32)]
-#[derive(Copy, Clone, Default, Eq, PartialEq, num_enum::TryFromPrimitive)]
+#[derive(Copy, Clone, Default, Eq, PartialEq)]
 enum pane_lines {
     #[default]
     PANE_LINES_SINGLE,
@@ -1108,8 +1114,13 @@ macro_rules! define_error_unit {
     };
 }
 
+enum_try_from!(
+    pane_border_indicator,
+    i32,
+    pane_border_indicator::PANE_BORDER_BOTH
+);
 #[repr(i32)]
-#[derive(Copy, Clone, num_enum::TryFromPrimitive)]
+#[derive(Copy, Clone)]
 enum pane_border_indicator {
     PANE_BORDER_OFF,
     PANE_BORDER_COLOUR,
@@ -1482,9 +1493,14 @@ type winlinks = rb_head<winlink>;
 type winlink_stack = tailq_head<winlink>;
 // crate::compat::impl_rb_tree_protos!(winlink_stack, winlink);
 
+enum_try_from!(
+    window_size_option,
+    i32,
+    window_size_option::WINDOW_SIZE_LATEST
+);
 /// Window size option.
 #[repr(i32)]
-#[derive(Copy, Clone, Eq, PartialEq, num_enum::TryFromPrimitive)]
+#[derive(Copy, Clone, Eq, PartialEq)]
 enum window_size_option {
     WINDOW_SIZE_LARGEST,
     WINDOW_SIZE_SMALLEST,
@@ -1492,15 +1508,17 @@ enum window_size_option {
     WINDOW_SIZE_LATEST,
 }
 
+enum_try_from!(pane_status, i32, pane_status::PANE_STATUS_BOTTOM);
 /// Pane border status option.
 #[repr(i32)]
-#[derive(Copy, Clone, Eq, PartialEq, num_enum::TryFromPrimitive)]
+#[derive(Copy, Clone, Eq, PartialEq)]
 enum pane_status {
     PANE_STATUS_OFF,
     PANE_STATUS_TOP,
     PANE_STATUS_BOTTOM,
 }
 
+enum_try_from!(layout_type, i32, layout_type::LAYOUT_WINDOWPANE);
 /// Layout direction.
 #[repr(i32)]
 #[derive(Copy, Clone, Eq, PartialEq)]
@@ -2122,10 +2140,11 @@ struct status_line {
     entries: [status_line_entry; STATUS_LINES_LIMIT],
 }
 
-/* Prompt type. */
+enum_try_from!(prompt_type, u32, prompt_type::PROMPT_TYPE_WINDOW_TARGET);
+/// Prompt type.
 const PROMPT_NTYPES: u32 = 4;
 #[repr(u32)]
-#[derive(Copy, Clone, Eq, PartialEq, num_enum::TryFromPrimitive)]
+#[derive(Copy, Clone, Eq, PartialEq)]
 enum prompt_type {
     PROMPT_TYPE_COMMAND,
     PROMPT_TYPE_SEARCH,
@@ -3251,3 +3270,19 @@ macro_rules! c {
     }};
 }
 pub(crate) use c;
+
+macro_rules! enum_try_from {
+    ($enum_ty:ty, $repr:ty, $last_variant:expr) => {
+        impl TryFrom<$repr> for $enum_ty {
+            type Error = ();
+            fn try_from(value: $repr) -> Result<Self, ()> {
+                if value <= $last_variant as $repr {
+                    unsafe { Ok(std::mem::transmute::<$repr, Self>(value)) }
+                } else {
+                    Err(())
+                }
+            }
+        }
+    };
+}
+pub(crate) use enum_try_from;

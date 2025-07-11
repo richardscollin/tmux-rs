@@ -48,8 +48,12 @@ pub static WINDOW_CLIENT_MODE: window_mode = window_mode {
     formats: None,
 };
 
+enum_try_from!(
+    window_client_sort_type,
+    u32,
+    window_client_sort_type::WINDOW_CLIENT_BY_ACTIVITY_TIME
+);
 #[repr(u32)]
-#[derive(num_enum::TryFromPrimitive)]
 pub enum window_client_sort_type {
     WINDOW_CLIENT_BY_NAME,
     WINDOW_CLIENT_BY_SIZE,

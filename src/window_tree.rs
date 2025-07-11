@@ -81,8 +81,12 @@ pub static WINDOW_TREE_MODE: window_mode = window_mode {
     formats: None,
 };
 
+enum_try_from!(
+    window_tree_sort_type,
+    i32,
+    window_tree_sort_type::WINDOW_TREE_BY_TIME
+);
 #[repr(i32)]
-#[derive(num_enum::TryFromPrimitive)]
 enum window_tree_sort_type {
     WINDOW_TREE_BY_INDEX,
     WINDOW_TREE_BY_NAME,

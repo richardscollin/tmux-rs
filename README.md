@@ -30,8 +30,23 @@ not something else.
 
 Like `tmux`, it requires `libevent2` and `libtinfo` (usually packaged with ncurses).
 
+For Linux
+
 ```sh
 sudo apt-get install libncurses-dev libevent-dev
+cargo install tmux-rs
+tmux-rs
+```
+
+For OSX
+```sh
+brew install libevent ncurses pkg-config
+
+# Set  platform specific path overrides 
+export PKG_CONFIG_PATH="$(brew --prefix)/lib/pkgconfig"
+export LIBRARY_PATH="$(brew --prefix)/lib"
+export CPATH="$(brew --prefix)/include"
+
 cargo install tmux-rs
 tmux-rs
 ```

@@ -26,7 +26,7 @@ macro_rules! cmdq_get_callback {
         $crate::cmd_::cmd_queue::cmdq_get_callback1(stringify!($cb), Some($cb), $data)
     };
 }
-use crate::libc::{getpwuid, getuid, toupper};
+use crate::libc::{getpwuid, getuid};
 pub(crate) use cmdq_get_callback;
 
 /* Command queue flags. */
@@ -920,7 +920,7 @@ pub unsafe fn cmdq_error_(item: *mut cmdq_item, args: std::fmt::Arguments) {
             }
             (*c).retval = 1;
         } else {
-            *msg = toupper((*msg) as i32) as _;
+            *msg = (*msg).to_ascii_uppercase();
             status_message_set!(c, -1, 1, 0, "{}", _s(msg));
         }
 

@@ -16,8 +16,6 @@ use crate::*;
 
 use crate::libc;
 
-// this is for osdep-linux.c
-
 #[cfg(target_os = "linux")]
 pub unsafe fn osdep_get_name(fd: i32, _tty: *const u8) -> *mut u8 {
     unsafe {

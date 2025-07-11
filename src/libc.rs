@@ -139,6 +139,15 @@ pub unsafe fn strtod(s: *const u8, endp: *mut *mut u8) -> f64 {
     unsafe { ::libc::strtod(s.cast(), endp.cast()) }
 }
 
+pub fn time(t: *mut time_t) -> time_t {
+    assert!(t.is_null());
+
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_secs() as time_t
+}
+
 pub unsafe fn tzset() {
     unsafe extern "C" {
         fn tzset();

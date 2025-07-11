@@ -421,18 +421,12 @@ unsafe extern "C-unwind" fn job_error_callback(
 
 pub unsafe fn job_check_died(pid: pid_t, status: i32) {
     unsafe {
-        let mut job: *mut job = null_mut();
-
-        for job_ in list_foreach(&raw mut ALL_JOBS).map(NonNull::as_ptr) {
-            job = job_;
-            if pid == (*job).pid {
-                break;
-            }
-        }
-
-        if job.is_null() {
+        let Some(job) = list_foreach(&raw mut ALL_JOBS).find(|job| pid == (*job.as_ptr()).pid)
+        else {
             return;
-        }
+        };
+        let job = job.as_ptr();
+
         if WIFSTOPPED(status) {
             if WSTOPSIG(status) == SIGTTIN || WSTOPSIG(status) == SIGTTOU {
                 return;

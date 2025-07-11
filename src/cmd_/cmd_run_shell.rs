@@ -263,7 +263,7 @@ pub unsafe fn cmd_run_shell_callback(job: *mut job) {
             line = evbuffer_readln(
                 (*event).input,
                 null_mut(),
-                evbuffer_eol_style_EVBUFFER_EOL_LF,
+                evbuffer_eol_style::EVBUFFER_EOL_LF,
             );
             if !line.is_null() {
                 cmd_run_shell_print(job, line);

@@ -558,7 +558,7 @@ pub unsafe extern "C-unwind" fn control_read_callback(_bufev: *mut bufferevent, 
         let mut error = null_mut();
 
         loop {
-            let line = evbuffer_readln(buffer, null_mut(), evbuffer_eol_style_EVBUFFER_EOL_LF);
+            let line = evbuffer_readln(buffer, null_mut(), evbuffer_eol_style::EVBUFFER_EOL_LF);
             if line.is_null() {
                 break;
             }

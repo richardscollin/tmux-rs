@@ -13,7 +13,11 @@
 // OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 #[cfg(target_os = "macos")]
-pub unsafe fn reallocarray(optr: *mut core::ffi::c_void, nmemb: usize, size: usize) -> *mut core::ffi::c_void {
+pub unsafe fn reallocarray(
+    optr: *mut core::ffi::c_void,
+    nmemb: usize,
+    size: usize,
+) -> *mut core::ffi::c_void {
     const MUL_NO_OVERFLOW: usize = 1usize << (size_of::<usize>() * 4);
 
     unsafe {

@@ -67,7 +67,7 @@ pub unsafe fn style_parse(sy: *mut style, base: *const grid_cell, mut in_: *cons
 
         let mut saved = MaybeUninit::<style>::uninit();
         style_copy(saved.as_mut_ptr(), sy);
-        let saved = saved.assume_init() ;
+        let saved = saved.assume_init();
 
         'error: {
             log_debug!("{}: {}", "style_parse", _s(in_));

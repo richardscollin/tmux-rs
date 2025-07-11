@@ -14,10 +14,7 @@
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 use crate::*;
 use core::ffi::{c_int, c_uchar};
-use std::{
-    io::Write as _,
-    ptr::{null_mut},
-};
+use std::{io::Write as _, ptr::null_mut};
 
 use crate::libc::{free, sscanf};
 use xmalloc::xstrndup;

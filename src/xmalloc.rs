@@ -17,7 +17,7 @@ use std::{
 
 use crate::{
     compat::{reallocarray, recallocarray},
-    fatalx 
+    fatalx,
 };
 
 pub fn xmalloc(size: usize) -> NonNull<c_void> {

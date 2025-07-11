@@ -30,7 +30,7 @@ pub static CMD_UNBIND_KEY_ENTRY: cmd_entry = cmd_entry {
 unsafe fn cmd_unbind_key_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retval {
     unsafe {
         let args = cmd_get_args(self_);
-        let mut tablename: *const u8 = null_mut();
+        let mut tablename: *const u8;
         let keystr = args_string(args, 0);
         let quiet = args_has(args, b'q');
 

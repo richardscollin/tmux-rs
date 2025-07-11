@@ -642,7 +642,6 @@ pub unsafe fn cmd_parse_from_arguments(
 
 mod lexer {
     use crate::{cmd_parse_state, transmute_ptr};
-    use core::ffi::c_char;
     use core::ptr::NonNull;
 
     pub struct Lexer<'a> {

@@ -361,7 +361,6 @@ pub unsafe fn menu_key_cb(c: *mut client, data: *mut c_void, mut event: *mut key
                 }
             }
 
-            const C: u64 = 'c' as u64;
             const G: u64 = 'g' as u64;
             const J: u64 = 'j' as u64;
             const K: u64 = 'k' as u64;

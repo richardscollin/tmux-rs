@@ -11,10 +11,9 @@
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-use core::mem::{size_of, zeroed};
 use std::borrow::Cow;
 
-use crate::{c, grid_attr, xsnprintf_};
+use crate::grid_attr;
 
 #[rustfmt::skip]
 pub fn attributes_tostring(attr: grid_attr) -> Cow<'static, str> {

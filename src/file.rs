@@ -21,7 +21,7 @@ use crate::errno;
 use crate::libc::{
     BUFSIZ, E2BIG, EBADF, EINVAL, EIO, ENOMEM, O_APPEND, O_CREAT, O_NONBLOCK, O_RDONLY, O_WRONLY,
     STDERR_FILENO, STDIN_FILENO, STDOUT_FILENO, close, dup, fclose, ferror, fopen, fread, fwrite,
-    memcpy, open, strcmp,
+    memcpy, open,
 };
 
 use std::sync::atomic;

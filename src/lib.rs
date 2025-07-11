@@ -54,11 +54,8 @@ use image_sixel::sixel_image;
 mod utempter;
 
 use core::{
-    ffi::{
-        CStr, c_int, c_long, c_longlong, c_short, c_uchar, c_uint, c_ulonglong, c_ushort, c_void,
-    },
-    mem::{ManuallyDrop, MaybeUninit, size_of, zeroed},
-    ops::ControlFlow,
+    ffi::{CStr, c_int, c_long, c_longlong, c_short, c_uchar, c_uint, c_ulonglong, c_void},
+    mem::{MaybeUninit, size_of, zeroed},
     ptr::{NonNull, null, null_mut},
 };
 use std::sync::atomic::AtomicU32;
@@ -75,11 +72,6 @@ use crate::compat::{
     },
     tree::{GetEntry, rb_entry, rb_head},
 };
-
-unsafe extern "C" {
-    static mut environ: *mut *mut u8;
-    fn strsep(_: *mut *mut u8, _delim: *const u8) -> *mut u8;
-}
 
 #[inline]
 const fn transmute_ptr<T>(value: Option<NonNull<T>>) -> *mut T {

@@ -10,16 +10,14 @@
 // incompatible with the protocol description in the RFC file, it must be
 // called by a name other than "ssh" or "Secure Shell".
 use std::{
-    alloc::{Layout, alloc},
-    ffi::{CStr, c_int, c_void},
+    ffi::{CStr, c_void},
     mem::MaybeUninit,
-    num::NonZero,
     ptr::NonNull,
 };
 
 use crate::{
     compat::{reallocarray, recallocarray},
-    fatalx, vasprintf, vsnprintf,
+    fatalx 
 };
 
 pub fn xmalloc(size: usize) -> NonNull<c_void> {
@@ -43,13 +41,6 @@ pub fn xmalloc_<T>() -> NonNull<T> {
         .cast()
 }
 
-pub fn xmalloc__<T>() -> &'static mut MaybeUninit<T> {
-    debug_assert_ne!(size_of::<T>(), 0, "xmalloc: zero size");
-
-    let alloc = Box::new(MaybeUninit::<T>::uninit());
-    Box::leak(alloc)
-}
-
 pub fn xcalloc(nmemb: usize, size: usize) -> NonNull<c_void> {
     debug_assert!(size != 0 && nmemb != 0, "xcalloc: zero size");
 
@@ -64,18 +55,6 @@ pub fn xcalloc_<T>(nmemb: usize) -> NonNull<T> {
 pub unsafe fn xcalloc1<'a, T>() -> &'a mut T {
     let mut ptr: NonNull<T> = xcalloc(1, size_of::<T>()).cast();
     unsafe { ptr.as_mut() }
-}
-
-pub fn xcalloc1__<'a, T>() -> &'a mut MaybeUninit<T> {
-    let size = size_of::<T>();
-    debug_assert!(size != 0, "xcalloc: zero size");
-
-    let ptr: *mut T = unsafe { ::libc::calloc(1, size).cast() };
-    if ptr.is_null() {
-        panic!("bad xcalloc1_: out of memory");
-    }
-
-    unsafe { &mut *ptr.cast::<MaybeUninit<T>>() }
 }
 
 pub unsafe fn xrealloc(ptr: *mut c_void, size: usize) -> NonNull<c_void> {

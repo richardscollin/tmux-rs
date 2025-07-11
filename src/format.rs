@@ -3159,23 +3159,19 @@ static FORMAT_TABLE: [format_table_entry ; 171] = [
      format_table_entry::new(c"wrap_flag", format_table_type::FORMAT_TABLE_STRING, format_cb_wrap_flag)
 ];
 
-pub unsafe extern "C" fn format_table_compare(key0: *const c_void, entry0: *const c_void) -> i32 {
-    unsafe {
-        let key = key0 as *const u8;
-        let entry = entry0 as *const format_table_entry;
-        strcmp(key, (*entry).key.as_ptr())
-    }
+pub unsafe fn format_table_compare(
+    key: *const u8,
+    entry: *const format_table_entry,
+) -> std::cmp::Ordering {
+    unsafe { i32_to_ordering(strcmp(key, (*entry).key.as_ptr())) }
 }
 
-pub unsafe fn format_table_get(key: *const u8) -> *mut format_table_entry {
+pub unsafe fn format_table_get(key: *const u8) -> Option<&'static format_table_entry> {
     unsafe {
-        libc::bsearch(
-            key as *const c_void,
-            FORMAT_TABLE.as_ptr().cast(),
-            FORMAT_TABLE.len(),
-            std::mem::size_of::<format_table_entry>(),
-            Some(format_table_compare),
-        ) as *mut format_table_entry
+        match FORMAT_TABLE.binary_search_by(|e| format_table_compare(key, e).reverse()) {
+            Ok(idx) => Some(&FORMAT_TABLE[idx]),
+            Err(_) => None,
+        }
     }
 }
 
@@ -3472,8 +3468,7 @@ pub unsafe fn format_pretty_time(t: time_t, seconds: i32) -> *mut u8 {
     }
 }
 
-/* Find a format entry. */
-
+/// Find a format entry.
 fn format_find(
     ft: *mut format_tree,
     key: *const u8,
@@ -3481,16 +3476,6 @@ fn format_find(
     time_format: *const u8,
 ) -> *mut u8 {
     unsafe {
-        // struct format_table_entry *fte;
-        // void *value;
-        // struct format_entry *fe, fe_find;
-        // struct environ_entry *envent;
-        // struct options_entry *o;
-        // int idx;
-        // char *found = NULL, *saved, s[512];
-        // const char *errstr;
-        // time_t t = 0;
-        // struct tm tm;
         let mut s = MaybeUninit::<[u8; 512]>::uninit();
         let s = s.as_mut_ptr() as *mut u8;
         let mut fe_find = MaybeUninit::<format_entry>::uninit();
@@ -3522,10 +3507,9 @@ fn format_find(
                 break 'found;
             }
 
-            let fte = format_table_get(key);
-            if !fte.is_null() {
-                let value = (*fte).cb.unwrap()(ft);
-                if (*fte).type_ == format_table_type::FORMAT_TABLE_TIME && !value.is_null() {
+            if let Some(fte) = format_table_get(key) {
+                let value = fte.cb.unwrap()(ft);
+                if fte.type_ == format_table_type::FORMAT_TABLE_TIME && !value.is_null() {
                     t = (*value.cast::<timeval>()).tv_sec;
                 } else {
                     found = value.cast();
@@ -3622,8 +3606,7 @@ fn format_find(
     }
 }
 
-/* Unescape escaped characters. */
-
+/// Unescape escaped characters.
 pub unsafe fn format_unescape(mut s: *const u8) -> *mut u8 {
     unsafe {
         let mut cp = xmalloc(strlen(s) + 1).as_ptr().cast();
@@ -3681,7 +3664,7 @@ pub unsafe fn format_strip(mut s: *const u8) -> *mut u8 {
     }
 }
 
-// Skip until end.
+/// Skip until end.
 pub unsafe fn format_skip(mut s: *const u8, end: *const u8) -> *const u8 {
     unsafe {
         let mut brackets = 0;
@@ -3710,8 +3693,7 @@ pub unsafe fn format_skip(mut s: *const u8, end: *const u8) -> *const u8 {
     }
 }
 
-/* Return left and right alternatives separated by commas. */
-
+/// Return left and right alternatives separated by commas.
 pub unsafe fn format_choose(
     es: *mut format_expand_state,
     s: *const u8,
@@ -3740,8 +3722,7 @@ pub unsafe fn format_choose(
     }
 }
 
-/* Is this true? */
-
+/// Is this true?
 pub unsafe fn format_true(s: *const u8) -> c_int {
     unsafe {
         if !s.is_null() && *s != b'\0' && (*s != b'0' || *s.add(1) != b'\0') {
@@ -3756,8 +3737,7 @@ pub fn format_is_end(c: u8) -> bool {
     c == b';' || c == b':'
 }
 
-/* Add to modifier list. */
-
+/// Add to modifier list.
 pub unsafe fn format_add_modifier(
     list: *mut *mut format_modifier,
     count: *mut u32,

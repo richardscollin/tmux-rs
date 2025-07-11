@@ -165,30 +165,28 @@ static TTY_ACS_ROUNDED_BORDERS_LIST: [utf8_data; 13] = [
     utf8_data::new([0o302, 0o267, 0o000, 0o000], 0, 2, 1), /* U+00B7 */
 ];
 
-pub unsafe fn tty_acs_double_borders(cell_type: cell_type) -> *const utf8_data {
-    unsafe { &raw const TTY_ACS_DOUBLE_BORDERS_LIST[cell_type as usize] }
+pub fn tty_acs_double_borders(cell_type: cell_type) -> &'static utf8_data {
+    &TTY_ACS_DOUBLE_BORDERS_LIST[cell_type as usize]
 }
 
-pub unsafe fn tty_acs_heavy_borders(cell_type: cell_type) -> *const utf8_data {
-    unsafe { &raw const TTY_ACS_HEAVY_BORDERS_LIST[cell_type as usize] }
+pub fn tty_acs_heavy_borders(cell_type: cell_type) -> &'static utf8_data {
+    &TTY_ACS_HEAVY_BORDERS_LIST[cell_type as usize]
 }
 
 /// Get cell border character for rounded style.
-pub unsafe fn tty_acs_rounded_borders(cell_type: cell_type) -> *const utf8_data {
-    unsafe { &raw const TTY_ACS_ROUNDED_BORDERS_LIST[cell_type as usize] }
+pub fn tty_acs_rounded_borders(cell_type: cell_type) -> &'static utf8_data {
+    &TTY_ACS_ROUNDED_BORDERS_LIST[cell_type as usize]
 }
 
 pub fn tty_acs_cmp(test: &u8, entry: &tty_acs_entry) -> std::cmp::Ordering {
     test.cmp(&entry.key)
 }
 
-pub unsafe extern "C" fn tty_acs_reverse_cmp(key: *const c_void, value: *const c_void) -> i32 {
-    unsafe {
-        let entry = value as *const tty_acs_reverse_entry;
-        let test = key as *const u8;
-
-        libc::strcmp(test, (*entry).string.as_ptr().cast())
-    }
+pub unsafe fn tty_acs_reverse_cmp(
+    key: *const u8,
+    entry: *const tty_acs_reverse_entry,
+) -> std::cmp::Ordering {
+    unsafe { i32_to_ordering(libc::strcmp(key, (*entry).string.as_ptr().cast())) }
 }
 
 /// Should this terminal use ACS instead of UTF-8 line drawing?
@@ -231,30 +229,18 @@ pub unsafe fn tty_acs_get(tty: *mut tty, ch: u8) -> *const u8 {
 }
 
 /// Reverse UTF-8 into ACS.
-pub unsafe fn tty_acs_reverse_get(tty: *const tty, s: *const u8, slen: usize) -> i32 {
+pub unsafe fn tty_acs_reverse_get(_tty: *const tty, s: *const u8, slen: usize) -> i32 {
     unsafe {
-        let table;
-        let items;
-        if slen == 2 {
-            table = &raw const TTY_ACS_REVERSE2 as *const *const tty_acs_reverse_entry;
-            items = TTY_ACS_REVERSE2.len();
+        let table = if slen == 2 {
+            TTY_ACS_REVERSE2.as_slice()
         } else if slen == 3 {
-            table = &raw const TTY_ACS_REVERSE3 as *const *const tty_acs_reverse_entry;
-            items = TTY_ACS_REVERSE3.len();
+            TTY_ACS_REVERSE3.as_slice()
         } else {
             return -1;
-        }
-        let entry: *const tty_acs_reverse_entry = libc::bsearch(
-            s.cast(),
-            table.cast(),
-            items,
-            size_of::<tty_acs_reverse_entry>(),
-            Some(tty_acs_reverse_cmp),
-        )
-        .cast();
-        if entry.is_null() {
+        };
+        let Ok(entry) = table.binary_search_by(|e| tty_acs_reverse_cmp(s, e).reverse()) else {
             return -1;
-        }
-        (*entry).key as _
+        };
+        table[entry].key as _
     }
 }

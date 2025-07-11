@@ -23,6 +23,11 @@ unsafe extern "C" {
     pub(crate) static mut stderr: *mut FILE;
 }
 
+unsafe extern "C" {
+    pub static mut environ: *mut *mut u8;
+    pub fn strsep(_: *mut *mut u8, _delim: *const u8) -> *mut u8;
+}
+
 pub unsafe fn chdir(dir: *const u8) -> i32 {
     unsafe { ::libc::chdir(dir.cast()) }
 }
@@ -143,6 +148,15 @@ pub unsafe fn strtoul(s: *const u8, endp: *mut *mut u8, base: i32) -> u64 {
 
 pub unsafe fn strtod(s: *const u8, endp: *mut *mut u8) -> f64 {
     unsafe { ::libc::strtod(s.cast(), endp.cast()) }
+}
+
+pub fn time(t: *mut time_t) -> time_t {
+    assert!(t.is_null());
+
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_secs() as time_t
 }
 
 pub unsafe fn tzset() {

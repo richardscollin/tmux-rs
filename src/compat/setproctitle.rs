@@ -16,7 +16,8 @@
 // setproctitle( c!("%s (%s)"), name, socket_path);
 #[cfg(target_os = "linux")]
 pub unsafe fn setproctitle_(_fmt: *const u8, name: *const u8, socket_path: *const u8) {
-    use crate::libc::{PR_SET_NAME, prctl, snprintf, strrchr};
+    use crate::libc;
+
     unsafe {
         let mut title: [u8; 16] = [0; 16];
 
@@ -29,7 +30,7 @@ pub unsafe fn setproctitle_(_fmt: *const u8, name: *const u8, socket_path: *cons
             socket_path,
         );
         if used >= title.len() as i32 {
-            let cp = strrchr(&raw const title as *const u8, b' ' as i32);
+            let cp = libc::strrchr(&raw const title as *const u8, b' ' as i32);
             if !cp.is_null() {
                 *cp = b'\0';
             }

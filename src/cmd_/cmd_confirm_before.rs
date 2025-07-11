@@ -42,7 +42,6 @@ unsafe fn cmd_confirm_before_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
         let args = cmd_get_args(self_);
         let tc = cmdq_get_target_client(item);
         let target = cmdq_get_target(item);
-        let mut new_prompt = null_mut();
         let wait = !args_has(args, b'b');
 
         let cdata = xcalloc_::<cmd_confirm_before_data>(1).as_ptr();
@@ -71,18 +70,18 @@ unsafe fn cmd_confirm_before_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
         }
 
         let prompt = args_get(args, b'p');
-        if !prompt.is_null() {
-            new_prompt = format_nul!("{} ", _s(prompt));
+        let new_prompt = if !prompt.is_null() {
+            format_nul!("{} ", _s(prompt))
         } else {
             let cmd = cmd_get_entry(cmd_list_first((*cdata).cmdlist))
                 .name
                 .as_ptr();
-            new_prompt = format_nul!(
+            format_nul!(
                 "Confirm '{}'? ({}/n) ",
                 _s(cmd),
                 (*cdata).confirm_key as char
-            );
-        }
+            )
+        };
 
         status_prompt_set(
             tc,

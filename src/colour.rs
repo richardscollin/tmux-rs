@@ -13,13 +13,13 @@
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 use crate::*;
-use core::ffi::{CStr, c_double, c_int, c_uchar};
+use core::ffi::{c_int, c_uchar};
 use std::{
     io::Write as _,
-    ptr::{null, null_mut},
+    ptr::{null_mut},
 };
 
-use crate::libc::{free, sscanf, strcasecmp, strncasecmp, strncmp};
+use crate::libc::{free, sscanf};
 use xmalloc::xstrndup;
 
 const COLOUR_FLAG_256: i32 = 0x01000000;

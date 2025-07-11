@@ -34,10 +34,10 @@ unsafe fn cmd_switch_client_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
         let current = cmdq_get_current(item);
         let mut target: cmd_find_state = zeroed(); // TODO use uninit
         let tflag = args_get_(args, 't');
-        let type_: cmd_find_type;
-        let mut flags: i32 = 0;
         let tc = cmdq_get_target_client(item);
 
+        let type_: cmd_find_type;
+        let flags: i32;
         if !tflag.is_null() && *tflag.add(strcspn(tflag, c!(":.%"))) != b'\0' {
             type_ = cmd_find_type::CMD_FIND_PANE;
             flags = 0;

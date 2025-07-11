@@ -3564,7 +3564,8 @@ pub unsafe fn server_client_print(c: *mut client, parse: i32, evb: *mut evbuffer
             }
             if parse != 0 {
                 loop {
-                    let line = evbuffer_readln(evb, null_mut(), evbuffer_eol_style_EVBUFFER_EOL_LF);
+                    let line =
+                        evbuffer_readln(evb, null_mut(), evbuffer_eol_style::EVBUFFER_EOL_LF);
                     if !line.is_null() {
                         window_copy_add!(wp, 1, "{}", _s(line));
                         free_(line);

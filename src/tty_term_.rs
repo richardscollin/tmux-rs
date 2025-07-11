@@ -1053,7 +1053,7 @@ pub unsafe fn tty_term_describe(term: *mut tty_term, code: tty_code_code) -> *co
                     "{:4}: {}: (string) {}",
                     code as u32,
                     _s(TTY_TERM_CODES[code as usize].name),
-                    _s(&raw const out as *const c_char),
+                    _s(out.as_ptr()),
                 );
             }
             tty_code_type::Number => {

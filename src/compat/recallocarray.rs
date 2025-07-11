@@ -11,7 +11,7 @@
 // WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
 // ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 // OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-use core::ffi::{c_char, c_void};
+use core::ffi::c_void;
 use core::ptr::null_mut;
 
 pub unsafe fn recallocarray(
@@ -57,7 +57,7 @@ pub unsafe fn recallocarray(
             let d = oldsize - newsize;
 
             if (d < oldsize / 2 && d < getpagesize() as usize) {
-                libc::memset((ptr as *mut c_char).add(newsize).cast(), 0, d);
+                libc::memset((ptr as *mut u8).add(newsize).cast(), 0, d);
                 return ptr;
             }
         }
@@ -70,7 +70,7 @@ pub unsafe fn recallocarray(
         if (newsize > oldsize) {
             libc::memcpy(newptr, ptr, oldsize);
             libc::memset(
-                (newptr as *mut c_char).add(oldsize).cast(),
+                (newptr as *mut u8).add(oldsize).cast(),
                 0,
                 newsize - oldsize,
             );

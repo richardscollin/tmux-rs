@@ -148,12 +148,16 @@ impl<T> ::core::cmp::Eq for __BindgenUnionField<T> {}
 pub struct evbuffer {
     _unused: [u8; 0],
 }
-pub const evbuffer_eol_style_EVBUFFER_EOL_ANY: evbuffer_eol_style = 0;
-pub const evbuffer_eol_style_EVBUFFER_EOL_CRLF: evbuffer_eol_style = 1;
-pub const evbuffer_eol_style_EVBUFFER_EOL_CRLF_STRICT: evbuffer_eol_style = 2;
-pub const evbuffer_eol_style_EVBUFFER_EOL_LF: evbuffer_eol_style = 3;
-pub const evbuffer_eol_style_EVBUFFER_EOL_NUL: evbuffer_eol_style = 4;
-pub type evbuffer_eol_style = ::core::ffi::c_uint;
+
+#[repr(u32)]
+pub(crate) enum evbuffer_eol_style {
+    EVBUFFER_EOL_ANY = 0,
+    EVBUFFER_EOL_CRLF = 1,
+    EVBUFFER_EOL_CRLF_STRICT = 2,
+    EVBUFFER_EOL_LF = 3,
+    EVBUFFER_EOL_NUL = 4,
+}
+
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct event_base {

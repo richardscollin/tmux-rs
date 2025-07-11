@@ -22,7 +22,6 @@ use crate::compat::{
     queue::tailq_foreach,
     tree::{rb_find, rb_foreach, rb_init, rb_insert, rb_min, rb_next, rb_remove},
 };
-use crate::log::fatalx_c;
 
 //
 // Option handling; each option has a name, type and value and is stored in

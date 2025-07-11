@@ -23,6 +23,11 @@ unsafe extern "C" {
     pub(crate) static mut stderr: *mut FILE;
 }
 
+unsafe extern "C" {
+    pub static mut environ: *mut *mut u8;
+    pub fn strsep(_: *mut *mut u8, _delim: *const u8) -> *mut u8;
+}
+
 pub unsafe fn chdir(dir: *const u8) -> i32 {
     unsafe { ::libc::chdir(dir.cast()) }
 }

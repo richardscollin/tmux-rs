@@ -13,7 +13,7 @@
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 use crate::*;
 
-use crate::libc::{INT_MIN, strcmp, strlen};
+use crate::libc::strlen;
 
 pub static CMD_CAPTURE_PANE_ENTRY: cmd_entry = cmd_entry {
     name: SyncCharPtr::new(c"capture-pane"),
@@ -147,8 +147,8 @@ unsafe fn cmd_capture_pane_history(
             n = args_strtonum_and_expand(
                 args,
                 b'S',
-                libc::INT_MIN as i64,
-                c_short::MAX as i64,
+                i32::MIN as i64,
+                i16::MAX as i64,
                 item,
                 &raw mut cause,
             );
@@ -172,7 +172,7 @@ unsafe fn cmd_capture_pane_history(
             n = args_strtonum_and_expand(
                 args,
                 b'E',
-                INT_MIN as i64,
+                i32::MIN as i64,
                 i16::MAX as i64,
                 item,
                 &raw mut cause,

@@ -53,7 +53,6 @@ pub unsafe fn style_set_range_string(sy: *mut style, s: *const u8) {
 pub unsafe fn style_parse(sy: *mut style, base: *const grid_cell, mut in_: *const u8) -> i32 {
     unsafe {
         let delimiters = c!(" ,\n");
-        let mut errstr: *mut u8 = null_mut();
 
         type tmp_type = [u8; 256];
         let mut tmp_bak: tmp_type = [0; 256];
@@ -68,7 +67,7 @@ pub unsafe fn style_parse(sy: *mut style, base: *const grid_cell, mut in_: *cons
 
         let mut saved = MaybeUninit::<style>::uninit();
         style_copy(saved.as_mut_ptr(), sy);
-        let saved = unsafe { saved.assume_init() };
+        let saved = saved.assume_init() ;
 
         'error: {
             log_debug!("{}: {}", "style_parse", _s(in_));

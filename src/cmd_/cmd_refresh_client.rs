@@ -13,7 +13,7 @@
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 use crate::*;
 
-use crate::libc::{sscanf, strchr, strcmp};
+use crate::libc::{sscanf, strchr};
 
 pub static CMD_REFRESH_CLIENT_ENTRY: cmd_entry = cmd_entry {
     name: SyncCharPtr::new(c"refresh-client"),

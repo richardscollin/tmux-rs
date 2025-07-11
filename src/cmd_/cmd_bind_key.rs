@@ -35,9 +35,7 @@ unsafe fn cmd_bind_key_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retval
     unsafe {
         let args: *mut args = cmd_get_args(self_);
         let note = args_get(args, b'N');
-        let mut repeat = 0;
 
-        let mut value: *mut args_value = null_mut();
         let count: u32 = args_count(args);
 
         let key: key_code = key_string_lookup_string(args_string(args, 0));
@@ -53,14 +51,14 @@ unsafe fn cmd_bind_key_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retval
         } else {
             c!("prefix")
         };
-        repeat = args_has(args, b'r');
+        let repeat = args_has(args, b'r');
 
         if count == 1 {
             key_bindings_add(tablename, key, note, repeat, null_mut());
             return cmd_retval::CMD_RETURN_NORMAL;
         }
 
-        value = args_value(args, 1);
+        let value = args_value(args, 1);
         if count == 2 && (*value).type_ == args_type::ARGS_COMMANDS {
             key_bindings_add(tablename, key, note, repeat, (*value).union_.cmdlist);
             (*(*value).union_.cmdlist).references += 1;

@@ -165,17 +165,17 @@ static TTY_ACS_ROUNDED_BORDERS_LIST: [utf8_data; 13] = [
     utf8_data::new([0o302, 0o267, 0o000, 0o000], 0, 2, 1), /* U+00B7 */
 ];
 
-pub unsafe fn tty_acs_double_borders(cell_type: cell_type) -> *const utf8_data {
-    unsafe { &raw const TTY_ACS_DOUBLE_BORDERS_LIST[cell_type as usize] }
+pub fn tty_acs_double_borders(cell_type: cell_type) -> &'static utf8_data {
+    &TTY_ACS_DOUBLE_BORDERS_LIST[cell_type as usize]
 }
 
-pub unsafe fn tty_acs_heavy_borders(cell_type: cell_type) -> *const utf8_data {
-    unsafe { &raw const TTY_ACS_HEAVY_BORDERS_LIST[cell_type as usize] }
+pub fn tty_acs_heavy_borders(cell_type: cell_type) -> &'static utf8_data {
+    &TTY_ACS_HEAVY_BORDERS_LIST[cell_type as usize]
 }
 
 /// Get cell border character for rounded style.
-pub unsafe fn tty_acs_rounded_borders(cell_type: cell_type) -> *const utf8_data {
-    unsafe { &raw const TTY_ACS_ROUNDED_BORDERS_LIST[cell_type as usize] }
+pub fn tty_acs_rounded_borders(cell_type: cell_type) -> &'static utf8_data {
+    &TTY_ACS_ROUNDED_BORDERS_LIST[cell_type as usize]
 }
 
 pub fn tty_acs_cmp(test: &u8, entry: &tty_acs_entry) -> std::cmp::Ordering {
@@ -229,7 +229,7 @@ pub unsafe fn tty_acs_get(tty: *mut tty, ch: u8) -> *const u8 {
 }
 
 /// Reverse UTF-8 into ACS.
-pub unsafe fn tty_acs_reverse_get(tty: *const tty, s: *const u8, slen: usize) -> i32 {
+pub unsafe fn tty_acs_reverse_get(_tty: *const tty, s: *const u8, slen: usize) -> i32 {
     unsafe {
         let table = if slen == 2 {
             TTY_ACS_REVERSE2.as_slice()

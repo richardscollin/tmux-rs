@@ -1,5 +1,3 @@
-use core::ffi::{c_char, c_int};
-
 pub mod b64;
 pub mod fdforkpty;
 pub mod getdtablecount;

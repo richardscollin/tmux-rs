@@ -140,8 +140,8 @@ pub static mut WINDOW_CLOCK_TABLE: [[[u8; 5]; 5]; 14] = [
 ];
 
 pub unsafe extern "C-unwind" fn window_clock_timer_callback(
-    fd: i32,
-    events: i16,
+    _fd: i32,
+    _events: i16,
     arg: *mut c_void,
 ) {
     unsafe {
@@ -179,7 +179,7 @@ pub unsafe extern "C-unwind" fn window_clock_timer_callback(
 pub unsafe fn window_clock_init(
     wme: NonNull<window_mode_entry>,
     _fs: *mut cmd_find_state,
-    args: *mut args,
+    _args: *mut args,
 ) -> *mut screen {
     unsafe {
         let wp: *mut window_pane = (*wme.as_ptr()).wp;
@@ -236,11 +236,11 @@ pub unsafe fn window_clock_resize(wme: NonNull<window_mode_entry>, sx: u32, sy: 
 
 pub unsafe fn window_clock_key(
     wme: NonNull<window_mode_entry>,
-    c: *mut client,
-    s: *mut session,
-    wl: *mut winlink,
-    key: key_code,
-    m: *mut mouse_event,
+    _c: *mut client,
+    _s: *mut session,
+    _wl: *mut winlink,
+    _key: key_code,
+    _m: *mut mouse_event,
 ) {
     unsafe {
         window_pane_reset_mode((*wme.as_ptr()).wp);
@@ -252,17 +252,15 @@ pub unsafe fn window_clock_draw_screen(wme: NonNull<window_mode_entry>) {
         let wp = (*wme.as_ptr()).wp;
         let data = (*wme.as_ptr()).data as *mut window_clock_mode_data;
         let mut ctx: screen_write_ctx = zeroed();
-        let mut colour: i32;
-        let mut style: i32;
         let s = &raw mut (*data).screen;
         const SIZEOF_TIM: usize = 64;
         let mut tim: [u8; 64] = [0; 64];
-        let mut x: u32 = 0;
-        let mut y: u32 = 0;
-        let mut idx: u32 = 0;
+        let mut x: u32;
+        let y: u32;
+        let mut idx: u32;
 
-        let colour = options_get_number_((*(*wp).window).options, c"clock-mode-colour");
-        let style = options_get_number_((*(*wp).window).options, c"clock-mode-style");
+        let colour: i32 = options_get_number_((*(*wp).window).options, c"clock-mode-colour") as i32;
+        let style: i32 = options_get_number_((*(*wp).window).options, c"clock-mode-style") as i32;
 
         screen_write_start(&raw mut ctx, s);
 

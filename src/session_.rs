@@ -69,7 +69,6 @@ pub unsafe fn session_find_by_id_str(s: *const u8) -> *mut session {
             return null_mut();
         }
 
-        let mut errstr: *const u8 = null();
         let Ok(id) = strtonum(s.add(1), 0, u32::MAX) else {
             return null_mut();
         };
@@ -83,7 +82,7 @@ pub unsafe fn session_find_by_id(id: u32) -> Option<NonNull<session>> {
 }
 
 impl session {
-    fn create(
+    unsafe fn create(
         prefix: *const u8,
         name: *const u8,
         cwd: *const u8,
@@ -277,7 +276,7 @@ pub unsafe fn session_check_name(name: *const u8) -> *mut u8 {
 }
 
 /// Lock session if it has timed out.
-pub unsafe extern "C-unwind" fn session_lock_timer(fd: i32, events: i16, arg: *mut c_void) {
+pub unsafe extern "C-unwind" fn session_lock_timer(_fd: i32, _events: i16, arg: *mut c_void) {
     unsafe {
         let s = arg as *mut session;
 

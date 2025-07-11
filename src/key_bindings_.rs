@@ -25,7 +25,6 @@ use crate::compat::{
         rb_remove,
     },
 };
-use crate::log::fatalx_c;
 
 macro_rules! DEFAULT_SESSION_MENU {
     () => {

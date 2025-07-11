@@ -11,11 +11,9 @@
 // WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
 // ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 // OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-use core::ffi::{c_char, c_void};
-use core::ptr::null_mut;
 
 #[cfg(target_os = "macos")]
-pub unsafe fn reallocarray(optr: *mut c_void, nmemb: usize, size: usize) -> *mut c_void {
+pub unsafe fn reallocarray(optr: *mut core::ffi::c_void, nmemb: usize, size: usize) -> *mut core::ffi::c_void {
     const MUL_NO_OVERFLOW: usize = 1usize << (size_of::<usize>() * 4);
 
     unsafe {
@@ -24,7 +22,7 @@ pub unsafe fn reallocarray(optr: *mut c_void, nmemb: usize, size: usize) -> *mut
             && usize::MAX / nmemb < size
         {
             crate::errno!() = libc::ENOMEM;
-            return null_mut();
+            return core::ptr::null_mut();
         }
         libc::realloc(optr, size * nmemb)
     }

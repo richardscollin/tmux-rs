@@ -19,7 +19,7 @@ use crate::compat::{S_ISDIR, fdforkpty::getptmfd, getprogname::getprogname};
 use crate::libc::{
     CLOCK_MONOTONIC, CLOCK_REALTIME, CODESET, EEXIST, F_GETFL, F_SETFL, LC_CTYPE, LC_TIME,
     O_NONBLOCK, PATH_MAX, S_IRWXO, S_IRWXU, X_OK, access, clock_gettime, fcntl, getcwd, getenv,
-    getpwuid, getuid, lstat, mkdir, nl_langinfo, printf, realpath, setlocale, stat, strcasecmp,
+    getpwuid, getuid, lstat, mkdir, nl_langinfo, realpath, setlocale, stat, strcasecmp,
     strcasestr, strchr, strcspn, strerror, strncmp, strrchr, strstr, timespec,
 };
 

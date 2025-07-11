@@ -60,9 +60,8 @@ pub unsafe fn cmd_detach_client_exec(self_: *mut cmd, item: *mut cmdq_item) -> c
             msgtype::MSG_DETACH
         };
 
-        let mut s: *mut session = null_mut();
         if args_has(args, b's') != 0 {
-            s = (*source).s;
+            let s = (*source).s;
             if s.is_null() {
                 return cmd_retval::CMD_RETURN_NORMAL;
             }

@@ -13,12 +13,9 @@
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 use crate::*;
 
-use core::mem::zeroed;
-use core::ptr::null;
-
 use crate::libc::{SIGTERM, kill, pid_t};
 
-use crate::{args_parse, cmd, cmd_entry, cmd_flag, cmd_get_entry, cmd_retval, cmdq_item, *};
+use crate::{args_parse, cmd, cmd_entry, cmd_flag, cmd_get_entry, cmd_retval, cmdq_item};
 
 pub static CMD_KILL_SERVER_ENTRY: cmd_entry = cmd_entry {
     name: SyncCharPtr::new(c"kill-server"),

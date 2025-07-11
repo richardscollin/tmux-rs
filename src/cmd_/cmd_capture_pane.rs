@@ -13,7 +13,7 @@
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 use crate::*;
 
-use crate::libc::strlen;
+use std::io::Write;
 
 pub static CMD_CAPTURE_PANE_ENTRY: cmd_entry = cmd_entry {
     name: SyncCharPtr::new(c"capture-pane"),
@@ -86,12 +86,7 @@ unsafe fn cmd_capture_pane_pending(
                     tmp[0] = *line.add(i) as _;
                     tmp[1] = b'\0' as _;
                 } else {
-                    xsnprintf_!(
-                        &raw mut tmp as _,
-                        size_of::<[c_char; 5]>(),
-                        "\\{:03o}",
-                        *line.add(i),
-                    );
+                    write!(tmp.as_mut_slice(), "\\{:03o}\0", *line.add(i));
                 }
                 buf =
                     cmd_capture_pane_append(buf, len, &raw mut tmp as _, strlen(&raw mut tmp as _));

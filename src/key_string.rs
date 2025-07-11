@@ -405,7 +405,7 @@ pub unsafe fn key_string_lookup_key(mut key: key_code, with_flags: i32) -> *cons
                 /* Literal keys are themselves. */
                 if key & KEYC_LITERAL != 0 {
                     snprintf(
-                        &raw mut OUT as *mut c_char,
+                        (&raw mut OUT).cast(),
                         sizeof_out,
                         c"%c".as_ptr(),
                         (key & 0xff) as i32,
@@ -486,7 +486,7 @@ pub unsafe fn key_string_lookup_key(mut key: key_code, with_flags: i32) -> *cons
                 }
                 if key >= KEYC_USER && key < KEYC_USER_END {
                     snprintf(
-                        &raw mut tmp as *mut c_char,
+                        (&raw mut tmp).cast(),
                         sizeof_tmp,
                         c"User%u".as_ptr(),
                         (key - KEYC_USER) as u8 as u32,
@@ -528,7 +528,7 @@ pub unsafe fn key_string_lookup_key(mut key: key_code, with_flags: i32) -> *cons
                 /* Invalid keys are errors. */
                 if key > 255 {
                     snprintf(
-                        &raw mut OUT as *mut c_char,
+                        (&raw mut OUT).cast(),
                         sizeof_out,
                         c"Invalid#%llx".as_ptr(),
                         saved,

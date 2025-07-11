@@ -452,7 +452,7 @@ pub unsafe fn proc_flush_peer(peer: *mut tmuxpeer) {
 
 pub unsafe fn proc_toggle_log(tp: *mut tmuxproc) {
     unsafe {
-        log_toggle(CStr::from_ptr((*tp).name.cast::<c_char>()));
+        log_toggle(CStr::from_ptr((*tp).name.cast()));
     }
 }
 

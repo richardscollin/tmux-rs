@@ -4,8 +4,8 @@ use std::{mem::MaybeUninit, ptr::null_mut};
 
 use libc::{
     CMSG_DATA, CMSG_FIRSTHDR, CMSG_NXTHDR, CMSG_SPACE, EAGAIN, EBADMSG, EINTR, EINVAL, ERANGE,
-    SCM_RIGHTS, SOL_SOCKET, c_char, calloc, close, cmsghdr, free, getdtablesize, iovec, memcpy,
-    memmove, memset, msghdr, pid_t,
+    SCM_RIGHTS, SOL_SOCKET, calloc, close, cmsghdr, free, getdtablesize, iovec, memcpy, memmove,
+    memset, msghdr, pid_t,
 };
 
 use super::getdtablecount::getdtablecount;
@@ -170,7 +170,7 @@ pub unsafe fn imsg_read(imsgbuf: *mut imsgbuf) -> isize {
                 let mut cmsg: *mut cmsghdr = CMSG_FIRSTHDR(&raw const msg);
                 while !cmsg.is_null() {
                     if (*cmsg).cmsg_level == SOL_SOCKET && (*cmsg).cmsg_type == SCM_RIGHTS {
-                        let j: i32 = (((cmsg as *mut c_char).add((*cmsg).cmsg_len as usize).addr()
+                        let j: i32 = (((cmsg as *mut u8).add((*cmsg).cmsg_len as usize).addr()
                             - CMSG_DATA(cmsg).addr())
                             / size_of::<c_int>()) as i32;
                         for i in 0..j {

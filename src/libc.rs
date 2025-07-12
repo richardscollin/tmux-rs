@@ -5,20 +5,6 @@ pub use ::libc::*;
 
 pub type wchar_t = core::ffi::c_int;
 
-#[cfg(target_os = "linux")]
-unsafe extern "C" {
-    pub(crate) static mut stdin: *mut FILE;
-    pub(crate) static mut stdout: *mut FILE;
-}
-#[cfg(target_os = "macos")]
-unsafe extern "C" {
-    #[link_name = "__stdinp"]
-    pub(crate) static mut stdin: *mut FILE;
-
-    #[link_name = "__stdoutp"]
-    pub(crate) static mut stdout: *mut FILE;
-}
-
 unsafe extern "C" {
     pub static mut environ: *mut *mut u8;
     pub fn strsep(_: *mut *mut u8, _delim: *const u8) -> *mut u8;

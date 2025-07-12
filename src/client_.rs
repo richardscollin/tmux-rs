@@ -443,6 +443,8 @@ pub unsafe extern "C-unwind" fn client_main(
         setblocking(STDOUT_FILENO, 1);
         setblocking(STDERR_FILENO, 1);
 
+        use std::io::Write;
+
         if CLIENT_ATTACHED != 0 {
             if CLIENT_EXITREASON != client_exitreason::CLIENT_EXIT_NONE {
                 printf(c"[%s]\n".as_ptr(), client_exit_message());
@@ -454,25 +456,27 @@ pub unsafe extern "C-unwind" fn client_main(
             }
         } else if (*&raw const CLIENT_FLAGS).intersects(client_flag::CONTROL) {
             if CLIENT_EXITREASON != client_exitreason::CLIENT_EXIT_NONE {
-                printf(c"%%exit %s\n".as_ptr(), client_exit_message());
+                println!("%exit {}", _s(client_exit_message()));
             } else {
-                printf(c"%%exit\n".as_ptr());
+                println!("%exit");
             }
-            fflush(stdout);
+            // flush stdout (should already be flushed by println! macro)
             if (*&raw const CLIENT_FLAGS).intersects(client_flag::CONTROL_WAITEXIT) {
-                setvbuf(stdin, null_mut(), _IOLBF, 0);
-                loop {
-                    let linelen = getline(&raw mut line as _, &raw mut linesize, stdin);
-                    if linelen <= 1 {
-                        break;
+                // TODO investigate if buffering mode is correct
+                for line in std::io::stdin().lines() {
+                    match line {
+                        Ok(line_string) => {
+                            if line_string.is_empty() {
+                                break;
+                            }
+                        }
+                        Err(err) => break,
                     }
                 }
-                free(line as _);
             }
             if (*&raw const CLIENT_FLAGS).intersects(client_flag::CONTROLCONTROL) {
-                // TODO originally octal 033
-                printf(c"\x1b\\".as_ptr());
-                fflush(stdout);
+                _ = std::io::stdout().lock().write(b"\x1b\\");
+                // flush stdout
                 tcsetattr(STDOUT_FILENO, TCSAFLUSH, &raw mut saved_tio);
             }
         } else if CLIENT_EXITREASON != client_exitreason::CLIENT_EXIT_NONE {

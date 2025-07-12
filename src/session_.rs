@@ -431,7 +431,7 @@ pub unsafe fn session_has(s: *mut session, w: *mut window) -> i32 {
 pub unsafe fn session_is_linked(s: *mut session, w: *mut window) -> i32 {
     unsafe {
         let sg = session_group_contains(s);
-        if sg.is_null() {
+        if !sg.is_null() {
             return ((*w).references != session_group_count(sg)) as i32;
         }
         ((*w).references != 1) as i32

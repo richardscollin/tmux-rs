@@ -36,9 +36,7 @@ pub static CMD_DISPLAY_MESSAGE_ENTRY: cmd_entry = cmd_entry {
     source: cmd_entry_flag::zeroed(),
 };
 
-unsafe fn cmd_display_message_each(key: *const u8, value: *const u8, arg: *mut c_void) {
-    let item = arg as *mut cmdq_item;
-
+unsafe fn cmd_display_message_each(key: *const u8, value: *const u8, item: *mut cmdq_item) {
     unsafe {
         cmdq_print!(item, "{}={}", _s(key), _s(value));
     }
@@ -123,7 +121,7 @@ unsafe fn cmd_display_message_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd
         format_defaults(ft, c, NonNull::new(s), NonNull::new(wl), NonNull::new(wp));
 
         if args_has_(args, 'a') {
-            format_each(ft, Some(cmd_display_message_each), item as _);
+            format_each(ft, Some(cmd_display_message_each), item);
             return cmd_retval::CMD_RETURN_NORMAL;
         }
 

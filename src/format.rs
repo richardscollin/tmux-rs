@@ -567,7 +567,7 @@ pub unsafe fn format_cb_host_short(ft: *mut format_tree) -> *mut c_void {
 
 /// Callback for pid.
 pub unsafe fn format_cb_pid(ft: *mut format_tree) -> *mut c_void {
-    unsafe { libc::getpid().to_string().leak().as_mut_ptr().cast() }
+    unsafe { format!("{}\0", libc::getpid()).leak().as_mut_ptr().cast() }
 }
 
 /// Callback for session_attached_list.
@@ -3241,8 +3241,7 @@ pub unsafe fn format_free(ft: *mut format_tree) {
     }
 }
 
-pub unsafe fn format_log_debug_cb(key: *const u8, value: *const u8, arg: *mut c_void) {
-    let prefix = arg as *const u8;
+pub unsafe fn format_log_debug_cb(key: *const u8, value: *const u8, prefix: *mut u8) {
     unsafe {
         log_debug!("{}: {}={}", _s(prefix), _s(key), _s(value));
     }
@@ -3250,14 +3249,14 @@ pub unsafe fn format_log_debug_cb(key: *const u8, value: *const u8, arg: *mut c_
 
 pub unsafe fn format_log_debug(ft: *mut format_tree, prefix: *const u8) {
     unsafe {
-        format_each(ft, Some(format_log_debug_cb), prefix as *mut c_void);
+        format_each(ft, Some(format_log_debug_cb), prefix.cast_mut());
     }
 }
 
-pub unsafe fn format_each(
+pub unsafe fn format_each<T>(
     ft: *mut format_tree,
-    cb: Option<unsafe fn(*const u8, *const u8, *mut c_void)>,
-    arg: *mut c_void,
+    cb: Option<unsafe fn(*const u8, *const u8, *mut T)>,
+    arg: *mut T,
 ) {
     unsafe {
         let mut s = [0u8; 64];

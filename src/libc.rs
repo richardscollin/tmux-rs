@@ -36,6 +36,12 @@ pub unsafe fn free_<T>(p: *mut T) {
     unsafe { ::libc::free(p as *mut c_void) }
 }
 
+pub unsafe fn free_take<T: ?Sized>(value: &mut Option<&mut T>) {
+    if let Some(ptr) = value.take() {
+        unsafe { ::libc::free(ptr as *mut T as *mut c_void) }
+    }
+}
+
 #[allow(
     clippy::unnecessary_cast,
     reason = "mode_t is u16 on macos so cast is required for some platforms only"
@@ -162,27 +168,6 @@ pub unsafe fn tzset() {
 
 pub unsafe fn unlink(c: *const u8) -> i32 {
     unsafe { ::libc::unlink(c.cast()) }
-}
-
-#[inline]
-pub unsafe fn bsearch_<T>(
-    key: *const T,
-    base: *const T,
-    num: usize,
-    size: usize,
-    compar: unsafe extern "C" fn(*const c_void, *const c_void) -> i32,
-) -> *mut T {
-    unsafe { ::libc::bsearch(key.cast(), base.cast(), num, size, Some(compar)).cast() }
-}
-
-#[inline]
-pub unsafe fn bsearch__<T>(
-    key: *const T,
-    base: *const T,
-    num: usize,
-    compar: unsafe extern "C" fn(*const c_void, *const c_void) -> i32,
-) -> *mut T {
-    unsafe { ::libc::bsearch(key.cast(), base.cast(), num, size_of::<T>(), Some(compar)).cast() }
 }
 
 #[cfg(target_os = "linux")]

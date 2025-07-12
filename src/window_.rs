@@ -1851,8 +1851,8 @@ pub unsafe fn window_set_fill_character(w: NonNull<window>) {
         let value = options_get_string_((*w).options, c"fill-character");
         if *value != b'\0' as _ && utf8_isvalid(value) {
             let ud = utf8_fromcstr(value);
-            if !ud.is_null() && (*ud).width == 1 {
-                (*w).fill_character = ud;
+            if ud[0].width == 1 {
+                (*w).fill_character = Box::leak(ud).as_mut_ptr();
             }
         }
     }

@@ -186,7 +186,8 @@ pub unsafe fn grid_reader_in_set(gr: *mut grid_reader, set: *const u8) -> i32 {
         if (*gc).flags.intersects(grid_flag::PADDING) {
             return 0;
         }
-        utf8_cstrhas(set, &raw mut (*gc).data)
+        // TODO double check data is initialized
+        utf8_cstrhas(set, &(*gc).data)
     }
 }
 
@@ -355,7 +356,7 @@ pub unsafe fn grid_reader_cursor_previous_word(
     }
 }
 
-pub unsafe fn grid_reader_cursor_jump(gr: *mut grid_reader, jc: *const utf8_data) -> i32 {
+pub unsafe fn grid_reader_cursor_jump(gr: *mut grid_reader, jc: &utf8_data) -> i32 {
     unsafe {
         let mut gc = MaybeUninit::<grid_cell>::uninit();
         let gc = gc.as_mut_ptr();
@@ -369,10 +370,10 @@ pub unsafe fn grid_reader_cursor_jump(gr: *mut grid_reader, jc: *const utf8_data
             while px < xx {
                 grid_get_cell((*gr).gd, px, py, gc);
                 if !(*gc).flags.intersects(grid_flag::PADDING)
-                    && (*gc).data.size == (*jc).size
+                    && (*gc).data.size == jc.size
                     && memcmp(
                         (*gc).data.data.as_ptr().cast(),
-                        (*jc).data.as_ptr().cast(),
+                        jc.data.as_ptr().cast(),
                         (*gc).data.size as usize,
                     ) == 0
                 {
@@ -397,7 +398,7 @@ pub unsafe fn grid_reader_cursor_jump(gr: *mut grid_reader, jc: *const utf8_data
     0
 }
 
-pub unsafe fn grid_reader_cursor_jump_back(gr: *mut grid_reader, jc: *mut utf8_data) -> i32 {
+pub unsafe fn grid_reader_cursor_jump_back(gr: *mut grid_reader, jc: &utf8_data) -> i32 {
     unsafe {
         let mut gc = MaybeUninit::<grid_cell>::uninit();
         let gc = gc.as_mut_ptr();
@@ -411,10 +412,10 @@ pub unsafe fn grid_reader_cursor_jump_back(gr: *mut grid_reader, jc: *mut utf8_d
             while px > 0 {
                 grid_get_cell((*gr).gd, px - 1, py - 1, gc);
                 if !((*gc).flags.intersects(grid_flag::PADDING)
-                    && (*gc).data.size == (*jc).size
+                    && (*gc).data.size == jc.size
                     && memcmp(
                         (*gc).data.data.as_ptr().cast(),
-                        (*jc).data.as_ptr().cast(),
+                        jc.data.as_ptr().cast(),
                         (*gc).data.size as usize,
                     ) == 0)
                 {

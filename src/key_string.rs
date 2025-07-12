@@ -284,8 +284,7 @@ pub unsafe fn key_string_get_modifiers(string: *mut *const u8) -> key_code {
 // TODO
 const MB_LEN_MAX: usize = 16;
 
-/* Lookup a string and convert to a key value. */
-
+/// Lookup a string and convert to a key value.
 pub unsafe fn key_string_lookup_string(mut string: *const u8) -> key_code {
     unsafe {
         let mut key: key_code = 0;
@@ -293,12 +292,11 @@ pub unsafe fn key_string_lookup_string(mut string: *const u8) -> key_code {
         let mut u: u32 = 0;
         let i: u32 = 0;
         let mut ud: utf8_data = zeroed();
-        let mut uc: utf8_char = 0;
         let mlen = 0i32;
 
         let mut m = [MaybeUninit::<u8>::uninit(); MB_LEN_MAX + 1];
 
-        /* Is this no key or any key? */
+        // Is this no key or any key?
         if strcasecmp(string, c!("None")) == 0 {
             return KEYC_NONE;
         }
@@ -306,7 +304,7 @@ pub unsafe fn key_string_lookup_string(mut string: *const u8) -> key_code {
             return keyc::KEYC_ANY as key_code;
         }
 
-        /* Is this a hexadecimal value? */
+        // Is this a hexadecimal value?
         if *string == b'0' && *string.add(1) == b'x' {
             if sscanf(string.add(2).cast(), c"%x".as_ptr(), &raw mut u) != 1 {
                 return KEYC_UNKNOWN;
@@ -320,20 +318,19 @@ pub unsafe fn key_string_lookup_string(mut string: *const u8) -> key_code {
             }
             m[mlen as usize].write(b'\0');
 
-            let udp: *mut utf8_data = utf8_fromcstr(m.as_slice().as_ptr().cast());
-            if udp.is_null()
-                || (*udp).size == 0
-                || (*udp.add(1)).size != 0
-                || utf8_from_data(udp, &raw mut uc) != utf8_state::UTF8_DONE
-            {
-                free_(udp);
+            let udp = utf8_fromcstr(m.as_slice().as_ptr().cast());
+            if udp.is_empty() || udp[0].size == 0 || udp[1].size != 0 {
                 return KEYC_UNKNOWN;
             }
-            free_(udp);
+            // TODO UB remove the &* (by returning &mut from utf8_fromcstr)
+            let Ok(uc) = utf8_from_data(&udp[0]) else {
+                return KEYC_UNKNOWN;
+            };
+
             return uc as u64;
         }
 
-        /* Check for short Ctrl key. */
+        // Check for short Ctrl key.
         if *string == b'^' && *string.add(1) != b'\0' {
             if *string.add(2) == b'\0' {
                 return tolower(*string.add(1) as _) as u64 | KEYC_CTRL;
@@ -348,14 +345,14 @@ pub unsafe fn key_string_lookup_string(mut string: *const u8) -> key_code {
             return KEYC_UNKNOWN;
         }
 
-        /* Is this a standard ASCII key? */
+        // Is this a standard ASCII key?
         if *string.add(1) == b'\0' && *string <= 127 {
             key = *string as u64;
             if key < 32 {
                 return KEYC_UNKNOWN;
             }
         } else {
-            /* Try as a UTF-8 key. */
+            // Try as a UTF-8 key.
             let mut more: utf8_state = utf8_open(&raw mut ud, (*string));
             if more == utf8_state::UTF8_MORE {
                 if strlen(string) != ud.size as usize {
@@ -367,13 +364,13 @@ pub unsafe fn key_string_lookup_string(mut string: *const u8) -> key_code {
                 if more != utf8_state::UTF8_DONE {
                     return KEYC_UNKNOWN;
                 }
-                if utf8_from_data(&raw const ud, &raw mut uc) != utf8_state::UTF8_DONE {
+                let Ok(uc) = utf8_from_data(&ud) else {
                     return KEYC_UNKNOWN;
-                }
+                };
                 return uc as u64 | modifiers;
             }
 
-            /* Otherwise look the key up in the table. */
+            // Otherwise look the key up in the table.
             key = key_string_search_table(string);
             if key == KEYC_UNKNOWN {
                 return KEYC_UNKNOWN;

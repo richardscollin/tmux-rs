@@ -132,10 +132,8 @@ struct discr_alerts_entry;
 struct discr_all_entry;
 struct discr_by_uri_entry;
 struct discr_by_inner_entry;
-struct discr_data_entry;
 struct discr_entry;
 struct discr_gentry;
-struct discr_index_entry;
 struct discr_name_entry;
 struct discr_pending_entry;
 struct discr_sentry;
@@ -619,22 +617,16 @@ const UTF8_SIZE: usize = 21;
 #[repr(C)]
 #[derive(Copy, Clone)]
 struct utf8_data {
-    data: [c_uchar; UTF8_SIZE],
+    data: [u8; UTF8_SIZE],
 
-    have: c_uchar,
-    size: c_uchar,
-
+    have: u8,
+    size: u8, // TODO check the codebase for things checking if size == 0, which is the sentinal value
     /// 0xff if invalid
-    width: c_uchar,
+    width: u8,
 }
 
 impl utf8_data {
-    const fn new<const N: usize>(
-        data: [u8; N],
-        have: c_uchar,
-        size: c_uchar,
-        width: c_uchar,
-    ) -> Self {
+    const fn new<const N: usize>(data: [u8; N], have: u8, size: u8, width: u8) -> Self {
         if N >= UTF8_SIZE {
             panic!("invalid size");
         }
@@ -652,6 +644,10 @@ impl utf8_data {
             size,
             width,
         }
+    }
+
+    fn initialized_slice(&self) -> &[u8] {
+        &self.data[..self.size as usize]
     }
 }
 
@@ -3033,8 +3029,8 @@ mod utf8;
 use crate::utf8::{
     utf8_append, utf8_build_one, utf8_copy, utf8_cstrhas, utf8_cstrwidth, utf8_from_data,
     utf8_fromcstr, utf8_fromwc, utf8_in_table, utf8_isvalid, utf8_open, utf8_padcstr,
-    utf8_rpadcstr, utf8_sanitize, utf8_set, utf8_stravis, utf8_stravisx, utf8_strlen, utf8_strvis,
-    utf8_strwidth, utf8_to_data, utf8_tocstr, utf8_towc,
+    utf8_rpadcstr, utf8_sanitize, utf8_set, utf8_stravis, utf8_stravisx, utf8_strlen, utf8_strlen_,
+    utf8_strvis, utf8_strwidth, utf8_to_data, utf8_tocstr, utf8_towc,
 };
 
 mod osdep;
@@ -3270,6 +3266,28 @@ macro_rules! c {
     }};
 }
 pub(crate) use c;
+
+macro_rules! impl_ord {
+    ($ty:ty as $func:ident) => {
+        impl Ord for $ty {
+            fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+                $func(&self, &other)
+            }
+        }
+        impl PartialEq for $ty {
+            fn eq(&self, other: &Self) -> bool {
+                self.cmp(other).is_eq()
+            }
+        }
+        impl Eq for $ty {}
+        impl PartialOrd for $ty {
+            fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+                Some(self.cmp(other))
+            }
+        }
+    };
+}
+pub(crate) use impl_ord;
 
 macro_rules! enum_try_from {
     ($enum_ty:ty, $repr:ty, $last_variant:expr) => {

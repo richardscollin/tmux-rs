@@ -1967,7 +1967,7 @@ pub unsafe fn window_copy_cmd_other_end(cs: *mut window_copy_cmd_state) -> windo
         let data: *mut window_copy_mode_data = (*wme).data.cast();
 
         (*data).selflag = selflag::SEL_CHAR;
-        if (np % 2) != 0 {
+        if !np.is_multiple_of(2) {
             window_copy_other_end(wme);
         }
         window_copy_cmd_action::WINDOW_COPY_CMD_NOTHING

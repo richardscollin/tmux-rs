@@ -3415,12 +3415,7 @@ pub unsafe fn format_quote_style(s: *const u8) -> *mut u8 {
 /// Make a prettier time.
 pub unsafe fn format_pretty_time(t: time_t, seconds: i32) -> *mut u8 {
     unsafe {
-        // struct tm now_tm, tm;
-        // time_t now, age;
-        // char s[9];
-
-        let mut now: time_t = 0;
-        libc::time(&raw mut now);
+        let mut now: time_t = libc::time(null_mut());
         if now < t {
             now = t;
         }

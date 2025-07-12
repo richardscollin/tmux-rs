@@ -180,7 +180,7 @@ pub fn colour_fromstring_(s: &str) -> c_int {
         }
         if let Ok(r) = u8::from_str_radix(&s[1..3], 16)
             && let Ok(g) = u8::from_str_radix(&s[3..5], 16)
-            && let Ok(b) = u8::from_str_radix(&s[5..6], 16)
+            && let Ok(b) = u8::from_str_radix(&s[5..7], 16)
         {
             return colour_join_rgb(r, g, b);
         } else {

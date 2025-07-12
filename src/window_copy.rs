@@ -214,11 +214,14 @@ pub struct window_copy_mode_data {
     dragtimer: event,
 }
 
-pub unsafe extern "C-unwind" fn window_copy_scroll_timer(_fd: i32, _events: i16, arg: *mut c_void) {
+pub unsafe extern "C-unwind" fn window_copy_scroll_timer(
+    _fd: i32,
+    _events: i16,
+    wme: NonNull<window_mode_entry>,
+) {
     unsafe {
-        let wme: *mut window_mode_entry = arg.cast();
-        let wp: *mut window_pane = (*wme).wp;
-        let data: *mut window_copy_mode_data = (*wme).data.cast();
+        let wp: *mut window_pane = (*wme.as_ptr()).wp;
+        let data: *mut window_copy_mode_data = (*wme.as_ptr()).data.cast();
         let mut tv = libc::timeval {
             tv_sec: 0,
             tv_usec: WINDOW_COPY_DRAG_REPEAT_TIME,
@@ -226,16 +229,16 @@ pub unsafe extern "C-unwind" fn window_copy_scroll_timer(_fd: i32, _events: i16,
 
         evtimer_del(&raw mut (*data).dragtimer);
 
-        if tailq_first(&raw mut (*wp).modes) != wme {
+        if tailq_first(&raw mut (*wp).modes) != wme.as_ptr() {
             return;
         }
 
         if (*data).cy == 0 {
             evtimer_add(&raw mut (*data).dragtimer, &raw mut tv);
-            window_copy_cursor_up(wme, 1);
+            window_copy_cursor_up(wme.as_ptr(), 1);
         } else if (*data).cy == screen_size_y(&raw mut (*data).screen) - 1 {
             evtimer_add(&raw mut (*data).dragtimer, &raw mut tv);
-            window_copy_cursor_down(wme, 1);
+            window_copy_cursor_down(wme.as_ptr(), 1);
         }
     }
 }
@@ -347,8 +350,8 @@ pub unsafe fn window_copy_common_init(wme: *mut window_mode_entry) -> *mut windo
 
         evtimer_set(
             &raw mut (*data).dragtimer,
-            Some(window_copy_scroll_timer),
-            wme.cast(),
+            window_copy_scroll_timer,
+            NonNull::new(wme).unwrap(),
         );
 
         data

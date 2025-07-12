@@ -156,9 +156,9 @@ pub unsafe extern "C-unwind" fn tty_read_callback(_fd: i32, _events: i16, data: 
     }
 }
 
-pub unsafe extern "C-unwind" fn tty_timer_callback(_fd: i32, events: i16, data: *mut c_void) {
+pub unsafe extern "C-unwind" fn tty_timer_callback(_fd: i32, events: i16, tty: NonNull<tty>) {
     unsafe {
-        let tty = data as *mut tty;
+        let tty = tty.as_ptr();
         let c = (*tty).client;
         let mut tv = libc::timeval {
             tv_sec: 0,
@@ -291,7 +291,11 @@ pub unsafe fn tty_open(tty: *mut tty, cause: *mut *mut u8) -> i32 {
             fatal("out of memory");
         }
 
-        evtimer_set(&raw mut (*tty).timer, Some(tty_timer_callback), tty.cast());
+        evtimer_set(
+            &raw mut (*tty).timer,
+            tty_timer_callback,
+            NonNull::new_unchecked(tty),
+        );
 
         tty_start_tty(tty);
         tty_keys_build(tty);
@@ -303,10 +307,10 @@ pub unsafe fn tty_open(tty: *mut tty, cause: *mut *mut u8) -> i32 {
 pub unsafe extern "C-unwind" fn tty_start_timer_callback(
     _fd: i32,
     _events: i16,
-    data: *mut c_void,
+    tty: NonNull<tty>,
 ) {
     unsafe {
-        let tty = data as *mut tty;
+        let tty = tty.as_ptr();
         let c = (*tty).client;
 
         // log_debug("%s: start timer fired", (*c).name);
@@ -380,8 +384,8 @@ pub unsafe fn tty_start_tty(tty: *mut tty) {
 
         evtimer_set(
             &raw mut (*tty).start_timer,
-            Some(tty_start_timer_callback),
-            tty.cast(),
+            tty_start_timer_callback,
+            NonNull::new_unchecked(tty),
         );
         evtimer_add(&raw mut (*tty).start_timer, &raw const tv);
 
@@ -3835,18 +3839,17 @@ pub unsafe fn tty_default_attributes(
 pub unsafe extern "C-unwind" fn tty_clipboard_query_callback(
     _fd: i32,
     _events: i16,
-    data: *mut c_void,
+    tty: NonNull<tty>,
 ) {
     unsafe {
-        let tty: *mut tty = data.cast();
-        let c = (*tty).client;
+        let c = (*tty.as_ptr()).client;
 
         (*c).flags &= !client_flag::CLIPBOARDBUFFER;
         free_((*c).clipboard_panes);
         (*c).clipboard_panes = null_mut();
         (*c).clipboard_npanes = 0;
 
-        (*tty).flags &= !tty_flags::TTY_OSC52QUERY;
+        (*tty.as_ptr()).flags &= !tty_flags::TTY_OSC52QUERY;
     }
 }
 
@@ -3867,8 +3870,8 @@ pub unsafe fn tty_clipboard_query(tty: *mut tty) {
         (*tty).flags |= tty_flags::TTY_OSC52QUERY;
         evtimer_set(
             &raw mut (*tty).clipboard_timer,
-            Some(tty_clipboard_query_callback),
-            tty.cast(),
+            tty_clipboard_query_callback,
+            NonNull::new_unchecked(tty),
         );
         evtimer_add(&raw mut (*tty).clipboard_timer, &tv);
     }

@@ -24,12 +24,10 @@ static ALERTS_FIRED: atomic::AtomicI32 = atomic::AtomicI32::new(0);
 
 static mut ALERTS_LIST: tailq_head<window> = compat::TAILQ_HEAD_INITIALIZER!(ALERTS_LIST);
 
-unsafe extern "C-unwind" fn alerts_timer(_fd: i32, _events: i16, arg: *mut c_void) {
-    let w = arg as *mut window;
-
+unsafe extern "C-unwind" fn alerts_timer(_fd: i32, _events: i16, w: NonNull<window>) {
     unsafe {
-        log_debug!("@{} alerts timer expired", (*w).id);
-        alerts_queue(NonNull::new_unchecked(w), window_flag::SILENCE);
+        log_debug!("@{} alerts timer expired", (*w.as_ptr()).id);
+        alerts_queue(w, window_flag::SILENCE);
     }
 }
 
@@ -105,12 +103,12 @@ pub(crate) unsafe fn alerts_reset_all() {
 }
 
 unsafe fn alerts_reset(w: NonNull<window>) {
-    let w = w.as_ptr();
     unsafe {
-        if event_initialized(&raw const (*w).alerts_timer) == 0 {
-            evtimer_set(&raw mut (*w).alerts_timer, Some(alerts_timer), w as _);
+        if event_initialized(&raw const (*w.as_ptr()).alerts_timer) == 0 {
+            evtimer_set(&raw mut (*w.as_ptr()).alerts_timer, alerts_timer, w);
         }
 
+        let w = w.as_ptr();
         (*w).flags &= !window_flag::SILENCE;
         event_del(&raw mut (*w).alerts_timer);
 

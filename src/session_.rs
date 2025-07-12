@@ -276,21 +276,19 @@ pub unsafe fn session_check_name(name: *const u8) -> *mut u8 {
 }
 
 /// Lock session if it has timed out.
-pub unsafe extern "C-unwind" fn session_lock_timer(_fd: i32, _events: i16, arg: *mut c_void) {
+pub unsafe extern "C-unwind" fn session_lock_timer(_fd: i32, _events: i16, s: NonNull<session>) {
     unsafe {
-        let s = arg as *mut session;
-
-        if (*s).attached == 0 {
+        if (*s.as_ptr()).attached == 0 {
             return;
         }
 
         log_debug!(
             "session {} locked, activity time {}",
-            _s((*s).name),
-            (*s).activity_time.tv_sec,
+            _s((*s.as_ptr()).name),
+            (*s.as_ptr()).activity_time.tv_sec,
         );
 
-        server_lock_session(s);
+        server_lock_session(s.as_ptr());
         recalculate_sizes();
     }
 }
@@ -320,7 +318,11 @@ pub unsafe fn session_update_activity(s: *mut session, from: *mut timeval) {
         if evtimer_initialized(&raw mut (*s).lock_timer) {
             evtimer_del(&raw mut (*s).lock_timer);
         } else {
-            evtimer_set(&raw mut (*s).lock_timer, Some(session_lock_timer), s.cast());
+            evtimer_set(
+                &raw mut (*s).lock_timer,
+                session_lock_timer,
+                NonNull::new(s).unwrap(),
+            );
         }
 
         if (*s).attached != 0 {

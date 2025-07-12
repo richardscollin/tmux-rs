@@ -142,12 +142,11 @@ pub static mut WINDOW_CLOCK_TABLE: [[[u8; 5]; 5]; 14] = [
 pub unsafe extern "C-unwind" fn window_clock_timer_callback(
     _fd: i32,
     _events: i16,
-    arg: *mut c_void,
+    wme: NonNull<window_mode_entry>,
 ) {
     unsafe {
-        let wme = arg as *mut window_mode_entry;
-        let wp = (*wme).wp;
-        let data = (*wme).data as *mut window_clock_mode_data;
+        let wp = (*wme.as_ptr()).wp;
+        let data = (*wme.as_ptr()).data as *mut window_clock_mode_data;
         let mut now: libc::tm = zeroed();
         let mut then: libc::tm = zeroed();
         let mut t: time_t;
@@ -159,7 +158,7 @@ pub unsafe extern "C-unwind" fn window_clock_timer_callback(
         evtimer_del(&raw mut (*data).timer);
         evtimer_add(&raw mut (*data).timer, &tv);
 
-        if tailq_first(&raw mut (*wp).modes) != wme {
+        if tailq_first(&raw mut (*wp).modes) != wme.as_ptr() {
             return;
         }
 
@@ -171,7 +170,7 @@ pub unsafe extern "C-unwind" fn window_clock_timer_callback(
         }
         (*data).tim = t;
 
-        window_clock_draw_screen(NonNull::new(wme).unwrap());
+        window_clock_draw_screen(wme);
         (*wp).flags |= window_pane_flags::PANE_REDRAW;
     }
 }
@@ -192,11 +191,7 @@ pub unsafe fn window_clock_init(
         (*wme.as_ptr()).data = data.cast();
         (*data).tim = libc::time(null_mut());
 
-        evtimer_set(
-            &raw mut (*data).timer,
-            Some(window_clock_timer_callback),
-            wme.cast().as_ptr(),
-        );
+        evtimer_set(&raw mut (*data).timer, window_clock_timer_callback, wme);
         evtimer_add(&raw mut (*data).timer, &raw mut tv);
 
         let s = &raw mut (*data).screen;

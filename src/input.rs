@@ -871,16 +871,14 @@ unsafe fn input_table_compare(
 /// Timer
 ///
 /// if this expires then have been waiting for a terminator for too long, so reset to ground.
-unsafe extern "C-unwind" fn input_timer_callback(_fd: i32, _events: i16, arg: *mut c_void) {
+unsafe extern "C-unwind" fn input_timer_callback(_fd: i32, _events: i16, ictx: NonNull<input_ctx>) {
     unsafe {
-        let ictx: *mut input_ctx = arg as *mut input_ctx;
-
         log_debug!(
             "{}: {} expired",
             "input_timer_callback",
-            _s((*(*ictx).state).name.as_ptr())
+            _s((*(*ictx.as_ptr()).state).name.as_ptr())
         );
-        input_reset(ictx, 0);
+        input_reset(ictx.as_ptr(), 0);
     }
 }
 
@@ -946,23 +944,23 @@ pub unsafe fn input_init(
     palette: *mut colour_palette,
 ) -> *mut input_ctx {
     unsafe {
-        let ictx: *mut input_ctx = xcalloc1::<input_ctx>();
-        (*ictx).wp = wp;
-        (*ictx).event = bev;
-        (*ictx).palette = palette;
+        let ictx = xcalloc1::<input_ctx>();
+        ictx.wp = wp;
+        ictx.event = bev;
+        ictx.palette = palette;
 
-        (*ictx).input_space = INPUT_BUF_START;
-        (*ictx).input_buf = xmalloc(INPUT_BUF_START).as_ptr().cast();
+        ictx.input_space = INPUT_BUF_START;
+        ictx.input_buf = xmalloc(INPUT_BUF_START).as_ptr().cast();
 
-        (*ictx).since_ground = evbuffer_new();
-        if (*ictx).since_ground.is_null() {
+        ictx.since_ground = evbuffer_new();
+        if ictx.since_ground.is_null() {
             fatalx("out of memory");
         }
 
         evtimer_set(
-            &raw mut (*ictx).timer,
-            Some(input_timer_callback),
-            ictx as _,
+            &raw mut ictx.timer,
+            input_timer_callback,
+            NonNull::new(ictx).unwrap(),
         );
 
         input_reset(ictx, 0);

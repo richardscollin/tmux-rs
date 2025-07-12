@@ -1103,10 +1103,10 @@ pub unsafe fn control_check_subs_all_windows(c: *mut client, csub: *mut control_
 pub unsafe extern "C-unwind" fn control_check_subs_timer(
     _fd: i32,
     _events: i16,
-    data: *mut c_void,
+    c: NonNull<client>,
 ) {
     unsafe {
-        let c: *mut client = data.cast();
+        let c: *mut client = c.as_ptr();
         let cs = (*c).control_state;
         let mut tv = timeval {
             tv_sec: 1,
@@ -1165,8 +1165,8 @@ pub unsafe fn control_add_sub(
         if !evtimer_initialized(&raw mut (*cs).subs_timer) {
             evtimer_set(
                 &raw mut (*cs).subs_timer,
-                Some(control_check_subs_timer),
-                c.cast(),
+                control_check_subs_timer,
+                NonNull::new(c).unwrap(),
             );
         }
         if evtimer_pending(&raw mut (*cs).subs_timer, null_mut()) == 0 {

@@ -70,9 +70,9 @@ unsafe fn screen_write_free_citem(ci: *mut screen_write_citem) {
     }
 }
 
-unsafe extern "C-unwind" fn screen_write_offset_timer(_fd: i32, _events: i16, data: *mut c_void) {
+unsafe extern "C-unwind" fn screen_write_offset_timer(_fd: i32, _events: i16, w: NonNull<window>) {
     unsafe {
-        tty_update_window_offset(data.cast());
+        tty_update_window_offset(w.as_ptr());
     }
 }
 
@@ -111,8 +111,8 @@ unsafe fn screen_write_set_cursor(ctx: *mut screen_write_ctx, mut cx: i32, mut c
         if event_initialized(&raw mut (*w).offset_timer) == 0 {
             evtimer_set(
                 &raw mut (*w).offset_timer,
-                Some(screen_write_offset_timer),
-                w.cast(),
+                screen_write_offset_timer,
+                NonNull::new_unchecked(w),
             );
         }
         if evtimer_pending(&raw mut (*w).offset_timer, null_mut()) == 0 {

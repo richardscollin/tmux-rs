@@ -422,7 +422,7 @@ pub unsafe fn tty_apply_features(term: *mut tty_term, feat: i32) -> bool {
         log_debug!("applying terminal features: {}", _s(tty_get_features(feat)));
 
         for (i, tf) in TTY_FEATURES.iter().cloned().enumerate() {
-            if ((*term).features & (1 << i) != 9) || (!feat & (1 << i)) != 0 {
+            if ((*term).features & (1 << i) != 0) || (!feat & (1 << i)) != 0 {
                 continue;
             }
 

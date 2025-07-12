@@ -289,13 +289,13 @@ static CMD_LIST_NEXT_GROUP: std::sync::atomic::AtomicU32 = std::sync::atomic::At
 
 macro_rules! cmd_log_argv {
    ($argc:expr, $argv:expr, $fmt:literal $(, $args:expr)* $(,)?) => {
-        crate::cmd_::cmd_log_argv_($argc, $argv, format_args!($fmt $(, $args)*))
+        crate::cmd_::cmd_log_argv_($argc, ($argv).cast::<*const u8>(), format_args!($fmt $(, $args)*))
     };
 }
 pub(crate) use cmd_log_argv;
 
 // Log an argument vector.
-pub unsafe fn cmd_log_argv_(argc: i32, argv: *mut *mut u8, args: std::fmt::Arguments) {
+pub unsafe fn cmd_log_argv_(argc: i32, argv: *const *const u8, args: std::fmt::Arguments) {
     unsafe {
         let prefix = args.to_string();
         for i in 0..argc {
@@ -314,7 +314,7 @@ pub unsafe fn cmd_append_argv(argc: *mut c_int, argv: *mut *mut *mut u8, arg: *c
 
 pub unsafe fn cmd_pack_argv(
     argc: c_int,
-    argv: *mut *mut u8,
+    argv: *const *const u8,
     mut buf: *mut u8,
     mut len: usize,
 ) -> c_int {

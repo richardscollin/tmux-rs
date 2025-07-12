@@ -23,7 +23,7 @@ use crate::libc::{
     strchr, strcspn, strerror, strncmp, strrchr, strstr, timespec,
 };
 
-use crate::compat::getopt::{OPTARG, OPTIND, getopt};
+use crate::compat::getopt::getopt_rs;
 
 pub static mut GLOBAL_OPTIONS: *mut options = null_mut();
 
@@ -42,7 +42,7 @@ pub static mut SOCKET_PATH: *const u8 = null_mut();
 
 pub static mut PTM_FD: c_int = -1;
 
-pub static mut SHELL_COMMAND: *mut u8 = null_mut();
+pub static mut SHELL_COMMAND: Option<std::ffi::CString> = None;
 
 pub fn usage() -> ! {
     eprintln!(
@@ -361,7 +361,7 @@ pub fn getversion() -> &'static str {
 }
 
 /// entrypoint for tmux binary
-pub unsafe fn tmux_main(mut argc: i32, mut argv: *mut *mut u8, env: *mut *mut u8) {
+pub unsafe fn tmux_main(argv: &[&str], env: *mut *mut u8) {
     std::panic::set_hook(Box::new(|panic_info| {
         let backtrace = std::backtrace::Backtrace::capture();
         let err_str = format!("{backtrace:#?}");
@@ -394,7 +394,7 @@ pub unsafe fn tmux_main(mut argc: i32, mut argv: *mut *mut u8, env: *mut *mut u8
         setlocale(LC_TIME, c!(""));
         tzset();
 
-        if **argv == b'-' {
+        if argv[0].starts_with('-') {
             flags = client_flag::LOGIN;
         }
 
@@ -412,23 +412,24 @@ pub unsafe fn tmux_main(mut argc: i32, mut argv: *mut *mut u8, env: *mut *mut u8
         }
         expand_paths(TMUX_CONF, &raw mut CFG_FILES, &raw mut CFG_NFILES, 1);
 
-        let mut opt;
-        while {
-            opt = getopt(argc, argv.cast(), c!("2c:CDdf:lL:NqS:T:uUvV"));
-            opt != -1
-        } {
-            match opt as u8 {
-                b'2' => tty_add_features(&raw mut feat, c!("256"), c!(":,")),
-                b'c' => SHELL_COMMAND = OPTARG.cast(),
-                b'D' => flags |= client_flag::NOFORK,
-                b'C' => {
+        let mut getopt_iter = getopt_rs(argv, "2c:CDdf:lL:NqS:T:uUvV");
+        for opt_result in &mut getopt_iter {
+            let Ok((opt, optarg)) = opt_result else {
+                continue;
+            };
+
+            match opt {
+                '2' => tty_add_features(&raw mut feat, c!("256"), c!(":,")),
+                'c' => SHELL_COMMAND = Some(std::ffi::CString::new(optarg.unwrap()).unwrap()),
+                'D' => flags |= client_flag::NOFORK,
+                'C' => {
                     if flags.intersects(client_flag::CONTROL) {
                         flags |= client_flag::CONTROLCONTROL;
                     } else {
                         flags |= client_flag::CONTROL;
                     }
                 }
-                b'f' => {
+                'f' => {
                     if fflag == 0 {
                         fflag = 1;
                         for i in 0..CFG_NFILES {
@@ -438,38 +439,42 @@ pub unsafe fn tmux_main(mut argc: i32, mut argv: *mut *mut u8, env: *mut *mut u8
                     }
                     CFG_FILES =
                         xreallocarray_::<*mut u8>(CFG_FILES, CFG_NFILES as usize + 1).as_ptr();
-                    *CFG_FILES.add(CFG_NFILES as usize) = xstrdup(OPTARG.cast()).cast().as_ptr();
+                    *CFG_FILES.add(CFG_NFILES as usize) = xstrdup__(optarg.unwrap());
                     CFG_NFILES += 1;
                     CFG_QUIET.store(false, atomic::Ordering::Relaxed);
                 }
-                b'V' => {
+                'V' => {
                     println!("tmux {}", getversion());
                     std::process::exit(0);
                 }
-                b'l' => flags |= client_flag::LOGIN,
-                b'L' => {
+                'l' => flags |= client_flag::LOGIN,
+                'L' => {
                     free(label as _);
-                    label = xstrdup(OPTARG.cast()).cast().as_ptr();
+                    label = xstrdup__(optarg.unwrap());
                 }
-                b'N' => flags |= client_flag::NOSTARTSERVER,
-                b'q' => (),
-                b'S' => {
+                'N' => flags |= client_flag::NOSTARTSERVER,
+                'q' => (),
+                'S' => {
                     free(path as _);
-                    path = xstrdup(OPTARG.cast()).cast().as_ptr();
+                    path = xstrdup__(optarg.unwrap());
                 }
-                b'T' => tty_add_features(&raw mut feat, OPTARG.cast(), c!(":,")),
-                b'u' => flags |= client_flag::UTF8,
-                b'v' => log_add_level(),
+                'T' => {
+                    let cs = std::ffi::CString::new(optarg.unwrap()).unwrap();
+                    tty_add_features(&raw mut feat, cs.as_ptr().cast(), c!(":,"));
+                }
+                'u' => flags |= client_flag::UTF8,
+                'v' => log_add_level(),
                 _ => usage(),
             }
         }
-        argc -= OPTIND;
-        argv = argv.add(OPTIND as usize);
 
-        if !SHELL_COMMAND.is_null() && argc != 0 {
+        // note that we've taken care to ensure the &str args are nul terminated
+        let mut argv: Vec<*const u8> = getopt_iter.remaining_args().map(|a| a.as_ptr()).collect();
+
+        if SHELL_COMMAND.is_some() && !argv.is_empty() {
             usage();
         }
-        if flags.intersects(client_flag::NOFORK) && argc != 0 {
+        if flags.intersects(client_flag::NOFORK) && !argv.is_empty() {
             usage();
         }
 
@@ -583,6 +588,12 @@ pub unsafe fn tmux_main(mut argc: i32, mut argv: *mut *mut u8, env: *mut *mut u8
         free_(label);
 
         // Pass control to the client.
-        std::process::exit(client_main(osdep_event_init(), argc, argv, flags, feat))
+        std::process::exit(client_main(
+            osdep_event_init(),
+            argv.len() as i32,
+            argv.as_ptr(),
+            flags,
+            feat,
+        ))
     }
 }

@@ -3046,7 +3046,7 @@ pub unsafe fn server_client_dispatch_command(c: *mut client, imsg: *mut imsg) {
                 *argv = xstrdup(c!("new-session")).as_ptr();
             }
 
-            values = args_from_vector(argc, argv);
+            values = args_from_vector(argc, argv.cast());
             let cmdlist = match cmd_parse_from_arguments(values, argc as u32, None) {
                 Ok(cmdlist) => cmdlist,
                 Err(err) => {

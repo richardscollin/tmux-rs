@@ -13,6 +13,7 @@
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #![expect(rustdoc::broken_intra_doc_links, reason = "github markdown callout")]
 #![doc = include_str!("../README.md")]
+#![allow(static_mut_refs)]
 #![allow(
     non_camel_case_types,
     clippy::manual_range_contains,

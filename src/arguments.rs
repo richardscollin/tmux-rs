@@ -469,7 +469,7 @@ pub unsafe fn args_to_vector(args: *mut args, argc: *mut i32, argv: *mut *mut *m
     }
 }
 
-pub unsafe fn args_from_vector(argc: i32, argv: *mut *mut u8) -> *mut args_value {
+pub unsafe fn args_from_vector(argc: i32, argv: *const *const u8) -> *mut args_value {
     unsafe {
         let values: *mut args_value = xcalloc_(argc as usize).as_ptr();
         for i in 0..argc {

@@ -1,7 +1,6 @@
 use ::std::{
     alloc::{GlobalAlloc, Layout},
     ffi::CString,
-    str::FromStr as _,
 };
 
 struct MyAlloc;
@@ -35,26 +34,18 @@ unsafe impl GlobalAlloc for MyAlloc {
 // It could also be interesting to add in a histogram for viewing memory allocations
 
 fn main() {
-    let args = std::env::args().collect::<Vec<String>>();
-    let args = args
-        .into_iter()
-        .map(|s| CString::from_str(&s).unwrap())
+    let args = std::env::args()
+        .map(|s| CString::new(s).unwrap())
         .collect::<Vec<CString>>();
-    let mut args: Vec<*mut u8> = args.into_iter().map(|s| s.into_raw().cast()).collect();
+
+    // note these &str are also nul terminated, but not included in the &str len()
+    let args: Vec<&str> = args
+        .iter()
+        .map(|cstr| str::from_utf8(cstr.as_bytes()).unwrap())
+        .collect();
 
     // TODO
     // passing null_mut() as env is ok for now because setproctitle call was removed
     // a similar shim will need to be added when that call is re-added
-    unsafe {
-        tmux_rs::tmux_main(
-            args.len() as i32,
-            args.as_mut_slice().as_mut_ptr(),
-            std::ptr::null_mut(),
-        )
-    }
-
-    drop(
-        args.into_iter()
-            .map(|ptr| unsafe { CString::from_raw(ptr.cast()) }),
-    );
+    unsafe { tmux_rs::tmux_main(&args, std::ptr::null_mut()) }
 }

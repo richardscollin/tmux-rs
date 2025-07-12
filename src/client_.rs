@@ -244,7 +244,7 @@ unsafe fn client_exit() {
 pub unsafe extern "C-unwind" fn client_main(
     base: *mut event_base,
     argc: i32,
-    argv: *mut *mut u8,
+    argv: *const *const u8,
     mut flags: client_flag,
     feat: i32,
 ) -> i32 {
@@ -264,7 +264,7 @@ pub unsafe extern "C-unwind" fn client_main(
         let mut ncaps: u32 = 0;
         let mut values: *mut args_value = null_mut();
 
-        if !SHELL_COMMAND.is_null() {
+        if SHELL_COMMAND.is_some() {
             msg = msgtype::MSG_SHELL;
             flags |= client_flag::STARTSERVER;
         } else if argc == 0 {
@@ -601,7 +601,7 @@ unsafe fn client_send_identify(
 }
 
 #[expect(clippy::deref_addrof)]
-unsafe fn client_exec(shell: *mut u8, shellcmd: *mut u8) {
+unsafe fn client_exec(shell: *mut u8, shellcmd: *const u8) {
     unsafe {
         log_debug!("shell {}, command {}", _s(shell), _s(shellcmd));
         let argv0 = shell_argv0(
@@ -813,7 +813,7 @@ unsafe fn client_dispatch_wait(imsg: *mut imsg) {
                     fatalx("bad MSG_SHELL string");
                 }
 
-                client_exec(data, SHELL_COMMAND);
+                client_exec(data, SHELL_COMMAND.as_ref().unwrap().as_ptr().cast());
             }
             msgtype::MSG_DETACH | msgtype::MSG_DETACHKILL => {
                 proc_send(CLIENT_PEER, msgtype::MSG_EXITING, -1, null_mut(), 0);

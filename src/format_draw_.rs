@@ -862,7 +862,7 @@ unsafe fn format_leading_hashes(cp: *const u8, n: *mut u32, width: *mut u32) -> 
             return cp;
         }
         if *cp.add(*n as usize) != b'[' {
-            if *n % 2 == 0 {
+            if (*n).is_multiple_of(2) {
                 *width = *n / 2;
             } else {
                 *width = *n / 2 + 1;
@@ -870,7 +870,7 @@ unsafe fn format_leading_hashes(cp: *const u8, n: *mut u32, width: *mut u32) -> 
             return cp.add(*n as usize);
         }
         *width = *n / 2;
-        if *n % 2 == 0 {
+        if (*n).is_multiple_of(2) {
             /*
              * An even number of #s means that all #s are escaped, so not a
              * style. The caller should not skip this. Return pointing to
@@ -1001,7 +1001,7 @@ pub unsafe fn format_draw(
                         while *cp.add(n as usize) == b'#' {
                             n += 1;
                         }
-                        let even = n % 2 == 0;
+                        let even = n.is_multiple_of(2);
                         if *cp.add(n as usize) != b'[' {
                             cp = cp.add(n as usize);
                             n = n.div_ceil(2);

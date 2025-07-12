@@ -159,9 +159,9 @@ pub unsafe fn status_prompt_save_history() {
 }
 
 /// Status timer callback.
-unsafe extern "C-unwind" fn status_timer_callback(_fd: i32, _events: i16, arg: *mut c_void) {
+unsafe extern "C-unwind" fn status_timer_callback(_fd: i32, _events: i16, c: NonNull<client>) {
     unsafe {
-        let c: *mut client = arg.cast();
+        let c = c.as_ptr();
         let s: *mut session = (*c).session;
 
         evtimer_del(&raw mut (*c).status.timer);
@@ -186,22 +186,22 @@ unsafe extern "C-unwind" fn status_timer_callback(_fd: i32, _events: i16, arg: *
 }
 
 /// Start status timer for client.
-pub unsafe fn status_timer_start(c: *mut client) {
+pub unsafe fn status_timer_start(c: NonNull<client>) {
     unsafe {
-        let s: *mut session = (*c).session;
+        let s: *mut session = (*c.as_ptr()).session;
 
-        if event_initialized(&raw mut (*c).status.timer) != 0 {
-            evtimer_del(&raw mut (*c).status.timer);
+        if event_initialized(&raw mut (*c.as_ptr()).status.timer) != 0 {
+            evtimer_del(&raw mut (*c.as_ptr()).status.timer);
         } else {
             evtimer_set(
-                &raw mut (*c).status.timer,
-                Some(status_timer_callback),
-                c.cast(),
+                &raw mut (*c.as_ptr()).status.timer,
+                status_timer_callback,
+                c,
             );
         }
 
         if !s.is_null() && options_get_number_((*s).options, c"status") != 0 {
-            status_timer_callback(-1, 0, c.cast());
+            status_timer_callback(-1, 0, c);
         }
     }
 }
@@ -209,7 +209,7 @@ pub unsafe fn status_timer_start(c: *mut client) {
 /// Start status timer for all clients.
 pub unsafe fn status_timer_start_all() {
     unsafe {
-        for c in tailq_foreach(&raw mut CLIENTS).map(NonNull::as_ptr) {
+        for c in tailq_foreach(&raw mut CLIENTS) {
             status_timer_start(c);
         }
     }
@@ -504,6 +504,7 @@ macro_rules! status_message_set {
     };
 }
 pub(crate) use status_message_set;
+
 /// Set a status line message.
 pub unsafe fn status_message_set_(
     c: *mut client,
@@ -513,10 +514,6 @@ pub unsafe fn status_message_set_(
     args: std::fmt::Arguments,
 ) {
     unsafe {
-        // struct timeval tv;
-        // va_list ap;
-        // char *s;
-
         let mut tv: timeval = zeroed();
         let mut s = args.to_string();
 
@@ -527,7 +524,7 @@ pub unsafe fn status_message_set_(
             return;
         }
 
-        status_message_clear(c);
+        status_message_clear(NonNull::new_unchecked(c));
         status_push_screen(c);
         s.push('\0');
         let s = s.leak().as_mut_ptr().cast();
@@ -550,8 +547,8 @@ pub unsafe fn status_message_set_(
             }
             evtimer_set(
                 &raw mut (*c).message_timer,
-                Some(status_message_callback),
-                c.cast(),
+                status_message_callback,
+                NonNull::new_unchecked(c),
             );
 
             evtimer_add(&raw mut (*c).message_timer, &raw mut tv);
@@ -568,8 +565,9 @@ pub unsafe fn status_message_set_(
 }
 
 /// Clear status line message.
-pub unsafe fn status_message_clear(c: *mut client) {
+pub unsafe fn status_message_clear(c: NonNull<client>) {
     unsafe {
+        let c = c.as_ptr();
         if (*c).message_string.is_null() {
             return;
         }
@@ -587,9 +585,9 @@ pub unsafe fn status_message_clear(c: *mut client) {
 }
 
 /// Clear status line message after timer expires.
-unsafe extern "C-unwind" fn status_message_callback(_fd: i32, _event: i16, data: *mut c_void) {
+unsafe extern "C-unwind" fn status_message_callback(_fd: i32, _event: i16, data: NonNull<client>) {
     unsafe {
-        status_message_clear(data.cast());
+        status_message_clear(data);
     }
 }
 
@@ -704,7 +702,7 @@ pub unsafe fn status_prompt_set(
             format_expand_time(ft, input)
         };
 
-        status_message_clear(c);
+        status_message_clear(NonNull::new_unchecked(c));
         status_prompt_clear(c);
         status_push_screen(c);
 

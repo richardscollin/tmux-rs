@@ -16,10 +16,13 @@ use crate::*;
 use crate::event_::{event_add, event_initialized};
 use crate::libc::{gettimeofday, memcpy, strchr, strcmp, strcspn, strlen, strncmp};
 
-pub unsafe extern "C-unwind" fn name_time_callback(_fd: c_int, _events: c_short, arg: *mut c_void) {
-    let w = arg as *mut window;
+pub unsafe extern "C-unwind" fn name_time_callback(
+    _fd: c_int,
+    _events: c_short,
+    w: NonNull<window>,
+) {
     unsafe {
-        log_debug!("@{} timer expired", (*w).id);
+        log_debug!("@{} timer expired", (*w.as_ptr()).id);
     }
 }
 
@@ -64,7 +67,11 @@ pub unsafe fn check_window_name(w: *mut window) {
         let left = name_time_expired(w, &raw mut tv);
         if left != 0 {
             if event_initialized(&raw mut (*w).name_event) == 0 {
-                evtimer_set(&raw mut (*w).name_event, Some(name_time_callback), w as _);
+                evtimer_set(
+                    &raw mut (*w).name_event,
+                    name_time_callback,
+                    NonNull::new_unchecked(w),
+                );
             }
             if evtimer_pending(&raw mut (*w).name_event, null_mut()) == 0 {
                 log_debug!("@{} timer queued ({})", (*w).id, left);

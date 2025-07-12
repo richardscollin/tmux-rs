@@ -1282,8 +1282,8 @@ pub unsafe fn tty_keys_next(tty: *mut tty) -> i32 {
                     }
                     evtimer_set(
                         &raw mut (*tty).key_timer,
-                        Some(tty_keys_callback),
-                        tty.cast(),
+                        tty_keys_callback,
+                        NonNull::new(tty).unwrap(),
                     );
                     evtimer_add(&raw mut (*tty).key_timer, &raw const tv);
 
@@ -1350,12 +1350,10 @@ pub unsafe fn tty_keys_next(tty: *mut tty) -> i32 {
 }
 
 /// Key timer callback.
-unsafe extern "C-unwind" fn tty_keys_callback(_fd: i32, _events: i16, data: *mut c_void) {
-    let tty: *mut tty = data.cast();
-
+unsafe extern "C-unwind" fn tty_keys_callback(_fd: i32, _events: i16, tty: NonNull<tty>) {
     unsafe {
-        if (*tty).flags.intersects(tty_flags::TTY_TIMER) {
-            while tty_keys_next(tty) != 0 {}
+        if (*tty.as_ptr()).flags.intersects(tty_flags::TTY_TIMER) {
+            while tty_keys_next(tty.as_ptr()) != 0 {}
         }
     }
 }

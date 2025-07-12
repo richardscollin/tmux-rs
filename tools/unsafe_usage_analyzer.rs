@@ -3,11 +3,11 @@
 [package]
 edition = "2024"
 [dependencies]
-syn = { version = "2.0.104", features = ["full", "visit"] }
-walkdir = "2.5.0"
-serde = { version = "1.0", features = ["derive"] }
-csv = "1.3.1"
-colored = "3.0"
+colored = { version = "3.0",     features = [] }
+csv     = { version = "1.3.1",   features = [] }
+serde   = { version = "1.0",     features = ["derive"] }
+syn     = { version = "2.0.104", features = ["full", "visit"] }
+walkdir = { version = "2.5.0",   features = [] }
 ---
 use std::{
     collections::{BTreeMap, HashMap, HashSet},
@@ -204,7 +204,7 @@ fn print_report(report: &Report) {
     println!("== Summary ==");
     println!(
         "Total unsafe functions: {}",
-        colorize_ratio(report.total.unsafe_fns, report.total.total_fns)
+        colorize_percentage(report.total.unsafe_fns, report.total.total_fns)
     );
     println!(
         "Total statements in unsafe blocks: {}",
@@ -352,6 +352,26 @@ fn format_diff(old: isize, new: isize, decrease_is: DecreaseIs) -> String {
     format!("{old} -> {new} ({plus}{delta})")
         .color(color)
         .to_string()
+}
+
+fn colorize_percentage(unsafe_count: isize, total_count: isize) -> ColoredString {
+    let color = if total_count == 0 {
+        Color::BrightBlack
+    } else if unsafe_count == 0 {
+        Color::Green
+    } else if (unsafe_count as f64 / total_count as f64) < 0.5 {
+        Color::Yellow
+    } else {
+        Color::Red
+    };
+
+    let percentage = if total_count == 0 {
+        0.0
+    } else {
+        (unsafe_count as f64 / total_count as f64) * 100.0
+    };
+
+    format!("{percentage:.02}% ({unsafe_count} / {total_count})").color(color)
 }
 
 fn colorize_ratio(unsafe_count: isize, total_count: isize) -> ColoredString {

@@ -281,7 +281,7 @@ pub unsafe fn server_start(
             }
         }
 
-        evtimer_set(&raw mut SERVER_EV_TIDY, Some(server_tidy_event), null_mut());
+        evtimer_set_no_args(&raw mut SERVER_EV_TIDY, server_tidy_event);
         evtimer_add(&raw mut SERVER_EV_TIDY, &raw const tv);
 
         server_acl_init();

@@ -44,10 +44,10 @@ pub unsafe fn server_client_how_many() -> u32 {
 pub unsafe extern "C-unwind" fn server_client_overlay_timer(
     _fd: i32,
     _events: i16,
-    data: *mut c_void,
+    c: NonNull<client>,
 ) {
     unsafe {
-        server_client_clear_overlay(data.cast());
+        server_client_clear_overlay(c.as_ptr());
     }
 }
 
@@ -78,8 +78,8 @@ pub unsafe fn server_client_set_overlay(
         }
         evtimer_set(
             &raw mut (*c).overlay_timer,
-            Some(server_client_overlay_timer),
-            c.cast(),
+            server_client_overlay_timer,
+            NonNull::new_unchecked(c),
         );
         if delay != 0 {
             evtimer_add(&raw mut (*c).overlay_timer, &tv);
@@ -283,13 +283,13 @@ pub unsafe fn server_client_create(fd: i32) -> *mut client {
 
         evtimer_set(
             &raw mut (*c).repeat_timer,
-            Some(server_client_repeat_timer),
-            c.cast(),
+            server_client_repeat_timer,
+            NonNull::new_unchecked(c),
         );
         evtimer_set(
             &raw mut (*c).click_timer,
-            Some(server_client_click_timer),
-            c.cast(),
+            server_client_click_timer,
+            NonNull::new_unchecked(c),
         );
 
         tailq_insert_tail(&raw mut CLIENTS, c);
@@ -401,7 +401,7 @@ pub unsafe fn server_client_set_session(c: *mut client, s: *mut session) {
             (*(*(*s).curw).window).latest = c.cast();
             alerts_check_session(s);
             tty_update_client_offset(c);
-            status_timer_start(c);
+            status_timer_start(NonNull::new_unchecked(c));
             notify_client(c"client-session-changed", c);
             server_redraw_client(c);
         }
@@ -418,7 +418,7 @@ pub unsafe fn server_client_lost(c: *mut client) {
 
         server_client_clear_overlay(c);
         status_prompt_clear(c);
-        status_message_clear(c);
+        status_message_clear(NonNull::new_unchecked(c));
 
         for cf in rb_foreach(&raw mut (*c).files).map(NonNull::as_ptr) {
             (*cf).error = libc::EINTR;
@@ -2111,7 +2111,7 @@ pub unsafe fn server_client_handle_key(c: *mut client, event: *mut key_event) ->
                 if (*c).message_ignore_keys != 0 {
                     return 0;
                 }
-                status_message_clear(c);
+                status_message_clear(NonNull::new_unchecked(c));
             }
             if let Some(overlay_key) = (*c).overlay_key {
                 match overlay_key(c, (*c).overlay_data, event) {
@@ -2205,17 +2205,15 @@ pub unsafe fn server_client_check_window_resize(w: *mut window) {
 pub unsafe extern "C-unwind" fn server_client_resize_timer(
     _fd: i32,
     _events: i16,
-    data: *mut c_void,
+    wp: NonNull<window_pane>,
 ) {
     unsafe {
-        let wp: *mut window_pane = data.cast();
-
         log_debug!(
             "{}: %%{} resize timer expired",
             "server_client_resize_timer",
-            (*wp).id
+            (*wp.as_ptr()).id
         );
-        evtimer_del(&raw mut (*wp).resize_timer);
+        evtimer_del(&raw mut (*wp.as_ptr()).resize_timer);
     }
 }
 
@@ -2234,8 +2232,8 @@ pub unsafe fn server_client_check_pane_resize(wp: *mut window_pane) {
         if event_initialized(&raw mut (*wp).resize_timer) == 0 {
             evtimer_set(
                 &raw mut (*wp).resize_timer,
-                Some(server_client_resize_timer),
-                wp.cast(),
+                server_client_resize_timer,
+                NonNull::new_unchecked(wp.cast()),
             );
         }
         if evtimer_pending(&raw mut (*wp).resize_timer, null_mut()) != 0 {
@@ -2550,10 +2548,10 @@ pub unsafe fn server_client_reset_state(c: *mut client) {
 pub unsafe extern "C-unwind" fn server_client_repeat_timer(
     _fd: i32,
     _events: i16,
-    data: *mut c_void,
+    c: NonNull<client>,
 ) {
     unsafe {
-        let c: *mut client = data.cast();
+        let c = c.as_ptr();
 
         if (*c).flags.intersects(client_flag::REPEAT) {
             server_client_set_key_table(c, null_mut());
@@ -2567,10 +2565,10 @@ pub unsafe extern "C-unwind" fn server_client_repeat_timer(
 pub unsafe extern "C-unwind" fn server_client_click_timer(
     _fd: i32,
     _events: i16,
-    data: *mut c_void,
+    c: NonNull<client>,
 ) {
     unsafe {
-        let c: *mut client = data.cast();
+        let c = c.as_ptr();
         log_debug!("click timer expired");
 
         if (*c).flags.intersects(client_flag::TRIPLECLICK) {
@@ -2653,11 +2651,7 @@ pub unsafe fn server_client_check_exit(c: *mut client) {
 }
 
 /// Redraw timer callback.
-pub unsafe extern "C-unwind" fn server_client_redraw_timer(
-    _fd: i32,
-    _events: i16,
-    data: *mut c_void,
-) {
+pub unsafe extern "C-unwind" fn server_client_redraw_timer(_fd: i32, _events: i16, _: *mut c_void) {
     unsafe {
         log_debug!("redraw timer fired");
     }
@@ -2750,7 +2744,7 @@ pub unsafe fn server_client_check_redraw(c: *mut client) {
         {
             // log_debug("%s: redraw deferred (%zu left)", (*c).name, left);
             if !evtimer_initialized(&raw mut EV) {
-                evtimer_set(&raw mut EV, Some(server_client_redraw_timer), null_mut());
+                evtimer_set_no_args(&raw mut EV, server_client_redraw_timer);
             }
             if evtimer_pending(&raw mut EV, null_mut()) == 0 {
                 log_debug!("redraw timer started");
@@ -3564,7 +3558,8 @@ pub unsafe fn server_client_print(c: *mut client, parse: i32, evb: *mut evbuffer
             }
             if parse != 0 {
                 loop {
-                    let line = evbuffer_readln(evb, null_mut(), evbuffer_eol_style_EVBUFFER_EOL_LF);
+                    let line =
+                        evbuffer_readln(evb, null_mut(), evbuffer_eol_style::EVBUFFER_EOL_LF);
                     if !line.is_null() {
                         window_copy_add!(wp, 1, "{}", _s(line));
                         free_(line);

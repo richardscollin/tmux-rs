@@ -572,7 +572,7 @@ pub unsafe fn tmux_main(mut argc: i32, mut argv: *mut *mut u8, env: *mut *mut u8
             path = make_label(label.cast(), &raw mut cause);
             if path.is_null() {
                 if !cause.is_null() {
-                    libc::fprintf(stderr, c"%s\n".as_ptr(), cause);
+                    eprintln!("{}", _s(cause));
                     free(cause as _);
                 }
                 std::process::exit(1);

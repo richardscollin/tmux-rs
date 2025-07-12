@@ -276,7 +276,7 @@ pub unsafe fn server_start(
                 (*c).exit_message = cause;
                 (*c).flags |= client_flag::EXIT;
             } else {
-                fprintf(stderr, c"%s\n".as_ptr(), cause);
+                eprintln!("{}", _s(cause));
                 libc::exit(1);
             }
         }

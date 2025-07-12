@@ -9,7 +9,6 @@ pub type wchar_t = core::ffi::c_int;
 unsafe extern "C" {
     pub(crate) static mut stdin: *mut FILE;
     pub(crate) static mut stdout: *mut FILE;
-    pub(crate) static mut stderr: *mut FILE;
 }
 #[cfg(target_os = "macos")]
 unsafe extern "C" {
@@ -18,9 +17,6 @@ unsafe extern "C" {
 
     #[link_name = "__stdoutp"]
     pub(crate) static mut stdout: *mut FILE;
-
-    #[link_name = "__stderrp"]
-    pub(crate) static mut stderr: *mut FILE;
 }
 
 unsafe extern "C" {

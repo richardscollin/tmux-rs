@@ -316,13 +316,12 @@ pub unsafe extern "C-unwind" fn client_main(
         }
         if fd == -1 {
             if errno!() == ECONNREFUSED {
-                fprintf(stderr, c"no server running on %s\n".as_ptr(), SOCKET_PATH);
+                eprintln!("no server running on {}", _s(SOCKET_PATH));
             } else {
-                fprintf(
-                    stderr,
-                    c"error connecting to %s (%s)\n".as_ptr(),
-                    SOCKET_PATH,
-                    strerror(errno!()),
+                eprintln!(
+                    "error connecting to {} ({})",
+                    _s(SOCKET_PATH),
+                    _s(strerror(errno!()))
                 );
             }
             return 1;
@@ -364,8 +363,8 @@ pub unsafe extern "C-unwind" fn client_main(
                 &raw mut cause,
             ) != 0
         {
-            fprintf(stderr, c"%s\n".as_ptr(), cause);
-            free(cause as _);
+            eprintln!("{}", _s(cause));
+            free_(cause);
             return 1;
         }
 
@@ -379,11 +378,7 @@ pub unsafe extern "C-unwind" fn client_main(
 
         if (*&raw const CLIENT_FLAGS).intersects(client_flag::CONTROLCONTROL) {
             if tcgetattr(STDIN_FILENO, &raw mut saved_tio) != 0 {
-                fprintf(
-                    stderr,
-                    c"tcgetattr failed: %s\n".as_ptr(),
-                    strerror(errno!()),
-                );
+                eprintln!("tcgetattr failed: {}", _s(strerror(errno!())));
                 return 1;
             }
             cfmakeraw(&raw mut tio);
@@ -411,7 +406,7 @@ pub unsafe extern "C-unwind" fn client_main(
                 size += strlen(*argv.add(i as _)) + 1;
             }
             if size > MAX_IMSGSIZE - size_of::<msg_command>() {
-                fprintf(stderr, c"command too long\n".as_ptr());
+                eprintln!("command too long");
                 return 1;
             }
             data = xmalloc(size_of::<msg_command>() + size).cast().as_ptr();
@@ -419,14 +414,14 @@ pub unsafe extern "C-unwind" fn client_main(
             (*data).argc = argc;
             // TODO this cast seems fishy
             if cmd_pack_argv(argc, argv, data.add(1).cast(), size) != 0 {
-                fprintf(stderr, c"command too long\n".as_ptr());
+                eprintln!("command too long");
                 free_(data);
                 return 1;
             }
             size += size_of::<msg_command>();
 
             if proc_send(CLIENT_PEER, msg, -1, data as _, size) != 0 {
-                fprintf(stderr, c"failed to send command\n".as_ptr());
+                eprintln!("failed to send command");
                 free_(data);
                 return 1;
             }
@@ -481,7 +476,7 @@ pub unsafe extern "C-unwind" fn client_main(
                 tcsetattr(STDOUT_FILENO, TCSAFLUSH, &raw mut saved_tio);
             }
         } else if CLIENT_EXITREASON != client_exitreason::CLIENT_EXIT_NONE {
-            fprintf(stderr, c"%s\n".as_ptr(), client_exit_message());
+            eprintln!("{}", _s(client_exit_message()));
         }
 
         CLIENT_EXITVAL
@@ -786,9 +781,8 @@ unsafe fn client_dispatch_wait(imsg: *mut imsg) {
                     fatalx("bad MSG_VERSION size");
                 }
 
-                fprintf(
-                    stderr,
-                    c"protocol version mismatch (client %d, server %u)\n".as_ptr(),
+                eprintln!(
+                    "protocol version mismatch (client {}, server {})",
                     PROTOCOL_VERSION,
                     (*imsg).hdr.peerid & 0xff,
                 );
@@ -847,7 +841,7 @@ unsafe fn client_dispatch_wait(imsg: *mut imsg) {
             msgtype::MSG_WRITE => file_write_data(&raw mut CLIENT_FILES, imsg),
             msgtype::MSG_WRITE_CLOSE => file_write_close(&raw mut CLIENT_FILES, imsg),
             msgtype::MSG_OLDSTDERR | msgtype::MSG_OLDSTDIN | msgtype::MSG_OLDSTDOUT => {
-                fprintf(stderr, c"server version is too old for client\n".as_ptr());
+                eprintln!("server version is too old for client");
                 proc_exit(CLIENT_PROC);
             }
             _ => (), // TODO

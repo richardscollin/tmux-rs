@@ -137,21 +137,12 @@ static mut INPUT_KEY_DEFAULTS: [input_key_entry; 83] = [
     input_key_entry::new(keyc::KEYC_F12 as u64 | KEYC_BUILD_MODIFIERS, c"\x1b[24;_~"),
     input_key_entry::new(keyc::KEYC_UP as u64 | KEYC_BUILD_MODIFIERS, c"\x1b[1;_A"),
     input_key_entry::new(keyc::KEYC_DOWN as u64 | KEYC_BUILD_MODIFIERS, c"\x1b[1;_B"),
-    input_key_entry::new(
-        keyc::KEYC_RIGHT as u64 | KEYC_BUILD_MODIFIERS,
-        c"\x1b[1;_C",
-    ),
+    input_key_entry::new(keyc::KEYC_RIGHT as u64 | KEYC_BUILD_MODIFIERS, c"\x1b[1;_C"),
     input_key_entry::new(keyc::KEYC_LEFT as u64 | KEYC_BUILD_MODIFIERS, c"\x1b[1;_D"),
     input_key_entry::new(keyc::KEYC_HOME as u64 | KEYC_BUILD_MODIFIERS, c"\x1b[1;_H"),
     input_key_entry::new(keyc::KEYC_END as u64 | KEYC_BUILD_MODIFIERS, c"\x1b[1;_F"),
-    input_key_entry::new(
-        keyc::KEYC_PPAGE as u64 | KEYC_BUILD_MODIFIERS,
-        c"\x1b[5;_~",
-    ),
-    input_key_entry::new(
-        keyc::KEYC_NPAGE as u64 | KEYC_BUILD_MODIFIERS,
-        c"\x1b[6;_~",
-    ),
+    input_key_entry::new(keyc::KEYC_PPAGE as u64 | KEYC_BUILD_MODIFIERS, c"\x1b[5;_~"),
+    input_key_entry::new(keyc::KEYC_NPAGE as u64 | KEYC_BUILD_MODIFIERS, c"\x1b[6;_~"),
     input_key_entry::new(keyc::KEYC_IC as u64 | KEYC_BUILD_MODIFIERS, c"\x1b[2;_~"),
     input_key_entry::new(keyc::KEYC_DC as u64 | KEYC_BUILD_MODIFIERS, c"\x1b[3;_~"),
 ];

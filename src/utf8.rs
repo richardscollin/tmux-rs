@@ -12,6 +12,11 @@
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
+use std::cell::RefCell;
+use std::collections::BTreeMap;
+use std::fmt::{self, Display};
+use std::slice;
+
 use crate::*;
 
 use crate::libc::{memcpy, memset};
@@ -49,43 +54,62 @@ static UTF8_FORCE_WIDE: [wchar_t; 162] = [
     0x1FAF7, 0x1FAF8,
 ];
 
-#[repr(C)]
-pub struct utf8_item {
-    pub index_entry: rb_entry<utf8_item>,
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub struct utf8_item_index {
     pub index: u32,
-
-    pub data_entry: rb_entry<utf8_item>,
-    pub data: [u8; UTF8_SIZE],
-    pub size: c_uchar,
 }
 
-pub fn utf8_data_cmp(ui1: &utf8_item, ui2: &utf8_item) -> std::cmp::Ordering {
-    ui1.size
-        .cmp(&ui2.size)
-        .then_with(|| ui1.data[..ui1.size as usize].cmp(&ui2.data[..ui2.size as usize]))
+#[derive(Clone, Copy)] // TODO investigate manual clone
+pub struct utf8_item_data {
+    data: [MaybeUninit<u8>; UTF8_SIZE],
+    size: u8,
 }
-pub type utf8_data_tree = rb_head<utf8_item>;
-RB_GENERATE!(
-    utf8_data_tree,
-    utf8_item,
-    data_entry,
-    discr_data_entry,
-    utf8_data_cmp
-);
-static mut UTF8_DATA_TREE: utf8_data_tree = rb_initializer();
 
-pub fn utf8_index_cmp(ui1: &utf8_item, ui2: &utf8_item) -> std::cmp::Ordering {
-    ui1.index.cmp(&ui2.index)
+impl utf8_item_data {
+    fn new(bytes: &[u8]) -> Self {
+        assert!(bytes.len() <= UTF8_SIZE);
+
+        let mut data = [MaybeUninit::new(0); UTF8_SIZE];
+        for (i, ch) in bytes.iter().enumerate() {
+            data[i] = MaybeUninit::new(*ch);
+        }
+        Self {
+            data,
+            size: data.len() as u8,
+        }
+    }
 }
-pub type utf8_index_tree = rb_head<utf8_item>;
-RB_GENERATE!(
-    utf8_index_tree,
-    utf8_item,
-    index_entry,
-    discr_index_entry,
-    utf8_index_cmp
-);
-static mut UTF8_INDEX_TREE: utf8_index_tree = rb_initializer();
+
+impl Display for utf8_item_data {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(
+            std::str::from_utf8(self.initialized_slice())
+                .unwrap_or("invalid utf8 in utf8_item_data"),
+        )
+    }
+}
+
+/// once stabilized use: <https://doc.rust-lang.org/std/primitive.slice.html#method.assume_init_ref>
+unsafe fn assume_init_ref<T>(data: &[MaybeUninit<T>]) -> &[T] {
+    unsafe { std::slice::from_raw_parts(data.as_ptr().cast(), data.len()) }
+}
+impl utf8_item_data {
+    fn initialized_slice(&self) -> &[u8] {
+        // SAFETY: type invariant utf8_item_data.data should be initialized until self.size
+        unsafe { assume_init_ref(&self.data[..self.size as usize]) }
+    }
+}
+
+impl_ord!(utf8_item_data as utf8_data_cmp);
+
+fn utf8_data_cmp(ui1: &utf8_item_data, ui2: &utf8_item_data) -> std::cmp::Ordering {
+    ui1.initialized_slice().cmp(ui2.initialized_slice())
+}
+
+thread_local! {
+    static UTF8_DATA_TREE: RefCell<BTreeMap<utf8_item_data, utf8_item_index>> = const { RefCell::new(BTreeMap::new()) };
+    static UTF8_INDEX_TREE: RefCell<BTreeMap<utf8_item_index, utf8_item_data>> = const { RefCell::new(BTreeMap::new()) };
+}
 
 static mut UTF8_NEXT_INDEX: u32 = 0;
 
@@ -102,39 +126,22 @@ fn utf8_set_width(width: u8) -> utf8_char {
     (width as utf8_char + 1) << 29
 }
 
-pub unsafe fn utf8_item_by_data(data: *const [u8; UTF8_SIZE], size: usize) -> *mut utf8_item {
-    unsafe {
-        let mut ui = MaybeUninit::<utf8_item>::uninit();
-        let ui = ui.as_mut_ptr();
-
-        memcpy(
-            (*ui).data.as_mut_ptr().cast(),
-            (&raw const data).cast(),
-            size,
-        );
-        (*ui).size = size as u8;
-
-        rb_find::<_, discr_data_entry>(&raw mut UTF8_DATA_TREE, ui)
-    }
+pub fn utf8_item_by_data(item: &utf8_item_data) -> Option<utf8_item_index> {
+    UTF8_DATA_TREE.with(|tree| tree.borrow().get(item).copied())
 }
 
-pub fn utf8_item_by_index(index: u32) -> Option<&'static utf8_item> {
-    unsafe {
-        let mut ui = MaybeUninit::<utf8_item>::uninit();
-        let ui = ui.as_mut_ptr();
+pub fn utf8_item_by_index(index: u32) -> Option<utf8_item_data> {
+    let ui = utf8_item_index { index };
 
-        (*ui).index = index;
-
-        let ptr = rb_find::<_, discr_index_entry>(&raw mut UTF8_INDEX_TREE, ui);
-        NonNull::new(ptr).map(|x| unsafe { x.as_ref() })
-    }
+    UTF8_INDEX_TREE.with(|tree| tree.borrow().get(&ui).copied())
 }
 
 pub unsafe fn utf8_put_item(data: *const [u8; UTF8_SIZE], size: usize, index: *mut u32) -> i32 {
     unsafe {
-        let ui = utf8_item_by_data(data, size);
-        if !ui.is_null() {
-            *index = (*ui).index;
+        let ud = &utf8_item_data::new(slice::from_raw_parts(data.cast(), size));
+        let ui = utf8_item_by_data(ud);
+        if let Some(ui) = ui {
+            *index = ui.index;
             log_debug!(
                 "utf8_put_item: found {1:0$} = {2}",
                 size,
@@ -148,16 +155,16 @@ pub unsafe fn utf8_put_item(data: *const [u8; UTF8_SIZE], size: usize, index: *m
             return -1;
         }
 
-        let ui: &mut utf8_item = xcalloc1();
-        ui.index = UTF8_NEXT_INDEX;
+        let ui_index = utf8_item_index {
+            index: UTF8_NEXT_INDEX,
+        };
         UTF8_NEXT_INDEX += 1;
-        rb_insert::<_, discr_index_entry>(&raw mut UTF8_INDEX_TREE, ui);
 
-        memcpy(ui.data.as_mut_ptr().cast(), data.cast(), size);
-        ui.size = size as u8;
-        rb_insert::<_, discr_data_entry>(&raw mut UTF8_DATA_TREE, ui);
+        let ui_data = *ud;
+        UTF8_INDEX_TREE.with(|tree| tree.borrow_mut().insert(ui_index, ui_data));
+        UTF8_DATA_TREE.with(|tree| tree.borrow_mut().insert(ui_data, ui_index));
 
-        *index = ui.index;
+        *index = ui_index.index;
         log_debug!(
             "utf8_put_item: added {1:0$} = {2}",
             size,
@@ -249,19 +256,18 @@ pub fn utf8_to_data(uc: utf8_char) -> utf8_data {
     } else {
         let index = uc & 0xffffff;
         if let Some(ui) = utf8_item_by_index(index) {
-            ud.data[..ud.size as usize].copy_from_slice(&ui.data[..ud.size as usize]);
+            ud.data[..ud.size as usize].copy_from_slice(ui.initialized_slice());
         } else {
             ud.data[..ud.size as usize].fill(b' ');
         }
     }
 
     log_debug!(
-        "utf8_to_data: {0:08x} -> ({1} {2} {4:3$})",
+        "utf8_to_data: {:08x} -> ({} {} {})",
         uc,
         ud.width,
         ud.size,
-        ud.size as usize,
-        unsafe { _s(ud.data.as_ptr()) },
+        String::from_utf8_lossy(ud.initialized_slice())
     );
 
     ud
@@ -336,9 +342,8 @@ pub unsafe fn utf8_towc(ud: *const utf8_data, wc: *mut wchar_t) -> utf8_state {
         match value {
             -1 => {
                 log_debug!(
-                    "UTF-8 {1:0$}, mbtowc() {2}",
-                    (*ud).size as usize,
-                    _s((&raw const (*ud).data).cast::<u8>()),
+                    "UTF-8 {}, mbtowc() {}",
+                    String::from_utf8_lossy((*ud).initialized_slice()),
                     errno!(),
                 );
                 mbtowc(null_mut(), null(), MB_CUR_MAX());

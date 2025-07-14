@@ -1,5 +1,5 @@
 #!/usr/bin/env -S cargo +nightly -Zscript
----
+---cargo
 [package]
 edition = "2024"
 [dependencies]
@@ -9,13 +9,12 @@ serde   = { version = "1.0",     features = ["derive"] }
 syn     = { version = "2.0.104", features = ["full", "visit"] }
 walkdir = { version = "2.5.0",   features = [] }
 ---
-use std::{
+use ::std::{
     collections::{BTreeMap, HashMap, HashSet},
     fmt::Write,
     fs,
     path::Path,
 };
-
 use colored::{Color, ColoredString, Colorize};
 use syn::{ExprMethodCall, ExprUnsafe, ItemFn, ItemStatic, StaticMutability, Stmt, visit::Visit};
 use walkdir::WalkDir;
@@ -162,7 +161,7 @@ fn generate_report(root: &str) -> Report {
         let path = entry.path();
         if let Some(mut stats) = analyze_file(path) {
             let root_path = Path::new(root);
-            if let Ok(relative_path) = path.strip_prefix(&root_path) {
+            if let Ok(relative_path) = path.strip_prefix(root_path) {
                 stats.filename = relative_path.display().to_string();
                 file_reports.insert(relative_path.display().to_string(), stats);
             } else {
@@ -175,6 +174,25 @@ fn generate_report(root: &str) -> Report {
         total: calc_total(file_reports.values()),
         files: file_reports,
     }
+}
+
+fn format_markdown_report(report: &Report) -> String {
+    let mut buf = "| (unsafe/total) | fns | statements | static mut | unwrap |\n".to_string();
+    buf.push_str("| -- | -: | -: | -: | -: |\n");
+    for (_, file_report) in &report.files {
+        buf += &format!(
+            "|{}|{}|{}|{}|{}|\n",
+            file_report.filename,
+            format!("{}/{}", file_report.unsafe_fns, file_report.total_fns),
+            format!(
+                "{}/{}",
+                file_report.unsafe_statements, file_report.total_statements
+            ),
+            file_report.static_mut_items, // static mut
+            file_report.unwraps
+        );
+    }
+    buf
 }
 
 fn print_report(report: &Report) {
@@ -254,7 +272,7 @@ fn print_report_diff(old: &Report, new: &Report) {
     for filename in all_files {
         match (old_files.get(filename), new_files.get(filename)) {
             (Some(old), Some(new)) => {
-                if old.should_report_change(&new) {
+                if old.should_report_change(new) {
                     change = true;
                     println!(
                         "{filename}
@@ -417,10 +435,17 @@ fn main() {
     let root = &args[1];
     let report = generate_report(root);
 
+    if let Some(output_format) = flags_with_args.get("--output") {
+        if output_format == "md" {
+            println!("{}", format_markdown_report(&report));
+            std::process::exit(0);
+        }
+    }
+
     if let Some(output_file) = flags_with_args.get("--csv") {
         let mut writer = csv::WriterBuilder::new().from_path(output_file).unwrap();
         for record in report.files.values() {
-            writer.serialize(&record).unwrap();
+            writer.serialize(record).unwrap();
         }
     }
 

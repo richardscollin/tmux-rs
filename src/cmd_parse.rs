@@ -11,7 +11,13 @@
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-#![allow(clippy::uninlined_format_args)] // for lalrpop generated code
+#![allow(clippy::uninlined_format_args)]
+use crate::compat::S_ISDIR;
+use crate::compat::fdforkpty::getptmfd;
+use crate::tmux::getshell;
+use crate::tmux::usage;
+use crate::xmalloc::xstrndup;
+// for lalrpop generated code
 use crate::*;
 
 use std::io::Read as _;
@@ -19,7 +25,10 @@ use std::ops::BitAndAssign as _;
 use std::ops::BitOrAssign as _;
 use std::sync::atomic::Ordering;
 
+#[cfg(feature = "lalrpop")]
 use lalrpop_util::lalrpop_mod;
+
+use crate::cmd_parse_pratt;
 
 use crate::compat::queue::{
     tailq_empty, tailq_first, tailq_foreach, tailq_init, tailq_insert_tail, tailq_last,
@@ -28,6 +37,21 @@ use crate::compat::queue::{
 use crate::xmalloc::xrecallocarray__;
 
 fn yyparse(ps: &mut cmd_parse_state) -> Result<Option<&'static mut cmd_parse_commands>, ()> {
+    #[cfg(feature = "lalrpop")]
+    {
+        yyparse_lalrpop(ps)
+    }
+    #[cfg(not(feature = "lalrpop"))]
+    {
+        yyparse_pratt(ps)
+    }
+}
+
+#[cfg(feature = "lalrpop")]
+fn yyparse_lalrpop(
+    ps: &mut cmd_parse_state,
+) -> Result<Option<&'static mut cmd_parse_commands>, ()> {
+    log_debug!("yyparse_lalrpop");
     let mut parser = cmd_parse::LinesParser::new();
 
     let mut ps = NonNull::new(ps).unwrap();
@@ -42,6 +66,12 @@ fn yyparse(ps: &mut cmd_parse_state) -> Result<Option<&'static mut cmd_parse_com
     }
 }
 
+fn yyparse_pratt(ps: &mut cmd_parse_state) -> Result<Option<&'static mut cmd_parse_commands>, ()> {
+    log_debug!("yyparse_pratt");
+    cmd_parse_pratt::parse_lines(ps)
+}
+
+#[cfg(feature = "lalrpop")]
 lalrpop_mod!(cmd_parse);
 
 pub struct yystype_elif {
@@ -211,6 +241,26 @@ pub unsafe fn cmd_parse_run_parser(
     }
 }
 
+pub unsafe fn cmd_parse_run_parser_pratt(
+    ps: &mut cmd_parse_state,
+) -> Result<&'static mut cmd_parse_commands, *mut u8> {
+    unsafe {
+        tailq_init(&mut ps.stack);
+
+        let retval = yyparse_pratt(ps);
+        for scope in tailq_foreach(&mut ps.stack).map(NonNull::as_ptr) {
+            tailq_remove(&mut ps.stack, scope);
+            free_(scope);
+        }
+
+        match retval {
+            Ok(Some(cmds)) => Ok(cmds),
+            Ok(None) => Ok(cmd_parse_new_commands()),
+            Err(_) => Err(ps.error),
+        }
+    }
+}
+
 pub unsafe fn cmd_parse_do_file<'a>(
     f: &'a mut std::io::BufReader<std::fs::File>,
     pi: &'a cmd_parse_input<'a>,
@@ -233,6 +283,19 @@ pub unsafe fn cmd_parse_do_buffer<'a>(
         ps.input = Some(pi);
         ps.buf = Some(buf);
         cmd_parse_run_parser(&mut ps)
+    }
+}
+
+pub unsafe fn cmd_parse_do_buffer_pratt<'a>(
+    buf: &'a [u8],
+    pi: &'a cmd_parse_input<'a>,
+) -> Result<&'static mut cmd_parse_commands, *mut u8> {
+    unsafe {
+        let mut ps: Box<cmd_parse_state> = Box::new(zeroed());
+
+        ps.input = Some(pi);
+        ps.buf = Some(buf);
+        cmd_parse_run_parser_pratt(&mut ps)
     }
 }
 
@@ -576,6 +639,31 @@ pub unsafe fn cmd_parse_from_buffer(buf: &[u8], pi: Option<&cmd_parse_input>) ->
     }
 }
 
+pub unsafe fn cmd_parse_from_buffer_pratt(
+    buf: &[u8],
+    pi: Option<&cmd_parse_input>,
+) -> cmd_parse_result {
+    unsafe {
+        let mut input: cmd_parse_input = zeroed();
+        let pi = pi.unwrap_or(&input);
+
+        if buf.is_empty() {
+            return Ok(cmd_list_new());
+        }
+
+        let cmds = match cmd_parse_do_buffer_pratt(buf, pi) {
+            Ok(cmds) => cmds,
+            Err(cause) => {
+                return Err(cause);
+            }
+        };
+        let mut pr = Err(null_mut());
+        cmd_parse_build_commands(cmds, pi, &mut pr);
+        cmd_parse_free_commands(cmds);
+        pr
+    }
+}
+
 pub unsafe fn cmd_parse_from_arguments(
     values: *mut args_value,
     count: u32,
@@ -640,7 +728,7 @@ pub unsafe fn cmd_parse_from_arguments(
     }
 }
 
-mod lexer {
+pub mod lexer {
     use crate::{cmd_parse_state, transmute_ptr};
     use core::ptr::NonNull;
 
@@ -653,7 +741,7 @@ mod lexer {
         }
     }
 
-    #[derive(Copy, Clone, Debug)]
+    #[derive(Copy, Clone, Debug, Eq, PartialEq)]
     pub enum Tok {
         Zero, // invalid
         Newline,
@@ -1404,6 +1492,1135 @@ unsafe fn yylex_token_escape(ps: &mut cmd_parse_state, buf: *mut *mut u8, len: *
         yylex_append(buf, len, (&raw const m).cast(), mlen as usize);
 
         true
+    }
+}
+
+pub unsafe fn cmd_parse_commands_equivalent(
+    a: *const cmd_parse_commands,
+    b: *const cmd_parse_commands,
+) -> bool {
+    unsafe {
+        if a == b {
+            return true;
+        }
+        if a.is_null() || b.is_null() {
+            return false;
+        }
+
+        let mut cmd_a: *const cmd_parse_command = tailq_first(a as *mut cmd_parse_commands);
+        let mut cmd_b: *const cmd_parse_command = tailq_first(b as *mut cmd_parse_commands);
+
+        while !cmd_a.is_null() && !cmd_b.is_null() {
+            if !cmd_parse_command_equivalent(cmd_a, cmd_b) {
+                return false;
+            }
+            cmd_a = (*cmd_a).entry.tqe_next;
+            cmd_b = (*cmd_b).entry.tqe_next;
+        }
+
+        cmd_a.is_null() && cmd_b.is_null()
+    }
+}
+
+unsafe fn cmd_parse_command_equivalent(
+    a: *const cmd_parse_command,
+    b: *const cmd_parse_command,
+) -> bool {
+    unsafe {
+        if a == b {
+            return true;
+        }
+        if a.is_null() || b.is_null() {
+            return false;
+        }
+
+        if (*a).line != (*b).line {
+            return false;
+        }
+
+        cmd_parse_arguments_equivalent(&(*a).arguments, &(*b).arguments)
+    }
+}
+
+unsafe fn cmd_parse_arguments_equivalent(
+    a: *const cmd_parse_arguments,
+    b: *const cmd_parse_arguments,
+) -> bool {
+    unsafe {
+        if a == b {
+            return true;
+        }
+        if a.is_null() || b.is_null() {
+            return false;
+        }
+
+        let mut arg_a: *const cmd_parse_argument = tailq_first(a as *mut cmd_parse_arguments);
+        let mut arg_b: *const cmd_parse_argument = tailq_first(b as *mut cmd_parse_arguments);
+
+        while !arg_a.is_null() && !arg_b.is_null() {
+            if !cmd_parse_argument_equivalent(arg_a, arg_b) {
+                return false;
+            }
+            arg_a = (*arg_a).entry.tqe_next;
+            arg_b = (*arg_b).entry.tqe_next;
+        }
+
+        arg_a.is_null() && arg_b.is_null()
+    }
+}
+
+unsafe fn cmd_parse_argument_equivalent(
+    a: *const cmd_parse_argument,
+    b: *const cmd_parse_argument,
+) -> bool {
+    unsafe {
+        if a == b {
+            return true;
+        }
+        if a.is_null() || b.is_null() {
+            return false;
+        }
+
+        match (&(*a).type_, &(*b).type_) {
+            (cmd_parse_argument_type::String(s1), cmd_parse_argument_type::String(s2)) => {
+                if s1.is_null() && s2.is_null() {
+                    true
+                } else if s1.is_null() || s2.is_null() {
+                    false
+                } else {
+                    libc::strcmp(*s1, *s2) == 0
+                }
+            }
+            (cmd_parse_argument_type::Commands(c1), cmd_parse_argument_type::Commands(c2)) => {
+                cmd_parse_commands_equivalent(*c1, *c2)
+            }
+            (
+                cmd_parse_argument_type::ParsedCommands(l1),
+                cmd_parse_argument_type::ParsedCommands(l2),
+            ) => cmd_list_equivalent(*l1, *l2),
+            _ => false,
+        }
+    }
+}
+
+unsafe fn cmd_list_equivalent(a: *const cmd_list, b: *const cmd_list) -> bool {
+    unsafe {
+        if a == b {
+            return true;
+        }
+        if a.is_null() || b.is_null() {
+            return false;
+        }
+
+        let mut cmd_a: *const cmd = tailq_first((*a).list);
+        let mut cmd_b: *const cmd = tailq_first((*b).list);
+
+        while !cmd_a.is_null() && !cmd_b.is_null() {
+            if !cmd_equivalent(cmd_a, cmd_b) {
+                return false;
+            }
+            cmd_a = (*cmd_a).qentry.tqe_next;
+            cmd_b = (*cmd_b).qentry.tqe_next;
+        }
+
+        cmd_a.is_null() && cmd_b.is_null()
+    }
+}
+
+unsafe fn cmd_equivalent(a: *const cmd, b: *const cmd) -> bool {
+    unsafe {
+        if a == b {
+            return true;
+        }
+        if a.is_null() || b.is_null() {
+            return false;
+        }
+
+        if (*a).entry as *const _ != (*b).entry as *const _ {
+            return false;
+        }
+
+        args_equivalent((*a).args, (*b).args)
+    }
+}
+
+unsafe fn args_equivalent(a: *const args, b: *const args) -> bool {
+    unsafe {
+        if a == b {
+            return true;
+        }
+        if a.is_null() || b.is_null() {
+            return false;
+        }
+
+        if (*a).count != (*b).count {
+            return false;
+        }
+
+        let mut values_a = (*a).values;
+        let mut values_b = (*b).values;
+
+        while !values_a.is_null() && !values_b.is_null() {
+            if !args_value_equivalent(values_a, values_b) {
+                return false;
+            }
+            values_a = (*values_a).entry.tqe_next;
+            values_b = (*values_b).entry.tqe_next;
+        }
+
+        values_a.is_null() && values_b.is_null()
+    }
+}
+
+unsafe fn args_value_equivalent(a: *const args_value, b: *const args_value) -> bool {
+    unsafe {
+        if a == b {
+            return true;
+        }
+        if a.is_null() || b.is_null() {
+            return false;
+        }
+
+        if (*a).type_ != (*b).type_ {
+            return false;
+        }
+
+        match (*a).type_ {
+            args_type::ARGS_NONE => true,
+            args_type::ARGS_STRING => {
+                let s1 = (*a).union_.string;
+                let s2 = (*b).union_.string;
+                if s1.is_null() && s2.is_null() {
+                    true
+                } else if s1.is_null() || s2.is_null() {
+                    false
+                } else {
+                    libc::strcmp(s1, s2) == 0
+                }
+            }
+            args_type::ARGS_COMMANDS => {
+                cmd_list_equivalent((*a).union_.cmdlist, (*b).union_.cmdlist)
+            }
+        }
+    }
+}
+
+pub unsafe fn cmd_parse_commands_debug(cmds: *const cmd_parse_commands, prefix: &str) {
+    unsafe {
+        if cmds.is_null() {
+            println!("{}NULL", prefix);
+            return;
+        }
+
+        if tailq_empty(cmds as *mut cmd_parse_commands) {
+            println!("{}EMPTY", prefix);
+            return;
+        }
+
+        let mut cmd_idx = 0;
+        let mut cmd = tailq_first(cmds as *mut cmd_parse_commands);
+        while !cmd.is_null() {
+            println!("{}cmd[{}] line:{}", prefix, cmd_idx, (*cmd).line);
+            cmd_parse_arguments_debug(&(*cmd).arguments, &format!("{}  ", prefix));
+            cmd = (*cmd).entry.tqe_next;
+            cmd_idx += 1;
+        }
+    }
+}
+
+unsafe fn cmd_parse_arguments_debug(args: *const cmd_parse_arguments, prefix: &str) {
+    unsafe {
+        if args.is_null() {
+            println!("{}args: NULL", prefix);
+            return;
+        }
+
+        if tailq_empty(args as *mut cmd_parse_arguments) {
+            println!("{}args: EMPTY", prefix);
+            return;
+        }
+
+        let mut arg_idx = 0;
+        let mut arg = tailq_first(args as *mut cmd_parse_arguments);
+        while !arg.is_null() {
+            print!("{}arg[{}]: ", prefix, arg_idx);
+            cmd_parse_argument_debug(arg);
+            arg = (*arg).entry.tqe_next;
+            arg_idx += 1;
+        }
+    }
+}
+
+unsafe fn cmd_parse_argument_debug(arg: *const cmd_parse_argument) {
+    unsafe {
+        if arg.is_null() {
+            println!("NULL");
+            return;
+        }
+
+        match &(*arg).type_ {
+            cmd_parse_argument_type::String(s) => {
+                if s.is_null() {
+                    println!("String(NULL)");
+                } else {
+                    println!("String(\"{}\")", _s(*s));
+                }
+            }
+            cmd_parse_argument_type::Commands(cmds) => {
+                println!("Commands(");
+                cmd_parse_commands_debug(*cmds, "    ");
+                println!("  )");
+            }
+            cmd_parse_argument_type::ParsedCommands(cmdlist) => {
+                if cmdlist.is_null() {
+                    println!("ParsedCommands(NULL)");
+                } else {
+                    println!("ParsedCommands(refs: {})", (*(*cmdlist)).references);
+                    cmd_list_debug(*cmdlist, "    ");
+                }
+            }
+        }
+    }
+}
+
+unsafe fn cmd_list_debug(cmdlist: *const cmd_list, prefix: &str) {
+    unsafe {
+        if cmdlist.is_null() {
+            println!("{}NULL", prefix);
+            return;
+        }
+
+        println!(
+            "{}group: {}, refs: {}",
+            prefix,
+            (*cmdlist).group,
+            (*cmdlist).references
+        );
+
+        let mut cmd_idx = 0;
+        let mut cmd = tailq_first((*cmdlist).list);
+        while !cmd.is_null() {
+            println!("{}cmd[{}]:", prefix, cmd_idx);
+            cmd_debug(cmd, &format!("{}  ", prefix));
+            cmd = (*cmd).qentry.tqe_next;
+            cmd_idx += 1;
+        }
+    }
+}
+
+unsafe fn cmd_debug(cmd: *const cmd, prefix: &str) {
+    unsafe {
+        if cmd.is_null() {
+            println!("{}NULL", prefix);
+            return;
+        }
+
+        println!("{}entry: {}", prefix, _s((*cmd).entry.name));
+
+        args_debug((*cmd).args, &format!("{}  ", prefix));
+    }
+}
+
+unsafe fn args_debug(args: *const args, prefix: &str) {
+    unsafe {
+        if args.is_null() {
+            println!("{}args: NULL", prefix);
+            return;
+        }
+
+        println!("{}args: count={}", prefix, (*args).count);
+
+        let mut value = (*args).values;
+        let mut idx = 0;
+        while !value.is_null() {
+            print!("{}  value[{}]: ", prefix, idx);
+            args_value_debug(value);
+            value = (*value).entry.tqe_next;
+            idx += 1;
+        }
+    }
+}
+
+unsafe fn args_value_debug(value: *const args_value) {
+    unsafe {
+        if value.is_null() {
+            println!("NULL");
+            return;
+        }
+
+        match (*value).type_ {
+            args_type::ARGS_NONE => println!("NONE"),
+            args_type::ARGS_STRING => {
+                let s = (*value).union_.string;
+                if s.is_null() {
+                    println!("STRING(NULL)");
+                } else {
+                    println!("STRING(\"{}\")", _s(s));
+                }
+            }
+            args_type::ARGS_COMMANDS => {
+                let cmdlist = (*value).union_.cmdlist;
+                if cmdlist.is_null() {
+                    println!("COMMANDS(NULL)");
+                } else {
+                    println!("COMMANDS(");
+                    cmd_list_debug(cmdlist, "      ");
+                    println!("    )");
+                }
+            }
+        }
+    }
+}
+
+#[cfg(test)]
+mod fuzz_tests {
+    use std::sync::Once;
+
+    use super::*;
+    use proptest::prelude::*;
+
+    #[test]
+    fn test_cmd_parse_commands_equivalence_null() {
+        unsafe {
+            assert!(cmd_parse_commands_equivalent(
+                std::ptr::null(),
+                std::ptr::null()
+            ));
+
+            let cmds = cmd_parse_new_commands();
+            assert!(!cmd_parse_commands_equivalent(cmds, std::ptr::null()));
+            assert!(!cmd_parse_commands_equivalent(std::ptr::null(), cmds));
+
+            cmd_parse_free_commands(cmds);
+        }
+    }
+
+    #[test]
+    fn test_cmd_parse_commands_equivalence_empty() {
+        unsafe {
+            let cmds_a = cmd_parse_new_commands();
+            let cmds_b = cmd_parse_new_commands();
+
+            assert!(cmd_parse_commands_equivalent(cmds_a, cmds_b));
+            assert!(cmd_parse_commands_equivalent(cmds_a, cmds_a));
+
+            cmd_parse_free_commands(cmds_a);
+            cmd_parse_free_commands(cmds_b);
+        }
+    }
+
+    pub unsafe fn create_test_command_string(command: &str, line: u32) -> *mut cmd_parse_command {
+        unsafe {
+            let cmd = xcalloc1::<cmd_parse_command>();
+            (*cmd).line = line;
+            tailq_init(&mut (*cmd).arguments);
+
+            let arg = xcalloc1::<cmd_parse_argument>();
+            let cmd_str = format!("{}\0", command);
+            (*arg).type_ = cmd_parse_argument_type::String(cmd_str.leak().as_mut_ptr());
+            tailq_insert_tail(&mut (*cmd).arguments, arg);
+
+            cmd
+        }
+    }
+
+    #[test]
+    fn test_cmd_parse_commands_equivalence_with_commands() {
+        unsafe {
+            let cmds_a = cmd_parse_new_commands();
+            let cmds_b = cmd_parse_new_commands();
+
+            let cmd1_a = create_test_command_string("new-session", 1);
+            let cmd1_b = create_test_command_string("new-session", 1);
+
+            tailq_insert_tail(cmds_a, cmd1_a);
+            tailq_insert_tail(cmds_b, cmd1_b);
+
+            assert!(cmd_parse_commands_equivalent(cmds_a, cmds_b));
+
+            let cmd2_a = create_test_command_string("list-sessions", 2);
+            tailq_insert_tail(cmds_a, cmd2_a);
+
+            assert!(!cmd_parse_commands_equivalent(cmds_a, cmds_b));
+
+            let cmd2_b = create_test_command_string("list-sessions", 2);
+            tailq_insert_tail(cmds_b, cmd2_b);
+
+            assert!(cmd_parse_commands_equivalent(cmds_a, cmds_b));
+
+            cmd_parse_free_commands(cmds_a);
+            cmd_parse_free_commands(cmds_b);
+        }
+    }
+
+    #[test]
+    fn test_cmd_parse_commands_equivalence_different_lines() {
+        unsafe {
+            let cmds_a = cmd_parse_new_commands();
+            let cmds_b = cmd_parse_new_commands();
+
+            let cmd1_a = create_test_command_string("new-session", 1);
+            let cmd1_b = create_test_command_string("new-session", 2);
+
+            tailq_insert_tail(cmds_a, cmd1_a);
+            tailq_insert_tail(cmds_b, cmd1_b);
+
+            assert!(!cmd_parse_commands_equivalent(cmds_a, cmds_b));
+
+            cmd_parse_free_commands(cmds_a);
+            cmd_parse_free_commands(cmds_b);
+        }
+    }
+
+    #[test]
+    fn test_cmd_parse_commands_equivalence_different_commands() {
+        unsafe {
+            let cmds_a = cmd_parse_new_commands();
+            let cmds_b = cmd_parse_new_commands();
+
+            let cmd1_a = create_test_command_string("new-session", 1);
+            let cmd1_b = create_test_command_string("list-sessions", 1);
+
+            tailq_insert_tail(cmds_a, cmd1_a);
+            tailq_insert_tail(cmds_b, cmd1_b);
+
+            assert!(!cmd_parse_commands_equivalent(cmds_a, cmds_b));
+
+            cmd_parse_free_commands(cmds_a);
+            cmd_parse_free_commands(cmds_b);
+        }
+    }
+
+    #[test]
+    fn test_cmd_parse_commands_debug() {
+        unsafe {
+            println!("\n=== Debug Test ===");
+
+            // Test NULL
+            cmd_parse_commands_debug(std::ptr::null(), "");
+
+            // Test empty
+            let empty_cmds = cmd_parse_new_commands();
+            cmd_parse_commands_debug(empty_cmds, "");
+
+            // Test with commands
+            let cmds = cmd_parse_new_commands();
+            let cmd1 = create_test_command_string("new-session", 1);
+            let cmd2 = create_test_command_string("list-sessions", 2);
+
+            tailq_insert_tail(cmds, cmd1);
+            tailq_insert_tail(cmds, cmd2);
+
+            println!("\nParsed commands:");
+            cmd_parse_commands_debug(cmds, "");
+
+            cmd_parse_free_commands(empty_cmds);
+            cmd_parse_free_commands(cmds);
+            println!("=== End Debug Test ===\n");
+        }
+    }
+
+    // Strategy for generating simple strings that avoid complex tmux infrastructure
+    fn simple_command_string() -> impl Strategy<Value = String> {
+        // Use very basic command patterns that don't trigger alias lookup
+        let basic_patterns = vec![
+            "word",
+            "word arg",
+            "word arg1 arg2",
+            "command",
+            "command-name",
+            "cmd arg",
+        ];
+        prop::sample::select(basic_patterns).prop_map(|s| s.to_string())
+    }
+
+    fn simple_command_sequence() -> impl Strategy<Value = String> {
+        prop::collection::vec(simple_command_string(), 1..3)
+            .prop_map(|commands| commands.join("; "))
+    }
+
+    // Test equivalence using manually constructed cmd_parse_commands to avoid parser issues
+    fn create_simple_test_commands(commands: &[&str]) -> *mut cmd_parse_commands {
+        unsafe {
+            let cmds = cmd_parse_new_commands();
+
+            for (line_no, cmd_text) in commands.iter().enumerate() {
+                let cmd = xcalloc1::<cmd_parse_command>();
+                (*cmd).line = (line_no + 1) as u32;
+                tailq_init(&mut (*cmd).arguments);
+
+                // Split on whitespace and create arguments
+                for word in cmd_text.split_whitespace() {
+                    let arg = xcalloc1::<cmd_parse_argument>();
+                    let word_str = format!("{}\0", word);
+                    (*arg).type_ = cmd_parse_argument_type::String(word_str.leak().as_mut_ptr());
+                    tailq_insert_tail(&mut (*cmd).arguments, arg);
+                }
+
+                tailq_insert_tail(cmds, cmd);
+            }
+
+            cmds
+        }
+    }
+
+    proptest! {
+        #[test]
+        fn test_equivalence_consistency(commands in prop::collection::vec(simple_command_string(), 1..4)) {
+            unsafe {
+                // Create two identical command structures manually
+                let cmds1 = create_simple_test_commands(&commands.iter().map(|s| s.as_str()).collect::<Vec<_>>());
+                let cmds2 = create_simple_test_commands(&commands.iter().map(|s| s.as_str()).collect::<Vec<_>>());
+
+                // They should be equivalent
+                let equivalent = cmd_parse_commands_equivalent(cmds1, cmds2);
+
+                if !equivalent {
+                    println!("Equivalence test failed for commands: {:?}", commands);
+                    println!("First structure:");
+                    cmd_parse_commands_debug(cmds1, "  ");
+                    println!("Second structure:");
+                    cmd_parse_commands_debug(cmds2, "  ");
+                }
+
+                prop_assert!(equivalent, "Identical command structures should be equivalent");
+
+                cmd_parse_free_commands(cmds1);
+                cmd_parse_free_commands(cmds2);
+            }
+        }
+    }
+
+    proptest! {
+        #[test]
+        fn test_self_equivalence(commands in prop::collection::vec(simple_command_string(), 1..4)) {
+            unsafe {
+                let cmds = create_simple_test_commands(&commands.iter().map(|s| s.as_str()).collect::<Vec<_>>());
+
+                // A structure should be equivalent to itself
+                let self_equivalent = cmd_parse_commands_equivalent(cmds, cmds);
+
+                if !self_equivalent {
+                    println!("Self-equivalence test failed for commands: {:?}", commands);
+                    cmd_parse_commands_debug(cmds, "  ");
+                }
+
+                prop_assert!(self_equivalent, "Command structure should be equivalent to itself");
+
+                cmd_parse_free_commands(cmds);
+            }
+        }
+    }
+
+    #[test]
+    fn test_empty_commands_equivalent() {
+        unsafe {
+            let empty1 = cmd_parse_new_commands();
+            let empty2 = cmd_parse_new_commands();
+
+            assert!(
+                cmd_parse_commands_equivalent(empty1, empty2),
+                "Empty command lists should be equivalent"
+            );
+            assert!(
+                cmd_parse_commands_equivalent(empty1, empty1),
+                "Empty command list should be self-equivalent"
+            );
+
+            cmd_parse_free_commands(empty1);
+            cmd_parse_free_commands(empty2);
+        }
+    }
+
+    proptest! {
+        #[test]
+        fn test_simple_string_equivalence(s in "[a-zA-Z][a-zA-Z0-9_-]{0,20}") {
+
+            static START: Once = Once::new();
+                START.call_once(|| {
+                unsafe {
+                        init_global_state();
+                }
+                });
+
+
+            unsafe {
+                // Create two command structures with the same random string
+                let cmds1 = cmd_parse_from_buffer(s.as_bytes(), None);
+                let cmds2 = cmd_parse_from_buffer_pratt(s.as_bytes(), None);
+
+                match (cmds1, cmds2) {
+                    (Ok(c1), Ok(c2)) => {
+                        // They should be equivalent
+                        prop_assert!(cmd_list_equivalent(c1, c2));
+
+                        cmd_list_free(c1);
+                        cmd_list_free(c2);
+                    }
+                    (Ok(_), Err(_))| (Err(_), Ok(_)) => {
+                        prop_assert!(false);
+                    }
+                    (Err(_), Err(_)) => (),
+                }
+
+
+            }
+        }
+    }
+
+    // Strategy for generating tmux-like commands
+    fn tmux_command_strategy() -> impl Strategy<Value = String> {
+        let commands = vec![
+            "new-session",
+            "new-window",
+            "split-window",
+            "select-window",
+            "kill-window",
+            "list-sessions",
+            "list-windows",
+            "list-panes",
+            "attach-session",
+            "detach-client",
+            "send-keys",
+            "copy-mode",
+            "paste-buffer",
+            "set-option",
+            "set-window-option",
+            "bind-key",
+            "unbind-key",
+            "show-options",
+            "display-message",
+            "run-shell",
+            "if-shell",
+            "source-file",
+            "rename-session",
+            "rename-window",
+            "move-window",
+            "swap-window",
+            "swap-pane",
+            "resize-pane",
+            "select-pane",
+            "kill-pane",
+            "clear-history",
+            "capture-pane",
+            "save-buffer",
+            "load-buffer",
+            "delete-buffer",
+        ];
+
+        let arguments = vec![
+            "-d",
+            "-s",
+            "-t",
+            "-n",
+            "-c",
+            "-h",
+            "-v",
+            "-p",
+            "-x",
+            "-y",
+            "-l",
+            "-r",
+            "session_name",
+            "window_name",
+            "pane_target",
+            "command",
+            "shell_command",
+            "key_binding",
+            "option_name",
+            "option_value",
+            "buffer_name",
+            "file_path",
+            "format_string",
+            "pattern",
+            "replacement",
+            "index",
+            "percentage",
+        ];
+
+        prop::sample::select(commands).prop_flat_map(move |cmd| {
+            prop::collection::vec(prop::sample::select(arguments.clone()), 0..4).prop_map(
+                move |args| {
+                    if args.is_empty() {
+                        cmd.to_string()
+                    } else {
+                        format!("{} {}", cmd, args.join(" "))
+                    }
+                },
+            )
+        })
+    }
+
+    fn tmux_config_line_strategy() -> impl Strategy<Value = String> {
+        prop_oneof![
+            // Simple commands
+            tmux_command_strategy(),
+            // Commands with semicolons
+            prop::collection::vec(tmux_command_strategy(), 1..3).prop_map(|cmds| cmds.join("; ")),
+            // Variable assignments
+            "[a-zA-Z_][a-zA-Z0-9_]*=.*".prop_map(|s| s.replace(".*", "value")),
+            // Comments (though they may be filtered out)
+            "# [a-zA-Z0-9 _-]*".prop_map(|s| s.replace("*", "comment")),
+            // Key bindings
+            r"bind-key [a-zA-Z0-9] [a-zA-Z-]*".prop_map(|s| s.to_string()),
+            // Options
+            r"set-option -g [a-zA-Z-]* [a-zA-Z0-9]*".prop_map(|s| s.to_string()),
+        ]
+    }
+
+    proptest! {
+        #[test]
+        fn test_tmux_config_equivalence(s in tmux_config_line_strategy()) {
+            static START: Once = Once::new();
+            START.call_once(|| {
+                unsafe {
+                    init_global_state();
+                }
+            });
+
+            unsafe {
+                // Create two command structures with the same tmux config line
+                let cmds1 = cmd_parse_from_buffer(s.as_bytes(), None);
+                let cmds2 = cmd_parse_from_buffer_pratt(s.as_bytes(), None);
+
+                match (cmds1, cmds2) {
+                    (Ok(c1), Ok(c2)) => {
+                        // They should be equivalent
+                        if !cmd_list_equivalent(c1, c2) {
+                            println!("Parser mismatch for input: '{}'", s);
+                            println!("LALRPOP result:");
+                            cmd_list_debug(c1, "  ");
+                            println!("Pratt result:");
+                            cmd_list_debug(c2, "  ");
+                        }
+                        prop_assert!(cmd_list_equivalent(c1, c2));
+
+                        cmd_list_free(c1);
+                        cmd_list_free(c2);
+                    }
+                    (Ok(_), Err(_)) => {
+                        println!("LALRPOP succeeded but Pratt failed for: '{}'", s);
+                        prop_assert!(false);
+                    }
+                    (Err(_), Ok(_)) => {
+                        println!("Pratt succeeded but LALRPOP failed for: '{}'", s);
+                        prop_assert!(false);
+                    }
+                    (Err(_), Err(_)) => {
+                        // Both failed - this is acceptable
+                    }
+                }
+            }
+        }
+    }
+}
+
+unsafe fn init_global_state() {
+    unsafe {
+        // setproctitle_init(argc, argv.cast(), env.cast());
+        let mut cause: *mut u8 = null_mut();
+        let mut path: *const u8 = null_mut();
+        let mut label: *mut u8 = null_mut();
+        let mut feat: i32 = 0;
+        let mut fflag: i32 = 0;
+        let mut flags: client_flag = client_flag::empty();
+
+        if setlocale(LC_CTYPE, c!("en_US.UTF-8")).is_null()
+            && setlocale(LC_CTYPE, c!("C.UTF-8")).is_null()
+        {
+            if setlocale(LC_CTYPE, c!("")).is_null() {
+                eprintln!("invalid LC_ALL, LC_CTYPE or LANG");
+                std::process::exit(1);
+            }
+            let s: *mut u8 = nl_langinfo(CODESET).cast();
+            if strcasecmp(s, c!("UTF-8")) != 0 && strcasecmp(s, c!("UTF8")) != 0 {
+                eprintln!("need UTF-8 locale (LC_CTYPE) but have {}", _s(s));
+                std::process::exit(1);
+            }
+        }
+
+        setlocale(LC_TIME, c!(""));
+        tzset();
+
+        GLOBAL_ENVIRON = environ_create().as_ptr();
+
+        let mut var = environ;
+        while !(*var).is_null() {
+            environ_put(GLOBAL_ENVIRON, *var, 0);
+            var = var.add(1);
+        }
+
+        let cwd = find_cwd();
+        if !cwd.is_null() {
+            environ_set!(GLOBAL_ENVIRON, c!("PWD"), 0, "{}", _s(cwd));
+        }
+        expand_paths(TMUX_CONF, &raw mut CFG_FILES, &raw mut CFG_NFILES, 1);
+
+        PTM_FD = getptmfd();
+        if PTM_FD == -1 {
+            eprintln!("getptmfd failed!");
+            std::process::exit(1);
+        }
+
+        /*
+        // TODO no pledge on linux
+            if pledge("stdio rpath wpath cpath flock fattr unix getpw sendfd recvfd proc exec tty ps", null_mut()) != 0 {
+                err(1, "pledge");
+        }
+        */
+
+        // tmux is a UTF-8 terminal, so if TMUX is set, assume UTF-8.
+        // Otherwise, if the user has set LC_ALL, LC_CTYPE or LANG to contain
+        // UTF-8, it is a safe assumption that either they are using a UTF-8
+        // terminal, or if not they know that output from UTF-8-capable
+        // programs may be wrong.
+        if !getenv(c!("TMUX")).is_null() {
+            flags |= client_flag::UTF8;
+        } else {
+            let mut s = getenv(c!("LC_ALL")) as *const u8;
+            if s.is_null() || *s == b'\0' {
+                s = getenv(c!("LC_CTYPE")) as *const u8;
+            }
+            if s.is_null() || *s == b'\0' {
+                s = getenv(c!("LANG")) as *const u8;
+            }
+            if s.is_null() || *s == b'\0' {
+                s = c!("");
+            }
+            if !strcasestr(s, c!("UTF-8")).is_null() || !strcasestr(s, c!("UTF8")).is_null() {
+                flags |= client_flag::UTF8;
+            }
+        }
+
+        GLOBAL_OPTIONS = options_create(null_mut());
+        GLOBAL_S_OPTIONS = options_create(null_mut());
+        GLOBAL_W_OPTIONS = options_create(null_mut());
+
+        let mut oe: *const options_table_entry = &raw const OPTIONS_TABLE as _;
+        while !(*oe).name.is_null() {
+            if (*oe).scope & OPTIONS_TABLE_SERVER != 0 {
+                options_default(GLOBAL_OPTIONS, oe);
+            }
+            if (*oe).scope & OPTIONS_TABLE_SESSION != 0 {
+                options_default(GLOBAL_S_OPTIONS, oe);
+            }
+            if (*oe).scope & OPTIONS_TABLE_WINDOW != 0 {
+                options_default(GLOBAL_W_OPTIONS, oe);
+            }
+            oe = oe.add(1);
+        }
+
+        // The default shell comes from SHELL or from the user's passwd entry if available.
+        options_set_string!(
+            GLOBAL_S_OPTIONS,
+            c!("default-shell"),
+            0,
+            "{}",
+            _s(getshell()),
+        );
+
+        // Override keys to vi if VISUAL or EDITOR are set.
+        let mut s = getenv(c!("VISUAL"));
+        if !s.is_null()
+            || ({
+                s = getenv(c!("EDITOR"));
+                !s.is_null()
+            })
+        {
+            options_set_string!(GLOBAL_OPTIONS, c!("editor"), 0, "{}", _s(s));
+            if !strrchr(s, b'/' as _).is_null() {
+                s = strrchr(s, b'/' as _).add(1);
+            }
+            let keys = if !strstr(s, c!("vi")).is_null() {
+                modekey::MODEKEY_VI
+            } else {
+                modekey::MODEKEY_EMACS
+            };
+            options_set_number(GLOBAL_S_OPTIONS, c!("status-keys"), keys as _);
+            options_set_number(GLOBAL_W_OPTIONS, c!("mode-keys"), keys as _);
+        }
+
+        // If socket is specified on the command-line with -S or -L, it is
+        // used. Otherwise, $TMUX is checked and if that fails "default" is
+        // used.
+        if path.is_null() && label.is_null() {
+            s = getenv(c!("TMUX"));
+            if !s.is_null() && *s != b'\0' && *s != b',' {
+                let tmp: *mut u8 = xstrdup(s).cast().as_ptr();
+                *tmp.add(strcspn(tmp, c!(","))) = b'\0';
+                path = tmp;
+            }
+        }
+        if path.is_null() {
+            path = make_label(label.cast(), &raw mut cause);
+            if path.is_null() {
+                if !cause.is_null() {
+                    eprintln!("{}", _s(cause));
+                    free(cause as _);
+                }
+                std::process::exit(1);
+            }
+            flags |= client_flag::DEFAULTSOCKET;
+        }
+        SOCKET_PATH = path;
+        free_(label);
+    }
+}
+
+pub unsafe fn expand_path(path: *const u8, home: *const u8) -> *mut u8 {
+    unsafe {
+        let mut expanded: *mut u8 = null_mut();
+        let mut end: *const u8 = null_mut();
+
+        if strncmp(path, c!("~/"), 2) == 0 {
+            if home.is_null() {
+                return null_mut();
+            }
+            return format_nul!("{}{}", _s(home), _s(path.add(1)));
+        }
+
+        if *path == b'$' {
+            end = strchr(path, b'/' as i32);
+            let name = if end.is_null() {
+                xstrdup(path.add(1)).cast().as_ptr()
+            } else {
+                xstrndup(path.add(1), end.addr() - path.addr() - 1)
+                    .cast()
+                    .as_ptr()
+            };
+            let value = environ_find(GLOBAL_ENVIRON, name);
+            free_(name);
+            if value.is_null() {
+                return null_mut();
+            }
+            if end.is_null() {
+                end = c!("");
+            }
+            return format_nul!("{}{}", _s(transmute_ptr((*value).value)), _s(end));
+        }
+
+        xstrdup(path).cast().as_ptr()
+    }
+}
+unsafe fn expand_paths(s: &str, paths: *mut *mut *mut u8, n: *mut u32, ignore_errors: i32) {
+    unsafe {
+        let home = find_home();
+        let mut next: *const u8 = null_mut();
+        let mut resolved: [u8; PATH_MAX as usize] = zeroed(); // TODO use unint version
+        let mut path = null_mut();
+
+        let func = "expand_paths";
+
+        *paths = null_mut();
+        *n = 0;
+
+        let mut tmp: *mut u8 = xstrdup__(s);
+        let copy = tmp;
+        while {
+            next = strsep(&raw mut tmp as _, c!(":").cast());
+            !next.is_null()
+        } {
+            let expanded = expand_path(next, home);
+            if expanded.is_null() {
+                log_debug!("{}: invalid path: {}", func, _s(next));
+                continue;
+            }
+            if realpath(expanded.cast(), resolved.as_mut_ptr()).is_null() {
+                log_debug!(
+                    "{}: realpath(\"{}\") failed: {}",
+                    func,
+                    _s(expanded),
+                    _s(strerror(errno!())),
+                );
+                if ignore_errors != 0 {
+                    free_(expanded);
+                    continue;
+                }
+                path = expanded;
+            } else {
+                path = xstrdup(resolved.as_ptr()).cast().as_ptr();
+                free_(expanded);
+            }
+            let mut i = 0;
+            for j in 0..*n {
+                i = j;
+                if libc::strcmp(path as _, *(*paths).add(i as usize)) == 0 {
+                    break;
+                }
+            }
+            if i != *n {
+                log_debug!("{}: duplicate path: {}", func, _s(path));
+                free_(path);
+                continue;
+            }
+            *paths = xreallocarray_::<*mut u8>(*paths, (*n + 1) as usize).as_ptr();
+            *(*paths).add((*n) as usize) = path;
+            *n += 1;
+        }
+        free_(copy);
+    }
+}
+
+unsafe fn make_label(mut label: *const u8, cause: *mut *mut u8) -> *const u8 {
+    let mut paths: *mut *mut u8 = null_mut();
+    let mut path: *mut u8 = null_mut();
+    let mut base: *mut u8 = null_mut();
+    let mut sb: stat = unsafe { zeroed() }; // TODO use uninit
+    let mut n: u32 = 0;
+
+    unsafe {
+        'fail: {
+            *cause = null_mut();
+            if label.is_null() {
+                label = c!("default");
+            }
+            let uid = getuid();
+
+            expand_paths(TMUX_SOCK, &raw mut paths, &raw mut n, 1);
+            if n == 0 {
+                *cause = format_nul!("no suitable socket path");
+                return null_mut();
+            }
+            path = *paths; /* can only have one socket! */
+            for i in 1..n {
+                free_(*paths.add(i as usize));
+            }
+            free_(paths);
+
+            base = format_nul!("{}/tmux-{}", _s(path), uid);
+            free_(path);
+            if mkdir(base.cast(), S_IRWXU) != 0 && errno!() != EEXIST {
+                *cause = format_nul!(
+                    "couldn't create directory {} ({})",
+                    _s(base),
+                    _s(strerror(errno!()))
+                );
+                break 'fail;
+            }
+            if lstat(base.cast(), &raw mut sb) != 0 {
+                *cause = format_nul!(
+                    "couldn't read directory {} ({})",
+                    _s(base),
+                    _s(strerror(errno!())),
+                );
+                break 'fail;
+            }
+            if !S_ISDIR(sb.st_mode) {
+                *cause = format_nul!("{} is not a directory", _s(base));
+                break 'fail;
+            }
+            if sb.st_uid != uid || (sb.st_mode & S_IRWXO) != 0 {
+                *cause = format_nul!("directory {} has unsafe permissions", _s(base));
+                break 'fail;
+            }
+            path = format_nul!("{}/{}", _s(base), _s(label));
+            free_(base);
+            return path;
+        }
+
+        // fail:
+        free_(base);
+        null_mut()
     }
 }
 

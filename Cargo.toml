@@ -12,12 +12,15 @@ exclude = ["/docs", "/.cargo", "/tools", "CHANGELOG.md", "flake.lock", "flake.ni
 
 [dependencies]
 bitflags     = { version = "2.9.1"   }
-lalrpop-util = { version = "0.22.2", default-features = false, features = ["unicode"] }
+lalrpop-util = { version = "0.22.2", default-features = false, features = ["unicode"], optional = true }
 libc         = { version = "0.2.174" }
 paste        = { version = "1.0.15"  }
 
 [build-dependencies]
-lalrpop      = { version = "0.22.2", default-features = false  }
+lalrpop      = { version = "0.22.2", default-features = false, optional = true }
+
+[dev-dependencies]
+proptest     = { version = "1.5" }
 
 # Note: none of these features are supported yet
 # they just exist to make matching upstream's
@@ -26,6 +29,7 @@ lalrpop      = { version = "0.22.2", default-features = false  }
 cgroups     = []
 hyperlinks  = []
 iutf8       = []
+lalrpop     = ["dep:lalrpop", "dep:lalrpop-util"]
 ncurses     = []
 nokerninfo  = []
 sixel       = []

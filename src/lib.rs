@@ -2741,6 +2741,7 @@ use crate::cmd_::cmd_find::{
 };
 
 mod cmd_parse;
+mod cmd_parse_pratt;
 use crate::cmd_parse::{
     cmd_parse_and_append, cmd_parse_and_insert, cmd_parse_command, cmd_parse_from_arguments,
     cmd_parse_from_buffer, cmd_parse_from_file, cmd_parse_from_string, cmd_parse_state, *,

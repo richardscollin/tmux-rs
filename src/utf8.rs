@@ -126,8 +126,8 @@ fn utf8_set_width(width: u8) -> utf8_char {
     (width as utf8_char + 1) << 29
 }
 
-pub fn utf8_item_by_data(item: &utf8_item_data) -> Option<utf8_item_index> {
-    UTF8_DATA_TREE.with(|tree| tree.borrow().get(item).copied())
+pub fn utf8_item_by_data(ud: &utf8_item_data) -> Option<utf8_item_index> {
+    UTF8_DATA_TREE.with(|tree| tree.borrow().get(ud).copied())
 }
 
 pub fn utf8_item_by_index(index: u32) -> Option<utf8_item_data> {

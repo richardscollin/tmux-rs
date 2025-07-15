@@ -319,10 +319,9 @@ pub unsafe fn key_string_lookup_string(mut string: *const u8) -> key_code {
             m[mlen as usize].write(b'\0');
 
             let udp = utf8_fromcstr(m.as_slice().as_ptr().cast());
-            if udp.is_empty() || udp[0].size == 0 || udp[1].size != 0 {
+            if udp.len() != 1 {
                 return KEYC_UNKNOWN;
             }
-            // TODO UB remove the &* (by returning &mut from utf8_fromcstr)
             let Ok(uc) = utf8_from_data(&udp[0]) else {
                 return KEYC_UNKNOWN;
             };

@@ -463,7 +463,7 @@ pub unsafe fn screen_write_text_(
             let mut end = idx;
             let mut at = 0;
             for _ in idx..text.len() {
-                if text[end].size == 1 && text[end].data[0] == b'\n' {
+                if text[end].initialized_slice() == b"\n" {
                     break;
                 }
                 if at + text[end].width as u32 > left {
@@ -482,12 +482,12 @@ pub unsafe fn screen_write_text_(
             // note with the new box slice rust version text_end.size == 0 shouldn't occur
             let next = if end == text.len() {
                 end
-            } else if text[end].size == 1 && matches!(text[end].data[0], b'\n' | b' ') {
+            } else if matches!(text[end].initialized_slice(), b"\n" | b" ") {
                 end + 1
             } else {
                 let mut i = end;
                 while i > idx {
-                    if text[i].size == 1 && text[i].data[0] == b' ' {
+                    if text[i].initialized_slice() == b" " {
                         break;
                     }
                     i -= 1;

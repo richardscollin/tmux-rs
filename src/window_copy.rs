@@ -209,7 +209,7 @@ pub struct window_copy_mode_data {
     timeout: i32,
 
     jumptype: window_copy,
-    jumpchar: Option<&'static mut [utf8_data]>,
+    jumpchar: Option<Box<utf8_data>>,
 
     dragtimer: event,
 }
@@ -450,7 +450,7 @@ pub unsafe fn window_copy_free(wme: NonNull<window_mode_entry>) {
 
         free_((*data).searchmark);
         free_((*data).searchstr);
-        free_take(&mut (*data).jumpchar);
+        (*data).jumpchar = None;
 
         if !(*data).writing.is_null() {
             screen_free((*data).writing);
@@ -2448,8 +2448,7 @@ pub unsafe fn window_copy_cmd_jump_backward(
 
         if *arg1 != b'\0' {
             (*data).jumptype = window_copy::WINDOW_COPY_JUMPBACKWARD;
-            free_take(&mut (*data).jumpchar);
-            (*data).jumpchar = Some(Box::leak(utf8_fromcstr(arg1)));
+            (*data).jumpchar = Some(Box::new(utf8_fromcstr(arg1)[0]));
             while np != 0 {
                 window_copy_cursor_jump_back(wme);
                 np -= 1;
@@ -2470,8 +2469,7 @@ pub unsafe fn window_copy_cmd_jump_forward(
 
         if *arg1 != b'\0' {
             (*data).jumptype = window_copy::WINDOW_COPY_JUMPFORWARD;
-            free_take(&mut (*data).jumpchar);
-            (*data).jumpchar = Some(Box::leak(utf8_fromcstr(arg1)));
+            (*data).jumpchar = Some(Box::new(utf8_fromcstr(arg1)[0]));
             while np != 0 {
                 window_copy_cursor_jump(wme);
                 np -= 1;
@@ -2492,8 +2490,7 @@ pub unsafe fn window_copy_cmd_jump_to_backward(
 
         if *arg1 != b'\0' {
             (*data).jumptype = window_copy::WINDOW_COPY_JUMPTOBACKWARD;
-            free_take(&mut (*data).jumpchar);
-            (*data).jumpchar = Some(Box::leak(utf8_fromcstr(arg1)));
+            (*data).jumpchar = Some(Box::new(utf8_fromcstr(arg1)[0]));
             while np != 0 {
                 window_copy_cursor_jump_to_back(wme);
                 np -= 1;
@@ -2514,8 +2511,7 @@ pub unsafe fn window_copy_cmd_jump_to_forward(
 
         if *arg1 != b'\0' {
             (*data).jumptype = window_copy::WINDOW_COPY_JUMPTOFORWARD;
-            free_take(&mut (*data).jumpchar);
-            (*data).jumpchar = Some(Box::leak(utf8_fromcstr(arg1)));
+            (*data).jumpchar = Some(Box::new(utf8_fromcstr(arg1)[0]));
             while np != 0 {
                 window_copy_cursor_jump_to(wme);
                 np -= 1;
@@ -6138,7 +6134,7 @@ pub unsafe fn window_copy_cursor_jump(wme: *mut window_mode_entry) {
         let oldy = (*data).cy;
 
         grid_reader_start(&raw mut gr, (*back_s).grid, px, py);
-        if grid_reader_cursor_jump(&raw mut gr, &(*data).jumpchar.as_ref().unwrap()[0]) != 0 {
+        if grid_reader_cursor_jump(&raw mut gr, (*data).jumpchar.as_ref().unwrap()) != 0 {
             grid_reader_get_cursor(&raw mut gr, &raw mut px, &raw mut py);
             window_copy_acquire_cursor_down(
                 wme,
@@ -6167,7 +6163,7 @@ pub unsafe fn window_copy_cursor_jump_back(wme: *mut window_mode_entry) {
 
         grid_reader_start(&raw mut gr, (*back_s).grid, px, py);
         grid_reader_cursor_left(&raw mut gr, 0);
-        if grid_reader_cursor_jump_back(&raw mut gr, &(*data).jumpchar.as_ref().unwrap()[0]) != 0 {
+        if grid_reader_cursor_jump_back(&raw mut gr, (*data).jumpchar.as_ref().unwrap()) != 0 {
             grid_reader_get_cursor(&raw mut gr, &raw mut px, &raw mut py);
             window_copy_acquire_cursor_up(wme, hsize, (*data).oy, oldy, px, py);
         }
@@ -6186,7 +6182,7 @@ pub unsafe fn window_copy_cursor_jump_to(wme: *mut window_mode_entry) {
         let oldy = (*data).cy;
 
         grid_reader_start(&raw mut gr, (*back_s).grid, px, py);
-        if grid_reader_cursor_jump(&raw mut gr, &(*data).jumpchar.as_ref().unwrap()[0]) != 0 {
+        if grid_reader_cursor_jump(&raw mut gr, (*data).jumpchar.as_ref().unwrap()) != 0 {
             grid_reader_cursor_left(&raw mut gr, 1);
             grid_reader_get_cursor(&raw mut gr, &raw mut px, &raw mut py);
             window_copy_acquire_cursor_down(
@@ -6217,7 +6213,7 @@ pub unsafe fn window_copy_cursor_jump_to_back(wme: *mut window_mode_entry) {
         grid_reader_start(&raw mut gr, (*back_s).grid, px, py);
         grid_reader_cursor_left(&raw mut gr, 0);
         grid_reader_cursor_left(&raw mut gr, 0);
-        if grid_reader_cursor_jump_back(&raw mut gr, &(*data).jumpchar.as_ref().unwrap()[0]) != 0 {
+        if grid_reader_cursor_jump_back(&raw mut gr, (*data).jumpchar.as_ref().unwrap()) != 0 {
             grid_reader_cursor_right(&raw mut gr, 1, 0);
             grid_reader_get_cursor(&raw mut gr, &raw mut px, &raw mut py);
             window_copy_acquire_cursor_up(wme, hsize, (*data).oy, oldy, px, py);

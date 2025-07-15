@@ -75,7 +75,7 @@ impl utf8_item_data {
         }
         Self {
             data,
-            size: data.len() as u8,
+            size: bytes.len() as u8,
         }
     }
 }
@@ -256,8 +256,7 @@ pub fn utf8_to_data(uc: utf8_char) -> utf8_data {
     } else {
         let index = uc & 0xffffff;
         if let Some(ui) = utf8_item_by_index(index) {
-            ud.data[..ud.size as usize]
-                .copy_from_slice(&ui.initialized_slice()[..ud.size as usize]);
+            ud.data[..ud.size as usize].copy_from_slice(ui.initialized_slice());
         } else {
             ud.data[..ud.size as usize].fill(b' ');
         }

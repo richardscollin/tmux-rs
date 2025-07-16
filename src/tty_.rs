@@ -952,8 +952,16 @@ pub unsafe fn tty_update_mode(tty: *mut tty, mut mode: mode_flag, s: *mut screen
 
         let changed = mode ^ (*tty).mode;
         if log_get_level() != 0 && changed.bits() != 0 {
-            // log_debug("%s: current mode %s", (*c).name, screen_mode_to_string((*tty).mode));
-            // log_debug("%s: setting mode %s", (*c).name, screen_mode_to_string(mode));
+            log_debug!(
+                "{}: current mode {}",
+                _s((*c).name),
+                _s(screen_mode_to_string((*tty).mode)),
+            );
+            log_debug!(
+                "{}: setting mode {}",
+                _s((*c).name),
+                _s(screen_mode_to_string(mode)),
+            );
         }
 
         if changed.intersects(ALL_MOUSE_MODES) && tty_term_has(term, tty_code_code::TTYC_KMOUS) {

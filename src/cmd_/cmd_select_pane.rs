@@ -126,7 +126,7 @@ pub unsafe fn cmd_select_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd
         }
 
         if args_has_(args, 'm') || args_has_(args, 'M') {
-            if args_has_(args, 'm') && window_pane_visible(wp) == 0 {
+            if args_has_(args, 'm') && !window_pane_visible(wp) {
                 return cmd_retval::CMD_RETURN_NORMAL;
             }
             if server_check_marked() {

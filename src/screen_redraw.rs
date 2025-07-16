@@ -209,7 +209,7 @@ pub unsafe fn screen_redraw_cell_border(ctx: *mut screen_redraw_ctx, px: u32, py
         // Check all the panes
         let mut result = 0;
         for wp in tailq_foreach::<_, discr_entry>(&raw mut (*w).panes).map(NonNull::as_ptr) {
-            if window_pane_visible(wp) == 0 {
+            if !window_pane_visible(wp) {
                 continue;
             }
 
@@ -336,7 +336,7 @@ pub unsafe fn screen_redraw_check_cell(
             active = wp;
             loop {
                 'next1: {
-                    if window_pane_visible(wp) == 0 {
+                    if !window_pane_visible(wp) {
                         break 'next1;
                     }
 
@@ -366,7 +366,7 @@ pub unsafe fn screen_redraw_check_cell(
         active = wp;
         loop {
             'next2: {
-                if window_pane_visible(wp) == 0 {
+                if !window_pane_visible(wp) {
                     break 'next2;
                 }
                 *wpp = wp;
@@ -518,7 +518,7 @@ pub unsafe fn screen_redraw_draw_pane_status(ctx: *mut screen_redraw_ctx) {
         );
 
         for wp in tailq_foreach::<_, discr_entry>(&raw mut (*w).panes).map(NonNull::as_ptr) {
-            if window_pane_visible(wp) == 0 {
+            if !window_pane_visible(wp) {
                 continue;
             }
             let s = &raw mut (*wp).status_screen;
@@ -729,7 +729,7 @@ pub unsafe fn screen_redraw_pane(c: *mut client, wp: *mut window_pane) {
     unsafe {
         let mut ctx = MaybeUninit::<screen_redraw_ctx>::uninit();
 
-        if window_pane_visible(wp) == 0 {
+        if !window_pane_visible(wp) {
             return;
         }
 
@@ -921,7 +921,7 @@ pub unsafe fn screen_redraw_draw_panes(ctx: *mut screen_redraw_ctx) {
         );
 
         for wp in tailq_foreach::<_, discr_entry>(&raw mut (*w).panes).map(NonNull::as_ptr) {
-            if window_pane_visible(wp) != 0 {
+            if window_pane_visible(wp) {
                 screen_redraw_draw_pane(ctx, wp);
             }
         }

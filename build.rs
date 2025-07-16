@@ -3,4 +3,9 @@ fn main() {
     lalrpop::process_root().unwrap();
 
     // ncurses and event_core referenced through #[link] on extern block
+
+    // Look for libevent_core using pkg-config
+    if pkg_config::probe_library("libevent_core").is_err() {
+        println!("cargo::warning=Could not find libevent_core using pkg-config");
+    }
 }

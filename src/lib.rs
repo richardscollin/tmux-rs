@@ -3029,8 +3029,8 @@ mod utf8;
 use crate::utf8::{
     utf8_append, utf8_build_one, utf8_copy, utf8_cstrhas, utf8_cstrwidth, utf8_from_data,
     utf8_fromcstr, utf8_fromwc, utf8_in_table, utf8_isvalid, utf8_open, utf8_padcstr,
-    utf8_rpadcstr, utf8_sanitize, utf8_set, utf8_stravis, utf8_stravisx, utf8_strlen, utf8_strvis,
-    utf8_strwidth, utf8_to_data, utf8_tocstr, utf8_towc,
+    utf8_rpadcstr, utf8_sanitize, utf8_set, utf8_stravis, utf8_stravisx, utf8_strlen, utf8_strlen_,
+    utf8_strvis, utf8_strwidth, utf8_to_data, utf8_tocstr, utf8_towc,
 };
 
 mod osdep;

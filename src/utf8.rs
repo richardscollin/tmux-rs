@@ -126,8 +126,8 @@ fn utf8_set_width(width: u8) -> utf8_char {
     (width as utf8_char + 1) << 29
 }
 
-pub fn utf8_item_by_data(item: &utf8_item_data) -> Option<utf8_item_index> {
-    UTF8_DATA_TREE.with(|tree| tree.borrow().get(item).copied())
+pub fn utf8_item_by_data(ud: &utf8_item_data) -> Option<utf8_item_index> {
+    UTF8_DATA_TREE.with(|tree| tree.borrow().get(ud).copied())
 }
 
 pub fn utf8_item_by_index(index: u32) -> Option<utf8_item_data> {
@@ -136,23 +136,17 @@ pub fn utf8_item_by_index(index: u32) -> Option<utf8_item_data> {
     UTF8_INDEX_TREE.with(|tree| tree.borrow().get(&ui).copied())
 }
 
-pub unsafe fn utf8_put_item(data: *const [u8; UTF8_SIZE], size: usize, index: *mut u32) -> i32 {
+pub unsafe fn utf8_put_item(ud: &utf8_item_data) -> Result<u32, ()> {
     unsafe {
-        let ud = &utf8_item_data::new(slice::from_raw_parts(data.cast(), size));
         let ui = utf8_item_by_data(ud);
         if let Some(ui) = ui {
-            *index = ui.index;
-            log_debug!(
-                "utf8_put_item: found {1:0$} = {2}",
-                size,
-                _s((&raw const data).cast::<u8>()),
-                *index,
-            );
-            return 0;
+            let index = ui.index;
+            log_debug!("utf8_put_item: found {ud} = {index}");
+            return Ok(index);
         }
 
         if UTF8_NEXT_INDEX == 0xffffff + 1 {
-            return -1;
+            return Err(());
         }
 
         let ui_index = utf8_item_index {
@@ -164,14 +158,9 @@ pub unsafe fn utf8_put_item(data: *const [u8; UTF8_SIZE], size: usize, index: *m
         UTF8_INDEX_TREE.with(|tree| tree.borrow_mut().insert(ui_index, ui_data));
         UTF8_DATA_TREE.with(|tree| tree.borrow_mut().insert(ui_data, ui_index));
 
-        *index = ui_index.index;
-        log_debug!(
-            "utf8_put_item: added {1:0$} = {2}",
-            size,
-            _s((&raw const data).cast::<u8>()),
-            *index,
-        );
-        0
+        let index = ui_index.index;
+        log_debug!("utf8_put_item: added {ud} = {index}");
+        Ok(index)
     }
 }
 
@@ -181,63 +170,49 @@ pub unsafe extern "C" fn utf8_table_cmp(vp1: *const c_void, vp2: *const c_void) 
     unsafe { wchar_t::cmp(&*wc1, &*wc2) as i8 as i32 }
 }
 
-pub unsafe fn utf8_in_table(find: wchar_t, table: *const wchar_t, count: u32) -> i32 {
-    unsafe {
-        let found = bsearch_(
-            &raw const find,
-            table,
-            count as usize,
-            size_of::<wchar_t>(),
-            utf8_table_cmp,
-        );
-        !found.is_null() as i32
-    }
+pub fn utf8_in_table(find: wchar_t, table: &[wchar_t]) -> bool {
+    table.binary_search(&find).is_ok()
 }
 
-pub unsafe fn utf8_from_data(ud: *const utf8_data, uc: *mut utf8_char) -> utf8_state {
+pub unsafe fn utf8_from_data(ud: &utf8_data) -> Result<utf8_char, utf8_char> {
     unsafe {
         let mut index: u32 = 0;
         'fail: {
-            if (*ud).width > 2 {
-                fatalx_!("invalid UTF-8 width: {}", (*ud).width);
+            if ud.width > 2 {
+                fatalx_!("invalid UTF-8 width: {}", ud.width);
             }
 
-            if (*ud).size > UTF8_SIZE as u8 {
+            if ud.size > UTF8_SIZE as u8 {
                 break 'fail;
             }
-            if (*ud).size <= 3 {
-                index = (((*ud).data[2] as u32) << 16)
-                    | (((*ud).data[1] as u32) << 8)
-                    | ((*ud).data[0] as u32);
-            } else if utf8_put_item(
-                (&raw const (*ud).data).cast(),
-                (*ud).size as usize,
-                &raw mut index,
-            ) != 0
-            {
-                break 'fail;
+            if ud.size <= 3 {
+                index =
+                    ((ud.data[2] as u32) << 16) | ((ud.data[1] as u32) << 8) | (ud.data[0] as u32);
+            } else {
+                match utf8_put_item(&utf8_item_data::new(ud.initialized_slice())) {
+                    Ok(value) => index = value,
+                    Err(()) => break 'fail,
+                }
             }
-            *uc = utf8_set_size((*ud).size) | utf8_set_width((*ud).width) | index;
+            let uc = utf8_set_size(ud.size) | utf8_set_width(ud.width) | index;
             log_debug!(
-                "utf8_from_data: ({0} {1} {3:2$}) -> {4:08x}",
-                (*ud).width,
-                (*ud).size,
-                (*ud).size as usize,
-                _s((&raw const (*ud).data).cast::<u8>()),
-                *uc,
+                "utf8_from_data: ({} {} {}) -> {:08x}",
+                ud.width,
+                ud.size,
+                String::from_utf8_lossy(ud.initialized_slice()),
+                uc,
             );
-            return utf8_state::UTF8_DONE;
+            return Ok(uc);
         }
 
         // fail:
-        *uc = if (*ud).width == 0 {
-            utf8_set_size(0) | utf8_set_width(0)
-        } else if (*ud).width == 1 {
-            utf8_set_size(1) | utf8_set_width(1) | 0x20
+        if ud.width == 0 {
+            Err(utf8_set_size(0) | utf8_set_width(0))
+        } else if ud.width == 1 {
+            Err(utf8_set_size(1) | utf8_set_width(1) | 0x20)
         } else {
-            utf8_set_size(1) | utf8_set_width(1) | 0x2020
-        };
-        utf8_state::UTF8_ERROR
+            Err(utf8_set_size(1) | utf8_set_width(1) | 0x2020)
+        }
     }
 }
 
@@ -308,7 +283,7 @@ pub unsafe fn utf8_width(ud: *mut utf8_data, width: *mut i32) -> utf8_state {
         if utf8_towc(ud, &raw mut wc) != utf8_state::UTF8_DONE {
             return utf8_state::UTF8_ERROR;
         }
-        if utf8_in_table(wc, UTF8_FORCE_WIDE.as_ptr(), UTF8_FORCE_WIDE.len() as u32) != 0 {
+        if utf8_in_table(wc, UTF8_FORCE_WIDE.as_slice()) {
             *width = 2;
             return utf8_state::UTF8_DONE;
         }
@@ -595,6 +570,9 @@ pub unsafe fn utf8_strlen(s: *const utf8_data) -> usize {
 
     i
 }
+pub fn utf8_strlen_(s: &[utf8_data]) -> usize {
+    s.len()
+}
 
 pub unsafe fn utf8_strwidth(s: *const utf8_data, n: isize) -> u32 {
     unsafe {
@@ -613,35 +591,46 @@ pub unsafe fn utf8_strwidth(s: *const utf8_data, n: isize) -> u32 {
     }
 }
 
-pub unsafe fn utf8_fromcstr(mut src: *const u8) -> *mut utf8_data {
+pub unsafe fn utf8_fromcstr(mut src: *const u8) -> Box<[utf8_data]> {
     unsafe {
-        let mut dst: *mut utf8_data = null_mut();
+        let mut dst: Vec<utf8_data> = Vec::new();
         let mut n = 0;
 
         while *src != b'\0' {
-            dst = xreallocarray_(dst, n + 1).as_ptr();
-            let mut more = utf8_open(dst.add(n), (*src));
+            dst.reserve(1);
+            let mut more = utf8_open(dst.as_mut_ptr().add(n), (*src));
+            dst.set_len(dst.len() + 1);
             if more == utf8_state::UTF8_MORE {
                 while {
                     src = src.add(1);
                     *src != b'\0' && more == utf8_state::UTF8_MORE
                 } {
-                    more = utf8_append(dst.add(n), (*src));
+                    more = utf8_append(dst.as_mut_ptr().add(n), (*src));
                 }
                 if more == utf8_state::UTF8_DONE {
                     n += 1;
                     continue;
                 }
-                src = src.sub((*dst.add(n)).have as usize);
+                src = src.sub(dst[n].have as usize);
             }
-            utf8_set(dst.add(n), (*src));
+            utf8_set(dst.as_mut_ptr().add(n), (*src));
             n += 1;
             src = src.add(1);
         }
-        dst = xreallocarray_(dst, n + 1).as_ptr();
-        (*dst.add(n)).size = 0;
 
-        dst
+        // TODO, this is very hacky and should be removed once
+        // all the code uses &[utf8_data] or Box<[utf8_data]> instead of *mut utf8_data
+        //
+        // The idea is we write an extra nul field without changing the size
+        // that way old code which looks for the size == 0 to terminate will still work
+        // but new code can use the length from the box slice
+        // note there could be some safety issues if more fields are appended later
+        // this should be removed and just use the len from the box slice
+        dst.reserve(1);
+        (*dst.as_mut_ptr().add(n)).size = 0;
+        // dst.set_len(dst.len() + 1); // don't increase the length so that a sentinal isn't included
+
+        dst.into_boxed_slice()
     }
 }
 
@@ -736,31 +725,11 @@ pub unsafe fn utf8_rpadcstr(s: *const u8, width: u32) -> *mut u8 {
     }
 }
 
-pub unsafe fn utf8_cstrhas(s: *const u8, ud: *const utf8_data) -> i32 {
-    let mut found: i32 = 0;
-
+// TODO change to bool
+pub unsafe fn utf8_cstrhas(s: *const u8, ud: &utf8_data) -> i32 {
     unsafe {
-        let copy = utf8_fromcstr(s);
-        let mut loop_ = copy;
-        while (*loop_).size != 0 {
-            if (*loop_).size != (*ud).size {
-                loop_ = loop_.add(1);
-                continue;
-            }
-            if memcmp(
-                (*loop_).data.as_ptr().cast(),
-                (*ud).data.as_ptr().cast(),
-                (*loop_).size as usize,
-            ) == 0
-            {
-                found = 1;
-                break;
-            }
-            loop_ = loop_.add(1);
-        }
-
-        free_(copy);
-
-        found
+        utf8_fromcstr(s)
+            .iter()
+            .any(|loop_| loop_.initialized_slice() == ud.initialized_slice()) as i32
     }
 }

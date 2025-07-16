@@ -160,6 +160,7 @@ unsafe extern "C-unwind" fn server_tidy_event(_fd: i32, _events: i16, _data: *mu
     }
 }
 
+#[unsafe(no_mangle)]
 pub unsafe fn server_start(
     client: *mut tmuxproc,
     flags: client_flag,

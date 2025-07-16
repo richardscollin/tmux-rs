@@ -34,7 +34,7 @@ unsafe fn cmd_paste_buffer_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
         let wp = (*target).wp;
         let bracket = args_has(args, b'p') != 0;
 
-        if window_pane_exited(wp) != 0 {
+        if window_pane_exited(wp) {
             cmdq_error!(item, "target pane has exited");
             return cmd_retval::CMD_RETURN_ERROR;
         }

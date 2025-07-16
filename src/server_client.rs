@@ -599,7 +599,6 @@ pub unsafe fn server_client_check_mouse(c: *mut client, event: *mut key_event) -
         let mut fs: *mut session = null_mut();
 
         let mut fwl: *mut winlink = null_mut();
-        let mut wp: *mut window_pane = null_mut();
         let mut fwp: *mut window_pane = null_mut();
 
         // u_int x, y, b, sx, sy, px, py;
@@ -838,29 +837,28 @@ pub unsafe fn server_client_check_mouse(c: *mut client, event: *mut key_event) -
                 px += (*m).ox;
                 py += (*m).oy;
 
-                /* Try the pane borders if not zoomed. */
-                if !(*(*(*s).curw).window).flags.intersects(window_flag::ZOOMED) {
-                    for wp_ in
-                        tailq_foreach::<_, discr_entry>(&raw mut (*(*(*s).curw).window).panes)
-                            .map(NonNull::as_ptr)
-                    {
-                        wp = wp_;
-                        if ((*wp).xoff + (*wp).sx == px
+                let mut wp = null_mut();
+
+                // Try the pane borders if not zoomed.
+                if !(*(*(*s).curw).window).flags.intersects(window_flag::ZOOMED)
+                    && let Some(wp_) = tailq_foreach::<_, discr_entry>(
+                        &raw mut (*(*(*s).curw).window).panes,
+                    )
+                    .find(|wp| {
+                        let wp = wp.as_ptr();
+                        ((*wp).xoff + (*wp).sx == px
                             && (*wp).yoff <= 1 + py
                             && (*wp).yoff + (*wp).sy >= py)
                             || ((*wp).yoff + (*wp).sy == py
                                 && (*wp).xoff <= 1 + px
                                 && (*wp).xoff + (*wp).sx >= px)
-                        {
-                            break;
-                        }
-                    }
-                    if !wp.is_null() {
-                        where_ = where_::Border;
-                    }
+                    })
+                {
+                    wp = wp_.as_ptr();
+                    where_ = where_::Border;
                 }
 
-                /* Otherwise try inside the pane. */
+                // Otherwise try inside the pane.
                 if where_ == where_::Nowhere {
                     wp = window_get_active_at((*(*s).curw).window, px, py);
                     if !wp.is_null() {

@@ -873,16 +873,16 @@ pub unsafe fn cmd_mouse_pane(
 ) -> Option<NonNull<window_pane>> {
     unsafe {
         let wl = cmd_mouse_window(m, sp)?;
-        let mut wp = None;
+        let wp;
 
         if (*m).wp == -1 {
             wp = NonNull::new((*(*wl.as_ptr()).window).active);
         } else {
-            let wp = NonNull::new(window_pane_find_by_id((*m).wp as u32))?;
-            if !window_has_pane((*wl.as_ptr()).window, wp.as_ptr()) {
+            wp = Some(NonNull::new(window_pane_find_by_id((*m).wp as u32))?);
+            if !window_has_pane((*wl.as_ptr()).window, wp.unwrap().as_ptr()) {
                 return None;
             }
-        }
+        };
 
         if !wlp.is_null() {
             *wlp = wl.as_ptr();

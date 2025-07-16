@@ -218,7 +218,12 @@ pub unsafe extern "C-unwind" fn input_key_build() {
 pub unsafe fn input_key_pane(wp: *mut window_pane, key: key_code, m: *mut mouse_event) -> i32 {
     unsafe {
         if log_get_level() != 0 {
-            // log_debug(  c!("writing key 0x%llx (%s) to %%%u"), key, key_string_lookup_key(key, 1), (*wp).id,);
+            log_debug!(
+                "writing key 0x{:x} ({}) to %{}",
+                key,
+                _s(key_string_lookup_key(key, 1)),
+                (*wp).id
+            );
         }
 
         if KEYC_IS_MOUSE(key) {
@@ -682,7 +687,7 @@ pub unsafe fn input_key_mouse(wp: *mut window_pane, m: *mut mouse_event) {
         if cmd_mouse_at(wp, m, &raw mut x, &raw mut y, 0) != 0 {
             return;
         }
-        if window_pane_visible(wp) == 0 {
+        if !window_pane_visible(wp) {
             return;
         }
         if input_key_get_mouse(s, m, x, y, &raw mut buf, &raw mut len) == 0 {

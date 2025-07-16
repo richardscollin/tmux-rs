@@ -634,7 +634,7 @@ pub unsafe fn window_redraw_active_switch(w: *mut window, mut wp: *mut window_pa
 pub unsafe fn window_get_active_at(w: *mut window, x: u32, y: u32) -> *mut window_pane {
     unsafe {
         for wp in tailq_foreach::<_, discr_entry>(&raw mut (*w).panes).map(NonNull::as_ptr) {
-            if window_pane_visible(wp) != 0 {
+            if !window_pane_visible(wp) {
                 continue;
             }
             if x < (*wp).xoff || x > (*wp).xoff + (*wp).sx {
@@ -1291,7 +1291,7 @@ unsafe fn window_pane_copy_key(wp: *mut window_pane, key: key_code) {
                 && tailq_empty(&raw mut (*loop_).modes)
                 && (*loop_).fd != -1
                 && !(*loop_).flags.intersects(window_pane_flags::PANE_INPUTOFF)
-                && window_pane_visible(loop_) != 0
+                && window_pane_visible(loop_)
                 && options_get_number_((*loop_).options, c"synchronize-panes") != 0
             {
                 input_key_pane(loop_, key, null_mut());
@@ -1340,23 +1340,17 @@ pub unsafe fn window_pane_key(
     0
 }
 
-pub unsafe fn window_pane_visible(wp: *mut window_pane) -> i32 {
+pub unsafe fn window_pane_visible(wp: *mut window_pane) -> bool {
     unsafe {
         if !(*(*wp).window).flags.intersects(window_flag::ZOOMED) {
-            return 1;
+            return true;
         }
-        if wp == (*(*wp).window).active { 1 } else { 0 }
+        wp == (*(*wp).window).active
     }
 }
 
-pub unsafe fn window_pane_exited(wp: *mut window_pane) -> i32 {
-    unsafe {
-        if (*wp).fd == -1 || (*wp).flags.intersects(window_pane_flags::PANE_EXITED) {
-            1
-        } else {
-            0
-        }
-    }
+pub unsafe fn window_pane_exited(wp: *mut window_pane) -> bool {
+    unsafe { (*wp).fd == -1 || (*wp).flags.intersects(window_pane_flags::PANE_EXITED) }
 }
 
 pub unsafe fn window_pane_search(

@@ -51,7 +51,7 @@ pub unsafe fn cmd_pipe_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
         let mut oldset: sigset_t = zeroed(); // TODO uninit
 
         /* Do nothing if pane is dead. */
-        if window_pane_exited(wp) != 0 {
+        if window_pane_exited(wp) {
             cmdq_error!(item, "target pane has exited");
             return cmd_retval::CMD_RETURN_ERROR;
         }

@@ -240,7 +240,7 @@ unsafe fn cmd_display_panes_draw(c: *mut client, data: *mut c_void, ctx: *mut sc
         );
 
         for wp in tailq_foreach::<_, discr_entry>(&raw mut (*w).panes).map(NonNull::as_ptr) {
-            if window_pane_visible(wp) != 0 {
+            if window_pane_visible(wp) {
                 cmd_display_panes_draw_pane(ctx, wp);
             }
         }

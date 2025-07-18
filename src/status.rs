@@ -30,12 +30,7 @@ struct status_prompt_menu {
     flag: u8,
 }
 
-pub static PROMPT_TYPE_STRINGS: [SyncCharPtr; 4] = [
-    SyncCharPtr::new(c"command"),
-    SyncCharPtr::new(c"search"),
-    SyncCharPtr::new(c"target"),
-    SyncCharPtr::new(c"window-target"),
-];
+pub static PROMPT_TYPE_STRINGS: [&str; 4] = ["command", "search", "target", "window-target"];
 
 /// Status prompt history.
 pub static mut STATUS_PROMPT_HLIST: [*mut *mut u8; PROMPT_NTYPES as usize] =
@@ -150,7 +145,7 @@ pub unsafe fn status_prompt_save_history() {
                 writeln!(
                     file,
                     "{}:{}",
-                    _s(PROMPT_TYPE_STRINGS[type_ as usize].as_ptr()),
+                    PROMPT_TYPE_STRINGS[type_ as usize],
                     _s(*STATUS_PROMPT_HLIST[type_ as usize].add(i as usize))
                 );
             }
@@ -2412,7 +2407,7 @@ unsafe fn status_prompt_complete(c: *mut client, word: *const u8, mut offset: u3
 pub unsafe fn status_prompt_type(type_: *const u8) -> prompt_type {
     unsafe {
         for i in 0..PROMPT_NTYPES {
-            if libc::strcmp(type_, status_prompt_type_string(i)) == 0 {
+            if libc::streq_(type_, status_prompt_type_string(i)) {
                 return prompt_type::try_from(i).unwrap();
             }
         }
@@ -2421,11 +2416,11 @@ pub unsafe fn status_prompt_type(type_: *const u8) -> prompt_type {
 }
 
 /// Accessor for prompt_type_strings.
-pub unsafe fn status_prompt_type_string(type_: u32) -> *const u8 {
+pub fn status_prompt_type_string(type_: u32) -> &'static str {
     if type_ >= PROMPT_NTYPES {
-        return c!("invalid");
+        return "invalid";
     }
-    PROMPT_TYPE_STRINGS[type_ as usize].as_ptr()
+    PROMPT_TYPE_STRINGS[type_ as usize]
 }
 
 mod code {

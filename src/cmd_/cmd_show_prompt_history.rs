@@ -68,11 +68,7 @@ unsafe fn cmd_show_prompt_history_exec(self_: *mut cmd, item: *mut cmdq_item) ->
 
         if typestr.is_null() {
             for tidx in 0..PROMPT_NTYPES {
-                cmdq_print!(
-                    item,
-                    "History for {}:\n",
-                    _s(status_prompt_type_string(tidx)),
-                );
+                cmdq_print!(item, "History for {}:\n", status_prompt_type_string(tidx),);
                 for hidx in 0u32..STATUS_PROMPT_HSIZE[tidx as usize] {
                     cmdq_print!(
                         item,
@@ -92,7 +88,7 @@ unsafe fn cmd_show_prompt_history_exec(self_: *mut cmd, item: *mut cmdq_item) ->
             cmdq_print!(
                 item,
                 "History for {}:\n",
-                _s(status_prompt_type_string(type_ as u32)),
+                status_prompt_type_string(type_ as u32),
             );
             for hidx in 0u32..STATUS_PROMPT_HSIZE[type_ as usize] {
                 cmdq_print!(

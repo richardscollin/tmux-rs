@@ -1311,8 +1311,10 @@ unsafe fn yylex_token(ps: &mut cmd_parse_state, mut ch: i32) -> *mut u8 {
 
 unsafe fn yylex_token_escape(ps: &mut cmd_parse_state, buf: *mut *mut u8, len: *mut usize) -> bool {
     unsafe {
+        // TODO this is very wrong, need to use sysconf, but also needs to be const, hard coding 8
+        // for linux, I suspect the value is actually 4
         #[cfg(not(target_os = "macos"))]
-        const SIZEOF_M: usize = libc::_SC_MB_LEN_MAX as usize;
+        const SIZEOF_M: usize = 8;
 
         // TODO determine a more stable way to get this value on mac
         #[cfg(target_os = "macos")]

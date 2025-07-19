@@ -17,10 +17,10 @@ use crate::xmalloc::xstrndup;
 
 use crate::compat::{S_ISDIR, fdforkpty::getptmfd, getprogname::getprogname};
 use crate::libc::{
-    CLOCK_MONOTONIC, CLOCK_REALTIME, CODESET, EEXIST, F_GETFL, F_SETFL, LC_CTYPE, LC_TIME,
-    O_NONBLOCK, PATH_MAX, S_IRWXO, S_IRWXU, X_OK, access, clock_gettime, fcntl, getcwd, getenv,
-    getpwuid, getuid, lstat, mkdir, nl_langinfo, realpath, setlocale, stat, strcasecmp, strcasestr,
-    strchr, strcspn, strerror, strncmp, strrchr, strstr, timespec,
+    CLOCK_MONOTONIC, CLOCK_REALTIME, EEXIST, F_GETFL, F_SETFL, LC_CTYPE, LC_TIME, O_NONBLOCK,
+    PATH_MAX, S_IRWXO, S_IRWXU, X_OK, access, clock_gettime, fcntl, getcwd, getenv, getpwuid,
+    getuid, lstat, mkdir, realpath, setlocale, stat, strcasecmp, strcasestr, strchr, strcspn,
+    strerror, strncmp, strrchr, strstr, timespec,
 };
 
 use crate::compat::getopt::{OPTARG, OPTIND, getopt};
@@ -384,10 +384,13 @@ pub unsafe fn tmux_main(mut argc: i32, mut argv: *mut *mut u8, env: *mut *mut u8
                 eprintln!("invalid LC_ALL, LC_CTYPE or LANG");
                 std::process::exit(1);
             }
-            let s: *mut u8 = nl_langinfo(CODESET).cast();
-            if strcasecmp(s, c!("UTF-8")) != 0 && strcasecmp(s, c!("UTF8")) != 0 {
-                eprintln!("need UTF-8 locale (LC_CTYPE) but have {}", _s(s));
-                std::process::exit(1);
+            #[cfg(not(target_os = "android"))]
+            {
+                let s: *mut u8 = libc::nl_langinfo(libc::CODESET).cast();
+                if strcasecmp(s, c!("UTF-8")) != 0 && strcasecmp(s, c!("UTF8")) != 0 {
+                    eprintln!("need UTF-8 locale (LC_CTYPE) but have {}", _s(s));
+                    std::process::exit(1);
+                }
             }
         }
 

@@ -73,10 +73,26 @@ pub unsafe fn osdep_get_cwd(fd: i32) -> *const u8 {
         free_(path);
 
         let mut sid: pid_t = 0;
-        if n == -1 && libc::ioctl(fd, libc::TIOCGSID, &raw mut sid) != -1 {
-            path = format_nul!("/proc/{sid}/cwd");
-            n = libc::readlink(path.cast(), target.cast(), MAXPATHLEN);
-            free_(path);
+        if n == -1 {
+            #[cfg(target_os = "linux")]
+            {
+                if libc::ioctl(fd, libc::TIOCGSID, &raw mut sid) != -1 {
+                    path = format_nul!("/proc/{sid}/cwd");
+                    n = libc::readlink(path.cast(), target.cast(), MAXPATHLEN);
+                    free_(path);
+                }
+            }
+
+            #[cfg(target_os = "android")]
+            {
+                // Android fallback: try the current process's session leader
+                sid = libc::getsid(0);
+                if sid != -1 {
+                    path = format_nul!("/proc/{sid}/cwd");
+                    n = libc::readlink(path.cast(), target.cast(), MAXPATHLEN);
+                    free_(path);
+                }
+            }
         }
 
         if n > 0 {

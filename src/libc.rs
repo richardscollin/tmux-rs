@@ -52,8 +52,10 @@ pub unsafe fn nl_langinfo(item: nl_item) -> *mut u8 {
     unsafe extern "C" {
         fn nl_langinfo(item: i32) -> *mut u8;
     }
+    #[cfg(not(target_os = "android"))]
+    use ::libc::nl_langinfo;
 
-    unsafe { nl_langinfo(item) }
+    unsafe { nl_langinfo(item).cast() }
 }
 
 pub unsafe fn memcpy_<T>(dest: *mut T, src: *const T, n: usize) -> *mut T {
@@ -245,15 +247,6 @@ pub unsafe fn regcomp(preg: *mut regex_t, pattern: *const u8, cflags: i32) -> i3
     unsafe { ::libc::regcomp(preg, pattern.cast(), cflags) }
 }
 
-pub unsafe fn glob(
-    pattern: *const u8,
-    flags: i32,
-    errfunc: Option<extern "C" fn(epath: *const c_char, errno: c_int) -> c_int>,
-    pglob: *mut glob_t,
-) -> i32 {
-    unsafe { ::libc::glob(pattern.cast(), flags, errfunc, pglob) }
-}
-
 pub unsafe fn regexec(
     preg: *const regex_t,
     input: *const u8,
@@ -262,6 +255,34 @@ pub unsafe fn regexec(
     eflags: i32,
 ) -> i32 {
     unsafe { ::libc::regexec(preg, input.cast(), nmatch, pmatch, eflags) }
+}
+
+#[cfg(target_os = "android")]
+pub unsafe fn ctime_r(timep: *const libc::time_t, buf: *mut libc::c_char) -> *mut libc::c_char {
+    unsafe {
+        let tm = libc::localtime(timep);
+        if tm.is_null() {
+            return std::ptr::null_mut();
+        }
+        let fmt = b"%a %b %e %H:%M:%S %Y\n\0".as_ptr() as *const libc::c_char;
+        if libc::strftime(buf, 26, fmt, tm) > 0 {
+            buf
+        } else {
+            std::ptr::null_mut()
+        }
+    }
+}
+
+#[cfg(target_os = "android")]
+pub unsafe fn getdtablesize() -> libc::c_int {
+    unsafe {
+        let result = libc::sysconf(libc::_SC_OPEN_MAX);
+        if result > 0 {
+            result as libc::c_int
+        } else {
+            1024 // fallback value
+        }
+    }
 }
 
 #[inline]

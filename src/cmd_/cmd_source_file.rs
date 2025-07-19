@@ -13,7 +13,7 @@
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 use crate::*;
 
-use crate::libc::{EINVAL, ENOENT, ENOMEM, GLOB_NOMATCH, GLOB_NOSPACE, glob, glob_t, globfree};
+use crate::libc::{EINVAL, ENOENT, ENOMEM};
 
 pub static CMD_SOURCE_FILE_ENTRY: cmd_entry = cmd_entry {
     name: SyncCharPtr::new(c"source-file"),
@@ -135,7 +135,10 @@ unsafe fn cmd_source_file_add(cdata: *mut cmd_source_file_data, path: *const u8)
     }
 }
 
+#[cfg(not(target_os = "android"))]
 unsafe fn cmd_source_file_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retval {
+    use crate::libc::{GLOB_NOMATCH, GLOB_NOSPACE, glob, glob_t, globfree};
+
     let __func__ = "cmd_source_file_exec";
 
     unsafe {
@@ -188,7 +191,7 @@ unsafe fn cmd_source_file_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
             }
             log_debug!("{}: {}", __func__, _s(pattern));
 
-            result = glob(pattern, 0, None, g.as_mut_ptr());
+            result = glob(pattern.cast(), 0, None, g.as_mut_ptr());
             if result != 0 {
                 if result != GLOB_NOMATCH
                     || !(*cdata)
@@ -215,6 +218,79 @@ unsafe fn cmd_source_file_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
                 cmd_source_file_add(cdata, *(*g.as_ptr()).gl_pathv.add(j).cast());
             }
             globfree(g.as_mut_ptr());
+        }
+        free_(expanded);
+
+        (*cdata).after = item;
+        (*cdata).retval = retval;
+
+        if (*cdata).nfiles != 0 {
+            file_read(c, *(*cdata).files, Some(cmd_source_file_done), cdata as _);
+            retval = cmd_retval::CMD_RETURN_WAIT;
+        } else {
+            cmd_source_file_complete(c, cdata);
+        }
+
+        free_(cwd);
+        retval
+    }
+}
+
+#[cfg(target_os = "android")]
+unsafe fn cmd_source_file_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retval {
+    let __func__ = "cmd_source_file_exec";
+
+    unsafe {
+        let args = cmd_get_args(self_);
+        let c = cmdq_get_client(item);
+        let mut retval = cmd_retval::CMD_RETURN_NORMAL;
+        let mut pattern: *mut u8 = null_mut();
+        let mut cwd = null_mut();
+        let mut expanded: *mut u8 = null_mut();
+        let path: *mut u8 = null_mut();
+        let mut error: *mut u8 = null_mut();
+        let mut result = 0i32;
+
+        let cdata = xcalloc_::<cmd_source_file_data>(1).as_ptr();
+        (*cdata).item = item;
+
+        if args_has_(args, 'q') {
+            (*cdata).flags |= cmd_parse_input_flags::CMD_PARSE_QUIET;
+        }
+        if args_has_(args, 'n') {
+            (*cdata).flags |= cmd_parse_input_flags::CMD_PARSE_PARSEONLY;
+        }
+        if args_has_(args, 'v') {
+            (*cdata).flags |= cmd_parse_input_flags::CMD_PARSE_VERBOSE;
+        }
+
+        utf8_stravis(
+            &raw mut cwd,
+            server_client_get_cwd(c, null_mut()),
+            vis_flags::VIS_GLOB,
+        );
+
+        for i in 0..args_count(args) {
+            let mut path = args_string(args, i);
+            if args_has_(args, 'F') {
+                free_(expanded);
+                expanded = format_single_from_target(item, path);
+                path = expanded;
+            }
+            if streq_(path, "-") {
+                cmd_source_file_add(cdata, c!("-"));
+                continue;
+            }
+
+            if *path == b'/' {
+                pattern = xstrdup(path).as_ptr();
+            } else {
+                pattern = format_nul!("{}/{}", _s(cwd), _s(path));
+            }
+            log_debug!("{}: {}", __func__, _s(pattern));
+
+            cmd_source_file_add(cdata, pattern);
+            free_(pattern);
         }
         free_(expanded);
 

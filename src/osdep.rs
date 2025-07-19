@@ -16,7 +16,7 @@ use crate::*;
 
 use crate::libc;
 
-#[cfg(target_os = "linux")]
+#[cfg(any(target_os = "linux", target_os = "android"))]
 pub unsafe fn osdep_get_name(fd: i32, _tty: *const u8) -> *mut u8 {
     unsafe {
         let pgrp = libc::tcgetpgrp(fd);
@@ -56,7 +56,7 @@ pub unsafe fn osdep_get_name(fd: i32, _tty: *const u8) -> *mut u8 {
     }
 }
 
-#[cfg(target_os = "linux")]
+#[cfg(any(target_os = "linux", target_os = "android"))]
 pub unsafe fn osdep_get_cwd(fd: i32) -> *const u8 {
     const MAXPATHLEN: usize = libc::PATH_MAX as usize;
     static mut TARGET_BUFFER: [u8; MAXPATHLEN + 1] = [0; MAXPATHLEN + 1];
@@ -87,7 +87,7 @@ pub unsafe fn osdep_get_cwd(fd: i32) -> *const u8 {
     }
 }
 
-#[cfg(target_os = "linux")]
+#[cfg(any(target_os = "linux", target_os = "android"))]
 pub unsafe fn osdep_event_init() -> *mut event_base {
     unsafe {
         // On Linux, epoll doesn't work on /dev/null (yes, really).

@@ -39,7 +39,7 @@ pub unsafe fn setproctitle_(_fmt: *const u8, name: *const u8, socket_path: *cons
     }
 }
 
-#[cfg(target_os = "macos")]
+#[cfg(not(target_os = "linux"))]
 pub unsafe fn setproctitle_(_: *const u8, _: *const u8, _: *const u8) {}
 
 fn getprogname() -> *const u8 {

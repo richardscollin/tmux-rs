@@ -146,7 +146,7 @@ unsafe extern "C-unwind" fn server_tidy_event(_fd: i32, _events: i16, _data: *mu
 
         format_tidy_jobs();
 
-        #[cfg(not(target_os = "macos"))]
+        #[cfg(target_os = "linux")]
         {
             libc::malloc_trim(0);
         }

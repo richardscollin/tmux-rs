@@ -32,5 +32,5 @@ pub unsafe fn reallocarray(
     }
 }
 
-#[cfg(target_os = "linux")]
+#[cfg(any(target_os = "linux", target_os = "android"))]
 pub(crate) use libc::reallocarray;

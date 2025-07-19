@@ -7,7 +7,7 @@ pub unsafe fn getprogname() -> *const u8 {
     unsafe { program_invocation_short_name }
 }
 
-#[cfg(target_os = "macos")]
+#[cfg(not(target_os = "linux"))]
 pub unsafe fn getprogname() -> *const u8 {
     c"tmux".as_ptr().cast()
 }

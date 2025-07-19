@@ -42,6 +42,20 @@ pub unsafe fn gethostname(name: *mut u8, len: size_t) -> c_int {
     unsafe { ::libc::gethostname(name.cast(), len) }
 }
 
+#[cfg(not(target_os = "android"))]
+type nl_item = ::libc::nl_item;
+#[cfg(target_os = "android")]
+type nl_item = i32;
+
+pub unsafe fn nl_langinfo(item: nl_item) -> *mut u8 {
+    #[cfg(target_os = "android")]
+    unsafe extern "C" {
+        fn nl_langinfo(item: i32) -> *mut u8;
+    }
+
+    unsafe { nl_langinfo(item) }
+}
+
 pub unsafe fn memcpy_<T>(dest: *mut T, src: *const T, n: usize) -> *mut T {
     unsafe { ::libc::memcpy(dest as *mut c_void, src as *const c_void, n).cast() }
 }
@@ -167,6 +181,12 @@ pub unsafe fn bsearch__<T>(
     unsafe { ::libc::bsearch(key.cast(), base.cast(), num, size_of::<T>(), Some(compar)).cast() }
 }
 
+#[cfg(target_os = "android")]
+macro_rules! errno {
+    () => {
+        *::libc::__errno()
+    };
+}
 #[cfg(target_os = "linux")]
 macro_rules! errno {
     () => {
@@ -181,6 +201,15 @@ macro_rules! errno {
 }
 pub(crate) use errno;
 
+#[cfg(target_os = "android")]
+#[allow(non_snake_case)]
+#[inline]
+pub fn MB_CUR_MAX() -> usize {
+    unsafe extern "C" {
+        unsafe fn __mb_cur_max_func() -> usize;
+    }
+    unsafe { __mb_cur_max_func() }
+}
 #[cfg(target_os = "linux")]
 #[allow(non_snake_case)]
 #[inline]
@@ -378,13 +407,12 @@ pub unsafe fn ttyname(fd: i32) -> *mut u8 {
 }
 
 pub(crate) unsafe fn basename(path: *mut u8) -> *mut u8 {
-    #[cfg(target_os = "macos")]
-    {
-        unsafe { libc::basename(path.cast()) }.cast()
-    }
-
     #[cfg(target_os = "linux")]
     {
         unsafe { libc::posix_basename(path.cast()) }.cast()
+    }
+    #[cfg(any(target_os = "macos", target_os = "android"))]
+    {
+        unsafe { libc::basename(path.cast()) }.cast()
     }
 }

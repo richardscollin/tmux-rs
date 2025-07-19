@@ -1689,7 +1689,7 @@ pub unsafe fn window_copy_cmd_previous_matching_bracket(
                     np -= 1;
                     continue 'outer;
                 }
-                let start = open[cp.offset_from_unsigned((&raw const close).cast())];
+                let start = open[cp.offset_from((&raw const close).cast()) as usize];
 
                 /* Walk backward until the matching bracket is reached. */
                 let mut n: u32 = 1;
@@ -1841,7 +1841,7 @@ pub unsafe fn window_copy_cmd_next_matching_bracket(
                     }
                     continue 'retry;
                 }
-                let end = close[cp.offset_from_unsigned((&raw const open).cast())];
+                let end = close[cp.offset_from((&raw const open).cast()) as usize];
 
                 /* Walk forward until the matching bracket is reached. */
                 let mut n = 1;
@@ -1967,7 +1967,7 @@ pub unsafe fn window_copy_cmd_other_end(cs: *mut window_copy_cmd_state) -> windo
         let data: *mut window_copy_mode_data = (*wme).data.cast();
 
         (*data).selflag = selflag::SEL_CHAR;
-        if !np.is_multiple_of(2) {
+        if np % 2 != 0 {
             window_copy_other_end(wme);
         }
         window_copy_cmd_action::WINDOW_COPY_CMD_NOTHING

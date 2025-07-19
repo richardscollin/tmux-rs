@@ -1076,10 +1076,10 @@ fn input_parse(ictx: *mut input_ctx, buf: *mut u8, len: usize) {
 
             // Execute the handler, if any. Don't switch state if it
             // returns non-zero.
-            if let Some(handler) = (*itr).handler
-                && handler(ictx) != 0
-            {
-                continue;
+            if let Some(handler) = (*itr).handler {
+                if handler(ictx) != 0 {
+                    continue;
+                }
             }
 
             // And switch state, if necessary.
@@ -2687,11 +2687,11 @@ unsafe fn input_osc_8(ictx: *mut input_ctx, p: *mut u8) {
                 end = strpbrk(start, c!(":;"));
                 !end.is_null()
             } {
-                if end.offset_from_unsigned(start) >= 4 && libc::strncmp(start, c!("id="), 3) == 0 {
+                if end.offset_from(start) >= 4 && libc::strncmp(start, c!("id="), 3) == 0 {
                     if !id.is_null() {
                         break 'bad;
                     }
-                    id = xstrndup(start.add(3), end.offset_from_unsigned(start) - 3).as_ptr();
+                    id = xstrndup(start.add(3), end.offset_from(start) as usize - 3).as_ptr();
                 }
 
                 /* The first ; is the end of parameters and start of the URI. */

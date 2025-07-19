@@ -178,10 +178,11 @@ pub fn colour_fromstring_(s: &str) -> c_int {
         if s.len() < 7 {
             return -1;
         }
-        if let Ok(r) = u8::from_str_radix(&s[1..3], 16)
-            && let Ok(g) = u8::from_str_radix(&s[3..5], 16)
-            && let Ok(b) = u8::from_str_radix(&s[5..7], 16)
-        {
+        if let (Ok(r), Ok(g), Ok(b)) = (
+            u8::from_str_radix(&s[1..3], 16),
+            u8::from_str_radix(&s[3..5], 16),
+            u8::from_str_radix(&s[5..7], 16),
+        ) {
             return colour_join_rgb(r, g, b);
         } else {
             return -1;

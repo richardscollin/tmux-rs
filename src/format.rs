@@ -1613,10 +1613,10 @@ pub unsafe fn format_cb_client_user(ft: *mut format_tree) -> *mut c_void {
     unsafe {
         if !(*ft).c.is_null() {
             let uid = proc_get_peer_uid((*(*ft).c).peer);
-            if uid != -1_i32 as uid_t
-                && let Some(pw) = NonNull::new(libc::getpwuid(uid))
-            {
-                return xstrdup((*pw.as_ptr()).pw_name.cast()).as_ptr().cast();
+            if uid != -1_i32 as uid_t {
+                if let Some(pw) = NonNull::new(libc::getpwuid(uid)) {
+                    return xstrdup((*pw.as_ptr()).pw_name.cast()).as_ptr().cast();
+                }
             }
         }
         null_mut()
@@ -1873,10 +1873,10 @@ pub unsafe fn format_cb_mouse_x(ft: *mut format_tree) -> *mut c_void {
         let wp = cmd_mouse_pane(&raw mut (*ft).m, null_mut(), null_mut());
         let mut x: u32 = 0;
         let mut y: u32 = 0;
-        if let Some(wp) = wp
-            && cmd_mouse_at(wp.as_ptr(), &raw mut (*ft).m, &mut x, &mut y, 0) == 0
-        {
-            return format_printf!("{}", x).cast();
+        if let Some(wp) = wp {
+            if cmd_mouse_at(wp.as_ptr(), &raw mut (*ft).m, &mut x, &mut y, 0) == 0 {
+                return format_printf!("{}", x).cast();
+            }
         }
         if !(*ft).c.is_null() && (*(*ft).c).tty.flags.intersects(tty_flags::TTY_STARTED) {
             if (*ft).m.statusat == 0 && (*ft).m.y < (*ft).m.statuslines {
@@ -1899,10 +1899,10 @@ pub unsafe fn format_cb_mouse_y(ft: *mut format_tree) -> *mut c_void {
         let wp = cmd_mouse_pane(&raw mut (*ft).m, null_mut(), null_mut());
         let mut x: u32 = 0;
         let mut y: u32 = 0;
-        if let Some(wp) = wp
-            && cmd_mouse_at(wp.as_ptr(), &raw mut (*ft).m, &mut x, &mut y, 0) == 0
-        {
-            return format_printf!("{}", y).cast();
+        if let Some(wp) = wp {
+            if cmd_mouse_at(wp.as_ptr(), &raw mut (*ft).m, &mut x, &mut y, 0) == 0 {
+                return format_printf!("{}", y).cast();
+            }
         }
         if !(*ft).c.is_null() && (*(*ft).c).tty.flags.intersects(tty_flags::TTY_STARTED) {
             if (*ft).m.statusat == 0 && (*ft).m.y < (*ft).m.statuslines {
@@ -5385,10 +5385,10 @@ pub unsafe fn format_defaults_pane(ft: *mut format_tree, wp: *mut window_pane) {
         }
         (*ft).wp = wp;
 
-        if let Some(wme) = NonNull::new(tailq_first(&raw mut (*wp).modes))
-            && let Some(formats) = (*(*wme.as_ptr()).mode).formats
-        {
-            formats(wme.as_ptr(), ft);
+        if let Some(wme) = NonNull::new(tailq_first(&raw mut (*wp).modes)) {
+            if let Some(formats) = (*(*wme.as_ptr()).mode).formats {
+                formats(wme.as_ptr(), ft);
+            }
         }
     }
 }

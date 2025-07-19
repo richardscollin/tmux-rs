@@ -747,8 +747,8 @@ pub unsafe fn status_prompt_clear(c: *mut client) {
             return;
         }
 
-        if let Some(prompt_freecb) = (*c).prompt_freecb
-            && let Some(prompt_data) = NonNull::new((*c).prompt_data)
+        if let (Some(prompt_freecb), Some(prompt_data)) =
+            ((*c).prompt_freecb, NonNull::new((*c).prompt_data))
         {
             prompt_freecb(prompt_data);
         }
@@ -1159,7 +1159,7 @@ unsafe fn status_prompt_paste(c: *mut client) -> i32 {
                 i += 1;
             }
             (*udp).size = 0;
-            n = udp.offset_from_unsigned(ud);
+            n = udp.offset_from(ud) as usize;
         }
         if n != 0 {
             (*c).prompt_buffer =
@@ -1257,7 +1257,7 @@ unsafe fn status_prompt_replace_complete(c: *mut client, mut s: *const u8) -> i3
             allocated = status_prompt_complete(
                 c,
                 (&raw const word).cast(),
-                first.offset_from_unsigned((*c).prompt_buffer) as u32,
+                first.offset_from((*c).prompt_buffer) as u32,
             );
             if allocated.is_null() {
                 return 0;
@@ -1266,13 +1266,13 @@ unsafe fn status_prompt_replace_complete(c: *mut client, mut s: *const u8) -> i3
         }
 
         /* Trim out word. */
-        n = size - last.offset_from_unsigned((*c).prompt_buffer) + 1; /* with \0 */
+        n = size - last.offset_from((*c).prompt_buffer) as usize + 1; /* with \0 */
         libc::memmove(first.cast(), last.cast(), n * size_of::<utf8_data>());
-        size -= last.offset_from_unsigned(first);
+        size -= last.offset_from(first) as usize;
 
         /* Insert the new word. */
         size += strlen(s);
-        off = first.offset_from_unsigned((*c).prompt_buffer);
+        off = first.offset_from((*c).prompt_buffer) as usize;
         (*c).prompt_buffer = xreallocarray_::<utf8_data>((*c).prompt_buffer, size + 1).as_ptr();
         first = (*c).prompt_buffer.add(off);
         libc::memmove(
@@ -1283,7 +1283,7 @@ unsafe fn status_prompt_replace_complete(c: *mut client, mut s: *const u8) -> i3
         for idx in 0..strlen(s) {
             utf8_set(first.add(idx), (*s.add(idx)));
         }
-        (*c).prompt_index = first.offset_from_unsigned((*c).prompt_buffer) + strlen(s);
+        (*c).prompt_index = first.offset_from((*c).prompt_buffer) as usize + strlen(s);
 
         free_(allocated);
         1
@@ -1932,7 +1932,7 @@ unsafe fn status_prompt_complete_list(size: *mut u32, s: *const u8, at_start: i3
                     if cp.is_null() {
                         break 'next;
                     }
-                    let valuelen = cp.offset_from_unsigned(value);
+                    let valuelen = cp.offset_from(value) as usize;
                     if slen > valuelen || strncmp(value, s, slen) != 0 {
                         break 'next;
                     }

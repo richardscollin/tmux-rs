@@ -315,44 +315,46 @@ where
     T: GetEntry<T, D>,
 {
     unsafe {
-        while let Some(parent) = NonNull::new(rb_parent(elm))
-            && rb_color(parent.as_ptr()) == rb_color::RB_RED
-        {
-            #[allow(clippy::shadow_reuse)]
-            let mut parent = parent.as_ptr();
-            let gparent = rb_parent(parent);
-            if parent == rb_left(gparent) {
-                let mut tmp = rb_right(gparent);
-                if !tmp.is_null() && rb_color(tmp) == rb_color::RB_RED {
-                    rb_color!(tmp) = rb_color::RB_BLACK;
+        while let Some(parent) = NonNull::new(rb_parent(elm)) {
+            if rb_color(parent.as_ptr()) == rb_color::RB_RED {
+                #[allow(clippy::shadow_reuse)]
+                let mut parent = parent.as_ptr();
+                let gparent = rb_parent(parent);
+                if parent == rb_left(gparent) {
+                    let mut tmp = rb_right(gparent);
+                    if !tmp.is_null() && rb_color(tmp) == rb_color::RB_RED {
+                        rb_color!(tmp) = rb_color::RB_BLACK;
+                        rb_set_blackred(parent, gparent);
+                        elm = gparent;
+                        continue;
+                    }
+                    if rb_right(parent) == elm {
+                        rb_rotate_left(head, parent);
+                        tmp = parent;
+                        parent = elm;
+                        elm = tmp;
+                    }
                     rb_set_blackred(parent, gparent);
-                    elm = gparent;
-                    continue;
+                    rb_rotate_right(head, gparent);
+                } else {
+                    let mut tmp = rb_left(gparent);
+                    if !tmp.is_null() && rb_color(tmp) == rb_color::RB_RED {
+                        rb_color!(tmp) = rb_color::RB_BLACK;
+                        rb_set_blackred(parent, gparent);
+                        elm = gparent;
+                        continue;
+                    }
+                    if rb_left(parent) == elm {
+                        rb_rotate_right(head, parent);
+                        tmp = parent;
+                        parent = elm;
+                        elm = tmp;
+                    }
+                    rb_set_blackred(parent, gparent);
+                    rb_rotate_left(head, gparent);
                 }
-                if rb_right(parent) == elm {
-                    rb_rotate_left(head, parent);
-                    tmp = parent;
-                    parent = elm;
-                    elm = tmp;
-                }
-                rb_set_blackred(parent, gparent);
-                rb_rotate_right(head, gparent);
             } else {
-                let mut tmp = rb_left(gparent);
-                if !tmp.is_null() && rb_color(tmp) == rb_color::RB_RED {
-                    rb_color!(tmp) = rb_color::RB_BLACK;
-                    rb_set_blackred(parent, gparent);
-                    elm = gparent;
-                    continue;
-                }
-                if rb_left(parent) == elm {
-                    rb_rotate_right(head, parent);
-                    tmp = parent;
-                    parent = elm;
-                    elm = tmp;
-                }
-                rb_set_blackred(parent, gparent);
-                rb_rotate_left(head, gparent);
+                break;
             }
         }
         (*T::entry_mut((*head).rbh_root)).rbe_color = rb_color::RB_BLACK;

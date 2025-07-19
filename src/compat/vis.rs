@@ -156,7 +156,7 @@ pub unsafe fn strnvis(mut dst: *mut u8, mut src: *const u8, dlen: usize, flag: v
 
         while *src != 0 && i < dlen {
             let tmp = vis_(dst, *src as i32, flag, *src.add(1) as i32);
-            i += dst.offset_from_unsigned(dst);
+            i += dst.offset_from(dst) as usize;
             dst = tmp;
             src = src.add(1);
         }

@@ -76,9 +76,9 @@ fn pton<'out>(src: &'_ [u8], dst: &'out mut [MaybeUninit<u8>]) -> Result<&'out m
         // ( a << 2  ) ( b >> 4 )    (b<<4) (    c >> 2    )     (c<<4)(      d       )
         // 0  0  0  0  0  0  0  0  |  0  0  0  0  0  0  0  0  |  0  0  0  0  0  0  0  0
         //
-        dst[i] = MaybeUninit::new(a << 2 | b >> 4);
-        dst[i + 1] = MaybeUninit::new(b << 4 | c >> 2);
-        dst[i + 2] = MaybeUninit::new(c << 6 | d);
+        dst[i] = MaybeUninit::new((a << 2) | (b >> 4));
+        dst[i + 1] = MaybeUninit::new((b << 4) | (c >> 2));
+        dst[i + 2] = MaybeUninit::new((c << 6) | d);
         i += 3;
     }
 
@@ -103,8 +103,8 @@ fn ntop<'out>(src: &'_ [u8], dst: &'out mut [MaybeUninit<u8>]) -> Result<&'out m
 
     for chunk in &mut it {
         dst[i] = enc!(chunk[0] >> 2);
-        dst[i + 1] = enc!(chunk[0] << 4 | chunk[1] >> 4);
-        dst[i + 2] = enc!(chunk[1] << 2 | chunk[2] >> 6);
+        dst[i + 1] = enc!((chunk[0] << 4) | (chunk[1] >> 4));
+        dst[i + 2] = enc!((chunk[1] << 2) | (chunk[2] >> 6));
         dst[i + 3] = enc!(chunk[2]);
         i += 4;
     }
@@ -121,7 +121,7 @@ fn ntop<'out>(src: &'_ [u8], dst: &'out mut [MaybeUninit<u8>]) -> Result<&'out m
         }
         2 => {
             dst[i] = enc!(chunk[0] >> 2);
-            dst[i + 1] = enc!(chunk[0] << 4 | chunk[1] >> 4);
+            dst[i + 1] = enc!((chunk[0] << 4) | (chunk[1] >> 4));
             dst[i + 2] = enc!(chunk[1] << 2);
             dst[i + 3] = MaybeUninit::new(b'=');
             i += 4;

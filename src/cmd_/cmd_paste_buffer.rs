@@ -55,60 +55,61 @@ unsafe fn cmd_paste_buffer_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
             }
         }
 
-        if let Some(pb) = NonNull::new(pb)
-            && !(*wp).flags.intersects(window_pane_flags::PANE_INPUTOFF)
-        {
-            let mut sepstr = args_get(args, b's');
-            if sepstr.is_null() {
-                if args_has(args, b'r') != 0 {
-                    sepstr = c!("\n");
-                } else {
-                    sepstr = c!("\r");
+        if let Some(pb) = NonNull::new(pb) {
+            if !(*wp).flags.intersects(window_pane_flags::PANE_INPUTOFF) {
+                let mut sepstr = args_get(args, b's');
+                if sepstr.is_null() {
+                    if args_has(args, b'r') != 0 {
+                        sepstr = c!("\n");
+                    } else {
+                        sepstr = c!("\r");
+                    }
                 }
-            }
-            let seplen = strlen(sepstr);
+                let seplen = strlen(sepstr);
 
-            if bracket
-                && (*(*wp).screen)
-                    .mode
-                    .intersects(mode_flag::MODE_BRACKETPASTE)
-            {
-                bufferevent_write((*wp).event, c!("\x1b[200~").cast(), 6);
-            }
-
-            let mut bufsize: usize = 0;
-            let mut bufdata = paste_buffer_data_(pb, &mut bufsize);
-            let bufend = bufdata.add(bufsize);
-
-            loop {
-                let line: *mut u8 =
-                    libc::memchr(bufdata as _, b'\n' as i32, bufend.addr() - bufdata.addr()).cast();
-                if line.is_null() {
-                    break;
+                if bracket
+                    && (*(*wp).screen)
+                        .mode
+                        .intersects(mode_flag::MODE_BRACKETPASTE)
+                {
+                    bufferevent_write((*wp).event, c!("\x1b[200~").cast(), 6);
                 }
 
-                bufferevent_write((*wp).event, bufdata.cast(), line.addr() - bufdata.addr());
-                bufferevent_write((*wp).event, sepstr.cast(), seplen);
+                let mut bufsize: usize = 0;
+                let mut bufdata = paste_buffer_data_(pb, &mut bufsize);
+                let bufend = bufdata.add(bufsize);
 
-                bufdata = line.add(1);
-            }
-            if bufdata != bufend {
-                bufferevent_write((*wp).event, bufdata.cast(), bufend.addr() - bufdata.addr());
-            }
+                loop {
+                    let line: *mut u8 =
+                        libc::memchr(bufdata as _, b'\n' as i32, bufend.addr() - bufdata.addr())
+                            .cast();
+                    if line.is_null() {
+                        break;
+                    }
 
-            if bracket
-                && (*(*wp).screen)
-                    .mode
-                    .intersects(mode_flag::MODE_BRACKETPASTE)
-            {
-                bufferevent_write((*wp).event, c!("\x1b[201~").cast(), 6);
+                    bufferevent_write((*wp).event, bufdata.cast(), line.addr() - bufdata.addr());
+                    bufferevent_write((*wp).event, sepstr.cast(), seplen);
+
+                    bufdata = line.add(1);
+                }
+                if bufdata != bufend {
+                    bufferevent_write((*wp).event, bufdata.cast(), bufend.addr() - bufdata.addr());
+                }
+
+                if bracket
+                    && (*(*wp).screen)
+                        .mode
+                        .intersects(mode_flag::MODE_BRACKETPASTE)
+                {
+                    bufferevent_write((*wp).event, c!("\x1b[201~").cast(), 6);
+                }
             }
         }
 
-        if let Some(non_null_pb) = NonNull::new(pb)
-            && args_has_(args, 'd')
-        {
-            paste_free(non_null_pb);
+        if let Some(non_null_pb) = NonNull::new(pb) {
+            if args_has_(args, 'd') {
+                paste_free(non_null_pb);
+            }
         }
 
         cmd_retval::CMD_RETURN_NORMAL

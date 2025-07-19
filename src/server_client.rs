@@ -840,8 +840,8 @@ pub unsafe fn server_client_check_mouse(c: *mut client, event: *mut key_event) -
                 let mut wp = null_mut();
 
                 // Try the pane borders if not zoomed.
-                if !(*(*(*s).curw).window).flags.intersects(window_flag::ZOOMED)
-                    && let Some(wp_) = tailq_foreach::<_, discr_entry>(
+                if !(*(*(*s).curw).window).flags.intersects(window_flag::ZOOMED) {
+                    if let Some(wp_) = tailq_foreach::<_, discr_entry>(
                         &raw mut (*(*(*s).curw).window).panes,
                     )
                     .find(|wp| {
@@ -852,10 +852,10 @@ pub unsafe fn server_client_check_mouse(c: *mut client, event: *mut key_event) -
                             || ((*wp).yoff + (*wp).sy == py
                                 && (*wp).xoff <= 1 + px
                                 && (*wp).xoff + (*wp).sx >= px)
-                    })
-                {
-                    wp = wp_.as_ptr();
-                    where_ = where_::Border;
+                    }) {
+                        wp = wp_.as_ptr();
+                        where_ = where_::Border;
+                    }
                 }
 
                 // Otherwise try inside the pane.
@@ -2672,10 +2672,10 @@ pub unsafe fn server_client_check_modes(c: *mut client) {
             return;
         }
         for wp in tailq_foreach::<_, discr_entry>(&raw mut (*w).panes).map(NonNull::as_ptr) {
-            if let Some(wme) = NonNull::new(tailq_first(&raw mut (*wp).modes))
-                && let Some(update) = (*(*wme.as_ptr()).mode).update
-            {
-                update(wme);
+            if let Some(wme) = NonNull::new(tailq_first(&raw mut (*wp).modes)) {
+                if let Some(update) = (*(*wme.as_ptr()).mode).update {
+                    update(wme);
+                }
             }
         }
     }

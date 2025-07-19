@@ -112,19 +112,28 @@ static mut OPTIONS_TABLE_EXTENDED_KEYS_FORMAT_LIST: [*const u8; 3] =
 static mut OPTIONS_TABLE_ALLOW_PASSTHROUGH_LIST: [*const u8; 4] =
     [c!("off"), c!("on"), c!("all"), null()];
 
+#[rustfmt::skip]
 /// Map of name conversions.
 pub static mut OPTIONS_OTHER_NAMES: [options_name_map; 6] = [
     options_name_map::new(c!("display-panes-color"), c!("display-panes-colour")),
-    options_name_map::new(
-        c!("display-panes-active-color"),
-        c!("display-panes-active-colour"),
-    ),
+    options_name_map::new(c!("display-panes-active-color"), c!("display-panes-active-colour")),
     options_name_map::new(c!("clock-mode-color"), c!("clock-mode-colour")),
     options_name_map::new(c!("cursor-color"), c!("cursor-colour")),
     options_name_map::new(c!("pane-colors"), c!("pane-colours")),
     options_name_map::new(null(), null()),
 ];
 
+#[rustfmt::skip]
+/// Map of name conversions.
+pub static OPTIONS_OTHER_NAMES_STR: [options_name_map_str; 5] = [
+    options_name_map_str::new("display-panes-color", "display-panes-colour"),
+    options_name_map_str::new("display-panes-active-color", "display-panes-active-colour"),
+    options_name_map_str::new("clock-mode-color", "clock-mode-colour"),
+    options_name_map_str::new("cursor-color", "cursor-colour"),
+    options_name_map_str::new("pane-colors", "pane-colours"),
+];
+
+#[allow(clippy::disallowed_methods)]
 /// Status line format.
 pub const OPTIONS_TABLE_STATUS_FORMAT1: *const u8 = concat!(
     "#[align=left range=left #{E:status-left-style}]",
@@ -195,6 +204,7 @@ pub const OPTIONS_TABLE_STATUS_FORMAT1: *const u8 = concat!(
 .as_ptr()
 .cast();
 
+#[allow(clippy::disallowed_methods)]
 pub const OPTIONS_TABLE_STATUS_FORMAT2: *const u8 = concat!(
     "#[align=centre]#{P:#{?pane_active,#[reverse],}",
     "#{pane_index}[#{pane_width}x#{pane_height}]#[default] }\0"

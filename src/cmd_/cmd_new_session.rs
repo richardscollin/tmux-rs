@@ -253,11 +253,11 @@ unsafe fn cmd_new_session_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
             if !detached && !is_control {
                 sx = (*c).tty.sx;
                 sy = (*c).tty.sy;
-                if sy > 0 && options_get_number_(GLOBAL_S_OPTIONS, c"status") != 0 {
+                if sy > 0 && options_get_number_(GLOBAL_S_OPTIONS, "status") != 0 {
                     sy -= 1;
                 }
             } else {
-                tmp = options_get_string_(GLOBAL_S_OPTIONS, c"default-size");
+                tmp = options_get_string_(GLOBAL_S_OPTIONS, "default-size");
                 if sscanf(tmp.cast(), c"%ux%u".as_ptr(), &raw mut sx, &raw mut sy) != 2 {
                     sx = dsx;
                     sy = dsy;

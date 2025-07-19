@@ -316,11 +316,11 @@ pub unsafe fn server_loop() -> i32 {
 
         server_client_loop();
 
-        if options_get_number_(GLOBAL_OPTIONS, c"exit-empty") == 0 && SERVER_EXIT == 0 {
+        if options_get_number_(GLOBAL_OPTIONS, "exit-empty") == 0 && SERVER_EXIT == 0 {
             return 0;
         }
 
-        if options_get_number_(GLOBAL_OPTIONS, c"exit-unattached") == 0
+        if options_get_number_(GLOBAL_OPTIONS, "exit-unattached") == 0
             && !rb_empty(&raw mut SESSIONS)
         {
             return 0;
@@ -600,7 +600,7 @@ pub unsafe fn server_add_message_(args: std::fmt::Arguments) {
 
         tailq_insert_tail(&raw mut MESSAGE_LOG, msg);
 
-        let limit = options_get_number_(GLOBAL_OPTIONS, c"message-limit") as u32;
+        let limit = options_get_number_(GLOBAL_OPTIONS, "message-limit") as u32;
         for msg in tailq_foreach(&raw mut MESSAGE_LOG).map(NonNull::as_ptr) {
             if (*msg).msg_num + limit >= MESSAGE_NEXT {
                 continue;

@@ -107,7 +107,7 @@ pub unsafe fn screen_reinit(s: *mut screen) {
         (*s).mode =
             mode_flag::MODE_CURSOR | mode_flag::MODE_WRAP | ((*s).mode & mode_flag::MODE_CRLF);
 
-        if options_get_number_(GLOBAL_OPTIONS, c"extended-keys") == 2 {
+        if options_get_number_(GLOBAL_OPTIONS, "extended-keys") == 2 {
             (*s).mode = ((*s).mode & !EXTENDED_KEY_MODES) | mode_flag::MODE_KEYS_EXTENDED;
         }
 

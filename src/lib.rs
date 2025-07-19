@@ -2487,6 +2487,17 @@ struct options_table_entry {
 }
 
 #[repr(C)]
+struct options_name_map_str {
+    from: &'static str,
+    to: &'static str,
+}
+impl options_name_map_str {
+    const fn new(from: &'static str, to: &'static str) -> Self {
+        Self { from, to }
+    }
+}
+
+#[repr(C)]
 struct options_name_map {
     from: *const u8,
     to: *const u8,
@@ -2621,7 +2632,7 @@ use crate::options_::{
     options, options_array_assign, options_array_clear, options_array_first, options_array_get,
     options_array_item, options_array_item_index, options_array_item_value, options_array_next,
     options_array_set, options_create, options_default, options_default_to_string, options_empty,
-    options_entry, options_first, options_free, options_from_string, options_get,
+    options_entry, options_first, options_free, options_from_string, options_get, options_get_,
     options_get_number, options_get_number_, options_get_only, options_get_parent,
     options_get_string, options_get_string_, options_is_array, options_is_string, options_match,
     options_match_get, options_name, options_next, options_owner, options_parse, options_parse_get,
@@ -3304,3 +3315,20 @@ macro_rules! impl_ord {
     };
 }
 pub(crate) use impl_ord;
+
+macro_rules! const_unwrap_result {
+    ($e:expr) => {
+        match $e {
+            Ok(value) => value,
+            _ => panic!("const_unwrap_result"),
+        }
+    };
+}
+pub(crate) use const_unwrap_result;
+
+macro_rules! cstring_concat {
+    ($($e:expr),* $(,)?) => {
+        const_unwrap_result!(::core::ffi::CStr::from_bytes_with_nul(concat!($($e),*, "\0").as_bytes()))
+    };
+}
+pub(crate) use cstring_concat;

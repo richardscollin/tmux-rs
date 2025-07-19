@@ -327,7 +327,7 @@ pub unsafe fn session_update_activity(s: *mut session, from: *mut timeval) {
 
         if (*s).attached != 0 {
             let tv = timeval {
-                tv_sec: options_get_number_((*s).options, c"lock-after-time"),
+                tv_sec: options_get_number_((*s).options, "lock-after-time"),
                 tv_usec: 0,
             };
 
@@ -552,7 +552,7 @@ pub unsafe fn session_set_current(s: *mut session, wl: *mut winlink) -> i32 {
         winlink_stack_remove(&raw mut (*s).lastw, wl);
         winlink_stack_push(&raw mut (*s).lastw, (*s).curw);
         (*s).curw = wl;
-        if options_get_number_(GLOBAL_OPTIONS, c"focus-events") != 0 {
+        if options_get_number_(GLOBAL_OPTIONS, "focus-events") != 0 {
             if !old.is_null() {
                 window_update_focus((*old).window);
             }
@@ -767,7 +767,7 @@ pub unsafe fn session_renumber_windows(s: *mut session) {
         rb_init(&raw mut (*s).windows);
 
         // Start renumbering from the base-index if it's set.
-        let mut new_idx = options_get_number_((*s).options, c"base-index") as i32;
+        let mut new_idx = options_get_number_((*s).options, "base-index") as i32;
         let mut new_curw_idx = 0;
 
         // Go through the winlinks and assign new indexes.

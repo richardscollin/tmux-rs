@@ -33,6 +33,8 @@
 //! - Special handling for ESC inside a DCS to allow arbitrary byte sequences to
 //!   be passed to the underlying terminals.
 //!
+use std::ffi::CString;
+
 use crate::*;
 
 use crate::libc::{strchr, strpbrk, strtol};
@@ -1252,10 +1254,8 @@ unsafe fn input_reply_(ictx: *mut input_ctx, args: std::fmt::Arguments) {
             return;
         }
 
-        let mut reply = args.to_string();
-        reply.push('\0');
-
-        log_debug!("{}: {}", "input_reply", _s(reply.as_ptr().cast::<u8>()));
+        let reply = CString::new(args.to_string()).unwrap();
+        log_debug!("input_reply: {}", _s(reply.as_ptr()));
         bufferevent_write(bev, reply.as_ptr().cast(), strlen(reply.as_ptr().cast()));
     }
 }
@@ -1590,7 +1590,7 @@ unsafe fn input_csi_dispatch(ictx: *mut input_ctx) -> i32 {
 
                     // Set the extended key reporting mode as per the client
                     // request, unless "extended-keys" is set to "off".
-                    let ek = options_get_number_(GLOBAL_OPTIONS, c"extended-keys");
+                    let ek = options_get_number_(GLOBAL_OPTIONS, "extended-keys");
                     if ek != 0 {
                         screen_write_mode_clear(sctx, EXTENDED_KEY_MODES);
                         if m == 2 {
@@ -1610,7 +1610,7 @@ unsafe fn input_csi_dispatch(ictx: *mut input_ctx) -> i32 {
                         sctx,
                         mode_flag::MODE_KEYS_EXTENDED | mode_flag::MODE_KEYS_EXTENDED_2,
                     );
-                    if options_get_number_(GLOBAL_OPTIONS, c"extended-keys") == 2 {
+                    if options_get_number_(GLOBAL_OPTIONS, "extended-keys") == 2 {
                         screen_write_mode_set(sctx, mode_flag::MODE_KEYS_EXTENDED);
                     }
                 }
@@ -2359,7 +2359,7 @@ unsafe fn input_dcs_dispatch(ictx: *mut input_ctx) -> i32 {
             }
         }
 
-        let allow_passthrough = options_get_number_((*wp).options, c"allow-passthrough");
+        let allow_passthrough = options_get_number_((*wp).options, "allow-passthrough");
         if allow_passthrough == 0 {
             return 0;
         }
@@ -2431,7 +2431,7 @@ unsafe fn input_exit_osc(ictx: *mut input_ctx) {
         match option {
             0 | 2 => {
                 if !wp.is_null()
-                    && options_get_number_((*wp).options, c"allow-set-title") != 0
+                    && options_get_number_((*wp).options, "allow-set-title") != 0
                     && screen_set_title((*sctx).s, p.cast()) != 0
                 {
                     notify_pane(c"pane-title-changed", wp);
@@ -2516,7 +2516,7 @@ unsafe fn input_exit_rename(ictx: *mut input_ctx) {
         if (*ictx).flags.intersects(input_flags::INPUT_DISCARD) {
             return;
         }
-        if options_get_number_((*(*ictx).wp).options, c"allow-rename") == 0 {
+        if options_get_number_((*(*ictx).wp).options, "allow-rename") == 0 {
             return;
         }
         log_debug!(
@@ -2534,7 +2534,7 @@ unsafe fn input_exit_rename(ictx: *mut input_ctx) {
             if let Some(o) = NonNull::new(options_get_only((*w).options, c!("automatic-rename"))) {
                 options_remove_or_default(o.as_ptr(), -1, null_mut());
             }
-            if options_get_number_((*w).options, c"automatic-rename") == 0 {
+            if options_get_number_((*w).options, "automatic-rename") == 0 {
                 window_set_name(w, c!(""));
             }
         } else {
@@ -2994,7 +2994,7 @@ unsafe fn input_osc_52(ictx: *mut input_ctx, p: *const u8) {
         if wp.is_null() {
             return;
         }
-        let state: i32 = options_get_number_(GLOBAL_OPTIONS, c"set-clipboard") as i32;
+        let state: i32 = options_get_number_(GLOBAL_OPTIONS, "set-clipboard") as i32;
         if state != 2 {
             return;
         }

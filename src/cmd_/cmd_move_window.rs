@@ -112,7 +112,7 @@ unsafe fn cmd_move_window_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
          * session already has the correct winlink id to us, either
          * automatically or specified by -s.
          */
-        if !sflag && options_get_number_((*src).options, c"renumber-windows") != 0 {
+        if !sflag && options_get_number_((*src).options, "renumber-windows") != 0 {
             session_renumber_windows(src);
         }
 

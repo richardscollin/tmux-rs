@@ -282,7 +282,7 @@ pub unsafe fn input_key_extended(bev: *mut bufferevent, mut key: key_code) -> i3
             key &= KEYC_MASK_KEY;
         }
 
-        if options_get_number_(GLOBAL_OPTIONS, c"extended-keys-format") == 1 {
+        if options_get_number_(GLOBAL_OPTIONS, "extended-keys-format") == 1 {
             xsnprintf_!(
                 tmp.as_mut_ptr().cast(),
                 sizeof_tmp,
@@ -430,7 +430,7 @@ pub unsafe fn input_key(s: *mut screen, bev: *mut bufferevent, mut key: key_code
 
         /* Is this backspace? */
         if (key & KEYC_MASK_KEY) == keyc::KEYC_BSPACE as u64 {
-            let mut newkey = options_get_number_(GLOBAL_OPTIONS, c"backspace") as key_code;
+            let mut newkey = options_get_number_(GLOBAL_OPTIONS, "backspace") as key_code;
             if newkey >= 0x7f {
                 newkey = '\x7f' as u64;
             }

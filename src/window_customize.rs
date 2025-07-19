@@ -16,14 +16,14 @@ use super::*;
 
 use crate::compat::{strlcat, tree::rb_empty};
 
-static WINDOW_CUSTOMIZE_DEFAULT_FORMAT: &str = concat!(
-    "#{?is_option,", //
+static WINDOW_CUSTOMIZE_DEFAULT_FORMAT: &CStr = cstring_concat!(
+    "#{?is_option,",
     "#{?option_is_global,,#[reverse](#{option_scope})#[default] }",
     "#[ignore]",
     "#{option_value}#{?option_unit, #{option_unit},}",
     ",",
     "#{key}",
-    "}\0"
+    "}"
 );
 
 static WINDOW_CUSTOMIZE_MENU_ITEMS: [menu_item; 8] = [
@@ -39,7 +39,7 @@ static WINDOW_CUSTOMIZE_MENU_ITEMS: [menu_item; 8] = [
 
 pub static WINDOW_CUSTOMIZE_MODE: window_mode = window_mode {
     name: SyncCharPtr::new(c"options-mode"),
-    default_format: SyncCharPtr::from_ptr(WINDOW_CUSTOMIZE_DEFAULT_FORMAT.as_ptr().cast()),
+    default_format: SyncCharPtr::new(WINDOW_CUSTOMIZE_DEFAULT_FORMAT),
 
     init: window_customize_init,
     free: window_customize_free,
@@ -1196,7 +1196,7 @@ pub unsafe fn window_customize_init(
         memcpy__(&raw mut (*data).fs, fs);
 
         if args.is_null() || !args_has_(args, 'F') {
-            (*data).format = xstrdup(WINDOW_CUSTOMIZE_DEFAULT_FORMAT.as_ptr().cast()).as_ptr();
+            (*data).format = xstrdup_(WINDOW_CUSTOMIZE_DEFAULT_FORMAT).as_ptr();
         } else {
             (*data).format = xstrdup(args_get_(args, 'F')).as_ptr();
         }

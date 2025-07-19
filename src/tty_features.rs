@@ -360,11 +360,11 @@ static TTY_FEATURES: [&tty_feature; 20] = [
     &TTY_FEATURE_USSTYLE,
 ];
 
-pub unsafe fn tty_add_features(feat: *mut i32, s: *const u8, separators: *const u8) {
+pub unsafe fn tty_add_features(feat: *mut i32, s: &str, separators: *const u8) {
     unsafe {
-        log_debug!("adding terminal features {}", _s(s));
+        log_debug!("adding terminal features {}", s);
 
-        let copy = xstrdup(s).as_ptr();
+        let copy = xstrdup__(s);
         let mut loop_ = copy;
         let mut next;
 
@@ -461,14 +461,14 @@ pub unsafe fn tty_default_features(feat: *mut i32, name: *const u8, version: u32
     // TODO note version isn't init in the C code
     #[rustfmt::skip]
     static TABLE: &[entry] = &[
-        entry { name: c"mintty", features: concat!( TTY_FEATURES_BASE_MODERN_XTERM!(), ",ccolour,cstyle,extkeys,margins,overline,usstyle\0"), version: 0, },
-        entry { name: c"tmux", features: concat!( TTY_FEATURES_BASE_MODERN_XTERM!(), ",ccolour,cstyle,focus,overline,usstyle,hyperlinks\0"), version: 0, },
-        entry { name: c"rxvt-unicode", features: "256,bpaste,ccolour,cstyle,mouse,title,ignorefkeys\0", version: 0, },
-        entry { name: c"iTerm2", features: concat!( TTY_FEATURES_BASE_MODERN_XTERM!(), ",cstyle,extkeys,margins,usstyle,sync,osc7,hyperlinks\0"), version: 0, },
+        entry { name: c"mintty", features: concat!( TTY_FEATURES_BASE_MODERN_XTERM!(), ",ccolour,cstyle,extkeys,margins,overline,usstyle"), version: 0, },
+        entry { name: c"tmux", features: concat!( TTY_FEATURES_BASE_MODERN_XTERM!(), ",ccolour,cstyle,focus,overline,usstyle,hyperlinks"), version: 0, },
+        entry { name: c"rxvt-unicode", features: "256,bpaste,ccolour,cstyle,mouse,title,ignorefkeys", version: 0, },
+        entry { name: c"iTerm2", features: concat!( TTY_FEATURES_BASE_MODERN_XTERM!(), ",cstyle,extkeys,margins,usstyle,sync,osc7,hyperlinks"), version: 0, },
         // xterm also supports DECSLRM and DECFRA, but they can be
         // disabled so not set it here - they will be added if
         // secondary DA shows VT420.
-        entry { name: c"XTerm", features: concat!(TTY_FEATURES_BASE_MODERN_XTERM!(), ",ccolour,cstyle,extkeys,focus\0"), version: 0, },
+        entry { name: c"XTerm", features: concat!(TTY_FEATURES_BASE_MODERN_XTERM!(), ",ccolour,cstyle,extkeys,focus"), version: 0, },
     ];
 
     unsafe {
@@ -479,7 +479,7 @@ pub unsafe fn tty_default_features(feat: *mut i32, name: *const u8, version: u32
             if version != 0 && version < e.version {
                 continue;
             }
-            tty_add_features(feat, e.features.as_ptr().cast(), c!(","));
+            tty_add_features(feat, e.features, c!(","));
         }
     }
 }

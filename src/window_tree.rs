@@ -16,8 +16,8 @@ use crate::*;
 use crate::compat::tree::rb_foreach;
 use crate::{cmd_::cmd_queue::cmdq_get_callback1, options_::options_get_number_};
 
-const WINDOW_TREE_DEFAULT_COMMAND: &CStr = c"switch-client -Zt '%%'";
-const WINDOW_TREE_DEFAULT_FORMAT: &str = concat!(
+const WINDOW_TREE_DEFAULT_COMMAND: &str = "switch-client -Zt '%%'";
+const WINDOW_TREE_DEFAULT_FORMAT: &CStr = cstring_concat!(
     "#{?pane_format,",
     "#{?pane_marked,#[reverse],}",
     "#{pane_current_command}#{?pane_active,*,}#{?pane_marked,M,}",
@@ -37,10 +37,10 @@ const WINDOW_TREE_DEFAULT_FORMAT: &str = concat!(
     "}",
     "#{?session_attached, (attached),}",
     "}",
-    "}\0"
+    "}"
 );
 
-const WINDOW_TREE_DEFAULT_KEY_FORMAT: &str = concat!(
+const WINDOW_TREE_DEFAULT_KEY_FORMAT: &CStr = cstring_concat!(
     "#{?#{e|<:#{line},10},",
     "#{line}",
     ",",
@@ -49,7 +49,7 @@ const WINDOW_TREE_DEFAULT_KEY_FORMAT: &str = concat!(
     ",",
     "",
     "}",
-    "}\0"
+    "}"
 );
 
 static WINDOW_TREE_MENU_ITEMS: [menu_item; 12] = [
@@ -685,8 +685,8 @@ unsafe fn window_tree_draw_session(
         let total = winlink_count(&raw mut (*s).windows);
 
         memcpy__(&raw mut gc, &raw const GRID_DEFAULT_CELL);
-        let colour = options_get_number_(oo, c"display-panes-colour");
-        let active_colour = options_get_number_(oo, c"display-panes-active-colour");
+        let colour = options_get_number_(oo, "display-panes-colour");
+        let active_colour = options_get_number_(oo, "display-panes-active-colour");
 
         if sx / total < 24 {
             visible = sx / 24;
@@ -841,8 +841,8 @@ unsafe fn window_tree_draw_window(
         let total = window_count_panes(w);
 
         memcpy__(&raw mut gc, &raw const GRID_DEFAULT_CELL);
-        let colour: i32 = options_get_number_(oo, c"display-panes-colour") as i32;
-        let active_colour: i32 = options_get_number_(oo, c"display-panes-active-colour") as i32;
+        let colour: i32 = options_get_number_(oo, "display-panes-colour") as i32;
+        let active_colour: i32 = options_get_number_(oo, "display-panes-active-colour") as i32;
 
         let visible = if sx / total < 24 {
             if sx / 24 != 0 { sx / 24 } else { 1 }
@@ -1127,17 +1127,17 @@ unsafe fn window_tree_init(
         memcpy__(&raw mut (*data).fs, fs);
 
         if args.is_null() || !args_has_(args, 'F') {
-            (*data).format = xstrdup(WINDOW_TREE_DEFAULT_FORMAT.as_ptr().cast()).as_ptr();
+            (*data).format = xstrdup_(WINDOW_TREE_DEFAULT_FORMAT).as_ptr();
         } else {
             (*data).format = xstrdup(args_get_(args, 'F')).as_ptr();
         }
         if args.is_null() || !args_has_(args, 'K') {
-            (*data).key_format = xstrdup(WINDOW_TREE_DEFAULT_KEY_FORMAT.as_ptr().cast()).as_ptr();
+            (*data).key_format = xstrdup_(WINDOW_TREE_DEFAULT_KEY_FORMAT).as_ptr();
         } else {
             (*data).key_format = xstrdup(args_get_(args, 'K')).as_ptr();
         }
         if args.is_null() || args_count(args) == 0 {
-            (*data).command = xstrdup(WINDOW_TREE_DEFAULT_COMMAND.as_ptr().cast()).as_ptr();
+            (*data).command = xstrdup__(WINDOW_TREE_DEFAULT_COMMAND);
         } else {
             (*data).command = xstrdup(args_string(args, 0)).as_ptr();
         }

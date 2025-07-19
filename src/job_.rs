@@ -120,7 +120,7 @@ pub unsafe fn job_run(
                 } else {
                     oo = GLOBAL_S_OPTIONS;
                 }
-                shell = options_get_string_(oo, c"default-shell");
+                shell = options_get_string_(oo, "default-shell");
                 if !checkshell(shell) {
                     shell = _PATH_BSHELL;
                 }

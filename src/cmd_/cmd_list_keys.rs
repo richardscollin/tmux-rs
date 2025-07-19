@@ -126,7 +126,7 @@ unsafe fn cmd_list_keys_print_notes(
 
 unsafe fn cmd_list_keys_get_prefix(args: *mut args, prefix: *mut key_code) -> NonNull<u8> {
     unsafe {
-        *prefix = options_get_number_(GLOBAL_S_OPTIONS, c"prefix") as _;
+        *prefix = options_get_number_(GLOBAL_S_OPTIONS, "prefix") as _;
         if !args_has_(args, 'P') {
             if *prefix != KEYC_NONE {
                 let mut s = format_nul!("{} ", _s(key_string_lookup_key(*prefix, 0)));
@@ -353,10 +353,10 @@ unsafe fn cmd_list_keys_commands(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
 
         let mut template = args_get_(args, 'F');
         if template.is_null() {
-            template = concat!(
+            template = cstring_concat!(
                 "#{command_list_name}",
                 "#{?command_list_alias, (#{command_list_alias}),} ",
-                "#{command_list_usage}\0"
+                "#{command_list_usage}"
             )
             .as_ptr()
             .cast();

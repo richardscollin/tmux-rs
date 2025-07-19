@@ -8,3 +8,7 @@ disallowed-types = [
   { path = "libc::c_char", replacement = "u8", reason = "c_char may be different types on different platforms" },
   { path = "std::ffi::c_char", replacement = "u8", reason = "c_char may be different types on different platforms" },
 ]
+
+disallowed-methods = [
+    { path = "str::as_ptr", reason = "likely an error from refactoring" },
+]

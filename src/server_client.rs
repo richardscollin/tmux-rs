@@ -236,7 +236,7 @@ pub unsafe fn server_client_get_key_table(c: *mut client) -> *const u8 {
             return c!("root");
         }
 
-        let name = options_get_string_((*s).options, c"key-table");
+        let name = options_get_string_((*s).options, "key-table");
         if *name == b'\0' {
             return c!("root");
         }
@@ -567,9 +567,9 @@ pub unsafe fn server_client_exec(c: *mut client, cmd: *const u8) {
         let cmdsize = strlen(cmd) + 1;
 
         let mut shell = if !s.is_null() {
-            options_get_string_((*s).options, c"default-shell")
+            options_get_string_((*s).options, "default-shell")
         } else {
-            options_get_string_(GLOBAL_S_OPTIONS, c"default-shell")
+            options_get_string_(GLOBAL_S_OPTIONS, "default-shell")
         };
         if !checkshell(shell) {
             shell = _PATH_BSHELL;
@@ -1746,7 +1746,7 @@ pub unsafe fn server_client_is_bracket_pasting(c: *mut client, key: key_code) ->
 pub unsafe fn server_client_assume_paste(s: *mut session) -> i32 {
     unsafe {
         let mut tv: timeval = zeroed();
-        let t: i32 = options_get_number_((*s).options, c"assume-paste-time") as i32;
+        let t: i32 = options_get_number_((*s).options, "assume-paste-time") as i32;
 
         if t == 0 {
             return 0;
@@ -1789,7 +1789,7 @@ pub unsafe fn server_client_update_latest(c: *mut client) {
         }
         (*w).latest = c.cast();
 
-        if window_size_option::try_from(options_get_number_((*w).options, c"window-size") as i32)
+        if window_size_option::try_from(options_get_number_((*w).options, "window-size") as i32)
             == Ok(window_size_option::WINDOW_SIZE_LATEST)
         {
             recalculate_size(w, 0);
@@ -1870,7 +1870,7 @@ pub unsafe fn server_client_key_callback(item: *mut cmdq_item, data: *mut c_void
                 wp = fs.wp;
 
                 /* Forward mouse keys if disabled. */
-                if KEYC_IS_MOUSE(key) && options_get_number_((*s).options, c"mouse") == 0 {
+                if KEYC_IS_MOUSE(key) && options_get_number_((*s).options, "mouse") == 0 {
                     break 'forward_key;
                 }
 
@@ -1910,8 +1910,8 @@ pub unsafe fn server_client_key_callback(item: *mut cmdq_item, data: *mut c_void
                      * The prefix always takes precedence and forces a switch to the prefix
                      * table, unless we are already there.
                      */
-                    prefix = options_get_number_((*s).options, c"prefix") as key_code;
-                    prefix2 = options_get_number_((*s).options, c"prefix2") as key_code;
+                    prefix = options_get_number_((*s).options, "prefix") as key_code;
+                    prefix2 = options_get_number_((*s).options, "prefix2") as key_code;
                     key0 = key & (KEYC_MASK_KEY | KEYC_MASK_MODIFIERS);
                     if (key0 == (prefix & (KEYC_MASK_KEY | KEYC_MASK_MODIFIERS))
                         || key0 == (prefix2 & (KEYC_MASK_KEY | KEYC_MASK_MODIFIERS)))
@@ -1941,8 +1941,7 @@ pub unsafe fn server_client_key_callback(item: *mut cmdq_item, data: *mut c_void
                          * If prefix-timeout is enabled and we're in the prefix table, see if
                          * the timeout has been exceeded. Revert to the root table if so.
                          */
-                        prefix_delay =
-                            options_get_number_(GLOBAL_OPTIONS, c"prefix-timeout") as u64;
+                        prefix_delay = options_get_number_(GLOBAL_OPTIONS, "prefix-timeout") as u64;
                         if prefix_delay > 0
                             && streq_((*table).name, "prefix")
                             && server_client_key_table_activity_diff(c) > prefix_delay
@@ -1998,7 +1997,7 @@ pub unsafe fn server_client_key_callback(item: *mut cmdq_item, data: *mut c_void
                              * If this is a repeating key, start the timer. Otherwise reset
                              * the client back to the root table.
                              */
-                            xtimeout = options_get_number_((*s).options, c"repeat-time") as i32;
+                            xtimeout = options_get_number_((*s).options, "repeat-time") as i32;
                             if xtimeout != 0 && (*bd).flags & KEY_BINDING_REPEAT != 0 {
                                 (*c).flags |= client_flag::REPEAT;
 
@@ -2467,7 +2466,7 @@ pub unsafe fn server_client_reset_state(c: *mut client) {
 
         // Move cursor to pane cursor and offset.
         if !(*c).prompt_string.is_null() {
-            n = options_get_number_((*(*c).session).options, c"status-position") as i32;
+            n = options_get_number_((*(*c).session).options, "status-position") as i32;
             if n == 0 {
                 cy = 0;
             } else {
@@ -2508,7 +2507,7 @@ pub unsafe fn server_client_reset_state(c: *mut client) {
          * Set mouse mode if requested. To support dragging, always use button
          * mode.
          */
-        if options_get_number_(oo, c"mouse") != 0 {
+        if options_get_number_(oo, "mouse") != 0 {
             if (*c).overlay_draw.is_none() {
                 mode &= !ALL_MOUSE_MODES;
                 for loop_ in
@@ -2806,7 +2805,7 @@ pub unsafe fn server_client_check_redraw(c: *mut client) {
         }
 
         if (*c).flags.intersects(CLIENT_ALLREDRAWFLAGS) {
-            if options_get_number_((*s).options, c"set-titles") != 0 {
+            if options_get_number_((*s).options, "set-titles") != 0 {
                 server_client_set_title(c);
                 server_client_set_path(c);
             }
@@ -2839,7 +2838,7 @@ pub unsafe fn server_client_set_title(c: *mut client) {
     unsafe {
         let s = (*c).session;
 
-        let template = options_get_string_((*s).options, c"set-titles-string");
+        let template = options_get_string_((*s).options, "set-titles-string");
 
         let ft = format_create(c, null_mut(), FORMAT_NONE, format_flags::empty());
         format_defaults(ft, c, None, None, None);
@@ -3245,7 +3244,7 @@ pub unsafe fn server_client_dispatch_identify(c: *mut client, imsg: *mut imsg) {
 /// Handle shell message.
 pub unsafe fn server_client_dispatch_shell(c: *mut client) {
     unsafe {
-        let mut shell = options_get_string_(GLOBAL_S_OPTIONS, c"default-shell");
+        let mut shell = options_get_string_(GLOBAL_S_OPTIONS, "default-shell");
         if !checkshell(shell) {
             shell = _PATH_BSHELL;
         }

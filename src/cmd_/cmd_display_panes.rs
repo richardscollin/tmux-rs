@@ -116,8 +116,8 @@ unsafe fn cmd_display_panes_draw_pane(ctx: *mut screen_redraw_ctx, wp: *mut wind
                 return;
             }
 
-            let colour: i32 = options_get_number_(oo, c"display-panes-colour") as _;
-            let active_colour: i32 = options_get_number_(oo, c"display-panes-active-colour") as _;
+            let colour: i32 = options_get_number_(oo, "display-panes-colour") as _;
+            let active_colour: i32 = options_get_number_(oo, "display-panes-active-colour") as _;
 
             let mut fgc = GRID_DEFAULT_CELL;
             let mut bgc = GRID_DEFAULT_CELL;
@@ -332,7 +332,7 @@ unsafe fn cmd_display_panes_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
                 return cmd_retval::CMD_RETURN_ERROR;
             }
         } else {
-            delay = options_get_number_((*s).options, c"display-panes-time") as u32;
+            delay = options_get_number_((*s).options, "display-panes-time") as u32;
         }
 
         let cdata = xcalloc_::<cmd_display_panes_data>(1).as_ptr();

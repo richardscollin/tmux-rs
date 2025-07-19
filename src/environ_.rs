@@ -250,7 +250,7 @@ pub unsafe fn environ_for_session(s: *mut session, no_term: c_int) -> *mut envir
         }
 
         if no_term == 0 {
-            let value = options_get_string_(GLOBAL_OPTIONS, c"default-terminal");
+            let value = options_get_string_(GLOBAL_OPTIONS, "default-terminal");
             environ_set!(env, c!("TERM"), 0, "{}", _s(value));
             environ_set!(env, c!("TERM_PROGRAM"), 0, "{}", "tmux");
             environ_set!(env, c!("TERM_PROGRAM_VERSION"), 0, "{}", getversion());

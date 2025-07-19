@@ -218,7 +218,7 @@ pub unsafe fn layout_set_main_h(w: *mut window) {
         let sy = (*w).sy - 1;
 
         /* Get the main pane height. */
-        let mut s = options_get_string_((*w).options, c"main-pane-height");
+        let mut s = options_get_string_((*w).options, "main-pane-height");
         let mut mainh = args_string_percentage(s, 0, sy as i64, sy as i64, &raw mut cause) as u32;
         if !cause.is_null() {
             mainh = 24;
@@ -235,7 +235,7 @@ pub unsafe fn layout_set_main_h(w: *mut window) {
             }
             otherh = PANE_MINIMUM;
         } else {
-            s = options_get_string_((*w).options, c"other-pane-height");
+            s = options_get_string_((*w).options, "other-pane-height");
             otherh = args_string_percentage(s, 0, sy as i64, sy as i64, &raw mut cause) as u32;
             if !cause.is_null() || otherh == 0 {
                 otherh = sy - mainh;
@@ -321,7 +321,7 @@ pub unsafe fn layout_set_main_h_mirrored(w: *mut window) {
         let sy = (*w).sy - 1;
 
         // Get the main pane height.
-        let s = options_get_string_((*w).options, c"main-pane-height");
+        let s = options_get_string_((*w).options, "main-pane-height");
         let mut mainh = args_string_percentage(s, 0, sy as i64, sy as i64, &raw mut cause) as u32;
         if !cause.is_null() {
             mainh = 24;
@@ -337,7 +337,7 @@ pub unsafe fn layout_set_main_h_mirrored(w: *mut window) {
             }
             otherh = PANE_MINIMUM;
         } else {
-            let s = options_get_string_((*w).options, c"other-pane-height");
+            let s = options_get_string_((*w).options, "other-pane-height");
             otherh = args_string_percentage(s, 0, sy as i64, sy as i64, &raw mut cause) as u32;
             if !cause.is_null() || otherh == 0 {
                 otherh = sy - mainh;
@@ -422,7 +422,7 @@ pub unsafe fn layout_set_main_v(w: *mut window) {
         let sx = (*w).sx - 1;
 
         // Get the main pane width.
-        let s = options_get_string_((*w).options, c"main-pane-width");
+        let s = options_get_string_((*w).options, "main-pane-width");
         let mut mainw: u32 =
             args_string_percentage(s, 0, sx as i64, sx as i64, &raw mut cause) as u32;
         if cause.is_null() {
@@ -440,7 +440,7 @@ pub unsafe fn layout_set_main_v(w: *mut window) {
             }
             otherw = PANE_MINIMUM;
         } else {
-            let s = options_get_string_((*w).options, c"other-pane-width");
+            let s = options_get_string_((*w).options, "other-pane-width");
             otherw = args_string_percentage(s, 0, sx as i64, sx as i64, &raw mut cause) as u32;
             if !cause.is_null() || otherw == 0 {
                 otherw = sx - mainw;
@@ -525,7 +525,7 @@ pub unsafe fn layout_set_main_v_mirrored(w: *mut window) {
         let sx = (*w).sx - 1;
 
         // Get the main pane width.
-        let s = options_get_string_((*w).options, c"main-pane-width");
+        let s = options_get_string_((*w).options, "main-pane-width");
         let mut mainw = args_string_percentage(s, 0, sx as i64, sx as i64, &raw mut cause) as u32;
         if !cause.is_null() {
             mainw = 80;
@@ -542,7 +542,7 @@ pub unsafe fn layout_set_main_v_mirrored(w: *mut window) {
             }
             otherw = PANE_MINIMUM;
         } else {
-            let s = options_get_string_((*w).options, c"other-pane-width");
+            let s = options_get_string_((*w).options, "other-pane-width");
             otherw = args_string_percentage(s, 0, sx as i64, sx as i64, &raw mut cause) as u32;
             if !cause.is_null() || otherw == 0 {
                 otherw = sx - mainw;

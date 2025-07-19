@@ -83,34 +83,34 @@ fn cmd_list_panes_window(
         if template.is_null() {
             match type_ {
                 0 => {
-                    template = concat!(
+                    template = cstring_concat!(
                         "#{pane_index}: ",
                         "[#{pane_width}x#{pane_height}] [history ",
                         "#{history_size}/#{history_limit}, ",
                         "#{history_bytes} bytes] #{pane_id}",
-                        "#{?pane_active, (active),}#{?pane_dead, (dead),}\0"
+                        "#{?pane_active, (active),}#{?pane_dead, (dead),}"
                     )
                     .as_ptr()
                     .cast();
                 }
                 1 => {
-                    template = concat!(
+                    template = cstring_concat!(
                         "#{window_index}.#{pane_index}: ",
                         "[#{pane_width}x#{pane_height}] [history ",
                         "#{history_size}/#{history_limit}, ",
                         "#{history_bytes} bytes] #{pane_id}",
-                        "#{?pane_active, (active),}#{?pane_dead, (dead),}\0"
+                        "#{?pane_active, (active),}#{?pane_dead, (dead),}"
                     )
                     .as_ptr()
                     .cast();
                 }
                 2 => {
-                    template = concat!(
+                    template = cstring_concat!(
                         "#{session_name}:#{window_index}.",
                         "#{pane_index}: [#{pane_width}x#{pane_height}] ",
                         "[history #{history_size}/#{history_limit}, ",
                         "#{history_bytes} bytes] #{pane_id}",
-                        "#{?pane_active, (active),}#{?pane_dead, (dead),}\0"
+                        "#{?pane_active, (active),}#{?pane_dead, (dead),}"
                     )
                     .as_ptr()
                     .cast();

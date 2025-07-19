@@ -1163,7 +1163,7 @@ pub unsafe fn format_cb_pane_at_top(ft: *mut format_tree) -> *mut c_void {
         }
 
         let w = (*wp).window;
-        let status = options_get_number_((*w).options, c"pane-border-status");
+        let status = options_get_number_((*w).options, "pane-border-status");
         let flag = if status == pane_status::PANE_STATUS_TOP as i64 {
             (*wp).yoff == 1
         } else {
@@ -1183,7 +1183,7 @@ pub unsafe fn format_cb_pane_at_bottom(ft: *mut format_tree) -> *mut c_void {
         }
 
         let w = (*wp).window;
-        let status = options_get_number_((*w).options, c"pane-border-status");
+        let status = options_get_number_((*w).options, "pane-border-status");
         let flag = if status == pane_status::PANE_STATUS_BOTTOM as i64 {
             (*wp).yoff + (*wp).sy == (*w).sy - 1
         } else {
@@ -2260,7 +2260,7 @@ pub unsafe fn format_cb_pane_search_string(ft: *mut format_tree) -> *mut c_void 
 pub unsafe fn format_cb_pane_synchronized(ft: *mut format_tree) -> *mut c_void {
     unsafe {
         if !(*ft).wp.is_null() {
-            if options_get_number_((*(*ft).wp).options, c"synchronize-panes") != 0 {
+            if options_get_number_((*(*ft).wp).options, "synchronize-panes") != 0 {
                 return xstrdup(c!("1")).as_ptr().cast();
             }
             return xstrdup(c!("0")).as_ptr().cast();
@@ -5410,7 +5410,7 @@ pub unsafe fn format_grid_word(gd: *mut grid, mut x: u32, mut y: u32) -> *mut u8
         let mut found = false;
         let mut s: *mut u8 = null_mut();
 
-        let ws: *const u8 = options_get_string_(GLOBAL_S_OPTIONS, c"word-separators");
+        let ws: *const u8 = options_get_string_(GLOBAL_S_OPTIONS, "word-separators");
 
         loop {
             grid_get_cell(gd, x, y, gc);

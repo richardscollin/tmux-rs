@@ -354,7 +354,7 @@ pub unsafe fn screen_write_reset(ctx: *mut screen_write_ctx) {
 
         (*s).mode = mode_flag::MODE_CURSOR | mode_flag::MODE_WRAP;
 
-        if options_get_number_(GLOBAL_OPTIONS, c"extended-keys") == 2 {
+        if options_get_number_(GLOBAL_OPTIONS, "extended-keys") == 2 {
             (*s).mode = ((*s).mode & !EXTENDED_KEY_MODES) | mode_flag::MODE_KEYS_EXTENDED;
         }
 
@@ -1756,7 +1756,7 @@ pub unsafe fn screen_write_clearendofscreen(ctx: *mut screen_write_ctx, bg: u32)
             && (*s).cy == 0
             && ((*gd).flags & GRID_HISTORY != 0)
             && !(*ctx).wp.is_null()
-            && options_get_number_((*(*ctx).wp).options, c"scroll-on-clear") != 0
+            && options_get_number_((*(*ctx).wp).options, "scroll-on-clear") != 0
         {
             grid_view_clear_history(gd, bg);
         } else {
@@ -1825,7 +1825,7 @@ pub unsafe fn screen_write_clearscreen(ctx: *mut screen_write_ctx, bg: u32) {
         /* Scroll into history if it is enabled. */
         if ((*(*s).grid).flags & GRID_HISTORY != 0)
             && !(*ctx).wp.is_null()
-            && options_get_number_((*(*ctx).wp).options, c"scroll-on-clear") != 0
+            && options_get_number_((*(*ctx).wp).options, "scroll-on-clear") != 0
         {
             grid_view_clear_history((*s).grid, bg);
         } else {
@@ -2621,7 +2621,7 @@ pub unsafe fn screen_write_alternateon(
         let mut ttyctx: tty_ctx = zeroed();
         let wp = (*ctx).wp;
 
-        if !wp.is_null() && options_get_number_((*wp).options, c"alternate-screen") == 0 {
+        if !wp.is_null() && options_get_number_((*wp).options, "alternate-screen") == 0 {
             return;
         }
 
@@ -2645,7 +2645,7 @@ pub unsafe fn screen_write_alternateoff(
         let mut ttyctx: tty_ctx = zeroed();
         let wp = (*ctx).wp;
 
-        if !wp.is_null() && !options_get_number_((*wp).options, c"alternate-screen") != 0 {
+        if !wp.is_null() && !options_get_number_((*wp).options, "alternate-screen") != 0 {
             return;
         }
 

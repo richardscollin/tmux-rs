@@ -167,7 +167,7 @@ pub unsafe fn spawn_window(sc: *mut spawn_context, cause: *mut *mut u8) -> *mut 
         /* Then create a window if needed. */
         if !(*sc).flags & SPAWN_RESPAWN != 0 {
             if idx == -1 {
-                idx = -1 - options_get_number_((*s).options, c"base-index") as i32;
+                idx = -1 - options_get_number_((*s).options, "base-index") as i32;
             }
             (*sc).wl = winlink_add(&raw mut (*s).windows, idx);
             if (*sc).wl.is_null() {
@@ -289,7 +289,7 @@ pub unsafe fn spawn_pane(sc: *mut spawn_context, cause: *mut *mut u8) -> *mut wi
              * If we are respawning then get rid of the old process. Otherwise
              * either create a new cell or assign to the one we are given.
              */
-            hlimit = options_get_number_((*s).options, c"history-limit") as u32;
+            hlimit = options_get_number_((*s).options, "history-limit") as u32;
             if (*sc).flags & SPAWN_RESPAWN != 0 {
                 if (*(*sc).wp0).fd != -1 && (!(*sc).flags & SPAWN_KILL != 0) {
                     window_pane_index((*sc).wp0, &raw mut idx);
@@ -331,7 +331,7 @@ pub unsafe fn spawn_pane(sc: *mut spawn_context, cause: *mut *mut u8) -> *mut wi
              * directory.
              */
             if (*sc).argc == 0 && (!(*sc).flags & SPAWN_RESPAWN != 0) {
-                cmd = options_get_string_((*s).options, c"default-command");
+                cmd = options_get_string_((*s).options, "default-command");
                 if !cmd.is_null() && *cmd != b'\0' {
                     argc = 1;
                     argv = &raw mut cmd as *mut *mut u8;
@@ -383,7 +383,7 @@ pub unsafe fn spawn_pane(sc: *mut spawn_context, cause: *mut *mut u8) -> *mut wi
 
             /* Then the shell. If respawning, use the old one. */
             if !(*sc).flags & SPAWN_RESPAWN != 0 {
-                tmp = options_get_string_((*s).options, c"default-shell");
+                tmp = options_get_string_((*s).options, "default-shell");
                 if !checkshell(tmp) {
                     tmp = _PATH_BSHELL;
                 }
@@ -491,7 +491,7 @@ pub unsafe fn spawn_pane(sc: *mut spawn_context, cause: *mut *mut u8) -> *mut wi
             if !(*s).tio.is_null() {
                 memcpy__(now.c_cc.as_mut_ptr(), (*(*s).tio).c_cc.as_ptr());
             }
-            key = options_get_number_(GLOBAL_OPTIONS, c"backspace") as u64;
+            key = options_get_number_(GLOBAL_OPTIONS, "backspace") as u64;
             if key >= 0x7f {
                 now.c_cc[VERASE] = b'\x7f';
             } else {

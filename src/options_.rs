@@ -13,7 +13,9 @@
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 use crate::*;
 
+use crate::compat::tree::rb_find_by;
 use crate::libc::{fnmatch, isdigit, sscanf, strcasecmp, strchr, strcmp, strncmp, strstr};
+use crate::options_table::OPTIONS_OTHER_NAMES_STR;
 
 use std::cmp::Ordering;
 
@@ -120,6 +122,15 @@ pub unsafe fn options_map_name(name: *const u8) -> *const u8 {
         }
         name
     }
+}
+
+pub fn options_map_name_str(name: &str) -> &str {
+    for map in &OPTIONS_OTHER_NAMES_STR {
+        if map.from == name {
+            return map.to;
+        }
+    }
+    name
 }
 
 pub unsafe fn options_parent_table_entry(
@@ -256,6 +267,21 @@ pub unsafe fn options_get_only(oo: *mut options, name: *const u8) -> *mut option
         }
     }
 }
+pub unsafe fn options_get_only_(oo: *mut options, name: &str) -> *mut options_entry {
+    unsafe {
+        let found = rb_find_by(&raw mut (*oo).tree, |oe| {
+            libc::strcmp_(oe.name, name).reverse()
+        });
+        if found.is_null() {
+            let name = options_map_name_str(name);
+            rb_find_by(&raw mut (*oo).tree, |oe| {
+                libc::strcmp_(oe.name, name).reverse()
+            })
+        } else {
+            found
+        }
+    }
+}
 
 pub unsafe fn options_get(mut oo: *mut options, name: *const u8) -> *mut options_entry {
     unsafe {
@@ -271,11 +297,11 @@ pub unsafe fn options_get(mut oo: *mut options, name: *const u8) -> *mut options
     }
 }
 
-pub unsafe fn options_get_(mut oo: *mut options, name: &CStr) -> *mut options_entry {
+pub unsafe fn options_get_(mut oo: *mut options, name: &str) -> *mut options_entry {
     unsafe {
         let mut o;
         while {
-            o = options_get_only(oo, name.as_ptr().cast());
+            o = options_get_only_(oo, name);
             o.is_null()
         } {
             oo = (*oo).parent;
@@ -816,14 +842,14 @@ pub unsafe fn options_get_string(oo: *mut options, name: *const u8) -> *const u8
     }
 }
 
-pub unsafe fn options_get_string_(oo: *mut options, name: &CStr) -> *const u8 {
+pub unsafe fn options_get_string_(oo: *mut options, name: &str) -> *const u8 {
     unsafe {
         let o = options_get_(oo, name);
         if o.is_null() {
-            fatalx_!("missing option {}", _s(name.as_ptr()));
+            fatalx_!("missing option {name}");
         }
         if !OPTIONS_IS_STRING(o) {
-            fatalx_!("option {} is not a string", _s(name.as_ptr()));
+            fatalx_!("option {name} is not a string");
         }
         (*o).value.string
     }
@@ -842,14 +868,14 @@ pub unsafe fn options_get_number(oo: *mut options, name: *const u8) -> i64 {
     }
 }
 
-pub unsafe fn options_get_number_(oo: *mut options, name: &CStr) -> i64 {
+pub unsafe fn options_get_number_(oo: *mut options, name: &str) -> i64 {
     unsafe {
         let o = options_get_(oo, name);
         if o.is_null() {
-            fatalx_!("missing option {}", _s(name.as_ptr()));
+            fatalx_!("missing option {name}");
         }
         if !OPTIONS_IS_NUMBER(o) {
-            fatalx_!("option {} is not a number", _s(name.as_ptr()));
+            fatalx_!("option {name} is not a number");
         }
         (*o).value.number
     }

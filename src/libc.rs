@@ -307,7 +307,7 @@ pub unsafe fn strncmp(cs: *const u8, ct: *const u8, n: usize) -> i32 {
     unsafe { ::libc::strncmp(cs.cast(), ct.cast(), n) }
 }
 
-pub unsafe fn strcmp_(left: *const u8, right: &'static str) -> std::cmp::Ordering {
+pub unsafe fn strcmp_(left: *const u8, right: &str) -> std::cmp::Ordering {
     unsafe {
         for (i, r_ch) in right.bytes().enumerate() {
             let l_ch = *left.add(i);

@@ -21,7 +21,7 @@ use ::std::{
     io::{LineWriter, Write},
     sync::atomic::{AtomicI32, Ordering},
 };
-use std::{io::BufWriter, sync::Mutex};
+use std::{ffi::CString, io::BufWriter, sync::Mutex};
 
 use crate::compat::{stravis, vis_flags};
 use crate::{_s, event_::event_set_log_callback};
@@ -128,7 +128,7 @@ fn log_vwrite_rs(args: std::fmt::Arguments, prefix: &str) {
             return;
         }
 
-        let msg = format!("{args}\0").to_string();
+        let msg = CString::new(format!("{args}")).unwrap();
         let mut out = null_mut();
         if stravis(
             &mut out,

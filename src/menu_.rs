@@ -638,7 +638,7 @@ pub unsafe fn menu_prepare(
 
         if lines == box_lines::BOX_LINES_DEFAULT {
             lines =
-                box_lines::try_from(options_get_number_(o, c"menu-border-lines") as i32).unwrap();
+                box_lines::try_from(options_get_number_(o, "menu-border-lines") as i32).unwrap();
         }
 
         let md = xcalloc1::<menu_data>() as *mut menu_data;

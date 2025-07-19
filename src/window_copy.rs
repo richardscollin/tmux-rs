@@ -345,7 +345,7 @@ pub unsafe fn window_copy_common_init(wme: *mut window_mode_entry) -> *mut windo
             0,
         );
         (*data).modekeys =
-            modekey::try_from(options_get_number_((*(*wp).window).options, c"mode-keys") as i32)
+            modekey::try_from(options_get_number_((*(*wp).window).options, "mode-keys") as i32)
                 .expect("invalid modekey");
 
         evtimer_set(
@@ -901,7 +901,7 @@ pub unsafe fn window_copy_key_table(wme: *mut window_mode_entry) -> *const u8 {
     unsafe {
         if matches!(
             modekey::try_from(
-                options_get_number_((*(*(*wme).wp).window).options, c"mode-keys") as i32
+                options_get_number_((*(*(*wme).wp).window).options, "mode-keys") as i32
             ),
             Ok(modekey::MODEKEY_VI)
         ) {
@@ -1933,7 +1933,7 @@ pub unsafe fn window_copy_cmd_next_word(cs: *mut window_copy_cmd_state) -> windo
         let wme: *mut window_mode_entry = (*cs).wme;
         let mut np = (*wme).prefix;
 
-        let separators = options_get_string_((*(*cs).s).options, c"word-separators");
+        let separators = options_get_string_((*(*cs).s).options, "word-separators");
 
         while np != 0 {
             window_copy_cursor_next_word(wme, separators);
@@ -1950,7 +1950,7 @@ pub unsafe fn window_copy_cmd_next_word_end(
         let wme: *mut window_mode_entry = (*cs).wme;
         let mut np = (*wme).prefix;
 
-        let separators = options_get_string_((*(*cs).s).options, c"word-separators");
+        let separators = options_get_string_((*(*cs).s).options, "word-separators");
 
         while np != 0 {
             window_copy_cursor_next_word_end(wme, separators, 0);
@@ -2057,7 +2057,7 @@ pub unsafe fn window_copy_cmd_previous_word(
         let wme: *mut window_mode_entry = (*cs).wme;
         let mut np = (*wme).prefix;
 
-        let separators = options_get_string_((*(*cs).s).options, c"word-separators");
+        let separators = options_get_string_((*(*cs).s).options, "word-separators");
 
         while np != 0 {
             window_copy_cursor_previous_word(wme, separators, 1);
@@ -2255,7 +2255,7 @@ pub unsafe fn window_copy_cmd_select_word(
         (*data).dx = (*data).cx;
         (*data).dy = screen_hsize((*data).backing) + (*data).cy - (*data).oy;
 
-        (*data).separators = options_get_string_(session_options, c"word-separators");
+        (*data).separators = options_get_string_(session_options, "word-separators");
         window_copy_cursor_previous_word(wme, (*data).separators, 0);
         let px = (*data).cx;
         let py = screen_hsize((*data).backing) + (*data).cy - (*data).oy;
@@ -3457,7 +3457,7 @@ pub unsafe fn window_copy_command(
         if libc::strncmp(command, c!("search-"), 7) != 0 && !(*data).searchmark.is_null() {
             let keys = modekey::try_from(options_get_number_(
                 (*(*(*wme).wp).window).options,
-                c"mode-keys",
+                "mode-keys",
             ) as i32);
             if clear == window_copy_cmd_clear::WINDOW_COPY_CMD_CLEAR_EMACS_ONLY
                 && keys == Ok(modekey::MODEKEY_VI)
@@ -4427,11 +4427,11 @@ pub unsafe fn window_copy_search(
         );
         screen_write_stop(&raw mut ctx);
 
-        wrapflag = options_get_number_((*(*wp).window).options, c"wrap-search") as i32;
+        wrapflag = options_get_number_((*(*wp).window).options, "wrap-search") as i32;
         cis = window_copy_is_lowercase(str) as i32;
 
         let keys =
-            modekey::try_from(options_get_number_((*(*wp).window).options, c"mode-keys") as i32);
+            modekey::try_from(options_get_number_((*(*wp).window).options, "mode-keys") as i32);
 
         if direction != 0 {
             /*
@@ -4930,9 +4930,8 @@ pub unsafe fn window_copy_update_style(
 
         cy = screen_hsize((*data).backing) - (*data).oy + (*data).cy;
         if window_copy_search_mark_at(data, (*data).cx, cy, &raw mut cursor) == 0 {
-            let keys = modekey::try_from(
-                options_get_number_((*(*wp).window).options, c"mode-keys") as i32,
-            );
+            let keys =
+                modekey::try_from(options_get_number_((*(*wp).window).options, "mode-keys") as i32);
             if cursor != 0 && keys == Ok(modekey::MODEKEY_EMACS) && (*data).searchdirection != 0 {
                 if *(*data).searchmark.add(cursor as usize - 1) as u32 == mark {
                     cursor -= 1;
@@ -5497,7 +5496,7 @@ pub unsafe fn window_copy_get_selection(wme: *mut window_mode_entry, len: *mut u
          * keep bottom-right-most character.
          */
         let keys =
-            modekey::try_from(options_get_number_((*(*wp).window).options, c"mode-keys") as i32);
+            modekey::try_from(options_get_number_((*(*wp).window).options, "mode-keys") as i32);
         if (*data).rectflag != 0 {
             /*
              * Need to ignore the column with the cursor in it, which for
@@ -5580,7 +5579,7 @@ pub unsafe fn window_copy_copy_buffer(
         let wp: *mut window_pane = (*wme).wp;
         let mut ctx: screen_write_ctx = zeroed();
 
-        if options_get_number_(GLOBAL_OPTIONS, c"set-clipboard") != 0 {
+        if options_get_number_(GLOBAL_OPTIONS, "set-clipboard") != 0 {
             screen_write_start_pane(&raw mut ctx, wp, null_mut());
             screen_write_setselection(&raw mut ctx, c!(""), buf.cast(), len as u32);
             screen_write_stop(&raw mut ctx);
@@ -5600,7 +5599,7 @@ pub unsafe fn window_copy_pipe_run(
     unsafe {
         let buf = window_copy_get_selection(wme, len);
         if cmd.is_null() || *cmd == b'\0' {
-            cmd = options_get_string_(GLOBAL_OPTIONS, c"copy-command");
+            cmd = options_get_string_(GLOBAL_OPTIONS, "copy-command");
         }
         if !cmd.is_null() && *cmd != b'\0' {
             let job = job_run(
@@ -5671,7 +5670,7 @@ pub unsafe fn window_copy_append_selection(wme: *mut window_mode_entry) {
             return;
         }
 
-        if options_get_number_(GLOBAL_OPTIONS, c"set-clipboard") != 0 {
+        if options_get_number_(GLOBAL_OPTIONS, "set-clipboard") != 0 {
             screen_write_start_pane(&raw mut ctx, wp, null_mut());
             screen_write_setselection(&raw mut ctx, c!(""), buf.cast(), len as u32);
             screen_write_stop(&raw mut ctx);
@@ -6272,8 +6271,7 @@ pub unsafe fn window_copy_cursor_next_word_end_pos(
         let mut py = hsize + (*data).cy - (*data).oy;
 
         grid_reader_start(&raw mut gr, (*back_s).grid, px, py);
-        if modekey::try_from(options_get_number_(oo, c"mode-keys") as i32)
-            == Ok(modekey::MODEKEY_VI)
+        if modekey::try_from(options_get_number_(oo, "mode-keys") as i32) == Ok(modekey::MODEKEY_VI)
         {
             if grid_reader_in_set(&raw mut gr, WHITESPACE) == 0 {
                 grid_reader_cursor_right(&raw mut gr, 0, 0);
@@ -6309,8 +6307,7 @@ pub unsafe fn window_copy_cursor_next_word_end(
         let oldy = (*data).cy;
 
         grid_reader_start(&raw mut gr, (*back_s).grid, px, py);
-        if modekey::try_from(options_get_number_(oo, c"mode-keys") as i32)
-            == Ok(modekey::MODEKEY_VI)
+        if modekey::try_from(options_get_number_(oo, "mode-keys") as i32) == Ok(modekey::MODEKEY_VI)
         {
             if grid_reader_in_set(&raw mut gr, WHITESPACE) == 0 {
                 grid_reader_cursor_right(&raw mut gr, 0, 0);
@@ -6377,14 +6374,13 @@ pub unsafe fn window_copy_cursor_previous_word(
         let back_s: *mut screen = (*data).backing;
         let mut gr: grid_reader = zeroed();
 
-        let stop_at_eol =
-            if modekey::try_from(options_get_number_((*w).options, c"mode-keys") as i32)
-                == Ok(modekey::MODEKEY_EMACS)
-            {
-                1
-            } else {
-                0
-            };
+        let stop_at_eol = if modekey::try_from(options_get_number_((*w).options, "mode-keys") as i32)
+            == Ok(modekey::MODEKEY_EMACS)
+        {
+            1
+        } else {
+            0
+        };
 
         let mut px = (*data).cx;
         let hsize = screen_hsize(back_s);

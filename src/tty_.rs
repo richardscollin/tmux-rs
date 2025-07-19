@@ -569,10 +569,10 @@ pub unsafe fn tty_update_features(tty: *mut tty) {
         if tty_use_margin(tty) {
             tty_putcode(tty, tty_code_code::TTYC_ENMG);
         }
-        if options_get_number_(GLOBAL_OPTIONS, c"extended-keys") != 0 {
+        if options_get_number_(GLOBAL_OPTIONS, "extended-keys") != 0 {
             tty_puts(tty, tty_term_string((*tty).term, tty_code_code::TTYC_ENEKS));
         }
-        if options_get_number_(GLOBAL_OPTIONS, c"focus-events") != 0 {
+        if options_get_number_(GLOBAL_OPTIONS, "focus-events") != 0 {
             tty_puts(tty, tty_term_string((*tty).term, tty_code_code::TTYC_ENFCS));
         }
         if (*(*tty).term).flags.intersects(term_flags::TERM_VT100LIKE) {
@@ -765,7 +765,7 @@ pub unsafe fn tty_putn(tty: *mut tty, buf: *const c_void, mut len: usize, width:
 pub unsafe fn tty_set_italics(tty: *mut tty) {
     unsafe {
         if tty_term_has((*tty).term, tty_code_code::TTYC_SITM) {
-            let s = options_get_string_(GLOBAL_OPTIONS, c"default-terminal");
+            let s = options_get_string_(GLOBAL_OPTIONS, "default-terminal");
             if !streq_(s, "screen") && libc::strncmp(s, c!("screen-"), 7) != 0 {
                 tty_putcode(tty, tty_code_code::TTYC_SITM);
                 return;

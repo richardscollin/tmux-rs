@@ -174,7 +174,7 @@ pub unsafe fn paste_add(mut prefix: *const u8, data: *mut u8, size: usize) {
             return;
         }
 
-        let limit = options_get_number_(GLOBAL_OPTIONS, c"buffer-limit");
+        let limit = options_get_number_(GLOBAL_OPTIONS, "buffer-limit");
         for pb in rb_foreach_reverse::<_, discr_time_entry>(&raw mut PASTE_BY_TIME) {
             if (PASTE_NUM_AUTOMATIC as i64) < limit {
                 break;

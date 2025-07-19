@@ -1907,13 +1907,13 @@ unsafe fn tty_keys_device_attributes(
             for i in 1..n {
                 // log_debug( c!("%s: DA feature: %d\0"), (*c).name, p[i as usize]);
                 if p[i as usize] == 4 {
-                    tty_add_features(features, c!("sixel"), c!(","));
+                    tty_add_features(features, "sixel", c!(","));
                 }
                 if p[i as usize] == 21 {
-                    tty_add_features(features, c!("margins"), c!(","));
+                    tty_add_features(features, "margins", c!(","));
                 }
                 if p[i as usize] == 28 {
-                    tty_add_features(features, c!("rectfill"), c!(","));
+                    tty_add_features(features, "rectfill", c!(","));
                 }
             }
         }

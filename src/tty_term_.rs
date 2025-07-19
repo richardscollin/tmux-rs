@@ -671,7 +671,7 @@ pub unsafe fn tty_term_create(
                 let mut offset = 0;
                 let first = tty_term_override_next(s, &raw mut offset);
                 if !first.is_null() && fnmatch(first, (*term).name, 0) == 0 {
-                    tty_add_features(feat, s.add(offset), c!(":"));
+                    tty_add_features(feat, cstr_to_str(s.add(offset)), c!(":"));
                 }
                 a = options_array_next(a);
             }
@@ -709,7 +709,7 @@ pub unsafe fn tty_term_create(
             let s = tty_term_string(term, tty_code_code::TTYC_CLEAR);
             if tty_term_flag(term, tty_code_code::TTYC_XT) != 0 || strncmp(s, c!("\x1b["), 2) == 0 {
                 (*term).flags |= term_flags::TERM_VT100LIKE;
-                tty_add_features(feat, c!("bpaste,focus,title"), c!(","));
+                tty_add_features(feat, "bpaste,focus,title", c!(","));
             }
 
             /* Add RGB feature if terminal has RGB colours. */
@@ -718,7 +718,7 @@ pub unsafe fn tty_term_create(
                 && (!tty_term_has(term, tty_code_code::TTYC_SETRGBF)
                     || !tty_term_has(term, tty_code_code::TTYC_SETRGBB))
             {
-                tty_add_features(feat, c!("RGB"), c!(","));
+                tty_add_features(feat, "RGB", c!(","));
             }
 
             /* Apply the features and overrides again. */

@@ -418,7 +418,7 @@ pub unsafe fn tmux_main(mut argc: i32, mut argv: *mut *mut u8, env: *mut *mut u8
             opt != -1
         } {
             match opt as u8 {
-                b'2' => tty_add_features(&raw mut feat, c!("256"), c!(":,")),
+                b'2' => tty_add_features(&raw mut feat, "256", c!(":,")),
                 b'c' => SHELL_COMMAND = OPTARG.cast(),
                 b'D' => flags |= client_flag::NOFORK,
                 b'C' => {
@@ -457,7 +457,7 @@ pub unsafe fn tmux_main(mut argc: i32, mut argv: *mut *mut u8, env: *mut *mut u8
                     free(path as _);
                     path = xstrdup(OPTARG.cast()).cast().as_ptr();
                 }
-                b'T' => tty_add_features(&raw mut feat, OPTARG.cast(), c!(":,")),
+                b'T' => tty_add_features(&raw mut feat, cstr_to_str(OPTARG.cast()), c!(":,")),
                 b'u' => flags |= client_flag::UTF8,
                 b'v' => log_add_level(),
                 _ => usage(),

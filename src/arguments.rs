@@ -12,6 +12,7 @@
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 use std::cmp::Ordering;
+use std::ffi::CString;
 
 use crate::{xmalloc::xrecallocarray, *};
 
@@ -480,6 +481,7 @@ pub unsafe fn args_from_vector(argc: i32, argv: *mut *mut u8) -> *mut args_value
     }
 }
 
+// TODO change this to use &mut String
 macro_rules! args_print_add {
    ($buf:expr, $len:expr, $fmt:literal $(, $args:expr)* $(,)?) => {
         crate::arguments::args_print_add_($buf, $len, format_args!($fmt $(, $args)*))
@@ -488,9 +490,9 @@ macro_rules! args_print_add {
 pub(crate) use args_print_add;
 pub unsafe fn args_print_add_(buf: *mut *mut u8, len: *mut usize, fmt: std::fmt::Arguments) {
     unsafe {
-        let s = fmt.to_string();
+        let s = CString::new(fmt.to_string()).unwrap();
 
-        *len += s.len();
+        *len += s.as_bytes().len();
         *buf = xrealloc(*buf as *mut c_void, *len).cast().as_ptr();
 
         strlcat(*buf, s.as_ptr().cast(), *len);
@@ -854,6 +856,10 @@ pub unsafe fn args_make_commands(
     }
 }
 
+#[expect(
+    clippy::disallowed_methods,
+    reason = "this usage is okay, getting pointer to call free"
+)]
 /// Free commands state.
 pub unsafe fn args_make_commands_free(state: *mut args_command_state) {
     unsafe {

@@ -14,6 +14,7 @@ macro_rules! evbuffer_add_printf {
     };
 }
 pub(crate) use evbuffer_add_printf;
+#[allow(clippy::disallowed_methods)]
 pub unsafe fn evbuffer_add_vprintf(buf: *mut evbuffer, args: std::fmt::Arguments) -> i32 {
     let s = args.to_string(); // TODO this is doing unecessary allocating and freeing
     unsafe { evbuffer_add(buf, s.as_ptr().cast(), s.len()) }

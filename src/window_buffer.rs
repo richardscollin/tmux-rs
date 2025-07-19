@@ -21,7 +21,7 @@ use crate::xmalloc::xreallocarray;
 const WINDOW_BUFFER_DEFAULT_COMMAND: *const u8 = c!("paste-buffer -p -b '%%'");
 const WINDOW_BUFFER_DEFAULT_FORMAT: *const u8 = c!("#{t/p:buffer_created}: #{buffer_sample}");
 
-const WINDOW_BUFFER_DEFAULT_KEY_FORMAT: *const u8 = concat!(
+const WINDOW_BUFFER_DEFAULT_KEY_FORMAT: &CStr = cstring_concat!(
     "#{?#{e|<:#{line},10},", //
     "#{line}",
     ",",
@@ -30,10 +30,8 @@ const WINDOW_BUFFER_DEFAULT_KEY_FORMAT: *const u8 = concat!(
     ",",
     "",
     "}",
-    "}\0"
-)
-.as_ptr()
-.cast();
+    "}"
+);
 
 static WINDOW_BUFFER_MENU_ITEMS: [menu_item; 11] = [
     menu_item::new(c"Paste", 'p' as u64, null_mut()),
@@ -375,7 +373,7 @@ pub unsafe fn window_buffer_init(
             data.format = xstrdup(args_get_(args, 'F')).as_ptr();
         }
         if args.is_null() || !args_has_(args, 'K') {
-            data.key_format = xstrdup(WINDOW_BUFFER_DEFAULT_KEY_FORMAT).as_ptr();
+            data.key_format = xstrdup_(WINDOW_BUFFER_DEFAULT_KEY_FORMAT).as_ptr();
         } else {
             data.key_format = xstrdup(args_get_(args, 'K')).as_ptr();
         }

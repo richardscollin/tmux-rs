@@ -390,9 +390,8 @@ pub unsafe fn cmdq_insert_hook_(
         };
 
         let mut name: String = format_args.to_string();
-        name.push('\0');
 
-        let o = options_get(oo, name.as_ptr().cast());
+        let o = options_get_(oo, &name);
         if o.is_null() {
             return;
         }

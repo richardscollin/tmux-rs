@@ -573,7 +573,7 @@ pub unsafe fn window_set_active_pane(w: *mut window, wp: *mut window_pane, notif
         (*(*w).active).active_point = NEXT_ACTIVE_POINT.fetch_add(1, atomic::Ordering::Relaxed);
         (*(*w).active).flags |= window_pane_flags::PANE_CHANGED;
 
-        if options_get_number_(GLOBAL_OPTIONS, c"focus-events") != 0 {
+        if options_get_number_(GLOBAL_OPTIONS, "focus-events") != 0 {
             window_pane_update_focus(lastwp);
             window_pane_update_focus((*w).active);
         }
@@ -658,7 +658,7 @@ pub unsafe fn window_find_string(w: *mut window, s: *const u8) -> *mut window_pa
         let mut y = (*w).sy / 2;
 
         let status: Result<pane_status, _> =
-            (options_get_number_((*w).options, c"pane-border-status") as i32).try_into();
+            (options_get_number_((*w).options, "pane-border-status") as i32).try_into();
         match status {
             Ok(pane_status::PANE_STATUS_TOP) => top += 1,
             Ok(pane_status::PANE_STATUS_BOTTOM) => bottom -= 1,
@@ -856,7 +856,7 @@ pub unsafe fn window_remove_pane(w: *mut window, wp: *mut window_pane) {
 
 pub unsafe fn window_pane_at_index(w: *mut window, idx: u32) -> *mut window_pane {
     unsafe {
-        let mut n: u32 = options_get_number_((*w).options, c"pane-base-index") as _;
+        let mut n: u32 = options_get_number_((*w).options, "pane-base-index") as _;
 
         for wp in tailq_foreach::<_, discr_entry>(&raw mut (*w).panes).map(NonNull::as_ptr) {
             if n == idx {
@@ -907,7 +907,7 @@ pub unsafe fn window_pane_index(wp: *mut window_pane, i: *mut u32) -> i32 {
     unsafe {
         let w = (*wp).window;
 
-        *i = options_get_number_((*w).options, c"pane-base-index") as _;
+        *i = options_get_number_((*w).options, "pane-base-index") as _;
         for wq in tailq_foreach::<_, discr_entry>(&raw mut (*w).panes).map(NonNull::as_ptr) {
             if wp == wq {
                 return 0;
@@ -1292,7 +1292,7 @@ unsafe fn window_pane_copy_key(wp: *mut window_pane, key: key_code) {
                 && (*loop_).fd != -1
                 && !(*loop_).flags.intersects(window_pane_flags::PANE_INPUTOFF)
                 && window_pane_visible(loop_)
-                && options_get_number_((*loop_).options, c"synchronize-panes") != 0
+                && options_get_number_((*loop_).options, "synchronize-panes") != 0
             {
                 input_key_pane(loop_, key, null_mut());
             }
@@ -1332,7 +1332,7 @@ pub unsafe fn window_pane_key(
         if KEYC_IS_MOUSE(key) {
             return 0;
         }
-        if options_get_number_((*wp).options, c"synchronize-panes") != 0 {
+        if options_get_number_((*wp).options, "synchronize-panes") != 0 {
             window_pane_copy_key(wp, key);
         }
     }
@@ -1443,7 +1443,7 @@ pub unsafe fn window_pane_find_up(wp: *mut window_pane) -> *mut window_pane {
             return null_mut();
         }
         let w = (*wp).window;
-        let status: pane_status = (options_get_number_((*w).options, c"pane-border-status") as i32)
+        let status: pane_status = (options_get_number_((*w).options, "pane-border-status") as i32)
             .try_into()
             .unwrap();
 
@@ -1511,7 +1511,7 @@ pub unsafe fn window_pane_find_down(wp: *mut window_pane) -> *mut window_pane {
             return null_mut();
         }
         let w = (*wp).window;
-        let status: pane_status = (options_get_number_((*w).options, c"pane-border-status") as i32)
+        let status: pane_status = (options_get_number_((*w).options, "pane-border-status") as i32)
             .try_into()
             .unwrap();
 
@@ -1842,7 +1842,7 @@ pub unsafe fn window_set_fill_character(w: NonNull<window>) {
         free((*w).fill_character as _);
         (*w).fill_character = null_mut();
 
-        let value = options_get_string_((*w).options, c"fill-character");
+        let value = options_get_string_((*w).options, "fill-character");
         if *value != b'\0' as _ && utf8_isvalid(value) {
             let ud = utf8_fromcstr(value);
             if !ud.is_null() && (*ud).width == 1 {
@@ -1856,10 +1856,10 @@ pub unsafe fn window_pane_default_cursor(wp: *mut window_pane) {
     unsafe {
         let s = (*wp).screen;
 
-        let c: i32 = options_get_number_((*wp).options, c"cursor-colour") as i32;
+        let c: i32 = options_get_number_((*wp).options, "cursor-colour") as i32;
         (*s).default_ccolour = c;
 
-        let c: i32 = options_get_number_((*wp).options, c"cursor-style") as i32;
+        let c: i32 = options_get_number_((*wp).options, "cursor-style") as i32;
         (*s).default_mode = mode_flag::empty();
         screen_set_cursor_style(
             c as u32,

@@ -199,7 +199,7 @@ unsafe extern "C" fn get_addr(c: *mut client) -> *mut c_void {
 After running in the debugger the error was something like: `Invalid read at address 0x2764`.
 
 I walked through the code again. Inside of the Rust function `(*c).bar`
-has a valid address, like `0x60302764`, but out the function, the value received from the calling C code
+has a valid address, like `0x60302764`, but outside the function, the value received from the calling C code
 was `0x2764`. Do you know the problem yet? Need another hint? If I looked more closely at the C compilation
 warnings I would have seen:
 
@@ -311,7 +311,7 @@ fn bar() {
 }
 ```
 
-These are the most common types of usages of goto in the tmux codebase. Only a handful of more complex goto usage required me getting out a pencil and paper to trace out how to map the control flow (see `window_copy_search_marks` in the codebase if you're interested).
+These are the most common types of usages of goto in the tmux codebase. Only a handful of more complex goto usage required me getting out a pencil and paper to trace out how to map the control flow (see [`window_copy_search_marks`](https://github.com/richardscollin/tmux-rs/blob/5cbf09ef2f8fbd737fdec1750f0e870098f76de7/src/window_copy.rs#L4569) in the codebase if you're interested).
 
 ### Intrusive Macros
 
@@ -336,7 +336,7 @@ for wl in rb_foreach(&raw mut (*s).windows).map(NonNull::as_ptr) {
 ```
 
 The code would actually be cleaner if I didn't return a `NonNull<T>` from the iterator. I implemented my own trait in order to mimic this interface. One
-of the challenges of this some instances can live in different containers at the same time. This is problematic because a trait can only be implemented once for a given type. The solution was making the trait generic so that it's not a single trait but multiple depending on the generic parameter. I used a dummy unit type when I need to distinguish which trait to use in the code. Here's the ugly code that enables the nice interfaces which closely resemble the C:
+of the challenges of this: some instances can live in different containers at the same time. This is problematic because a trait can only be implemented once for a given type. The solution was making the trait generic so that it's not a single trait but multiple depending on the generic parameter. I used a dummy unit type when I need to distinguish which trait to use in the code. Here's the ugly code that enables the nice interfaces which closely resemble the C:
 
 
 ```rust
@@ -375,9 +375,9 @@ where
 
 ### Yacc shaving
 
-Tmux uses `yacc` to implement a custom parser for it's configuration language. I was aware of `lex` and `yacc` before, but had never used them. The last step to converting the project from C to Rust was figuring out how to reimplement the parser in `cmd-parse.y` from `yacc` to Rust. After completing this I'd be able to completely shed the `cc` crate and streamline the build process.
+Tmux uses `yacc` to implement a custom parser for it's configuration language. I was aware of `lex` and `yacc` before, but had never used them. The last step to converting the project from C to Rust was figuring out how to reimplement the parser in `cmd-parse.y` from `yacc` to Rust. After completing this I'd be able to completely shed the [cc crate](https://crates.io/crates/cc) and streamline the build process.
 
-After one or two failed attempts with different crates I settled on using the `lalrpop` crate to implement the parser. The structure of lalrpop code closely matches `yacc` which allowed me to do a one-to-one reimplementation like the rest of the project.
+After one or two failed attempts with different crates I settled on using the [lalrpop crate](https://crates.io/crates/lalrpop) to implement the parser. The structure of lalrpop code closely matches yacc which allowed me to do a one-to-one reimplementation like the rest of the project.
 
 The original yacc parser looks like this:
 
@@ -403,7 +403,7 @@ statements	: statement '\n'
 ```
 
 It's a grammar with a series of actions to perform when the rules are matched.
-The equivalent section of the grammar translates to the following `lalrpop` snippet.
+The equivalent section of the grammar translates to the following lalrpop snippet.
 
 ```rust
 grammar(ps: NonNull<cmd_parse_state>);
@@ -426,7 +426,7 @@ pub Statements: NonNull<cmd_parse_commands> = {
 };
 ```
 
-> `lalrpop` has a few bugs, for example it can't handle raw pointers properly (the * seems to throw off the parser), that's fine I just ended up using `NonNull<T>` in all the places instead.
+> lalrpop has a few bugs, for example it can't handle raw pointers properly (the * seems to throw off the parser), that's fine I just ended up using `NonNull<T>` in all the places instead.
 
 After reimplementing the grammar, I also had to implement an adapter to interface lalrpop with the custom lexer. The lexer was the same from the original codebase, just wrapped in a Rust iterator. I was amazed that once the lexer was hooked up to the parser it just seemed to work. This last step enabled me to get rid of all of the remaining C code and headers.
 
@@ -449,7 +449,7 @@ So, even though I quit using cursor, my feeling is that I'd still reach for it i
 
 ## Conclusion
 
-Even though the code is now 100%, I'm not sure I've accomplished my main goal yet. My hand translated code isn't that much better than the output from C2Rust. It's also not very difficult to get it to crash and I am aware of many bugs. The next goal is to convert the codebase to safe Rust.
+Even though the code is now 100% Rust, I'm not sure I've accomplished my main goal yet. My hand translated code isn't that much better than the output from C2Rust. It's also not very difficult to get it to crash and I am aware of many bugs. The next goal is to convert the codebase to safe Rust.
 
 Despite all of this, I'm releasing version 0.0.1 to share with other fans of Rust and `tmux`. If this project interests you, you can connect with me through [Github Discussions](https://github.com/richardscollin/tmux-rs/discussions). See the installation instructions in the [README](https://github.com/richardscollin/tmux-rs).
 

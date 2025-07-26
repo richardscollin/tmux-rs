@@ -13,7 +13,6 @@
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 use crate::*;
-use core::ffi::{c_int, c_uchar};
 use std::{io::Write as _, ptr::null_mut};
 
 use crate::libc::{free, sscanf};
@@ -167,7 +166,7 @@ pub unsafe fn colour_tostring(c: i32) -> *const u8 {
 
 /// Convert colour from string.
 #[unsafe(no_mangle)]
-pub fn colour_fromstring_(s: &str) -> c_int {
+pub fn colour_fromstring_(s: &str) -> i32 {
     let orig = s;
     if s.chars().next().is_some_and(|c| c == '#') && s.len() == 7 {
         let cp = s.trim_start_matches(|c: char| c.is_ascii_hexdigit());
@@ -244,7 +243,7 @@ pub fn colour_fromstring_(s: &str) -> c_int {
 }
 
 /// Convert colour from string.
-pub unsafe fn colour_fromstring(s: *const u8) -> c_int {
+pub unsafe fn colour_fromstring(s: *const u8) -> i32 {
     unsafe { colour_fromstring_(cstr_to_str(s)) }
 }
 
@@ -1015,7 +1014,7 @@ pub unsafe fn colour_palette_from_option(p: *mut colour_palette, oo: *mut option
         }
 
         if (*p).default_palette.is_null() {
-            (*p).default_palette = xcalloc_::<c_int>(256).as_ptr();
+            (*p).default_palette = xcalloc_::<i32>(256).as_ptr();
         }
         for i in 0..256 {
             *(*p).default_palette.add(i) = -1;
@@ -1033,7 +1032,7 @@ pub unsafe fn colour_palette_from_option(p: *mut colour_palette, oo: *mut option
 }
 
 // below has the auto generated code I haven't bothered to translate yet
-pub unsafe fn colour_parse_x11(mut p: *const u8) -> c_int {
+pub unsafe fn colour_parse_x11(mut p: *const u8) -> i32 {
     unsafe {
         let mut c: f64 = 0.0;
         let mut m: f64 = 0.0;
@@ -1079,7 +1078,7 @@ pub unsafe fn colour_parse_x11(mut p: *const u8) -> c_int {
                 &raw mut r,
                 &raw mut g,
                 &raw mut b,
-            ) == 3 as c_int
+            ) == 3
             || len == 13
                 && sscanf(
                     p.cast(),
@@ -1087,13 +1086,9 @@ pub unsafe fn colour_parse_x11(mut p: *const u8) -> c_int {
                     &raw mut r,
                     &raw mut g,
                     &raw mut b,
-                ) == 3 as c_int
+                ) == 3
         {
-            colour = colour_join_rgb(
-                (r >> 8 as c_int) as c_uchar,
-                (g >> 8 as c_int) as c_uchar,
-                (b >> 8 as c_int) as c_uchar,
-            );
+            colour = colour_join_rgb((r >> 8) as u8, (g >> 8) as u8, (b >> 8) as u8);
         } else if (sscanf(
             p.cast(),
             c"cmyk:%lf/%lf/%lf/%lf".as_ptr(),
@@ -1108,7 +1103,7 @@ pub unsafe fn colour_parse_x11(mut p: *const u8) -> c_int {
                 &raw mut c,
                 &raw mut m,
                 &raw mut y,
-            ) == 3 as c_int)
+            ) == 3)
             && c >= 0.0
             && c <= 1.0
             && m >= 0.0

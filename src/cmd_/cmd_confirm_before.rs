@@ -29,7 +29,7 @@ pub static CMD_CONFIRM_BEFORE_ENTRY: cmd_entry = cmd_entry {
 pub struct cmd_confirm_before_data {
     item: *mut cmdq_item,
     cmdlist: *mut cmd_list,
-    confirm_key: c_uchar,
+    confirm_key: u8,
     default_yes: i32,
 }
 

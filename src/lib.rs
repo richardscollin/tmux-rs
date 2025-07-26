@@ -831,10 +831,10 @@ struct grid_extd_entry {
 #[derive(Copy, Clone)]
 #[repr(C, align(4))]
 struct grid_cell_entry_data {
-    attr: c_uchar,
-    fg: c_uchar,
-    bg: c_uchar,
-    data: c_uchar,
+    attr: u8,
+    fg: u8,
+    bg: u8,
+    data: u8,
 }
 
 #[repr(C)]

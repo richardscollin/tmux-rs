@@ -84,28 +84,28 @@ pub unsafe fn grid_store_cell(gce: *mut grid_cell_entry, gc: *const grid_cell, c
 }
 
 /// Check if a cell should be an extended cell.
-pub unsafe fn grid_need_extended_cell(gce: *const grid_cell_entry, gc: *const grid_cell) -> i32 {
+pub unsafe fn grid_need_extended_cell(gce: *const grid_cell_entry, gc: *const grid_cell) -> bool {
     unsafe {
         if (*gce).flags.contains(grid_flag::EXTENDED) {
-            return 1;
+            return true;
         }
         if (*gc).attr.bits() > 0xff {
-            return 1;
+            return true;
         }
         if (*gc).data.size != 1 || (*gc).data.width != 1 {
-            return 1;
+            return true;
         }
         if ((*gc).fg & COLOUR_FLAG_RGB != 0) || ((*gc).bg & COLOUR_FLAG_RGB != 0) {
-            return 1;
+            return true;
         }
         if (*gc).us != 8 {
             // only supports 256 or RGB
-            return 1;
+            return true;
         }
         if (*gc).link != 0 {
-            return 1;
+            return true;
         }
-        0
+        false
     }
 }
 
@@ -614,7 +614,7 @@ pub unsafe fn grid_set_cell(gd: *mut grid, px: c_uint, py: c_uint, gc: *const gr
         }
 
         let gce = gl.celldata.add(px as usize);
-        if grid_need_extended_cell(gce, gc) != 0 {
+        if grid_need_extended_cell(gce, gc) {
             grid_extended_cell(gl, gce, gc);
         } else {
             grid_store_cell(gce, gc, (*gc).data.data[0]);
@@ -652,7 +652,7 @@ pub unsafe fn grid_set_cells(
 
         for i in 0..slen {
             let gce = (*gl).celldata.add((px + i as c_uint) as usize);
-            if grid_need_extended_cell(gce, gc) != 0 {
+            if grid_need_extended_cell(gce, gc) {
                 let gee = grid_extended_cell(gl, gce, gc);
                 (*gee).data = utf8_build_one(*s.add(i));
             } else {

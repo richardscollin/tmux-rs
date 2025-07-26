@@ -72,26 +72,26 @@ pub(crate) unsafe fn alerts_check_session(s: *mut session) {
     }
 }
 
-unsafe fn alerts_enabled(w: *mut window, flags: window_flag) -> c_int {
+unsafe fn alerts_enabled(w: *mut window, flags: window_flag) -> bool {
     unsafe {
         if flags.intersects(window_flag::BELL)
             && options_get_number_((*w).options, "monitor-bell") != 0
         {
-            return 1;
+            return true;
         }
         if flags.intersects(window_flag::ACTIVITY)
             && options_get_number_((*w).options, "monitor-activity") != 0
         {
-            return 1;
+            return true;
         }
         if flags.intersects(window_flag::SILENCE)
             && options_get_number_((*w).options, "monitor-silence") != 0
         {
-            return 1;
+            return true;
         }
     }
 
-    0
+    false
 }
 
 pub(crate) unsafe fn alerts_reset_all() {
@@ -134,7 +134,7 @@ pub(crate) unsafe fn alerts_queue(w: NonNull<window>, flags: window_flag) {
             log_debug!("@{} alerts flags added {:#x}", (*w).id, flags);
         }
 
-        if alerts_enabled(w, flags) != 0 {
+        if alerts_enabled(w, flags) {
             if (*w).alerts_queued == 0 {
                 (*w).alerts_queued = 1;
                 tailq_insert_tail::<_, discr_alerts_entry>(&raw mut ALERTS_LIST, w);

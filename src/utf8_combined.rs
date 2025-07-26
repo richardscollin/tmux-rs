@@ -24,16 +24,17 @@ static UTF8_MODIFIER_TABLE: [wchar_t; 31] = [
     0x1F3FF,
 ];
 
-pub unsafe fn utf8_has_zwj(ud: *const utf8_data) -> i32 {
+pub unsafe fn utf8_has_zwj(ud: *const utf8_data) -> bool {
     unsafe {
         if (*ud).size < 3 {
-            return 0;
+            return false;
         }
-        (memcmp(
+
+        memcmp(
             &raw const (*ud).data[((*ud).size - 3) as usize] as *const c_void,
             b"\xe2\x80\x8d\x00" as *const u8 as *const c_void,
             3,
-        ) == 0) as i32
+        ) == 0
     }
 }
 

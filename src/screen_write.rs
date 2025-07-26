@@ -2377,7 +2377,7 @@ pub unsafe fn screen_write_combine(ctx: *mut screen_write_ctx, gc: *const grid_c
                     return 0;
                 }
                 force_wide = 1;
-            } else if utf8_has_zwj(&raw mut last.data) == 0 {
+            } else if !utf8_has_zwj(&raw mut last.data) {
                 return 0;
             }
         }

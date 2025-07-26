@@ -20,7 +20,11 @@ pub static CMD_RESIZE_WINDOW_ENTRY: cmd_entry = cmd_entry {
     args: args_parse::new(c"aADLRt:Ux:y:", 0, 1, None),
     usage: SyncCharPtr::new(c"[-aADLRU] [-x width] [-y height] [-t target-window] [adjustment]"),
 
-    target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_WINDOW, 0),
+    target: cmd_entry_flag::new(
+        b't',
+        cmd_find_type::CMD_FIND_WINDOW,
+        cmd_find_flags::empty(),
+    ),
 
     flags: cmd_flag::CMD_AFTERHOOK,
     exec: cmd_resize_window_exec,

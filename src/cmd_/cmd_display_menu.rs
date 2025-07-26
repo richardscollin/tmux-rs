@@ -24,7 +24,7 @@ pub static CMD_DISPLAY_MENU_ENTRY: cmd_entry = cmd_entry {
 
     args: args_parse::new(c"b:c:C:H:s:S:MOt:T:x:y:", 1, -1, Some(cmd_display_menu_args_parse)),
     usage: SyncCharPtr::new(c"[-MO] [-b border-lines] [-c target-client] [-C starting-choice] [-H selected-style] [-s style] [-S border-style] [-t target-pane][-T title] [-x position] [-y position] name key command ..."),
-    target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_PANE, 0),
+    target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_PANE, cmd_find_flags::empty()),
 
     flags: cmd_flag::CMD_AFTERHOOK.union(cmd_flag::CMD_CLIENT_CFLAG),
     exec: cmd_display_menu_exec,
@@ -37,7 +37,7 @@ pub static CMD_DISPLAY_POPUP_ENTRY: cmd_entry = cmd_entry {
 
     args: args_parse::new(c"Bb:Cc:d:e:Eh:s:S:t:T:w:x:y:", 0, -1, None),
     usage: SyncCharPtr::new(c"[-BCE] [-b border-lines] [-c target-client] [-d start-directory] [-e environment] [-h height] [-s style] [-S border-style] [-t target-pane][-T title] [-w width] [-x position] [-y position] [shell-command]"),
-    target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_PANE, 0),
+    target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_PANE, cmd_find_flags::empty()),
 
     flags: cmd_flag::CMD_AFTERHOOK.union(cmd_flag::CMD_CLIENT_CFLAG),
     exec: cmd_display_popup_exec,

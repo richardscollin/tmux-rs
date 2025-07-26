@@ -22,7 +22,11 @@ pub static CMD_SET_OPTION_ENTRY: cmd_entry = cmd_entry {
     args: args_parse::new(c"aFgopqst:uUw", 1, 2, Some(cmd_set_option_args_parse)),
     usage: SyncCharPtr::new(c"[-aFgopqsuUw] [-t target-pane] option [value]"),
 
-    target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_PANE, CMD_FIND_CANFAIL),
+    target: cmd_entry_flag::new(
+        b't',
+        cmd_find_type::CMD_FIND_PANE,
+        cmd_find_flags::CMD_FIND_CANFAIL,
+    ),
 
     flags: cmd_flag::CMD_AFTERHOOK,
     exec: cmd_set_option_exec,
@@ -36,7 +40,11 @@ pub static CMD_SET_WINDOW_OPTION_ENTRY: cmd_entry = cmd_entry {
     args: args_parse::new(c"aFgoqt:u", 1, 2, Some(cmd_set_option_args_parse)),
     usage: SyncCharPtr::new(c"[-aFgoqu] [-t target-window] option [value]"),
 
-    target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_WINDOW, CMD_FIND_CANFAIL),
+    target: cmd_entry_flag::new(
+        b't',
+        cmd_find_type::CMD_FIND_WINDOW,
+        cmd_find_flags::CMD_FIND_CANFAIL,
+    ),
 
     flags: cmd_flag::CMD_AFTERHOOK,
     exec: cmd_set_option_exec,
@@ -50,7 +58,11 @@ pub static CMD_SET_HOOK_ENTRY: cmd_entry = cmd_entry {
     args: args_parse::new(c"agpRt:uw", 1, 2, Some(cmd_set_option_args_parse)),
     usage: SyncCharPtr::new(c"[-agpRuw] [-t target-pane] hook [command]"),
 
-    target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_PANE, CMD_FIND_CANFAIL),
+    target: cmd_entry_flag::new(
+        b't',
+        cmd_find_type::CMD_FIND_PANE,
+        cmd_find_flags::CMD_FIND_CANFAIL,
+    ),
 
     flags: cmd_flag::CMD_AFTERHOOK,
     exec: cmd_set_option_exec,

@@ -22,7 +22,11 @@ pub static CMD_SOURCE_FILE_ENTRY: cmd_entry = cmd_entry {
     args: args_parse::new(c"t:Fnqv", 1, -1, None),
     usage: SyncCharPtr::new(c"[-Fnqv] [-t target-pane] path ..."),
 
-    target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_PANE, CMD_FIND_CANFAIL),
+    target: cmd_entry_flag::new(
+        b't',
+        cmd_find_type::CMD_FIND_PANE,
+        cmd_find_flags::CMD_FIND_CANFAIL,
+    ),
 
     flags: cmd_flag::empty(),
     exec: cmd_source_file_exec,

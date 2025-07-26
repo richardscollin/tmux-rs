@@ -198,7 +198,7 @@ pub unsafe fn cmdq_new_state(
         if !current.is_null() && cmd_find_valid_state(current) {
             cmd_find_copy_state(&raw mut (*state).current, current);
         } else {
-            cmd_find_clear_state(&raw mut (*state).current, 0);
+            cmd_find_clear_state(&raw mut (*state).current, cmd_find_flags::empty());
         }
 
         state
@@ -560,13 +560,13 @@ pub unsafe fn cmdq_find_flag(
 ) -> cmd_retval {
     unsafe {
         if (*flag).flag == 0 {
-            cmd_find_from_client(fs, (*item).target_client, 0);
+            cmd_find_from_client(fs, (*item).target_client, cmd_find_flags::empty());
             return cmd_retval::CMD_RETURN_NORMAL;
         }
 
         let value = args_get(cmd_get_args((*item).cmd), (*flag).flag);
         if cmd_find_target(fs, item, value, (*flag).type_, (*flag).flags) != 0 {
-            cmd_find_clear_state(fs, 0);
+            cmd_find_clear_state(fs, cmd_find_flags::empty());
             return cmd_retval::CMD_RETURN_ERROR;
         }
 
@@ -684,7 +684,9 @@ pub unsafe fn cmdq_fire_command(item: *mut cmdq_item) -> cmd_retval {
                     &raw mut (*item).target
                 } else if cmd_find_valid_state(&raw mut (*(*item).state).current) {
                     &raw mut (*(*item).state).current
-                } else if cmd_find_from_client(&raw mut fs, (*item).client, 0) == 0 {
+                } else if cmd_find_from_client(&raw mut fs, (*item).client, cmd_find_flags::empty())
+                    == 0
+                {
                     &raw mut fs
                 } else {
                     break 'out;
@@ -700,7 +702,9 @@ pub unsafe fn cmdq_fire_command(item: *mut cmdq_item) -> cmd_retval {
                 fsp = &raw mut (*item).target;
             } else if cmd_find_valid_state(&raw mut (*(*item).state).current) {
                 fsp = &raw mut (*(*item).state).current;
-            } else if cmd_find_from_client(&raw mut fs, (*item).client, 0) == 0 {
+            } else if cmd_find_from_client(&raw mut fs, (*item).client, cmd_find_flags::empty())
+                == 0
+            {
                 fsp = &raw mut fs;
             }
             cmdq_insert_hook!(

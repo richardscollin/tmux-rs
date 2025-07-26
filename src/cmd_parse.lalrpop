@@ -74,7 +74,7 @@ pub Expanded: NonNull<u8> = {
       let fsp = if cmd_find_valid_state(&raw const (*pi).fs) {
         &(*pi).fs
       } else {
-        cmd_find_from_client(fs.as_mut_ptr(), c, 0);
+        cmd_find_from_client(fs.as_mut_ptr(), c, cmd_find_flags::empty());
         fs.as_ptr()
       };
       let mut ft = format_create(null_mut(), (*pi).item, FORMAT_NONE, flags);

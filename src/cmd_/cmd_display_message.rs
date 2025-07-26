@@ -27,7 +27,11 @@ pub static CMD_DISPLAY_MESSAGE_ENTRY: cmd_entry = cmd_entry {
         c"[-aIlNpv] [-c target-client] [-d delay] [-F format] [-t target-pane] [message]",
     ),
 
-    target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_PANE, CMD_FIND_CANFAIL),
+    target: cmd_entry_flag::new(
+        b't',
+        cmd_find_type::CMD_FIND_PANE,
+        cmd_find_flags::CMD_FIND_CANFAIL,
+    ),
 
     flags: cmd_flag::CMD_AFTERHOOK
         .union(cmd_flag::CMD_CLIENT_CFLAG)

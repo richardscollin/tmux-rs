@@ -20,7 +20,7 @@ pub static CMD_SELECT_LAYOUT_ENTRY: cmd_entry = cmd_entry {
     args: args_parse::new(c"Enopt:", 0, 1, None),
     usage: SyncCharPtr::new(c"[-Enop] [-t target-pane] [layout-name]"),
 
-    target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_PANE, 0),
+    target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_PANE, cmd_find_flags::empty()),
 
     flags: cmd_flag::CMD_AFTERHOOK,
     exec: cmd_select_layout_exec,
@@ -34,7 +34,11 @@ pub static CMD_NEXT_LAYOUT_ENTRY: cmd_entry = cmd_entry {
     args: args_parse::new(c"t:", 0, 0, None),
     usage: SyncCharPtr::new(CMD_TARGET_WINDOW_USAGE),
 
-    target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_WINDOW, 0),
+    target: cmd_entry_flag::new(
+        b't',
+        cmd_find_type::CMD_FIND_WINDOW,
+        cmd_find_flags::empty(),
+    ),
 
     flags: cmd_flag::CMD_AFTERHOOK,
     exec: cmd_select_layout_exec,
@@ -48,7 +52,11 @@ pub static CMD_PREVIOUS_LAYOUT_ENTRY: cmd_entry = cmd_entry {
     args: args_parse::new(c"t:", 0, 0, None),
     usage: SyncCharPtr::new(CMD_TARGET_WINDOW_USAGE),
 
-    target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_WINDOW, 0),
+    target: cmd_entry_flag::new(
+        b't',
+        cmd_find_type::CMD_FIND_WINDOW,
+        cmd_find_flags::empty(),
+    ),
 
     flags: cmd_flag::CMD_AFTERHOOK,
     exec: cmd_select_layout_exec,

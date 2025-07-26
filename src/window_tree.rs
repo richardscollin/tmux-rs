@@ -1259,9 +1259,14 @@ unsafe fn window_tree_get_target(
         }
 
         if target.is_null() {
-            cmd_find_clear_state(fs, 0);
+            cmd_find_clear_state(fs, cmd_find_flags::empty());
         } else {
-            cmd_find_from_winlink_pane(fs, transmute_ptr(wl), transmute_ptr(wp), 0);
+            cmd_find_from_winlink_pane(
+                fs,
+                transmute_ptr(wl),
+                transmute_ptr(wp),
+                cmd_find_flags::empty(),
+            );
         }
 
         target

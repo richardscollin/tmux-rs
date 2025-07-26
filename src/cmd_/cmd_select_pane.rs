@@ -22,7 +22,7 @@ pub static CMD_SELECT_PANE_ENTRY: cmd_entry = cmd_entry {
     args: args_parse::new(c"DdegLlMmP:RT:t:UZ", 0, 0, None), /* -P and -g deprecated */
     usage: SyncCharPtr::new(c"[-DdeLlMmRUZ] [-T title] [-t target-pane]"),
 
-    target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_PANE, 0),
+    target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_PANE, cmd_find_flags::empty()),
 
     flags: cmd_flag::empty(),
     exec: cmd_select_pane_exec,
@@ -36,7 +36,11 @@ pub static CMD_LAST_PANE_ENTRY: cmd_entry = cmd_entry {
     args: args_parse::new(c"det:Z", 0, 0, None),
     usage: SyncCharPtr::new(c"[-deZ] [-t target-window]"),
 
-    target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_WINDOW, 0),
+    target: cmd_entry_flag::new(
+        b't',
+        cmd_find_type::CMD_FIND_WINDOW,
+        cmd_find_flags::empty(),
+    ),
 
     flags: cmd_flag::empty(),
     exec: cmd_select_pane_exec,
@@ -115,7 +119,7 @@ pub unsafe fn cmd_select_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd
                 }
                 window_redraw_active_switch(w, lastwp);
                 if window_set_active_pane(w, lastwp, 1) != 0 {
-                    cmd_find_from_winlink(current, wl, 0);
+                    cmd_find_from_winlink(current, wl, cmd_find_flags::empty());
                     cmd_select_pane_redraw(w);
                 }
                 if window_pop_zoom(w) != 0 {
@@ -238,7 +242,7 @@ pub unsafe fn cmd_select_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd
         {
             server_client_set_pane(c, wp);
         } else if window_set_active_pane(w, wp, 1) != 0 {
-            cmd_find_from_winlink_pane(current, wl, wp, 0);
+            cmd_find_from_winlink_pane(current, wl, wp, cmd_find_flags::empty());
         }
         cmdq_insert_hook!(s, item, current, "after-select-pane");
         cmd_select_pane_redraw(w);

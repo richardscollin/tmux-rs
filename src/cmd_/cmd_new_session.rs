@@ -26,7 +26,7 @@ pub static CMD_NEW_SESSION_ENTRY: cmd_entry = cmd_entry {
     args: args_parse::new(c"Ac:dDe:EF:f:n:Ps:t:x:Xy:", 0, -1, None),
     usage: SyncCharPtr::new(c"[-AdDEPX] [-c start-directory] [-e environment] [-F format] [-f flags] [-n window-name] [-s session-name] [-t target-session] [-x width] [-y height] [shell-command]"),
 
-    target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_SESSION, CMD_FIND_CANFAIL),
+    target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_SESSION, cmd_find_flags::CMD_FIND_CANFAIL),
 
     flags: cmd_flag::CMD_STARTSERVER,
     exec: cmd_new_session_exec,
@@ -40,7 +40,11 @@ pub static CMD_HAS_SESSION_ENTRY: cmd_entry = cmd_entry {
     args: args_parse::new(c"t:", 0, 0, None),
     usage: SyncCharPtr::new(c"[-t target-session]"),
 
-    target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_SESSION, 0),
+    target: cmd_entry_flag::new(
+        b't',
+        cmd_find_type::CMD_FIND_SESSION,
+        cmd_find_flags::empty(),
+    ),
 
     flags: cmd_flag::empty(),
     exec: cmd_new_session_exec,
@@ -376,11 +380,11 @@ unsafe fn cmd_new_session_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
                 (*c).flags |= client_flag::ATTACHED;
             }
             if !args_has_(args, 'd') {
-                cmd_find_from_session(current, s, 0);
+                cmd_find_from_session(current, s, cmd_find_flags::empty());
             }
 
             let mut fs: MaybeUninit<cmd_find_state> = MaybeUninit::<cmd_find_state>::uninit(); //TODO use uninit;
-            cmd_find_from_session(fs.as_mut_ptr(), s, 0);
+            cmd_find_from_session(fs.as_mut_ptr(), s, cmd_find_flags::empty());
             cmdq_insert_hook!(s, item, fs.as_mut_ptr(), "after-new-session");
 
             if CFG_FINISHED.load(atomic::Ordering::Acquire) {

@@ -22,7 +22,7 @@ pub static CMD_SPLIT_WINDOW_ENTRY: cmd_entry = cmd_entry {
     args: args_parse::new(c"bc:de:fF:hIl:p:Pt:vZ", 0, -1, None),
     usage: SyncCharPtr::new(c"[-bdefhIPvZ] [-c start-directory] [-e environment] [-F format] [-l size] [-t target-pane][shell-command]"),
 
-    target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_PANE, 0),
+    target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_PANE, cmd_find_flags::empty()),
 
     flags: cmd_flag::empty(),
     exec: cmd_split_window_exec,
@@ -168,7 +168,7 @@ unsafe fn cmd_split_window_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
             }
         }
         if !args_has_(args, 'd') {
-            cmd_find_from_winlink_pane(current, wl, new_wp, 0);
+            cmd_find_from_winlink_pane(current, wl, new_wp, cmd_find_flags::empty());
         }
         window_pop_zoom((*wp).window);
         server_redraw_window((*wp).window);
@@ -185,7 +185,7 @@ unsafe fn cmd_split_window_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
         }
 
         let mut fs: cmd_find_state = zeroed(); // TODO use uninit
-        cmd_find_from_winlink_pane(&raw mut fs, wl, new_wp, 0);
+        cmd_find_from_winlink_pane(&raw mut fs, wl, new_wp, cmd_find_flags::empty());
         cmdq_insert_hook!(s, item, &raw mut fs, "after-split-window");
 
         if !sc.argv.is_null() {

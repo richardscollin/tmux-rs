@@ -151,7 +151,7 @@ unsafe fn window_customize_check_item(
         if cmd_find_valid_state(&raw mut (*data).fs) {
             cmd_find_copy_state(fsp, &raw mut (*data).fs);
         } else {
-            cmd_find_from_pane(fsp, (*data).wp, 0);
+            cmd_find_from_pane(fsp, (*data).wp, cmd_find_flags::empty());
         }
 
         (*item).oo == window_customize_get_tree((*item).scope, fsp)
@@ -626,7 +626,7 @@ unsafe fn window_customize_build(
         if cmd_find_valid_state(&raw mut (*data).fs) {
             cmd_find_copy_state(&raw mut fs, &raw mut (*data).fs);
         } else {
-            cmd_find_from_pane(&raw mut fs, (*data).wp, 0);
+            cmd_find_from_pane(&raw mut fs, (*data).wp, cmd_find_flags::empty());
         }
 
         let mut ft = format_create_from_state(null_mut(), null_mut(), &raw mut fs);

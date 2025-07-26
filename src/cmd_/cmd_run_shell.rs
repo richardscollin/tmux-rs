@@ -27,7 +27,11 @@ pub static CMD_RUN_SHELL_ENTRY: cmd_entry = cmd_entry {
         c"[-bC] [-c start-directory] [-d delay] [-t target-pane] [shell-command]",
     ),
 
-    target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_PANE, CMD_FIND_CANFAIL),
+    target: cmd_entry_flag::new(
+        b't',
+        cmd_find_type::CMD_FIND_PANE,
+        cmd_find_flags::CMD_FIND_CANFAIL,
+    ),
 
     flags: cmd_flag::empty(),
     exec: cmd_run_shell_exec,
@@ -78,7 +82,7 @@ pub unsafe fn cmd_run_shell_print(job: *mut job, msg: *const u8) {
             if !(*cdata).item.is_null() && !(*cdata).client.is_null() {
                 wp = server_client_get_pane((*cdata).client);
             }
-            if wp.is_null() && cmd_find_from_nothing(&raw mut fs, 0) == 0 {
+            if wp.is_null() && cmd_find_from_nothing(&raw mut fs, cmd_find_flags::empty()) == 0 {
                 wp = fs.wp;
             }
             if wp.is_null() {

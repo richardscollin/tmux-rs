@@ -22,7 +22,11 @@ pub static CMD_DETACH_CLIENT_ENTRY: cmd_entry = cmd_entry {
     args: args_parse::new(c"aE:s:t:P", 0, 0, None),
     usage: SyncCharPtr::new(c"[-aP] [-E shell-command] [-s target-session] [-t target-client]"),
 
-    source: cmd_entry_flag::new(b's', cmd_find_type::CMD_FIND_SESSION, CMD_FIND_CANFAIL),
+    source: cmd_entry_flag::new(
+        b's',
+        cmd_find_type::CMD_FIND_SESSION,
+        cmd_find_flags::CMD_FIND_CANFAIL,
+    ),
 
     flags: cmd_flag::CMD_READONLY.union(cmd_flag::CMD_CLIENT_TFLAG),
     exec: cmd_detach_client_exec,

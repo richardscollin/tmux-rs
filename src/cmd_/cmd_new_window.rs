@@ -24,7 +24,7 @@ pub static CMD_NEW_WINDOW_ENTRY: cmd_entry = cmd_entry {
     args: args_parse::new(c"abc:de:F:kn:PSt:", 0, -1, None),
     usage: SyncCharPtr::new(c"[-abdkPS] [-c start-directory] [-e environment] [-F format] [-n window-name] [-t target-window] [shell-command]"),
 
-    target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_WINDOW, CMD_FIND_WINDOW_INDEX),
+    target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_WINDOW, cmd_find_flags::CMD_FIND_WINDOW_INDEX),
 
     flags: cmd_flag::empty(),
     exec: cmd_new_window_exec,
@@ -126,7 +126,7 @@ unsafe fn cmd_new_window_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retv
             return cmd_retval::CMD_RETURN_ERROR;
         }
         if !args_has_(args, 'd') || new_wl == (*s).curw {
-            cmd_find_from_winlink(current, new_wl, 0);
+            cmd_find_from_winlink(current, new_wl, cmd_find_flags::empty());
             server_redraw_session_group(s);
         } else {
             server_status_session_group(s);
@@ -143,7 +143,7 @@ unsafe fn cmd_new_window_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retv
         }
 
         let mut fs: cmd_find_state = zeroed(); //TODO can be uninit
-        cmd_find_from_winlink(&raw mut fs, new_wl, 0);
+        cmd_find_from_winlink(&raw mut fs, new_wl, cmd_find_flags::empty());
         cmdq_insert_hook!(s, item, &raw mut fs, "after-new-window");
 
         if !sc.argv.is_null() {

@@ -20,7 +20,11 @@ pub static CMD_RENAME_WINDOW_ENTRY: cmd_entry = cmd_entry {
     args: args_parse::new(c"t:", 1, 1, None),
     usage: SyncCharPtr::new(c"[-t target-window] new-name"),
 
-    target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_WINDOW, 0),
+    target: cmd_entry_flag::new(
+        b't',
+        cmd_find_type::CMD_FIND_WINDOW,
+        cmd_find_flags::empty(),
+    ),
     source: cmd_entry_flag::zeroed(),
 
     flags: cmd_flag::CMD_AFTERHOOK,

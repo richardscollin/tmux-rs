@@ -21,7 +21,7 @@ pub static CMD_FIND_WINDOW_ENTRY: cmd_entry = cmd_entry {
     args: args_parse::new(c"CiNrt:TZ", 1, 1, None),
     usage: SyncCharPtr::new(c"[-CiNrTZ] [-t target-pane] match-string"),
 
-    target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_PANE, 0),
+    target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_PANE, cmd_find_flags::empty()),
 
     flags: cmd_flag::empty(),
     exec: cmd_find_window_exec,

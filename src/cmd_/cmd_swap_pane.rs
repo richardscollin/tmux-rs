@@ -26,8 +26,12 @@ pub static CMD_SWAP_PANE_ENTRY: cmd_entry = cmd_entry {
     args: args_parse::new(c"dDs:t:UZ", 0, 0, None),
     usage: SyncCharPtr::new(c"[-dDUZ] [-s src-window] [-t dst-window]"),
 
-    source: cmd_entry_flag::new(b's', cmd_find_type::CMD_FIND_PANE, CMD_FIND_DEFAULT_MARKED),
-    target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_PANE, 0),
+    source: cmd_entry_flag::new(
+        b's',
+        cmd_find_type::CMD_FIND_PANE,
+        cmd_find_flags::CMD_FIND_DEFAULT_MARKED,
+    ),
+    target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_PANE, cmd_find_flags::empty()),
 
     flags: cmd_flag::empty(),
     exec: cmd_swap_pane_exec,

@@ -24,8 +24,12 @@ pub static CMD_JOIN_PANE_ENTRY: cmd_entry = cmd_entry {
     args: args_parse::new(c"bdfhvp:l:s:t:", 0, 0, None),
     usage: SyncCharPtr::new(c"[-bdfhv] [-l size] [-s src-pane] [-t dst-pane]"),
 
-    source: cmd_entry_flag::new(b's', cmd_find_type::CMD_FIND_PANE, CMD_FIND_DEFAULT_MARKED),
-    target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_PANE, 0),
+    source: cmd_entry_flag::new(
+        b's',
+        cmd_find_type::CMD_FIND_PANE,
+        cmd_find_flags::CMD_FIND_DEFAULT_MARKED,
+    ),
+    target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_PANE, cmd_find_flags::empty()),
 
     flags: cmd_flag::empty(),
     exec: cmd_join_pane_exec,
@@ -38,8 +42,12 @@ pub static CMD_MOVE_PANE_ENTRY: cmd_entry = cmd_entry {
     args: args_parse::new(c"bdfhvp:l:s:t:", 0, 0, None),
     usage: SyncCharPtr::new(c"[-bdfhv] [-l size] [-s src-pane] [-t dst-pane]"),
 
-    source: cmd_entry_flag::new(b's', cmd_find_type::CMD_FIND_PANE, CMD_FIND_DEFAULT_MARKED),
-    target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_PANE, 0),
+    source: cmd_entry_flag::new(
+        b's',
+        cmd_find_type::CMD_FIND_PANE,
+        cmd_find_flags::CMD_FIND_DEFAULT_MARKED,
+    ),
+    target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_PANE, cmd_find_flags::empty()),
 
     flags: cmd_flag::empty(),
     exec: cmd_join_pane_exec,
@@ -158,7 +166,7 @@ unsafe fn cmd_join_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retva
         if !args_has_(args, 'd') {
             window_set_active_pane(dst_w, src_wp, 1);
             session_select(dst_s, dst_idx);
-            cmd_find_from_session(current, dst_s, 0);
+            cmd_find_from_session(current, dst_s, cmd_find_flags::empty());
             server_redraw_session(dst_s);
         } else {
             server_status_session(dst_s);

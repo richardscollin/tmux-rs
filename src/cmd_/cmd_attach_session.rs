@@ -68,9 +68,12 @@ pub unsafe fn cmd_attach_session(
 
         let (type_, flags) =
             if !tflag.is_null() && *tflag.add(libc::strcspn(tflag, c!(":."))) != b'\0' {
-                (cmd_find_type::CMD_FIND_PANE, 0)
+                (cmd_find_type::CMD_FIND_PANE, cmd_find_flags::empty())
             } else {
-                (cmd_find_type::CMD_FIND_SESSION, CMD_FIND_PREFER_UNATTACHED)
+                (
+                    cmd_find_type::CMD_FIND_SESSION,
+                    cmd_find_flags::CMD_FIND_PREFER_UNATTACHED,
+                )
             };
         if cmd_find_target(&raw mut target, item, tflag, type_, flags) != 0 {
             return cmd_retval::CMD_RETURN_ERROR;
@@ -86,9 +89,9 @@ pub unsafe fn cmd_attach_session(
             }
             session_set_current(s, wl);
             if !wp.is_null() {
-                cmd_find_from_winlink_pane(current, wl, wp, 0);
+                cmd_find_from_winlink_pane(current, wl, wp, cmd_find_flags::empty());
             } else {
-                cmd_find_from_winlink(current, wl, 0);
+                cmd_find_from_winlink(current, wl, cmd_find_flags::empty());
             }
         }
 

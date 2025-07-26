@@ -23,8 +23,12 @@ pub static CMD_BREAK_PANE_ENTRY: cmd_entry = cmd_entry {
     args: args_parse::new(c"abdPF:n:s:t:", 0, 0, None),
     usage: SyncCharPtr::new(c"[-abdP] [-F format] [-n window-name] [-s src-pane] [-t dst-window]"),
 
-    source: cmd_entry_flag::new(b's', cmd_find_type::CMD_FIND_PANE, 0),
-    target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_WINDOW, CMD_FIND_WINDOW_INDEX),
+    source: cmd_entry_flag::new(b's', cmd_find_type::CMD_FIND_PANE, cmd_find_flags::empty()),
+    target: cmd_entry_flag::new(
+        b't',
+        cmd_find_type::CMD_FIND_WINDOW,
+        cmd_find_flags::CMD_FIND_WINDOW_INDEX,
+    ),
 
     flags: cmd_flag::empty(),
     exec: cmd_break_pane_exec,
@@ -122,7 +126,7 @@ pub unsafe fn cmd_break_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
         wl = session_attach(dst_s, w, idx, &raw mut cause);
         if args_has(args, b'd') == 0 {
             session_select(dst_s, (*wl).idx);
-            cmd_find_from_session(current, dst_s, 0);
+            cmd_find_from_session(current, dst_s, cmd_find_flags::empty());
         }
 
         server_redraw_session(src_s);

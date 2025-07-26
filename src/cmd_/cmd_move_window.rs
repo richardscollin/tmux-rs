@@ -20,7 +20,11 @@ pub static CMD_MOVE_WINDOW_ENTRY: cmd_entry = cmd_entry {
     args: args_parse::new(c"abdkrs:t:", 0, 0, None),
     usage: SyncCharPtr::new(c"[-abdkr] [-s src-window] [-t dst-window]"),
 
-    source: cmd_entry_flag::new(b's', cmd_find_type::CMD_FIND_WINDOW, 0),
+    source: cmd_entry_flag::new(
+        b's',
+        cmd_find_type::CMD_FIND_WINDOW,
+        cmd_find_flags::empty(),
+    ),
 
     flags: cmd_flag::empty(),
     exec: cmd_move_window_exec,
@@ -34,7 +38,11 @@ pub static CMD_LINK_WINDOW_ENTRY: cmd_entry = cmd_entry {
     args: args_parse::new(c"abdks:t:", 0, 0, None),
     usage: SyncCharPtr::new(c"[-abdk] [-s src-window] [-t dst-window]"),
 
-    source: cmd_entry_flag::new(b's', cmd_find_type::CMD_FIND_WINDOW, 0),
+    source: cmd_entry_flag::new(
+        b's',
+        cmd_find_type::CMD_FIND_WINDOW,
+        cmd_find_flags::empty(),
+    ),
 
     flags: cmd_flag::empty(),
     exec: cmd_move_window_exec,
@@ -57,7 +65,7 @@ unsafe fn cmd_move_window_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
                 item,
                 tflag,
                 cmd_find_type::CMD_FIND_SESSION,
-                CMD_FIND_QUIET,
+                cmd_find_flags::CMD_FIND_QUIET,
             ) != 0
             {
                 return cmd_retval::CMD_RETURN_ERROR;
@@ -74,7 +82,7 @@ unsafe fn cmd_move_window_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
             item,
             tflag,
             cmd_find_type::CMD_FIND_WINDOW,
-            CMD_FIND_WINDOW_INDEX,
+            cmd_find_flags::CMD_FIND_WINDOW_INDEX,
         ) != 0
         {
             return cmd_retval::CMD_RETURN_ERROR;

@@ -25,7 +25,11 @@ pub static CMD_ROTATE_WINDOW_ENTRY: cmd_entry = cmd_entry {
     args: args_parse::new(c"Dt:UZ", 0, 0, None),
     usage: SyncCharPtr::new(c"[-DUZ] [-t target-window]"),
 
-    target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_WINDOW, 0),
+    target: cmd_entry_flag::new(
+        b't',
+        cmd_find_type::CMD_FIND_WINDOW,
+        cmd_find_flags::empty(),
+    ),
 
     flags: cmd_flag::empty(),
     exec: cmd_rotate_window_exec,
@@ -128,7 +132,7 @@ unsafe fn cmd_rotate_window_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
         }
 
         window_set_active_pane(w, wp, 1);
-        cmd_find_from_winlink_pane(current, wl, wp, 0);
+        cmd_find_from_winlink_pane(current, wl, wp, cmd_find_flags::empty());
         window_pop_zoom(w);
         server_redraw_window(w);
 

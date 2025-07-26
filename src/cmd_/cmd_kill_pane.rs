@@ -21,7 +21,7 @@ pub static CMD_KILL_PANE_ENTRY: cmd_entry = cmd_entry {
     args: args_parse::new(c"at:", 0, 0, None),
     usage: SyncCharPtr::new(c"[-a] [-t target-client]"),
 
-    target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_PANE, 0),
+    target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_PANE, cmd_find_flags::empty()),
 
     flags: cmd_flag::CMD_AFTERHOOK,
     exec: cmd_kill_pane_exec,

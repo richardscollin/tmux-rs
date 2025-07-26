@@ -37,13 +37,13 @@ unsafe fn cmd_switch_client_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
         let tc = cmdq_get_target_client(item);
 
         let type_: cmd_find_type;
-        let flags: i32;
+        let flags: cmd_find_flags;
         if !tflag.is_null() && *tflag.add(strcspn(tflag, c!(":.%"))) != b'\0' {
             type_ = cmd_find_type::CMD_FIND_PANE;
-            flags = 0;
+            flags = cmd_find_flags::empty();
         } else {
             type_ = cmd_find_type::CMD_FIND_SESSION;
-            flags = CMD_FIND_PREFER_UNATTACHED;
+            flags = cmd_find_flags::CMD_FIND_PREFER_UNATTACHED;
         }
         if cmd_find_target(&raw mut target, item, tflag, type_, flags) != 0 {
             return cmd_retval::CMD_RETURN_ERROR;
@@ -112,7 +112,7 @@ unsafe fn cmd_switch_client_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
             }
             if !wl.is_null() {
                 session_set_current(s, wl);
-                cmd_find_from_session(current, s, 0);
+                cmd_find_from_session(current, s, cmd_find_flags::empty());
             }
         }
 

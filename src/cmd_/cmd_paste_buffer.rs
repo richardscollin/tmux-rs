@@ -20,7 +20,7 @@ pub static CMD_PASTE_BUFFER_ENTRY: cmd_entry = cmd_entry {
     args: args_parse::new(c"db:prs:t:", 0, 0, None),
     usage: SyncCharPtr::new(c"[-dpr] [-s separator] [-b buffer-name] [-t target-pane]"),
 
-    target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_PANE, 0),
+    target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_PANE, cmd_find_flags::empty()),
 
     flags: cmd_flag::CMD_AFTERHOOK,
     exec: cmd_paste_buffer_exec,

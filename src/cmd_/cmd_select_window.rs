@@ -21,7 +21,11 @@ pub static CMD_SELECT_WINDOW_ENTRY: cmd_entry = cmd_entry {
     args: args_parse::new(c"lnpTt:", 0, 0, None),
     usage: SyncCharPtr::new(c"[-lnpT] [-t target-window]"),
 
-    target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_WINDOW, 0),
+    target: cmd_entry_flag::new(
+        b't',
+        cmd_find_type::CMD_FIND_WINDOW,
+        cmd_find_flags::empty(),
+    ),
 
     flags: cmd_flag::empty(),
     exec: cmd_select_window_exec,
@@ -35,7 +39,11 @@ pub static CMD_NEXT_WINDOW_ENTRY: cmd_entry = cmd_entry {
     args: args_parse::new(c"at:", 0, 0, None),
     usage: SyncCharPtr::new(c"[-a] [-t target-session]"),
 
-    target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_SESSION, 0),
+    target: cmd_entry_flag::new(
+        b't',
+        cmd_find_type::CMD_FIND_SESSION,
+        cmd_find_flags::empty(),
+    ),
 
     flags: cmd_flag::empty(),
     exec: cmd_select_window_exec,
@@ -49,7 +57,11 @@ pub static CMD_PREVIOUS_WINDOW_ENTRY: cmd_entry = cmd_entry {
     args: args_parse::new(c"at:", 0, 0, None),
     usage: SyncCharPtr::new(c"[-a] [-t target-session]"),
 
-    target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_SESSION, 0),
+    target: cmd_entry_flag::new(
+        b't',
+        cmd_find_type::CMD_FIND_SESSION,
+        cmd_find_flags::empty(),
+    ),
 
     flags: cmd_flag::empty(),
     exec: cmd_select_window_exec,
@@ -63,7 +75,11 @@ pub static CMD_LAST_WINDOW_ENTRY: cmd_entry = cmd_entry {
     args: args_parse::new(c"t:", 0, 0, None),
     usage: SyncCharPtr::new(c"[-t target-session]"),
 
-    target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_SESSION, 0),
+    target: cmd_entry_flag::new(
+        b't',
+        cmd_find_type::CMD_FIND_SESSION,
+        cmd_find_flags::empty(),
+    ),
 
     flags: cmd_flag::empty(),
     exec: cmd_select_window_exec,
@@ -111,7 +127,7 @@ unsafe fn cmd_select_window_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
                     return cmd_retval::CMD_RETURN_ERROR;
                 }
             }
-            cmd_find_from_session(current, s, 0);
+            cmd_find_from_session(current, s, cmd_find_flags::empty());
             server_redraw_session(s);
             cmdq_insert_hook!(s, item, current, "after-select-window");
         } else {
@@ -125,11 +141,11 @@ unsafe fn cmd_select_window_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
                     return cmd_retval::CMD_RETURN_ERROR;
                 }
                 if (*current).s == s {
-                    cmd_find_from_session(current, s, 0);
+                    cmd_find_from_session(current, s, cmd_find_flags::empty());
                 }
                 server_redraw_session(s);
             } else if session_select(s, (*wl).idx) == 0 {
-                cmd_find_from_session(current, s, 0);
+                cmd_find_from_session(current, s, cmd_find_flags::empty());
                 server_redraw_session(s);
             }
             cmdq_insert_hook!(s, item, current, "after-select-window");

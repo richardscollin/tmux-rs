@@ -1951,7 +1951,7 @@ enum cmd_find_type {
 #[repr(C)]
 #[derive(Copy, Clone)]
 struct cmd_find_state {
-    flags: i32,
+    flags: cmd_find_flags,
     current: *mut cmd_find_state,
 
     s: *mut session,
@@ -1961,14 +1961,20 @@ struct cmd_find_state {
     idx: i32,
 }
 
-// Command find flags.
-const CMD_FIND_PREFER_UNATTACHED: i32 = 0x1;
-const CMD_FIND_QUIET: i32 = 0x2;
-const CMD_FIND_WINDOW_INDEX: i32 = 0x4;
-const CMD_FIND_DEFAULT_MARKED: i32 = 0x8;
-const CMD_FIND_EXACT_SESSION: i32 = 0x10;
-const CMD_FIND_EXACT_WINDOW: i32 = 0x20;
-const CMD_FIND_CANFAIL: i32 = 0x40;
+bitflags::bitflags! {
+    // Command find flags.
+    #[repr(transparent)]
+    #[derive(Copy, Clone, Default, Eq, PartialEq)]
+    struct cmd_find_flags: i32 {
+        const CMD_FIND_PREFER_UNATTACHED = 0x1;
+        const CMD_FIND_QUIET = 0x2;
+        const CMD_FIND_WINDOW_INDEX = 0x4;
+        const CMD_FIND_DEFAULT_MARKED = 0x8;
+        const CMD_FIND_EXACT_SESSION = 0x10;
+        const CMD_FIND_EXACT_WINDOW = 0x20;
+        const CMD_FIND_CANFAIL = 0x40;
+    }
+}
 
 /// List of commands.
 #[repr(C)]
@@ -2070,11 +2076,11 @@ type cmdq_cb = Option<unsafe fn(*mut cmdq_item, *mut c_void) -> cmd_retval>;
 struct cmd_entry_flag {
     flag: u8,
     type_: cmd_find_type,
-    flags: i32,
+    flags: cmd_find_flags,
 }
 
 impl cmd_entry_flag {
-    const fn new(flag: u8, type_: cmd_find_type, flags: i32) -> Self {
+    const fn new(flag: u8, type_: cmd_find_type, flags: cmd_find_flags) -> Self {
         Self { flag, type_, flags }
     }
 
@@ -2082,7 +2088,7 @@ impl cmd_entry_flag {
         Self {
             flag: b'\0',
             type_: cmd_find_type::CMD_FIND_PANE,
-            flags: 0,
+            flags: cmd_find_flags::empty(),
         }
     }
 }

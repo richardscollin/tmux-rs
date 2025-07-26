@@ -1864,8 +1864,10 @@ pub unsafe fn server_client_key_callback(item: *mut cmdq_item, data: *mut c_void
                 }
 
                 /* Find affected pane. */
-                if !KEYC_IS_MOUSE(key) || cmd_find_from_mouse(&raw mut fs, m, 0) != 0 {
-                    cmd_find_from_client(&raw mut fs, c, 0);
+                if !KEYC_IS_MOUSE(key)
+                    || cmd_find_from_mouse(&raw mut fs, m, cmd_find_flags::empty()) != 0
+                {
+                    cmd_find_from_client(&raw mut fs, c, cmd_find_flags::empty());
                 }
                 wp = fs.wp;
 

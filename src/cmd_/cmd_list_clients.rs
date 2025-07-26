@@ -26,7 +26,11 @@ pub static CMD_LIST_CLIENTS_ENTRY: cmd_entry = cmd_entry {
     args: args_parse::new(c"F:f:t:", 0, 0, None),
     usage: SyncCharPtr::new(c"[-F format] [-f filter] [-t target-session]"),
 
-    target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_SESSION, 0),
+    target: cmd_entry_flag::new(
+        b't',
+        cmd_find_type::CMD_FIND_SESSION,
+        cmd_find_flags::empty(),
+    ),
 
     flags: cmd_flag::CMD_READONLY.union(cmd_flag::CMD_AFTERHOOK),
     exec: cmd_list_clients_exec,

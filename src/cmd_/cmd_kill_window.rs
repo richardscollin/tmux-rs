@@ -23,7 +23,11 @@ pub static CMD_KILL_WINDOW_ENTRY: cmd_entry = cmd_entry {
     args: args_parse::new(c"at:", 0, 0, None),
     usage: SyncCharPtr::new(c"[-a] [-t target-window]"),
 
-    target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_WINDOW, 0),
+    target: cmd_entry_flag::new(
+        b't',
+        cmd_find_type::CMD_FIND_WINDOW,
+        cmd_find_flags::empty(),
+    ),
 
     flags: cmd_flag::empty(),
     exec: cmd_kill_window_exec,
@@ -37,7 +41,11 @@ pub static CMD_UNLINK_WINDOW_ENTRY: cmd_entry = cmd_entry {
     args: args_parse::new(c"kt:", 0, 0, None),
     usage: SyncCharPtr::new(c"[-k] [-t target-window]"),
 
-    target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_WINDOW, 0),
+    target: cmd_entry_flag::new(
+        b't',
+        cmd_find_type::CMD_FIND_WINDOW,
+        cmd_find_flags::empty(),
+    ),
 
     flags: cmd_flag::empty(),
     exec: cmd_kill_window_exec,

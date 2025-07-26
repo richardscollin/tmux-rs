@@ -203,7 +203,14 @@ pub unsafe fn cmd_refresh_client_clipboard(self_: *mut cmd, item: *mut cmdq_item
             }
             (*tc).flags |= client_flag::CLIPBOARDBUFFER;
         } else {
-            if cmd_find_target(&raw mut fs, item, p, cmd_find_type::CMD_FIND_PANE, 0) != 0 {
+            if cmd_find_target(
+                &raw mut fs,
+                item,
+                p,
+                cmd_find_type::CMD_FIND_PANE,
+                cmd_find_flags::empty(),
+            ) != 0
+            {
                 return cmd_retval::CMD_RETURN_ERROR;
             }
             let mut i = 0;

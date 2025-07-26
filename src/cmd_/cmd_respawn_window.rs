@@ -22,7 +22,11 @@ pub static CMD_RESPAWN_WINDOW_ENTRY: cmd_entry = cmd_entry {
         c"[-k] [-c start-directory] [-e environment] [-t target-window] [shell-command]",
     ),
 
-    target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_WINDOW, 0),
+    target: cmd_entry_flag::new(
+        b't',
+        cmd_find_type::CMD_FIND_WINDOW,
+        cmd_find_flags::empty(),
+    ),
     source: cmd_entry_flag::zeroed(),
 
     flags: cmd_flag::empty(),

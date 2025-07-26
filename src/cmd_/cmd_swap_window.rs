@@ -26,9 +26,13 @@ pub static CMD_SWAP_WINDOW_ENTRY: cmd_entry = cmd_entry {
     source: cmd_entry_flag::new(
         b's',
         cmd_find_type::CMD_FIND_WINDOW,
-        CMD_FIND_DEFAULT_MARKED,
+        cmd_find_flags::CMD_FIND_DEFAULT_MARKED,
     ),
-    target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_WINDOW, 0),
+    target: cmd_entry_flag::new(
+        b't',
+        cmd_find_type::CMD_FIND_WINDOW,
+        cmd_find_flags::empty(),
+    ),
 
     flags: cmd_flag::empty(),
     exec: cmd_swap_window_exec,

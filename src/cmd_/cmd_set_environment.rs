@@ -20,7 +20,11 @@ pub static CMD_SET_ENVIRONMENT_ENTRY: cmd_entry = cmd_entry {
     args: args_parse::new(c"Fhgrt:u", 1, 2, None),
     usage: SyncCharPtr::new(c"[-Fhgru] [-t target-session] name [value]"),
 
-    target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_SESSION, CMD_FIND_CANFAIL),
+    target: cmd_entry_flag::new(
+        b't',
+        cmd_find_type::CMD_FIND_SESSION,
+        cmd_find_flags::CMD_FIND_CANFAIL,
+    ),
 
     flags: cmd_flag::CMD_AFTERHOOK,
     exec: cmd_set_environment_exec,

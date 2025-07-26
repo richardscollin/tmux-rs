@@ -58,10 +58,10 @@ pub unsafe fn notify_insert_hook(mut item: *mut cmdq_item, ne: *mut notify_entry
 
         let mut fs: cmd_find_state = zeroed();
 
-        cmd_find_clear_state(&raw mut fs, 0);
+        cmd_find_clear_state(&raw mut fs, cmd_find_flags::empty());
         if cmd_find_empty_state(&raw mut (*ne).fs) != 0 || !cmd_find_valid_state(&raw mut (*ne).fs)
         {
-            cmd_find_from_nothing(&raw mut fs, 0);
+            cmd_find_from_nothing(&raw mut fs, cmd_find_flags::empty());
         } else {
             cmd_find_copy_state(&raw mut fs, &raw mut (*ne).fs);
         }
@@ -300,7 +300,7 @@ pub unsafe fn notify_client(name: &'static CStr, c: *mut client) {
     unsafe {
         let mut fs: cmd_find_state = zeroed(); // TODO use uninit
 
-        cmd_find_from_client(&raw mut fs, c, 0);
+        cmd_find_from_client(&raw mut fs, c, cmd_find_flags::empty());
         notify_add(
             name,
             &raw mut fs,
@@ -318,9 +318,9 @@ pub unsafe fn notify_session(name: &'static CStr, s: *mut session) {
         let mut fs = zeroed(); // TODO use uninit
 
         if session_alive(s) {
-            cmd_find_from_session(&raw mut fs, s, 0);
+            cmd_find_from_session(&raw mut fs, s, cmd_find_flags::empty());
         } else {
-            cmd_find_from_nothing(&raw mut fs, 0);
+            cmd_find_from_nothing(&raw mut fs, cmd_find_flags::empty());
         }
         notify_add(
             name,
@@ -338,7 +338,7 @@ pub unsafe fn notify_winlink(name: &'static CStr, wl: *mut winlink) {
     unsafe {
         let mut fs: cmd_find_state = zeroed();
 
-        cmd_find_from_winlink(&raw mut fs, wl, 0);
+        cmd_find_from_winlink(&raw mut fs, wl, cmd_find_flags::empty());
         notify_add(
             name,
             &raw mut fs,
@@ -355,7 +355,7 @@ pub unsafe fn notify_session_window(name: &'static CStr, s: *mut session, w: *mu
     unsafe {
         let mut fs: cmd_find_state = zeroed();
 
-        cmd_find_from_session_window(&raw mut fs, s, w, 0);
+        cmd_find_from_session_window(&raw mut fs, s, w, cmd_find_flags::empty());
         notify_add(name, &raw mut fs, null_mut(), s, w, null_mut(), null_mut());
     }
 }
@@ -364,7 +364,7 @@ pub unsafe fn notify_window(name: &'static CStr, w: *mut window) {
     unsafe {
         let mut fs: cmd_find_state = zeroed();
 
-        cmd_find_from_window(&raw mut fs, w, 0);
+        cmd_find_from_window(&raw mut fs, w, cmd_find_flags::empty());
         notify_add(
             name,
             &raw mut fs,
@@ -381,7 +381,7 @@ pub unsafe fn notify_pane(name: &'static CStr, wp: *mut window_pane) {
     unsafe {
         let mut fs: cmd_find_state = zeroed();
 
-        cmd_find_from_pane(&raw mut fs, wp, 0);
+        cmd_find_from_pane(&raw mut fs, wp, cmd_find_flags::empty());
         notify_add(
             name,
             &raw mut fs,
@@ -398,7 +398,7 @@ pub unsafe fn notify_paste_buffer(pbname: *const u8, deleted: i32) {
     unsafe {
         let mut fs: cmd_find_state = zeroed();
 
-        cmd_find_clear_state(&raw mut fs, 0);
+        cmd_find_clear_state(&raw mut fs, cmd_find_flags::empty());
         if deleted != 0 {
             notify_add(
                 c"paste-buffer-deleted",

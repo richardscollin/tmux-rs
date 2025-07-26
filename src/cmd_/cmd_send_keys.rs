@@ -27,7 +27,7 @@ pub static CMD_SEND_KEYS_ENTRY: cmd_entry = cmd_entry {
         c"[-FHKlMRX] [-c target-client] [-N repeat-count] -t target-pane key ...",
     ),
 
-    target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_PANE, 0),
+    target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_PANE, cmd_find_flags::empty()),
 
     flags: cmd_flag::CMD_AFTERHOOK
         .union(cmd_flag::CMD_CLIENT_CFLAG)
@@ -44,7 +44,7 @@ pub static CMD_SEND_PREFIX_ENTRY: cmd_entry = cmd_entry {
     args: args_parse::new(c"2t:", 0, 0, None),
     usage: SyncCharPtr::new(c"[-2] -t target-pane"),
 
-    target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_PANE, 0),
+    target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_PANE, cmd_find_flags::empty()),
 
     flags: cmd_flag::CMD_AFTERHOOK,
     exec: cmd_send_keys_exec,

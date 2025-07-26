@@ -585,6 +585,26 @@ where
     null_mut()
 }
 
+pub unsafe fn rb_find_by_const<T, D, F>(head: &rb_head<T>, cmp: F) -> *const T
+where
+    T: GetEntry<T, D>,
+    F: Fn(&T) -> std::cmp::Ordering,
+{
+    unsafe {
+        let mut tmp: *const T = head.rbh_root.cast_const();
+
+        while !tmp.is_null() {
+            tmp = match cmp(unsafe { &*tmp }) {
+                Ordering::Less => rb_left_const(tmp),
+                Ordering::Greater => rb_right_const(tmp),
+                Ordering::Equal => return tmp,
+            };
+        }
+    }
+
+    null_mut()
+}
+
 pub unsafe fn rb_find<T, D>(head: *mut rb_head<T>, elm: *const T) -> *mut T
 where
     T: GetEntry<T, D>,

@@ -22,7 +22,7 @@ use std::cmp::Ordering;
 use crate::compat::{
     RB_GENERATE,
     queue::tailq_foreach,
-    tree::{rb_find, rb_foreach, rb_init, rb_insert, rb_min, rb_next, rb_remove},
+    tree::{rb_find, rb_find_by_const, rb_foreach, rb_init, rb_insert, rb_min, rb_next, rb_remove},
 };
 
 //
@@ -283,6 +283,18 @@ pub unsafe fn options_get_only_(oo: *mut options, name: &str) -> *mut options_en
     }
 }
 
+pub unsafe fn options_get_only_const(oo: *const options, name: &str) -> *const options_entry {
+    unsafe {
+        let found = rb_find_by_const(&(*oo).tree, |oe| libc::strcmp_(oe.name, name).reverse());
+        if found.is_null() {
+            let name = options_map_name_str(name);
+            rb_find_by_const(&(*oo).tree, |oe| libc::strcmp_(oe.name, name).reverse())
+        } else {
+            found
+        }
+    }
+}
+
 pub unsafe fn options_get(mut oo: *mut options, name: *const u8) -> *mut options_entry {
     unsafe {
         let mut o = options_get_only(oo, name);
@@ -302,6 +314,22 @@ pub unsafe fn options_get_(mut oo: *mut options, name: &str) -> *mut options_ent
         let mut o;
         while {
             o = options_get_only_(oo, name);
+            o.is_null()
+        } {
+            oo = (*oo).parent;
+            if oo.is_null() {
+                break;
+            }
+        }
+        o
+    }
+}
+
+pub unsafe fn options_get_const(mut oo: *const options, name: &str) -> *const options_entry {
+    unsafe {
+        let mut o;
+        while {
+            o = options_get_only_const(oo, name);
             o.is_null()
         } {
             oo = (*oo).parent;
@@ -842,9 +870,9 @@ pub unsafe fn options_get_string(oo: *mut options, name: *const u8) -> *const u8
     }
 }
 
-pub unsafe fn options_get_string_(oo: *mut options, name: &str) -> *const u8 {
+pub unsafe fn options_get_string_(oo: *const options, name: &str) -> *const u8 {
     unsafe {
-        let o = options_get_(oo, name);
+        let o = options_get_const(oo, name);
         if o.is_null() {
             fatalx_!("missing option {name}");
         }
@@ -868,9 +896,9 @@ pub unsafe fn options_get_number(oo: *mut options, name: *const u8) -> i64 {
     }
 }
 
-pub unsafe fn options_get_number_(oo: *mut options, name: &str) -> i64 {
+pub unsafe fn options_get_number_(oo: *const options, name: &str) -> i64 {
     unsafe {
-        let o = options_get_(oo, name);
+        let o = options_get_const(oo, name);
         if o.is_null() {
             fatalx_!("missing option {name}");
         }

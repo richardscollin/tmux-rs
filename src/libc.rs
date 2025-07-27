@@ -377,14 +377,10 @@ pub unsafe fn ttyname(fd: i32) -> *mut u8 {
     unsafe { ::libc::ttyname(fd).cast() }
 }
 
-pub(crate) unsafe fn basename(path: *mut u8) -> *mut u8 {
-    #[cfg(target_os = "macos")]
-    {
-        unsafe { libc::basename(path.cast()) }.cast()
-    }
-
-    #[cfg(target_os = "linux")]
-    {
-        unsafe { libc::posix_basename(path.cast()) }.cast()
-    }
+pub(crate) fn basename(path: &str) -> &str {
+    std::path::Path::new(path)
+        .file_name()
+        .expect("TODO properly handle this case with ..")
+        .to_str()
+        .expect("should always be utf8")
 }

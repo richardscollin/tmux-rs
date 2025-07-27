@@ -3578,7 +3578,7 @@ fn format_find(
         let mut saved: *mut u8 = null_mut();
         if modifiers.intersects(format_modifiers::FORMAT_BASENAME) {
             saved = found;
-            found = xstrdup(basename(saved)).as_ptr();
+            found = xstrdup__(basename(cstr_to_str(saved)));
             free_(saved);
         }
         if modifiers.intersects(format_modifiers::FORMAT_DIRNAME) {

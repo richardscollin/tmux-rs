@@ -179,9 +179,10 @@ pub unsafe fn parse_window_name(in_: *const u8) -> *mut u8 {
         }
 
         if *name == b'/' {
-            name = basename(name);
+            name = xstrdup__(basename(cstr_to_str(name)));
+        } else {
+            name = xstrdup(name).cast().as_ptr();
         }
-        name = xstrdup(name).cast().as_ptr();
         free(copy as _);
         name
     }

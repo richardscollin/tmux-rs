@@ -555,6 +555,7 @@ pub unsafe fn input_key(s: *mut screen, bev: *mut bufferevent, mut key: key_code
     }
 }
 
+#[expect(static_mut_refs, reason = "FIXME")]
 /// Get mouse event string.
 pub unsafe fn input_key_get_mouse(
     s: *mut screen,
@@ -564,6 +565,7 @@ pub unsafe fn input_key_get_mouse(
     rbuf: *mut *const u8,
     rlen: *mut usize,
 ) -> i32 {
+    use std::io::Write;
     static mut BUF: [u8; 40] = [0; 40];
 
     unsafe {
@@ -618,9 +620,10 @@ pub unsafe fn input_key_get_mouse(
                 (*m).sgr_b,
                 x + 1,
                 y + 1,
-                (*m).sgr_type,
+                (*m).sgr_type as u8 as char,
             )
-            .unwrap() as usize;
+            .unwrap() as usize
+                - 1;
         } else if (*s).mode.intersects(mode_flag::MODE_MOUSE_UTF8) {
             if (*m).b > (MOUSE_PARAM_UTF8_MAX - MOUSE_PARAM_BTN_OFF)
                 || x > (MOUSE_PARAM_UTF8_MAX - MOUSE_PARAM_POS_OFF)
@@ -628,7 +631,7 @@ pub unsafe fn input_key_get_mouse(
             {
                 return 0;
             }
-            len = xsnprintf_!(&raw mut BUF as *mut u8, sizeof_buf, "\x1b[M").unwrap() as usize;
+            len = BUF.as_mut_slice().write(b"\x1b[M").unwrap();
             len += input_key_split2((*m).b + MOUSE_PARAM_BTN_OFF, &raw mut BUF[len] as _);
             len += input_key_split2(x + MOUSE_PARAM_POS_OFF, &raw mut BUF[len] as _);
             len += input_key_split2(y + MOUSE_PARAM_POS_OFF, &raw mut BUF[len] as _);
@@ -637,7 +640,7 @@ pub unsafe fn input_key_get_mouse(
                 return 0;
             }
 
-            len = xsnprintf_!(&raw mut BUF as *mut u8, sizeof_buf, "\x1b[M").unwrap() as usize;
+            len = BUF.as_mut_slice().write(b"\x1b[M").unwrap();
             BUF[len] = ((*m).b + MOUSE_PARAM_BTN_OFF) as u8;
             len += 1;
 

@@ -586,6 +586,7 @@ pub unsafe fn server_client_exec(c: *mut client, cmd: *const u8) {
 }
 
 /// Check for mouse keys.
+#[unsafe(no_mangle)]
 pub unsafe fn server_client_check_mouse(c: *mut client, event: *mut key_event) -> key_code {
     unsafe {
         let m = &raw mut (*event).m;
@@ -638,7 +639,16 @@ pub unsafe fn server_client_check_mouse(c: *mut client, event: *mut key_event) -
 
         'out: {
             'have_event: {
-                // log_debug("%s mouse %02x at %u,%u (last %u,%u) (%d)", (*c).name, (*m).b, (*m).x, (*m).y, (*m).lx, (*m).ly, (*c).tty.mouse_drag_flag);
+                log_debug!(
+                    "{} mouse 0x{:02x} at {},{} (last {},{}) ({})",
+                    _s((*c).name),
+                    (*m).b,
+                    (*m).x,
+                    (*m).y,
+                    (*m).lx,
+                    (*m).ly,
+                    (*c).tty.mouse_drag_flag
+                );
 
                 /* What type of event is this? */
                 if (*event).key == keyc::KEYC_DOUBLECLICK as u64 {
@@ -647,7 +657,7 @@ pub unsafe fn server_client_check_mouse(c: *mut client, event: *mut key_event) -
                     y = (*m).y;
                     b = (*m).b;
                     ignore = 1;
-                    // log_debug("double-click at %u,%u", x, y);
+                    log_debug!("double-click at {x},{y}");
                 } else if ((*m).sgr_type != b' ' as u32
                     && MOUSE_DRAG((*m).sgr_b)
                     && MOUSE_RELEASE((*m).sgr_b))
@@ -824,7 +834,14 @@ pub unsafe fn server_client_check_mouse(c: *mut client, event: *mut key_event) -
                     &raw mut sx,
                     &raw mut sy,
                 );
-                // log_debug!("mouse window @%u at %u,%u (%ux%u)", (*(*(*s).curw).window).id, (*m).ox, (*m).oy, sx, sy);
+                log_debug!(
+                    "mouse window @{} at {},{} ({}x{})",
+                    (*(*(*s).curw).window).id,
+                    (*m).ox,
+                    (*m).oy,
+                    sx,
+                    sy
+                );
                 if px > sx || py > sy {
                     return KEYC_UNKNOWN;
                 }

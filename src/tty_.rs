@@ -224,7 +224,8 @@ pub unsafe extern "C-unwind" fn tty_write_callback(_fd: i32, _events: i16, data:
         if nwrite == -1 {
             return;
         }
-        log_debug!("{}: wrote {} bytes (of {})", _s((*c).name), nwrite, size);
+        // this log is too noisy
+        // log_debug!("{}: wrote {} bytes (of {})", _s((*c).name), nwrite, size);
 
         if (*c).redraw > 0 {
             if nwrite as usize >= (*c).redraw {

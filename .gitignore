@@ -2,3 +2,5 @@
 /target
 # Nix outputs
 /result
+# tmux log files
+tmux-*.log

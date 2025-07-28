@@ -13,8 +13,6 @@
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 use crate::*;
 
-use crate::compat::queue::{tailq_first, tailq_foreach, tailq_insert_tail, tailq_last, tailq_next};
-
 struct layout_sets_entry {
     name: SyncCharPtr,
     arrange: Option<unsafe fn(*mut window)>,

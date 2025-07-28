@@ -21,7 +21,7 @@
 )]
 #![allow(clippy::missing_safety_doc, reason = "currently using too much unsafe")]
 // will fix:
-#![allow(unused)] // TODO 900
+#![allow(unused)] // TODO 500
 #![allow(unpredictable_function_pointer_comparisons)] // TODO 2
 // extra enabled:
 #![warn(clippy::multiple_crate_versions)]
@@ -29,11 +29,24 @@
 #![allow(clippy::shadow_unrelated)] // TODO, 134 instances probably some latent bugs
 #![allow(clippy::shadow_reuse)] // 145 instances
 
-pub(crate) use std::sync::atomic;
+use std::{
+    cmp,
+    ffi::{
+        CStr, CString, c_int, c_long, c_longlong, c_short, c_uchar, c_uint, c_ulonglong, c_void,
+    },
+    io::Write as _,
+    mem::{MaybeUninit, size_of, zeroed},
+    ptr::{NonNull, addr_of, addr_of_mut, null, null_mut},
+    sync::{
+        Mutex,
+        atomic::{self, AtomicBool, AtomicU32},
+    },
+};
 
 mod compat;
-use compat::vis_flags;
-use compat::{strtonum, strtonum_};
+use compat::{
+    queue::*, reallocarray::reallocarray, strlcat, strlcpy, strtonum, strtonum_, tree::*, vis_flags,
+};
 
 mod ncurses_;
 use ncurses_::*;
@@ -53,25 +66,9 @@ use image_sixel::sixel_image;
 #[cfg(feature = "utempter")]
 mod utempter;
 
-use core::{
-    ffi::{CStr, c_int, c_long, c_longlong, c_short, c_uchar, c_uint, c_ulonglong, c_void},
-    mem::{MaybeUninit, size_of, zeroed},
-    ptr::{NonNull, null, null_mut},
-};
-use std::sync::atomic::AtomicU32;
-
 // libevent2
 mod event_;
 use event_::*;
-
-use crate::compat::{
-    RB_GENERATE,
-    queue::{
-        Entry, ListEntry, list_entry, list_head, tailq_entry, tailq_first, tailq_foreach,
-        tailq_head, tailq_next,
-    },
-    tree::{GetEntry, rb_entry, rb_head},
-};
 
 #[inline]
 const fn transmute_ptr<T>(value: Option<NonNull<T>>) -> *mut T {
@@ -923,7 +920,7 @@ enum style_range_type {
     STYLE_RANGE_USER,
 }
 
-crate::compat::impl_tailq_entry!(style_range, entry, tailq_entry<style_range>);
+impl_tailq_entry!(style_range, entry, tailq_entry<style_range>);
 // #[derive(crate::compat::TailQEntry)]
 #[repr(C)]
 struct style_range {
@@ -967,9 +964,9 @@ struct style {
 }
 
 #[cfg(feature = "sixel")]
-crate::compat::impl_tailq_entry!(image, all_entry, tailq_entry<image>);
+impl_tailq_entry!(image, all_entry, tailq_entry<image>);
 #[cfg(feature = "sixel")]
-crate::compat::impl_tailq_entry!(image, entry, tailq_entry<image>);
+impl_tailq_entry!(image, entry, tailq_entry<image>);
 #[cfg(feature = "sixel")]
 #[repr(C)]
 #[derive(Copy, Clone)]
@@ -1226,7 +1223,7 @@ struct window_mode {
 }
 
 // Active window mode.
-crate::compat::impl_tailq_entry!(window_mode_entry, entry, tailq_entry<window_mode_entry>);
+impl_tailq_entry!(window_mode_entry, entry, tailq_entry<window_mode_entry>);
 #[repr(C)]
 struct window_mode_entry {
     wp: *mut window_pane,
@@ -1250,7 +1247,7 @@ struct window_pane_offset {
 }
 
 /// Queued pane resize.
-crate::compat::impl_tailq_entry!(window_pane_resize, entry, tailq_entry<window_pane_resize>);
+impl_tailq_entry!(window_pane_resize, entry, tailq_entry<window_pane_resize>);
 #[repr(C)]
 struct window_pane_resize {
     sx: u32,
@@ -1528,7 +1525,7 @@ enum layout_type {
 type layout_cells = tailq_head<layout_cell>;
 
 /// Layout cell.
-crate::compat::impl_tailq_entry!(layout_cell, entry, tailq_entry<layout_cell>);
+impl_tailq_entry!(layout_cell, entry, tailq_entry<layout_cell>);
 #[repr(C)]
 struct layout_cell {
     type_: layout_type,
@@ -1608,7 +1605,7 @@ struct session {
     entry: rb_entry<session>,
 }
 type sessions = rb_head<session>;
-crate::compat::impl_tailq_entry!(session, gentry, tailq_entry<session>);
+impl_tailq_entry!(session, gentry, tailq_entry<session>);
 
 const MOUSE_MASK_BUTTONS: u32 = 195;
 const MOUSE_MASK_SHIFT: u32 = 4;
@@ -1867,7 +1864,7 @@ struct tty_ctx {
 }
 
 // Saved message entry.
-crate::compat::impl_tailq_entry!(message_entry, entry, tailq_entry<message_entry>);
+impl_tailq_entry!(message_entry, entry, tailq_entry<message_entry>);
 // #[derive(Copy, Clone, crate::compat::TailQEntry)]
 #[repr(C)]
 struct message_entry {
@@ -1896,7 +1893,7 @@ union args_value_union {
 }
 
 /// Argument value.
-crate::compat::impl_tailq_entry!(args_value, entry, tailq_entry<args_value>);
+impl_tailq_entry!(args_value, entry, tailq_entry<args_value>);
 // #[derive(crate::compat::TailQEntry)]
 #[repr(C)]
 struct args_value {
@@ -2288,7 +2285,7 @@ const PROMPT_NOFORMAT: i32 = 0x8;
 const PROMPT_KEY: i32 = 0x8;
 
 //#[derive(Copy, Clone)]
-crate::compat::impl_tailq_entry!(client, entry, tailq_entry<client>);
+impl_tailq_entry!(client, entry, tailq_entry<client>);
 // #[derive(crate::compat::TailQEntry)]
 #[repr(C)]
 struct client {
@@ -2586,7 +2583,6 @@ enum prompt_mode {
 mod tmux;
 
 pub use crate::tmux::tmux_main;
-
 use crate::tmux::{
     GLOBAL_ENVIRON, GLOBAL_OPTIONS, GLOBAL_S_OPTIONS, GLOBAL_W_OPTIONS, PTM_FD, SHELL_COMMAND,
     SOCKET_PATH, START_TIME, checkshell, find_cwd, find_home, get_timer, getversion, setblocking,
@@ -2740,6 +2736,13 @@ use crate::arguments::{
 };
 
 mod cmd_;
+use crate::cmd_::cmd_attach_session::cmd_attach_session;
+use crate::cmd_::cmd_find::{
+    cmd_find_best_client, cmd_find_clear_state, cmd_find_client, cmd_find_copy_state,
+    cmd_find_empty_state, cmd_find_from_client, cmd_find_from_mouse, cmd_find_from_nothing,
+    cmd_find_from_pane, cmd_find_from_session, cmd_find_from_session_window, cmd_find_from_window,
+    cmd_find_from_winlink, cmd_find_from_winlink_pane, cmd_find_target, cmd_find_valid_state,
+};
 use crate::cmd_::cmd_log_argv;
 use crate::cmd_::{
     CMD_TABLE, cmd, cmd_append_argv, cmd_copy, cmd_copy_argv, cmd_free, cmd_free_argv,
@@ -2750,21 +2753,7 @@ use crate::cmd_::{
     cmd_template_replace, cmd_unpack_argv, cmds,
 };
 
-use crate::cmd_::cmd_attach_session::cmd_attach_session;
-
-use crate::cmd_::cmd_find::{
-    cmd_find_best_client, cmd_find_clear_state, cmd_find_client, cmd_find_copy_state,
-    cmd_find_empty_state, cmd_find_from_client, cmd_find_from_mouse, cmd_find_from_nothing,
-    cmd_find_from_pane, cmd_find_from_session, cmd_find_from_session_window, cmd_find_from_window,
-    cmd_find_from_winlink, cmd_find_from_winlink_pane, cmd_find_target, cmd_find_valid_state,
-};
-
 mod cmd_parse;
-use crate::cmd_parse::{
-    cmd_parse_and_append, cmd_parse_and_insert, cmd_parse_command, cmd_parse_from_arguments,
-    cmd_parse_from_buffer, cmd_parse_from_file, cmd_parse_from_string, cmd_parse_state, *,
-};
-
 use crate::cmd_::cmd_queue::{
     cmdq_add_format, cmdq_add_formats, cmdq_append, cmdq_continue, cmdq_copy_state, cmdq_error,
     cmdq_free, cmdq_free_state, cmdq_get_callback, cmdq_get_callback1, cmdq_get_client,
@@ -2774,8 +2763,11 @@ use crate::cmd_::cmd_queue::{
     cmdq_merge_formats, cmdq_new, cmdq_new_state, cmdq_next, cmdq_print, cmdq_print_data,
     cmdq_running, cmdq_state,
 };
-
 use crate::cmd_::cmd_wait_for::cmd_wait_for_flush;
+use crate::cmd_parse::{
+    cmd_parse_and_append, cmd_parse_and_insert, cmd_parse_command, cmd_parse_from_arguments,
+    cmd_parse_from_buffer, cmd_parse_from_file, cmd_parse_from_string, cmd_parse_state, *,
+};
 
 mod client_;
 use crate::client_::client_main;
@@ -3111,10 +3103,9 @@ use crate::hyperlinks_::{
 };
 
 mod xmalloc;
-use crate::xmalloc::{format_nul, xsnprintf_};
 use crate::xmalloc::{
-    xcalloc, xcalloc_, xcalloc1, xmalloc, xmalloc_, xrealloc, xrealloc_, xreallocarray_, xstrdup,
-    xstrdup_, xstrdup__, xstrdup___,
+    format_nul, xcalloc, xcalloc_, xcalloc1, xmalloc, xmalloc_, xrealloc, xrealloc_, xreallocarray,
+    xreallocarray_, xrecallocarray, xsnprintf_, xstrdup, xstrdup_, xstrdup__, xstrdup___, xstrndup,
 };
 
 mod tmux_protocol;

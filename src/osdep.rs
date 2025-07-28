@@ -12,9 +12,8 @@
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-use crate::*;
-
 use crate::libc;
+use crate::*;
 
 #[cfg(target_os = "linux")]
 pub unsafe fn osdep_get_name(fd: i32, _tty: *const u8) -> *mut u8 {

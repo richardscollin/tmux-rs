@@ -11,11 +11,8 @@
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-use crate::*;
-
 use crate::libc::sscanf;
-
-use crate::compat::{queue::tailq_foreach, tree::rb_foreach};
+use crate::*;
 
 pub unsafe fn resize_window(w: *mut window, mut sx: u32, mut sy: u32, xpixel: i32, ypixel: i32) {
     unsafe {

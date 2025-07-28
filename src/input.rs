@@ -33,17 +33,9 @@
 //! - Special handling for ESC inside a DCS to allow arbitrary byte sequences to
 //!   be passed to the underlying terminals.
 //!
-use std::ffi::CString;
-
-use crate::*;
-
+use crate::compat::b64::{b64_ntop, b64_pton};
 use crate::libc::{strchr, strpbrk, strtol};
-
-use crate::compat::{
-    b64::{b64_ntop, b64_pton},
-    queue::tailq_empty,
-};
-use crate::xmalloc::xstrndup;
+use crate::*;
 
 // Input parser cell.
 #[repr(C)]

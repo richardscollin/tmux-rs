@@ -11,9 +11,9 @@
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-use crate::*;
-
 use std::io::Write;
+
+use crate::*;
 
 pub static CMD_CAPTURE_PANE_ENTRY: cmd_entry = cmd_entry {
     name: SyncCharPtr::new(c"capture-pane"),
@@ -86,7 +86,7 @@ unsafe fn cmd_capture_pane_pending(
                     tmp[0] = *line.add(i) as _;
                     tmp[1] = b'\0' as _;
                 } else {
-                    write!(tmp.as_mut_slice(), "\\{:03o}\0", *line.add(i));
+                    _ = write!(tmp.as_mut_slice(), "\\{:03o}\0", *line.add(i));
                 }
                 buf =
                     cmd_capture_pane_append(buf, len, &raw mut tmp as _, strlen(&raw mut tmp as _));
@@ -105,20 +105,18 @@ unsafe fn cmd_capture_pane_history(
     len: *mut usize,
 ) -> *mut u8 {
     unsafe {
-        let mut gd: *mut grid = null_mut();
-        let mut gl: *const grid_line = null_mut();
+        let gd: *mut grid;
+        let mut gl: *const grid_line;
         let mut gc: *mut grid_cell = null_mut();
-        let mut n = 0;
-        let mut join_lines = 0;
+        let mut n;
         let mut flags = grid_string_flags::empty();
 
-        let mut tmp: u32 = 0;
-        let mut bottom: u32 = 0;
+        let tmp: u32;
+        let mut bottom: u32;
         let mut cause: *mut u8 = null_mut();
-        let buf: *mut u8 = null_mut();
-        let mut line: *mut u8 = null_mut();
+        let mut line: *mut u8;
 
-        let mut linelen: usize = 0;
+        let mut linelen: usize;
 
         let sx = screen_size_x(&raw mut (*wp).base);
         if args_has(args, b'a') != 0 {
@@ -135,7 +133,7 @@ unsafe fn cmd_capture_pane_history(
         }
 
         let sflag: *const u8 = args_get(args, b'S');
-        let mut top = 0;
+        let mut top;
         if !sflag.is_null() && streq_(sflag, "-") {
             top = 0;
         } else {
@@ -191,7 +189,7 @@ unsafe fn cmd_capture_pane_history(
             top = tmp;
         }
 
-        join_lines = args_has(args, b'J');
+        let join_lines = args_has(args, b'J');
         if args_has(args, b'e') != 0 {
             flags |= grid_string_flags::GRID_STRING_WITH_SEQUENCES;
         }

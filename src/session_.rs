@@ -13,17 +13,6 @@
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 use crate::*;
 
-use std::cmp::Ordering;
-
-use crate::compat::{
-    RB_GENERATE,
-    queue::{tailq_empty, tailq_foreach, tailq_init, tailq_insert_tail, tailq_remove},
-    tree::{
-        rb_empty, rb_find, rb_foreach, rb_init, rb_initializer, rb_insert, rb_max, rb_min, rb_next,
-        rb_prev, rb_remove, rb_root,
-    },
-};
-
 RB_GENERATE!(sessions, session, entry, discr_entry, session_cmp);
 RB_GENERATE!(
     session_groups,
@@ -39,11 +28,11 @@ pub static mut NEXT_SESSION_ID: u32 = 0;
 
 pub static mut SESSION_GROUPS: session_groups = rb_initializer();
 
-pub fn session_cmp(s1: &session, s2: &session) -> Ordering {
+pub fn session_cmp(s1: &session, s2: &session) -> cmp::Ordering {
     unsafe { i32_to_ordering(libc::strcmp(s1.name, s2.name)) }
 }
 
-pub fn session_group_cmp(s1: &session_group, s2: &session_group) -> Ordering {
+pub fn session_group_cmp(s1: &session_group, s2: &session_group) -> cmp::Ordering {
     unsafe { i32_to_ordering(libc::strcmp(s1.name, s2.name)) }
 }
 

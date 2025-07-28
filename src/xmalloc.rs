@@ -16,7 +16,7 @@ use std::{
 };
 
 use crate::{
-    compat::{reallocarray, recallocarray},
+    compat::{reallocarray::reallocarray, recallocarray::recallocarray},
     fatalx,
 };
 

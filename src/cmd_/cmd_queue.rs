@@ -11,14 +11,13 @@
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-use crate::*;
-
 use crate::cfg_::cfg_add_cause;
 use crate::compat::queue::{
     tailq_empty, tailq_first, tailq_init, tailq_insert_after, tailq_insert_tail, tailq_last,
     tailq_next, tailq_remove,
 };
 use crate::xmalloc::xcalloc1;
+use crate::*;
 
 // #define cmdq_get_callback(cb, data) cmdq_get_callback1(#cb, cb, data)
 macro_rules! cmdq_get_callback {
@@ -26,8 +25,9 @@ macro_rules! cmdq_get_callback {
         $crate::cmd_::cmd_queue::cmdq_get_callback1(stringify!($cb), Some($cb), $data)
     };
 }
-use crate::libc::{getpwuid, getuid};
 pub(crate) use cmdq_get_callback;
+
+use crate::libc::{getpwuid, getuid};
 
 /* Command queue flags. */
 pub const CMDQ_FIRED: i32 = 0x1;
@@ -42,7 +42,7 @@ pub enum cmdq_type {
 }
 
 // #[derive(crate::compat::TailQEntry)]
-crate::compat::impl_tailq_entry!(cmdq_item, entry, tailq_entry<cmdq_item>);
+impl_tailq_entry!(cmdq_item, entry, tailq_entry<cmdq_item>);
 #[repr(C)]
 pub struct cmdq_item {
     pub name: *mut u8,
@@ -103,9 +103,9 @@ pub unsafe fn cmdq_name(c: *const client) -> *const u8 {
 
     unsafe {
         if !(*c).name.is_null() {
-            xsnprintf_!(s, 256, "<{}>", _s((*c).name));
+            _ = xsnprintf_!(s, 256, "<{}>", _s((*c).name));
         } else {
-            xsnprintf_!(s, 256, "<{:p}>", c);
+            _ = xsnprintf_!(s, 256, "<{:p}>", c);
         }
     }
 
@@ -413,24 +413,24 @@ pub unsafe fn cmdq_insert_hook_(
         free_(arguments);
 
         for i in 0..args_count(args) {
-            xsnprintf_!(tmp, SIZEOF_TMP, "hook_argument_{}", i);
+            _ = xsnprintf_!(tmp, SIZEOF_TMP, "hook_argument_{}", i);
             cmdq_add_format!(new_state, tmp, "{}", _s(args_string(args, i)));
         }
         flag = args_first(args, &raw mut ae);
         while flag != 0 {
             let value = args_get(args, flag);
             if value.is_null() {
-                xsnprintf_!(tmp, SIZEOF_TMP, "hook_flag_{}", flag as char);
+                _ = xsnprintf_!(tmp, SIZEOF_TMP, "hook_flag_{}", flag as char);
                 cmdq_add_format!(new_state, tmp, "1");
             } else {
-                xsnprintf_!(tmp, SIZEOF_TMP, "hook_flag_{}", flag as char);
+                _ = xsnprintf_!(tmp, SIZEOF_TMP, "hook_flag_{}", flag as char);
                 cmdq_add_format!(new_state, tmp, "{}", _s(value));
             }
 
             let mut i = 0;
             let mut av = args_first_value(args, flag);
             while !av.is_null() {
-                xsnprintf_!(tmp, SIZEOF_TMP, "hook_flag_{}_{}", flag as char, i);
+                _ = xsnprintf_!(tmp, SIZEOF_TMP, "hook_flag_{}_{}", flag as char, i);
                 cmdq_add_format!(new_state, tmp, "{}", _s((*av).union_.string));
                 i += 1;
                 av = args_next_value(av);

@@ -1,4 +1,5 @@
 #![allow(non_upper_case_globals)]
+#![allow(unused)]
 
 use std::{
     ffi::{c_int, c_short, c_void},

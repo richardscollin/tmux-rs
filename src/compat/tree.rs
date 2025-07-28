@@ -542,7 +542,7 @@ where
         while !tmp.is_null() {
             parent = tmp;
 
-            comp = T::cmp(unsafe { &*elm }, unsafe { &*parent });
+            comp = T::cmp(&*elm, &*parent);
             tmp = match comp {
                 Ordering::Less => rb_left(tmp),
                 Ordering::Greater => rb_right(tmp),
@@ -574,7 +574,7 @@ where
         let mut tmp: *mut T = (*head).rbh_root;
 
         while !tmp.is_null() {
-            tmp = match cmp(unsafe { &*tmp }) {
+            tmp = match cmp(&*tmp) {
                 Ordering::Less => rb_left(tmp),
                 Ordering::Greater => rb_right(tmp),
                 Ordering::Equal => return tmp,
@@ -594,7 +594,7 @@ where
         let mut tmp: *const T = head.rbh_root.cast_const();
 
         while !tmp.is_null() {
-            tmp = match cmp(unsafe { &*tmp }) {
+            tmp = match cmp(&*tmp) {
                 Ordering::Less => rb_left_const(tmp),
                 Ordering::Greater => rb_right_const(tmp),
                 Ordering::Equal => return tmp,
@@ -613,7 +613,7 @@ where
         let mut tmp: *mut T = (*head).rbh_root;
 
         while !tmp.is_null() {
-            tmp = match T::cmp(unsafe { &*elm }, unsafe { &*tmp }) {
+            tmp = match T::cmp(&*elm, &*tmp) {
                 Ordering::Less => rb_left(tmp),
                 Ordering::Greater => rb_right(tmp),
                 Ordering::Equal => return tmp,
@@ -632,7 +632,7 @@ where
         let mut tmp = rb_root(head);
         let mut res = null_mut();
         while !tmp.is_null() {
-            tmp = match T::cmp(unsafe { &*elm }, unsafe { &*tmp }) {
+            tmp = match T::cmp(&*elm, &*tmp) {
                 Ordering::Less => {
                     res = tmp;
                     rb_left(tmp)

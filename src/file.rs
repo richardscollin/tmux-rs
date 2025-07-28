@@ -11,20 +11,14 @@
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-use crate::*;
-
-use crate::compat::{
-    imsg::{IMSG_HEADER_SIZE, MAX_IMSGSIZE},
-    tree::{rb_find, rb_foreach, rb_insert, rb_remove},
-};
+use crate::compat::imsg::{IMSG_HEADER_SIZE, MAX_IMSGSIZE};
 use crate::errno;
 use crate::libc::{
     BUFSIZ, E2BIG, EBADF, EINVAL, EIO, ENOMEM, O_APPEND, O_CREAT, O_NONBLOCK, O_RDONLY, O_WRONLY,
     STDERR_FILENO, STDIN_FILENO, STDOUT_FILENO, close, dup, fclose, ferror, fopen, fread, fwrite,
     memcpy, open,
 };
-
-use std::sync::atomic;
+use crate::*;
 
 pub static FILE_NEXT_STREAM: atomic::AtomicI32 = atomic::AtomicI32::new(3);
 
@@ -44,7 +38,7 @@ pub unsafe fn file_get_path(c: *mut client, file: *const u8) -> NonNull<u8> {
 }
 
 pub fn file_cmp(cf1: &client_file, cf2: &client_file) -> std::cmp::Ordering {
-    unsafe { cf1.stream.cmp(&cf2.stream) }
+    cf1.stream.cmp(&cf2.stream)
 }
 
 pub unsafe fn file_create_with_peer(
@@ -189,7 +183,6 @@ pub(crate) use file_print;
 
 pub unsafe fn file_vprint(c: *mut client, args: std::fmt::Arguments) {
     unsafe {
-        let cf: *mut client_file = null_mut();
         let mut find: client_file = zeroed();
         let mut msg: msg_write_open = zeroed();
 
@@ -225,7 +218,6 @@ pub unsafe fn file_vprint(c: *mut client, args: std::fmt::Arguments) {
 
 pub unsafe fn file_print_buffer(c: *mut client, data: *mut c_void, size: usize) {
     unsafe {
-        let cf: *mut client_file = null_mut();
         let mut find: client_file = zeroed();
         let mut msg: msg_write_open = zeroed();
 
@@ -267,7 +259,6 @@ macro_rules! file_error {
 pub(crate) use file_error;
 pub unsafe fn file_error_(c: *mut client, args: std::fmt::Arguments) {
     unsafe {
-        let mut cf: *mut client_file = null_mut();
         let mut find: client_file = zeroed();
         let mut msg: msg_write_open = zeroed();
 
@@ -276,7 +267,7 @@ pub unsafe fn file_error_(c: *mut client, args: std::fmt::Arguments) {
         }
 
         find.stream = 2;
-        cf = rb_find(&raw mut (*c).files, &raw mut find);
+        let mut cf = rb_find(&raw mut (*c).files, &raw mut find);
         if cf.is_null() {
             cf = file_create_with_client(c, 2, None, null_mut());
             (*cf).path = xstrdup(c!("-")).as_ptr();
@@ -310,13 +301,13 @@ pub unsafe fn file_write(
     cbdata: *mut c_void,
 ) {
     unsafe {
-        let mut cf: *mut client_file = null_mut();
-        let mut msg: *mut msg_write_open = null_mut();
-        let mut msglen: usize = 0;
+        let cf: *mut client_file;
+        let msg: *mut msg_write_open;
+        let msglen: usize;
         let mut fd = -1;
         let stream: u32 = FILE_NEXT_STREAM.fetch_add(1, atomic::Ordering::Relaxed) as u32;
-        let mut f: *mut FILE = null_mut();
-        let mut mode: *const u8 = null();
+        let f: *mut FILE;
+        let mode: *const u8;
 
         'done: {
             'skip: {
@@ -398,12 +389,12 @@ pub unsafe fn file_read(
 ) -> *mut client_file {
     unsafe {
         let cf;
-        let mut msg: *mut msg_read_open = null_mut();
-        let mut msglen: usize = 0;
+        let msg: *mut msg_read_open;
+        let msglen: usize;
         let mut fd: i32 = -1;
         let stream: u32 = FILE_NEXT_STREAM.fetch_add(1, atomic::Ordering::Relaxed) as u32;
-        let mut f: *mut FILE = null_mut();
-        let mut size: usize = 0;
+        let f: *mut FILE;
+        let mut size: usize;
         let mut buffer = MaybeUninit::<[u8; BUFSIZ as usize]>::uninit();
         'done: {
             'skip: {
@@ -514,8 +505,8 @@ pub unsafe extern "C-unwind" fn file_push_cb(_fd: i32, _events: i16, arg: *mut c
 
 pub unsafe fn file_push(cf: *mut client_file) {
     unsafe {
-        let mut msglen: usize = 0;
-        let mut sent: usize = 0;
+        let mut msglen: usize;
+        let mut sent: usize;
 
         let mut msg = xmalloc_::<msg_write_data>();
         let mut left = EVBUFFER_LENGTH((*cf).buffer);
@@ -569,7 +560,7 @@ pub unsafe fn file_push(cf: *mut client_file) {
 }
 
 pub unsafe fn file_write_left(files: *mut client_files) -> c_int {
-    let mut left = 0;
+    let mut left;
     let mut waiting: i32 = 0;
 
     unsafe {
@@ -589,8 +580,8 @@ pub unsafe fn file_write_left(files: *mut client_files) -> c_int {
 }
 
 pub unsafe extern "C-unwind" fn file_write_error_callback(
-    bev: *mut bufferevent,
-    what: i16,
+    _bev: *mut bufferevent,
+    _what: i16,
     arg: *mut c_void,
 ) {
     unsafe {
@@ -610,7 +601,7 @@ pub unsafe extern "C-unwind" fn file_write_error_callback(
     }
 }
 
-pub unsafe extern "C-unwind" fn file_write_callback(bev: *mut bufferevent, arg: *mut c_void) {
+pub unsafe extern "C-unwind" fn file_write_callback(_bev: *mut bufferevent, arg: *mut c_void) {
     unsafe {
         let cf = arg as *mut client_file;
 
@@ -641,7 +632,7 @@ pub unsafe fn file_write_open(
     unsafe {
         let msg = (*imsg).data as *mut msg_write_open;
         let msglen = (*imsg).hdr.len as usize - IMSG_HEADER_SIZE;
-        let mut path: *const u8 = null();
+        let path: *const u8;
         let mut find: client_file = zeroed();
         let flags = O_NONBLOCK | O_WRONLY | O_CREAT;
         let mut error: i32 = 0;
@@ -771,7 +762,7 @@ pub unsafe fn file_write_close(files: *mut client_files, imsg: *mut imsg) {
 
 pub unsafe extern "C-unwind" fn file_read_error_callback(
     _bev: *mut bufferevent,
-    what: i16,
+    _what: i16,
     arg: *mut c_void,
 ) {
     unsafe {
@@ -798,7 +789,7 @@ pub unsafe extern "C-unwind" fn file_read_error_callback(
     }
 }
 
-pub unsafe extern "C-unwind" fn file_read_callback(bev: *mut bufferevent, arg: *mut c_void) {
+pub unsafe extern "C-unwind" fn file_read_callback(_bev: *mut bufferevent, arg: *mut c_void) {
     let cf = arg as *mut client_file;
     unsafe {
         let mut msg = xmalloc_::<msg_read_data>();
@@ -845,10 +836,10 @@ pub unsafe fn file_read_open(
     unsafe {
         let msg = (*imsg).data as *mut msg_read_open;
         let msglen = (*imsg).hdr.len as usize - IMSG_HEADER_SIZE;
-        let mut path = null();
-        let mut cf: *mut client_file = null_mut();
+        let path: *const u8;
+        let cf: *mut client_file;
         let flags = O_NONBLOCK | O_RDONLY;
-        let mut error = 0;
+        let error;
 
         let mut find = MaybeUninit::<client_file>::uninit();
 

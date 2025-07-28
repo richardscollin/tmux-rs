@@ -11,24 +11,14 @@
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-use crate::*;
-
+use crate::compat::{closefrom, fdforkpty::fdforkpty};
 use crate::libc::{
     AF_UNIX, O_RDWR, PF_UNSPEC, SHUT_WR, SIG_BLOCK, SIG_SETMASK, SIGCONT, SIGTERM, SIGTTIN,
     SIGTTOU, SOCK_STREAM, STDERR_FILENO, STDIN_FILENO, STDOUT_FILENO, TIOCSWINSZ, WIFSTOPPED,
     WSTOPSIG, chdir, close, dup2, execl, execvp, fork, ioctl, kill, killpg, memset, open, setenv,
     shutdown, sigfillset, sigprocmask, sigset_t, socketpair, winsize,
 };
-
-use crate::compat::{
-    closefrom,
-    fdforkpty::fdforkpty,
-    queue::{
-        ListEntry, list_entry, list_foreach, list_head, list_head_initializer, list_insert_head,
-        list_remove,
-    },
-    strlcpy,
-};
+use crate::*;
 
 pub type job_update_cb = Option<unsafe fn(*mut job)>;
 pub type job_complete_cb = Option<unsafe fn(*mut job)>;
@@ -364,7 +354,7 @@ pub unsafe fn job_resize(job: *mut job, sx: c_uint, sy: c_uint) {
     }
 }
 
-unsafe extern "C-unwind" fn job_read_callback(bufev: *mut bufferevent, data: *mut c_void) {
+unsafe extern "C-unwind" fn job_read_callback(_bufev: *mut bufferevent, data: *mut c_void) {
     let job = data as *mut job;
 
     unsafe {
@@ -373,7 +363,7 @@ unsafe extern "C-unwind" fn job_read_callback(bufev: *mut bufferevent, data: *mu
         }
     }
 }
-unsafe extern "C-unwind" fn job_write_callback(bufev: *mut bufferevent, data: *mut c_void) {
+unsafe extern "C-unwind" fn job_write_callback(_bufev: *mut bufferevent, data: *mut c_void) {
     unsafe {
         let job = data as *mut job;
         let len = EVBUFFER_LENGTH(EVBUFFER_OUTPUT((*job).event));
@@ -394,8 +384,8 @@ unsafe extern "C-unwind" fn job_write_callback(bufev: *mut bufferevent, data: *m
 }
 
 unsafe extern "C-unwind" fn job_error_callback(
-    bufev: *mut bufferevent,
-    events: libc::c_short,
+    _bufev: *mut bufferevent,
+    _events: libc::c_short,
     data: *mut c_void,
 ) {
     let job: *mut job = data.cast();

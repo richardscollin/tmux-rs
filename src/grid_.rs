@@ -13,10 +13,6 @@
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 use crate::*;
 
-use crate::compat::strlcat;
-use crate::libc::strlen;
-use crate::xmalloc::xreallocarray;
-
 /// Default grid cell data.
 pub static GRID_DEFAULT_CELL: grid_cell = grid_cell::new(
     utf8_data::new([b' '], 0, 1, 1),
@@ -984,9 +980,9 @@ pub unsafe fn grid_string_cells_add_code(
 
         for i in 0..nnewc {
             if i + 1 < nnewc {
-                xsnprintf_!(tmp.as_mut_ptr(), tmp.len(), "{};", *newc.add(i));
+                _ = xsnprintf_!(tmp.as_mut_ptr(), tmp.len(), "{};", *newc.add(i));
             } else {
-                xsnprintf_!(tmp.as_mut_ptr(), tmp.len(), "{}", *newc.add(i));
+                _ = xsnprintf_!(tmp.as_mut_ptr(), tmp.len(), "{}", *newc.add(i));
             }
             strlcat(buf, tmp.as_ptr(), len);
         }
@@ -1102,9 +1098,9 @@ pub unsafe fn grid_string_cells_code(
 
             for i in 0..n {
                 if s[i as usize] < 10 {
-                    xsnprintf_!(tmp.as_mut_ptr(), tmp.len(), "{}", s[i as usize],);
+                    _ = xsnprintf_!(tmp.as_mut_ptr(), tmp.len(), "{}", s[i as usize],);
                 } else {
-                    xsnprintf_!(
+                    _ = xsnprintf_!(
                         tmp.as_mut_ptr(),
                         tmp.len(),
                         "{}:{}",

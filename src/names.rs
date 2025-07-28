@@ -11,10 +11,9 @@
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-use crate::*;
-
 use crate::event_::{event_add, event_initialized};
 use crate::libc::{gettimeofday, memcpy, strchr, strcmp, strcspn, strlen, strncmp};
+use crate::*;
 
 pub unsafe extern "C-unwind" fn name_time_callback(
     _fd: c_int,

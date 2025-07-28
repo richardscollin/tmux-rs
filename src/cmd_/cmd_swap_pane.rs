@@ -12,12 +12,11 @@
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use crate::*;
-
 use crate::compat::queue::{
     tailq_first, tailq_insert_after, tailq_insert_head, tailq_last, tailq_next, tailq_prev,
     tailq_remove, tailq_replace,
 };
+use crate::*;
 
 pub static CMD_SWAP_PANE_ENTRY: cmd_entry = cmd_entry {
     name: SyncCharPtr::new(c"swap-pane"),

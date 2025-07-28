@@ -11,11 +11,11 @@
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+use core::ffi::c_void;
+
+use libc::memcmp;
 
 use crate::{utf8_data, utf8_in_table, utf8_state, utf8_towc, wchar_t};
-
-use core::ffi::c_void;
-use libc::memcmp;
 
 static UTF8_MODIFIER_TABLE: [wchar_t; 31] = [
     0x1F1E6, 0x1F1E7, 0x1F1E8, 0x1F1E9, 0x1F1EA, 0x1F1EB, 0x1F1EC, 0x1F1ED, 0x1F1EE, 0x1F1EF,

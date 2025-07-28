@@ -12,13 +12,13 @@
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-use crate::*;
 use std::cmp::Ordering;
 
 use crate::compat::{
     queue::{tailq_empty, tailq_first, tailq_foreach, tailq_init, tailq_insert_tail, tailq_remove},
     tree::{rb_find, rb_foreach, rb_initializer, rb_insert, rb_remove},
 };
+use crate::*;
 
 pub static CMD_WAIT_FOR_ENTRY: cmd_entry = cmd_entry {
     name: SyncCharPtr::new(c"wait-for"),
@@ -33,7 +33,7 @@ pub static CMD_WAIT_FOR_ENTRY: cmd_entry = cmd_entry {
     target: cmd_entry_flag::zeroed(),
 };
 
-crate::compat::impl_tailq_entry!(wait_item, entry, tailq_entry<wait_item>);
+impl_tailq_entry!(wait_item, entry, tailq_entry<wait_item>);
 #[repr(C)]
 pub struct wait_item {
     item: *mut cmdq_item,

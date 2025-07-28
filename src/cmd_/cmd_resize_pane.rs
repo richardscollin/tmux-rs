@@ -11,9 +11,8 @@
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-use crate::*;
-
 use crate::compat::queue::tailq_empty;
+use crate::*;
 
 pub static CMD_RESIZE_PANE_ENTRY: cmd_entry = cmd_entry {
     name: SyncCharPtr::new(c"resize-pane"),
@@ -40,7 +39,6 @@ unsafe fn cmd_resize_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
         let c = cmdq_get_client(item);
         let mut s = (*target).s;
         let mut cause: *mut u8 = null_mut();
-        let mut errstr: *const u8 = null();
         let mut adjust = 0u32;
         let mut x: i32 = 0;
         let mut y: i32 = 0;

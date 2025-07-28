@@ -12,9 +12,8 @@
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use crate::*;
-
 use crate::compat::tree::{rb_foreach, rb_next, rb_prev};
+use crate::*;
 
 pub static CMD_KILL_WINDOW_ENTRY: cmd_entry = cmd_entry {
     name: SyncCharPtr::new(c"kill-window"),

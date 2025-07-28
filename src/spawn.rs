@@ -11,22 +11,14 @@
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-
-use crate::*;
-
-use crate::compat::{
-    closefrom,
-    fdforkpty::fdforkpty,
-    queue::{tailq_first, tailq_foreach, tailq_remove},
-    tailq_insert_head,
-};
+use crate::compat::{closefrom, fdforkpty::fdforkpty};
 use crate::libc::{
     _exit, SIG_BLOCK, SIG_SETMASK, STDERR_FILENO, STDIN_FILENO, TCSANOW, VERASE, chdir, close,
     execl, execvp, sigfillset, sigprocmask, strrchr, tcgetattr, tcsetattr,
 };
-
 #[cfg(feature = "utempter")]
 use crate::utempter::utempter_add_record;
+use crate::*;
 
 pub unsafe fn spawn_log(from: *const u8, sc: *mut spawn_context) {
     unsafe {
@@ -40,7 +32,7 @@ pub unsafe fn spawn_log(from: *const u8, sc: *mut spawn_context) {
         log_debug!("{}: {}, flags={:#x}", _s(from), _s(name), (*sc).flags);
 
         if !wl.is_null() && !wp0.is_null() {
-            xsnprintf_!(
+            _ = xsnprintf_!(
                 tmp.as_mut_ptr().cast(),
                 size_of::<tmp_type>(),
                 "wl={} wp0=%{}",
@@ -48,21 +40,21 @@ pub unsafe fn spawn_log(from: *const u8, sc: *mut spawn_context) {
                 (*wp0).id,
             );
         } else if !wl.is_null() {
-            xsnprintf_!(
+            _ = xsnprintf_!(
                 tmp.as_mut_ptr().cast(),
                 size_of::<tmp_type>(),
                 "wl={} wp0=none",
                 (*wl).idx,
             );
         } else if !wp0.is_null() {
-            xsnprintf_!(
+            _ = xsnprintf_!(
                 tmp.as_mut_ptr().cast(),
                 size_of::<tmp_type>(),
                 "wl=none wp0=%{}",
                 (*wp0).id,
             );
         } else {
-            xsnprintf_!(
+            _ = xsnprintf_!(
                 tmp.as_mut_ptr().cast(),
                 size_of::<tmp_type>(),
                 "wl=none wp0=none",

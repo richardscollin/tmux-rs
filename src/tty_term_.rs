@@ -11,14 +11,9 @@
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-
-use crate::{xmalloc::xreallocarray, *};
-
-use crate::compat::{
-    queue::{list_head_initializer, list_insert_head, list_remove},
-    strnvis, strunvis,
-};
+use crate::compat::{strnvis, strunvis};
 use crate::libc::{fnmatch, memset, strchr, strcmp, strcspn, strncmp};
+use crate::*;
 
 pub static mut TTY_TERMS: tty_terms = list_head_initializer();
 
@@ -481,108 +476,106 @@ pub unsafe fn tty_term_apply_overrides(term: *mut tty_term) {
         /* Update capabilities from the option. */
         let o = options_get_only(GLOBAL_OPTIONS, c!("terminal-overrides"));
         let mut a = options_array_first(o);
-        unsafe {
-            while !a.is_null() {
-                ov = options_array_item_value(a);
-                s = (*ov).string;
+        while !a.is_null() {
+            ov = options_array_item_value(a);
+            s = (*ov).string;
 
-                offset = 0;
-                first = tty_term_override_next(s, &raw mut offset);
-                if !first.is_null() && fnmatch(first, (*term).name, 0) == 0 {
-                    tty_term_apply(term, s.add(offset), 0);
-                }
-                a = options_array_next(a);
+            offset = 0;
+            first = tty_term_override_next(s, &raw mut offset);
+            if !first.is_null() && fnmatch(first, (*term).name, 0) == 0 {
+                tty_term_apply(term, s.add(offset), 0);
             }
+            a = options_array_next(a);
+        }
 
-            /* Log the SIXEL flag. */
-            log_debug!(
-                "SIXEL flag is {}",
-                ((*term).flags & term_flags::TERM_SIXEL).bits()
-            );
+        /* Log the SIXEL flag. */
+        log_debug!(
+            "SIXEL flag is {}",
+            ((*term).flags & term_flags::TERM_SIXEL).bits()
+        );
 
-            /* Update the RGB flag if the terminal has RGB colours. */
-            if tty_term_has(term, tty_code_code::TTYC_SETRGBF)
-                && tty_term_has(term, tty_code_code::TTYC_SETRGBB)
-            {
-                (*term).flags |= term_flags::TERM_RGBCOLOURS;
-            } else {
-                (*term).flags &= !term_flags::TERM_RGBCOLOURS;
-            }
-            log_debug!(
-                "RGBCOLOURS flag is {}",
-                ((*term).flags & term_flags::TERM_RGBCOLOURS).bits()
-            );
+        /* Update the RGB flag if the terminal has RGB colours. */
+        if tty_term_has(term, tty_code_code::TTYC_SETRGBF)
+            && tty_term_has(term, tty_code_code::TTYC_SETRGBB)
+        {
+            (*term).flags |= term_flags::TERM_RGBCOLOURS;
+        } else {
+            (*term).flags &= !term_flags::TERM_RGBCOLOURS;
+        }
+        log_debug!(
+            "RGBCOLOURS flag is {}",
+            ((*term).flags & term_flags::TERM_RGBCOLOURS).bits()
+        );
 
-            /*
-             * Set or clear the DECSLRM flag if the terminal has the margin
-             * capabilities.
-             */
-            if tty_term_has(term, tty_code_code::TTYC_CMG)
-                && tty_term_has(term, tty_code_code::TTYC_CLMG)
-            {
-                (*term).flags |= term_flags::TERM_DECSLRM;
-            } else {
-                (*term).flags &= !term_flags::TERM_DECSLRM;
-            }
-            log_debug!(
-                "DECSLRM flag is {}",
-                ((*term).flags & term_flags::TERM_DECSLRM).bits()
-            );
+        /*
+         * Set or clear the DECSLRM flag if the terminal has the margin
+         * capabilities.
+         */
+        if tty_term_has(term, tty_code_code::TTYC_CMG)
+            && tty_term_has(term, tty_code_code::TTYC_CLMG)
+        {
+            (*term).flags |= term_flags::TERM_DECSLRM;
+        } else {
+            (*term).flags &= !term_flags::TERM_DECSLRM;
+        }
+        log_debug!(
+            "DECSLRM flag is {}",
+            ((*term).flags & term_flags::TERM_DECSLRM).bits()
+        );
 
-            /*
-             * Set or clear the DECFRA flag if the terminal has the rectangle
-             * capability.
-             */
-            if tty_term_has(term, tty_code_code::TTYC_RECT) {
-                (*term).flags |= term_flags::TERM_DECFRA;
-            } else {
-                (*term).flags &= !term_flags::TERM_DECFRA;
-            }
-            log_debug!(
-                "DECFRA flag is {}",
-                ((*term).flags & term_flags::TERM_DECFRA).bits()
-            );
+        /*
+         * Set or clear the DECFRA flag if the terminal has the rectangle
+         * capability.
+         */
+        if tty_term_has(term, tty_code_code::TTYC_RECT) {
+            (*term).flags |= term_flags::TERM_DECFRA;
+        } else {
+            (*term).flags &= !term_flags::TERM_DECFRA;
+        }
+        log_debug!(
+            "DECFRA flag is {}",
+            ((*term).flags & term_flags::TERM_DECFRA).bits()
+        );
 
-            /*
-             * Terminals without am (auto right margin) wrap at at $COLUMNS - 1
-             * rather than $COLUMNS (the cursor can never be beyond $COLUMNS - 1).
-             *
-             * Terminals without xenl (eat newline glitch) ignore a newline beyond
-             * the right edge of the terminal, but tmux doesn't care about this -
-             * it always uses absolute only moves the cursor with a newline when
-             * also sending a linefeed.
-             *
-             * This is irritating, most notably because it is painful to write to
-             * the very bottom-right of the screen without scrolling.
-             *
-             * Flag the terminal here and apply some workarounds in other places to
-             * do the best possible.
-             */
-            if tty_term_flag(term, tty_code_code::TTYC_AM) == 0 {
-                (*term).flags |= term_flags::TERM_NOAM;
-            } else {
-                (*term).flags &= !term_flags::TERM_NOAM;
-            }
-            log_debug!(
-                "NOAM flag is {}",
-                ((*term).flags & term_flags::TERM_NOAM).bits()
-            );
+        /*
+         * Terminals without am (auto right margin) wrap at at $COLUMNS - 1
+         * rather than $COLUMNS (the cursor can never be beyond $COLUMNS - 1).
+         *
+         * Terminals without xenl (eat newline glitch) ignore a newline beyond
+         * the right edge of the terminal, but tmux doesn't care about this -
+         * it always uses absolute only moves the cursor with a newline when
+         * also sending a linefeed.
+         *
+         * This is irritating, most notably because it is painful to write to
+         * the very bottom-right of the screen without scrolling.
+         *
+         * Flag the terminal here and apply some workarounds in other places to
+         * do the best possible.
+         */
+        if tty_term_flag(term, tty_code_code::TTYC_AM) == 0 {
+            (*term).flags |= term_flags::TERM_NOAM;
+        } else {
+            (*term).flags &= !term_flags::TERM_NOAM;
+        }
+        log_debug!(
+            "NOAM flag is {}",
+            ((*term).flags & term_flags::TERM_NOAM).bits()
+        );
 
-            /* Generate ACS table. If none is present, use nearest ASCII. */
-            memset(
-                &raw mut (*term).acs as *mut c_void,
-                0,
-                size_of::<[[i8; 2]; 256]>(),
-            );
-            if tty_term_has(term, tty_code_code::TTYC_ACSC) {
-                acs = tty_term_string(term, tty_code_code::TTYC_ACSC);
-            } else {
-                acs = c!("a#j+k+l+m+n+o-p-q-r-s-t+u+v+w+x|y<z>~.");
-            }
-            while *acs != b'\0' && *acs.add(1) != b'\0' {
-                (*term).acs[*acs as usize][0] = *acs.add(1);
-                acs = acs.add(2);
-            }
+        /* Generate ACS table. If none is present, use nearest ASCII. */
+        memset(
+            &raw mut (*term).acs as *mut c_void,
+            0,
+            size_of::<[[i8; 2]; 256]>(),
+        );
+        if tty_term_has(term, tty_code_code::TTYC_ACSC) {
+            acs = tty_term_string(term, tty_code_code::TTYC_ACSC);
+        } else {
+            acs = c!("a#j+k+l+m+n+o-p-q-r-s-t+u+v+w+x|y<z>~.");
+        }
+        while *acs != b'\0' && *acs.add(1) != b'\0' {
+            (*term).acs[*acs as usize][0] = *acs.add(1);
+            acs = acs.add(2);
         }
     }
 }
@@ -596,19 +589,6 @@ pub unsafe fn tty_term_create(
     cause: *mut *mut u8,
 ) -> *mut tty_term {
     unsafe {
-        // struct tty_term *term;
-        // const struct tty_term_code_entry *ent;
-        // struct tty_code *code;
-        // struct options_entry *o;
-        // struct options_array_item *a;
-        // union options_value *ov;
-        // u_int i, j;
-        // const char *s, *value, *errstr;
-        // size_t offset, namelen;
-        // char *first;
-        // int n;
-        let mut errstr: *const u8 = null();
-
         log_debug!("adding term {}", _s(name));
         let term = xcalloc1::<tty_term>() as *mut tty_term;
         (*term).tty = tty;
@@ -769,7 +749,6 @@ pub unsafe fn tty_term_read_list(
     cause: *mut *mut u8,
 ) -> i32 {
     unsafe {
-        let ent: *mut tty_term_code_entry = null_mut();
         let mut error = 0;
         let mut tmp: [u8; 11] = [0; 11];
         let sizeof_tmp = 11;
@@ -788,7 +767,7 @@ pub unsafe fn tty_term_read_list(
         *caps = null_mut();
 
         let mut s = null();
-        for (i, ent) in TTY_TERM_CODES.iter().enumerate() {
+        for ent in TTY_TERM_CODES.iter() {
             match ent.type_ {
                 tty_code_type::None => (),
                 tty_code_type::String => {
@@ -802,7 +781,7 @@ pub unsafe fn tty_term_read_list(
                     if n == -1 || n == -2 {
                         continue;
                     }
-                    xsnprintf_!(&raw mut tmp as *mut u8, sizeof_tmp, "{}", n);
+                    _ = xsnprintf_!(&raw mut tmp as *mut u8, sizeof_tmp, "{}", n);
                     s = &raw mut tmp as *const u8;
                 }
                 tty_code_type::Flag => {
@@ -1029,7 +1008,7 @@ pub unsafe fn tty_term_describe(term: *mut tty_term, code: tty_code_code) -> *co
 
         match (*(*term).codes.add(code as usize)).type_ {
             tty_code_type::None => {
-                xsnprintf_!(
+                _ = xsnprintf_!(
                     &raw mut S as _,
                     sizeof_s,
                     "{:4}: {}: [missing]",
@@ -1047,7 +1026,7 @@ pub unsafe fn tty_term_describe(term: *mut tty_term, code: tty_code_code) -> *co
                         | vis_flags::VIS_TAB
                         | vis_flags::VIS_NL,
                 );
-                xsnprintf_!(
+                _ = xsnprintf_!(
                     &raw mut S as _,
                     sizeof_s,
                     "{:4}: {}: (string) {}",
@@ -1057,7 +1036,7 @@ pub unsafe fn tty_term_describe(term: *mut tty_term, code: tty_code_code) -> *co
                 );
             }
             tty_code_type::Number => {
-                xsnprintf_!(
+                _ = xsnprintf_!(
                     &raw mut S as _,
                     sizeof_s,
                     "{:4}: {}: (number) {}",
@@ -1067,7 +1046,7 @@ pub unsafe fn tty_term_describe(term: *mut tty_term, code: tty_code_code) -> *co
                 );
             }
             tty_code_type::Flag => {
-                xsnprintf_!(
+                _ = xsnprintf_!(
                     &raw mut S as _,
                     sizeof_s,
                     "{:4}: {}: (flag) {}",

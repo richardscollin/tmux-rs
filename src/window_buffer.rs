@@ -11,12 +11,8 @@
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-use super::*;
-
-use crate::compat::queue::tailq_first;
 use crate::libc::{memmem, qsort, strcmp, strstr};
-
-use crate::xmalloc::xreallocarray;
+use crate::*;
 
 const WINDOW_BUFFER_DEFAULT_COMMAND: *const u8 = c!("paste-buffer -p -b '%%'");
 const WINDOW_BUFFER_DEFAULT_FORMAT: *const u8 = c!("#{t/p:buffer_created}: #{buffer_sample}");

@@ -6,14 +6,14 @@ pub mod getprogname;
 pub mod imsg;
 pub mod imsg_buffer;
 pub mod queue;
+pub mod reallocarray;
+pub mod recallocarray;
 pub mod systemd;
 pub mod tree;
 
 mod closefrom;
 mod freezero;
 mod getpeereid;
-mod reallocarray;
-mod recallocarray;
 mod setproctitle;
 mod strlcat;
 mod strlcpy;
@@ -24,8 +24,6 @@ mod vis;
 pub use closefrom::closefrom;
 pub use freezero::freezero;
 pub use getpeereid::getpeereid;
-pub(crate) use reallocarray::reallocarray;
-pub use recallocarray::recallocarray;
 pub use setproctitle::setproctitle_;
 pub use strlcat::strlcat;
 pub use strlcpy::strlcpy;
@@ -33,9 +31,6 @@ pub use strtonum::{strtonum, strtonum_};
 pub use systemd::systemd_create_socket;
 pub use unvis::strunvis;
 pub use vis::*;
-
-pub(crate) use queue::{TAILQ_HEAD_INITIALIZER, impl_tailq_entry, tailq_insert_head};
-pub(crate) use tree::RB_GENERATE;
 
 // #[rustfmt::skip]
 // unsafe extern "C" {

@@ -13,10 +13,6 @@
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 use crate::*;
-use std::{io::Write as _, ptr::null_mut};
-
-use crate::libc::{free, sscanf};
-use xmalloc::xstrndup;
 
 const COLOUR_FLAG_256: i32 = 0x01000000;
 const COLOUR_FLAG_RGB: i32 = 0x02000000;
@@ -167,7 +163,6 @@ pub unsafe fn colour_tostring(c: i32) -> *const u8 {
 /// Convert colour from string.
 #[unsafe(no_mangle)]
 pub fn colour_fromstring_(s: &str) -> i32 {
-    let orig = s;
     if s.chars().next().is_some_and(|c| c == '#') && s.len() == 7 {
         let cp = s.trim_start_matches(|c: char| c.is_ascii_hexdigit());
         if cp.is_empty() {
@@ -882,29 +877,27 @@ pub fn colour_byname(name: &str) -> i32 {
         ("yellow4", 0x8b8b00),
     ];
 
-    unsafe {
-        if name.starts_with("grey") || name.starts_with("gray") {
-            if name.len() == 4 {
-                return -1;
-            }
-
-            let Ok(c) = strtonum_(&name[4..], 0, 100) else {
-                return -1;
-            };
-            let c = (2.55f32 * (c as f32)).round() as i32;
-
-            if !(0..=255).contains(&c) {
-                return -1;
-            }
-
-            let c = c as u8;
-            return colour_join_rgb(c, c, c);
+    if name.starts_with("grey") || name.starts_with("gray") {
+        if name.len() == 4 {
+            return -1;
         }
 
-        for (color_name, color_hex) in &COLOURS {
-            if color_name.eq_ignore_ascii_case(name) {
-                return color_hex | COLOUR_FLAG_RGB;
-            }
+        let Ok(c) = strtonum_(&name[4..], 0, 100) else {
+            return -1;
+        };
+        let c = (2.55f32 * (c as f32)).round() as i32;
+
+        if !(0..=255).contains(&c) {
+            return -1;
+        }
+
+        let c = c as u8;
+        return colour_join_rgb(c, c, c);
+    }
+
+    for (color_name, color_hex) in &COLOURS {
+        if color_name.eq_ignore_ascii_case(name) {
+            return color_hex | COLOUR_FLAG_RGB;
         }
     }
 
@@ -1044,8 +1037,8 @@ pub unsafe fn colour_parse_x11(mut p: *const u8) -> i32 {
         let mut b: u32 = 0;
 
         let mut len = strlen(p);
-        let mut colour: i32 = -1;
-        let mut copy: *mut u8 = null_mut();
+        let colour: i32;
+        let copy: *mut u8;
         if len == 12
             && sscanf(
                 p.cast(),

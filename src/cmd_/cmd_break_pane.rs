@@ -11,10 +11,7 @@
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-
 use crate::*;
-
-use crate::compat::{queue::tailq_remove, tailq_insert_head};
 
 pub static CMD_BREAK_PANE_ENTRY: cmd_entry = cmd_entry {
     name: SyncCharPtr::new(c"break-pane"),
@@ -47,11 +44,11 @@ pub unsafe fn cmd_break_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
         let wp = (*source).wp;
         let mut w = (*wl).window;
 
-        let mut name: *mut u8 = null_mut();
+        let name: *mut u8;
         let mut cause: *mut u8 = null_mut();
-        let mut cp: *mut u8 = null_mut();
+        let cp: *mut u8;
         let mut idx = (*target).idx;
-        let mut template: *const u8 = null_mut();
+        let mut template: *const u8;
 
         let before = args_has(args, b'b');
         if args_has(args, b'a') != 0 || before != 0 {

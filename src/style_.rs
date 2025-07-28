@@ -12,12 +12,8 @@
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-
-use super::*;
-
 use crate::libc::{snprintf, strcasecmp, strchr, strcspn, strncasecmp, strspn};
-
-use crate::compat::strlcpy;
+use crate::*;
 
 // #define STYLE_ATTR_MASK (~0)
 
@@ -433,7 +429,7 @@ pub unsafe fn style_tostring(sy: *const style) -> *const u8 {
             comma = c!(",");
         }
         if !(*gc).attr.is_empty() {
-            xsnprintf_!(
+            _ = xsnprintf_!(
                 s.add(off as usize),
                 size_of::<s_type>() - off as usize,
                 "{}{}",

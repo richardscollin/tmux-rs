@@ -11,16 +11,12 @@
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-use crate::*;
-
-use crate::compat::{
-    queue::{tailq_init, tailq_remove},
-    tree::rb_foreach,
-};
-use crate::libc::strncmp;
-
 use std::io::BufRead;
 use std::io::Write;
+
+use crate::libc::strncmp;
+use crate::*;
+
 #[repr(C)]
 struct status_prompt_menu {
     c: *mut client,
@@ -142,7 +138,7 @@ pub unsafe fn status_prompt_save_history() {
 
         for type_ in 0..PROMPT_NTYPES {
             for i in 0..STATUS_PROMPT_HSIZE[type_ as usize] {
-                writeln!(
+                _ = writeln!(
                     file,
                     "{}:{}",
                     PROMPT_TYPE_STRINGS[type_ as usize],
@@ -437,7 +433,7 @@ pub unsafe fn status_redraw(c: *mut client) -> i32 {
         // Write the status lines.
         let o = options_get((*s).options, c!("status-format"));
         if o.is_null() {
-            for n in 0..(width * lines) {
+            for _ in 0..(width * lines) {
                 screen_write_putc(&raw mut ctx, &raw mut gc, b' ');
             }
         } else {
@@ -446,7 +442,7 @@ pub unsafe fn status_redraw(c: *mut client) -> i32 {
 
                 let ov = options_array_get(o, i);
                 if ov.is_null() {
-                    for n in 0..width {
+                    for _ in 0..width {
                         screen_write_putc(&raw mut ctx, &raw mut gc, b' ');
                     }
                     continue;
@@ -463,7 +459,7 @@ pub unsafe fn status_redraw(c: *mut client) -> i32 {
                 }
                 changed = true;
 
-                for n in 0..width {
+                for _ in 0..width {
                     screen_write_putc(&raw mut ctx, &raw mut gc, b' ');
                 }
                 screen_write_cursormove(&raw mut ctx, 0, i as i32, 0);
@@ -634,7 +630,7 @@ pub unsafe fn status_message_redraw(c: *mut client) -> i32 {
             lines,
         );
         screen_write_cursormove(&raw mut ctx, 0, messageline as i32, 0);
-        for offset in 0..(*c).tty.sx {
+        for _ in 0..(*c).tty.sx {
             screen_write_putc(&raw mut ctx, &raw const gc, b' ');
         }
         screen_write_cursormove(&raw mut ctx, 0, messageline as i32, 0);
@@ -863,7 +859,7 @@ pub unsafe fn status_prompt_redraw(c: *mut client) -> i32 {
                 lines,
             );
             screen_write_cursormove(&raw mut ctx, 0, promptline as i32, 0);
-            for offset in 0..(*c).tty.sx {
+            for _ in 0..(*c).tty.sx {
                 screen_write_putc(&raw mut ctx, &raw const gc, b' ');
             }
             screen_write_cursormove(&raw mut ctx, 0, promptline as i32, 0);
@@ -1287,7 +1283,7 @@ unsafe fn status_prompt_replace_complete(c: *mut client, mut s: *const u8) -> i3
             n * size_of::<utf8_data>(),
         );
         for idx in 0..strlen(s) {
-            utf8_set(first.add(idx), (*s.add(idx)));
+            utf8_set(first.add(idx), *s.add(idx));
         }
         (*c).prompt_index = first.offset_from_unsigned((*c).prompt_buffer) + strlen(s);
 
@@ -2281,7 +2277,7 @@ unsafe fn status_prompt_complete_session(
                 *(*list).add(*size as usize) = format_nul!("{}:", _s((*loop_).name));
                 (*size) += 1;
             } else if *s == b'$' {
-                xsnprintf_!((&raw mut n).cast(), n.len(), "{}", (*loop_).id);
+                _ = xsnprintf_!((&raw mut n).cast(), n.len(), "{}", (*loop_).id);
                 if *s.add(1) == b'\0' || strncmp((&raw mut n).cast(), s.add(1), strlen(s) - 1) == 0
                 {
                     *list = xreallocarray_(*list, (*size) as usize + 2).as_ptr();
@@ -2391,7 +2387,7 @@ unsafe fn status_prompt_complete(c: *mut client, word: *const u8, mut offset: u3
                 Some(status_prompt_complete_sort),
             );
             for i in 0..size {
-                // log_debug("complete %u: %s", i, list[i]);
+                log_debug!("complete {i}: {}", _s(*list.add(i as usize)));
             }
         }
 

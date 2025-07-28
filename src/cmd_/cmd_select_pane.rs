@@ -11,9 +11,8 @@
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-use crate::*;
-
 use crate::compat::queue::{tailq_first, tailq_foreach, tailq_next, tailq_prev};
+use crate::*;
 
 pub static CMD_SELECT_PANE_ENTRY: cmd_entry = cmd_entry {
     name: SyncCharPtr::new(c"select-pane"),

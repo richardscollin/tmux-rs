@@ -123,7 +123,7 @@ unsafe fn cmd_confirm_before_callback(
             }
             retcode = 0;
 
-            let mut new_item = null_mut();
+            let new_item;
             if item.is_null() {
                 new_item = cmdq_get_command((*cdata.as_ptr()).cmdlist, null_mut());
                 cmdq_append(c, new_item);

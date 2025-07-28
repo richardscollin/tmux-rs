@@ -11,12 +11,10 @@
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-use crate::*;
-
-use crate::libc::strtol;
-
 use crate::compat::queue::tailq_foreach;
+use crate::libc::strtol;
 use crate::options_::options_find_choice;
+use crate::*;
 
 pub static CMD_DISPLAY_MENU_ENTRY: cmd_entry = cmd_entry {
     name: SyncCharPtr::new(c"display-menu"),
@@ -47,7 +45,7 @@ pub static CMD_DISPLAY_POPUP_ENTRY: cmd_entry = cmd_entry {
 unsafe fn cmd_display_menu_args_parse(
     args: *mut args,
     idx: u32,
-    cause: *mut *mut u8,
+    _cause: *mut *mut u8,
 ) -> args_parse_type {
     let mut i: u32 = 0;
     let mut type_ = args_parse_type::ARGS_PARSE_STRING;
@@ -468,22 +466,17 @@ unsafe fn cmd_display_popup_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
         let s = (*target).s;
         let tc = cmdq_get_target_client(item);
         let tty = &raw mut (*tc).tty;
-        //const char		*value, *shell, *shellcmd = NULL;
         let style = args_get(args, b's');
         let border_style = args_get(args, b'S');
         let mut cause: *mut u8 = null_mut();
-        //char			*cwd, *cause = NULL, **argv = NULL, *title;
         let mut argc = 0;
         let mut lines = box_lines::BOX_LINES_DEFAULT as i32;
         let mut px = 0;
         let mut py = 0;
-        let w: i32 = 0;
         let mut h: u32 = 0;
         let count = args_count(args);
-        //struct args_value	*av;
         let mut env = null_mut();
         let o = (*(*(*s).curw).window).options;
-        // struct options_entry	*oe;
 
         if args_has_(args, 'C') {
             server_client_clear_overlay(tc);

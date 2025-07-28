@@ -11,9 +11,8 @@
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-use crate::*;
-
 use crate::compat::queue::tailq_foreach;
+use crate::*;
 
 pub static CMD_DISPLAY_PANES_ENTRY: cmd_entry = cmd_entry {
     name: SyncCharPtr::new(c"display-panes"),
@@ -228,7 +227,7 @@ unsafe fn cmd_display_panes_draw_pane(ctx: *mut screen_redraw_ctx, wp: *mut wind
     }
 }
 
-unsafe fn cmd_display_panes_draw(c: *mut client, data: *mut c_void, ctx: *mut screen_redraw_ctx) {
+unsafe fn cmd_display_panes_draw(c: *mut client, _data: *mut c_void, ctx: *mut screen_redraw_ctx) {
     unsafe {
         let w: *mut window = (*(*(*c).session).curw).window;
 
@@ -247,7 +246,7 @@ unsafe fn cmd_display_panes_draw(c: *mut client, data: *mut c_void, ctx: *mut sc
     }
 }
 
-unsafe fn cmd_display_panes_free(c: *mut client, data: *mut c_void) {
+unsafe fn cmd_display_panes_free(_c: *mut client, data: *mut c_void) {
     unsafe {
         let cdata = data as *mut cmd_display_panes_data;
 

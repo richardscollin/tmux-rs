@@ -11,10 +11,6 @@
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-use crate::*;
-
-use crate::libc::{strchr, strcmp, strlen, strncmp};
-
 use crate::compat::{
     queue::{
         tailq_concat, tailq_first, tailq_foreach, tailq_init, tailq_insert_tail, tailq_next,
@@ -22,7 +18,9 @@ use crate::compat::{
     },
     strlcat, strlcpy,
 };
+use crate::libc::{strchr, strcmp, strlen, strncmp};
 use crate::xmalloc::{xrealloc_, xreallocarray_};
+use crate::*;
 
 pub mod cmd_attach_session;
 pub mod cmd_bind_key;

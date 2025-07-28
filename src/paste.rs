@@ -11,18 +11,7 @@
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-
-use std::cmp::Ordering;
-
 use crate::*;
-
-use crate::compat::{
-    strlcpy,
-    tree::{
-        rb_find, rb_foreach_reverse, rb_initializer, rb_insert, rb_min, rb_next, rb_remove, rb_root,
-    },
-};
-use crate::xmalloc::xreallocarray;
 
 #[repr(C)]
 pub struct paste_buffer {
@@ -55,7 +44,7 @@ RB_GENERATE!(
     discr_name_entry,
     paste_cmp_names
 );
-fn paste_cmp_names(a: *const paste_buffer, b: *const paste_buffer) -> Ordering {
+fn paste_cmp_names(a: *const paste_buffer, b: *const paste_buffer) -> cmp::Ordering {
     unsafe { i32_to_ordering(libc::strcmp((*a).name, (*b).name)) }
 }
 
@@ -66,7 +55,7 @@ RB_GENERATE!(
     discr_time_entry,
     paste_cmp_times
 );
-fn paste_cmp_times(a: *const paste_buffer, b: *const paste_buffer) -> Ordering {
+fn paste_cmp_times(a: *const paste_buffer, b: *const paste_buffer) -> cmp::Ordering {
     unsafe {
         let x = (*a).order;
         let y = (*b).order;

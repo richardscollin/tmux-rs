@@ -11,9 +11,8 @@
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-use crate::*;
-
 use crate::compat::queue::{list_foreach, tailq_foreach_reverse};
+use crate::*;
 
 const SHOW_MESSAGES_TEMPLATE: *const u8 = c!("#{t/p:message_time}: #{message_text}");
 

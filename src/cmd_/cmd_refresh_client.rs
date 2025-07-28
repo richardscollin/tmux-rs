@@ -11,9 +11,8 @@
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-use crate::*;
-
 use crate::libc::{sscanf, strchr};
+use crate::*;
 
 pub static CMD_REFRESH_CLIENT_ENTRY: cmd_entry = cmd_entry {
     name: SyncCharPtr::new(c"refresh-client"),
@@ -277,7 +276,6 @@ pub unsafe fn cmd_refresh_client_exec(self_: *mut cmd, item: *mut cmdq_item) -> 
         let args = cmd_get_args(self_);
         let tc = cmdq_get_target_client(item);
         let tty = &raw mut (*tc).tty;
-        let mut errstr: *const u8 = null();
         let mut adjust: u32 = 0;
 
         'not_control_client: {

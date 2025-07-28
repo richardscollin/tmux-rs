@@ -11,14 +11,8 @@
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-use crate::*;
-
 use crate::libc::sscanf;
-
-use crate::compat::{
-    queue::{tailq_first, tailq_foreach, tailq_insert_tail, tailq_last, tailq_next},
-    strlcat,
-};
+use crate::*;
 
 pub unsafe fn layout_find_bottomright(mut lc: *mut layout_cell) -> *mut layout_cell {
     unsafe {

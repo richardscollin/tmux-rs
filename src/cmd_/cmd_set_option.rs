@@ -11,9 +11,8 @@
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-use crate::*;
-
 use crate::compat::queue::tailq_foreach;
+use crate::*;
 
 pub static CMD_SET_OPTION_ENTRY: cmd_entry = cmd_entry {
     name: SyncCharPtr::new(c"set-option"),
@@ -72,7 +71,7 @@ pub static CMD_SET_HOOK_ENTRY: cmd_entry = cmd_entry {
 pub fn cmd_set_option_args_parse(
     _args: *mut args,
     idx: u32,
-    cause: *mut *mut u8,
+    _cause: *mut *mut u8,
 ) -> args_parse_type {
     match idx {
         1 => args_parse_type::ARGS_PARSE_COMMANDS_OR_STRING,
@@ -85,11 +84,9 @@ pub unsafe fn cmd_set_option_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
         let args = cmd_get_args(self_);
         let append = args_has(args, b'a');
         let target = cmdq_get_target(item);
-        let loop_: *mut window_pane = null_mut();
         let mut oo: *mut options = null_mut();
         let mut parent: *mut options_entry = null_mut();
         let mut o: *mut options_entry = null_mut();
-        let po: *mut options_entry = null_mut();
         let mut name: *mut u8 = null_mut();
         let mut argument: *mut u8 = null_mut();
         let mut expanded: *mut u8 = null_mut();

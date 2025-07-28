@@ -13,12 +13,6 @@
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 use crate::*;
-use std::cmp::Ordering;
-
-use crate::compat::{
-    queue::{tailq_empty, tailq_first, tailq_foreach, tailq_init, tailq_insert_tail, tailq_remove},
-    tree::{rb_empty, rb_find, rb_foreach, rb_init, rb_insert, rb_remove},
-};
 
 #[repr(C)]
 pub struct control_block {
@@ -135,7 +129,7 @@ pub const CONTROL_MAXIMUM_AGE: u64 = 300000;
 pub const CONTROL_IGNORE_FLAGS: client_flag =
     client_flag::CONTROL_NOOUTPUT.union(CLIENT_UNATTACHEDFLAGS);
 
-pub fn control_pane_cmp(cp1: &control_pane, cp2: &control_pane) -> Ordering {
+pub fn control_pane_cmp(cp1: &control_pane, cp2: &control_pane) -> cmp::Ordering {
     cp1.pane.cmp(&cp2.pane)
 }
 RB_GENERATE!(
@@ -146,7 +140,7 @@ RB_GENERATE!(
     control_pane_cmp
 );
 
-pub fn control_sub_cmp(csub1: &control_sub, csub2: &control_sub) -> std::cmp::Ordering {
+pub fn control_sub_cmp(csub1: &control_sub, csub2: &control_sub) -> cmp::Ordering {
     unsafe { i32_to_ordering(libc::strcmp(csub1.name, csub2.name)) }
 }
 RB_GENERATE!(
@@ -157,10 +151,7 @@ RB_GENERATE!(
     control_sub_cmp
 );
 
-pub fn control_sub_pane_cmp(
-    csp1: &control_sub_pane,
-    csp2: &control_sub_pane,
-) -> std::cmp::Ordering {
+pub fn control_sub_pane_cmp(csp1: &control_sub_pane, csp2: &control_sub_pane) -> cmp::Ordering {
     csp1.pane
         .cmp(&csp2.pane)
         .then_with(|| csp1.idx.cmp(&csp2.idx))
@@ -173,7 +164,10 @@ RB_GENERATE!(
     control_sub_pane_cmp
 );
 
-pub fn control_sub_window_cmp(csw1: &control_sub_window, csw2: &control_sub_window) -> Ordering {
+pub fn control_sub_window_cmp(
+    csw1: &control_sub_window,
+    csw2: &control_sub_window,
+) -> cmp::Ordering {
     csw1.window
         .cmp(&csw2.window)
         .then_with(|| csw1.idx.cmp(&csw2.idx))

@@ -11,11 +11,7 @@
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-use super::*;
-use crate::compat::{
-    TAILQ_HEAD_INITIALIZER,
-    queue::{tailq_empty, tailq_insert_tail, tailq_remove},
-};
+use crate::*;
 
 static mut all_images: images = TAILQ_HEAD_INITIALIZER!(all_images);
 

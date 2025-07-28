@@ -12,9 +12,8 @@
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use crate::*;
-
 use crate::compat::tree::{rb_insert, rb_remove};
+use crate::*;
 
 pub static CMD_RENAME_SESSION_ENTRY: cmd_entry = cmd_entry {
     name: SyncCharPtr::new(c"rename-session"),

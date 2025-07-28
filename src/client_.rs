@@ -11,25 +11,20 @@
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-use crate::*;
-
-use crate::libc::{
-    _IOLBF, AF_UNIX, CREAD, CS8, EAGAIN, ECHILD, ECONNREFUSED, EINTR, ENAMETOOLONG, ENOENT, HUPCL,
-    ICRNL, IXANY, LOCK_EX, LOCK_NB, O_CREAT, O_WRONLY, ONLCR, OPOST, SA_RESTART, SIG_DFL, SIG_IGN,
-    SIGCHLD, SIGCONT, SIGHUP, SIGTERM, SIGTSTP, SIGWINCH, SOCK_STREAM, STDERR_FILENO, STDIN_FILENO,
-    STDOUT_FILENO, TCSAFLUSH, TCSANOW, VMIN, VTIME, WNOHANG, cfgetispeed, cfgetospeed, cfmakeraw,
-    cfsetispeed, cfsetospeed, close, connect, dup, execl, fflush, flock, fprintf, getenv, getline,
-    getppid, isatty, kill, memcpy, memset, open, printf, setenv, setvbuf, sigaction, sigemptyset,
-    sockaddr, sockaddr_un, socket, strerror, strlen, strsignal, system, tcgetattr, tcsetattr,
-    unlink, waitpid,
-};
-
 use crate::compat::{
     WAIT_ANY, closefrom,
     imsg::{IMSG_HEADER_SIZE, MAX_IMSGSIZE, imsg},
-    strlcpy,
-    tree::rb_initializer,
 };
+use crate::libc::{
+    AF_UNIX, CREAD, CS8, EAGAIN, ECHILD, ECONNREFUSED, EINTR, ENAMETOOLONG, ENOENT, HUPCL, ICRNL,
+    IXANY, LOCK_EX, LOCK_NB, O_CREAT, O_WRONLY, ONLCR, OPOST, SA_RESTART, SIG_DFL, SIG_IGN,
+    SIGCHLD, SIGCONT, SIGHUP, SIGTERM, SIGTSTP, SIGWINCH, SOCK_STREAM, STDERR_FILENO, STDIN_FILENO,
+    STDOUT_FILENO, TCSAFLUSH, TCSANOW, VMIN, VTIME, WNOHANG, cfgetispeed, cfgetospeed, cfmakeraw,
+    cfsetispeed, cfsetospeed, close, connect, dup, execl, flock, getenv, getppid, isatty, kill,
+    memcpy, memset, open, printf, setenv, sigaction, sigemptyset, sockaddr, sockaddr_un, socket,
+    strerror, strlen, strsignal, system, tcgetattr, tcsetattr, unlink, waitpid,
+};
+use crate::*;
 
 pub static mut CLIENT_PROC: *mut tmuxproc = null_mut();
 
@@ -101,7 +96,7 @@ pub unsafe fn client_get_lock(lockfile: *mut u8) -> i32 {
 pub unsafe fn client_connect(base: *mut event_base, path: *const u8, flags: client_flag) -> i32 {
     unsafe {
         let mut sa: sockaddr_un = zeroed();
-        let mut fd = 0;
+        let mut fd;
         let mut lockfd = -1;
         let mut locked: i32 = 0;
         let mut lockfile: *mut u8 = null_mut();
@@ -196,7 +191,7 @@ pub unsafe fn client_exit_message() -> *const u8 {
         client_exitreason::CLIENT_EXIT_DETACHED => {
             unsafe {
                 if !CLIENT_EXITSESSION.is_null() {
-                    xsnprintf_!(
+                    _ = xsnprintf_!(
                         &raw mut MSG as _,
                         size_of::<msgbuf>(),
                         "detached (from session {})",
@@ -211,7 +206,7 @@ pub unsafe fn client_exit_message() -> *const u8 {
             unsafe {
                 if !CLIENT_EXITSESSION.is_null() {
                     let tmp = CLIENT_EXITSESSION;
-                    xsnprintf_!(
+                    _ = xsnprintf_!(
                         &raw mut MSG as _,
                         size_of::<msgbuf>(),
                         "detached and SIGHUP (from session {})",
@@ -249,20 +244,18 @@ pub unsafe extern "C-unwind" fn client_main(
     feat: i32,
 ) -> i32 {
     unsafe {
-        let mut data: *mut msg_command = null_mut();
-        let mut fd = 0;
-        let mut cwd: *const u8 = null_mut();
-        let mut ttynam: *const u8 = null_mut();
-        let mut termname: *const u8 = null_mut();
+        let data: *mut msg_command;
+        let fd;
+        let mut cwd: *const u8;
+        let mut ttynam: *const u8;
+        let mut termname: *const u8;
         let msg: msgtype;
         let mut tio: termios = zeroed();
         let mut saved_tio: termios = zeroed();
-        let mut linesize = 0;
-        let mut line: *mut u8 = null_mut();
         let mut caps: *mut *mut u8 = null_mut();
         let mut cause: *mut u8 = null_mut();
         let mut ncaps: u32 = 0;
-        let mut values: *mut args_value = null_mut();
+        let values: *mut args_value;
 
         if !SHELL_COMMAND.is_null() {
             msg = msgtype::MSG_SHELL;
@@ -470,7 +463,7 @@ pub unsafe extern "C-unwind" fn client_main(
                                 break;
                             }
                         }
-                        Err(err) => break,
+                        Err(_err) => break,
                     }
                 }
             }
@@ -496,12 +489,7 @@ unsafe fn client_send_identify(
     mut feat: i32,
 ) {
     unsafe {
-        // char	**ss;
-        let sslen: usize = 0;
-        // int	  fd;
         let mut flags: client_flag = CLIENT_FLAGS;
-        // pid_t	  pid;
-        // u_int	  i;
 
         proc_send(
             CLIENT_PEER,
@@ -632,7 +620,7 @@ unsafe fn client_signal(sig: i32) {
     unsafe {
         let mut sigact: sigaction = zeroed();
         let mut status: i32 = 0;
-        let mut pid: pid_t = 0;
+        let mut pid: pid_t;
 
         log_debug!("{}: {}", "client_signal", _s(strsignal(sig).cast::<u8>()));
         if sig == SIGCHLD {
@@ -692,7 +680,7 @@ unsafe fn client_file_check_cb(
     _error: i32,
     _closed: i32,
     _buffer: *mut evbuffer,
-    data: *mut c_void,
+    _data: *mut c_void,
 ) {
     unsafe {
         if CLIENT_EXITFLAG != 0 {

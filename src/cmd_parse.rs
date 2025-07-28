@@ -12,20 +12,14 @@
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #![allow(clippy::uninlined_format_args)] // for lalrpop generated code
-use crate::*;
-
 use std::io::Read as _;
 use std::ops::BitAndAssign as _;
 use std::ops::BitOrAssign as _;
-use std::sync::atomic::Ordering;
 
 use lalrpop_util::lalrpop_mod;
 
-use crate::compat::queue::{
-    tailq_empty, tailq_first, tailq_foreach, tailq_init, tailq_insert_tail, tailq_last,
-    tailq_remove,
-};
 use crate::xmalloc::xrecallocarray__;
+use crate::*;
 
 fn yyparse(ps: &mut cmd_parse_state) -> Result<Option<&'static mut cmd_parse_commands>, ()> {
     let mut parser = cmd_parse::LinesParser::new();
@@ -49,7 +43,7 @@ pub struct yystype_elif {
     commands: &'static mut cmd_parse_commands,
 }
 
-crate::compat::impl_tailq_entry!(cmd_parse_scope, entry, tailq_entry<cmd_parse_scope>);
+impl_tailq_entry!(cmd_parse_scope, entry, tailq_entry<cmd_parse_scope>);
 #[repr(C)]
 pub struct cmd_parse_scope {
     pub flag: i32,
@@ -67,7 +61,7 @@ pub enum cmd_parse_argument_type {
     ParsedCommands(*mut cmd_list),
 }
 
-crate::compat::impl_tailq_entry!(cmd_parse_argument, entry, tailq_entry<cmd_parse_argument>);
+impl_tailq_entry!(cmd_parse_argument, entry, tailq_entry<cmd_parse_argument>);
 #[repr(C)]
 pub struct cmd_parse_argument {
     pub type_: cmd_parse_argument_type,
@@ -77,7 +71,7 @@ pub struct cmd_parse_argument {
 }
 pub type cmd_parse_arguments = tailq_head<cmd_parse_argument>;
 
-crate::compat::impl_tailq_entry!(cmd_parse_command, entry, tailq_entry<cmd_parse_command>);
+impl_tailq_entry!(cmd_parse_command, entry, tailq_entry<cmd_parse_command>);
 #[repr(C)]
 pub struct cmd_parse_command {
     pub line: u32,
@@ -136,11 +130,16 @@ pub fn cmd_parse_print_commands(pi: &cmd_parse_input, cmdlist: &mut cmd_list) {
                 pi.item,
                 "{}:{}: {}",
                 file,
-                pi.line.load(Ordering::SeqCst),
+                pi.line.load(atomic::Ordering::SeqCst),
                 _s(s)
             );
         } else {
-            cmdq_print!(pi.item, "{}: {}", pi.line.load(Ordering::SeqCst), _s(s));
+            cmdq_print!(
+                pi.item,
+                "{}: {}",
+                pi.line.load(atomic::Ordering::SeqCst),
+                _s(s)
+            );
         }
         free_(s)
     }
@@ -296,7 +295,7 @@ pub unsafe fn cmd_parse_expand_alias<'a>(
         log_debug!(
             "{}: {} alias {} = {}",
             _s(__func__),
-            pi.line.load(Ordering::SeqCst),
+            pi.line.load(atomic::Ordering::SeqCst),
             _s(name),
             _s(alias)
         );
@@ -344,7 +343,6 @@ pub unsafe fn cmd_parse_build_command(
     unsafe {
         let mut values: *mut args_value = null_mut();
         let mut count: u32 = 0;
-        let idx = 0u32;
         *pr = cmd_parse_result::Err(null_mut());
 
         if cmd_parse_expand_alias(cmd, pi, pr) != 0 {
@@ -379,7 +377,12 @@ pub unsafe fn cmd_parse_build_command(
                 count += 1;
             }
 
-            match cmd_parse(values, count, pi.file, pi.line.load(Ordering::SeqCst)) {
+            match cmd_parse(
+                values,
+                count,
+                pi.file,
+                pi.line.load(atomic::Ordering::SeqCst),
+            ) {
                 Ok(add) => {
                     let cmdlist = cmd_list_new();
                     *pr = Ok(cmdlist);
@@ -388,7 +391,7 @@ pub unsafe fn cmd_parse_build_command(
                 Err(cause) => {
                     *pr = Err(cmd_parse_get_error(
                         pi.file,
-                        pi.line.load(Ordering::SeqCst),
+                        pi.line.load(atomic::Ordering::SeqCst),
                         cstr_to_str(cause),
                     ));
                     free_(cause);
@@ -444,11 +447,11 @@ pub unsafe fn cmd_parse_build_commands(
                 current = cmd_list_new();
             }
             line = (*cmd).line;
-            pi.line.store((*cmd).line, Ordering::SeqCst);
+            pi.line.store((*cmd).line, atomic::Ordering::SeqCst);
 
             cmd_parse_build_command(cmd, pi, pr);
             match *pr {
-                Err(err) => {
+                Err(_err) => {
                     cmd_list_free(result);
                     cmd_list_free(current);
                     return;
@@ -588,7 +591,7 @@ pub unsafe fn cmd_parse_from_arguments(
         let cmds = cmd_parse_new_commands();
 
         let mut cmd = xcalloc1::<cmd_parse_command>() as *mut cmd_parse_command;
-        (*cmd).line = pi.line.load(Ordering::SeqCst);
+        (*cmd).line = pi.line.load(atomic::Ordering::SeqCst);
         tailq_init(&raw mut (*cmd).arguments);
 
         for i in 0..count {
@@ -624,7 +627,7 @@ pub unsafe fn cmd_parse_from_arguments(
             if end != 0 {
                 tailq_insert_tail(cmds, cmd);
                 cmd = xcalloc1::<cmd_parse_command>();
-                (*cmd).line = pi.line.load(Ordering::SeqCst);
+                (*cmd).line = pi.line.load(atomic::Ordering::SeqCst);
                 tailq_init(&raw mut (*cmd).arguments);
             }
         }
@@ -641,8 +644,9 @@ pub unsafe fn cmd_parse_from_arguments(
 }
 
 mod lexer {
-    use crate::{cmd_parse_state, transmute_ptr};
     use core::ptr::NonNull;
+
+    use crate::{cmd_parse_state, transmute_ptr};
 
     pub struct Lexer<'a> {
         ps: NonNull<cmd_parse_state<'a>>,
@@ -733,7 +737,7 @@ unsafe fn yyerror_(ps: &mut cmd_parse_state, args: std::fmt::Arguments) -> i32 {
         let mut error = args.to_string();
         error.push('\0');
 
-        ps.error = cmd_parse_get_error(pi.file, pi.line.load(Ordering::SeqCst), &error);
+        ps.error = cmd_parse_get_error(pi.file, pi.line.load(atomic::Ordering::SeqCst), &error);
         0
     }
 }
@@ -748,7 +752,7 @@ fn yylex_is_var(ch: u8, first: bool) -> bool {
 
 unsafe fn yylex_append(buf: *mut *mut u8, len: *mut usize, add: *const u8, addlen: usize) {
     unsafe {
-        if (addlen > usize::MAX - 1 || *len > usize::MAX - 1 - addlen) {
+        if addlen > usize::MAX - 1 || *len > usize::MAX - 1 - addlen {
             fatalx("buffer is too big");
         }
         *buf = xrealloc_(*buf, (*len) + 1 + addlen).as_ptr();
@@ -780,7 +784,7 @@ fn yylex_getc1(ps: &mut cmd_parse_state) -> i32 {
                     panic!("unexecpted read size");
                 }
             }
-            Err(err) => {
+            Err(_) => {
                 ch = libc::EOF;
             }
         }
@@ -795,7 +799,7 @@ fn yylex_getc1(ps: &mut cmd_parse_state) -> i32 {
 }
 
 fn yylex_ungetc(ps: &mut cmd_parse_state, ch: i32) {
-    if let Some(f) = ps.f.as_mut() {
+    if let Some(_f) = ps.f.as_mut() {
         ps.unget_buf = Some(ch)
     } else if ps.off > 0 && ch != libc::EOF {
         ps.off -= 1;
@@ -818,7 +822,7 @@ fn yylex_getc(ps: &mut cmd_parse_state) -> i32 {
                 .as_mut()
                 .unwrap()
                 .line
-                .fetch_add(1, Ordering::SeqCst);
+                .fetch_add(1, atomic::Ordering::SeqCst);
             ps.escapes -= 1;
             continue;
         }
@@ -858,12 +862,12 @@ unsafe fn yylex_(ps: &mut cmd_parse_state) -> Option<Tok> {
     unsafe {
         let mut next: i32 = 0;
 
-        if (ps.eol != 0) {
+        if ps.eol != 0 {
             ps.input
                 .as_mut()
                 .unwrap()
                 .line
-                .fetch_add(1, Ordering::SeqCst);
+                .fetch_add(1, atomic::Ordering::SeqCst);
         }
         ps.eol = 0;
 
@@ -886,24 +890,24 @@ unsafe fn yylex_(ps: &mut cmd_parse_state) -> Option<Tok> {
                 return Some(Tok::Newline);
             }
 
-            if (ch == ' ' as i32 || ch == '\t' as i32) {
+            if ch == ' ' as i32 || ch == '\t' as i32 {
                 /*
                  * Ignore whitespace.
                  */
                 continue;
             }
 
-            if (ch == '\r' as i32) {
+            if ch == '\r' as i32 {
                 /*
                  * Treat \r\n as \n.
                  */
                 ch = yylex_getc(ps);
-                if (ch != '\n' as i32) {
+                if ch != '\n' as i32 {
                     yylex_ungetc(ps, ch);
                     ch = '\r' as i32;
                 }
             }
-            if (ch == '\n' as i32) {
+            if ch == '\n' as i32 {
                 /*
                  * End of line. Update the line number.
                  */
@@ -921,20 +925,20 @@ unsafe fn yylex_(ps: &mut cmd_parse_state) -> Option<Tok> {
                 return Some(Tok::RightBrace);
             }
 
-            if (ch == '#' as i32) {
+            if ch == '#' as i32 {
                 /*
                  * #{ after a condition opens a format; anything else
                  * is a comment, ignore up to the end of the line.
                  */
                 next = yylex_getc(ps);
-                if (condition != 0 && next == '{' as i32) {
+                if condition != 0 && next == '{' as i32 {
                     let yylval_token = yylex_format(ps);
                     if yylval_token.is_none() {
                         return Some(Tok::Error);
                     }
                     return Some(Tok::Format(yylval_token));
                 }
-                while (next != '\n' as i32 && next != libc::EOF) {
+                while next != '\n' as i32 && next != libc::EOF {
                     next = yylex_getc(ps);
                 }
                 if next == '\n' as i32 {
@@ -942,7 +946,7 @@ unsafe fn yylex_(ps: &mut cmd_parse_state) -> Option<Tok> {
                         .as_mut()
                         .unwrap()
                         .line
-                        .fetch_add(1, Ordering::SeqCst);
+                        .fetch_add(1, atomic::Ordering::SeqCst);
                     return Some(Tok::Newline);
                 }
                 continue;
@@ -961,7 +965,7 @@ unsafe fn yylex_(ps: &mut cmd_parse_state) -> Option<Tok> {
                     }
                     cp = cp.add(1);
                 }
-                if (*cp == b'\0') {
+                if *cp == b'\0' {
                     return Some(Tok::Token(NonNull::new(yylval_token)));
                 }
                 ps.condition = 1;
@@ -1025,12 +1029,12 @@ unsafe fn yylex_format(ps: &mut cmd_parse_state) -> Option<NonNull<u8>> {
             yylex_append(&raw mut buf, &raw mut len, c!("#{"), 2);
             loop {
                 let mut ch = yylex_getc(ps);
-                if (ch == libc::EOF || ch == '\n' as i32) {
+                if ch == libc::EOF || ch == '\n' as i32 {
                     break 'error;
                 }
-                if (ch == '#' as i32) {
+                if ch == '#' as i32 {
                     ch = yylex_getc(ps);
-                    if (ch == libc::EOF || ch == '\n' as i32) {
+                    if ch == libc::EOF || ch == '\n' as i32 {
                         break 'error;
                     }
                     if ch == '{' as i32 {
@@ -1049,7 +1053,7 @@ unsafe fn yylex_format(ps: &mut cmd_parse_state) -> Option<NonNull<u8>> {
                 }
                 yylex_append1(&raw mut buf, &raw mut len, ch as u8);
             }
-            if (brackets != 0) {
+            if brackets != 0 {
                 break 'error;
             }
 
@@ -1075,10 +1079,10 @@ unsafe fn yylex_token_variable(
         let mut brackets = 0;
 
         let mut ch = yylex_getc(ps);
-        if (ch == libc::EOF) {
+        if ch == libc::EOF {
             return false;
         }
-        if (ch == '{' as i32) {
+        if ch == '{' as i32 {
             brackets = 1;
         } else {
             if !yylex_is_var(ch as u8, true) {
@@ -1092,10 +1096,10 @@ unsafe fn yylex_token_variable(
 
         loop {
             ch = yylex_getc(ps);
-            if (brackets != 0 && ch == '}' as i32) {
+            if brackets != 0 && ch == '}' as i32 {
                 break;
             }
-            if (ch == libc::EOF || !yylex_is_var(ch as u8, false)) {
+            if ch == libc::EOF || !yylex_is_var(ch as u8, false) {
                 if brackets == 0 {
                     yylex_ungetc(ps, ch);
                     break;
@@ -1151,7 +1155,7 @@ unsafe fn yylex_token_tilde(ps: &mut cmd_parse_state, buf: *mut *mut u8, len: *m
 
         if name[0] == b'\0' {
             let envent = environ_find(GLOBAL_ENVIRON, c!("HOME"));
-            if (!envent.is_null() && (*(*envent).value.unwrap().as_ptr()) != b'\0') {
+            if !envent.is_null() && (*(*envent).value.unwrap().as_ptr()) != b'\0' {
                 home = transmute_ptr((*envent).value);
             } else if let Some(pw) = NonNull::new(libc::getpwuid(libc::getuid())) {
                 home = (*pw.as_ptr()).pw_dir.cast();
@@ -1190,18 +1194,18 @@ unsafe fn yylex_token(ps: &mut cmd_parse_state, mut ch: i32) -> *mut u8 {
                 'next: {
                     'skip: {
                         /* EOF or \n are always the end of the token. */
-                        if (ch == libc::EOF) {
+                        if ch == libc::EOF {
                             // log_debug("%s: end at EOF", __func__);
                             break 'aloop;
                         }
-                        if (state == State::None && ch == '\r' as i32) {
+                        if state == State::None && ch == '\r' as i32 {
                             ch = yylex_getc(ps);
-                            if (ch != '\n' as i32) {
+                            if ch != '\n' as i32 {
                                 yylex_ungetc(ps, ch);
                                 ch = '\r' as i32;
                             }
                         }
-                        if (state == State::None && ch == '\n' as i32) {
+                        if state == State::None && ch == '\n' as i32 {
                             // log_debug("%s: end at EOL", __func__);
                             break 'aloop;
                         }
@@ -1211,7 +1215,7 @@ unsafe fn yylex_token(ps: &mut cmd_parse_state, mut ch: i32) -> *mut u8 {
                             // log_debug("%s: end at WS", __func__);
                             break 'aloop;
                         }
-                        if (state == State::None && (ch == ';' as i32 || ch == '}' as i32)) {
+                        if state == State::None && (ch == ';' as i32 || ch == '}' as i32) {
                             // log_debug("%s: end at %c", __func__, ch);
                             break 'aloop;
                         }
@@ -1220,14 +1224,14 @@ unsafe fn yylex_token(ps: &mut cmd_parse_state, mut ch: i32) -> *mut u8 {
                          * Spaces and comments inside quotes after \n are removed but
                          * the \n is left.
                          */
-                        if (ch == '\n' as i32 && state != State::None) {
+                        if ch == '\n' as i32 && state != State::None {
                             yylex_append1(&raw mut buf, &raw mut len, b'\n');
                             while ({
                                 ch = yylex_getc(ps);
                                 ch == b' ' as i32
                             }) || ch == '\t' as i32
                             {}
-                            if (ch != '#' as i32) {
+                            if ch != '#' as i32 {
                                 continue 'aloop;
                             }
                             ch = yylex_getc(ps);
@@ -1235,10 +1239,10 @@ unsafe fn yylex_token(ps: &mut cmd_parse_state, mut ch: i32) -> *mut u8 {
                                 yylex_ungetc(ps, ch);
                                 ch = '#' as i32;
                             } else {
-                                while ({
+                                while {
                                     ch = yylex_getc(ps);
                                     ch != '\n' as i32 && ch != libc::EOF
-                                }) { /* nothing */ }
+                                } { /* nothing */ }
                             }
                             continue 'aloop;
                         }
@@ -1268,21 +1272,21 @@ unsafe fn yylex_token(ps: &mut cmd_parse_state, mut ch: i32) -> *mut u8 {
 
                         /* ' and " starts or end quotes (and is consumed). */
                         if ch == '\'' as i32 {
-                            if (state == State::None) {
+                            if state == State::None {
                                 state = State::SingleQuotes;
                                 break 'next;
                             }
-                            if (state == State::SingleQuotes) {
+                            if state == State::SingleQuotes {
                                 state = State::None;
                                 break 'next;
                             }
                         }
                         if ch == b'"' as i32 {
-                            if (state == State::None) {
+                            if state == State::None {
                                 state = State::DoubleQuotes;
                                 break 'next;
                             }
-                            if (state == State::DoubleQuotes) {
+                            if state == State::DoubleQuotes {
                                 state = State::None;
                                 break 'next;
                             }
@@ -1301,7 +1305,7 @@ unsafe fn yylex_token(ps: &mut cmd_parse_state, mut ch: i32) -> *mut u8 {
 
             *buf.add(len) = b'\0';
             // log_debug("%s: %s", __func__, buf);
-            return (buf);
+            return buf;
         } // error:
         free_(buf);
 
@@ -1327,15 +1331,15 @@ unsafe fn yylex_token_escape(ps: &mut cmd_parse_state, buf: *mut *mut u8, len: *
         'unicode: {
             let mut ch = yylex_getc(ps);
 
-            if (ch >= '4' as i32 && ch <= '7' as i32) {
+            if ch >= '4' as i32 && ch <= '7' as i32 {
                 yyerror!(ps, "invalid octal escape");
                 return false;
             }
-            if (ch >= '0' as i32 && ch <= '3' as i32) {
+            if ch >= '0' as i32 && ch <= '3' as i32 {
                 let o2 = yylex_getc(ps);
-                if (o2 >= '0' as i32 && o2 <= '7' as i32) {
+                if o2 >= '0' as i32 && o2 <= '7' as i32 {
                     let o3 = yylex_getc(ps);
-                    if (o3 >= '0' as i32 && o3 <= '7' as i32) {
+                    if o3 >= '0' as i32 && o3 <= '7' as i32 {
                         ch = 64 * (ch - '0' as i32) + 8 * (o2 - '0' as i32) + (o3 - '0' as i32);
                         yylex_append1(buf, len, ch as u8);
                         return true;
@@ -1390,8 +1394,8 @@ unsafe fn yylex_token_escape(ps: &mut cmd_parse_state, buf: *mut *mut u8, len: *
         }
         s[i] = b'\0';
 
-        if ((size == 4 && libc::sscanf((&raw mut s).cast(), c"%4x".as_ptr(), &raw mut tmp) != 1)
-            || (size == 8 && libc::sscanf((&raw mut s).cast(), c"%8x".as_ptr(), &raw mut tmp) != 1))
+        if (size == 4 && libc::sscanf((&raw mut s).cast(), c"%4x".as_ptr(), &raw mut tmp) != 1)
+            || (size == 8 && libc::sscanf((&raw mut s).cast(), c"%8x".as_ptr(), &raw mut tmp) != 1)
         {
             yyerror!(ps, "invalid \\{} argument", type_ as u8 as char);
             return false;

@@ -11,15 +11,13 @@
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-use crate::*;
-
-use crate::libc::strcmp;
-
 use crate::compat::{
     queue::{tailq_first, tailq_foreach},
     strlcat,
     tree::{rb_foreach, rb_foreach_const, rb_max, rb_min},
 };
+use crate::libc::strcmp;
+use crate::*;
 
 static mut CMD_FIND_SESSION_TABLE: [[*const u8; 2]; 1] = [[null_mut(), null_mut()]];
 
@@ -229,7 +227,7 @@ pub unsafe fn cmd_find_map_table(table: *const [*const u8; 2], s: *const u8) -> 
     unsafe {
         let mut i = 0;
         while !(*table.add(i))[0].is_null() {
-            if unsafe { strcmp(s, (*table.add(i))[0]) == 0 } {
+            if strcmp(s, (*table.add(i))[0]) == 0 {
                 return (*table.add(i))[1];
             }
             i += 1;
@@ -659,9 +657,9 @@ pub unsafe fn cmd_find_valid_state(fs: *const cmd_find_state) -> bool {
             return false;
         }
 
-        let Some(wl) = rb_foreach_const(&raw const (*(*fs).s).windows)
-            .find(|wl| (*wl.as_ptr()).window == (*fs).w && wl.as_ptr() == (*fs).wl)
-        else {
+        if !rb_foreach_const(&raw const (*(*fs).s).windows)
+            .any(|wl| (*wl.as_ptr()).window == (*fs).w && wl.as_ptr() == (*fs).wl)
+        {
             return false;
         };
 

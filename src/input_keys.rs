@@ -11,15 +11,7 @@
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-
-use std::cmp::Ordering;
-
 use crate::*;
-
-use crate::compat::{
-    RB_GENERATE,
-    tree::{rb_find, rb_foreach, rb_initializer, rb_insert},
-};
 
 // Entry in the key tree.
 pub struct input_key_entry {
@@ -41,7 +33,7 @@ impl input_key_entry {
 }
 
 /// Input key comparison function.
-pub fn input_key_cmp(ike1: &input_key_entry, ike2: &input_key_entry) -> Ordering {
+pub fn input_key_cmp(ike1: &input_key_entry, ike2: &input_key_entry) -> cmp::Ordering {
     ike1.key.cmp(&ike2.key)
 }
 
@@ -209,7 +201,14 @@ pub unsafe extern "C-unwind" fn input_key_build() {
         }
 
         for ike in rb_foreach(&raw mut INPUT_KEY_TREE).map(NonNull::as_ptr) {
-            // log_debug_!( "{}:{} : 0x{:x} ({}) is {}", file!(), line!(), (*ike).key, PercentS(key_string_lookup_key((*ike).key, 1)), PercentS((*ike).data),);
+            log_debug!(
+                "{}:{} : 0x{:x} ({}) is {}",
+                file!(),
+                line!(),
+                (*ike).key,
+                _s(key_string_lookup_key((*ike).key, 1)),
+                _s((*ike).data)
+            );
         }
     }
 }
@@ -283,7 +282,7 @@ pub unsafe fn input_key_extended(bev: *mut bufferevent, mut key: key_code) -> i3
         }
 
         if options_get_number_(GLOBAL_OPTIONS, "extended-keys-format") == 1 {
-            xsnprintf_!(
+            _ = xsnprintf_!(
                 tmp.as_mut_ptr().cast(),
                 sizeof_tmp,
                 "\x1b[27;{};{}~",
@@ -291,7 +290,7 @@ pub unsafe fn input_key_extended(bev: *mut bufferevent, mut key: key_code) -> i3
                 key,
             );
         } else {
-            xsnprintf_!(
+            _ = xsnprintf_!(
                 tmp.as_mut_ptr().cast(),
                 sizeof_tmp,
                 "\x1b[{};{}",
@@ -566,7 +565,6 @@ pub unsafe fn input_key_get_mouse(
     rlen: *mut usize,
 ) -> i32 {
     static mut BUF: [u8; 40] = [0; 40];
-    let len = 0usize;
 
     unsafe {
         let sizeof_buf = 40;

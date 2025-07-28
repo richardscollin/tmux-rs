@@ -11,12 +11,11 @@
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-use crate::*;
-
 use crate::compat::queue::{
     tailq_first, tailq_foreach, tailq_foreach_reverse, tailq_insert_head, tailq_insert_tail,
     tailq_last, tailq_next, tailq_prev, tailq_remove,
 };
+use crate::*;
 
 pub static CMD_ROTATE_WINDOW_ENTRY: cmd_entry = cmd_entry {
     name: SyncCharPtr::new(c"rotate-window"),
@@ -44,7 +43,6 @@ unsafe fn cmd_rotate_window_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
         let wl = (*target).wl;
         let w = (*wl).window;
         let mut wp: *mut window_pane;
-        let mut wp2: *mut window_pane;
         let lc: *mut layout_cell;
         let sx: u32;
         let sy: u32;

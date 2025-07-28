@@ -12,7 +12,6 @@
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 use super::*;
-
 use crate::compat::queue::tailq_foreach;
 use crate::compat::tree::rb_empty;
 

@@ -11,9 +11,8 @@
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-use crate::*;
-
 use crate::libc::{EINVAL, ENOENT, ENOMEM, GLOB_NOMATCH, GLOB_NOSPACE, glob, glob_t, globfree};
+use crate::*;
 
 pub static CMD_SOURCE_FILE_ENTRY: cmd_entry = cmd_entry {
     name: SyncCharPtr::new(c"source-file"),
@@ -46,7 +45,7 @@ pub struct cmd_source_file_data {
     pub nfiles: u32,
 }
 
-unsafe fn cmd_source_file_complete_cb(item: *mut cmdq_item, data: *mut c_void) -> cmd_retval {
+unsafe fn cmd_source_file_complete_cb(item: *mut cmdq_item, _data: *mut c_void) -> cmd_retval {
     unsafe {
         cfg_print_causes(item);
         cmd_retval::CMD_RETURN_NORMAL
@@ -149,7 +148,6 @@ unsafe fn cmd_source_file_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
         let mut pattern: *mut u8 = null_mut();
         let mut cwd = null_mut();
         let mut expanded: *mut u8 = null_mut();
-        let path: *mut u8 = null_mut();
         let mut error: *mut u8 = null_mut();
         let mut g = MaybeUninit::<glob_t>::uninit();
         let mut result = 0i32;

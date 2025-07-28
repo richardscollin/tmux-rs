@@ -11,21 +11,14 @@
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-
 use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::fmt::{self, Display};
 use std::slice;
 
-use crate::*;
-
+use crate::compat::vis;
 use crate::libc::{memcpy, memset};
-
-use crate::compat::{
-    tree::{rb_find, rb_initializer, rb_insert},
-    vis,
-};
-use crate::xmalloc::xreallocarray;
+use crate::*;
 
 #[cfg(feature = "utf8proc")]
 unsafe extern "C" {
@@ -452,11 +445,11 @@ pub unsafe fn utf8_strvis(
         let mut more: utf8_state;
 
         while src < end {
-            more = utf8_open(&raw mut ud, (*src));
+            more = utf8_open(&raw mut ud, *src);
             if more == utf8_state::UTF8_MORE {
                 src = src.add(1);
                 while src < end && more == utf8_state::UTF8_MORE {
-                    more = utf8_append(&raw mut ud, (*src));
+                    more = utf8_append(&raw mut ud, *src);
                 }
                 if more == utf8_state::UTF8_DONE {
                     /* UTF-8 character finished. */
@@ -520,13 +513,13 @@ pub unsafe fn utf8_isvalid(mut s: *const u8) -> bool {
 
         let end = s.add(strlen(s));
         while s < end {
-            let mut more = utf8_open(&raw mut ud, (*s));
+            let mut more = utf8_open(&raw mut ud, *s);
             if more == utf8_state::UTF8_MORE {
                 while {
                     s = s.add(1);
                     s < end && more == utf8_state::UTF8_MORE
                 } {
-                    more = utf8_append(&raw mut ud, (*s));
+                    more = utf8_append(&raw mut ud, *s);
                 }
                 if more == utf8_state::UTF8_DONE {
                     continue;
@@ -551,13 +544,13 @@ pub unsafe fn utf8_sanitize(mut src: *const u8) -> *mut u8 {
 
         while *src != b'\0' {
             dst = xreallocarray_(dst, n + 1).as_ptr();
-            let mut more = utf8_open(&raw mut ud, (*src));
+            let mut more = utf8_open(&raw mut ud, *src);
             if more == utf8_state::UTF8_MORE {
                 while {
                     src = src.add(1);
                     *src != b'\0' && more == utf8_state::UTF8_MORE
                 } {
-                    more = utf8_append(&raw mut ud, (*src));
+                    more = utf8_append(&raw mut ud, *src);
                 }
                 if more == utf8_state::UTF8_DONE {
                     dst = xreallocarray_(dst, n + ud.width as usize).as_ptr();
@@ -620,13 +613,13 @@ pub unsafe fn utf8_fromcstr(mut src: *const u8) -> *mut utf8_data {
 
         while *src != b'\0' {
             dst = xreallocarray_(dst, n + 1).as_ptr();
-            let mut more = utf8_open(dst.add(n), (*src));
+            let mut more = utf8_open(dst.add(n), *src);
             if more == utf8_state::UTF8_MORE {
                 while {
                     src = src.add(1);
                     *src != b'\0' && more == utf8_state::UTF8_MORE
                 } {
-                    more = utf8_append(dst.add(n), (*src));
+                    more = utf8_append(dst.add(n), *src);
                 }
                 if more == utf8_state::UTF8_DONE {
                     n += 1;
@@ -634,7 +627,7 @@ pub unsafe fn utf8_fromcstr(mut src: *const u8) -> *mut utf8_data {
                 }
                 src = src.sub((*dst.add(n)).have as usize);
             }
-            utf8_set(dst.add(n), (*src));
+            utf8_set(dst.add(n), *src);
             n += 1;
             src = src.add(1);
         }
@@ -672,13 +665,13 @@ pub unsafe fn utf8_cstrwidth(mut s: *const u8) -> u32 {
 
         let mut width: u32 = 0;
         while *s != b'\0' {
-            let mut more = utf8_open(&raw mut tmp, (*s));
+            let mut more = utf8_open(&raw mut tmp, *s);
             if more == utf8_state::UTF8_MORE {
                 while {
                     s = s.add(1);
                     *s != b'\0' && more == utf8_state::UTF8_MORE
                 } {
-                    more = utf8_append(&raw mut tmp, (*s));
+                    more = utf8_append(&raw mut tmp, *s);
                 }
                 if more == utf8_state::UTF8_DONE {
                     width += tmp.width as u32;

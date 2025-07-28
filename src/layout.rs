@@ -14,11 +14,6 @@
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 use crate::*;
 
-use crate::compat::queue::{
-    tailq_empty, tailq_init, tailq_insert_after, tailq_insert_before, tailq_insert_head,
-    tailq_insert_tail, tailq_last, tailq_prev, tailq_remove, tailq_replace,
-};
-
 pub unsafe fn layout_create_cell(lcparent: *mut layout_cell) -> *mut layout_cell {
     unsafe {
         let lc = xmalloc_::<layout_cell>().as_ptr();
@@ -782,7 +777,6 @@ pub unsafe fn layout_set_size_check(
     size: c_int,
 ) -> bool {
     unsafe {
-        let mut lcchild: *mut layout_cell;
         let mut new_size: u32;
         let mut available: u32;
         let previous: u32;
@@ -929,8 +923,6 @@ pub unsafe fn layout_split_pane(
 ) -> *mut layout_cell {
     unsafe {
         let minimum: u32;
-        let mut new_size: u32;
-        let mut saved_size: u32;
         let mut resize_first: u32 = 0;
         let full_size = (flags & SPAWN_FULLSIZE) != 0;
 

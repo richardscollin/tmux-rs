@@ -12,17 +12,8 @@
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-
-use std::cmp::Ordering;
-
-use crate::*;
-
 use crate::libc::{getpwuid, getuid};
-
-use crate::compat::{
-    queue::tailq_foreach,
-    tree::{rb_find, rb_foreach, rb_init, rb_insert, rb_remove},
-};
+use crate::*;
 
 bitflags::bitflags! {
     #[repr(transparent)]
@@ -40,7 +31,7 @@ pub struct server_acl_user {
     pub entry: rb_entry<server_acl_user>,
 }
 
-pub fn server_acl_cmp(user1: &server_acl_user, user2: &server_acl_user) -> Ordering {
+pub fn server_acl_cmp(user1: &server_acl_user, user2: &server_acl_user) -> cmp::Ordering {
     user1.uid.cmp(&user2.uid)
 }
 

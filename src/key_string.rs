@@ -11,10 +11,8 @@
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+use crate::libc::{memcpy, snprintf, sscanf, strcasecmp};
 use crate::*;
-
-use crate::compat::strlcat;
-use crate::libc::{memcpy, snprintf, sscanf, strcasecmp, tolower};
 
 unsafe impl Sync for key_string_table_entry {}
 #[repr(C)]
@@ -260,7 +258,7 @@ pub unsafe fn key_string_get_modifiers(string: *mut *const u8) -> key_code {
         let mut modifiers: key_code = 0;
 
         while **string != b'\0' && *(*string).add(1) == b'-' {
-            match (**string) {
+            match **string {
                 b'C' | b'c' => {
                     modifiers |= KEYC_CTRL;
                 }
@@ -292,10 +290,8 @@ pub unsafe fn key_string_lookup_string(mut string: *const u8) -> key_code {
         let mut key: key_code = 0;
         let mut modifiers: key_code = 0;
         let mut u: u32 = 0;
-        let i: u32 = 0;
         let mut ud: utf8_data = zeroed();
         let mut uc: utf8_char = 0;
-        let mlen = 0i32;
 
         let mut m = [MaybeUninit::<u8>::uninit(); MB_LEN_MAX + 1];
 
@@ -337,7 +333,7 @@ pub unsafe fn key_string_lookup_string(mut string: *const u8) -> key_code {
         /* Check for short Ctrl key. */
         if *string == b'^' && *string.add(1) != b'\0' {
             if *string.add(2) == b'\0' {
-                return tolower(*string.add(1) as _) as u64 | KEYC_CTRL;
+                return (*string.add(1)).to_ascii_lowercase() as u64 | KEYC_CTRL;
             }
             modifiers |= KEYC_CTRL;
             string = string.add(1);
@@ -357,13 +353,13 @@ pub unsafe fn key_string_lookup_string(mut string: *const u8) -> key_code {
             }
         } else {
             /* Try as a UTF-8 key. */
-            let mut more: utf8_state = utf8_open(&raw mut ud, (*string));
+            let mut more: utf8_state = utf8_open(&raw mut ud, *string);
             if more == utf8_state::UTF8_MORE {
                 if strlen(string) != ud.size as usize {
                     return KEYC_UNKNOWN;
                 }
                 for i in 1..ud.size {
-                    more = utf8_append(&raw mut ud, (*string.add(i as usize)));
+                    more = utf8_append(&raw mut ud, *string.add(i as usize));
                 }
                 if more != utf8_state::UTF8_DONE {
                     return KEYC_UNKNOWN;
@@ -542,9 +538,9 @@ pub unsafe fn key_string_lookup_key(mut key: key_code, with_flags: i32) -> *cons
                     tmp[0] = key as u8;
                     tmp[1] = b'\0';
                 } else if key == 127 {
-                    xsnprintf_!(&raw mut tmp as _, sizeof_tmp, "C-?");
+                    _ = xsnprintf_!(&raw mut tmp as _, sizeof_tmp, "C-?");
                 } else if key >= 128 {
-                    xsnprintf_!(&raw mut tmp as _, sizeof_tmp, "\\{:o}", key,);
+                    _ = xsnprintf_!(&raw mut tmp as _, sizeof_tmp, "\\{:o}", key,);
                 }
 
                 strlcat(

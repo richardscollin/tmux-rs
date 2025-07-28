@@ -12,11 +12,9 @@
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-use crate::*;
-
-use crate::libc::{WEXITSTATUS, WIFEXITED, WIFSIGNALED, WTERMSIG, memcpy, strtod};
-
 use crate::compat::queue::tailq_first;
+use crate::libc::{WEXITSTATUS, WIFEXITED, WIFSIGNALED, WTERMSIG, memcpy, strtod};
+use crate::*;
 
 pub static CMD_RUN_SHELL_ENTRY: cmd_entry = cmd_entry {
     name: SyncCharPtr::new(c"run-shell"),
@@ -54,7 +52,7 @@ pub struct cmd_run_shell_data<'a> {
 pub unsafe fn cmd_run_shell_args_parse(
     args: *mut args,
     _idx: u32,
-    cause: *mut *mut u8,
+    _cause: *mut *mut u8,
 ) -> args_parse_type {
     unsafe {
         if args_has_(args, 'C') {
@@ -260,11 +258,7 @@ pub unsafe fn cmd_run_shell_callback(job: *mut job) {
         let item = (*cdata).item;
         let cmd = (*cdata).cmd;
         let mut msg = null_mut();
-        // *line;
-        // size_t size;
         let mut retcode: i32 = 0;
-        let status: i32 = 0;
-        // int retcode, status;
 
         let mut line = null_mut::<u8>();
         loop {

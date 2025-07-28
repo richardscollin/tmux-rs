@@ -11,14 +11,6 @@
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-use crate::*;
-
-use crate::libc::{
-    AF_UNIX, EAGAIN, PF_UNSPEC, SA_RESTART, SIG_DFL, SIG_IGN, SIGCHLD, SIGCONT, SIGHUP, SIGINT,
-    SIGPIPE, SIGQUIT, SIGTERM, SIGTSTP, SIGTTIN, SIGTTOU, SIGUSR1, SIGUSR2, SIGWINCH, close, gid_t,
-    sigaction, sigemptyset, socketpair, uname, utsname,
-};
-
 use crate::compat::{
     getpeereid,
     imsg::{
@@ -30,6 +22,12 @@ use crate::compat::{
     setproctitle_,
 };
 use crate::event_::{signal_add, signal_set};
+use crate::libc::{
+    AF_UNIX, EAGAIN, PF_UNSPEC, SA_RESTART, SIG_DFL, SIG_IGN, SIGCHLD, SIGCONT, SIGHUP, SIGINT,
+    SIGPIPE, SIGQUIT, SIGTERM, SIGTSTP, SIGTTIN, SIGTTOU, SIGUSR1, SIGUSR2, SIGWINCH, close, gid_t,
+    sigaction, sigemptyset, socketpair, uname, utsname,
+};
+use crate::*;
 
 #[repr(C)]
 pub struct tmuxproc {
@@ -52,7 +50,7 @@ pub struct tmuxproc {
 
 pub const PEER_BAD: i32 = 0x1;
 
-crate::compat::impl_tailq_entry!(tmuxpeer, entry, tailq_entry<tmuxpeer>);
+impl_tailq_entry!(tmuxpeer, entry, tailq_entry<tmuxpeer>);
 #[repr(C)]
 pub struct tmuxpeer {
     pub parent: *mut tmuxproc,

@@ -11,18 +11,8 @@
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-use crate::*;
-
 use crate::libc::{strcasecmp, strstr};
-
-use crate::compat::{
-    impl_tailq_entry,
-    queue::{
-        tailq_concat, tailq_empty, tailq_init, tailq_insert_tail, tailq_last, tailq_prev,
-        tailq_remove,
-    },
-    strlcat,
-};
+use crate::*;
 
 pub type mode_tree_build_cb = Option<
     unsafe fn(_: NonNull<c_void>, _: *mut mode_tree_sort_criteria, _: *mut u64, _: *const u8),

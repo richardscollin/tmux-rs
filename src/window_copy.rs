@@ -11,7 +11,7 @@
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-use super::*;
+use crate::*;
 
 pub static WINDOW_COPY_MODE: window_mode = window_mode {
     name: SyncCharPtr::new(c"copy-mode"),
@@ -251,11 +251,11 @@ pub unsafe fn window_copy_clone_screen(
     trim: i32,
 ) -> *mut screen {
     unsafe {
-        let mut gl: *const grid_line = null();
+        let mut gl: *const grid_line;
         let mut wx: u32 = 0;
         let mut wy: u32 = 0;
 
-        let mut reflow = false;
+        let mut reflow;
 
         let dst: *mut screen = xcalloc1();
 
@@ -366,7 +366,7 @@ pub unsafe fn window_copy_init(
     let wme = wme.as_ptr();
     unsafe {
         let wp = (*wme).swp;
-        let mut data: *mut window_copy_mode_data = null_mut();
+        let mut data: *mut window_copy_mode_data;
         let base = &raw mut (*wp).base;
         let mut ctx: screen_write_ctx = zeroed();
         let mut cx = 0;
@@ -415,8 +415,8 @@ pub unsafe fn window_copy_init(
 
 pub unsafe fn window_copy_view_init(
     wme: NonNull<window_mode_entry>,
-    fs: *mut cmd_find_state,
-    args: *mut args,
+    _fs: *mut cmd_find_state,
+    _args: *mut args,
 ) -> *mut screen {
     let wme = wme.as_ptr();
     unsafe {
@@ -474,7 +474,7 @@ macro_rules! window_copy_add {
 }
 pub(crate) use window_copy_add;
 
-pub unsafe fn window_copy_init_ctx_cb(ctx: *mut screen_write_ctx, ttyctx: *mut tty_ctx) {
+pub unsafe fn window_copy_init_ctx_cb(_ctx: *mut screen_write_ctx, ttyctx: *mut tty_ctx) {
     unsafe {
         memcpy__(&raw mut (*ttyctx).defaults, &raw const GRID_DEFAULT_CELL);
         (*ttyctx).palette = null_mut();
@@ -1035,7 +1035,7 @@ pub unsafe fn window_copy_cmd_bottom_line(
 }
 
 pub unsafe fn window_copy_cmd_cancel(_cs: *mut window_copy_cmd_state) -> window_copy_cmd_action {
-    unsafe { window_copy_cmd_action::WINDOW_COPY_CMD_CANCEL }
+    window_copy_cmd_action::WINDOW_COPY_CMD_CANCEL
 }
 
 pub unsafe fn window_copy_cmd_clear_selection(
@@ -1652,7 +1652,6 @@ pub unsafe fn window_copy_cmd_previous_matching_bracket(
         let mut found: u8 = b'\0';
         let mut cp: *mut u8 = null_mut();
         let mut gc: grid_cell = zeroed();
-        let failed = false;
 
         'outer: while np != 0 {
             /* Get cursor position and line length. */
@@ -2103,7 +2102,7 @@ pub unsafe fn window_copy_cmd_rectangle_toggle(
         let data: *mut window_copy_mode_data = (*wme).data.cast();
 
         (*data).lineflag = line_sel::LINE_SEL_NONE;
-        window_copy_rectangle_set(wme, (!(*data).rectflag));
+        window_copy_rectangle_set(wme, !(*data).rectflag);
 
         window_copy_cmd_action::WINDOW_COPY_CMD_NOTHING
     }
@@ -3565,9 +3564,7 @@ pub unsafe fn window_copy_search_lr(
     cis: i32,
 ) -> i32 {
     unsafe {
-        // u_int ax, bx, px, pywrap, endline;
-        // int matched;
-        let mut gl: *mut grid_line = null_mut();
+        let mut gl: *mut grid_line;
 
         let endline = (*gd).hsize + (*gd).sy - 1;
         for ax in first..last {
@@ -3613,12 +3610,9 @@ pub unsafe fn window_copy_search_rl(
     cis: i32,
 ) -> i32 {
     unsafe {
-        // u_int ax, bx, px, pywrap, endline;
-        let matched = 0;
-        let mut gl: *mut grid_line = null_mut();
+        let mut gl: *mut grid_line;
         let endline = (*gd).hsize + (*gd).sy - 1;
 
-        // for (ax = last; ax > first; ax--) {
         let mut ax = last;
         while ax > first {
             let mut bx = 0;
@@ -3849,7 +3843,6 @@ pub unsafe fn window_copy_last_regex(
     eflags: i32,
 ) -> i32 {
     unsafe {
-        let oldx = 0;
         let mut px = 0;
         let mut savepx = 0;
         let mut savesx = 0;
@@ -3921,7 +3914,6 @@ pub unsafe fn window_copy_stringify(
     size: *mut u32,
 ) -> *mut u8 {
     unsafe {
-        let ax = 0;
         let mut bx = 0;
 
         let mut newsize = *size;
@@ -3974,13 +3966,9 @@ pub unsafe fn window_copy_cstrtocellpos(
         let mut ccell: u32 = 0;
         let mut px: u32 = 0;
         let mut pywrap: u32 = 0;
-        let pos: u32 = 0;
         let mut len: u32 = 0;
 
         let mut match_: i32 = 0;
-
-        // const char *d;
-        // size_t dlen;
 
         #[repr(C)]
         struct cell {
@@ -4584,7 +4572,6 @@ pub unsafe fn window_copy_search_marks(
 
         let mut cflags = libc::REG_EXTENDED;
         let mut px: u32;
-        let mut py: u32;
         let mut b: u32 = 0;
         let mut nfound: u32 = 0;
         let mut width: u32 = 0;
@@ -4779,7 +4766,6 @@ pub unsafe fn window_copy_search_down(wme: *mut window_mode_entry, regex: i32) -
 pub unsafe fn window_copy_goto_line(wme: *mut window_mode_entry, linestr: *const u8) {
     unsafe {
         let data: *mut window_copy_mode_data = (*wme).data.cast();
-        let mut errstr: *const u8 = null();
 
         let Ok(mut lineno) = strtonum(linestr, -1, i32::MAX) else {
             return;
@@ -4829,7 +4815,6 @@ pub unsafe fn window_copy_match_at_cursor(data: *mut window_copy_mode_data) -> *
         let mut at: u32 = 0;
         let mut start: u32 = 0;
         let mut end: u32 = 0;
-        let cy: u32 = 0;
         let mut px: u32 = 0;
         let mut py: u32 = 0;
         let sx = screen_size_x((*data).backing);
@@ -5031,10 +5016,10 @@ pub unsafe fn window_copy_write_line(
         if py == 0 && (*s).rupper < (*s).rlower && (*data).hide_position == 0 {
             gl = grid_get_line((*(*data).backing).grid, hsize - (*data).oy);
             if (*gl).time == 0 {
-                xsnprintf_!((&raw mut tmp).cast(), 512, "[{}/{}]", (*data).oy, hsize,);
+                _ = xsnprintf_!((&raw mut tmp).cast(), 512, "[{}/{}]", (*data).oy, hsize,);
             } else {
                 t = format_pretty_time((*gl).time, 1);
-                xsnprintf_!(
+                _ = xsnprintf_!(
                     (&raw mut tmp).cast(),
                     512,
                     "{} [{}/{}]",
@@ -5118,7 +5103,7 @@ pub unsafe fn window_copy_write_lines(
     ny: u32,
 ) {
     unsafe {
-        for yy in py..(py + ny) {
+        for _yy in py..(py + ny) {
             window_copy_write_line(wme, ctx, py);
         }
     }
@@ -6570,9 +6555,6 @@ pub unsafe fn window_copy_move_mouse(m: *mut mouse_event) {
 
 pub unsafe fn window_copy_start_drag(c: *mut client, m: *mut mouse_event) {
     unsafe {
-        let mut wp: *mut window_pane;
-        let mut wme: *mut window_mode_entry;
-
         if c.is_null() {
             return;
         }
@@ -6630,7 +6612,6 @@ pub unsafe fn window_copy_start_drag(c: *mut client, m: *mut mouse_event) {
 
 pub unsafe fn window_copy_drag_update(c: *mut client, m: *mut mouse_event) {
     unsafe {
-        let mut wp: *mut window_pane;
         let mut x: u32 = 0;
         let mut y: u32 = 0;
 

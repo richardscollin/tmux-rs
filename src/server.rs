@@ -11,22 +11,15 @@
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-use crate::*;
-
+use crate::compat::ACCESSPERMS;
 use crate::libc::{
     AF_UNIX, ECHILD, ENAMETOOLONG, S_IRGRP, S_IROTH, S_IRUSR, S_IRWXG, S_IRWXO, S_IXGRP, S_IXOTH,
     S_IXUSR, SIG_BLOCK, SIG_SETMASK, SIGCONT, SIGTTIN, SIGTTOU, SOCK_STREAM, WIFEXITED,
-    WIFSIGNALED, WIFSTOPPED, WNOHANG, WSTOPSIG, WUNTRACED, accept, bind, chmod, close, fprintf,
+    WIFSIGNALED, WIFSTOPPED, WNOHANG, WSTOPSIG, WUNTRACED, accept, bind, chmod, close,
     gettimeofday, kill, killpg, listen, sigfillset, sigprocmask, sigset_t, sockaddr_storage,
     sockaddr_un, socket, socklen_t, stat, strerror, strsignal, umask, unlink, waitpid,
 };
-
-use crate::compat::{
-    ACCESSPERMS,
-    queue::{tailq_empty, tailq_foreach, tailq_init, tailq_insert_tail, tailq_remove},
-    strlcpy,
-    tree::{rb_empty, rb_foreach, rb_init},
-};
+use crate::*;
 
 pub static mut CLIENTS: clients = unsafe { zeroed() };
 pub static mut SERVER_PROC: *mut tmuxproc = null_mut();
@@ -197,7 +190,7 @@ pub unsafe fn server_start(
             let mut err_str = String::new();
 
             if let Some(s) = panic_info.payload().downcast_ref::<&str>() {
-                write!(&mut err_str, "panic! {s:?}\n{backtrace:#?}");
+                _ = write!(&mut err_str, "panic! {s:?}\n{backtrace:#?}");
                 log_debug!(
                     "panic{}: {s}",
                     location
@@ -205,7 +198,7 @@ pub unsafe fn server_start(
                         .unwrap_or_default()
                 );
             } else if let Some(s) = panic_info.payload().downcast_ref::<String>() {
-                write!(&mut err_str, "panic! {s:?}\n{backtrace:#?}");
+                _ = write!(&mut err_str, "panic! {s:?}\n{backtrace:#?}");
                 log_debug!(
                     "panic{}: {s}",
                     location

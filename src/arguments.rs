@@ -11,19 +11,7 @@
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-use std::cmp::Ordering;
-use std::ffi::CString;
-
-use crate::{xmalloc::xrecallocarray, *};
-
-use crate::compat::{
-    queue::{
-        tailq_empty, tailq_first, tailq_foreach, tailq_init, tailq_insert_tail, tailq_last,
-        tailq_next, tailq_remove,
-    },
-    strlcat,
-    tree::{rb_find, rb_foreach, rb_insert, rb_min, rb_next, rb_remove},
-};
+use crate::*;
 
 pub type args_values = tailq_head<args_value>;
 
@@ -53,9 +41,9 @@ pub struct args_command_state<'a> {
     pub pi: cmd_parse_input<'a>,
 }
 
-crate::compat::RB_GENERATE!(args_tree, args_entry, entry, discr_entry, args_cmp);
+RB_GENERATE!(args_tree, args_entry, entry, discr_entry, args_cmp);
 
-fn args_cmp(a1: &args_entry, a2: &args_entry) -> Ordering {
+fn args_cmp(a1: &args_entry, a2: &args_entry) -> cmp::Ordering {
     a1.flag.cmp(&a2.flag)
 }
 

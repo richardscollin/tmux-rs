@@ -13,9 +13,6 @@
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 use crate::*;
 
-use crate::compat::strtonum;
-use crate::xmalloc::xrecallocarray__;
-
 pub const SIXEL_COLOUR_REGISTERS: u32 = 1024;
 const SIXEL_WIDTH_LIMIT: u32 = 10000;
 const SIXEL_HEIGHT_LIMIT: u32 = 10000;

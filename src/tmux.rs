@@ -1,5 +1,3 @@
-use std::ffi::CString;
-
 // Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
 //
 // Permission to use, copy, modify, and distribute this software for any
@@ -13,10 +11,7 @@ use std::ffi::CString;
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-use crate::*;
-
-use crate::xmalloc::xstrndup;
-
+use crate::compat::getopt::{OPTARG, OPTIND, getopt};
 use crate::compat::{S_ISDIR, fdforkpty::getptmfd, getprogname::getprogname};
 use crate::libc::{
     CLOCK_MONOTONIC, CLOCK_REALTIME, CODESET, EEXIST, F_GETFL, F_SETFL, LC_CTYPE, LC_TIME,
@@ -24,8 +19,7 @@ use crate::libc::{
     getpwuid, getuid, lstat, mkdir, nl_langinfo, realpath, setlocale, stat, strcasecmp, strcasestr,
     strchr, strcspn, strerror, strncmp, strrchr, strstr, timespec,
 };
-
-use crate::compat::getopt::{OPTARG, OPTIND, getopt};
+use crate::*;
 
 pub static mut GLOBAL_OPTIONS: *mut options = null_mut();
 
@@ -106,7 +100,6 @@ pub unsafe fn areshell(shell: *const u8) -> c_int {
 
 pub unsafe fn expand_path(path: *const u8, home: *const u8) -> Option<CString> {
     unsafe {
-        let mut expanded: *mut u8 = null_mut();
         let mut end: *const u8 = null_mut();
 
         if strncmp(path, c!("~/"), 2) == 0 {
@@ -351,8 +344,8 @@ pub fn getversion() -> &'static str {
 }
 
 /// entrypoint for tmux binary
-pub unsafe fn tmux_main(mut argc: i32, mut argv: *mut *mut u8, env: *mut *mut u8) {
-    std::panic::set_hook(Box::new(|panic_info| {
+pub unsafe fn tmux_main(mut argc: i32, mut argv: *mut *mut u8, _env: *mut *mut u8) {
+    std::panic::set_hook(Box::new(|_panic_info| {
         let backtrace = std::backtrace::Backtrace::capture();
         let err_str = format!("{backtrace:#?}");
         std::fs::write("client-panic.txt", err_str).unwrap();

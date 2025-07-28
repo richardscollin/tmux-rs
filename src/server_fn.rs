@@ -11,15 +11,9 @@
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-use crate::*;
-
+use crate::compat::imsg::{IMSG_HEADER_SIZE, MAX_IMSGSIZE};
 use crate::libc::{WEXITSTATUS, WIFEXITED, close, gettimeofday};
-
-use crate::compat::{
-    imsg::{IMSG_HEADER_SIZE, MAX_IMSGSIZE},
-    queue::{tailq_empty, tailq_foreach},
-    tree::rb_foreach,
-};
+use crate::*;
 
 pub unsafe fn server_redraw_client(c: *mut client) {
     unsafe {

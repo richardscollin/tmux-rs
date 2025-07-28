@@ -11,30 +11,14 @@
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-
-use crate::*;
-
+use crate::compat::HOST_NAME_MAX;
 use crate::libc::{
     FIONREAD, FNM_CASEFOLD, TIOCSWINSZ, close, fnmatch, free, gethostname, gettimeofday, ioctl,
     isspace, memset, regcomp, regex_t, regexec, regfree, strcasecmp, strlen, winsize,
 };
-
-use crate::compat::{
-    HOST_NAME_MAX, RB_GENERATE,
-    queue::{
-        tailq_empty, tailq_first, tailq_foreach, tailq_init, tailq_insert_after,
-        tailq_insert_before, tailq_insert_head, tailq_insert_tail, tailq_last, tailq_next,
-        tailq_prev, tailq_remove,
-    },
-    tree::{rb_find, rb_foreach, rb_insert, rb_min, rb_next, rb_prev, rb_remove},
-};
-
-use std::cmp;
-use std::sync::atomic;
-use std::sync::atomic::AtomicU32;
-
 #[cfg(feature = "utempter")]
 use crate::utempter::utempter_remove_record;
+use crate::*;
 
 pub static mut WINDOWS: windows = unsafe { std::mem::zeroed() };
 

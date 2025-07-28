@@ -62,12 +62,12 @@ unsafe fn cmd_command_prompt_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
         let args = cmd_get_args(self_);
         let tc = cmdq_get_target_client(item);
         let target = cmdq_get_target(item);
-        let mut prompts = null_mut();
-        let mut prompt: *const u8 = null();
-        let mut next_prompt = null_mut();
-        let mut tmp = null_mut();
+        let prompts;
+        let mut prompt: *const u8;
+        let mut next_prompt;
+        let mut tmp;
         let mut inputs = null_mut();
-        let mut next_input = null_mut();
+        let mut next_input;
         let count = args_count(args);
         let mut wait = !args_has(args, b'b');
         let mut space = 1;
@@ -124,7 +124,7 @@ unsafe fn cmd_command_prompt_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
             };
             (*cdata.prompts.add(cdata.count as usize)).prompt = tmp;
 
-            let mut input = null();
+            let mut input: *const u8;
             if !next_input.is_null() {
                 input = strsep(&raw mut next_input as _, c!(","));
                 if input.is_null() {

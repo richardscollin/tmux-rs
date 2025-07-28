@@ -14,20 +14,12 @@
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 use crate::*;
 
-use crate::compat::{
-    TAILQ_HEAD_INITIALIZER,
-    queue::{tailq_first, tailq_insert_tail, tailq_remove},
-    tree::{rb_find, rb_foreach, rb_init, rb_insert, rb_remove},
-};
-
-use std::cmp::Ordering;
-
 const MAX_HYPERLINKS: u32 = 5000;
 
 static mut HYPERLINKS_NEXT_EXTERNAL_ID: c_longlong = 1;
 static mut GLOBAL_HYPERLINKS_COUNT: u32 = 0;
 
-crate::compat::impl_tailq_entry!(hyperlinks_uri, list_entry, tailq_entry<hyperlinks_uri>);
+impl_tailq_entry!(hyperlinks_uri, list_entry, tailq_entry<hyperlinks_uri>);
 #[repr(C)]
 pub struct hyperlinks_uri {
     pub tree: *mut hyperlinks,
@@ -59,14 +51,14 @@ pub struct hyperlinks {
     pub references: u32,
 }
 
-fn hyperlinks_by_uri_cmp(left: &hyperlinks_uri, right: &hyperlinks_uri) -> std::cmp::Ordering {
+fn hyperlinks_by_uri_cmp(left: &hyperlinks_uri, right: &hyperlinks_uri) -> cmp::Ordering {
     unsafe {
         if *left.internal_id == b'\0' as _ || *right.internal_id == b'\0' as _ {
             if *left.internal_id != b'\0' as _ {
-                return Ordering::Less;
+                return cmp::Ordering::Less;
             }
             if *right.internal_id != b'\0' as _ {
-                return Ordering::Greater;
+                return cmp::Ordering::Greater;
             }
             return left.inner.cmp(&right.inner);
         }
@@ -84,7 +76,7 @@ RB_GENERATE!(
     hyperlinks_by_uri_cmp
 );
 
-fn hyperlinks_by_inner_cmp(left: &hyperlinks_uri, right: &hyperlinks_uri) -> Ordering {
+fn hyperlinks_by_inner_cmp(left: &hyperlinks_uri, right: &hyperlinks_uri) -> cmp::Ordering {
     left.inner.cmp(&right.inner)
 }
 

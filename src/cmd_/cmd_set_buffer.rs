@@ -48,7 +48,6 @@ unsafe fn cmd_set_buffer_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retv
         let mut pb;
         let mut cause = null_mut();
         let olddata;
-        let mut newsize: usize;
 
         let mut bufname = args_get_(args, 'b');
         if bufname.is_null() {

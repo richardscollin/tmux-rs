@@ -11,20 +11,7 @@
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-
-use std::cmp::Ordering;
-
 use crate::*;
-
-use crate::libc::strcmp;
-
-use crate::compat::{
-    RB_GENERATE,
-    tree::{
-        rb_empty, rb_find, rb_foreach, rb_init, rb_initializer, rb_insert, rb_min, rb_next,
-        rb_remove,
-    },
-};
 
 macro_rules! DEFAULT_SESSION_MENU {
     () => {
@@ -98,11 +85,11 @@ RB_GENERATE!(
 RB_GENERATE!(key_tables, key_table, entry, discr_entry, key_table_cmp);
 static mut KEY_TABLES: key_tables = rb_initializer();
 
-pub fn key_table_cmp(table1: &key_table, table2: &key_table) -> Ordering {
+pub fn key_table_cmp(table1: &key_table, table2: &key_table) -> cmp::Ordering {
     unsafe { i32_to_ordering(strcmp(table1.name, table2.name)) }
 }
 
-pub fn key_bindings_cmp(bd1: &key_binding, bd2: &key_binding) -> Ordering {
+pub fn key_bindings_cmp(bd1: &key_binding, bd2: &key_binding) -> cmp::Ordering {
     bd1.key.cmp(&bd2.key)
 }
 
@@ -338,7 +325,7 @@ pub unsafe fn key_bindings_reset_table(name: *const u8) {
     }
 }
 
-pub unsafe fn key_bindings_init_done(_item: *mut cmdq_item, data: *mut c_void) -> cmd_retval {
+pub unsafe fn key_bindings_init_done(_item: *mut cmdq_item, _data: *mut c_void) -> cmd_retval {
     unsafe {
         for table in rb_foreach(&raw mut KEY_TABLES).map(NonNull::as_ptr) {
             for bd in rb_foreach(&raw mut (*table).key_bindings).map(NonNull::as_ptr) {
@@ -662,7 +649,7 @@ pub unsafe fn key_bindings_init() {
     }
 }
 
-pub unsafe fn key_bindings_read_only(item: *mut cmdq_item, data: *mut c_void) -> cmd_retval {
+pub unsafe fn key_bindings_read_only(item: *mut cmdq_item, _data: *mut c_void) -> cmd_retval {
     unsafe {
         cmdq_error!(item, "client is read-only");
     }

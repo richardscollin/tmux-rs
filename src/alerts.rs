@@ -13,16 +13,9 @@
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 use crate::*;
 
-use crate::compat::{
-    queue::{tailq_foreach, tailq_head, tailq_insert_tail, tailq_remove},
-    tree::rb_foreach,
-};
-
-use std::sync::atomic;
-
 static ALERTS_FIRED: atomic::AtomicI32 = atomic::AtomicI32::new(0);
 
-static mut ALERTS_LIST: tailq_head<window> = compat::TAILQ_HEAD_INITIALIZER!(ALERTS_LIST);
+static mut ALERTS_LIST: tailq_head<window> = TAILQ_HEAD_INITIALIZER!(ALERTS_LIST);
 
 unsafe extern "C-unwind" fn alerts_timer(_fd: i32, _events: i16, w: NonNull<window>) {
     unsafe {

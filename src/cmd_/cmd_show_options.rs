@@ -78,7 +78,6 @@ unsafe fn cmd_show_options_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
         let mut name: *mut u8 = null_mut();
         let mut cause: *mut u8 = null_mut();
 
-        let window = 0;
         let mut idx = 0;
         let mut ambiguous = 0;
         let mut parent = 0;
@@ -269,7 +268,6 @@ pub unsafe fn cmd_show_options_all(
                 parent = 0;
             }
 
-            let mut a: *mut options_array_item = null_mut();
             if options_is_array(o) == 0 {
                 cmd_show_options_print(self_, item, o, -1, parent);
             } else if let Some(a) = NonNull::new(options_array_first(o)) {

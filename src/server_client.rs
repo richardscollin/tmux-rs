@@ -12,14 +12,8 @@
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 use crate::*;
-
 use crate::{
-    compat::{
-        imsg::{IMSG_HEADER_SIZE, imsg_get_fd},
-        queue::{tailq_empty, tailq_insert_tail, tailq_last, tailq_prev, tailq_remove},
-        strlcat,
-        tree::{rb_find, rb_foreach, rb_init, rb_insert, rb_remove},
-    },
+    compat::imsg::{IMSG_HEADER_SIZE, imsg_get_fd},
     options_::options_get_number_,
 };
 
@@ -596,10 +590,10 @@ pub unsafe fn server_client_check_mouse(c: *mut client, event: *mut key_event) -
     unsafe {
         let m = &raw mut (*event).m;
         let s = (*c).session;
-        let mut fs: *mut session = null_mut();
+        let fs: *mut session;
 
-        let mut fwl: *mut winlink = null_mut();
-        let mut fwp: *mut window_pane = null_mut();
+        let fwl: *mut winlink;
+        let fwp: *mut window_pane;
 
         // u_int x, y, b, sx, sy, px, py;
         let mut x: u32 = 0;
@@ -607,14 +601,14 @@ pub unsafe fn server_client_check_mouse(c: *mut client, event: *mut key_event) -
         let mut b: u32 = 0;
         let mut sx: u32 = 0;
         let mut sy: u32 = 0;
-        let mut px: u32 = 0;
-        let mut py: u32 = 0;
+        let mut px: u32;
+        let mut py: u32;
 
         let mut ignore = 0;
 
         let mut key: key_code = 0;
         let mut tv: libc::timeval = zeroed();
-        let mut sr: *mut style_range = null_mut();
+        let sr: *mut style_range;
 
         #[derive(Copy, Clone, Eq, PartialEq)]
         enum type_ {
@@ -2309,7 +2303,6 @@ pub unsafe fn server_client_check_pane_buffer(wp: *mut window_pane) {
     unsafe {
         let evb = (*(*wp).event).input;
         let mut minimum: usize = 0;
-        let c: *mut client = null_mut();
         let mut wpo: *mut window_pane_offset = null_mut();
         let mut off = 1;
         let mut flag: i32 = 0;
@@ -2651,9 +2644,7 @@ pub unsafe fn server_client_check_exit(c: *mut client) {
 
 /// Redraw timer callback.
 pub unsafe extern "C-unwind" fn server_client_redraw_timer(_fd: i32, _events: i16, _: *mut c_void) {
-    unsafe {
-        log_debug!("redraw timer fired");
-    }
+    log_debug!("redraw timer fired");
 }
 
 /*
@@ -3397,7 +3388,7 @@ pub unsafe fn server_client_get_flags(c: *mut client) -> *const u8 {
             strlcat((&raw mut S).cast(), c!("wait-exit,"), SIZEOF_S);
         }
         if (*c).flags.intersects(client_flag::CONTROL_PAUSEAFTER) {
-            xsnprintf_!(
+            _ = xsnprintf_!(
                 (&raw mut TMP).cast(),
                 SIZEOF_TMP,
                 "pause-after={},",

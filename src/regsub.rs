@@ -11,12 +11,12 @@
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-use crate::*;
+use core::ffi::c_int;
+
+use xmalloc::xrealloc_;
 
 use crate::libc::{memcpy, regcomp, regex_t, regexec, regfree, regmatch_t, strlen};
-
-use core::ffi::c_int;
-use xmalloc::xrealloc_;
+use crate::*;
 
 unsafe fn regsub_copy(
     buf: *mut *mut u8,

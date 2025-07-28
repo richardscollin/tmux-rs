@@ -11,27 +11,12 @@
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-use crate::*;
-
-use std::cmp::Ordering;
-use std::ffi::CString;
-
+use crate::compat::HOST_NAME_MAX;
 use crate::libc::{
     FNM_CASEFOLD, REG_NOSUB, ctime_r, getpwuid, getuid, ispunct, localtime_r, memcpy, regcomp,
     regex_t, regexec, regfree, strchr, strcmp, strcspn, strftime, strstr, strtod, tm,
 };
-
-use crate::{
-    compat::{
-        HOST_NAME_MAX, RB_GENERATE,
-        queue::tailq_empty,
-        strlcat,
-        tree::{
-            rb_find, rb_foreach, rb_init, rb_initializer, rb_insert, rb_max, rb_min, rb_remove,
-        },
-    },
-    xmalloc::{xreallocarray, xstrndup},
-};
+use crate::*;
 
 bitflags::bitflags! {
     #[repr(transparent)]
@@ -80,7 +65,7 @@ RB_GENERATE!(
 );
 
 // Format job tree comparison function.
-pub fn format_job_cmp(fj1: &format_job, fj2: &format_job) -> Ordering {
+pub fn format_job_cmp(fj1: &format_job, fj2: &format_job) -> cmp::Ordering {
     unsafe {
         fj1.tag
             .cmp(&fj2.tag)
@@ -117,8 +102,8 @@ bitflags::bitflags! {
 /// Limit on recursion.
 const FORMAT_LOOP_LIMIT: i32 = 100;
 
-/// Format expand flags.
 bitflags::bitflags! {
+    /// Format expand flags.
     #[repr(transparent)]
     #[derive(Copy, Clone)]
     pub struct format_expand_flags: i32 {
@@ -196,7 +181,7 @@ pub struct format_modifier {
 }
 
 /// Format entry tree comparison function.
-fn format_entry_cmp(fe1: &format_entry, fe2: &format_entry) -> Ordering {
+fn format_entry_cmp(fe1: &format_entry, fe2: &format_entry) -> cmp::Ordering {
     unsafe { i32_to_ordering(strcmp(fe1.key, fe2.key)) }
 }
 
@@ -273,23 +258,6 @@ pub unsafe fn format_log1_(
     }
 }
 
-// #define format_log(es, fmt, ...) format_log1(es, __func__, fmt, ##__VA_ARGS__)
-// should make this support multiple arg lengths, but easier to just support what's needed
-macro_rules! format_log {
-    ($es:expr, $fmt:expr) => {
-        format_log1($es, __func__!(), $fmt)
-    };
-    ($es:expr, $fmt:expr, $a1:expr) => {
-        format_log1($es, __func__!(), $fmt, $a1)
-    };
-    ($es:expr, $fmt:expr, $a1:expr, $a2:expr) => {
-        format_log1($es, __func__!(), $fmt, $a1, $a2)
-    };
-    ($es:expr, $fmt:expr, $a1:expr, $a2:expr, $a3:expr) => {
-        format_log1($es, __func__!(), $fmt, $a1, $a2, $a3)
-    };
-}
-
 /// Copy expand state.
 pub unsafe fn format_copy_state(
     to: *mut format_expand_state,
@@ -343,7 +311,7 @@ pub unsafe fn format_job_update(job: *mut job) {
     }
 }
 
-// Format job complete callback.
+/// Format job complete callback.
 pub unsafe fn format_job_complete(job: *mut job) {
     unsafe {
         let fj = job_get_data(job) as *mut format_job;
@@ -351,7 +319,7 @@ pub unsafe fn format_job_complete(job: *mut job) {
 
         (*fj).job = null_mut();
 
-        let mut buf: *mut u8 = null_mut();
+        let buf: *mut u8;
 
         let line = evbuffer_readline(evb);
         if line.is_null() {
@@ -392,12 +360,8 @@ pub unsafe fn format_job_complete(job: *mut job) {
 pub unsafe fn format_job_get(es: *mut format_expand_state, cmd: *mut u8) -> *mut u8 {
     unsafe {
         let ft: *mut format_tree = (*es).ft;
-        // format_job_tree *jobs;
-        // format_job fj0, *fj;
         let mut fj0 = MaybeUninit::<format_job>::uninit();
-        let mut fj1 = MaybeUninit::<format_job>::uninit();
-        let fj0 = fj0.as_mut_ptr();
-        let fj1 = fj1.as_mut_ptr();
+        let mut fj0 = fj0.as_mut_ptr();
 
         let jobs = if (*ft).client.is_null() {
             &raw mut FORMAT_JOBS
@@ -530,14 +494,12 @@ macro_rules! format_printf {
 }
 pub(crate) use format_printf;
 pub unsafe fn format_printf_(args: std::fmt::Arguments) -> *mut u8 {
-    unsafe {
-        let mut s = args.to_string();
-        s.push('\0');
-        s.leak().as_mut_ptr().cast()
-    }
+    let mut s = args.to_string();
+    s.push('\0');
+    s.leak().as_mut_ptr().cast()
 }
 
-pub unsafe fn format_cb_host(ft: *mut format_tree) -> *mut c_void {
+pub unsafe fn format_cb_host(_ft: *mut format_tree) -> *mut c_void {
     unsafe {
         let mut host = MaybeUninit::<[u8; HOST_NAME_MAX + 1]>::uninit();
 
@@ -550,7 +512,7 @@ pub unsafe fn format_cb_host(ft: *mut format_tree) -> *mut c_void {
 }
 
 /// Callback for host_short.
-pub unsafe fn format_cb_host_short(ft: *mut format_tree) -> *mut c_void {
+pub unsafe fn format_cb_host_short(_ft: *mut format_tree) -> *mut c_void {
     unsafe {
         let mut host = MaybeUninit::<[u8; HOST_NAME_MAX + 1]>::uninit();
 
@@ -567,7 +529,7 @@ pub unsafe fn format_cb_host_short(ft: *mut format_tree) -> *mut c_void {
 }
 
 /// Callback for pid.
-pub unsafe fn format_cb_pid(ft: *mut format_tree) -> *mut c_void {
+pub unsafe fn format_cb_pid(_ft: *mut format_tree) -> *mut c_void {
     unsafe { format!("{}\0", libc::getpid()).leak().as_mut_ptr().cast() }
 }
 
@@ -624,7 +586,7 @@ pub unsafe fn format_cb_session_alerts(ft: *mut format_tree) -> *mut c_void {
             if !(*wl).flags.intersects(WINLINK_ALERTFLAGS) {
                 continue;
             }
-            xsnprintf_!(tmp, SIZEOF_TMP, "{}", (*wl).idx);
+            _ = xsnprintf_!(tmp, SIZEOF_TMP, "{}", (*wl).idx);
 
             if *alerts != b'\0' {
                 strlcat(alerts, c!(","), SIZEOF_ALERTS);
@@ -660,9 +622,9 @@ pub unsafe fn format_cb_session_stack(ft: *mut format_tree) -> *mut c_void {
             return null_mut();
         }
 
-        xsnprintf_!(result, SIZEOF_RESULT, "{}", (*(*s).curw).idx);
+        _ = xsnprintf_!(result, SIZEOF_RESULT, "{}", (*(*s).curw).idx);
         for wl in tailq_foreach::<_, discr_sentry>(&raw mut (*s).lastw).map(NonNull::as_ptr) {
-            xsnprintf_!(tmp, SIZEOF_TMP, "{}", (*wl).idx);
+            _ = xsnprintf_!(tmp, SIZEOF_TMP, "{}", (*wl).idx);
 
             if *result != b'\0' {
                 strlcat(result, c!(","), SIZEOF_RESULT);
@@ -676,8 +638,6 @@ pub unsafe fn format_cb_session_stack(ft: *mut format_tree) -> *mut c_void {
 /// Callback for window_stack_index.
 pub unsafe fn format_cb_window_stack_index(ft: *mut format_tree) -> *mut c_void {
     unsafe {
-        let mut value: *mut u8 = null_mut();
-
         if (*ft).wl.is_null() {
             return null_mut();
         }
@@ -1114,7 +1074,6 @@ pub unsafe fn format_cb_session_group_attached_list(ft: *mut format_tree) -> *mu
             fatalx("out of memory");
         }
 
-        let first = true;
         for loop_ in tailq_foreach(&raw mut CLIENTS).map(NonNull::as_ptr) {
             let client_session = (*loop_).session;
             if client_session.is_null() {
@@ -1324,8 +1283,8 @@ pub unsafe fn format_cb_mouse_status_range(ft: *mut format_tree) -> *mut c_void 
             return null_mut();
         }
 
-        let mut x = 0;
-        let mut y = 0;
+        let x;
+        let y;
         if (*ft).m.statusat == 0 && (*ft).m.y < (*ft).m.statuslines {
             x = (*ft).m.x;
             y = (*ft).m.y;
@@ -1656,16 +1615,14 @@ pub unsafe fn format_cb_client_written(ft: *mut format_tree) -> *mut c_void {
 
 /// Callback for config_files.
 pub unsafe fn format_cb_config_files(_ft: *mut format_tree) -> *mut c_void {
-    unsafe {
-        let mut s = String::new();
+    let mut s = String::new();
 
-        for file in CFG_FILES.lock().unwrap().iter() {
-            s.push_str(file.to_str().expect("cfg_files invalid utf8"));
-            s.push(',');
-        }
-
-        CString::new(s).unwrap().into_raw().cast()
+    for file in CFG_FILES.lock().unwrap().iter() {
+        s.push_str(file.to_str().expect("cfg_files invalid utf8"));
+        s.push(',');
     }
+
+    CString::new(s).unwrap().into_raw().cast()
 }
 
 /// Callback for cursor_flag.
@@ -2492,8 +2449,8 @@ pub unsafe fn format_cb_socket_path(_ft: *mut format_tree) -> *mut c_void {
 }
 
 /// Callback for version.
-pub unsafe fn format_cb_version(_ft: *mut format_tree) -> *mut c_void {
-    unsafe { xstrdup__(getversion()).cast() }
+pub fn format_cb_version(_ft: *mut format_tree) -> *mut c_void {
+    xstrdup__(getversion()).cast()
 }
 
 /// Callback for active_window_index.
@@ -3265,7 +3222,7 @@ pub unsafe fn format_each<T>(
 
             if fte.type_ == format_table_type::FORMAT_TABLE_TIME {
                 let tv = value as *const timeval;
-                xsnprintf_!(s.as_mut_ptr(), s.len(), "{}", (*tv).tv_sec);
+                _ = xsnprintf_!(s.as_mut_ptr(), s.len(), "{}", (*tv).tv_sec);
                 cb.unwrap()(fte.key.as_ptr(), s.as_ptr(), arg);
             } else {
                 cb.unwrap()(fte.key.as_ptr(), value as *const u8, arg);
@@ -3275,7 +3232,7 @@ pub unsafe fn format_each<T>(
 
         for fe in rb_foreach(&raw mut (*ft).tree).map(NonNull::as_ptr) {
             if (*fe).time != 0 {
-                xsnprintf_!(s.as_mut_ptr(), s.len(), "{}", (*fe).time);
+                _ = xsnprintf_!(s.as_mut_ptr(), s.len(), "{}", (*fe).time);
                 cb.unwrap()((*fe).key, s.as_ptr(), arg);
             } else {
                 if (*fe).value.is_null() && (*fe).cb.is_some() {
@@ -3570,7 +3527,7 @@ fn format_find(
         } else if found.is_null() {
             return null_mut();
         }
-        let mut saved: *mut u8 = null_mut();
+        let mut saved: *mut u8;
         if modifiers.intersects(format_modifiers::FORMAT_BASENAME) {
             saved = found;
             found = xstrdup__(basename(cstr_to_str(saved)));
@@ -3736,7 +3693,7 @@ pub unsafe fn format_add_modifier(
     argc: i32,
 ) {
     unsafe {
-        let mut fm: *mut format_modifier = null_mut();
+        let mut fm: *mut format_modifier;
 
         *list = xreallocarray_(*list, (*count) as usize + 1).as_ptr();
         fm = (*list).add(*count as usize);
@@ -3769,7 +3726,7 @@ pub unsafe fn format_build_modifiers(
 ) -> *mut format_modifier {
     unsafe {
         let mut cp = *s;
-        let mut end: *const u8 = null();
+        let mut end: *const u8;
         let mut list: *mut format_modifier = null_mut();
 
         let mut last: [u8; 4] = [b'X', b';', b':', b'\0'];
@@ -3838,7 +3795,7 @@ pub unsafe fn format_build_modifiers(
 
             /* Single argument with no wrapper character. */
             if ispunct(*cp.add(1) as i32) == 0 || *cp.add(1) == b'-' {
-                let end: *const u8 = format_skip(cp.add(1), c!(":;"));
+                end = format_skip(cp.add(1), c!(":;"));
                 if end.is_null() {
                     break;
                 }
@@ -3959,7 +3916,6 @@ pub unsafe fn format_search(
     unsafe {
         let mut ignore = 0;
         let mut regex = 0;
-        let mut value: *mut u8 = null_mut();
 
         if (*fm).argc >= 1 {
             if !strchr(*(*fm).argv, b'i' as i32).is_null() {
@@ -3976,7 +3932,6 @@ pub unsafe fn format_search(
 pub unsafe fn format_session_name(es: *mut format_expand_state, fmt: *const u8) -> *mut u8 {
     unsafe {
         let name = format_expand1(es, fmt);
-        let s: *mut session = null_mut();
 
         for s in rb_foreach(&raw mut SESSIONS).map(NonNull::as_ptr) {
             if strcmp((*s).name, name) == 0 {
@@ -4202,7 +4157,7 @@ pub unsafe fn format_replace_expression(
         let argc = (*mexp).argc;
 
         let mut endch: *mut u8 = null_mut();
-        let mut value: *mut u8 = null_mut();
+        let mut value: *mut u8;
 
         let mut left: *mut u8 = null_mut();
         let mut right: *mut u8 = null_mut();
@@ -4211,9 +4166,9 @@ pub unsafe fn format_replace_expression(
             let mut use_fp: i32 = 0;
             let mut prec: u32 = 0;
 
-            let mut mleft: f64 = 0.0;
-            let mut mright: f64 = 0.0;
-            let mut result: f64 = 0.0;
+            let mut mleft: f64;
+            let mut mright: f64;
+            let mut result: f64;
 
             enum Operator {
                 Add,
@@ -4388,31 +4343,29 @@ pub unsafe fn format_replace(
     unsafe {
         let ft = (*es).ft;
         let wp = (*ft).wp;
-        let mut errstr: *const u8 = null();
-        let mut copy: *const u8 = null();
-        let mut cp: *const u8 = null();
+        let mut copy: *const u8;
+        let mut cp: *const u8;
         let mut marker: *const u8 = null();
 
         let mut time_format: *const u8 = null();
 
-        let mut copy0: *mut u8 = null_mut();
-        let mut condition: *mut u8 = null_mut();
-        let mut found: *mut u8 = null_mut();
-        let mut new: *mut u8 = null_mut();
+        let mut copy0: *mut u8;
+        let mut condition: *mut u8;
+        let mut found: *mut u8;
+        let mut new: *mut u8;
         let mut value: *mut u8 = null_mut();
         let mut left: *mut u8 = null_mut();
         let mut right: *mut u8 = null_mut();
 
-        let mut valuelen = 0;
+        let mut valuelen;
 
         let mut modifiers: format_modifiers = format_modifiers::empty();
         let mut limit: i32 = 0;
         let mut width: i32 = 0;
 
-        //let mut j = 0i32;
-        let mut c = 0i32;
+        let mut c;
 
-        let mut list: *mut format_modifier = null_mut();
+        let mut list: *mut format_modifier;
         let mut cmp: *mut format_modifier = null_mut();
         let mut search: *mut format_modifier = null_mut();
 
@@ -4930,11 +4883,9 @@ pub unsafe fn format_replace(
 pub unsafe fn format_expand1(es: *mut format_expand_state, mut fmt: *const u8) -> *mut u8 {
     unsafe {
         let ft = (*es).ft;
-        let buf: *mut u8 = null_mut();
-        let mut out: *mut u8 = null_mut();
+        let mut out: *mut u8;
 
-        let ptr: *const u8 = null();
-        let mut s: *const u8 = null();
+        let mut s: *const u8;
         let mut style_end: *const u8 = null();
 
         const SIZEOF_EXPANDED: usize = 8192;
@@ -4985,7 +4936,7 @@ pub unsafe fn format_expand1(es: *mut format_expand_state, mut fmt: *const u8) -
         let mut len = 64;
         let mut buf: *mut u8 = xmalloc(len).as_ptr().cast();
         let mut off = 0;
-        let mut n = 0;
+        let mut n;
 
         while *fmt != b'\0' {
             if *fmt != b'#' {
@@ -5000,11 +4951,11 @@ pub unsafe fn format_expand1(es: *mut format_expand_state, mut fmt: *const u8) -
             }
             fmt = fmt.add(1);
 
-            let ch: u8 = (*fmt);
+            let ch: u8 = *fmt;
             fmt = fmt.add(1);
-            let mut brackets = 0;
+            let mut brackets;
 
-            let mut ptr: *const u8 = null_mut();
+            let mut ptr: *const u8;
             match ch {
                 b'(' => {
                     brackets = 1;

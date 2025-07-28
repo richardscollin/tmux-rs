@@ -11,10 +11,7 @@
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-
-use super::*;
-
-use crate::compat::{strlcat, tree::rb_empty};
+use crate::*;
 
 static WINDOW_CUSTOMIZE_DEFAULT_FORMAT: &CStr = cstring_concat!(
     "#{?is_option,",
@@ -187,7 +184,6 @@ unsafe fn window_customize_scope_text(
     fs: *mut cmd_find_state,
 ) -> *mut u8 {
     unsafe {
-        let mut s: *mut u8 = null_mut();
         let mut idx: u32 = 0;
 
         match scope {
@@ -210,11 +206,9 @@ unsafe fn window_customize_add_item(
     data: *mut window_customize_modedata,
 ) -> *mut window_customize_itemdata {
     unsafe {
-        let mut item: *mut window_customize_itemdata = null_mut();
-
         (*data).item_list =
             xreallocarray_((*data).item_list, (*data).item_size as usize + 1).as_ptr();
-        item = xcalloc1() as *mut window_customize_itemdata;
+        let item = xcalloc1() as *mut window_customize_itemdata;
         *(*data).item_list.add((*data).item_size as usize) = item;
         (*data).item_size += 1;
 
@@ -244,9 +238,8 @@ unsafe fn window_customize_build_array(
         let mut ai = options_array_first(o);
         while !ai.is_null() {
             let idx = options_array_item_index(ai);
-            let mut name: *mut u8 = null_mut();
+            let name: *mut u8 = format_nul!("{}[{}]", _s(options_name(o)), idx);
 
-            name = format_nul!("{}[{}]", _s(options_name(o)), idx);
             format_add!(ft, c!("option_name"), "{}", _s(name));
             let value: *mut u8 = options_to_string(o, idx as i32, 0);
             format_add!(ft, c!("option_value"), "{}", _s(value));
@@ -479,24 +472,15 @@ unsafe fn window_customize_build_options(
 unsafe fn window_customize_build_keys(
     data: *mut window_customize_modedata,
     kt: *mut key_table,
-    mut ft: *mut format_tree,
+    _ft: *mut format_tree,
     filter: *const u8,
     fs: *mut cmd_find_state,
     number: i32,
 ) {
     unsafe {
-        // struct mode_tree_item *top, *child, *mti;
-        // struct window_customize_itemdata *item;
-        // struct key_binding *bd;
-        // char *title, *text, *tmp, *expanded;
-        // const char *flag;
-        // uint64_t tag;
-
-        let mut text: *mut u8 = null_mut();
-        let mut title: *mut u8 = null_mut();
         let tag: u64 = (1u64 << 62) | ((number as u64) << 54) | 1;
 
-        title = format_nul!("Key Table - {}", _s((*kt).name));
+        let title: *mut u8 = format_nul!("Key Table - {}", _s((*kt).name));
         let top = mode_tree_add(
             (*data).data,
             null_mut(),
@@ -509,7 +493,7 @@ unsafe fn window_customize_build_keys(
         mode_tree_no_tag(top);
         free_(title);
 
-        ft = format_create_from_state(null_mut(), null_mut(), fs);
+        let ft = format_create_from_state(null_mut(), null_mut(), fs);
         format_add!(ft, c!("is_option"), "0");
         format_add!(ft, c!("is_key"), "1");
 
@@ -548,7 +532,7 @@ unsafe fn window_customize_build_keys(
             free_(expanded);
 
             let tmp = cmd_list_print(&mut *(*bd).cmdlist, 0);
-            text = format_nul!("#[ignore]{}", _s(tmp));
+            let mut text = format_nul!("#[ignore]{}", _s(tmp));
             free_(tmp);
             let mut mti = mode_tree_add(
                 (*data).data,
@@ -825,20 +809,13 @@ unsafe fn window_customize_draw_option(
         let cx = (*s).cx;
         let cy = (*s).cy;
 
-        // int idx;
-        // struct options_entry *o, *parent;
-        // struct options *go, *wo;
-        // const struct options_table_entry *oe;
-        // struct grid_cell gc;
-        // const char **choice, *text, *name;
         let mut gc: grid_cell = zeroed();
         let mut space: *const u8 = c!("");
         let mut unit: *const u8 = c!("");
 
-        let mut expanded: *mut u8 = null_mut();
+        let expanded: *mut u8;
         let mut value: *mut u8 = null_mut();
         let mut default_value: *mut u8 = null_mut();
-        // char choices[256] = "";
 
         let mut fs: cmd_find_state = zeroed();
         let ft = null_mut();
@@ -1284,7 +1261,7 @@ pub unsafe fn window_customize_set_option_callback(
     c: *mut client,
     item: NonNull<window_customize_itemdata>,
     s: *const u8,
-    done: i32,
+    _done: i32,
 ) -> i32 {
     unsafe {
         let item = item.as_ptr();
@@ -1539,7 +1516,7 @@ pub unsafe fn window_customize_set_command_callback(
         let item = item.as_ptr();
         let data: *mut window_customize_modedata = (*item).data;
         let mut bd: *mut key_binding = null_mut();
-        let mut error: *mut u8 = null_mut();
+        let error: *mut u8;
 
         'fail: {
             if s.is_null() || *s == b'\0' || (*data).dead != 0 {
@@ -1762,7 +1739,7 @@ pub unsafe fn window_customize_change_each(
 }
 
 pub unsafe fn window_customize_change_current_callback(
-    c: *mut client,
+    _c: *mut client,
     modedata: NonNull<window_customize_modedata>,
     s: *const u8,
     _done: i32,
@@ -1840,8 +1817,8 @@ pub unsafe fn window_customize_change_tagged_callback(
 pub unsafe fn window_customize_key(
     wme: NonNull<window_mode_entry>,
     c: *mut client,
-    s: *mut session,
-    wl: *mut winlink,
+    __s: *mut session,
+    _wl: *mut winlink,
     mut key: key_code,
     m: *mut mouse_event,
 ) {

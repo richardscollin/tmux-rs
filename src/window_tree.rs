@@ -12,8 +12,6 @@
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 use crate::*;
-
-use crate::compat::tree::rb_foreach;
 use crate::{cmd_::cmd_queue::cmdq_get_callback1, options_::options_get_number_};
 
 const WINDOW_TREE_DEFAULT_COMMAND: &str = "switch-client -Zt '%%'";

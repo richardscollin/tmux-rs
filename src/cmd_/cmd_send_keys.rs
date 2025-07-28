@@ -12,11 +12,9 @@
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use crate::*;
-
-use crate::libc::strtol;
-
 use crate::compat::queue::tailq_first;
+use crate::libc::strtol;
+use crate::*;
 
 pub static CMD_SEND_KEYS_ENTRY: cmd_entry = cmd_entry {
     name: SyncCharPtr::new(c"send-keys"),
@@ -110,7 +108,6 @@ pub unsafe fn cmd_send_keys_inject_string(
         let mut uc: utf8_char = 0;
         let mut key: key_code;
         let mut endptr: *mut u8 = null_mut();
-        let n: c_long = 0;
 
         if args_has_(args, 'H') {
             let n = strtol(s, &raw mut endptr, 16);

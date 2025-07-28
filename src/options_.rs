@@ -11,19 +11,10 @@
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-use crate::*;
-
 use crate::compat::tree::rb_find_by;
 use crate::libc::{fnmatch, isdigit, sscanf, strcasecmp, strchr, strcmp, strncmp, strstr};
 use crate::options_table::OPTIONS_OTHER_NAMES_STR;
-
-use std::cmp::Ordering;
-
-use crate::compat::{
-    RB_GENERATE,
-    queue::tailq_foreach,
-    tree::{rb_find, rb_find_by_const, rb_foreach, rb_init, rb_insert, rb_min, rb_next, rb_remove},
-};
+use crate::*;
 
 //
 // Option handling; each option has a name, type and value and is stored in
@@ -38,7 +29,7 @@ pub struct options_array_item {
     pub entry: rb_entry<options_array_item>,
 }
 
-pub fn options_array_cmp(a1: &options_array_item, a2: &options_array_item) -> Ordering {
+pub fn options_array_cmp(a1: &options_array_item, a2: &options_array_item) -> cmp::Ordering {
     a1.index.cmp(&a2.index)
 }
 RB_GENERATE!(
@@ -68,7 +59,7 @@ pub struct options {
 
 #[allow(non_snake_case)]
 #[inline]
-pub fn OPTIONS_IS_STRING(o: *const options_entry) -> bool {
+pub unsafe fn OPTIONS_IS_STRING(o: *const options_entry) -> bool {
     unsafe {
         (*o).tableentry.is_null()
             || (*(*o).tableentry).type_ == options_table_type::OPTIONS_TABLE_STRING
@@ -90,7 +81,7 @@ pub fn OPTIONS_IS_NUMBER(o: *const options_entry) -> bool {
 
 #[allow(non_snake_case)]
 #[inline]
-pub fn OPTIONS_IS_COMMAND(o: *const options_entry) -> bool {
+pub unsafe fn OPTIONS_IS_COMMAND(o: *const options_entry) -> bool {
     unsafe {
         !(*o).tableentry.is_null()
             && (*(*o).tableentry).type_ == options_table_type::OPTIONS_TABLE_COMMAND
@@ -99,7 +90,7 @@ pub fn OPTIONS_IS_COMMAND(o: *const options_entry) -> bool {
 
 #[allow(non_snake_case)]
 #[inline]
-pub fn OPTIONS_IS_ARRAY(o: *const options_entry) -> bool {
+pub unsafe fn OPTIONS_IS_ARRAY(o: *const options_entry) -> bool {
     unsafe {
         !(*o).tableentry.is_null() && ((*(*o).tableentry).flags & OPTIONS_TABLE_IS_ARRAY) != 0
     }
@@ -107,7 +98,7 @@ pub fn OPTIONS_IS_ARRAY(o: *const options_entry) -> bool {
 
 RB_GENERATE!(options_tree, options_entry, entry, discr_entry, options_cmp);
 
-pub fn options_cmp(lhs: &options_entry, rhs: &options_entry) -> Ordering {
+pub fn options_cmp(lhs: &options_entry, rhs: &options_entry) -> cmp::Ordering {
     unsafe { i32_to_ordering(libc::strcmp(lhs.name, rhs.name)) }
 }
 
@@ -168,14 +159,12 @@ pub unsafe fn options_value_to_string(
     numeric: i32,
 ) -> *mut u8 {
     unsafe {
-        let mut s: *mut u8 = null_mut();
-
         if OPTIONS_IS_COMMAND(o) {
             return cmd_list_print(&mut *(*ov).cmdlist, 0);
         }
 
         if OPTIONS_IS_NUMBER(o) {
-            s = match (*(*o).tableentry).type_ {
+            let s = match (*(*o).tableentry).type_ {
                 options_table_type::OPTIONS_TABLE_NUMBER => {
                     format_nul!("{}", (*ov).number)
                 }
@@ -255,7 +244,7 @@ pub unsafe fn options_get_only(oo: *mut options, name: *const u8) -> *mut option
     unsafe {
         let mut o = options_entry {
             name,
-            ..unsafe { zeroed() } // TODO use uninit
+            ..zeroed() // TODO use uninit
         };
 
         let found = rb_find(&raw mut (*oo).tree, &raw const o);
@@ -470,7 +459,7 @@ unsafe fn options_array_item(o: *mut options_entry, idx: c_uint) -> *mut options
     unsafe {
         let mut a = options_array_item {
             index: idx,
-            ..unsafe { zeroed() } // TODO use uninit
+            ..zeroed() // TODO use uninit
         };
         rb_find(&raw mut (*o).value.array, &raw mut a)
     }
@@ -706,7 +695,7 @@ pub unsafe fn options_to_string(o: *mut options_entry, idx: i32, numeric: i32) -
                     if last.is_null() {
                         result = next;
                     } else {
-                        let mut new_result = format_nul!("{} {}", _s(last), _s(next));
+                        let new_result = format_nul!("{} {}", _s(last), _s(next));
                         free_(last);
                         free_(next);
                         result = new_result;
@@ -924,7 +913,7 @@ pub unsafe fn options_set_string_(
 ) -> *mut options_entry {
     unsafe {
         let mut separator = c!("");
-        let mut value: *mut u8 = null_mut();
+        let value: *mut u8;
 
         let mut s = args.to_string();
         s.push('\0');
@@ -1300,7 +1289,6 @@ pub unsafe fn options_from_string(
     cause: *mut *mut u8,
 ) -> c_int {
     unsafe {
-        let mut errstr: *const u8;
         let new: *const u8;
         let old: *mut u8;
         let key: key_code;
@@ -1380,7 +1368,7 @@ pub unsafe fn options_from_string(
 
             options_table_type::OPTIONS_TABLE_COMMAND => {}
 
-            _ => {}
+            _ => (),
         }
         -1
     }
@@ -1389,11 +1377,6 @@ pub unsafe fn options_from_string(
 pub unsafe fn options_push_changes(name: *const u8) {
     let __func__ = c!("options_push_changes");
     unsafe {
-        let mut loop_: *mut client;
-        let mut s: *mut session;
-        let mut w: *mut window;
-        let mut wp: *mut window_pane;
-
         log_debug!("{}: {}", _s(__func__), _s(name));
 
         if streq_(name, "automatic-rename") {

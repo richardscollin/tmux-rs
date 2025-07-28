@@ -11,10 +11,8 @@
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-use crate::*;
-
 use crate::libc::{SIGTERM, kill, pid_t};
-
+use crate::*;
 use crate::{args_parse, cmd, cmd_entry, cmd_flag, cmd_get_entry, cmd_retval, cmdq_item};
 
 pub static CMD_KILL_SERVER_ENTRY: cmd_entry = cmd_entry {

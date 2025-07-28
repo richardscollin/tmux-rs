@@ -11,20 +11,16 @@
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-
-use ::core::{
-    ffi::{CStr, c_int},
-    ptr::null_mut,
-};
-use ::std::{
+use std::io::BufWriter;
+use std::{
     fs::File,
     io::{LineWriter, Write},
     sync::atomic::{AtomicI32, Ordering},
 };
-use std::{ffi::CString, io::BufWriter, sync::Mutex};
 
 use crate::compat::{stravis, vis_flags};
-use crate::{_s, event_::event_set_log_callback};
+use crate::event_::event_set_log_callback;
+use crate::*;
 
 macro_rules! log_debug {
     ($($arg:tt)*) => {$crate::log::log_debug_rs(format_args!($($arg)*))};

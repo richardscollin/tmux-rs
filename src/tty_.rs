@@ -12,7 +12,6 @@
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 use crate::*;
-
 use crate::{colour::colour_split_rgb, compat::b64::b64_ntop};
 
 static mut TTY_LOG_FD: i32 = -1;
@@ -47,7 +46,7 @@ pub unsafe fn tty_create_log() {
     unsafe {
         let mut name: [u8; 64] = [0; 64];
 
-        xsnprintf_!(
+        _ = xsnprintf_!(
             (&raw mut name).cast(),
             64,
             "tmux-out-{}.log",
@@ -91,10 +90,10 @@ pub unsafe fn tty_resize(tty: *mut tty) {
     unsafe {
         let c = (*tty).client;
         let mut ws: libc::winsize = zeroed();
-        let mut sx: u32 = 0;
-        let mut sy: u32 = 0;
-        let mut xpixel: u32 = 0;
-        let mut ypixel: u32 = 0;
+        let mut sx: u32;
+        let mut sy: u32;
+        let xpixel: u32;
+        let ypixel: u32;
 
         if libc::ioctl((*c).fd, libc::TIOCGWINSZ, &raw mut ws) != -1 {
             sx = ws.ws_col as u32;
@@ -142,21 +141,21 @@ pub unsafe extern "C-unwind" fn tty_read_callback(_fd: i32, _events: i16, data: 
         let nread = evbuffer_read((*tty).in_, (*c).fd, -1);
         if nread == 0 || nread == -1 {
             if nread == 0 {
-                // log_debug!("%s: read closed", name);
+                log_debug!("{}: read closed", _s(name));
             } else {
-                // log_debug!("%s: read error: %s", name, strerror(errno!()));
+                log_debug!("{}: read error: {}", _s(name), _s(strerror(errno!())));
             }
             event_del(&raw mut (*tty).event_in);
             server_client_lost((*tty).client);
             return;
         }
-        // log_debug("%s: read %d bytes (already %zu)", name, nread, size);
+        log_debug!("{}: read {} bytes (already {})", _s(name), nread, size);
 
         while tty_keys_next(tty) != 0 {}
     }
 }
 
-pub unsafe extern "C-unwind" fn tty_timer_callback(_fd: i32, events: i16, tty: NonNull<tty>) {
+pub unsafe extern "C-unwind" fn tty_timer_callback(_fd: i32, _events: i16, tty: NonNull<tty>) {
     unsafe {
         let tty = tty.as_ptr();
         let c = (*tty).client;
@@ -225,7 +224,7 @@ pub unsafe extern "C-unwind" fn tty_write_callback(_fd: i32, _events: i16, data:
         if nwrite == -1 {
             return;
         }
-        // log_debug("%s: wrote %d bytes (of %zu)", (*c).name, nwrite, size);
+        log_debug!("{}: wrote {} bytes (of {})", _s((*c).name), nwrite, size);
 
         if (*c).redraw > 0 {
             if nwrite as usize >= (*c).redraw {
@@ -233,7 +232,11 @@ pub unsafe extern "C-unwind" fn tty_write_callback(_fd: i32, _events: i16, data:
             } else {
                 (*c).redraw -= nwrite as usize;
             }
-            // log_debug("%s: waiting for redraw, %zu bytes left", (*c).name, (*c).redraw);
+            log_debug!(
+                "{}: waiting for redraw, {} bytes left",
+                _s((*c).name),
+                (*c).redraw
+            );
         } else if tty_block_maybe(tty) != 0 {
             return;
         }
@@ -313,7 +316,7 @@ pub unsafe extern "C-unwind" fn tty_start_timer_callback(
         let tty = tty.as_ptr();
         let c = (*tty).client;
 
-        // log_debug("%s: start timer fired", (*c).name);
+        log_debug!("{}: start timer fired", _s((*c).name));
         if (*tty)
             .flags
             .intersects(tty_flags::TTY_HAVEDA | tty_flags::TTY_HAVEDA2 | tty_flags::TTY_HAVEXDA)
@@ -594,7 +597,7 @@ pub unsafe fn tty_raw(tty: *mut tty, mut s: *const u8) {
         let c = (*tty).client;
 
         let mut slen = strlen(s);
-        for i in 0..5 {
+        for _ in 0..5 {
             let n = libc::write((*c).fd, s.cast(), slen);
             if n >= 0 {
                 s = s.add(n as usize);
@@ -817,7 +820,7 @@ pub unsafe fn tty_force_cursor_colour(tty: *mut tty, mut c: i32) {
             tty_putcode(tty, tty_code_code::TTYC_CR);
         } else {
             let (r, g, b) = colour_split_rgb(c);
-            xsnprintf_!((&raw mut s).cast(), 13, "rgb:{:02x}/{:02x}/{:02x}", r, g, b,);
+            _ = xsnprintf_!((&raw mut s).cast(), 13, "rgb:{:02x}/{:02x}/{:02x}", r, g, b,);
             tty_putcode_s(tty, tty_code_code::TTYC_CS, (&raw const s).cast::<u8>());
         }
         (*tty).ccolour = c;
@@ -1067,7 +1070,6 @@ pub unsafe fn tty_window_offset1(
         let wp = server_client_get_pane(c);
         let mut cx: u32 = 0;
         let mut cy: u32 = 0;
-        let lines: u32 = 0;
 
         let lines: u32 = status_line_size(c);
 
@@ -1207,22 +1209,18 @@ pub unsafe fn tty_fake_bce(tty: *const tty, gc: *const grid_cell, bg: u32) -> bo
     }
 }
 
-/*
- * Redraw scroll region using data from screen (already updated). Used when
- * CSR not supported, or window is a pane that doesn't take up the full
- * width of the terminal.
- */
-
+/// Redraw scroll region using data from screen (already updated).
+///
+/// Used when CSR not supported, or window is a pane that doesn't
+/// take up the full width of the terminal.
 pub unsafe fn tty_redraw_region(tty: *mut tty, ctx: *const tty_ctx) {
     unsafe {
         let c = (*tty).client;
 
-        /*
-         * If region is large, schedule a redraw. In most cases this is likely
-         * to be followed by some more scrolling.
-         */
+        // If region is large, schedule a redraw.
+        // In most cases this is likely to be followed by some more scrolling.
         if tty_large_region(tty, ctx) {
-            // log_debug("%s: %s large redraw", __func__, (*c).name);
+            log_debug!("tty_redraw_region: {} large redraw", _s((*c).name));
             (*ctx).redraw_cb.unwrap()(ctx);
             return;
         }
@@ -1388,7 +1386,13 @@ pub unsafe fn tty_clear_pane_line(
         let mut rx = 0;
         let mut ry = 0;
 
-        // log_debug("%s: %s, %u at %u,%u", __func__, (*c).name, nx, px, py);
+        log_debug!(
+            "tty_clear_pane_line: {}, {} at {},{}",
+            _s((*c).name),
+            nx,
+            px,
+            py
+        );
 
         if tty_clamp_line(
             tty,
@@ -1495,7 +1499,6 @@ pub unsafe fn tty_clear_area(
 ) {
     unsafe {
         let c = (*tty).client;
-        let yy: u32 = 0;
         const SIZEOF_TMP: usize = 64;
         let mut tmp: [u8; SIZEOF_TMP] = [0; SIZEOF_TMP];
 
@@ -1527,7 +1530,7 @@ pub unsafe fn tty_clear_area(
             if (*(*tty).term).flags.intersects(term_flags::TERM_DECFRA)
                 && !COLOUR_DEFAULT(bg as i32)
             {
-                xsnprintf_!(
+                _ = xsnprintf_!(
                     (&raw mut tmp).cast(),
                     SIZEOF_TMP,
                     "\x1b[32;{};{};{};{}$x",
@@ -2446,7 +2449,7 @@ pub unsafe fn tty_cmd_scrollup(tty: *mut tty, ctx: *const tty_ctx) {
             } else {
                 tty_cursor(tty, (*tty).rright, (*tty).rlower);
             }
-            for i in 0..(*ctx).num {
+            for _ in 0..(*ctx).num {
                 tty_putc(tty, b'\n');
             }
         } else {
@@ -2493,7 +2496,7 @@ pub unsafe fn tty_cmd_scrolldown(tty: *mut tty, ctx: *const tty_ctx) {
         if tty_term_has((*tty).term, tty_code_code::TTYC_RIN) {
             tty_putcode_i(tty, tty_code_code::TTYC_RIN, (*ctx).num as i32);
         } else {
-            for i in 0..(*ctx).num {
+            for _ in 0..(*ctx).num {
                 tty_putcode(tty, tty_code_code::TTYC_RI);
             }
         }
@@ -2598,7 +2601,7 @@ pub unsafe fn tty_cmd_alignmenttest(tty: *mut tty, ctx: *const tty_ctx) {
 
         for j in 0..(*ctx).sy {
             tty_cursor_pane(tty, ctx, 0, j);
-            for i in 0..(*ctx).sx {
+            for _ in 0..(*ctx).sx {
                 tty_putc(tty, b'E');
             }
         }
@@ -3630,7 +3633,7 @@ pub unsafe fn tty_colours_fg(tty: *mut tty, gc: *const grid_cell) {
             /* Is this an aixterm bright colour? */
             if (*gc).fg >= 90 && (*gc).fg <= 97 {
                 if (*(*tty).term).flags.intersects(term_flags::TERM_256COLOURS) {
-                    xsnprintf_!((&raw mut s).cast(), sizeof_s, "\x1b[{}m", (*gc).fg,);
+                    _ = xsnprintf_!((&raw mut s).cast(), sizeof_s, "\x1b[{}m", (*gc).fg,);
                     tty_puts(tty, (&raw const s).cast());
                 } else {
                     tty_putcode_i(tty, tty_code_code::TTYC_SETAF, (*gc).fg - 90 + 8);
@@ -3666,7 +3669,7 @@ pub unsafe fn tty_colours_bg(tty: *mut tty, gc: *const grid_cell) {
             /* Is this an aixterm bright colour? */
             if (*gc).bg >= 90 && (*gc).bg <= 97 {
                 if (*(*tty).term).flags.intersects(term_flags::TERM_256COLOURS) {
-                    xsnprintf_!((&raw mut s).cast(), sizeof_s, "\x1b[{}m", (*gc).bg + 10,);
+                    _ = xsnprintf_!((&raw mut s).cast(), sizeof_s, "\x1b[{}m", (*gc).bg + 10,);
                     tty_puts(tty, (&raw const s).cast());
                 } else {
                     tty_putcode_i(tty, tty_code_code::TTYC_SETAB, (*gc).bg - 90 + 8);

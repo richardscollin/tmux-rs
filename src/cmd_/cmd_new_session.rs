@@ -11,11 +11,9 @@
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-use crate::*;
-
-use crate::libc::{sscanf, tcgetattr};
-
 use crate::compat::tree::rb_min;
+use crate::libc::{sscanf, tcgetattr};
+use crate::*;
 
 const NEW_SESSION_TEMPLATE: *const u8 = c!("#{session_name}:");
 

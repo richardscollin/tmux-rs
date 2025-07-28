@@ -11,10 +11,8 @@
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-use crate::*;
-
 use crate::compat::b64::b64_pton;
-use crate::compat::strlcpy;
+use crate::*;
 
 // Handle keys input from the outside terminal. tty_default_*_keys[] are a base
 // table of supported keys which are looked up in terminfo(5) and translated
@@ -835,7 +833,7 @@ pub unsafe fn tty_keys_build(tty: *mut tty) {
         }
         (*tty).key_tree = null_mut();
 
-        for (i, tdkx) in TTY_DEFAULT_XTERM_KEYS.iter().enumerate() {
+        for tdkx in TTY_DEFAULT_XTERM_KEYS.iter() {
             for (j, tty_default_xterm_modifiers_j) in TTY_DEFAULT_XTERM_MODIFIERS
                 .iter()
                 .cloned()
@@ -974,7 +972,6 @@ unsafe fn tty_keys_next1(
         let mut ud: utf8_data = zeroed();
         let mut more: utf8_state;
         let mut uc: utf8_char = zeroed();
-        let mut i: u32;
 
         // log_debug!("{}: next key is {} (%.*s) (expired=%d)", _s((*c).name), len, len as i32, buf, expired);
 
@@ -997,7 +994,7 @@ unsafe fn tty_keys_next1(
         }
 
         /* Is this valid UTF-8? */
-        more = utf8_open(&mut ud, (*buf));
+        more = utf8_open(&mut ud, *buf);
         if more == utf8_state::UTF8_MORE {
             *size = ud.size as usize;
             if len < ud.size as usize {
@@ -1007,7 +1004,7 @@ unsafe fn tty_keys_next1(
                 return -1;
             }
             for i in 1..ud.size {
-                more = utf8_append(&mut ud, (*buf.add(i as usize)));
+                more = utf8_append(&mut ud, *buf.add(i as usize));
             }
             if more != utf8_state::UTF8_DONE {
                 return -1;
@@ -1506,7 +1503,14 @@ unsafe fn tty_keys_extended_key(
         }
 
         if log_get_level() != 0 {
-            // log_debug!( "{}: extended key {:.1$} is {:#x} ({})", _s((*c).name), *size as i32, buf, nkey, key_string_lookup_key(nkey, 1));
+            log_debug!(
+                "{0}: extended key {2:1$} is {3:#x} ({4})",
+                _s((*c).name),
+                *size,
+                _s(buf),
+                nkey,
+                _s(key_string_lookup_key(nkey, 1))
+            );
         }
 
         *key = nkey;
@@ -1583,7 +1587,7 @@ unsafe fn tty_keys_mouse(
                     y = ch as u32;
                 }
             }
-            // log_debug!( "{}: mouse input: {:.1$}", (*c).name, *size as i32, buf);
+            log_debug!("{0}: mouse input: {2:1$}", _s((*c).name), *size, _s(buf));
 
             /* Check and return the mouse input. */
             if b < MOUSE_PARAM_BTN_OFF || x < MOUSE_PARAM_POS_OFF || y < MOUSE_PARAM_POS_OFF {
@@ -1637,7 +1641,12 @@ unsafe fn tty_keys_mouse(
                 }
                 y = 10 * y + (ch - b'0') as u32;
             }
-            // log_debug!( "{}: mouse input (SGR): {:.1$}", (*c).name, *size as i32, buf);
+            log_debug!(
+                "{0}: mouse input (SGR): {2:1$}",
+                _s((*c).name),
+                *size,
+                _s(buf)
+            );
 
             /* Check and return the mouse input. */
             if x < 1 || y < 1 {
@@ -1936,7 +1945,6 @@ unsafe fn tty_keys_device_attributes2(
     unsafe {
         let c = (*tty).client;
         let features = &raw mut (*c).term_features;
-        let i: u32 = 0;
         let mut n: u32 = 0;
         let mut tmp: [u8; 128] = [0; 128];
         let mut endptr: *mut u8 = null_mut();

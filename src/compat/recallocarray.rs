@@ -53,10 +53,10 @@ pub unsafe fn recallocarray(
          * Don't bother too much if we're shrinking just a bit,
          * we do not shrink for series of small steps, oh well.
          */
-        if (newsize <= oldsize) {
+        if newsize <= oldsize {
             let d = oldsize - newsize;
 
-            if (d < oldsize / 2 && d < getpagesize() as usize) {
+            if d < oldsize / 2 && d < getpagesize() as usize {
                 libc::memset((ptr as *mut u8).add(newsize).cast(), 0, d);
                 return ptr;
             }
@@ -67,7 +67,7 @@ pub unsafe fn recallocarray(
             return null_mut();
         }
 
-        if (newsize > oldsize) {
+        if newsize > oldsize {
             libc::memcpy(newptr, ptr, oldsize);
             libc::memset(
                 (newptr as *mut u8).add(oldsize).cast(),

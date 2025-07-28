@@ -11,14 +11,7 @@
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-
-use ::core::ptr::null_mut;
-
-use crate::{
-    GRID_HISTORY, grid, grid_cell, grid_clear, grid_collect_history, grid_get_cell, grid_get_line,
-    grid_move_cells, grid_move_lines, grid_scroll_history, grid_scroll_history_region,
-    grid_set_cell, grid_set_cells, grid_set_padding, grid_string_cells, grid_string_flags,
-};
+use crate::*;
 
 fn grid_view_x(_gd: *mut grid, x: u32) -> u32 {
     x

@@ -13,14 +13,6 @@
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 use crate::*;
 
-use std::ptr::{addr_of, addr_of_mut};
-
-use crate::compat::{
-    impl_tailq_entry,
-    queue::{tailq_first, tailq_init, tailq_insert_head, tailq_remove},
-    strlcat,
-};
-
 /// Selected area in screen.
 #[repr(C)]
 pub struct screen_sel {

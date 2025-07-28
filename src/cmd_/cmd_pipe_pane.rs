@@ -11,14 +11,12 @@
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-use crate::*;
-
+use crate::compat::closefrom;
 use crate::libc::{
     _exit, AF_UNIX, O_WRONLY, PF_UNSPEC, SIG_BLOCK, SIG_SETMASK, STDERR_FILENO, STDIN_FILENO,
     STDOUT_FILENO, close, dup2, execl, open, sigfillset, sigprocmask, sigset_t, socketpair,
 };
-
-use crate::compat::closefrom;
+use crate::*;
 
 pub static CMD_PIPE_PANE_ENTRY: cmd_entry = cmd_entry {
     name: SyncCharPtr::new(c"pipe-pane"),
@@ -43,7 +41,6 @@ pub unsafe fn cmd_pipe_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
         let s = (*target).s;
         let wl = (*target).wl;
         let wpo = &raw mut (*wp).pipe_offset;
-        let old_fd = 0;
         let mut pipe_fd: [i32; 2] = [0; 2];
         let mut in_: i32 = 0;
         let mut out: i32 = 0;

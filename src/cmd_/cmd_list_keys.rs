@@ -11,10 +11,9 @@
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-use crate::*;
-
 use crate::compat::strlcat;
 use crate::libc::strcmp;
+use crate::*;
 
 pub static CMD_LIST_KEYS_ENTRY: cmd_entry = cmd_entry {
     name: SyncCharPtr::new(c"list-keys"),

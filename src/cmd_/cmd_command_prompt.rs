@@ -169,7 +169,7 @@ unsafe fn cmd_command_prompt_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
             target,
             (*cdata.prompts).prompt,
             (*cdata.prompts).input,
-            Some(cmd_command_prompt_callback),
+            cmd_command_prompt_callback,
             cmd_command_prompt_free,
             Box::into_raw(cdata),
             flags,
@@ -185,12 +185,11 @@ unsafe fn cmd_command_prompt_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
 
 unsafe fn cmd_command_prompt_callback(
     c: *mut client,
-    data: NonNull<c_void>,
+    cdata: NonNull<cmd_command_prompt_cdata>,
     s: *const u8,
     done: i32,
 ) -> i32 {
     unsafe {
-        let cdata: NonNull<cmd_command_prompt_cdata> = data.cast();
         let cdata = cdata.as_ptr();
         let mut error: *mut u8 = null_mut();
         let item: *mut cmdq_item = (*cdata).item;
@@ -240,7 +239,17 @@ unsafe fn cmd_command_prompt_callback(
 
             // TODO is this function pointer comparison even valid in C?
             // this may or may not do what we want, so we need to figure out a way to rework it.
-            if (*c).prompt_inputcb != Some(cmd_command_prompt_callback) {
+            if (*c).prompt_inputcb
+                != std::mem::transmute::<
+                    unsafe fn(
+                        _: *mut client,
+                        _: NonNull<cmd_command_prompt_cdata>,
+                        _: *const u8,
+                        _: i32,
+                    ) -> i32,
+                    prompt_input_cb,
+                >(cmd_command_prompt_callback)
+            {
                 return 1;
             }
 

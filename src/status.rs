@@ -673,7 +673,7 @@ pub unsafe fn status_prompt_set<T>(
     fs: *mut cmd_find_state,
     msg: *const u8,
     mut input: *const u8,
-    inputcb: prompt_input_cb,
+    inputcb: unsafe fn(*mut client, NonNull<T>, *const u8, i32) -> i32,
     freecb: unsafe fn(NonNull<T>),
     data: *mut T,
     flags: i32,
@@ -712,7 +712,10 @@ pub unsafe fn status_prompt_set<T>(
         }
         (*c).prompt_index = utf8_strlen((*c).prompt_buffer);
 
-        (*c).prompt_inputcb = inputcb;
+        (*c).prompt_inputcb = Some(std::mem::transmute::<
+            unsafe fn(*mut client, NonNull<T>, *const u8, i32) -> i32,
+            unsafe fn(*mut client, NonNull<c_void>, *const u8, i32) -> i32,
+        >(inputcb));
         (*c).prompt_freecb = Some(std::mem::transmute::<
             unsafe fn(NonNull<T>),
             unsafe fn(NonNull<c_void>),

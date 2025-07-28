@@ -83,7 +83,7 @@ unsafe fn cmd_confirm_before_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
             target,
             new_prompt,
             null_mut(),
-            Some(cmd_confirm_before_callback),
+            cmd_confirm_before_callback,
             cmd_confirm_before_free,
             Box::into_raw(cdata),
             PROMPT_SINGLE,
@@ -100,12 +100,11 @@ unsafe fn cmd_confirm_before_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
 
 unsafe fn cmd_confirm_before_callback(
     c: *mut client,
-    data: NonNull<c_void>,
+    cdata: NonNull<cmd_confirm_before_data>,
     s: *const u8,
     _done: i32,
 ) -> i32 {
     unsafe {
-        let cdata: NonNull<cmd_confirm_before_data> = data.cast();
         let item = (*cdata.as_ptr()).item;
         let mut retcode: i32 = 1;
 

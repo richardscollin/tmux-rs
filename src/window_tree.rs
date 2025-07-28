@@ -1308,13 +1308,11 @@ unsafe fn window_tree_command_done(_: *mut cmdq_item, modedata: *mut c_void) -> 
 
 unsafe fn window_tree_command_callback(
     c: *mut client,
-    modedata: NonNull<c_void>,
+    data: NonNull<window_tree_modedata>,
     s: *const u8,
     _done: i32,
 ) -> i32 {
     unsafe {
-        let data: NonNull<window_tree_modedata> = modedata.cast();
-
         if s.is_null() || *s == b'\0' || (*data.as_ptr()).dead != 0 {
             return 0;
         }
@@ -1384,12 +1382,11 @@ unsafe fn window_tree_kill_each(
 
 unsafe fn window_tree_kill_current_callback(
     c: *mut client,
-    modedata: NonNull<c_void>,
+    data: NonNull<window_tree_modedata>,
     s: *const u8,
     _: i32,
 ) -> i32 {
     unsafe {
-        let data: NonNull<window_tree_modedata> = modedata.cast();
         let mtd: *mut mode_tree_data = (*data.as_ptr()).data;
 
         if s.is_null() || *s == b'\0' || (*data.as_ptr()).dead != 0 {
@@ -1414,12 +1411,11 @@ unsafe fn window_tree_kill_current_callback(
 
 unsafe fn window_tree_kill_tagged_callback(
     c: *mut client,
-    modedata: NonNull<c_void>,
+    data: NonNull<window_tree_modedata>,
     s: *const u8,
     _: i32,
 ) -> i32 {
     unsafe {
-        let data: NonNull<window_tree_modedata> = modedata.cast();
         let mtd: *mut mode_tree_data = (*data.as_ptr()).data;
 
         if s.is_null() || *s == b'\0' || (*data.as_ptr()).dead != 0 {
@@ -1616,7 +1612,7 @@ unsafe fn window_tree_key(
                         null_mut(),
                         prompt,
                         c!(""),
-                        Some(window_tree_kill_current_callback),
+                        window_tree_kill_current_callback,
                         window_tree_command_free,
                         data,
                         PROMPT_SINGLE | PROMPT_NOFORMAT,
@@ -1636,7 +1632,7 @@ unsafe fn window_tree_key(
                         null_mut(),
                         prompt,
                         c!(""),
-                        Some(window_tree_kill_tagged_callback),
+                        window_tree_kill_tagged_callback,
                         window_tree_command_free,
                         data,
                         PROMPT_SINGLE | PROMPT_NOFORMAT,
@@ -1657,7 +1653,7 @@ unsafe fn window_tree_key(
                         null_mut(),
                         prompt,
                         c!(""),
-                        Some(window_tree_command_callback),
+                        window_tree_command_callback,
                         window_tree_command_free,
                         data,
                         PROMPT_NOFORMAT,

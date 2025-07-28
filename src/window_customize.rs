@@ -1282,12 +1282,11 @@ pub unsafe fn window_customize_free_item_callback(item: NonNull<window_customize
 
 pub unsafe fn window_customize_set_option_callback(
     c: *mut client,
-    itemdata: NonNull<c_void>,
+    item: NonNull<window_customize_itemdata>,
     s: *const u8,
     done: i32,
 ) -> i32 {
     unsafe {
-        let item: NonNull<window_customize_itemdata> = itemdata.cast();
         let item = item.as_ptr();
         let data: *mut window_customize_modedata = (*item).data.cast();
 
@@ -1474,7 +1473,7 @@ pub unsafe fn window_customize_set_option(
                 null_mut(),
                 prompt,
                 value,
-                Some(window_customize_set_option_callback),
+                window_customize_set_option_callback,
                 window_customize_free_item_callback,
                 Box::into_raw(new_item),
                 PROMPT_NOFORMAT,
@@ -1532,12 +1531,11 @@ pub unsafe fn window_customize_reset_option(
 
 pub unsafe fn window_customize_set_command_callback(
     c: *mut client,
-    itemdata: NonNull<c_void>,
+    item: NonNull<window_customize_itemdata>,
     s: *const u8,
     _done: i32,
 ) -> i32 {
     unsafe {
-        let item: NonNull<window_customize_itemdata> = itemdata.cast();
         let item = item.as_ptr();
         let data: *mut window_customize_modedata = (*item).data;
         let mut bd: *mut key_binding = null_mut();
@@ -1577,12 +1575,11 @@ pub unsafe fn window_customize_set_command_callback(
 
 pub unsafe fn window_customize_set_note_callback(
     _c: *mut client,
-    itemdata: NonNull<c_void>,
+    item: NonNull<window_customize_itemdata>,
     s: *const u8,
     _done: i32,
 ) -> i32 {
     unsafe {
-        let item: NonNull<window_customize_itemdata> = itemdata.cast();
         let item = item.as_ptr();
         let data: *mut window_customize_modedata = (*item).data;
         let mut bd = null_mut();
@@ -1643,7 +1640,7 @@ pub unsafe fn window_customize_set_key(
                 null_mut(),
                 prompt,
                 value,
-                Some(window_customize_set_command_callback),
+                window_customize_set_command_callback,
                 window_customize_free_item_callback,
                 Box::into_raw(new_item),
                 PROMPT_NOFORMAT,
@@ -1674,7 +1671,7 @@ pub unsafe fn window_customize_set_key(
                 } else {
                     (*bd).note
                 },
-                Some(window_customize_set_note_callback),
+                window_customize_set_note_callback,
                 window_customize_free_item_callback,
                 Box::leak(new_item),
                 PROMPT_NOFORMAT,
@@ -1766,12 +1763,12 @@ pub unsafe fn window_customize_change_each(
 
 pub unsafe fn window_customize_change_current_callback(
     c: *mut client,
-    modedata: NonNull<c_void>,
+    modedata: NonNull<window_customize_modedata>,
     s: *const u8,
     _done: i32,
 ) -> i32 {
     unsafe {
-        let data: *mut window_customize_modedata = modedata.cast().as_ptr();
+        let data: *mut window_customize_modedata = modedata.as_ptr();
         let mut item: *mut window_customize_itemdata = null_mut();
 
         if s.is_null() || *s == b'\0' || (*data).dead != 0 {
@@ -1811,12 +1808,12 @@ pub unsafe fn window_customize_change_current_callback(
 
 pub unsafe fn window_customize_change_tagged_callback(
     c: *mut client,
-    modedata: NonNull<c_void>,
+    modedata: NonNull<window_customize_modedata>,
     s: *const u8,
     _done: i32,
 ) -> i32 {
     unsafe {
-        let data: *mut window_customize_modedata = modedata.cast().as_ptr();
+        let data: *mut window_customize_modedata = modedata.as_ptr();
 
         if s.is_null() || *s == b'\0' || (*data).dead != 0 {
             return 0;
@@ -1902,7 +1899,7 @@ pub unsafe fn window_customize_key(
                         null_mut(),
                         prompt,
                         c!(""),
-                        Some(window_customize_change_current_callback),
+                        window_customize_change_current_callback,
                         window_customize_free_callback,
                         data,
                         PROMPT_SINGLE | PROMPT_NOFORMAT,
@@ -1922,7 +1919,7 @@ pub unsafe fn window_customize_key(
                         null_mut(),
                         prompt,
                         c!(""),
-                        Some(window_customize_change_tagged_callback),
+                        window_customize_change_tagged_callback,
                         window_customize_free_callback,
                         data,
                         PROMPT_SINGLE | PROMPT_NOFORMAT,
@@ -1946,7 +1943,7 @@ pub unsafe fn window_customize_key(
                         null_mut(),
                         prompt,
                         c!(""),
-                        Some(window_customize_change_current_callback),
+                        window_customize_change_current_callback,
                         window_customize_free_callback,
                         data,
                         PROMPT_SINGLE | PROMPT_NOFORMAT,
@@ -1966,7 +1963,7 @@ pub unsafe fn window_customize_key(
                         null_mut(),
                         prompt,
                         c!(""),
-                        Some(window_customize_change_tagged_callback),
+                        window_customize_change_tagged_callback,
                         window_customize_free_callback,
                         data,
                         PROMPT_SINGLE | PROMPT_NOFORMAT,

@@ -1058,12 +1058,12 @@ pub unsafe fn mode_tree_search_set(mtd: *mut mode_tree_data) {
 
 pub unsafe fn mode_tree_search_callback(
     _c: *mut client,
-    data: NonNull<c_void>,
+    mtd: NonNull<mode_tree_data>,
     s: *const u8,
     _done: i32,
 ) -> i32 {
     unsafe {
-        let mtd: *mut mode_tree_data = data.cast().as_ptr();
+        let mtd: *mut mode_tree_data = mtd.as_ptr();
 
         if (*mtd).dead != 0 {
             return 0;
@@ -1089,12 +1089,12 @@ pub unsafe fn mode_tree_search_free(data: NonNull<mode_tree_data>) {
 
 pub unsafe fn mode_tree_filter_callback(
     _c: *mut client,
-    data: NonNull<c_void>,
+    data: NonNull<mode_tree_data>,
     s: *const u8,
     _done: i32,
 ) -> i32 {
     unsafe {
-        let mtd: *mut mode_tree_data = data.cast().as_ptr();
+        let mtd: *mut mode_tree_data = data.as_ptr();
 
         if (*mtd).dead != 0 {
             return 0;
@@ -1475,7 +1475,7 @@ pub unsafe fn mode_tree_key(
                     null_mut(),
                     c!("(search) "),
                     c!(""),
-                    Some(mode_tree_search_callback),
+                    mode_tree_search_callback,
                     mode_tree_search_free,
                     mtd,
                     PROMPT_NOFORMAT,
@@ -1497,7 +1497,7 @@ pub unsafe fn mode_tree_key(
                     null_mut(),
                     c!("(filter) "),
                     (*mtd).filter,
-                    Some(mode_tree_filter_callback),
+                    mode_tree_filter_callback,
                     mode_tree_filter_free,
                     mtd,
                     PROMPT_NOFORMAT,

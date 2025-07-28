@@ -26,8 +26,7 @@ pub static mut CFG_CLIENT: *mut client = null_mut();
 
 pub static CFG_FINISHED: AtomicBool = AtomicBool::new(false);
 
-static mut CFG_CAUSES: *mut *mut u8 = null_mut();
-static mut CFG_NCAUSES: c_uint = 0;
+static CFG_CAUSES: Mutex<Vec<CString>> = Mutex::new(Vec::new());
 
 static mut CFG_ITEM: *mut cmdq_item = null_mut();
 
@@ -244,79 +243,60 @@ macro_rules! cfg_add_cause {
 }
 pub(crate) use cfg_add_cause;
 
-pub unsafe fn cfg_add_cause_(args: std::fmt::Arguments) {
-    unsafe {
-        let mut msg = args.to_string();
-        msg.push('\0');
-        let msg = msg.leak();
-
-        CFG_NCAUSES += 1;
-        CFG_CAUSES = xreallocarray_::<*mut u8>(CFG_CAUSES, CFG_NCAUSES as usize).as_ptr();
-        *CFG_CAUSES.add(CFG_NCAUSES as usize - 1) = msg.as_mut_ptr().cast();
-    }
+pub fn cfg_add_cause_(args: std::fmt::Arguments) {
+    CFG_CAUSES
+        .lock()
+        .unwrap()
+        .push(CString::new(args.to_string()).unwrap());
 }
 
 pub unsafe fn cfg_print_causes(item: *mut cmdq_item) {
-    unsafe {
-        for i in 0..CFG_NCAUSES {
-            cmdq_print!(item, "{}", _s(*CFG_CAUSES.add(i as usize)));
-            free_(*CFG_CAUSES.add(i as usize));
+    for cause in CFG_CAUSES.lock().unwrap().drain(..) {
+        unsafe {
+            cmdq_print!(item, "{}", cause.to_string_lossy());
         }
-
-        free_(CFG_CAUSES);
-        CFG_CAUSES = null_mut();
-        CFG_NCAUSES = 0;
     }
 }
 
 pub unsafe fn cfg_show_causes(mut s: *mut session) {
     unsafe {
-        'out: {
-            let c = tailq_first(&raw mut CLIENTS);
+        let c = tailq_first(&raw mut CLIENTS);
 
-            if CFG_NCAUSES == 0 {
-                return;
-            }
-
-            if !c.is_null() && (*c).flags.intersects(client_flag::CONTROL) {
-                for i in 0..CFG_NCAUSES {
-                    control_write!(c, "%config-error {}", _s(*CFG_CAUSES.add(i as usize)),);
-                    free_(*CFG_CAUSES.add(i as usize));
-                }
-                break 'out;
-            }
-
-            if s.is_null() {
-                if !c.is_null() && !(*c).session.is_null() {
-                    s = (*c).session;
-                } else {
-                    s = rb_min(&raw mut SESSIONS);
-                }
-            }
-            if s.is_null() || (*s).attached == 0 {
-                return;
-            }
-            let wp = (*(*(*s).curw).window).active;
-
-            let wme: *mut window_mode_entry = tailq_first(&raw mut (*wp).modes);
-            if wme.is_null() || (*wme).mode != &raw const WINDOW_VIEW_MODE {
-                window_pane_set_mode(
-                    wp,
-                    null_mut(),
-                    &raw const WINDOW_VIEW_MODE,
-                    null_mut(),
-                    null_mut(),
-                );
-            }
-            for i in 0..CFG_NCAUSES {
-                window_copy_add!(wp, 0, "{}", _s(*CFG_CAUSES.add(i as usize)));
-                free(*CFG_CAUSES.add(i as usize) as _);
-            }
-            break 'out;
+        if CFG_CAUSES.lock().unwrap().is_empty() {
+            return;
         }
-        // out:
-        free_(CFG_CAUSES);
-        CFG_CAUSES = null_mut();
-        CFG_NCAUSES = 0;
+
+        if !c.is_null() && (*c).flags.intersects(client_flag::CONTROL) {
+            for cause in CFG_CAUSES.lock().unwrap().drain(..) {
+                control_write!(c, "%config-error {}", cause.to_string_lossy());
+            }
+            return;
+        }
+
+        if s.is_null() {
+            if !c.is_null() && !(*c).session.is_null() {
+                s = (*c).session;
+            } else {
+                s = rb_min(&raw mut SESSIONS);
+            }
+        }
+        if s.is_null() || (*s).attached == 0 {
+            return;
+        }
+        let wp = (*(*(*s).curw).window).active;
+
+        let wme: *mut window_mode_entry = tailq_first(&raw mut (*wp).modes);
+        if wme.is_null() || (*wme).mode != &raw const WINDOW_VIEW_MODE {
+            window_pane_set_mode(
+                wp,
+                null_mut(),
+                &raw const WINDOW_VIEW_MODE,
+                null_mut(),
+                null_mut(),
+            );
+        }
+        for cause in CFG_CAUSES.lock().unwrap().drain(..) {
+            window_copy_add!(wp, 0, "{}", cause.to_string_lossy());
+        }
     }
 }

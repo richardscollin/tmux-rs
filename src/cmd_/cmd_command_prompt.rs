@@ -33,6 +33,7 @@ struct cmd_command_prompt_prompt {
     prompt: *mut u8,
 }
 
+#[derive(Default)]
 struct cmd_command_prompt_cdata<'a> {
     item: *mut cmdq_item,
     state: *mut args_command_state<'a>,
@@ -78,17 +79,17 @@ unsafe fn cmd_command_prompt_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
             wait = 0;
         }
 
-        let cdata = xcalloc_::<cmd_command_prompt_cdata>(1).as_ptr();
+        let mut cdata: Box<cmd_command_prompt_cdata> = Box::default();
         if wait != 0 {
-            (*cdata).item = item;
+            cdata.item = item;
         }
-        (*cdata).state =
+        cdata.state =
             args_make_commands_prepare(self_, item, 0, c!("%1"), wait, args_has(args, b'F'));
 
         let mut s = args_get(args, b'p');
         if s.is_null() {
             if count != 0 {
-                let tmp = args_make_commands_get_command((*cdata).state);
+                let tmp = args_make_commands_get_command(cdata.state);
                 prompts = format_nul!("({})", _s(tmp));
                 free_(tmp);
             } else {
@@ -111,9 +112,9 @@ unsafe fn cmd_command_prompt_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
             prompt = strsep(&raw mut next_prompt as _, c!(","));
             !prompt.is_null()
         } {
-            (*cdata).prompts = xreallocarray_::<cmd_command_prompt_prompt>(
-                (*cdata).prompts,
-                (*cdata).count as usize + 1,
+            cdata.prompts = xreallocarray_::<cmd_command_prompt_prompt>(
+                cdata.prompts,
+                cdata.count as usize + 1,
             )
             .as_ptr();
             tmp = if space == 0 {
@@ -121,7 +122,7 @@ unsafe fn cmd_command_prompt_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
             } else {
                 format_nul!("{} ", _s(prompt))
             };
-            (*(*cdata).prompts.add((*cdata).count as usize)).prompt = tmp;
+            (*cdata.prompts.add(cdata.count as usize)).prompt = tmp;
 
             let mut input = null();
             if !next_input.is_null() {
@@ -132,44 +133,47 @@ unsafe fn cmd_command_prompt_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
             } else {
                 input = c!("");
             }
-            (*(*cdata).prompts.add((*cdata).count as usize)).input = xstrdup(input).as_ptr();
+            (*cdata.prompts.add(cdata.count as usize)).input = xstrdup(input).as_ptr();
 
-            (*cdata).count += 1;
+            cdata.count += 1;
         }
         free_(inputs);
         free_(prompts);
 
         let type_ = args_get(args, b'T');
         if !type_.is_null() {
-            (*cdata).prompt_type = status_prompt_type(type_);
-            if (*cdata).prompt_type == prompt_type::PROMPT_TYPE_INVALID {
+            cdata.prompt_type = status_prompt_type(type_);
+            if cdata.prompt_type == prompt_type::PROMPT_TYPE_INVALID {
                 cmdq_error!(item, "unknown type: {}", _s(type_));
-                cmd_command_prompt_free(NonNull::new(cdata.cast()).unwrap());
+                cmd_command_prompt_free(NonNull::new_unchecked(Box::into_raw(cdata).cast()));
                 return cmd_retval::CMD_RETURN_ERROR;
             }
         } else {
-            (*cdata).prompt_type = prompt_type::PROMPT_TYPE_COMMAND;
+            cdata.prompt_type = prompt_type::PROMPT_TYPE_COMMAND;
         }
 
         if args_has(args, b'1') != 0 {
-            (*cdata).flags |= PROMPT_SINGLE;
+            cdata.flags |= PROMPT_SINGLE;
         } else if args_has(args, b'N') != 0 {
-            (*cdata).flags |= PROMPT_NUMERIC;
+            cdata.flags |= PROMPT_NUMERIC;
         } else if args_has(args, b'i') != 0 {
-            (*cdata).flags |= PROMPT_INCREMENTAL;
+            cdata.flags |= PROMPT_INCREMENTAL;
         } else if args_has(args, b'k') != 0 {
-            (*cdata).flags |= PROMPT_KEY;
+            cdata.flags |= PROMPT_KEY;
         }
+
+        let flags = cdata.flags;
+        let prompt_type = cdata.prompt_type;
         status_prompt_set(
             tc,
             target,
-            (*(*cdata).prompts).prompt,
-            (*(*cdata).prompts).input,
+            (*cdata.prompts).prompt,
+            (*cdata.prompts).input,
             Some(cmd_command_prompt_callback),
             Some(cmd_command_prompt_free),
-            cdata as _,
-            (*cdata).flags,
-            (*cdata).prompt_type,
+            Box::into_raw(cdata).cast(),
+            flags,
+            prompt_type,
         );
 
         if wait == 0 {

@@ -2146,9 +2146,10 @@ enum_try_from!(prompt_type, u32, prompt_type::PROMPT_TYPE_WINDOW_TARGET);
 /// Prompt type.
 const PROMPT_NTYPES: u32 = 4;
 #[repr(u32)]
-#[derive(Copy, Clone, Eq, PartialEq)]
+#[derive(Copy, Clone, Default, Eq, PartialEq)]
 enum prompt_type {
-    PROMPT_TYPE_COMMAND,
+    #[default]
+    PROMPT_TYPE_COMMAND = 0,
     PROMPT_TYPE_SEARCH,
     PROMPT_TYPE_TARGET,
     PROMPT_TYPE_WINDOW_TARGET,

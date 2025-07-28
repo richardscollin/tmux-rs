@@ -145,7 +145,7 @@ unsafe fn cmd_command_prompt_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
             cdata.prompt_type = status_prompt_type(type_);
             if cdata.prompt_type == prompt_type::PROMPT_TYPE_INVALID {
                 cmdq_error!(item, "unknown type: {}", _s(type_));
-                cmd_command_prompt_free(NonNull::new_unchecked(Box::into_raw(cdata).cast()));
+                cmd_command_prompt_free(NonNull::new_unchecked(Box::into_raw(cdata)));
                 return cmd_retval::CMD_RETURN_ERROR;
             }
         } else {
@@ -170,8 +170,8 @@ unsafe fn cmd_command_prompt_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
             (*cdata.prompts).prompt,
             (*cdata.prompts).input,
             Some(cmd_command_prompt_callback),
-            Some(cmd_command_prompt_free),
-            Box::into_raw(cdata).cast(),
+            cmd_command_prompt_free,
+            Box::into_raw(cdata),
             flags,
             prompt_type,
         );
@@ -254,10 +254,8 @@ unsafe fn cmd_command_prompt_callback(
     }
 }
 
-unsafe fn cmd_command_prompt_free(data: NonNull<c_void>) {
+unsafe fn cmd_command_prompt_free(cdata: NonNull<cmd_command_prompt_cdata>) {
     unsafe {
-        let cdata: NonNull<cmd_command_prompt_cdata> = data.cast();
-
         for i in 0u32..(*cdata.as_ptr()).count {
             free_((*(*cdata.as_ptr()).prompts.add(i as usize)).prompt);
             free_((*(*cdata.as_ptr()).prompts.add(i as usize)).input);

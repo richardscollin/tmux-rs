@@ -1265,15 +1265,14 @@ pub unsafe fn window_customize_resize(wme: NonNull<window_mode_entry>, sx: u32, 
     }
 }
 
-pub unsafe fn window_customize_free_callback(modedata: NonNull<c_void>) {
+pub unsafe fn window_customize_free_callback(modedata: NonNull<window_customize_modedata>) {
     unsafe {
-        window_customize_destroy(modedata.cast().as_ptr());
+        window_customize_destroy(modedata.as_ptr());
     }
 }
 
-pub unsafe fn window_customize_free_item_callback(itemdata: NonNull<c_void>) {
+pub unsafe fn window_customize_free_item_callback(item: NonNull<window_customize_itemdata>) {
     unsafe {
-        let item: NonNull<window_customize_itemdata> = itemdata.cast();
         let data: *mut window_customize_modedata = (*item.as_ptr()).data;
 
         window_customize_free_item(item.as_ptr());
@@ -1349,10 +1348,6 @@ pub unsafe fn window_customize_set_option(
     mut pane: i32,
 ) {
     unsafe {
-        // struct options_entry *o;
-        // const struct options_table_entry *oe;
-        // struct options *oo;
-        // struct window_customize_itemdata *new_item;
         let mut flag: i32 = 0;
         let idx = (*item).idx;
         let mut scope = window_customize_scope::WINDOW_CUSTOMIZE_NONE;
@@ -1362,8 +1357,6 @@ pub unsafe fn window_customize_set_option(
         let mut space = c!("");
         let mut oo: *mut options = null_mut();
 
-        // char *prompt, *value, *text;
-        // struct cmd_find_state fs;
         let mut value = null_mut();
         let mut fs: cmd_find_state = zeroed();
 
@@ -1465,13 +1458,15 @@ pub unsafe fn window_customize_set_option(
 
             value = options_to_string(o, idx, 0);
 
-            let new_item =
-                xcalloc1::<window_customize_itemdata>() as *mut window_customize_itemdata;
-            (*new_item).data = data;
-            (*new_item).scope = scope;
-            (*new_item).oo = oo;
-            (*new_item).name = xstrdup(name).as_ptr();
-            (*new_item).idx = idx;
+            let new_item = Box::new(window_customize_itemdata {
+                data,
+                scope,
+                oo,
+                name,
+                idx,
+                table: null_mut(),
+                key: 0,
+            });
 
             (*data).references += 1;
             status_prompt_set(
@@ -1480,8 +1475,8 @@ pub unsafe fn window_customize_set_option(
                 prompt,
                 value,
                 Some(window_customize_set_option_callback),
-                Some(window_customize_free_item_callback),
-                new_item.cast(),
+                window_customize_free_item_callback,
+                Box::into_raw(new_item),
                 PROMPT_NOFORMAT,
                 prompt_type::PROMPT_TYPE_COMMAND,
             );
@@ -1632,12 +1627,15 @@ pub unsafe fn window_customize_set_key(
             prompt = format_nul!("({}) ", _s(key_string_lookup_key(key, 0)));
             value = cmd_list_print(&mut *(*bd).cmdlist, 0);
 
-            let new_item =
-                xcalloc1::<window_customize_itemdata>() as *mut window_customize_itemdata;
-            (*new_item).data = data;
-            (*new_item).scope = (*item).scope;
-            (*new_item).table = xstrdup((*item).table).as_ptr();
-            (*new_item).key = key;
+            let new_item = Box::new(window_customize_itemdata {
+                data,
+                scope: (*item).scope,
+                table: xstrdup((*item).table).as_ptr(),
+                key,
+                oo: null_mut(),
+                name: null_mut(),
+                idx: 0,
+            });
 
             (*data).references += 1;
             status_prompt_set(
@@ -1646,8 +1644,8 @@ pub unsafe fn window_customize_set_key(
                 prompt,
                 value,
                 Some(window_customize_set_command_callback),
-                Some(window_customize_free_item_callback),
-                new_item.cast(),
+                window_customize_free_item_callback,
+                Box::into_raw(new_item),
                 PROMPT_NOFORMAT,
                 prompt_type::PROMPT_TYPE_COMMAND,
             );
@@ -1656,12 +1654,15 @@ pub unsafe fn window_customize_set_key(
         } else if streq_(s, "Note") {
             prompt = format_nul!("({}) ", _s(key_string_lookup_key(key, 0)));
 
-            let new_item =
-                xcalloc1::<window_customize_itemdata>() as *mut window_customize_itemdata;
-            (*new_item).data = data;
-            (*new_item).scope = (*item).scope;
-            (*new_item).table = xstrdup((*item).table).as_ptr();
-            (*new_item).key = key;
+            let new_item = Box::new(window_customize_itemdata {
+                data,
+                scope: (*item).scope,
+                table: xstrdup((*item).table).as_ptr(),
+                key,
+                oo: null_mut(),
+                name: null_mut(),
+                idx: 0,
+            });
 
             (*data).references += 1;
             status_prompt_set(
@@ -1674,8 +1675,8 @@ pub unsafe fn window_customize_set_key(
                     (*bd).note
                 },
                 Some(window_customize_set_note_callback),
-                Some(window_customize_free_item_callback),
-                new_item.cast(),
+                window_customize_free_item_callback,
+                Box::leak(new_item),
                 PROMPT_NOFORMAT,
                 prompt_type::PROMPT_TYPE_COMMAND,
             );
@@ -1902,8 +1903,8 @@ pub unsafe fn window_customize_key(
                         prompt,
                         c!(""),
                         Some(window_customize_change_current_callback),
-                        Some(window_customize_free_callback),
-                        data.cast(),
+                        window_customize_free_callback,
+                        data,
                         PROMPT_SINGLE | PROMPT_NOFORMAT,
                         prompt_type::PROMPT_TYPE_COMMAND,
                     );
@@ -1922,8 +1923,8 @@ pub unsafe fn window_customize_key(
                         prompt,
                         c!(""),
                         Some(window_customize_change_tagged_callback),
-                        Some(window_customize_free_callback),
-                        data.cast(),
+                        window_customize_free_callback,
+                        data,
                         PROMPT_SINGLE | PROMPT_NOFORMAT,
                         prompt_type::PROMPT_TYPE_COMMAND,
                     );
@@ -1946,8 +1947,8 @@ pub unsafe fn window_customize_key(
                         prompt,
                         c!(""),
                         Some(window_customize_change_current_callback),
-                        Some(window_customize_free_callback),
-                        data.cast(),
+                        window_customize_free_callback,
+                        data,
                         PROMPT_SINGLE | PROMPT_NOFORMAT,
                         prompt_type::PROMPT_TYPE_COMMAND,
                     );
@@ -1966,8 +1967,8 @@ pub unsafe fn window_customize_key(
                         prompt,
                         c!(""),
                         Some(window_customize_change_tagged_callback),
-                        Some(window_customize_free_callback),
-                        data.cast(),
+                        window_customize_free_callback,
+                        data,
                         PROMPT_SINGLE | PROMPT_NOFORMAT,
                         prompt_type::PROMPT_TYPE_COMMAND,
                     );

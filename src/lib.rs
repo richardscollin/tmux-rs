@@ -2213,6 +2213,7 @@ struct overlay_ranges {
 
 type prompt_input_cb = Option<unsafe fn(*mut client, NonNull<c_void>, *const u8, i32) -> i32>;
 type prompt_free_cb = Option<unsafe fn(NonNull<c_void>)>;
+
 type overlay_check_cb =
     Option<unsafe fn(*mut client, *mut c_void, u32, u32, u32, *mut overlay_ranges)>;
 type overlay_mode_cb =

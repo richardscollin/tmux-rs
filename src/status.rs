@@ -668,14 +668,14 @@ pub unsafe fn status_message_redraw(c: *mut client) -> i32 {
 }
 
 /// Enable status line prompt.
-pub unsafe fn status_prompt_set(
+pub unsafe fn status_prompt_set<T>(
     c: *mut client,
     fs: *mut cmd_find_state,
     msg: *const u8,
     mut input: *const u8,
     inputcb: prompt_input_cb,
-    freecb: prompt_free_cb,
-    data: *mut c_void,
+    freecb: unsafe fn(NonNull<T>),
+    data: *mut T,
     flags: i32,
     prompt_type: prompt_type,
 ) {
@@ -713,8 +713,11 @@ pub unsafe fn status_prompt_set(
         (*c).prompt_index = utf8_strlen((*c).prompt_buffer);
 
         (*c).prompt_inputcb = inputcb;
-        (*c).prompt_freecb = freecb;
-        (*c).prompt_data = data;
+        (*c).prompt_freecb = Some(std::mem::transmute::<
+            unsafe fn(NonNull<T>),
+            unsafe fn(NonNull<c_void>),
+        >(freecb));
+        (*c).prompt_data = data.cast(); // note we know this is non null
 
         libc::memset(
             (&raw mut (*c).prompt_hindex).cast(),

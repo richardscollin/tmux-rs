@@ -1081,7 +1081,7 @@ pub unsafe fn mode_tree_search_callback(
     }
 }
 
-pub unsafe fn mode_tree_search_free(data: NonNull<c_void>) {
+pub unsafe fn mode_tree_search_free(data: NonNull<mode_tree_data>) {
     unsafe {
         mode_tree_remove_ref(data.cast().as_ptr());
     }
@@ -1117,7 +1117,7 @@ pub unsafe fn mode_tree_filter_callback(
     }
 }
 
-pub unsafe fn mode_tree_filter_free(data: NonNull<c_void>) {
+pub unsafe fn mode_tree_filter_free(data: NonNull<mode_tree_data>) {
     unsafe {
         mode_tree_remove_ref(data.cast().as_ptr());
     }
@@ -1476,8 +1476,8 @@ pub unsafe fn mode_tree_key(
                     c!("(search) "),
                     c!(""),
                     Some(mode_tree_search_callback),
-                    Some(mode_tree_search_free),
-                    mtd.cast(),
+                    mode_tree_search_free,
+                    mtd,
                     PROMPT_NOFORMAT,
                     prompt_type::PROMPT_TYPE_SEARCH,
                 );
@@ -1498,8 +1498,8 @@ pub unsafe fn mode_tree_key(
                     c!("(filter) "),
                     (*mtd).filter,
                     Some(mode_tree_filter_callback),
-                    Some(mode_tree_filter_free),
-                    mtd.cast(),
+                    mode_tree_filter_free,
+                    mtd,
                     PROMPT_NOFORMAT,
                     prompt_type::PROMPT_TYPE_SEARCH,
                 );

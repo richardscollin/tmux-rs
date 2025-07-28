@@ -26,6 +26,7 @@ pub static CMD_CONFIRM_BEFORE_ENTRY: cmd_entry = cmd_entry {
     target: cmd_entry_flag::zeroed(),
 };
 
+#[derive(Default)]
 pub struct cmd_confirm_before_data {
     item: *mut cmdq_item,
     cmdlist: *mut cmd_list,
@@ -44,43 +45,37 @@ unsafe fn cmd_confirm_before_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
         let target = cmdq_get_target(item);
         let wait = !args_has(args, b'b');
 
-        let cdata = xcalloc_::<cmd_confirm_before_data>(1).as_ptr();
-        (*cdata).cmdlist = args_make_commands_now(self_, item, 0, 1);
-        if (*cdata).cmdlist.is_null() {
-            free_(cdata);
+        let mut cdata: Box<cmd_confirm_before_data> = Box::default();
+        cdata.cmdlist = args_make_commands_now(self_, item, 0, 1);
+        if cdata.cmdlist.is_null() {
+            // free_(cdata);
             return cmd_retval::CMD_RETURN_ERROR;
         }
 
         if wait != 0 {
-            (*cdata).item = item;
+            cdata.item = item;
         }
 
-        (*cdata).default_yes = args_has(args, b'y');
+        cdata.default_yes = args_has(args, b'y');
         let confirm_key = args_get(args, b'c');
         if !confirm_key.is_null() {
             if *confirm_key.add(1) == b'\0' as _ && *confirm_key > 31 && *confirm_key < 127 {
-                (*cdata).confirm_key = *confirm_key as _;
+                cdata.confirm_key = *confirm_key as _;
             } else {
                 cmdq_error!(item, "invalid confirm key");
-                free_(cdata);
+                // free_(cdata);
                 return cmd_retval::CMD_RETURN_ERROR;
             }
         } else {
-            (*cdata).confirm_key = b'y';
+            cdata.confirm_key = b'y';
         }
 
         let prompt = args_get(args, b'p');
         let new_prompt = if !prompt.is_null() {
             format_nul!("{} ", _s(prompt))
         } else {
-            let cmd = cmd_get_entry(cmd_list_first((*cdata).cmdlist))
-                .name
-                .as_ptr();
-            format_nul!(
-                "Confirm '{}'? ({}/n) ",
-                _s(cmd),
-                (*cdata).confirm_key as char
-            )
+            let cmd = cmd_get_entry(cmd_list_first(cdata.cmdlist)).name.as_ptr();
+            format_nul!("Confirm '{}'? ({}/n) ", _s(cmd), cdata.confirm_key as char)
         };
 
         status_prompt_set(
@@ -89,8 +84,8 @@ unsafe fn cmd_confirm_before_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
             new_prompt,
             null_mut(),
             Some(cmd_confirm_before_callback),
-            Some(cmd_confirm_before_free),
-            cdata as _,
+            cmd_confirm_before_free,
+            Box::into_raw(cdata),
             PROMPT_SINGLE,
             prompt_type::PROMPT_TYPE_COMMAND,
         );
@@ -150,9 +145,8 @@ unsafe fn cmd_confirm_before_callback(
     }
 }
 
-unsafe fn cmd_confirm_before_free(data: NonNull<c_void>) {
+unsafe fn cmd_confirm_before_free(cdata: NonNull<cmd_confirm_before_data>) {
     unsafe {
-        let cdata: NonNull<cmd_confirm_before_data> = data.cast();
         cmd_list_free((*cdata.as_ptr()).cmdlist);
         free_(cdata.as_ptr());
     }

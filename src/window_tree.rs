@@ -1340,9 +1340,9 @@ unsafe fn window_tree_command_callback(
     }
 }
 
-unsafe fn window_tree_command_free(modedata: NonNull<c_void>) {
+unsafe fn window_tree_command_free(modedata: NonNull<window_tree_modedata>) {
     unsafe {
-        window_tree_destroy(modedata.cast());
+        window_tree_destroy(modedata);
     }
 }
 
@@ -1617,8 +1617,8 @@ unsafe fn window_tree_key(
                         prompt,
                         c!(""),
                         Some(window_tree_kill_current_callback),
-                        Some(window_tree_command_free),
-                        data.cast(),
+                        window_tree_command_free,
+                        data,
                         PROMPT_SINGLE | PROMPT_NOFORMAT,
                         prompt_type::PROMPT_TYPE_COMMAND,
                     );
@@ -1637,8 +1637,8 @@ unsafe fn window_tree_key(
                         prompt,
                         c!(""),
                         Some(window_tree_kill_tagged_callback),
-                        Some(window_tree_command_free),
-                        data.cast(),
+                        window_tree_command_free,
+                        data,
                         PROMPT_SINGLE | PROMPT_NOFORMAT,
                         prompt_type::PROMPT_TYPE_COMMAND,
                     );
@@ -1658,8 +1658,8 @@ unsafe fn window_tree_key(
                         prompt,
                         c!(""),
                         Some(window_tree_command_callback),
-                        Some(window_tree_command_free),
-                        data.cast(),
+                        window_tree_command_free,
+                        data,
                         PROMPT_NOFORMAT,
                         prompt_type::PROMPT_TYPE_COMMAND,
                     );

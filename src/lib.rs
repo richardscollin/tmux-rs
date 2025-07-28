@@ -2600,8 +2600,8 @@ use crate::proc::{
 
 mod cfg_;
 use crate::cfg_::{
-    CFG_CLIENT, CFG_FILES, CFG_FINISHED, CFG_NFILES, CFG_QUIET, cfg_print_causes, cfg_show_causes,
-    load_cfg, load_cfg_from_buffer, start_cfg,
+    CFG_CLIENT, CFG_FILES, CFG_FINISHED, CFG_QUIET, cfg_print_causes, cfg_show_causes, load_cfg,
+    load_cfg_from_buffer, start_cfg,
 };
 
 mod paste;

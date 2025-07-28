@@ -14,6 +14,7 @@
 use crate::*;
 
 use std::cmp::Ordering;
+use std::ffi::CString;
 
 use crate::libc::{
     FNM_CASEFOLD, REG_NOSUB, ctime_r, getpwuid, getuid, ispunct, localtime_r, memcpy, regcomp,
@@ -1656,20 +1657,14 @@ pub unsafe fn format_cb_client_written(ft: *mut format_tree) -> *mut c_void {
 /// Callback for config_files.
 pub unsafe fn format_cb_config_files(_ft: *mut format_tree) -> *mut c_void {
     unsafe {
-        let mut s: *mut u8 = null_mut();
-        let mut slen: usize = 0;
-        let n: usize = 0;
+        let mut s = String::new();
 
-        for i in 0..(CFG_NFILES as usize) {
-            let n = strlen(*CFG_FILES.add(i)) + 1;
-            s = xrealloc(s.cast(), slen + n + 1).as_ptr() as *mut u8;
-            slen += xsnprintf_!(s.add(slen), n + 1, "{},", _s(*CFG_FILES.add(i))).unwrap();
+        for file in CFG_FILES.lock().unwrap().iter() {
+            s.push_str(file.to_str().expect("cfg_files invalid utf8"));
+            s.push(',');
         }
-        if s.is_null() {
-            return xstrdup(c!("")).as_ptr().cast();
-        }
-        *s.add(slen - 1) = 0;
-        s.cast()
+
+        CString::new(s).unwrap().into_raw().cast()
     }
 }
 

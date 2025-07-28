@@ -1,3 +1,5 @@
+use std::ffi::CString;
+
 // Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
 //
 // Permission to use, copy, modify, and distribute this software for any
@@ -102,16 +104,16 @@ pub unsafe fn areshell(shell: *const u8) -> c_int {
     }
 }
 
-pub unsafe fn expand_path(path: *const u8, home: *const u8) -> *mut u8 {
+pub unsafe fn expand_path(path: *const u8, home: *const u8) -> Option<CString> {
     unsafe {
         let mut expanded: *mut u8 = null_mut();
         let mut end: *const u8 = null_mut();
 
         if strncmp(path, c!("~/"), 2) == 0 {
             if home.is_null() {
-                return null_mut();
+                return None;
             }
-            return format_nul!("{}{}", _s(home), _s(path.add(1)));
+            return Some(CString::new(format!("{}{}", _s(home), _s(path.add(1)))).unwrap());
         }
 
         if *path == b'$' {
@@ -126,29 +128,30 @@ pub unsafe fn expand_path(path: *const u8, home: *const u8) -> *mut u8 {
             let value = environ_find(GLOBAL_ENVIRON, name);
             free_(name);
             if value.is_null() {
-                return null_mut();
+                return None;
             }
             if end.is_null() {
                 end = c!("");
             }
-            return format_nul!("{}{}", _s(transmute_ptr((*value).value)), _s(end));
+            return Some(
+                CString::new(format!("{}{}", _s(transmute_ptr((*value).value)), _s(end))).unwrap(),
+            );
         }
 
-        xstrdup(path).cast().as_ptr()
+        Some(CString::new(cstr_to_str(path)).unwrap())
     }
 }
 
-unsafe fn expand_paths(s: &str, paths: *mut *mut *mut u8, n: *mut u32, ignore_errors: i32) {
+unsafe fn expand_paths(s: &str, paths: &mut Vec<CString>, ignore_errors: i32) {
     unsafe {
         let home = find_home();
         let mut next: *const u8 = null_mut();
         let mut resolved: [u8; PATH_MAX as usize] = zeroed(); // TODO use unint version
-        let mut path = null_mut();
+        let mut path: CString;
 
         let func = "expand_paths";
 
-        *paths = null_mut();
-        *n = 0;
+        paths.clear();
 
         let mut tmp: *mut u8 = xstrdup__(s);
         let copy = tmp;
@@ -156,53 +159,43 @@ unsafe fn expand_paths(s: &str, paths: *mut *mut *mut u8, n: *mut u32, ignore_er
             next = strsep(&raw mut tmp as _, c!(":").cast());
             !next.is_null()
         } {
-            let expanded = expand_path(next, home);
-            if expanded.is_null() {
+            let Some(expanded) = expand_path(next, home) else {
                 log_debug!("{}: invalid path: {}", func, _s(next));
                 continue;
-            }
-            if realpath(expanded.cast(), resolved.as_mut_ptr()).is_null() {
+            };
+            if realpath(expanded.as_ptr().cast(), resolved.as_mut_ptr()).is_null() {
                 log_debug!(
                     "{}: realpath(\"{}\") failed: {}",
                     func,
-                    _s(expanded),
+                    expanded.to_string_lossy(),
                     _s(strerror(errno!())),
                 );
                 if ignore_errors != 0 {
-                    free_(expanded);
+                    // free_(expanded);
                     continue;
                 }
                 path = expanded;
             } else {
-                path = xstrdup(resolved.as_ptr()).cast().as_ptr();
-                free_(expanded);
+                path = CString::new(cstr_to_str(resolved.as_ptr())).unwrap();
+                // free_(expanded);
             }
-            let mut i = 0;
-            for j in 0..*n {
-                i = j;
-                if libc::strcmp(path as _, *(*paths).add(i as usize)) == 0 {
-                    break;
-                }
-            }
-            if i != *n {
-                log_debug!("{}: duplicate path: {}", func, _s(path));
-                free_(path);
+
+            if paths.contains(&path) {
+                log_debug!("{}: duplicate path: {}", func, path.to_string_lossy());
+                // free_(path);
                 continue;
             }
-            *paths = xreallocarray_::<*mut u8>(*paths, (*n + 1) as usize).as_ptr();
-            *(*paths).add((*n) as usize) = path;
-            *n += 1;
+
+            paths.push(path);
         }
         free_(copy);
     }
 }
 
 unsafe fn make_label(mut label: *const u8, cause: *mut *mut u8) -> *const u8 {
-    let mut paths: *mut *mut u8 = null_mut();
-    let mut path: *mut u8 = null_mut();
+    let mut paths: Vec<CString> = Vec::new();
     let mut base: *mut u8 = null_mut();
     let mut sb: stat = unsafe { zeroed() }; // TODO use uninit
-    let mut n: u32 = 0;
 
     unsafe {
         'fail: {
@@ -212,19 +205,16 @@ unsafe fn make_label(mut label: *const u8, cause: *mut *mut u8) -> *const u8 {
             }
             let uid = getuid();
 
-            expand_paths(TMUX_SOCK, &raw mut paths, &raw mut n, 1);
-            if n == 0 {
+            expand_paths(TMUX_SOCK, &mut paths, 1);
+            if paths.is_empty() {
                 *cause = format_nul!("no suitable socket path");
                 return null_mut();
             }
-            path = *paths; /* can only have one socket! */
-            for i in 1..n {
-                free_(*paths.add(i as usize));
-            }
-            free_(paths);
 
-            base = format_nul!("{}/tmux-{}", _s(path), uid);
-            free_(path);
+            paths.truncate(1);
+            let mut path = paths.pop().unwrap(); /* can only have one socket! */
+
+            base = format_nul!("{}/tmux-{}", path.to_string_lossy(), uid);
             if mkdir(base.cast(), S_IRWXU) != 0 && errno!() != EEXIST {
                 *cause = format_nul!(
                     "couldn't create directory {} ({})",
@@ -249,9 +239,9 @@ unsafe fn make_label(mut label: *const u8, cause: *mut *mut u8) -> *const u8 {
                 *cause = format_nul!("directory {} has unsafe permissions", _s(base));
                 break 'fail;
             }
-            path = format_nul!("{}/{}", _s(base), _s(label));
+            path = CString::new(format!("{}/{}", _s(base), _s(label))).unwrap();
             free_(base);
-            return path;
+            return path.into_raw().cast();
         }
 
         // fail:
@@ -410,7 +400,7 @@ pub unsafe fn tmux_main(mut argc: i32, mut argv: *mut *mut u8, env: *mut *mut u8
         if !cwd.is_null() {
             environ_set!(GLOBAL_ENVIRON, c!("PWD"), 0, "{}", _s(cwd));
         }
-        expand_paths(TMUX_CONF, &raw mut CFG_FILES, &raw mut CFG_NFILES, 1);
+        expand_paths(TMUX_CONF, &mut CFG_FILES.lock().unwrap(), 1);
 
         while let Some(opt) = getopt(argc, argv.cast(), c!("2c:CDdf:lL:NqS:T:uUvV")) {
             match opt {
@@ -427,15 +417,12 @@ pub unsafe fn tmux_main(mut argc: i32, mut argv: *mut *mut u8, env: *mut *mut u8
                 b'f' => {
                     if fflag == 0 {
                         fflag = 1;
-                        for i in 0..CFG_NFILES {
-                            free((*CFG_FILES.add(i as usize)) as _);
-                        }
-                        CFG_NFILES = 0;
+                        CFG_FILES.lock().unwrap().clear();
                     }
-                    CFG_FILES =
-                        xreallocarray_::<*mut u8>(CFG_FILES, CFG_NFILES as usize + 1).as_ptr();
-                    *CFG_FILES.add(CFG_NFILES as usize) = xstrdup(OPTARG.cast()).cast().as_ptr();
-                    CFG_NFILES += 1;
+                    CFG_FILES
+                        .lock()
+                        .unwrap()
+                        .push(CString::new(cstr_to_str(OPTARG)).unwrap());
                     CFG_QUIET.store(false, atomic::Ordering::Relaxed);
                 }
                 b'V' => {

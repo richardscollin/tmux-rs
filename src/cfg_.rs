@@ -18,6 +18,8 @@ use crate::libc::{ENOENT, strerror};
 use crate::cmd_::cmd_queue::cmdq_get_callback;
 use crate::compat::{queue::tailq_first, tree::rb_min};
 
+use std::ffi::CString;
+use std::sync::Mutex;
 use std::sync::atomic::AtomicBool;
 
 pub static mut CFG_CLIENT: *mut client = null_mut();
@@ -31,8 +33,7 @@ static mut CFG_ITEM: *mut cmdq_item = null_mut();
 
 pub static CFG_QUIET: AtomicBool = AtomicBool::new(true);
 
-pub static mut CFG_FILES: *mut *mut u8 = null_mut();
-pub static mut CFG_NFILES: c_uint = 0;
+pub static CFG_FILES: Mutex<Vec<CString>> = Mutex::new(Vec::new());
 
 fn cfg_client_done(_item: *mut cmdq_item, _data: *mut c_void) -> cmd_retval {
     if !CFG_FINISHED.load(atomic::Ordering::Acquire) {
@@ -85,9 +86,9 @@ pub unsafe fn start_cfg() {
             cmd_parse_input_flags::empty()
         };
 
-        for i in 0..CFG_NFILES {
+        for file in CFG_FILES.lock().unwrap().iter() {
             load_cfg(
-                cstr_to_str(*CFG_FILES.add(i as usize)),
+                file.to_str().expect("cfg file isn't valid utf8"),
                 c,
                 null_mut(),
                 null_mut(),

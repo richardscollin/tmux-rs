@@ -299,6 +299,10 @@ pub unsafe fn unsetenv(name: *const u8) -> i32 {
     unsafe { ::libc::unsetenv(name.cast()) }
 }
 
+pub unsafe fn streq(cs: *const u8, ct: *const u8) -> bool {
+    unsafe { strcmp(cs, ct) == 0 }
+}
+
 pub unsafe fn strcmp(cs: *const u8, ct: *const u8) -> i32 {
     unsafe { ::libc::strcmp(cs.cast(), ct.cast()) }
 }

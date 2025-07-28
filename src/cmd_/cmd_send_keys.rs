@@ -105,9 +105,6 @@ pub unsafe fn cmd_send_keys_inject_string(
 ) -> *mut cmdq_item {
     unsafe {
         let s = args_string(args, i as u32);
-        let ud: *mut utf8_data;
-        let mut loop_: *mut utf8_data;
-        let mut uc: utf8_char = 0;
         let mut key: key_code;
         let mut endptr: *mut u8 = null_mut();
         let n: c_long = 0;
@@ -132,22 +129,17 @@ pub unsafe fn cmd_send_keys_inject_string(
             literal = true;
         }
         if literal {
-            ud = utf8_fromcstr(s);
-            loop_ = ud;
-            while (*loop_).size != 0 {
-                if (*loop_).size == 1 && (*loop_).data[0] <= 0x7f {
-                    key = (*loop_).data[0] as _;
+            for loop_ in utf8_fromcstr(s).iter() {
+                if loop_.size == 1 && loop_.data[0] <= 0x7f {
+                    key = loop_.data[0] as _;
                 } else {
-                    if utf8_from_data(loop_, &raw mut uc) != utf8_state::UTF8_DONE {
-                        loop_ = loop_.add(1);
+                    let Ok(uc) = utf8_from_data(loop_) else {
                         continue;
-                    }
+                    };
                     key = uc as _;
                 }
                 after = cmd_send_keys_inject_key(item, after, args, key);
-                loop_ = loop_.add(1);
             }
-            free_(ud);
         }
         after
     }

@@ -458,17 +458,19 @@ pub unsafe fn screen_write_text_(
 
         let mut left = (cx + width) - (*s).cx;
         loop {
-            /* Find the end of what can fit on the line. */
-            let mut at = 0;
+            // Find the end of what can fit on the line.
+
             let mut end = idx;
-            while (*text.add(end)).size != 0 {
-                if (*text.add(end)).size == 1 && (*text.add(end)).data[0] == b'\n' {
+            let mut at = 0;
+            for _ in idx..text.len() {
+                if text[end].initialized_slice() == b"\n" {
                     break;
                 }
-                if at + (*text.add(end)).width as u32 > left {
+                if at + text[end].width as u32 > left {
                     break;
                 }
-                at += (*text.add(end)).width as u32;
+
+                at += text[end].width as u32;
                 end += 1;
             }
 
@@ -476,16 +478,16 @@ pub unsafe fn screen_write_text_(
              * If we're on a space, that's the end. If not, walk back to
              * try and find one.
              */
-            let next = if (*text.add(end)).size == 0 {
+
+            // note with the new box slice rust version text_end.size == 0 shouldn't occur
+            let next = if end == text.len() {
                 end
-            } else if ((*text.add(end)).size == 1 && (*text.add(end)).data[0] == b'\n')
-                || ((*text.add(end)).size == 1 && (*text.add(end)).data[0] == b' ')
-            {
+            } else if matches!(text[end].initialized_slice(), b"\n" | b" ") {
                 end + 1
             } else {
                 let mut i = end;
                 while i > idx {
-                    if (*text.add(i)).size == 1 && (*text.add(i)).data[0] == b' ' {
+                    if text[i].initialized_slice() == b" " {
                         break;
                     }
                     i -= 1;
@@ -500,13 +502,13 @@ pub unsafe fn screen_write_text_(
 
             // Print the line.
             for i in idx..end {
-                utf8_copy(&raw mut gc.data, text.add(i));
+                utf8_copy(&raw mut gc.data, &raw const text[i]);
                 screen_write_cell(ctx, &gc);
             }
 
             // If at the bottom, stop.
             idx = next;
-            if (*s).cy == cy + lines - 1 || (*text.add(idx)).size == 0 {
+            if (*s).cy == cy + lines - 1 || idx == text.len() {
                 break;
             }
 
@@ -518,13 +520,9 @@ pub unsafe fn screen_write_text_(
          * Fail if on the last line and there is more to come or at the end, or
          * if the text was not entirely consumed.
          */
-        if ((*s).cy == cy + lines - 1 && (!more || (*s).cx == cx + width))
-            || (*text.add(idx)).size != 0
-        {
-            free_(text);
+        if ((*s).cy == cy + lines - 1 && (!more || (*s).cx == cx + width)) || idx != text.len() {
             return false;
         }
-        free_(text);
 
         /*
          * If no more to come, move to the next line. Otherwise, leave on
@@ -2543,8 +2541,8 @@ pub unsafe fn screen_write_rawstring(
 }
 
 // TODO
-#[cfg(feature = "sixel")]
 /// Write a SIXEL image.
+#[cfg(feature = "sixel")]
 unsafe fn screen_write_sixelimage(ctx: *mut screen_write_ctx, si: *mut sixel_image, bg: u32) {
     unsafe {
         let mut s = (*ctx).s;

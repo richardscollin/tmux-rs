@@ -38,7 +38,7 @@ pub struct window_clock_mode_data {
 }
 
 #[rustfmt::skip]
-pub static mut WINDOW_CLOCK_TABLE: [[[u8; 5]; 5]; 14] = [
+pub static WINDOW_CLOCK_TABLE: [[[u8; 5]; 5]; 14] = [
     [
         [1, 1, 1, 1, 1], /* 0 */
         [1, 0, 0, 0, 1],

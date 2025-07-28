@@ -242,7 +242,7 @@ unsafe fn screen_write_initctx(ctx: *mut screen_write_ctx, ttyctx: *mut tty_ctx,
             } else {
                 (*ttyctx).num = 0x10 | (sync as u32);
             }
-            tty_write(Some(tty_cmd_syncstart), ttyctx);
+            tty_write(tty_cmd_syncstart, ttyctx);
             (*ctx).flags |= SCREEN_WRITE_SYNC;
         }
     }
@@ -1160,7 +1160,7 @@ pub unsafe fn screen_write_alignmenttest(ctx: *mut screen_write_ctx) {
         screen_write_initctx(ctx, &raw mut ttyctx, 1);
 
         screen_write_collect_clear(ctx, 0, screen_size_y(s) - 1);
-        tty_write(Some(tty_cmd_alignmenttest), &raw mut ttyctx);
+        tty_write(tty_cmd_alignmenttest, &raw mut ttyctx);
     }
 }
 
@@ -1199,7 +1199,7 @@ pub unsafe fn screen_write_insertcharacter(ctx: *mut screen_write_ctx, mut nx: u
 
         screen_write_collect_flush(ctx, 0, c!("screen_write_insertcharacter"));
         ttyctx.num = nx;
-        tty_write(Some(tty_cmd_insertcharacter), &raw mut ttyctx);
+        tty_write(tty_cmd_insertcharacter, &raw mut ttyctx);
     }
 }
 
@@ -1238,7 +1238,7 @@ pub unsafe fn screen_write_deletecharacter(ctx: *mut screen_write_ctx, mut nx: u
 
         screen_write_collect_flush(ctx, 0, c!("screen_write_deletecharacter"));
         ttyctx.num = nx;
-        tty_write(Some(tty_cmd_deletecharacter), &raw mut ttyctx);
+        tty_write(tty_cmd_deletecharacter, &raw mut ttyctx);
     }
 }
 
@@ -1277,7 +1277,7 @@ pub unsafe fn screen_write_clearcharacter(ctx: *mut screen_write_ctx, mut nx: u3
 
         screen_write_collect_flush(ctx, 0, c!("screen_write_clearcharacter"));
         ttyctx.num = nx;
-        tty_write(Some(tty_cmd_clearcharacter), &raw mut ttyctx);
+        tty_write(tty_cmd_clearcharacter, &raw mut ttyctx);
     }
 }
 
@@ -1321,7 +1321,7 @@ pub unsafe fn screen_write_insertline(ctx: *mut screen_write_ctx, mut ny: u32, b
 
             screen_write_collect_flush(ctx, 0, c!("screen_write_insertline"));
             ttyctx.num = ny;
-            tty_write(Some(tty_cmd_insertline), &raw mut ttyctx);
+            tty_write(tty_cmd_insertline, &raw mut ttyctx);
             return;
         }
 
@@ -1344,7 +1344,7 @@ pub unsafe fn screen_write_insertline(ctx: *mut screen_write_ctx, mut ny: u32, b
         screen_write_collect_flush(ctx, 0, c!("screen_write_insertline"));
 
         ttyctx.num = ny;
-        tty_write(Some(tty_cmd_insertline), &raw mut ttyctx);
+        tty_write(tty_cmd_insertline, &raw mut ttyctx);
     }
 }
 
@@ -1382,7 +1382,7 @@ pub unsafe fn screen_write_deleteline(ctx: *mut screen_write_ctx, mut ny: u32, b
 
             screen_write_collect_flush(ctx, 0, c!("screen_write_deleteline"));
             ttyctx.num = ny;
-            tty_write(Some(tty_cmd_deleteline), &raw mut ttyctx);
+            tty_write(tty_cmd_deleteline, &raw mut ttyctx);
             return;
         }
 
@@ -1404,7 +1404,7 @@ pub unsafe fn screen_write_deleteline(ctx: *mut screen_write_ctx, mut ny: u32, b
 
         screen_write_collect_flush(ctx, 0, c!("screen_write_deleteline"));
         ttyctx.num = ny;
-        tty_write(Some(tty_cmd_deleteline), &raw mut ttyctx);
+        tty_write(tty_cmd_deleteline, &raw mut ttyctx);
     }
 }
 
@@ -1577,7 +1577,7 @@ pub unsafe fn screen_write_reverseindex(ctx: *mut screen_write_ctx, bg: u32) {
             screen_write_initctx(ctx, &raw mut ttyctx, 1);
             ttyctx.bg = bg;
 
-            tty_write(Some(tty_cmd_reverseindex), &raw mut ttyctx);
+            tty_write(tty_cmd_reverseindex, &raw mut ttyctx);
         } else if (*s).cy > 0 {
             screen_write_set_cursor(ctx, -1, (*s).cy as i32 - 1);
         }
@@ -1721,7 +1721,7 @@ pub unsafe fn screen_write_scrolldown(ctx: *mut screen_write_ctx, mut lines: u32
 
         screen_write_collect_flush(ctx, 0, c!("screen_write_scrolldown"));
         ttyctx.num = lines;
-        tty_write(Some(tty_cmd_scrolldown), &raw mut ttyctx);
+        tty_write(tty_cmd_scrolldown, &raw mut ttyctx);
     }
 }
 
@@ -1768,7 +1768,7 @@ pub unsafe fn screen_write_clearendofscreen(ctx: *mut screen_write_ctx, bg: u32)
 
         screen_write_collect_clear(ctx, (*s).cy + 1, sy - ((*s).cy + 1));
         screen_write_collect_flush(ctx, 0, c!("screen_write_clearendofscreen"));
-        tty_write(Some(tty_cmd_clearendofscreen), &raw mut ttyctx);
+        tty_write(tty_cmd_clearendofscreen, &raw mut ttyctx);
     }
 }
 
@@ -1800,7 +1800,7 @@ pub unsafe fn screen_write_clearstartofscreen(ctx: *mut screen_write_ctx, bg: u3
 
         screen_write_collect_clear(ctx, 0, (*s).cy);
         screen_write_collect_flush(ctx, 0, c!("screen_write_clearstartofscreen"));
-        tty_write(Some(tty_cmd_clearstartofscreen), &raw mut ttyctx);
+        tty_write(tty_cmd_clearstartofscreen, &raw mut ttyctx);
     }
 }
 
@@ -1833,7 +1833,7 @@ pub unsafe fn screen_write_clearscreen(ctx: *mut screen_write_ctx, bg: u32) {
         }
 
         screen_write_collect_clear(ctx, 0, sy);
-        tty_write(Some(tty_cmd_clearscreen), &raw mut ttyctx);
+        tty_write(tty_cmd_clearscreen, &raw mut ttyctx);
     }
 }
 
@@ -2003,7 +2003,7 @@ pub unsafe fn screen_write_collect_flush(
             screen_write_initctx(ctx, &raw mut ttyctx, 1);
             ttyctx.num = (*ctx).scrolled;
             ttyctx.bg = (*ctx).bg;
-            tty_write(Some(tty_cmd_scrollup), &raw mut ttyctx);
+            tty_write(tty_cmd_scrollup, &raw mut ttyctx);
         }
         (*ctx).scrolled = 0;
         (*ctx).bg = 8;
@@ -2026,14 +2026,14 @@ pub unsafe fn screen_write_collect_flush(
                     screen_write_initctx(ctx, &raw mut ttyctx, 1);
                     ttyctx.bg = (*ci).bg;
                     ttyctx.num = (*ci).used;
-                    tty_write(Some(tty_cmd_clearcharacter), &raw mut ttyctx);
+                    tty_write(tty_cmd_clearcharacter, &raw mut ttyctx);
                 } else {
                     screen_write_initctx(ctx, &raw mut ttyctx, 0);
                     ttyctx.cell = &(*ci).gc;
                     ttyctx.wrapped = (*ci).wrapped;
                     ttyctx.ptr = (*cl).data.add((*ci).x as usize).cast();
                     ttyctx.num = (*ci).used;
-                    tty_write(Some(tty_cmd_cells), &raw mut ttyctx);
+                    tty_write(tty_cmd_cells, &raw mut ttyctx);
                 }
                 items += 1;
 
@@ -2304,7 +2304,7 @@ pub unsafe fn screen_write_cell(ctx: *mut screen_write_ctx, gc: *const grid_cell
         if (*s).mode.intersects(mode_flag::MODE_INSERT) {
             screen_write_collect_flush(ctx, 0, c!("screen_write_cell"));
             ttyctx.num = width;
-            tty_write(Some(tty_cmd_insertcharacter), &raw mut ttyctx);
+            tty_write(tty_cmd_insertcharacter, &raw mut ttyctx);
         }
 
         /* Write to the screen. */
@@ -2315,7 +2315,7 @@ pub unsafe fn screen_write_cell(ctx: *mut screen_write_ctx, gc: *const grid_cell
             } else {
                 ttyctx.cell = gc;
             }
-            tty_write(Some(tty_cmd_cell), &raw mut ttyctx);
+            tty_write(tty_cmd_cell, &raw mut ttyctx);
         }
     }
 }
@@ -2425,7 +2425,7 @@ pub unsafe fn screen_write_combine(ctx: *mut screen_write_ctx, gc: *const grid_c
         screen_write_initctx(ctx, &raw mut ttyctx, 0);
         ttyctx.cell = &raw const last;
         ttyctx.num = force_wide; /* reset cached cursor position */
-        tty_write(Some(tty_cmd_cell), &raw mut ttyctx);
+        tty_write(tty_cmd_cell, &raw mut ttyctx);
         screen_write_set_cursor(ctx, cx as i32, cy as i32);
 
         1
@@ -2519,7 +2519,7 @@ pub unsafe fn screen_write_setselection(
         ttyctx.ptr2 = flags as *mut c_void; // TODO casting away const
         ttyctx.num = len;
 
-        tty_write(Some(tty_cmd_setselection), &raw mut ttyctx);
+        tty_write(tty_cmd_setselection, &raw mut ttyctx);
     }
 }
 
@@ -2538,7 +2538,7 @@ pub unsafe fn screen_write_rawstring(
         ttyctx.num = len;
         ttyctx.allow_invisible_panes = allow_invisible_panes;
 
-        tty_write(Some(tty_cmd_rawstring), &raw mut ttyctx);
+        tty_write(tty_cmd_rawstring, &raw mut ttyctx);
     }
 }
 

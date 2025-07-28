@@ -2075,7 +2075,7 @@ pub unsafe fn tty_client_ready(ctx: *const tty_ctx, c: *mut client) -> i32 {
     }
 }
 
-pub unsafe fn tty_write(cmdfn: Option<unsafe fn(*mut tty, *const tty_ctx)>, ctx: *mut tty_ctx) {
+pub unsafe fn tty_write(cmdfn: unsafe fn(*mut tty, *const tty_ctx), ctx: *mut tty_ctx) {
     unsafe {
         let Some(set_client_cb) = (*ctx).set_client_cb else {
             return;
@@ -2090,7 +2090,7 @@ pub unsafe fn tty_write(cmdfn: Option<unsafe fn(*mut tty, *const tty_ctx)>, ctx:
                 if state == 0 {
                     continue;
                 }
-                cmdfn.unwrap()(&raw mut (*c).tty, ctx);
+                cmdfn(&raw mut (*c).tty, ctx);
             }
         }
     }

@@ -9,14 +9,14 @@ serde   = { version = "1.0",     features = ["derive"] }
 syn     = { version = "2.0.104", features = ["full", "visit"] }
 walkdir = { version = "2.5.0",   features = [] }
 ---
-use ::std::{
+use colored::{Color, ColoredString, Colorize};
+use std::{
     collections::{BTreeMap, HashMap, HashSet},
     fmt::Write,
     fs,
     path::Path,
 };
-use colored::{Color, ColoredString, Colorize};
-use syn::{ExprMethodCall, ExprUnsafe, ItemFn, ItemStatic, StaticMutability, Stmt, visit::Visit};
+use syn::{visit::Visit, ExprMethodCall, ExprUnsafe, ItemFn, ItemStatic, StaticMutability, Stmt};
 use walkdir::WalkDir;
 
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
@@ -65,6 +65,13 @@ impl CodeStats {
             || self.unsafe_statements != *unsafe_statements
             || self.static_mut_items != *static_mut_items
             || self.unwraps != *unwraps
+    }
+
+    fn is_perfect(&self) -> bool {
+        self.unsafe_fns == 0
+            && self.unsafe_statements == 0
+            && self.static_mut_items == 0
+            && self.unwraps == 0
     }
 }
 
@@ -205,15 +212,15 @@ fn print_report(report: &Report) {
     ]];
     table.extend(report.files.values().map(|file_report| {
         [
-            file_report.filename.clone().into(), // filename
+            style_filename(&file_report.filename, file_report), // filename
             colorize_ratio(file_report.unsafe_fns, file_report.total_fns), // unsafe fns
             format!(
                 "{}/{}",
                 file_report.unsafe_statements, file_report.total_statements
             )
             .into(), // unsafe statements
-            colorize_simple(file_report.static_mut_items), // static mut
-            colorize_simple(file_report.unwraps), // unwraps
+            colorize_simple(file_report.static_mut_items),      // static mut
+            colorize_simple(file_report.unwraps),               // unwraps
         ]
     }));
 
@@ -370,6 +377,14 @@ fn format_diff(old: isize, new: isize, decrease_is: DecreaseIs) -> String {
     format!("{old} -> {new} ({plus}{delta})")
         .color(color)
         .to_string()
+}
+
+fn style_filename(filename: &str, stats: &CodeStats) -> ColoredString {
+    if stats.is_perfect() {
+        format!("{filename}").color(Color::Green)
+    } else {
+        format!("{filename}").into()
+    }
 }
 
 fn colorize_percentage(unsafe_count: isize, total_count: isize) -> ColoredString {

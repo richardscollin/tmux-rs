@@ -412,12 +412,8 @@ pub unsafe fn tmux_main(mut argc: i32, mut argv: *mut *mut u8, env: *mut *mut u8
         }
         expand_paths(TMUX_CONF, &raw mut CFG_FILES, &raw mut CFG_NFILES, 1);
 
-        let mut opt;
-        while {
-            opt = getopt(argc, argv.cast(), c!("2c:CDdf:lL:NqS:T:uUvV"));
-            opt.is_some()
-        } {
-            match opt.unwrap() {
+        while let Some(opt) = getopt(argc, argv.cast(), c!("2c:CDdf:lL:NqS:T:uUvV")) {
+            match opt {
                 b'2' => tty_add_features(&raw mut feat, "256", c!(":,")),
                 b'c' => SHELL_COMMAND = OPTARG.cast(),
                 b'D' => flags |= client_flag::NOFORK,

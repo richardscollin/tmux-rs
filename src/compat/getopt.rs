@@ -31,16 +31,16 @@ use crate::*;
 
 pub static mut OPTERR: i32 = 1;
 pub static mut OPTIND: i32 = 1;
-pub static mut OPTOPT: i32 = 0;
+pub static mut OPTOPT: u8 = 0;
 pub static mut OPTRESET: i32 = 0;
 pub static mut OPTARG: *mut u8 = null_mut();
 
-pub unsafe fn getopt(mut nargc: i32, mut nargv: *const *mut u8, mut ostr: *const u8) -> i32 {
+pub unsafe fn getopt(mut nargc: i32, mut nargv: *const *mut u8, mut ostr: *const u8) -> Option<u8> {
     unsafe {
         static mut PLACE: *const u8 = c"".as_ptr().cast();
         let mut oli: *mut u8 = null_mut();
         if ostr.is_null() {
-            return -1;
+            return None;
         }
         if OPTRESET != 0 || *PLACE == 0 {
             OPTRESET = 0;
@@ -49,30 +49,30 @@ pub unsafe fn getopt(mut nargc: i32, mut nargv: *const *mut u8, mut ostr: *const
                 *PLACE != b'-'
             } {
                 PLACE = c"".as_ptr().cast();
-                return -1;
+                return None;
             }
             if *PLACE.add(1) != 0 && {
                 PLACE = PLACE.add(1);
                 *PLACE == b'-'
             } {
                 if *PLACE.add(1) != 0 {
-                    return '?' as i32;
+                    return Some(b'?');
                 }
                 OPTIND += 1;
                 OPTIND;
                 PLACE = c"".as_ptr().cast();
-                return -1;
+                return None;
             }
         }
         let fresh0 = PLACE;
         PLACE = PLACE.offset(1);
-        OPTOPT = *fresh0 as i32;
-        if OPTOPT == ':' as i32 || {
-            oli = crate::libc::strchr(ostr, OPTOPT);
+        OPTOPT = *fresh0;
+        if OPTOPT == b':' || {
+            oli = crate::libc::strchr(ostr, OPTOPT as i32);
             oli.is_null()
         } {
-            if OPTOPT == b'-' as i32 {
-                return -1;
+            if OPTOPT == b'-' {
+                return None;
             }
             if *PLACE == 0 {
                 OPTIND += 1;
@@ -80,9 +80,9 @@ pub unsafe fn getopt(mut nargc: i32, mut nargv: *const *mut u8, mut ostr: *const
             }
             if OPTERR != 0 && *ostr != b':' {
                 let tmp = OPTOPT;
-                eprintln!("tmux-rs: unknown option -- {tmp}");
+                eprintln!("tmux-rs: unknown option -- {}", tmp as char);
             }
-            return '?' as i32;
+            return Some(b'?');
         }
         oli = oli.offset(1);
         if *oli != b':' {
@@ -99,13 +99,13 @@ pub unsafe fn getopt(mut nargc: i32, mut nargv: *const *mut u8, mut ostr: *const
                 if nargc <= OPTIND {
                     PLACE = c"".as_ptr().cast();
                     if *ostr == b':' {
-                        return ':' as i32;
+                        return Some(b':');
                     }
                     if OPTERR != 0 {
                         let tmp = OPTOPT;
-                        eprintln!("tmux-rs: option requires an argument -- {tmp}");
+                        eprintln!("tmux-rs: option requires an argument -- {}", tmp as char);
                     }
-                    return '?' as i32;
+                    return Some(b'?');
                 } else {
                     OPTARG = *nargv.offset(OPTIND as isize);
                 }
@@ -115,6 +115,6 @@ pub unsafe fn getopt(mut nargc: i32, mut nargv: *const *mut u8, mut ostr: *const
             OPTIND;
         }
 
-        OPTOPT
+        Some(OPTOPT)
     }
 }

@@ -415,9 +415,9 @@ pub unsafe fn tmux_main(mut argc: i32, mut argv: *mut *mut u8, env: *mut *mut u8
         let mut opt;
         while {
             opt = getopt(argc, argv.cast(), c!("2c:CDdf:lL:NqS:T:uUvV"));
-            opt != -1
+            opt.is_some()
         } {
-            match opt as u8 {
+            match opt.unwrap() {
                 b'2' => tty_add_features(&raw mut feat, "256", c!(":,")),
                 b'c' => SHELL_COMMAND = OPTARG.cast(),
                 b'D' => flags |= client_flag::NOFORK,

@@ -101,13 +101,13 @@ pub unsafe fn osdep_event_init() -> *mut event_base {
 // osdep darwin
 
 #[cfg(target_os = "macos")]
-pub unsafe fn osdep_get_name(fd: i32, tty: *const u8) -> *mut u8 {
+pub unsafe fn osdep_get_name(fd: i32, _tty: *const u8) -> *mut u8 {
     // note only bothering to port the version for > Mac OS X 10.7 SDK or later
     unsafe {
         use libc::proc_pidinfo;
 
         let mut bsdinfo: proc_bsdshortinfo = zeroed();
-        let mut pgrp: pid_t = libc::tcgetpgrp(fd);
+        let pgrp: pid_t = libc::tcgetpgrp(fd);
         if pgrp == -1 {
             return null_mut();
         }
@@ -121,14 +121,14 @@ pub unsafe fn osdep_get_name(fd: i32, tty: *const u8) -> *mut u8 {
             padding2: [u32; 8],
         }
 
-        let mut ret = proc_pidinfo(
+        let ret = proc_pidinfo(
             pgrp,
             PROC_PIDT_SHORTBSDINFO as _,
             0,
             (&raw mut bsdinfo).cast(),
             size_of::<proc_bsdshortinfo>() as _,
         );
-        if (ret == size_of::<proc_bsdshortinfo>() as _ && bsdinfo.pbsi_comm[0] != b'\0') {
+        if ret == size_of::<proc_bsdshortinfo>() as _ && bsdinfo.pbsi_comm[0] != b'\0' {
             return libc::strdup((&raw const bsdinfo.pbsi_comm).cast());
         }
         null_mut()
@@ -141,7 +141,7 @@ pub unsafe fn osdep_get_cwd(fd: i32) -> *const u8 {
     unsafe {
         let mut pathinfo: libc::proc_vnodepathinfo = zeroed();
 
-        let mut pgrp: pid_t = libc::tcgetpgrp(fd);
+        let pgrp: pid_t = libc::tcgetpgrp(fd);
         if pgrp == -1 {
             return null_mut();
         }
@@ -176,7 +176,7 @@ pub unsafe fn osdep_event_init() -> *mut event_base {
         crate::libc::setenv(c!("EVENT_NOKQUEUE"), c!("1"), 1);
         crate::libc::setenv(c!("EVENT_NOPOLL"), c!("1"), 1);
 
-        let mut base: *mut event_base = event_init();
+        let base: *mut event_base = event_init();
         crate::libc::unsetenv(c!("EVENT_NOKQUEUE"));
         crate::libc::unsetenv(c!("EVENT_NOPOLL"));
 

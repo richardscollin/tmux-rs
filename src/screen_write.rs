@@ -2624,8 +2624,7 @@ pub unsafe fn screen_write_alternateoff(
     unsafe {
         let mut ttyctx: tty_ctx = zeroed();
         let wp = (*ctx).wp;
-
-        if !wp.is_null() && !options_get_number_((*wp).options, "alternate-screen") != 0 {
+        if !wp.is_null() && options_get_number_((*wp).options, "alternate-screen") == 0 {
             return;
         }
 

@@ -59,7 +59,7 @@ unsafe fn cmd_kill_window_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
         //*loop;
         let w = (*wl).window;
         let s = (*target).s;
-        let mut found = 0u32;
+        let mut found;
 
         if std::ptr::eq(cmd_get_entry(self_), &CMD_UNLINK_WINDOW_ENTRY) {
             if !args_has(args, b'k') != 0 && session_is_linked(s, w) == 0 {

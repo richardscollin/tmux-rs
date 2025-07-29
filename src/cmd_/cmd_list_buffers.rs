@@ -30,7 +30,6 @@ pub static CMD_LIST_BUFFERS_ENTRY: cmd_entry = cmd_entry {
 unsafe fn cmd_list_buffers_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retval {
     unsafe {
         let args = cmd_get_args(self_);
-        let mut flag = 0;
 
         let mut template: *const u8 = args_get(args, b'F');
         if template.is_null() {
@@ -51,6 +50,7 @@ unsafe fn cmd_list_buffers_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
             );
             format_defaults_paste_buffer(ft, pb);
 
+            let flag;
             if !filter.is_null() {
                 let expanded = format_expand(ft, filter);
                 flag = format_true(expanded);

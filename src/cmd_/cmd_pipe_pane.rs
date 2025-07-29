@@ -42,8 +42,8 @@ pub unsafe fn cmd_pipe_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
         let wl = (*target).wl;
         let wpo = &raw mut (*wp).pipe_offset;
         let mut pipe_fd: [i32; 2] = [0; 2];
-        let mut in_: i32 = 0;
-        let mut out: i32 = 0;
+        let in_: i32;
+        let out: i32;
         let mut set: sigset_t = zeroed(); // TODO uninit
         let mut oldset: sigset_t = zeroed(); // TODO uninit
 

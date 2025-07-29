@@ -70,7 +70,6 @@ unsafe fn cmd_list_windows_session(
 ) {
     unsafe {
         let args = cmd_get_args(self_);
-        let mut flag = 0;
 
         let mut template = args_get_(args, 'F');
         if template.is_null() {
@@ -96,6 +95,7 @@ unsafe fn cmd_list_windows_session(
             format_add!(ft, c!("line"), "{n}");
             format_defaults(ft, null_mut(), Some(s), Some(wl), None);
 
+            let flag ;
             if !filter.is_null() {
                 let expanded = format_expand(ft, filter);
                 flag = format_true(expanded);

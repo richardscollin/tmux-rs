@@ -48,8 +48,8 @@ unsafe fn cmd_display_menu_args_parse(
     _cause: *mut *mut u8,
 ) -> args_parse_type {
     let mut i: u32 = 0;
-    let mut type_ = args_parse_type::ARGS_PARSE_STRING;
 
+    let mut type_;
     loop {
         type_ = args_parse_type::ARGS_PARSE_STRING;
         if i == idx {
@@ -95,14 +95,12 @@ unsafe fn cmd_display_menu_get_position(
         let s = (*tc).session;
         let wl = (*target).wl;
         let wp = (*target).wp;
-        let mut ranges = null_mut();
         let mut sr = null_mut();
         let mut line: u32 = 0;
         let mut ox: u32 = 0;
         let mut oy: u32 = 0;
         let mut sx: u32 = 0;
         let mut sy: u32 = 0;
-        let mut n: c_long = 0;
 
         /*
          * Work out the position from the -x and -y arguments. This is the
@@ -137,7 +135,7 @@ unsafe fn cmd_display_menu_get_position(
 
             for line_ in 0..lines {
                 line = line_;
-                ranges = &raw mut (*tc).status.entries[line as usize].ranges;
+                let ranges = &raw mut (*tc).status.entries[line as usize].ranges;
                 for sr_ in tailq_foreach(ranges) {
                     sr = sr_.as_ptr();
                     if (*sr).type_ != style_range_type::STYLE_RANGE_WINDOW {
@@ -180,8 +178,8 @@ unsafe fn cmd_display_menu_get_position(
         format_add!(ft, c!("popup_width"), "{w}");
         format_add!(ft, c!("popup_height"), "{h}");
 
-        /* Position so popup is in the centre. */
-        n = ((*tty).sx - 1) as c_long / 2 - w as c_long / 2;
+        // Position so popup is in the centre.
+        let mut n: c_long = ((*tty).sx - 1) as c_long / 2 - w as c_long / 2;
         if n < 0 {
             format_add!(ft, c!("popup_centre_x"), "0");
         } else {
@@ -328,10 +326,7 @@ unsafe fn cmd_display_menu_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
         let target = cmdq_get_target(item);
         let event = cmdq_get_event(item);
         let tc = cmdq_get_target_client(item);
-        let mut menu = null_mut();
         let mut menu_item: menu_item = zeroed();
-        let mut key = null();
-        let mut name = null();
 
         let style = args_get_(args, 's');
         let border_style = args_get_(args, 'S');
@@ -343,7 +338,6 @@ unsafe fn cmd_display_menu_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
         let mut starting_choice: i32 = 0;
         let mut px: u32 = 0;
         let mut py: u32 = 0;
-        let mut i: u32 = 0;
         let count = args_count(args);
         let o = (*(*(*(*target).s).curw).window).options;
 
@@ -370,12 +364,12 @@ unsafe fn cmd_display_menu_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
         } else {
             xstrdup_(c"").as_ptr()
         };
-        menu = menu_create(title);
+        let menu = menu_create(title);
         free_(title);
 
-        i = 0;
+        let mut i: u32 = 0;
         while i != count {
-            name = args_string(args, i);
+            let name = args_string(args, i);
             i += 1;
             if *name == b'\0' as _ {
                 menu_add_item(menu, null_mut(), item, tc, target);
@@ -387,7 +381,7 @@ unsafe fn cmd_display_menu_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
                 menu_free(menu);
                 return cmd_retval::CMD_RETURN_ERROR;
             }
-            key = args_string(args, i);
+            let key = args_string(args, i);
             i += 1;
 
             menu_item.name = SyncCharPtr::from_ptr(name);
@@ -473,7 +467,6 @@ unsafe fn cmd_display_popup_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
         let mut lines = box_lines::BOX_LINES_DEFAULT as i32;
         let mut px = 0;
         let mut py = 0;
-        let mut h: u32 = 0;
         let count = args_count(args);
         let mut env = null_mut();
         let o = (*(*(*s).curw).window).options;
@@ -486,7 +479,7 @@ unsafe fn cmd_display_popup_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
             return cmd_retval::CMD_RETURN_NORMAL;
         }
 
-        h = (*tty).sy / 2;
+        let mut h: u32 = (*tty).sy / 2;
         if args_has_(args, 'h') {
             h = args_percentage(
                 args,
@@ -556,12 +549,11 @@ unsafe fn cmd_display_popup_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
             shellcmd = args_string(args, 0);
         }
 
-        let mut shell = null();
         let mut argv = null_mut();
 
         if count <= 1 && (shellcmd.is_null() || *shellcmd == b'\0' as _) {
             shellcmd = null_mut();
-            shell = options_get_string_((*s).options, "default-shell");
+            let mut shell = options_get_string_((*s).options, "default-shell");
             if !checkshell(shell) {
                 shell = _PATH_BSHELL;
             }

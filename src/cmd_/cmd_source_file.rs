@@ -130,8 +130,7 @@ unsafe fn cmd_source_file_done(
 
 unsafe fn cmd_source_file_add(cdata: *mut cmd_source_file_data, path: *const u8) {
     unsafe {
-        let mut __func__ = "cmd_source_file_add";
-        log_debug!("{}: {}", __func__, _s(path));
+        log_debug!("cmd_source_file_add: {}", _s(path));
         (*cdata).files = xreallocarray_((*cdata).files, ((*cdata).nfiles + 1) as usize).as_ptr();
         *(*cdata).files.add((*cdata).nfiles as usize) = xstrdup(path).as_ptr();
         (*cdata).nfiles += 1;
@@ -145,12 +144,12 @@ unsafe fn cmd_source_file_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
         let args = cmd_get_args(self_);
         let c = cmdq_get_client(item);
         let mut retval = cmd_retval::CMD_RETURN_NORMAL;
-        let mut pattern: *mut u8 = null_mut();
+        let mut pattern: *mut u8;
         let mut cwd = null_mut();
         let mut expanded: *mut u8 = null_mut();
-        let mut error: *mut u8 = null_mut();
+        let mut error: *mut u8;
         let mut g = MaybeUninit::<glob_t>::uninit();
-        let mut result = 0i32;
+        let mut result ;
 
         let cdata = xcalloc_::<cmd_source_file_data>(1).as_ptr();
         (*cdata).item = item;

@@ -51,7 +51,7 @@ unsafe fn cmd_list_sessions_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
             format_add!(ft, c!("line"), "{n}");
             format_defaults(ft, null_mut(), Some(s), None, None);
 
-            let mut flag = 0;
+            let flag ;
             if !filter.is_null() {
                 let expanded = format_expand(ft, filter);
                 flag = format_true(expanded);

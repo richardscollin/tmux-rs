@@ -382,11 +382,11 @@ pub unsafe fn tty_term_override_next(s: *const u8, offset: *mut usize) -> *mut u
 
 pub unsafe fn tty_term_apply(term: *mut tty_term, capabilities: *const u8, quiet: i32) {
     unsafe {
-        let mut code: *mut tty_code = null_mut();
+        let mut code: *mut tty_code ;
         let mut offset = 0usize;
-        let mut cp = null_mut();
-        let mut value = null_mut();
-        let mut s = null_mut();
+        let mut cp ;
+        let mut value ;
+        let mut s ;
 
         let name = (*term).name;
 
@@ -466,11 +466,11 @@ pub unsafe fn tty_term_apply(term: *mut tty_term, capabilities: *const u8, quiet
 }
 
 pub unsafe fn tty_term_apply_overrides(term: *mut tty_term) {
-    let mut ov: *mut options_value = null_mut();
-    let mut s: *const u8 = null();
-    let mut acs: *const u8 = null();
-    let mut offset: usize = 0;
-    let mut first: *mut u8 = null_mut();
+    let mut ov: *mut options_value ;
+    let mut s: *const u8 ;
+    let mut acs: *const u8 ;
+    let mut offset: usize ;
+    let mut first: *mut u8;
 
     unsafe {
         /* Update capabilities from the option. */
@@ -795,7 +795,6 @@ pub unsafe fn tty_term_read_list(
                         s = c!("0");
                     }
                 }
-                _ => fatalx("unknown capability type"),
             }
             *caps = xreallocarray((*caps).cast(), (*ncaps) as usize + 1, size_of::<*mut u8>())
                 .as_ptr()

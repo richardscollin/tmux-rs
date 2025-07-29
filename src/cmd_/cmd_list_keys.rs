@@ -80,7 +80,6 @@ unsafe fn cmd_list_keys_print_notes(
 ) -> i32 {
     unsafe {
         let tc = cmdq_get_target_client(item);
-        let mut key = null();
         let mut found = 0;
 
         let table = key_bindings_get_table(tablename, 0);
@@ -97,7 +96,7 @@ unsafe fn cmd_list_keys_print_notes(
                 continue;
             }
             found = 1;
-            key = key_string_lookup_key((*bd).key, 0);
+            let key = key_string_lookup_key((*bd).key, 0);
 
             let note = if (*bd).note.is_null() || *(*bd).note == b'\0' as _ {
                 cmd_list_print(&mut *(*bd).cmdlist, 1)
@@ -128,7 +127,7 @@ unsafe fn cmd_list_keys_get_prefix(args: *mut args, prefix: *mut key_code) -> No
         *prefix = options_get_number_(GLOBAL_S_OPTIONS, "prefix") as _;
         if !args_has_(args, 'P') {
             if *prefix != KEYC_NONE {
-                let mut s = format_nul!("{} ", _s(key_string_lookup_key(*prefix, 0)));
+                let s = format_nul!("{} ", _s(key_string_lookup_key(*prefix, 0)));
                 NonNull::new(s).unwrap()
             } else {
                 xstrdup_(c"")
@@ -143,10 +142,10 @@ unsafe fn cmd_list_keys_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retva
     unsafe {
         let args = cmd_get_args(self_);
         let tc = cmdq_get_target_client(item);
-        let mut table: *mut key_table = null_mut();
-        let mut width: i32 = 0;
+        let mut table: *mut key_table;
+        let mut width: i32;
         let mut prefix: key_code = 0;
-        let mut keywidth: i32 = 0;
+        let mut keywidth: i32;
         let mut found = 0;
         let mut only: key_code = KEYC_UNKNOWN;
 
@@ -172,7 +171,7 @@ unsafe fn cmd_list_keys_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retva
             }
 
             if args_has_(args, 'N') {
-                let mut start = null_mut();
+                let start;
                 if tablename.is_null() {
                     start = cmd_list_keys_get_prefix(args, &raw mut prefix).as_ptr();
                     keywidth = cmd_list_keys_get_width(c!("root"), only) as _;

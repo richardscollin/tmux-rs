@@ -611,7 +611,7 @@ pub unsafe fn input_key_get_mouse(
          * UTF-8 (1005) extension if the application requested, or to the
          * legacy format.
          */
-        let mut len: usize = 0;
+        let mut len: usize;
         if (*m).sgr_type != ' ' as u32 && (*s).mode.intersects(mode_flag::MODE_MOUSE_SGR) {
             len = xsnprintf_!(
                 &raw mut BUF as *mut u8,

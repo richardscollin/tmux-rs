@@ -290,8 +290,8 @@ pub unsafe fn cmdq_append(c: *mut client, mut item: *mut cmdq_item) -> *mut cmdq
 
     unsafe {
         let queue = cmdq_get(c);
-        let mut next = null_mut();
 
+        let mut next ;
         loop {
             next = (*item).next;
             (*item).next = null_mut();
@@ -372,7 +372,7 @@ pub unsafe fn cmdq_insert_hook_(
         let cmd = (*item).cmd;
         let args = cmd_get_args(cmd);
         let mut ae: *mut args_entry = null_mut();
-        let mut flag: c_uchar = 0;
+        let mut flag: u8;
         const SIZEOF_TMP: usize = 32;
         let mut buf: [u8; 32] = zeroed();
         let tmp = &raw mut buf as *mut u8;
@@ -389,7 +389,7 @@ pub unsafe fn cmdq_insert_hook_(
             (*s).options
         };
 
-        let mut name: String = format_args.to_string();
+        let name: String = format_args.to_string();
 
         let o = options_get_(oo, &name);
         if o.is_null() {
@@ -578,7 +578,7 @@ pub unsafe fn cmdq_add_message(item: *mut cmdq_item) {
     unsafe {
         let c = (*item).client;
         let state = (*item).state;
-        let mut user = null_mut();
+        let user ;
 
         let tmp = cmd_print((*item).cmd);
         if !c.is_null() {
@@ -616,13 +616,13 @@ pub unsafe fn cmdq_fire_command(item: *mut cmdq_item) -> cmd_retval {
         let cmd = (*item).cmd;
         let args = cmd_get_args(cmd);
         let entry = cmd_get_entry(cmd);
-        let mut tc = null_mut();
+        let tc ;
         let saved = (*item).client;
         let mut retval;
         let mut fs: cmd_find_state = zeroed();
-        let mut fsp: *mut cmd_find_state = null_mut();
+        let mut fsp: *mut cmd_find_state ;
         let mut quiet = 0;
-        let mut flags = false;
+        let flags ;
 
         'out: {
             if CFG_FINISHED.load(atomic::Ordering::Acquire) {
@@ -761,7 +761,7 @@ pub unsafe fn cmdq_next(c: *mut client) -> u32 {
     let __func__ = "cmdq_next";
     static mut NUMBER: u32 = 0;
     let mut items = 0;
-    let mut retval: cmd_retval = cmd_retval::CMD_RETURN_NORMAL;
+    let mut retval: cmd_retval;
 
     unsafe {
         let queue = cmdq_get(c);
@@ -811,7 +811,6 @@ pub unsafe fn cmdq_next(c: *mut client) -> u32 {
                             }
                         }
                         cmdq_type::CMDQ_CALLBACK => retval = cmdq_fire_callback(item),
-                        _ => retval = cmd_retval::CMD_RETURN_ERROR,
                     }
                     (*item).flags |= CMDQ_FIRED;
 
@@ -896,9 +895,8 @@ pub unsafe fn cmdq_error_(item: *mut cmdq_item, args: std::fmt::Arguments) {
     unsafe {
         let c = (*item).client;
         let cmd = (*item).cmd;
-        let mut tmp = null_mut();
         let mut file = null();
-        let mut line = AtomicU32::new(0);
+        let line = AtomicU32::new(0);
 
         let mut msg = args.to_string();
         msg.push('\0');
@@ -912,7 +910,7 @@ pub unsafe fn cmdq_error_(item: *mut cmdq_item, args: std::fmt::Arguments) {
         } else if (*c).session.is_null() || (*c).flags.intersects(client_flag::CONTROL) {
             server_add_message!("{} message: {}", _s((*c).name), _s(msg));
             if !(*c).flags.intersects(client_flag::UTF8) {
-                tmp = msg;
+                let tmp = msg;
                 msg = utf8_sanitize(tmp);
                 free_(tmp);
             }

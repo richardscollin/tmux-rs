@@ -361,7 +361,7 @@ pub unsafe fn format_job_get(es: *mut format_expand_state, cmd: *mut u8) -> *mut
     unsafe {
         let ft: *mut format_tree = (*es).ft;
         let mut fj0 = MaybeUninit::<format_job>::uninit();
-        let mut fj0 = fj0.as_mut_ptr();
+        let fj0 = fj0.as_mut_ptr();
 
         let jobs = if (*ft).client.is_null() {
             &raw mut FORMAT_JOBS
@@ -1299,30 +1299,18 @@ pub unsafe fn format_cb_mouse_status_range(ft: *mut format_tree) -> *mut c_void 
         if sr.is_null() {
             return null_mut();
         }
+
         match (*sr).type_ {
-            style_range_type::STYLE_RANGE_NONE => {
-                return null_mut();
-            }
-            style_range_type::STYLE_RANGE_LEFT => {
-                return xstrdup(c!("left")).as_ptr().cast();
-            }
-            style_range_type::STYLE_RANGE_RIGHT => {
-                return xstrdup(c!("right")).as_ptr().cast();
-            }
-            style_range_type::STYLE_RANGE_PANE => {
-                return xstrdup(c!("pane")).as_ptr().cast();
-            }
-            style_range_type::STYLE_RANGE_WINDOW => {
-                return xstrdup(c!("window")).as_ptr().cast();
-            }
-            style_range_type::STYLE_RANGE_SESSION => {
-                return xstrdup(c!("session")).as_ptr().cast();
-            }
+            style_range_type::STYLE_RANGE_NONE => null_mut(),
+            style_range_type::STYLE_RANGE_LEFT => xstrdup(c!("left")).as_ptr().cast(),
+            style_range_type::STYLE_RANGE_RIGHT => xstrdup(c!("right")).as_ptr().cast(),
+            style_range_type::STYLE_RANGE_PANE => xstrdup(c!("pane")).as_ptr().cast(),
+            style_range_type::STYLE_RANGE_WINDOW => xstrdup(c!("window")).as_ptr().cast(),
+            style_range_type::STYLE_RANGE_SESSION => xstrdup(c!("session")).as_ptr().cast(),
             style_range_type::STYLE_RANGE_USER => {
-                return xstrdup((*sr).string.as_ptr().cast()).as_ptr().cast();
+                xstrdup((*sr).string.as_ptr().cast()).as_ptr().cast()
             }
         }
-        null_mut()
     }
 }
 
@@ -3693,10 +3681,8 @@ pub unsafe fn format_add_modifier(
     argc: i32,
 ) {
     unsafe {
-        let mut fm: *mut format_modifier;
-
         *list = xreallocarray_(*list, (*count) as usize + 1).as_ptr();
-        fm = (*list).add(*count as usize);
+        let fm = (*list).add(*count as usize);
         (*count) += 1;
 
         memcpy((*fm).modifier.as_mut_ptr().cast(), c.cast(), n);
@@ -3734,9 +3720,6 @@ pub unsafe fn format_build_modifiers(
 
         // char c, last[] = "X;:", **argv, *value;
         // int argc;
-        let mut argv: *mut *mut u8 = null_mut();
-        let mut argc = 0;
-        let mut c: u8 = 0;
 
         /*
          * Modifiers are a ; separated list of the forms:
@@ -3782,7 +3765,7 @@ pub unsafe fn format_build_modifiers(
             if strchr(c!("mCNst=peq"), *cp as i32).is_null() {
                 break;
             }
-            c = *cp;
+            let mut c = *cp;
 
             /* No arguments provided. */
             if format_is_end(*cp.add(1)) {
@@ -3790,8 +3773,8 @@ pub unsafe fn format_build_modifiers(
                 cp = cp.add(1);
                 continue;
             }
-            argv = null_mut();
-            argc = 0;
+            let mut argv: *mut *mut u8 = null_mut();
+            let mut argc = 0;
 
             /* Single argument with no wrapper character. */
             if ispunct(*cp.add(1) as i32) == 0 || *cp.add(1) == b'-' {
@@ -4157,7 +4140,7 @@ pub unsafe fn format_replace_expression(
         let argc = (*mexp).argc;
 
         let mut endch: *mut u8 = null_mut();
-        let mut value: *mut u8;
+        let value: *mut u8;
 
         let mut left: *mut u8 = null_mut();
         let mut right: *mut u8 = null_mut();
@@ -4168,7 +4151,6 @@ pub unsafe fn format_replace_expression(
 
             let mut mleft: f64;
             let mut mright: f64;
-            let mut result: f64;
 
             enum Operator {
                 Add,
@@ -4291,7 +4273,7 @@ pub unsafe fn format_replace_expression(
                 mright,
             );
 
-            result = match operator {
+            let result = match operator {
                 Operator::Add => mleft + mright,
                 Operator::Subtract => mleft - mright,
                 Operator::Multiply => mleft * mright,
@@ -4344,20 +4326,20 @@ pub unsafe fn format_replace(
         let ft = (*es).ft;
         let wp = (*ft).wp;
         let mut copy: *const u8;
-        let mut cp: *const u8;
+        let cp: *const u8;
         let mut marker: *const u8 = null();
 
         let mut time_format: *const u8 = null();
 
-        let mut copy0: *mut u8;
-        let mut condition: *mut u8;
+        let copy0: *mut u8;
+        let condition: *mut u8;
         let mut found: *mut u8;
         let mut new: *mut u8;
         let mut value: *mut u8 = null_mut();
         let mut left: *mut u8 = null_mut();
         let mut right: *mut u8 = null_mut();
 
-        let mut valuelen;
+        let valuelen;
 
         let mut modifiers: format_modifiers = format_modifiers::empty();
         let mut limit: i32 = 0;
@@ -4365,13 +4347,12 @@ pub unsafe fn format_replace(
 
         let mut c;
 
-        let mut list: *mut format_modifier;
+        let list: *mut format_modifier;
         let mut cmp: *mut format_modifier = null_mut();
         let mut search: *mut format_modifier = null_mut();
 
         let mut sub: *mut *mut format_modifier = null_mut();
         let mut mexp: *mut format_modifier = null_mut();
-        let mut fm: *mut format_modifier = null_mut();
 
         //let mut i = 0u32;
         let mut count = 0u32;
@@ -4389,7 +4370,7 @@ pub unsafe fn format_replace(
                 // Process modifier list.
                 list = format_build_modifiers(es, &raw mut copy, &raw mut count);
                 for i in 0..count {
-                    fm = list.add(i as usize);
+                    let fm = list.add(i as usize);
                     if format_logging(ft) {
                         format_log1!(
                             es,
@@ -5096,7 +5077,10 @@ pub unsafe fn format_expand1(es: *mut format_expand_state, mut fmt: *const u8) -
                 }
             }
 
-            break;
+            #[allow(unreachable_code)]
+            {
+                break;
+            }
         }
         *buf.add(off) = b'\0';
 

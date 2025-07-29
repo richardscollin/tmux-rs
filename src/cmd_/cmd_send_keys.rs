@@ -162,7 +162,6 @@ pub unsafe fn cmd_send_keys_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
         let mut m = &raw mut (*event).m;
         let wme = tailq_first(&raw mut (*wp).modes);
         let mut after: *mut cmdq_item = item;
-        let mut key: key_code = 0;
         let mut np: u32 = 1;
         let count = args_count(args);
         let mut cause: *mut u8 = null_mut();
@@ -207,7 +206,7 @@ pub unsafe fn cmd_send_keys_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
         }
 
         if std::ptr::eq(cmd_get_entry(self_), &CMD_SEND_PREFIX_ENTRY) {
-            key = if args_has_(args, '2') {
+            let key = if args_has_(args, '2') {
                 options_get_number_((*s).options, "prefix2") as u64
             } else {
                 options_get_number_((*s).options, "prefix") as u64

@@ -1820,20 +1820,20 @@ pub unsafe fn server_client_key_callback(item: *mut cmdq_item, data: *mut c_void
         let s = (*c).session;
 
         let mut tv: libc::timeval = zeroed();
-        let mut bd: *mut key_binding = null_mut();
-        let mut table: *mut key_table = null_mut();
-        let mut first: *mut key_table = null_mut();
+        let mut bd: *mut key_binding ;
+        let mut table: *mut key_table;
+        let mut first: *mut key_table;
         let mut wme: *mut window_mode_entry = null_mut();
         let mut fs: cmd_find_state = zeroed();
-        let mut wl: *mut winlink = null_mut();
-        let mut wp: *mut window_pane = null_mut();
+        let wl: *mut winlink ;
+        let wp: *mut window_pane ;
 
-        let mut xtimeout: i32 = 0;
-        let mut flags: client_flag = client_flag::empty();
-        let mut prefix_delay: u64 = 0;
-        let mut key0: key_code = 0;
-        let mut prefix: key_code = 0;
-        let mut prefix2: key_code = 0;
+        let xtimeout: i32 ;
+        let mut flags: client_flag ;
+        let mut prefix_delay: u64 ;
+        let mut key0: key_code ;
+        let mut prefix: key_code ;
+        let mut prefix2: key_code;
 
         'out: {
             'forward_key: {
@@ -2319,8 +2319,8 @@ pub unsafe fn server_client_check_pane_resize(wp: *mut window_pane) {
 pub unsafe fn server_client_check_pane_buffer(wp: *mut window_pane) {
     unsafe {
         let evb = (*(*wp).event).input;
-        let mut minimum: usize = 0;
-        let mut wpo: *mut window_pane_offset = null_mut();
+        let mut minimum: usize ;
+        let mut wpo: *mut window_pane_offset;
         let mut off = 1;
         let mut flag: i32 = 0;
         let mut attached_clients = 0;
@@ -2435,9 +2435,9 @@ pub unsafe fn server_client_reset_state(c: *mut client) {
         let mut s = null_mut();
         let oo = (*(*c).session).options;
         let mut mode = mode_flag::empty();
-        let mut cursor = 0;
-        let mut flags = tty_flags::empty();
-        let mut n: i32 = 0;
+        let mut cursor ;
+        
+        let mut n: i32;
 
         let mut cx = 0;
         let mut cy = 0;
@@ -2454,7 +2454,7 @@ pub unsafe fn server_client_reset_state(c: *mut client) {
         }
 
         /* Disable the block flag. */
-        flags = (*tty).flags & tty_flags::TTY_BLOCK;
+        let flags = (*tty).flags & tty_flags::TTY_BLOCK;
         (*tty).flags &= !tty_flags::TTY_BLOCK;
 
         /* Get mode from overlay if any, else from screen. */
@@ -2698,16 +2698,16 @@ pub unsafe fn server_client_check_redraw(c: *mut client) {
         let s = (*c).session;
         let tty = &raw mut (*c).tty;
         let w = (*(*(*c).session).curw).window;
-        let mut tty_flags_ = tty_flags::empty();
+        
         let mode = (*tty).mode;
         let mut client_flags: client_flag = client_flag::empty();
-        let mut redraw = false;
+        let mut redraw ;
         let mut bit: u32 = 0;
         let tv = libc::timeval {
             tv_sec: 0,
             tv_usec: 1000,
         };
-        let mut left: usize = 0;
+        let left;
 
         if (*c)
             .flags
@@ -2786,8 +2786,7 @@ pub unsafe fn server_client_check_redraw(c: *mut client) {
             // log_debug("%s: redraw needed", (*c).name);
         }
 
-        tty_flags_ =
-            (*tty).flags & (tty_flags::TTY_BLOCK | tty_flags::TTY_FREEZE | tty_flags::TTY_NOCURSOR);
+        let tty_flags_ = (*tty).flags & (tty_flags::TTY_BLOCK | tty_flags::TTY_FREEZE | tty_flags::TTY_NOCURSOR);
         (*tty).flags = ((*tty).flags & !(tty_flags::TTY_BLOCK | tty_flags::TTY_FREEZE))
             | tty_flags::TTY_NOCURSOR;
 
@@ -3017,13 +3016,13 @@ pub unsafe fn server_client_command_done(item: *mut cmdq_item, _data: *mut c_voi
 pub unsafe fn server_client_dispatch_command(c: *mut client, imsg: *mut imsg) {
     unsafe {
         let mut data: msg_command = zeroed();
-        let mut buf = null_mut();
-        let mut len: usize = 0;
-        let mut argc = 0;
+        let buf ;
+        let len: usize ;
+        let mut argc ;
         let mut argv: *mut *mut u8 = null_mut();
-        let mut cause: *mut u8 = null_mut();
-        let mut values = null_mut();
-        let mut new_item = null_mut();
+        let cause: *mut u8 ;
+        let values ;
+        let new_item ;
 
         'error: {
             if (*c).flags.intersects(client_flag::EXIT) {
@@ -3210,7 +3209,7 @@ pub unsafe fn server_client_dispatch_identify(c: *mut client, imsg: *mut imsg) {
         }
         (*c).flags |= client_flag::IDENTIFIED;
 
-        let mut name = if *(*c).ttyname != b'\0' {
+        let name = if *(*c).ttyname != b'\0' {
             xstrdup((*c).ttyname).as_ptr()
         } else {
             format_nul!("client-{}", (*c).pid)
@@ -3322,9 +3321,9 @@ pub unsafe fn server_client_control_flags(c: *mut client, next: *const u8) -> cl
 /// Set client flags.
 pub unsafe fn server_client_set_flags(c: *mut client, flags: *const u8) {
     unsafe {
-        let mut next = null_mut();
-        let mut flag: client_flag = client_flag::empty();
-        let mut not = false;
+        let mut next ;
+        let mut flag: client_flag ;
+        let mut not ;
 
         let copy = xstrdup(flags).as_ptr();
         let mut s = copy;

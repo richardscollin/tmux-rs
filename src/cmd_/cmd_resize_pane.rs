@@ -39,9 +39,9 @@ unsafe fn cmd_resize_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
         let c = cmdq_get_client(item);
         let mut s = (*target).s;
         let mut cause: *mut u8 = null_mut();
-        let mut adjust = 0u32;
-        let mut x: i32 = 0;
-        let mut y: i32 = 0;
+        let mut adjust ;
+        let x: i32 ;
+        let mut y: i32 ;
         let gd = (*wp).base.grid;
 
         if args_has_(args, 'T') {
@@ -159,11 +159,11 @@ unsafe fn cmd_resize_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
 
 unsafe fn cmd_resize_pane_mouse_update(c: *mut client, m: *mut mouse_event) {
     unsafe {
-        let mut w: *mut window = null_mut();
-        let mut y: u32 = 0;
-        let mut ly: u32 = 0;
-        let mut x: u32 = 0;
-        let mut lx: u32 = 0;
+        
+        let mut y: u32 ;
+        let mut ly: u32;
+        
+        
         const OFFSETS: [[c_int; 2]; 5] = [[0, 0], [0, 1], [1, 0], [0, -1], [-1, 0]];
         let mut ncells: u32 = 0;
         let mut cells: [*mut layout_cell; OFFSETS.len()] = zeroed();
@@ -174,17 +174,17 @@ unsafe fn cmd_resize_pane_mouse_update(c: *mut client, m: *mut mouse_event) {
             (*c).tty.mouse_drag_update = None;
             return;
         }
-        w = (*wl).window;
+        let w: *mut window = (*wl).window;
 
         y = (*m).y + (*m).oy;
-        x = (*m).x + (*m).ox;
+        let x: u32 = (*m).x + (*m).ox;
         if (*m).statusat == 0 && y >= (*m).statuslines {
             y -= (*m).statuslines;
         } else if (*m).statusat > 0 && y >= (*m).statusat as u32 {
             y = ((*m).statusat - 1) as u32;
         }
         ly = (*m).ly + (*m).oy;
-        lx = (*m).lx + (*m).ox;
+        let lx: u32 = (*m).lx + (*m).ox;
         if (*m).statusat == 0 && ly >= (*m).statuslines {
             ly -= (*m).statuslines;
         } else if (*m).statusat > 0 && ly >= (*m).statusat as u32 {

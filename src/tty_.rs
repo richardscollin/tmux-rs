@@ -218,7 +218,7 @@ pub unsafe extern "C-unwind" fn tty_write_callback(_fd: i32, _events: i16, data:
     unsafe {
         let tty = data as *mut tty;
         let c = (*tty).client;
-        let size = EVBUFFER_LENGTH((*tty).out);
+        let _size = EVBUFFER_LENGTH((*tty).out);
 
         let nwrite: i32 = evbuffer_write((*tty).out, (*c).fd);
         if nwrite == -1 {
@@ -831,7 +831,7 @@ pub unsafe fn tty_force_cursor_colour(tty: *mut tty, mut c: i32) {
 pub unsafe fn tty_update_cursor(tty: *mut tty, mode: mode_flag, s: *mut screen) -> mode_flag {
     unsafe {
         let mut cstyle: screen_cursor_style;
-        let mut ccolour: i32 = 0;
+        let mut ccolour: i32;
         let mut cmode: mode_flag = mode;
 
         // Set cursor colour if changed.
@@ -1069,8 +1069,8 @@ pub unsafe fn tty_window_offset1(
         let c = (*tty).client;
         let w = (*(*(*c).session).curw).window;
         let wp = server_client_get_pane(c);
-        let mut cx: u32 = 0;
-        let mut cy: u32 = 0;
+        let cx: u32;
+        let cy: u32;
 
         let lines: u32 = status_line_size(c);
 
@@ -3294,7 +3294,6 @@ pub unsafe fn tty_attributes(
     unsafe {
         let tc = &raw mut (*tty).cell;
         let mut gc2: grid_cell = zeroed();
-        let mut changed = grid_attr::empty();
 
         /* Copy cell and update default colours. */
         memcpy__(&raw mut gc2, gc);
@@ -3352,7 +3351,7 @@ pub unsafe fn tty_attributes(
         tty_colours(tty, &raw mut gc2);
 
         /* Filter out attribute bits already set. */
-        changed = gc2.attr & !(*tc).attr;
+        let changed = gc2.attr & !(*tc).attr;
         (*tc).attr = gc2.attr;
 
         /* Set the attributes. */
@@ -3465,8 +3464,7 @@ pub unsafe fn tty_colours(tty: *mut tty, gc: *const grid_cell) {
 
 pub unsafe fn tty_check_fg(tty: *const tty, palette: *const colour_palette, gc: *mut grid_cell) {
     unsafe {
-        let mut colours: u32 = 0;
-        let mut c: i32 = 0;
+        let mut c: i32;
 
         /*
          * Perform substitution if this pane has a palette. If the bright
@@ -3498,11 +3496,11 @@ pub unsafe fn tty_check_fg(tty: *const tty, palette: *const colour_palette, gc: 
         }
 
         /* How many colours does this terminal have? */
-        if (*(*tty).term).flags.intersects(term_flags::TERM_256COLOURS) {
-            colours = 256;
+        let colours = if (*(*tty).term).flags.intersects(term_flags::TERM_256COLOURS) {
+            256
         } else {
-            colours = tty_term_number((*tty).term, tty_code_code::TTYC_COLORS) as u32;
-        }
+            tty_term_number((*tty).term, tty_code_code::TTYC_COLORS) as u32
+        };
 
         /* Is this a 256-colour colour? */
         if (*gc).fg & COLOUR_FLAG_256 != 0 {
@@ -3529,8 +3527,7 @@ pub unsafe fn tty_check_fg(tty: *const tty, palette: *const colour_palette, gc: 
 
 pub unsafe fn tty_check_bg(tty: *const tty, palette: *const colour_palette, gc: *mut grid_cell) {
     unsafe {
-        let mut colours: u32 = 0;
-        let mut c: i32 = 0;
+        let c: i32;
 
         /* Perform substitution if this pane has a palette. */
         if !(*gc).flags.intersects(grid_flag::NOPALETTE) {
@@ -3551,11 +3548,11 @@ pub unsafe fn tty_check_bg(tty: *const tty, palette: *const colour_palette, gc: 
         }
 
         /* How many colours does this terminal have? */
-        if (*(*tty).term).flags.intersects(term_flags::TERM_256COLOURS) {
-            colours = 256;
+        let colours = if (*(*tty).term).flags.intersects(term_flags::TERM_256COLOURS) {
+            256
         } else {
-            colours = tty_term_number((*tty).term, tty_code_code::TTYC_COLORS) as u32;
-        }
+            tty_term_number((*tty).term, tty_code_code::TTYC_COLORS) as u32
+        };
 
         /* Is this a 256-colour colour? */
         if (*gc).bg & COLOUR_FLAG_256 != 0 {
@@ -3585,7 +3582,7 @@ pub unsafe fn tty_check_bg(tty: *const tty, palette: *const colour_palette, gc: 
 
 pub unsafe fn tty_check_us(tty: *const tty, palette: *const colour_palette, gc: *mut grid_cell) {
     unsafe {
-        let mut c = 0;
+        let mut c;
 
         /* Perform substitution if this pane has a palette. */
         if !(*gc).flags.intersects(grid_flag::NOPALETTE) {
@@ -3690,7 +3687,7 @@ pub unsafe fn tty_colours_bg(tty: *mut tty, gc: *const grid_cell) {
 pub unsafe fn tty_colours_us(tty: *mut tty, gc: *const grid_cell) {
     unsafe {
         let tc = &raw mut (*tty).cell;
-        let mut c: u32 = 0;
+        let mut c: u32;
 
         'save: {
             /* Clear underline colour. */

@@ -11,21 +11,26 @@
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-#![allow(clippy::uninlined_format_args)] // for lalrpop generated code
 use std::io::Read as _;
 use std::ops::BitAndAssign as _;
 use std::ops::BitOrAssign as _;
 
-use lalrpop_util::lalrpop_mod;
-
 use crate::xmalloc::xrecallocarray__;
 use crate::*;
 
-fn yyparse(ps: &mut cmd_parse_state) -> Result<Option<&'static mut cmd_parse_commands>, ()> {
-    let mut parser = cmd_parse::LinesParser::new();
+#[expect(unused_imports)]
+#[allow(clippy::uninlined_format_args)]
+mod lalrpop {
+    use lalrpop_util::lalrpop_mod;
+    lalrpop_mod!(pub(crate) cmd_parse);
+}
+use lalrpop::cmd_parse;
 
-    let mut ps = NonNull::new(ps).unwrap();
-    let mut lexer = lexer::Lexer::new(ps);
+fn yyparse(ps: &mut cmd_parse_state) -> Result<Option<&'static mut cmd_parse_commands>, ()> {
+    let parser = cmd_parse::LinesParser::new();
+
+    let ps = NonNull::new(ps).unwrap();
+    let lexer = lexer::Lexer::new(ps);
 
     match parser.parse(ps, lexer) {
         Ok(cmds) => Ok(cmds),
@@ -35,8 +40,6 @@ fn yyparse(ps: &mut cmd_parse_state) -> Result<Option<&'static mut cmd_parse_com
         }
     }
 }
-
-lalrpop_mod!(cmd_parse);
 
 pub struct yystype_elif {
     flag: i32,
@@ -482,7 +485,7 @@ pub unsafe fn cmd_parse_from_file<'a>(
     pi: Option<&'a cmd_parse_input<'a>>,
 ) -> cmd_parse_result {
     unsafe {
-        let mut input: cmd_parse_input = zeroed();
+        let input: cmd_parse_input = zeroed();
         let pi = pi.unwrap_or(&input);
 
         let cmds = cmd_parse_do_file(f, pi)?;
@@ -495,7 +498,7 @@ pub unsafe fn cmd_parse_from_file<'a>(
 
 pub unsafe fn cmd_parse_from_string(s: &str, pi: Option<&cmd_parse_input>) -> cmd_parse_result {
     unsafe {
-        let mut input: cmd_parse_input = zeroed();
+        let input: cmd_parse_input = zeroed();
         let pi = pi.unwrap_or(&input);
 
         (&pi.flags).bitor_assign(cmd_parse_input_flags::CMD_PARSE_ONEGROUP);
@@ -559,7 +562,7 @@ pub unsafe fn cmd_parse_and_append(
 
 pub unsafe fn cmd_parse_from_buffer(buf: &[u8], pi: Option<&cmd_parse_input>) -> cmd_parse_result {
     unsafe {
-        let mut input: cmd_parse_input = zeroed();
+        let input: cmd_parse_input = zeroed();
         let pi = pi.unwrap_or(&input);
 
         if buf.is_empty() {
@@ -732,7 +735,7 @@ unsafe fn yyerror_(ps: &mut cmd_parse_state, args: std::fmt::Arguments) -> i32 {
             return 0;
         }
 
-        let mut pi = ps.input.as_mut().unwrap();
+        let pi = ps.input.as_mut().unwrap();
 
         let mut error = args.to_string();
         error.push('\0');
@@ -860,8 +863,6 @@ use lexer::Tok;
 
 unsafe fn yylex_(ps: &mut cmd_parse_state) -> Option<Tok> {
     unsafe {
-        let mut next: i32 = 0;
-
         if ps.eol != 0 {
             ps.input
                 .as_mut()
@@ -871,7 +872,7 @@ unsafe fn yylex_(ps: &mut cmd_parse_state) -> Option<Tok> {
         }
         ps.eol = 0;
 
-        let mut condition = ps.condition;
+        let condition = ps.condition;
         ps.condition = 0;
 
         loop {
@@ -930,7 +931,7 @@ unsafe fn yylex_(ps: &mut cmd_parse_state) -> Option<Tok> {
                  * #{ after a condition opens a format; anything else
                  * is a comment, ignore up to the end of the line.
                  */
-                next = yylex_getc(ps);
+                let mut next = yylex_getc(ps);
                 if condition != 0 && next == '{' as i32 {
                     let yylval_token = yylex_format(ps);
                     if yylval_token.is_none() {
@@ -1116,7 +1117,7 @@ unsafe fn yylex_token_variable(
         }
         name[namelen] = b'\0';
 
-        let mut envent = environ_find(GLOBAL_ENVIRON, (&raw const name).cast());
+        let envent = environ_find(GLOBAL_ENVIRON, (&raw const name).cast());
         if !envent.is_null() && (*envent).value.is_some() {
             let value = (*envent).value;
             // log_debug("%s: %s -> %s", __func__, name, value);
@@ -1325,8 +1326,8 @@ unsafe fn yylex_token_escape(ps: &mut cmd_parse_state, buf: *mut *mut u8, len: *
         let mut tmp: u32 = 0;
         let mut s: [u8; 9] = [0; 9];
         let mut m: [u8; SIZEOF_M] = [0; SIZEOF_M];
-        let mut size: usize = 0;
-        let mut type_: i32 = 0;
+        let size: usize;
+        let type_: i32;
 
         'unicode: {
             let mut ch = yylex_getc(ps);

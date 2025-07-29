@@ -84,9 +84,8 @@ pub unsafe fn cmd_select_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd
         let mut wp = (*target).wp;
         let oo = (*wp).options;
 
-        let mut activewp = null_mut();
-        let mut lastwp: *mut window_pane = null_mut();
-        let mut markedwp = null_mut();
+        let mut lastwp: *mut window_pane;
+        let markedwp;
 
         if std::ptr::eq(entry, &CMD_LAST_PANE_ENTRY) || args_has_(args, 'l') {
             /*
@@ -220,14 +219,14 @@ pub unsafe fn cmd_select_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd
             return cmd_retval::CMD_RETURN_NORMAL;
         }
 
-        if !c.is_null()
+        let activewp = if !c.is_null()
             && !(*c).session.is_null()
             && ((*c).flags.intersects(client_flag::ACTIVEPANE))
         {
-            activewp = server_client_get_pane(c);
+            server_client_get_pane(c)
         } else {
-            activewp = (*w).active;
-        }
+            (*w).active
+        };
         if wp == activewp {
             return cmd_retval::CMD_RETURN_NORMAL;
         }

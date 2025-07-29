@@ -255,7 +255,7 @@ pub unsafe fn window_copy_clone_screen(
         let mut wx: u32 = 0;
         let mut wy: u32 = 0;
 
-        let mut reflow;
+        let reflow;
 
         let dst: *mut screen = xcalloc1();
 
@@ -366,13 +366,12 @@ pub unsafe fn window_copy_init(
     let wme = wme.as_ptr();
     unsafe {
         let wp = (*wme).swp;
-        let mut data: *mut window_copy_mode_data;
         let base = &raw mut (*wp).base;
         let mut ctx: screen_write_ctx = zeroed();
         let mut cx = 0;
         let mut cy = 0;
 
-        data = window_copy_common_init(wme);
+        let data = window_copy_common_init(wme);
         (*data).backing = window_copy_clone_screen(
             base,
             &raw mut (*data).screen,
@@ -496,8 +495,6 @@ pub unsafe fn window_copy_vadd(wp: *mut window_pane, parse: i32, args: std::fmt:
         let mut ctx: screen_write_ctx = zeroed();
 
         let mut gc: grid_cell = zeroed();
-        let mut old_hsize: u32 = 0;
-        let mut old_cy: u32 = 0;
         let sx = screen_size_x(backing);
 
         if parse != 0 {
@@ -515,7 +512,7 @@ pub unsafe fn window_copy_vadd(wp: *mut window_pane, parse: i32, args: std::fmt:
             );
         }
 
-        old_hsize = screen_hsize((*data).backing);
+        let old_hsize = screen_hsize((*data).backing);
         screen_write_start(&raw mut backing_ctx, backing);
         if (*data).backing_written != 0 {
             /*
@@ -527,7 +524,7 @@ pub unsafe fn window_copy_vadd(wp: *mut window_pane, parse: i32, args: std::fmt:
         } else {
             (*data).backing_written = 1;
         }
-        old_cy = (*backing).cy;
+        let old_cy = (*backing).cy;
         if parse != 0 {
             screen_write_fast_copy(&raw mut backing_ctx, writing, 0, 0, sx, 1);
         } else {
@@ -1650,7 +1647,7 @@ pub unsafe fn window_copy_cmd_previous_matching_bracket(
         let close: [u8; 4] = [b'}', b']', b')', b'\0'];
 
         let mut found: u8 = b'\0';
-        let mut cp: *mut u8 = null_mut();
+        let mut cp: *mut u8;
         let mut gc: grid_cell = zeroed();
 
         'outer: while np != 0 {
@@ -1754,7 +1751,7 @@ pub unsafe fn window_copy_cmd_next_matching_bracket(
 
         let mut found = b'\0';
         let mut gc: grid_cell = zeroed();
-        let mut cp = null_mut();
+        let mut cp;
 
         'outer: while np != 0 {
             /* Get cursor position and line length. */
@@ -3914,8 +3911,6 @@ pub unsafe fn window_copy_stringify(
     size: *mut u32,
 ) -> *mut u8 {
     unsafe {
-        let mut bx = 0;
-
         let mut newsize = *size;
 
         let mut bufsize: usize = 1024;
@@ -3928,7 +3923,7 @@ pub unsafe fn window_copy_stringify(
         buf = xrealloc(buf.cast(), bufsize).as_ptr().cast();
 
         let gl = grid_peek_line(gd, py);
-        bx = *size - 1;
+        let mut bx = *size - 1;
         for ax in first..last {
             let d = window_copy_cellstring(gl, ax, &raw mut dlen, &raw mut allocated);
             newsize += dlen as u32;
@@ -3963,25 +3958,20 @@ pub unsafe fn window_copy_cstrtocellpos(
     str: *const u8,
 ) {
     unsafe {
-        let mut ccell: u32 = 0;
-        let mut px: u32 = 0;
-        let mut pywrap: u32 = 0;
-        let mut len: u32 = 0;
-
-        let mut match_: i32 = 0;
+        let mut match_: i32;
 
         #[repr(C)]
         struct cell {
             d: *const u8,
             dlen: usize,
             allocated: i32,
-        };
+        }
 
         /* Populate the array of cell data. */
         let cells: *mut cell = xreallocarray_::<cell>(null_mut(), ncells as usize).as_ptr();
         let mut cell = 0;
-        px = *ppx;
-        pywrap = *ppy;
+        let mut px = *ppx;
+        let mut pywrap = *ppy;
         let mut gl = grid_peek_line(gd, pywrap);
         while cell < ncells {
             (*cells.add(cell as usize)).d = window_copy_cellstring(
@@ -4000,10 +3990,10 @@ pub unsafe fn window_copy_cstrtocellpos(
         }
 
         /* Locate starting cell. */
-        cell = 0;
-        len = strlen(str) as u32;
+        let mut cell = 0;
+        let len = strlen(str) as u32;
         while cell < ncells {
-            ccell = cell;
+            let mut ccell = cell;
             let mut pos = 0;
             match_ = 1;
             while ccell < ncells {
@@ -4124,26 +4114,20 @@ pub unsafe fn window_copy_search_back_overlap(
     endline: u32,
 ) {
     unsafe {
-        let mut endx = 0;
-        let mut oldendx = 0;
-        let mut endy = 0;
-        let mut oldendy = 0;
-        let mut px = 0;
-        let mut py = 0;
         let mut sx = 0;
 
         let mut found = true;
 
-        oldendx = *ppx + *psx;
-        oldendy = *ppy - 1;
+        let mut oldendx = *ppx + *psx;
+        let mut oldendy = *ppy - 1;
         while oldendx > (*gd).sx - 1 {
             oldendx -= (*gd).sx;
             oldendy += 1;
         }
-        endx = oldendx;
-        endy = oldendy;
-        px = *ppx;
-        py = *ppy;
+        let mut endx = oldendx;
+        let mut endy = oldendy;
+        let mut px = *ppx;
+        let mut py = *ppy;
         while found
             && px == 0
             && py - 1 > endline
@@ -4211,9 +4195,8 @@ pub unsafe fn window_copy_search_jump(
         // char *sbuf;
         // regex_t reg;
 
-        let mut sbuf = null_mut();
         if regex != 0 {
-            sbuf = xmalloc(ssize as usize).as_ptr().cast();
+            let mut sbuf: *mut u8 = xmalloc(ssize as usize).as_ptr().cast();
             *sbuf = b'\0';
             sbuf = window_copy_stringify(sgd, 0, 0, (*sgd).sx, sbuf, &raw mut ssize);
             if cis != 0 {
@@ -4364,14 +4347,8 @@ pub unsafe fn window_copy_search(
         let gd: *mut grid = (*s).grid;
         let str: *mut u8 = (*data).searchstr;
         let mut at: u32 = 0;
-        let mut endline: u32 = 0;
-        let mut fx: u32 = 0;
-        let mut fy: u32 = 0;
         let mut start: u32 = 0;
-        let mut cis: i32 = 0;
-        let mut found: i32 = 0;
-        let mut visible_only: i32 = 0;
-        let mut wrapflag: i32 = 0;
+        let visible_only: i32;
 
         if regex != 0 && *str.add(libc::strcspn(str, c!("^$*+()?[].\\"))) == b'\0' {
             regex = 0;
@@ -4396,8 +4373,8 @@ pub unsafe fn window_copy_search(
         (*wp).searchstr = xstrdup(str).as_ptr();
         (*wp).searchregex = regex;
 
-        fx = (*data).cx;
-        fy = screen_hsize((*data).backing) - (*data).oy + (*data).cy;
+        let mut fx = (*data).cx;
+        let mut fy = screen_hsize((*data).backing) - (*data).oy + (*data).cy;
 
         screen_init(
             &raw mut ss,
@@ -4415,13 +4392,13 @@ pub unsafe fn window_copy_search(
         );
         screen_write_stop(&raw mut ctx);
 
-        wrapflag = options_get_number_((*(*wp).window).options, "wrap-search") as i32;
-        cis = window_copy_is_lowercase(str) as i32;
+        let wrapflag = options_get_number_((*(*wp).window).options, "wrap-search") as i32;
+        let cis = window_copy_is_lowercase(str) as i32;
 
         let keys =
             modekey::try_from(options_get_number_((*(*wp).window).options, "mode-keys") as i32);
 
-        if direction != 0 {
+        let endline = if direction != 0 {
             /*
              * Behave according to mode-keys. If it is emacs, search forward
              * leaves the cursor after the match. If it is vi, the cursor
@@ -4441,13 +4418,13 @@ pub unsafe fn window_copy_search(
                     window_copy_move_right(s, &raw mut fx, &raw mut fy, wrapflag);
                 }
             }
-            endline = (*gd).hsize + (*gd).sy - 1;
+            (*gd).hsize + (*gd).sy - 1
         } else {
             window_copy_move_left(s, &raw mut fx, &raw mut fy, wrapflag);
-            endline = 0;
-        }
+            0
+        };
 
-        found = window_copy_search_jump(
+        let found = window_copy_search_jump(
             wme, gd, ss.grid, fx, fy, endline, cis, wrapflag, direction, regex,
         );
         if found != 0 {
@@ -4567,24 +4544,20 @@ pub unsafe fn window_copy_search_marks(
         let mut ctx: screen_write_ctx = zeroed();
         let gd: *mut grid = (*s).grid;
         let mut found: i32;
-        let mut cis: i32 = 0;
         let mut stopped: i32 = 0;
 
         let mut cflags = libc::REG_EXTENDED;
         let mut px: u32;
         let mut b: u32 = 0;
         let mut nfound: u32 = 0;
-        let mut width: u32 = 0;
+        let mut width: u32;
 
         let mut ssize: u32 = 1;
         let mut start: u32 = 0;
         let mut end: u32 = 0;
 
-        let mut sbuf = null_mut();
         let mut reg: libc::regex_t = zeroed();
         let mut stop: u64 = 0;
-        let mut tstart: u64 = 0;
-        let mut t: u64 = 0;
         'out: {
             if ssp.is_null() {
                 width = screen_write_strlen!("{}", _s((*data).searchstr)) as u32;
@@ -4603,10 +4576,10 @@ pub unsafe fn window_copy_search_marks(
                 width = screen_size_x(ssp);
             }
 
-            cis = window_copy_is_lowercase((*data).searchstr) as i32;
+            let cis = window_copy_is_lowercase((*data).searchstr) as i32;
 
             if regex != 0 {
-                sbuf = xmalloc(ssize as usize).as_ptr().cast();
+                let mut sbuf = xmalloc(ssize as usize).as_ptr().cast();
                 *sbuf = b'\0';
                 sbuf = window_copy_stringify(
                     (*ssp).grid,
@@ -4625,7 +4598,7 @@ pub unsafe fn window_copy_search_marks(
                 }
                 free_(sbuf);
             }
-            tstart = get_timer();
+            let tstart = get_timer();
 
             if visible_only != 0 {
                 window_copy_visible_lines(data, &raw mut start, &raw mut end);
@@ -4693,7 +4666,7 @@ pub unsafe fn window_copy_search_marks(
                         px += width;
                     }
 
-                    t = get_timer();
+                    let t = get_timer();
                     if t - tstart > WINDOW_COPY_SEARCH_TIMEOUT {
                         (*data).timeout = 1;
                         break;
@@ -4815,8 +4788,6 @@ pub unsafe fn window_copy_match_at_cursor(data: *mut window_copy_mode_data) -> *
         let mut at: u32 = 0;
         let mut start: u32 = 0;
         let mut end: u32 = 0;
-        let mut px: u32 = 0;
-        let mut py: u32 = 0;
         let sx = screen_size_x((*data).backing);
         let mut buf: *mut u8 = null_mut();
         let mut len: usize = 0;
@@ -4845,8 +4816,8 @@ pub unsafe fn window_copy_match_at_cursor(data: *mut window_copy_mode_data) -> *
          * and wrapping will be taken care of, so we can just copy.
          */
         for at in start..=end {
-            py = at / sx;
-            px = at - (py * sx);
+            let py = at / sx;
+            let px = at - (py * sx);
 
             grid_get_cell(gd, px, (*gd).hsize + py - (*data).oy, &raw mut gc);
             buf = xrealloc(buf.cast(), len + gc.data.size as usize + 1)
@@ -4878,10 +4849,8 @@ pub unsafe fn window_copy_update_style(
     unsafe {
         let wp: *mut window_pane = (*wme).wp;
         let data: *mut window_copy_mode_data = (*wme).data.cast();
-        let mut mark: u32 = 0;
         let mut start: u32 = 0;
         let mut end: u32 = 0;
-        let mut cy: u32 = 0;
         let mut cursor: u32 = 0;
         let mut current: u32 = 0;
         let mut inv = 0;
@@ -4908,12 +4877,12 @@ pub unsafe fn window_copy_update_style(
         if window_copy_search_mark_at(data, fx, fy, &raw mut current) != 0 {
             return;
         }
-        mark = *(*data).searchmark.add(current as usize) as u32;
+        let mark = *(*data).searchmark.add(current as usize) as u32;
         if mark == 0 {
             return;
         }
 
-        cy = screen_hsize((*data).backing) - (*data).oy + (*data).cy;
+        let cy = screen_hsize((*data).backing) - (*data).oy + (*data).cy;
         if window_copy_search_mark_at(data, (*data).cx, cy, &raw mut cursor) == 0 {
             let keys =
                 modekey::try_from(options_get_number_((*(*wp).window).options, "mode-keys") as i32);
@@ -4995,8 +4964,8 @@ pub unsafe fn window_copy_write_line(
         let mut mkgc: grid_cell = zeroed();
         let mut hdr: [u8; 512] = zeroed();
         let mut tmp: [u8; 512] = zeroed();
-        let mut t: *mut u8 = null_mut();
-        let mut size: usize = 0;
+        let t: *mut u8;
+        let mut size: usize;
         let hsize = screen_hsize((*data).backing);
 
         style_apply(&raw mut gc, oo, c!("mode-style"), null_mut());
@@ -5300,7 +5269,7 @@ pub unsafe fn window_copy_adjust_selection(
 
         let mut sx = *selx;
         let mut sy = *sely;
-        let mut relpos = window_copy_rel_pos::WINDOW_COPY_REL_POS_ABOVE;
+        let relpos;
 
         let ty = screen_hsize((*data).backing) - (*data).oy;
         if sy < ty {
@@ -5420,16 +5389,12 @@ pub unsafe fn window_copy_get_selection(wme: *mut window_mode_entry, len: *mut u
         let data: *mut window_copy_mode_data = (*wme).data.cast();
         let s: *mut screen = &raw mut (*data).screen;
 
-        let mut buf: *mut u8 = null_mut();
-        let mut off: usize = 0;
-
-        // u_int i, xx, yy, sx, sy, ex, ey, ey_last;
-        // u_int firstsx, lastex, restex, restsx, selx;
-
-        let mut lastex = 0;
-        let mut restex = 0;
-        let mut firstsx = 0;
-        let mut restsx = 0;
+        let mut buf: *mut u8;
+        let mut off: usize;
+        let lastex;
+        let restex;
+        let firstsx;
+        let restsx;
 
         if (*data).screen.sel.is_null() && (*data).lineflag == line_sel::LINE_SEL_NONE {
             buf = window_copy_match_at_cursor(data);
@@ -5644,9 +5609,6 @@ pub unsafe fn window_copy_copy_selection(wme: *mut window_mode_entry, prefix: *c
 pub unsafe fn window_copy_append_selection(wme: *mut window_mode_entry) {
     unsafe {
         let wp: *mut window_pane = (*wme).wp;
-        let mut pb: *mut paste_buffer = null_mut();
-        let mut bufdata: *const u8 = null_mut();
-        let mut bufname: *const u8 = null();
         let mut ctx: screen_write_ctx = zeroed();
         let mut bufsize = 0;
         let mut len: usize = 0;
@@ -5662,9 +5624,10 @@ pub unsafe fn window_copy_append_selection(wme: *mut window_mode_entry) {
             notify_pane(c"pane-set-clipboard", wp);
         }
 
-        pb = paste_get_top(&raw mut bufname);
+        let mut bufname: *const u8 = null();
+        let pb = paste_get_top(&raw mut bufname);
         if !pb.is_null() {
-            bufdata = paste_buffer_data(pb, &raw mut bufsize);
+            let bufdata = paste_buffer_data(pb, &raw mut bufsize);
             buf = xrealloc(buf.cast(), len + bufsize).as_ptr().cast();
             libc::memmove(buf.add(bufsize).cast(), buf.cast(), len);
             libc::memcpy(buf.cast(), bufdata.cast(), bufsize);
@@ -5968,8 +5931,6 @@ pub unsafe fn window_copy_cursor_up(wme: *mut window_mode_entry, scroll_only: i3
     unsafe {
         let data: *mut window_copy_mode_data = (*wme).data.cast();
         let s: *mut screen = &raw mut (*data).screen;
-        let mut px = 0;
-        let mut py = 0;
 
         let norectsel = (*data).screen.sel.is_null() || (*data).rectflag == 0;
         let oy = screen_hsize((*data).backing) + (*data).cy - (*data).oy;
@@ -6010,6 +5971,8 @@ pub unsafe fn window_copy_cursor_up(wme: *mut window_mode_entry, scroll_only: i3
             }
         }
 
+        let mut px;
+        let mut py;
         if norectsel {
             py = screen_hsize((*data).backing) + (*data).cy - (*data).oy;
             px = window_copy_find_length(wme, py);
@@ -6045,8 +6008,6 @@ pub unsafe fn window_copy_cursor_down(wme: *mut window_mode_entry, scroll_only: 
     unsafe {
         let data: *mut window_copy_mode_data = (*wme).data.cast();
         let s: *mut screen = &raw mut (*data).screen;
-        let mut px = 0;
-        let mut py = 0;
 
         let norectsel = (*data).screen.sel.is_null() || (*data).rectflag == 0;
         let oy = screen_hsize((*data).backing) + (*data).cy - (*data).oy;
@@ -6079,6 +6040,8 @@ pub unsafe fn window_copy_cursor_down(wme: *mut window_mode_entry, scroll_only: 
             }
         }
 
+        let mut px;
+        let mut py;
         if norectsel {
             py = screen_hsize((*data).backing) + (*data).cy - (*data).oy;
             px = window_copy_find_length(wme, py);
@@ -6389,8 +6352,6 @@ pub unsafe fn window_copy_cursor_prompt(
         let s: *mut screen = (*data).backing;
         let gd: *mut grid = (*s).grid;
         let mut line = (*gd).hsize - (*data).oy + (*data).cy;
-        let mut end_line: u32 = 0;
-        let mut add: i32 = 0;
 
         let line_flag = if !args.is_null() && streq_(args, "-o") {
             grid_line_flag::START_OUTPUT
@@ -6398,6 +6359,8 @@ pub unsafe fn window_copy_cursor_prompt(
             grid_line_flag::START_PROMPT
         };
 
+        let end_line: u32;
+        let add: i32;
         if direction == 0 {
             /* up */
             add = -1;

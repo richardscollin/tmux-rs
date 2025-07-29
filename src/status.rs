@@ -102,7 +102,7 @@ pub fn status_prompt_load_history() {
             log_debug!("{}: failed to open file", &history_file);
             return;
         };
-        let mut reader = std::io::BufReader::new(file);
+        let reader = std::io::BufReader::new(file);
 
         for line in reader.lines() {
             if let Ok(line) = line {
@@ -811,7 +811,7 @@ pub unsafe fn status_prompt_redraw(c: *mut client) -> i32 {
         let s = (*c).session;
         let mut old_screen: screen = zeroed();
 
-        let mut offset: u32 = 0;
+        let offset: u32;
 
         let mut gc: grid_cell = zeroed();
         let mut cursorgc: grid_cell = zeroed();
@@ -1122,9 +1122,9 @@ unsafe fn status_prompt_paste(c: *mut client) -> i32 {
         // enum utf8_state more;
 
         let mut bufsize: usize = 0;
-        let mut n: usize = 0;
+        let n: usize;
 
-        let mut ud: *mut utf8_data = null_mut();
+        let ud: *mut utf8_data;
         let size = utf8_strlen((*c).prompt_buffer);
         if !(*c).prompt_saved.is_null() {
             ud = (*c).prompt_saved;
@@ -1201,12 +1201,12 @@ unsafe fn status_prompt_replace_complete(c: *mut client, mut s: *const u8) -> i3
         let mut word: [u8; 64] = [0; 64];
         let mut allocated: *mut u8 = null_mut();
 
-        let mut n: usize = 0;
-        let mut off: usize = 0;
-        let mut used: usize = 0;
+        
+        
+        let mut used: usize;
 
-        let mut last: *mut utf8_data = null_mut();
-        let mut ud: *mut utf8_data = null_mut();
+        let mut last: *mut utf8_data ;
+        let mut ud: *mut utf8_data ;
 
         /* Work out where the cursor currently is. */
         let idx = (*c).prompt_index.saturating_sub(1);
@@ -1268,13 +1268,13 @@ unsafe fn status_prompt_replace_complete(c: *mut client, mut s: *const u8) -> i3
         }
 
         /* Trim out word. */
-        n = size - last.offset_from_unsigned((*c).prompt_buffer) + 1; /* with \0 */
+        let n: usize = size - last.offset_from_unsigned((*c).prompt_buffer) + 1; /* with \0 */
         libc::memmove(first.cast(), last.cast(), n * size_of::<utf8_data>());
         size -= last.offset_from_unsigned(first);
 
         /* Insert the new word. */
         size += strlen(s);
-        off = first.offset_from_unsigned((*c).prompt_buffer);
+        let off: usize = first.offset_from_unsigned((*c).prompt_buffer);
         (*c).prompt_buffer = xreallocarray_::<utf8_data>((*c).prompt_buffer, size + 1).as_ptr();
         first = (*c).prompt_buffer.add(off);
         libc::memmove(
@@ -1419,19 +1419,19 @@ unsafe fn status_prompt_backward_word(c: *mut client, separators: *const u8) {
 pub unsafe fn status_prompt_key(c: *mut client, mut key: key_code) -> i32 {
     unsafe {
         let oo = (*(*c).session).options;
-        let mut s = null_mut();
-        let mut cp = null_mut();
+        let mut s ;
+        let cp ;
         let mut prefix = b'=';
 
-        let mut histstr: *const u8 = null();
-        let mut separators: *const u8 = null();
-        let mut keystring: *const u8 = null();
+        let histstr: *const u8 ;
+        let separators: *const u8 ;
+        let keystring: *const u8 ;
 
-        let mut idx: usize = 0;
+        let mut idx: usize;
 
         let mut tmp: utf8_data = zeroed();
 
-        let mut word_is_separators: i32 = 0;
+        let word_is_separators: i32;
 
         if (*c).prompt_flags & PROMPT_KEY != 0 {
             keystring = key_string_lookup_key(key, 0);
@@ -1823,9 +1823,9 @@ unsafe fn status_prompt_down_history(idx: *mut u32, type_: u32) -> *const u8 {
 unsafe fn status_prompt_add_history(line: *const u8, type_: u32) {
     unsafe {
         let mut new: u32 = 1;
-        let mut newsize: u32 = 0;
-        let mut freecount: u32 = 0;
-        let mut movesize: usize = 0;
+        let newsize: u32;
+        let mut freecount: u32;
+        let movesize: usize;
 
         let oldsize = STATUS_PROMPT_HSIZE[type_ as usize];
         if oldsize > 0
@@ -1899,7 +1899,7 @@ unsafe fn status_prompt_add_list(list: *mut *mut *mut u8, size: *mut u32, s: *co
 /// Build completion list.
 unsafe fn status_prompt_complete_list(size: *mut u32, s: *const u8, at_start: i32) -> *mut *mut u8 {
     unsafe {
-        let mut tmp: *mut u8 = null_mut();
+        let mut tmp: *mut u8;
         let mut list: *mut *mut u8 = null_mut();
         let slen = strlen(s);
 
@@ -2000,7 +2000,7 @@ unsafe fn status_prompt_menu_callback(
     unsafe {
         let spm: *mut status_prompt_menu = data.cast();
         let c = (*spm).c;
-        let mut s: *mut u8 = null_mut();
+        let s: *mut u8;
 
         if key != KEYC_NONE {
             idx += (*spm).start;
@@ -2125,16 +2125,11 @@ unsafe fn status_prompt_complete_window_menu(
     flag: u8,
 ) -> *mut u8 {
     unsafe {
-        // struct menu_item item;
-        // struct status_prompt_menu *spm;
-        // struct winlink *wl;
-        // char **list = NULL, *tmp;
         let mut item: menu_item = zeroed();
-        let mut tmp: *mut u8 = null_mut();
+        let mut tmp: *mut u8 ;
         let mut list: *mut *mut u8 = null_mut();
         let lines = status_line_size(c);
 
-        // u_int py;
         let mut size = 0;
 
         if (*c).tty.sy - lines < 3 {
@@ -2266,9 +2261,7 @@ unsafe fn status_prompt_complete_session(
     flag: u8,
 ) -> *mut u8 {
     unsafe {
-        // char *out, *tmp, n[11];
-
-        let mut tmp = null_mut();
+        let tmp ;
         let mut n: [u8; 11] = [0; 11];
 
         for loop_ in rb_foreach(&raw mut SESSIONS).map(NonNull::as_ptr) {
@@ -2300,15 +2293,15 @@ unsafe fn status_prompt_complete_session(
 /// Complete word.
 unsafe fn status_prompt_complete(c: *mut client, word: *const u8, mut offset: u32) -> *mut u8 {
     unsafe {
-        let mut session: *mut session = null_mut();
+        let session: *mut session;
 
-        let mut s: *const u8 = null();
-        let mut colon: *mut u8 = null_mut();
+        let s: *const u8 ;
+        let colon: *mut u8;
 
         let mut flag: u8 = b'\0';
 
         let mut list: *mut *mut u8 = null_mut();
-        let mut copy: *mut u8 = null_mut();
+        let copy: *mut u8;
         let mut out: *mut u8 = null_mut();
         let mut size: u32 = 0;
 

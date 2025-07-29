@@ -33,3 +33,19 @@ sys_signame = []
 systemd     = []
 utempter    = []
 utf8proc    = []
+
+# https://doc.rust-lang.org/rustc/lints/index.html
+[lints.rust]
+dead-code            = "allow" # TODO fix by adding annotations
+non_camel_case_types = "allow" # won't fix, track upstream type names. this lint is also included at the crate root due to a bug in rust-analyzer
+unpredictable_function_pointer_comparisons = "allow" # FIXME
+
+# https://rust-lang.github.io/rust-clippy/master/index.html
+[lints.clippy]
+manual_range_contains   = "allow"
+missing_safety_doc      = "allow"
+multiple_crate_versions = "warn"
+shadow_reuse            = "allow"
+shadow_same             = "warn"
+shadow_unrelated        = "allow"
+too_many_arguments      = "allow"

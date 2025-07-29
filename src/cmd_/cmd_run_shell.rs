@@ -258,9 +258,9 @@ pub unsafe fn cmd_run_shell_callback(job: *mut job) {
         let item = (*cdata).item;
         let cmd = (*cdata).cmd;
         let mut msg = null_mut();
-        let mut retcode: i32 = 0;
+        let mut retcode: i32;
 
-        let mut line = null_mut::<u8>();
+        let mut line ;
         loop {
             line = evbuffer_readln(
                 (*event).input,

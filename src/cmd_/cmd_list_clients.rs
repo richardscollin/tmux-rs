@@ -68,7 +68,7 @@ unsafe fn cmd_list_clients_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
             format_add!(ft, c!("line"), "{idx}");
             format_defaults(ft, c, None, None, None);
 
-            let mut flag = 0;
+            let flag;
             if !filter.is_null() {
                 let expanded = format_expand(ft, filter);
                 flag = format_true(expanded);

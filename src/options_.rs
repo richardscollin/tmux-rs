@@ -1367,8 +1367,6 @@ pub unsafe fn options_from_string(
             }
 
             options_table_type::OPTIONS_TABLE_COMMAND => {}
-
-            _ => (),
         }
         -1
     }

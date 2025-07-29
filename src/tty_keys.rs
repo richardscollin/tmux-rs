@@ -967,8 +967,6 @@ unsafe fn tty_keys_next1(
 ) -> i32 {
     unsafe {
         let c = (*tty).client;
-        let mut tk: *mut tty_key = null_mut();
-        let mut tk1: *mut tty_key = null_mut();
         let mut ud: utf8_data = zeroed();
         let mut more: utf8_state;
         let mut uc: utf8_char = zeroed();
@@ -976,9 +974,9 @@ unsafe fn tty_keys_next1(
         // log_debug!("{}: next key is {} (%.*s) (expired=%d)", _s((*c).name), len, len as i32, buf, expired);
 
         /* Is this a known key? */
-        tk = tty_keys_find(tty, buf, len, size);
+        let tk = tty_keys_find(tty, buf, len, size);
         if !tk.is_null() && (*tk).key != KEYC_UNKNOWN {
-            tk1 = tk;
+            let mut tk1 = tk;
             loop {
                 log_debug!("{}: keys in list: %#{}", _s((*c).name), (*tk1).key);
                 tk1 = (*tk1).next;
@@ -1034,7 +1032,6 @@ pub unsafe fn tty_keys_next(tty: *mut tty) -> i32 {
         let mut key: key_code = 0;
         let mut onlykey: key_code;
         let mut m: mouse_event = zeroed();
-        let mut event: *mut key_event = null_mut();
 
         // Get key buffer.
         let buf = EVBUFFER_DATA((*tty).in_);
@@ -1126,6 +1123,7 @@ pub unsafe fn tty_keys_next(tty: *mut tty) -> i32 {
                             }
 
                             /* Is this a mouse key press? */
+                            #[allow(unused_assignments)]
                             match tty_keys_mouse(tty, buf.cast(), len, &raw mut size, &raw mut m) {
                                 0 => {
                                     /* yes */
@@ -1325,7 +1323,7 @@ pub unsafe fn tty_keys_next(tty: *mut tty) -> i32 {
 
                 /* Fire the key. */
                 if key != KEYC_UNKNOWN {
-                    event = xmalloc_::<key_event>().as_ptr();
+                    let event = xmalloc_::<key_event>().as_ptr();
                     (*event).key = key;
                     memcpy__(&raw mut (*event).m, &raw const m);
                     if server_client_handle_key(c, event) == 0 {
@@ -1373,7 +1371,6 @@ unsafe fn tty_keys_extended_key(
         let mut modifiers: u32 = 0;
         const SIZE_OF_TMP: usize = 64;
         let mut tmp: [u8; 64] = [0; 64];
-        let mut nkey: key_code = 0;
 
         let mut ud: utf8_data = zeroed();
         let mut uc: utf8_char = zeroed();
@@ -1442,11 +1439,12 @@ unsafe fn tty_keys_extended_key(
         /* Store the key. */
 
         let bspace: libc::cc_t = (*tty).tio.c_cc[libc::VERASE];
-        if bspace != libc::_POSIX_VDISABLE && number == bspace as u32 {
-            nkey = keyc::KEYC_BSPACE as key_code;
+
+        let mut nkey: key_code = if bspace != libc::_POSIX_VDISABLE && number == bspace as u32 {
+            keyc::KEYC_BSPACE as key_code
         } else {
-            nkey = number as key_code;
-        }
+            number as key_code
+        };
 
         /* Convert UTF-32 codepoint into internal representation. */
         if nkey != keyc::KEYC_BSPACE as key_code && (nkey & !0x7f) != 0 {
@@ -1711,8 +1709,6 @@ unsafe fn tty_keys_clipboard(
         let mut end: usize;
         let mut terminator: usize = 0;
 
-        let mut i: u32 = 0;
-
         *size = 0;
 
         /* First five bytes are always \x1b]52;. */
@@ -1812,7 +1808,7 @@ unsafe fn tty_keys_clipboard(
             paste_add(null_mut(), out, outlen as usize);
             (*c).flags &= !client_flag::CLIPBOARDBUFFER;
         }
-        i = 0;
+        let mut i: u32 = 0;
         while i < (*c).clipboard_npanes {
             wp = window_pane_find_by_id(*(*c).clipboard_panes.add(i as usize));
             if !wp.is_null() {
@@ -1846,8 +1842,6 @@ unsafe fn tty_keys_device_attributes(
         let mut tmp: [u8; 128] = [0; 128];
         let mut endptr: *mut u8 = null_mut();
         let mut p: [u32; 32] = [0; 32];
-        let mut cp: *mut u8 = null_mut();
-        let mut next: *mut u8 = null_mut();
 
         *size = 0;
         if (*tty).flags.intersects(tty_flags::TTY_HAVEDA) {
@@ -1895,7 +1889,8 @@ unsafe fn tty_keys_device_attributes(
         *size = 4 + i;
 
         /* Convert all arguments to numbers. */
-        cp = tmp.as_mut_ptr();
+        let mut cp = tmp.as_mut_ptr();
+        let mut next: *mut u8;
         while {
             next = strsep(&raw mut cp, c!(";"));
             !next.is_null()
@@ -1949,8 +1944,6 @@ unsafe fn tty_keys_device_attributes2(
         let mut tmp: [u8; 128] = [0; 128];
         let mut endptr: *mut u8 = null_mut();
         let mut p: [u32; 32] = [0; 32];
-        let mut cp: *mut u8 = null_mut();
-        let mut next: *mut u8 = null_mut();
 
         *size = 0;
         if (*tty).flags.intersects(tty_flags::TTY_HAVEDA2) {
@@ -1998,7 +1991,8 @@ unsafe fn tty_keys_device_attributes2(
         *size = 4 + i;
 
         /* Convert all arguments to numbers. */
-        cp = tmp.as_mut_ptr();
+        let mut cp = tmp.as_mut_ptr();
+        let mut next: *mut u8;
         while {
             next = strsep(&raw mut cp, c!(";"));
             !next.is_null()

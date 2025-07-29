@@ -237,21 +237,19 @@ pub unsafe fn strnunvis(mut dst: *mut u8, mut src: *const u8, sz: usize) -> isiz
                 break;
             }
             loop {
-                match unvis(&mut p, c, &mut state, 0 as libc::c_int) {
+                match unvis(&mut p, c, &mut state, 0) {
                     1 => {
                         if dst < end {
                             *dst = p;
                         }
-                        dst = dst.offset(1);
-                        dst;
+                        dst = dst.add(1);
                         break;
                     }
                     2 => {
                         if dst < end {
                             *dst = p;
                         }
-                        dst = dst.offset(1);
-                        dst;
+                        dst = dst.add(1);
                     }
                     0 | 3 => {
                         break;
@@ -269,8 +267,7 @@ pub unsafe fn strnunvis(mut dst: *mut u8, mut src: *const u8, sz: usize) -> isiz
             if dst < end {
                 *dst = p;
             }
-            dst = dst.offset(1);
-            dst;
+            dst = dst.add(1);
         }
         if dst <= end {
             *dst = b'\0';

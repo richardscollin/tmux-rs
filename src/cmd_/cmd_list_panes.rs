@@ -133,7 +133,7 @@ fn cmd_list_panes_window(
             format_add!(ft, c!("line"), "{n}");
             format_defaults(ft, null_mut(), NonNull::new(s), NonNull::new(wl), Some(wp));
 
-            let mut flag = 0;
+            let flag;
             if !filter.is_null() {
                 let expanded = format_expand(ft, filter);
                 flag = format_true(expanded);

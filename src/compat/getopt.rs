@@ -35,7 +35,7 @@ pub static mut OPTOPT: u8 = 0;
 pub static mut OPTRESET: i32 = 0;
 pub static mut OPTARG: *mut u8 = null_mut();
 
-pub unsafe fn getopt(mut nargc: i32, mut nargv: *const *mut u8, mut ostr: *const u8) -> Option<u8> {
+pub unsafe fn getopt(nargc: i32, nargv: *const *mut u8, ostr: *const u8) -> Option<u8> {
     unsafe {
         static mut PLACE: *const u8 = c"".as_ptr().cast();
         let mut oli: *mut u8 = null_mut();
@@ -59,7 +59,6 @@ pub unsafe fn getopt(mut nargc: i32, mut nargv: *const *mut u8, mut ostr: *const
                     return Some(b'?');
                 }
                 OPTIND += 1;
-                OPTIND;
                 PLACE = c"".as_ptr().cast();
                 return None;
             }
@@ -76,7 +75,6 @@ pub unsafe fn getopt(mut nargc: i32, mut nargv: *const *mut u8, mut ostr: *const
             }
             if *PLACE == 0 {
                 OPTIND += 1;
-                OPTIND;
             }
             if OPTERR != 0 && *ostr != b':' {
                 let tmp = OPTOPT;
@@ -89,7 +87,6 @@ pub unsafe fn getopt(mut nargc: i32, mut nargv: *const *mut u8, mut ostr: *const
             OPTARG = null_mut();
             if *PLACE == 0 {
                 OPTIND += 1;
-                OPTIND;
             }
         } else {
             if *PLACE != 0 {
@@ -112,7 +109,6 @@ pub unsafe fn getopt(mut nargc: i32, mut nargv: *const *mut u8, mut ostr: *const
             }
             PLACE = c"".as_ptr().cast();
             OPTIND += 1;
-            OPTIND;
         }
 
         Some(OPTOPT)

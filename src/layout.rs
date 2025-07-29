@@ -61,7 +61,6 @@ pub unsafe fn layout_print_cell(lc: *mut layout_cell, hdr: *const u8, n: u32) {
             layout_type::LAYOUT_LEFTRIGHT => c"LEFTRIGHT",
             layout_type::LAYOUT_TOPBOTTOM => c"TOPBOTTOM",
             layout_type::LAYOUT_WINDOWPANE => c"WINDOWPANE",
-            _ => c"UNKNOWN",
         };
 
         log_debug!(

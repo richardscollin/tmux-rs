@@ -37,7 +37,7 @@ unsafe fn cmd_set_environment_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd
         let target = cmdq_get_target(item);
         let env: *mut environ;
         let name = args_string(args, 0);
-        let mut value = null();
+        let mut value: *const u8;
         let tflag;
         let mut expanded = null_mut();
         let mut retval = cmd_retval::CMD_RETURN_NORMAL;

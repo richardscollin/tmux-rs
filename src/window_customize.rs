@@ -1324,16 +1324,11 @@ pub unsafe fn window_customize_set_option(
     mut pane: i32,
 ) {
     unsafe {
-        let mut flag: i32 = 0;
         let idx = (*item).idx;
-        let mut scope = window_customize_scope::WINDOW_CUSTOMIZE_NONE;
 
         let mut choice: u32;
         let name = (*item).name;
         let mut space = c!("");
-        let mut oo: *mut options = null_mut();
-
-        let mut value = null_mut();
         let mut fs: cmd_find_state = zeroed();
 
         if item.is_null() || !window_customize_check_item(data, item, &raw mut fs) {
@@ -1348,6 +1343,8 @@ pub unsafe fn window_customize_set_option(
         if !oe.is_null() && !(*oe).scope & OPTIONS_TABLE_PANE != 0 {
             pane = 0;
         }
+        let scope: window_customize_scope;
+        let oo: *mut options;
         if !oe.is_null() && (*oe).flags & OPTIONS_TABLE_IS_ARRAY != 0 {
             scope = (*item).scope;
             oo = (*item).oo;
@@ -1404,7 +1401,7 @@ pub unsafe fn window_customize_set_option(
         }
 
         if !oe.is_null() && (*oe).type_ == options_table_type::OPTIONS_TABLE_FLAG {
-            flag = options_get_number(oo, name) as i32;
+            let flag = options_get_number(oo, name) as i32;
             options_set_number(oo, name, (flag == 0) as i64);
         } else if !oe.is_null() && (*oe).type_ == options_table_type::OPTIONS_TABLE_CHOICE {
             choice = options_get_number(oo, name) as u32;
@@ -1432,7 +1429,7 @@ pub unsafe fn window_customize_set_option(
             };
             free_(text);
 
-            value = options_to_string(o, idx, 0);
+            let value = options_to_string(o, idx, 0);
 
             let new_item = Box::new(window_customize_itemdata {
                 data,
@@ -1586,14 +1583,14 @@ pub unsafe fn window_customize_set_key(
 ) {
     unsafe {
         let key = (*item).key;
-        let mut prompt: *mut u8 = null_mut();
-        let mut value: *mut u8 = null_mut();
         let mut bd: *mut key_binding = null_mut();
 
         if item.is_null() || window_customize_get_key(item, null_mut(), &raw mut bd) == 0 {
             return;
         }
 
+        let prompt: *mut u8;
+        let value: *mut u8;
         let s = mode_tree_get_current_name((*data).data);
         if streq_(s, "Repeat") {
             (*bd).flags ^= KEY_BINDING_REPEAT;
@@ -1746,7 +1743,6 @@ pub unsafe fn window_customize_change_current_callback(
 ) -> i32 {
     unsafe {
         let data: *mut window_customize_modedata = modedata.as_ptr();
-        let mut item: *mut window_customize_itemdata = null_mut();
 
         if s.is_null() || *s == b'\0' || (*data).dead != 0 {
             return 0;
@@ -1755,7 +1751,8 @@ pub unsafe fn window_customize_change_current_callback(
             return 0;
         }
 
-        item = mode_tree_get_current((*data).data).as_ptr().cast();
+        let item: *mut window_customize_itemdata =
+            mode_tree_get_current((*data).data).as_ptr().cast();
         match (*data).change {
             window_customize_change::WINDOW_CUSTOMIZE_UNSET => {
                 if (*item).scope == window_customize_scope::WINDOW_CUSTOMIZE_KEY {
@@ -1827,7 +1824,7 @@ pub unsafe fn window_customize_key(
         let data: *mut window_customize_modedata = (*wme.as_ptr()).data.cast();
         let mut item: *mut window_customize_itemdata =
             mode_tree_get_current((*data).data).cast().as_ptr();
-        let mut prompt = null_mut();
+        let prompt: *mut u8;
         let finished: i32 = mode_tree_key((*data).data, c, &raw mut key, m, null_mut(), null_mut());
 
         let new_item: NonNull<window_customize_itemdata> =

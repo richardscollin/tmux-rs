@@ -58,10 +58,11 @@ unsafe fn cmd_display_panes_draw_pane(ctx: *mut screen_redraw_ctx, wp: *mut wind
                 return;
             }
 
-            let xoff;
-            let mut yoff;
-            let mut sx = 0;
-            let mut sy = 0;
+            let mut yoff: u32;
+            let sy: u32;
+
+            let xoff: u32;
+            let sx: u32;
             if (*wp).xoff >= (*ctx).ox && (*wp).xoff + (*wp).sx <= (*ctx).ox + (*ctx).sx {
                 /* All visible. */
                 xoff = (*wp).xoff - (*ctx).ox;
@@ -261,14 +262,11 @@ unsafe fn cmd_display_panes_free(_c: *mut client, data: *mut c_void) {
 unsafe fn cmd_display_panes_key(c: *mut client, data: *mut c_void, event: *mut key_event) -> i32 {
     unsafe {
         let cdata = data as *mut cmd_display_panes_data;
-        //char				*expanded, *error;
         let item = (*cdata).item;
-        // *new_item;
-        //struct cmd_list			*cmdlist;
         let w = (*(*(*c).session).curw).window;
-        // struct window_pane		*wp;
-        let mut index: u32 = 0;
-        let mut key: key_code = 0;
+
+        let index: u32;
+        let key: key_code;
 
         if (*event).key >= b'0' as _ && (*event).key <= b'9' as _ {
             index = ((*event).key - b'0' as u64) as u32;
@@ -289,9 +287,7 @@ unsafe fn cmd_display_panes_key(c: *mut client, data: *mut c_void, event: *mut k
         }
         window_unzoom(w, 1);
 
-        let mut expanded = null_mut();
-        expanded = format_nul!("%{}", (*wp).id);
-
+        let mut expanded = format_nul!("%{}", (*wp).id);
         let mut error = null_mut();
         let cmdlist = args_make_commands((*cdata).state, 1, &raw mut expanded, &raw mut error);
         if cmdlist.is_null() {

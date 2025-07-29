@@ -100,8 +100,6 @@ pub unsafe fn areshell(shell: *const u8) -> c_int {
 
 pub unsafe fn expand_path(path: *const u8, home: *const u8) -> Option<CString> {
     unsafe {
-        let mut end: *const u8 = null_mut();
-
         if strncmp(path, c!("~/"), 2) == 0 {
             if home.is_null() {
                 return None;
@@ -110,7 +108,7 @@ pub unsafe fn expand_path(path: *const u8, home: *const u8) -> Option<CString> {
         }
 
         if *path == b'$' {
-            end = strchr(path, b'/' as i32);
+            let mut end: *const u8 = strchr(path, b'/' as i32).cast();
             let name = if end.is_null() {
                 xstrdup(path.add(1)).cast().as_ptr()
             } else {
@@ -138,7 +136,6 @@ pub unsafe fn expand_path(path: *const u8, home: *const u8) -> Option<CString> {
 unsafe fn expand_paths(s: &str, paths: &mut Vec<CString>, ignore_errors: i32) {
     unsafe {
         let home = find_home();
-        let mut next: *const u8 = null_mut();
         let mut resolved: [u8; PATH_MAX as usize] = zeroed(); // TODO use unint version
         let mut path: CString;
 
@@ -146,6 +143,7 @@ unsafe fn expand_paths(s: &str, paths: &mut Vec<CString>, ignore_errors: i32) {
 
         paths.clear();
 
+        let mut next: *const u8;
         let mut tmp: *mut u8 = xstrdup__(s);
         let copy = tmp;
         while {
@@ -187,7 +185,7 @@ unsafe fn expand_paths(s: &str, paths: &mut Vec<CString>, ignore_errors: i32) {
 
 unsafe fn make_label(mut label: *const u8, cause: *mut *mut u8) -> *const u8 {
     let mut paths: Vec<CString> = Vec::new();
-    let mut base: *mut u8 = null_mut();
+    let base: *mut u8;
     let mut sb: stat = unsafe { zeroed() }; // TODO use uninit
 
     unsafe {

@@ -29,13 +29,12 @@ pub static CMD_REFRESH_CLIENT_ENTRY: cmd_entry = cmd_entry {
 
 pub unsafe fn cmd_refresh_client_update_subscription(tc: *mut client, value: *const u8) {
     unsafe {
-        let mut split = null_mut::<u8>();
         let subid = -1;
-        let mut copy = null_mut();
+        let copy ;
         'out: {
             let name = xstrdup(value).as_ptr();
             copy = name;
-            split = strchr(copy, ':' as i32);
+            let mut split = strchr(copy, ':' as i32);
             if split.is_null() {
                 control_remove_sub(tc, copy);
                 break 'out;
@@ -276,7 +275,6 @@ pub unsafe fn cmd_refresh_client_exec(self_: *mut cmd, item: *mut cmdq_item) -> 
         let args = cmd_get_args(self_);
         let tc = cmdq_get_target_client(item);
         let tty = &raw mut (*tc).tty;
-        let mut adjust: u32 = 0;
 
         'not_control_client: {
             if args_has_(args, 'c')
@@ -285,7 +283,7 @@ pub unsafe fn cmd_refresh_client_exec(self_: *mut cmd, item: *mut cmdq_item) -> 
                 || args_has_(args, 'U')
                 || args_has_(args, 'D')
             {
-                adjust = if args_count(args) == 0 {
+                let adjust = if args_count(args) == 0 {
                     1
                 } else {
                     match strtonum(args_string(args, 0), 1, i32::MAX) {

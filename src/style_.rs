@@ -54,8 +54,8 @@ pub unsafe fn style_parse(sy: *mut style, base: *const grid_cell, mut in_: *cons
         let mut tmp_bak: tmp_type = [0; 256];
         let tmp = tmp_bak.as_mut_ptr();
 
-        let mut found: *mut u8 = null_mut();
-        let mut end: usize = 0;
+        let mut found: *mut u8;
+        let mut end: usize;
 
         if *in_ == b'\0' as _ {
             return 0;
@@ -428,6 +428,7 @@ pub unsafe fn style_tostring(sy: *const style) -> *const u8 {
             .unwrap() as i32;
             comma = c!(",");
         }
+        #[expect(unused_assignments)]
         if !(*gc).attr.is_empty() {
             _ = xsnprintf_!(
                 s.add(off as usize),
@@ -453,7 +454,6 @@ pub unsafe fn style_add(
     mut ft: *mut format_tree,
 ) {
     unsafe {
-        let mut sy: *mut style = null_mut();
         let mut ft0: *mut format_tree = null_mut();
 
         if ft.is_null() {
@@ -461,7 +461,7 @@ pub unsafe fn style_add(
             ft = ft0;
         }
 
-        sy = options_string_to_style(oo, name, ft);
+        let mut sy = options_string_to_style(oo, name, ft);
         if sy.is_null() {
             sy = &raw mut STYLE_DEFAULT;
         }

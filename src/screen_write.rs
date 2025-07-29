@@ -377,9 +377,7 @@ pub unsafe fn screen_write_strlen_(args: std::fmt::Arguments) -> usize {
     unsafe {
         let mut ud: utf8_data = zeroed();
 
-        let mut left = 0;
         let mut size = 0;
-        let mut more: utf8_state = utf8_state::UTF8_DONE;
 
         let mut msg = args.to_string();
         msg.push('\0');
@@ -389,10 +387,11 @@ pub unsafe fn screen_write_strlen_(args: std::fmt::Arguments) -> usize {
             if *ptr > 0x7f && utf8_open(&raw mut ud, *ptr) == utf8_state::UTF8_MORE {
                 ptr = ptr.add(1);
 
-                left = strlen(ptr.cast());
+                let left = strlen(ptr.cast());
                 if left < ud.size as usize - 1 {
                     break;
                 }
+                let mut more: utf8_state;
                 while {
                     more = utf8_append(&raw mut ud, *ptr);
                     more == utf8_state::UTF8_MORE
@@ -561,7 +560,6 @@ pub(crate) unsafe fn screen_write_vnputs_(
         let mut gc: grid_cell = zeroed();
         let ud: *mut utf8_data = &raw mut gc.data;
         let mut size: usize = 0;
-        let mut more: utf8_state = utf8_state::UTF8_DONE;
 
         memcpy__(&raw mut gc, gcp);
         let mut msg = args.to_string();
@@ -576,6 +574,7 @@ pub(crate) unsafe fn screen_write_vnputs_(
                 if left < (*ud).size as usize - 1 {
                     break;
                 }
+                let mut more: utf8_state;
                 while {
                     more = utf8_append(ud, *ptr);
                     more == utf8_state::UTF8_MORE
@@ -2100,7 +2099,6 @@ pub unsafe fn screen_write_collect_end(ctx: *mut screen_write_ctx) {
 pub unsafe fn screen_write_collect_add(ctx: *mut screen_write_ctx, gc: *const grid_cell) {
     unsafe {
         let s = (*ctx).s;
-        let mut ci: *mut screen_write_citem = null_mut();
         let sx = screen_size_x(s);
 
         /*
@@ -2124,7 +2122,7 @@ pub unsafe fn screen_write_collect_add(ctx: *mut screen_write_ctx, gc: *const gr
         if (*s).cx > sx - 1 || (*(*ctx).item).used > sx - 1 - (*s).cx {
             screen_write_collect_end(ctx);
         }
-        ci = (*ctx).item; /* may have changed */
+        let ci = (*ctx).item; /* may have changed */
 
         if (*s).cx > sx - 1 {
             // log_debug!("%s: wrapped at %u,%u", __func__, (*s).cx, (*s).cy);
@@ -2157,8 +2155,8 @@ pub unsafe fn screen_write_cell(ctx: *mut screen_write_ctx, gc: *const grid_cell
         let gd = (*s).grid;
         let ud = &raw const (*gc).data;
 
-        let mut gl: *mut grid_line = null_mut();
-        let mut gce: *mut grid_cell_entry = null_mut();
+        
+        let gce: *mut grid_cell_entry;
 
         const SIZE_OF_TMP_GC: usize = size_of::<grid_cell>();
         let mut tmp_gc: grid_cell = zeroed();
@@ -2214,7 +2212,7 @@ pub unsafe fn screen_write_cell(ctx: *mut screen_write_ctx, gc: *const grid_cell
         screen_write_initctx(ctx, &raw mut ttyctx, 0);
 
         /* Handle overwriting of UTF-8 characters. */
-        gl = grid_get_line((*s).grid, (*(*s).grid).hsize + (*s).cy);
+        let gl: *mut grid_line = grid_get_line((*s).grid, (*(*s).grid).hsize + (*s).cy);
         if (*gl).flags.intersects(grid_line_flag::EXTENDED) {
             grid_view_get_cell(gd, (*s).cx, (*s).cy, &raw mut now_gc);
             if screen_write_overwrite(ctx, &raw mut now_gc, width) != 0 {
@@ -2432,7 +2430,6 @@ pub unsafe fn screen_write_overwrite(
         let gd = (*s).grid;
 
         let mut tmp_gc: grid_cell = zeroed();
-        let mut xx: u32 = 0;
         let mut done = 0;
 
         if (*gc).flags.intersects(grid_flag::PADDING) {
@@ -2441,7 +2438,7 @@ pub unsafe fn screen_write_overwrite(
              * cells back to the character. Don't overwrite the current
              * cell as that happens later anyway.
              */
-            xx = (*s).cx + 1;
+            let mut xx = (*s).cx + 1;
             while {
                 xx -= 1;
                 xx > 0
@@ -2465,7 +2462,7 @@ pub unsafe fn screen_write_overwrite(
          * we'll be overwriting with the current character.
          */
         if width != 1 || (*gc).data.width != 1 || (*gc).flags.intersects(grid_flag::PADDING) {
-            xx = (*s).cx + width - 1;
+            let mut xx = (*s).cx + width - 1;
             while {
                 xx += 1;
                 xx < screen_size_x(s)

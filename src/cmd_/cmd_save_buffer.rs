@@ -66,10 +66,9 @@ unsafe fn cmd_save_buffer_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
     unsafe {
         let args = cmd_get_args(self_);
         let c = cmdq_get_client(item);
-        let mut flags = 0;
         let bufname = args_get_(args, 'b');
-        let mut path = null_mut();
-        let mut evb = null_mut();
+        let path;
+        let evb;
 
         let pb = if bufname.is_null() {
             let Some(pb) = NonNull::new(paste_get_top(null_mut())) else {
@@ -102,11 +101,11 @@ unsafe fn cmd_save_buffer_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
         } else {
             path = format_single_from_target(item, args_string(args, 0));
         }
-        if args_has_(args, 'a') {
-            flags = O_APPEND;
+        let flags = if args_has_(args, 'a') {
+            O_APPEND
         } else {
-            flags = O_TRUNC;
-        }
+            O_TRUNC
+        };
         file_write(
             cmdq_get_client(item),
             path,

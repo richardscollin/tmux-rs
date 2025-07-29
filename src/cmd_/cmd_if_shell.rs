@@ -133,7 +133,7 @@ unsafe fn cmd_if_shell_callback(job: *mut job) {
         let item = (*cdata).item;
         let mut error: *mut u8 = null_mut();
 
-        let mut state: *mut args_command_state = null_mut();
+        let state: *mut args_command_state;
         let status = job_get_status(job);
 
         'out: {

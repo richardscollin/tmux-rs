@@ -21,7 +21,7 @@ pub Lines: Option<&'static mut cmd_parse_commands> = {
 pub Statements: &'static mut cmd_parse_commands = {
     <s:Statement> "\n" => s,
     <arg1:Statements> <arg2:Statement> "\n" => unsafe {
-      let mut value = arg1;
+      let value = arg1;
       tailq_concat(value, arg2);
       free_(arg2);
       value
@@ -30,12 +30,12 @@ pub Statements: &'static mut cmd_parse_commands = {
 
 pub Statement: &'static mut cmd_parse_commands = {
     => unsafe { // Empty
-      let mut value: &'static mut cmd_parse_commands = Box::leak(Box::new(zeroed()));
+      let value: &'static mut cmd_parse_commands = Box::leak(Box::new(zeroed()));
       tailq_init(value);
       value
     },
     HiddenAssignment => unsafe {
-      let mut value = xcalloc1::<cmd_parse_commands>();
+      let value = xcalloc1::<cmd_parse_commands>();
       tailq_init(value);
       value
     },
@@ -60,8 +60,8 @@ pub Statement: &'static mut cmd_parse_commands = {
 };
 
 pub Format: NonNull<u8> = {
-  <arg:format> => (arg.unwrap()),
-  <arg:token> => (arg.unwrap()),
+  <arg:format> => arg.unwrap(),
+  <arg:token> => arg.unwrap(),
 };
 
 pub Expanded: NonNull<u8> = {
@@ -77,7 +77,7 @@ pub Expanded: NonNull<u8> = {
         cmd_find_from_client(fs.as_mut_ptr(), c, cmd_find_flags::empty());
         fs.as_ptr()
       };
-      let mut ft = format_create(null_mut(), (*pi).item, FORMAT_NONE, flags);
+      let ft = format_create(null_mut(), (*pi).item, FORMAT_NONE, flags);
       format_defaults(ft, c, NonNull::new((*fsp).s), NonNull::new((*fsp).wl), NonNull::new((*fsp).wp));
 
       let value = format_expand(ft, arg1.as_ptr());
@@ -111,8 +111,8 @@ pub HiddenAssignment: () = {
 
 pub IfOpen: i32 = {
     "%if" <arg2:Expanded> => unsafe {
-      let mut scope = xcalloc1::<cmd_parse_scope>();
-      let mut value = format_true(arg2.as_ptr());
+      let scope = xcalloc1::<cmd_parse_scope>();
+      let value = format_true(arg2.as_ptr());
       scope.flag = value;
       free_(arg2.as_ptr());
 
@@ -127,7 +127,7 @@ pub IfOpen: i32 = {
 
 pub IfElse: () = {
     "%else" => unsafe {
-      let mut scope = xcalloc1::<cmd_parse_scope>();
+      let scope = xcalloc1::<cmd_parse_scope>();
       scope.flag = !(*ps.as_ptr()).scope.as_ref().unwrap().flag;
 
       free_((*ps.as_ptr()).scope.take().map(|p|p as *mut cmd_parse_scope).unwrap_or_default());
@@ -137,8 +137,8 @@ pub IfElse: () = {
 
 pub IfElif: i32 = {
     "%elif" <arg2:Expanded> => unsafe {
-      let mut scope = xcalloc1::<cmd_parse_scope>();
-      let mut value = format_true(arg2.as_ptr());
+      let scope = xcalloc1::<cmd_parse_scope>();
+      let value = format_true(arg2.as_ptr());
       scope.flag = value;
       free_(arg2.as_ptr());
 
@@ -283,7 +283,7 @@ pub Commands: &'static mut cmd_parse_commands = {
     },
 
     <arg1:Commands> <_arg2:";"> <arg3:Command> => unsafe {
-      let mut value;
+      let value;
       if !tailq_empty(&raw mut arg3.arguments) && (*ps.as_ptr()).scope.as_ref().is_none_or(|scope| scope.flag != 0) {
         value = arg1;
         tailq_insert_tail(value, arg3);
@@ -300,31 +300,31 @@ pub Commands: &'static mut cmd_parse_commands = {
 
 pub Command: &'static mut cmd_parse_command = {
     Assignment => unsafe {
-        let mut command = xcalloc1::<cmd_parse_command>();
+        let command = xcalloc1::<cmd_parse_command>();
         command.line = (*ps.as_ptr()).input.as_mut().unwrap().line.load(Ordering::SeqCst);
         tailq_init(&raw mut command.arguments);
         command
     },
     <_arg1:OptionalAssignment> <arg2:token> => unsafe {
-        let mut command = xcalloc1::<cmd_parse_command>();
+        let command = xcalloc1::<cmd_parse_command>();
         command.line = (*ps.as_ptr()).input.as_mut().unwrap().line.load(Ordering::SeqCst);
         tailq_init(&raw mut command.arguments);
 
-        let mut arg: *mut cmd_parse_argument = xcalloc1::<cmd_parse_argument>();
+        let arg: *mut cmd_parse_argument = xcalloc1::<cmd_parse_argument>();
         (*arg).type_ = cmd_parse_argument_type::String(transmute_ptr(arg2));
         tailq_insert_head(&raw mut command.arguments, arg);
 
         command
     },
     <_arg1:OptionalAssignment> <arg2:token> <arg3:Arguments> => unsafe {
-        let mut command = xcalloc1::<cmd_parse_command>();
+        let command = xcalloc1::<cmd_parse_command>();
         command.line = (*ps.as_ptr()).input.as_mut().unwrap().line.load(Ordering::SeqCst);
         tailq_init(&raw mut command.arguments);
 
         tailq_concat(&raw mut command.arguments, arg3);
         free_(arg3);
 
-        let mut arg: *mut cmd_parse_argument = xcalloc1::<cmd_parse_argument>();
+        let arg: *mut cmd_parse_argument = xcalloc1::<cmd_parse_argument>();
         (*arg).type_ = cmd_parse_argument_type::String(transmute_ptr(arg2));
         tailq_insert_head(&raw mut command.arguments, arg);
 
@@ -430,7 +430,7 @@ pub Elif1: yystype_elif  = {
 
 pub Arguments: &'static mut cmd_parse_arguments = {
     <arg1:Argument> => unsafe {
-      let mut value = xcalloc1::<cmd_parse_arguments>();
+      let value = xcalloc1::<cmd_parse_arguments>();
       tailq_init(value);
 
       tailq_insert_head(value, arg1);
@@ -464,7 +464,7 @@ pub Argument: &'static mut cmd_parse_argument = {
 pub ArgumentStatements: &'static mut cmd_parse_commands = {
     <statement:Statement> "}" => statement,
     <arg1:Statements> <arg2:Statement> "}" => unsafe {
-        let mut value = arg1;
+        let value = arg1;
         tailq_concat(value, arg2);
         free_(arg2);
         value

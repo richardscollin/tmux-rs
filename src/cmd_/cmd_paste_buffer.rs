@@ -44,7 +44,7 @@ unsafe fn cmd_paste_buffer_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
             bufname = args_get(args, b'b');
         }
 
-        let mut pb = null_mut();
+        let pb ;
         if bufname.is_null() {
             pb = paste_get_top(null_mut());
         } else {

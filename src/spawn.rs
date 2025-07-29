@@ -20,7 +20,7 @@ use crate::libc::{
 use crate::utempter::utempter_add_record;
 use crate::*;
 
-pub unsafe fn spawn_log(from: *const u8, sc: *mut spawn_context) {
+pub unsafe fn spawn_log(from: &str, sc: *mut spawn_context) {
     unsafe {
         let s = (*sc).s;
         let wl = (*sc).wl;
@@ -29,7 +29,7 @@ pub unsafe fn spawn_log(from: *const u8, sc: *mut spawn_context) {
         type tmp_type = [u8; 128];
         let mut tmp = MaybeUninit::<tmp_type>::uninit();
 
-        log_debug!("{}: {}, flags={:#x}", _s(from), _s(name), (*sc).flags);
+        log_debug!("{}: {}, flags={:#x}", from, _s(name), (*sc).flags);
 
         if !wl.is_null() && !wp0.is_null() {
             _ = xsnprintf_!(
@@ -62,14 +62,14 @@ pub unsafe fn spawn_log(from: *const u8, sc: *mut spawn_context) {
         }
         log_debug!(
             "{}: s=${} {} idx={}",
-            _s(from),
+            from,
             (*s).id,
             _s(tmp.as_ptr().cast::<i8>()),
             (*sc).idx
         );
         log_debug!(
             "{}: name={}",
-            _s(from),
+            from,
             _s(if (*sc).name.is_null() {
                 c!("none")
             } else {
@@ -80,19 +80,15 @@ pub unsafe fn spawn_log(from: *const u8, sc: *mut spawn_context) {
 }
 
 pub unsafe fn spawn_window(sc: *mut spawn_context, cause: *mut *mut u8) -> *mut winlink {
-    let __func__ = c!("spawn_window");
     unsafe {
         let item = (*sc).item;
         let c = cmdq_get_client(item);
         let s = (*sc).s;
         let mut idx = (*sc).idx;
-        let mut w: *mut window = null_mut();
-        // struct window *w;
-        // struct window_pane *wp;
+        let mut w: *mut window;
         let mut wp = null_mut();
-        // struct winlink *wl;
 
-        spawn_log(__func__, sc);
+        spawn_log("spawn_window", sc);
 
         /*
          * If the window already exists, we are respawning, so destroy all the
@@ -233,35 +229,34 @@ pub unsafe fn spawn_window(sc: *mut spawn_context, cause: *mut *mut u8) -> *mut 
 }
 
 pub unsafe fn spawn_pane(sc: *mut spawn_context, cause: *mut *mut u8) -> *mut window_pane {
-    let __func__ = c!("spawn_pane");
     unsafe {
         let item = (*sc).item;
         let target = cmdq_get_target(item);
         let c = cmdq_get_client(item);
         let s = (*sc).s;
         let w = (*(*sc).wl).window;
-        let mut new_wp: *mut window_pane = null_mut();
-        let mut child: *mut environ = null_mut();
-        let mut ee: *mut environ_entry = null_mut();
-        let mut argv: *mut *mut u8 = null_mut();
-        let mut cp: *mut u8 = null_mut();
-        let mut argvp: *mut *mut u8 = null_mut();
-        let mut argv0: *mut u8 = null_mut();
-        let mut cwd: *mut u8 = null_mut();
-        let mut new_cwd: *mut u8 = null_mut();
-        let mut cmd: *const u8 = null();
-        let mut tmp: *const u8 = null();
-        let mut argc = 0;
+        let new_wp: *mut window_pane;
+        let child: *mut environ;
+        let ee: *mut environ_entry;
+        let argv: *mut *mut u8;
+        let mut cp: *mut u8;
+        let argvp: *mut *mut u8;
+        let argv0: *mut u8;
+        let mut cwd: *mut u8;
+        let new_cwd: *mut u8;
+        let mut cmd: *const u8;
+        let mut tmp: *const u8;
+        let argc;
         let mut idx: u32 = 0;
         let mut now: libc::termios = zeroed();
-        let mut hlimit: u32 = 0;
+        let hlimit: u32;
         let mut ws: libc::winsize = zeroed();
         let mut set: libc::sigset_t = zeroed();
         let mut oldset: libc::sigset_t = zeroed();
-        let mut key: key_code = 0;
+        let key: key_code;
 
         'complete: {
-            spawn_log(__func__, sc);
+            spawn_log("spawn_pane", sc);
 
             if !(*sc).cwd.is_null() {
                 cwd = format_single(item, (*sc).cwd, c, (*target).s, null_mut(), null_mut());
@@ -385,15 +380,15 @@ pub unsafe fn spawn_pane(sc: *mut spawn_context, cause: *mut *mut u8) -> *mut wi
             environ_set!(child, c!("SHELL"), 0, "{}", _s((*new_wp).shell));
 
             /* Log the arguments we are going to use. */
-            log_debug!("{}: shell={}", _s(__func__), _s((*new_wp).shell));
+            log_debug!("spawn_pane: shell={}", _s((*new_wp).shell));
             if (*new_wp).argc != 0 {
                 cp = cmd_stringify_argv((*new_wp).argc, (*new_wp).argv);
-                log_debug!("{}: cmd={}", _s(__func__), _s(cp));
+                log_debug!("spawn_pane: cmd={}", _s(cp));
                 free_(cp);
             }
-            log_debug!("{}: cwd={}", _s(__func__), _s((*new_wp).cwd));
-            cmd_log_argv!((*new_wp).argc, (*new_wp).argv, "{}", _s(__func__));
-            environ_log!(child, "{}: environment ", _s(__func__));
+            log_debug!("spawn_pane: cwd={}", _s((*new_wp).cwd));
+            cmd_log_argv!((*new_wp).argc, (*new_wp).argv, "spawn_pan");
+            environ_log!(child, "spawn_pan: environment ");
 
             /* Initialize the window size. */
             memset0(&raw mut ws);

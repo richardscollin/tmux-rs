@@ -74,14 +74,14 @@ unsafe fn cmd_show_options_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
         let args = cmd_get_args(self_);
         let target = cmdq_get_target(item);
         let mut oo: *mut options = null_mut();
-        let mut argument: *mut u8 = null_mut();
-        let mut name: *mut u8 = null_mut();
+        let argument: *mut u8;
+        let name: *mut u8;
         let mut cause: *mut u8 = null_mut();
 
         let mut idx = 0;
         let mut ambiguous = 0;
-        let mut parent = 0;
-        let mut o: *mut options_entry = null_mut();
+        let parent ;
+        let mut o: *mut options_entry;
 
         let window = std::ptr::eq(cmd_get_entry(self_), &CMD_SHOW_WINDOW_OPTIONS_ENTRY) as i32;
 
@@ -168,11 +168,11 @@ pub unsafe fn cmd_show_options_print(
 ) {
     unsafe {
         let args = cmd_get_args(self_);
-        let mut a: *mut options_array_item = null_mut();
+        let mut a: *mut options_array_item ;
         let mut name = options_name(o);
-        let mut value = null_mut();
+        
         let mut tmp = null_mut();
-        let mut escaped = null_mut();
+        let escaped ;
 
         if idx != -1 {
             tmp = format_nul!("{}[{}]", _s(name), idx);
@@ -193,7 +193,7 @@ pub unsafe fn cmd_show_options_print(
             return;
         }
 
-        value = options_to_string(o, idx, 0);
+        let value = options_to_string(o, idx, 0);
         if args_has_(args, 'v') {
             cmdq_print!(item, "{}", _s(value));
         } else if options_is_string(o) != 0 {
@@ -223,8 +223,8 @@ pub unsafe fn cmd_show_options_all(
 ) -> cmd_retval {
     unsafe {
         let args = cmd_get_args(self_);
-        let mut o: *mut options_entry = null_mut();
-        let mut parent = 0;
+        let mut o: *mut options_entry ;
+        let mut parent ;
 
         if !std::ptr::eq(cmd_get_entry(self_), &CMD_SHOW_HOOKS_ENTRY) {
             o = options_first(oo);

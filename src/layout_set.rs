@@ -78,7 +78,7 @@ pub unsafe fn layout_set_select(w: *mut window, mut layout: u32) -> u32 {
 
 pub unsafe fn layout_set_next(w: *mut window) -> u32 {
     unsafe {
-        let mut layout: u32 = 0;
+        let mut layout: u32;
 
         if (*w).lastlayout == -1 {
             layout = 0;
@@ -99,7 +99,7 @@ pub unsafe fn layout_set_next(w: *mut window) -> u32 {
 
 pub unsafe fn layout_set_previous(w: *mut window) -> u32 {
     unsafe {
-        let mut layout: u32 = 0;
+        let mut layout: u32;
 
         if (*w).lastlayout == -1 {
             layout = (LAYOUT_SETS_LEN - 1) as u32;
@@ -123,11 +123,8 @@ pub unsafe fn layout_set_previous(w: *mut window) -> u32 {
 pub unsafe fn layout_set_even(w: *mut window, type_: layout_type) {
     let __func__ = c!("layout_set_even");
     unsafe {
-        // struct window_pane *wp;
-        // struct layout_cell *lc, *lcnew;
-        // u_int n, sx, sy;
-        let mut sx: u32 = 0;
-        let mut sy: u32 = 0;
+        let mut sx: u32;
+        let mut sy: u32;
 
         layout_print_cell((*w).layout_root, __func__, 1);
 
@@ -223,7 +220,7 @@ pub unsafe fn layout_set_main_h(w: *mut window) {
             free_(cause);
         }
 
-        let mut otherh: u32 = 0;
+        let mut otherh: u32;
         /* Work out the other pane height. */
         if mainh + PANE_MINIMUM >= sy {
             if sy <= PANE_MINIMUM + PANE_MINIMUM {

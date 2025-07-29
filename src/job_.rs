@@ -79,22 +79,22 @@ pub unsafe fn job_run(
 ) -> *mut job {
     let __func__ = "job_run";
     unsafe {
-        let mut job: *mut job = null_mut();
-        let mut env: *mut environ = null_mut();
+        let job: *mut job ;
+        let env: *mut environ ;
         let pid: pid_t;
         let nullfd: i32;
         let mut out: [i32; 2] = [0; 2];
         let mut master: i32 = 0;
-        let mut home: *mut u8 = null_mut();
-        let mut shell: *const u8 = null_mut();
+        let home: *mut u8 ;
+        let mut shell: *const u8 ;
         let mut set = MaybeUninit::<sigset_t>::uninit();
         let mut oldset = MaybeUninit::<sigset_t>::uninit();
         let mut ws = MaybeUninit::<winsize>::uninit();
-        let mut argvp: *mut *mut u8 = null_mut();
+        let argvp: *mut *mut u8 ;
         // let mut tty = MaybeUninit::<[c_char; TTY_NAME_MAX]>::uninit();
         let mut tty = [0i8; 64];
-        let mut argv0: *mut u8 = null_mut();
-        let mut oo: *mut options = null_mut();
+        let argv0: *mut u8 ;
+        let oo: *mut options ;
 
         'fail: {
             env = environ_for_session(s, !CFG_FINISHED.load(atomic::Ordering::Acquire) as i32);

@@ -149,7 +149,7 @@ unsafe fn cmd_source_file_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
         let mut expanded: *mut u8 = null_mut();
         let mut error: *mut u8;
         let mut g = MaybeUninit::<glob_t>::uninit();
-        let mut result ;
+        let mut result;
 
         let cdata = xcalloc_::<cmd_source_file_data>(1).as_ptr();
         (*cdata).item = item;

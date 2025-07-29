@@ -392,7 +392,7 @@ pub unsafe fn key_string_lookup_key(mut key: key_code, with_flags: i32) -> *cons
         let saved = key;
         let sizeof_tmp: usize = 8;
         let mut tmp: [u8; 8] = [0; 8];
-        let s : *const u8;
+        let s: *const u8;
 
         OUT[0] = b'\0';
 

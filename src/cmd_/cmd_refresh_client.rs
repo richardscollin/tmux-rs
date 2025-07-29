@@ -30,7 +30,7 @@ pub static CMD_REFRESH_CLIENT_ENTRY: cmd_entry = cmd_entry {
 pub unsafe fn cmd_refresh_client_update_subscription(tc: *mut client, value: *const u8) {
     unsafe {
         let subid = -1;
-        let copy ;
+        let copy;
         'out: {
             let name = xstrdup(value).as_ptr();
             copy = name;

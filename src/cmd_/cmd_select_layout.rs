@@ -73,7 +73,7 @@ unsafe fn cmd_select_layout_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
 
         server_unzoom_window(w);
 
-        let oldlayout ;
+        let oldlayout;
         'error: {
             'changed: {
                 let mut next = std::ptr::eq(cmd_get_entry(self_), &CMD_NEXT_LAYOUT_ENTRY);

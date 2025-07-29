@@ -2155,7 +2155,6 @@ pub unsafe fn screen_write_cell(ctx: *mut screen_write_ctx, gc: *const grid_cell
         let gd = (*s).grid;
         let ud = &raw const (*gc).data;
 
-        
         let gce: *mut grid_cell_entry;
 
         const SIZE_OF_TMP_GC: usize = size_of::<grid_cell>();

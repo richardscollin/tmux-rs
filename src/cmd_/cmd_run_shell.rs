@@ -260,7 +260,7 @@ pub unsafe fn cmd_run_shell_callback(job: *mut job) {
         let mut msg = null_mut();
         let mut retcode: i32;
 
-        let mut line ;
+        let mut line;
         loop {
             line = evbuffer_readln(
                 (*event).input,

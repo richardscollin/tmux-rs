@@ -1201,12 +1201,10 @@ unsafe fn status_prompt_replace_complete(c: *mut client, mut s: *const u8) -> i3
         let mut word: [u8; 64] = [0; 64];
         let mut allocated: *mut u8 = null_mut();
 
-        
-        
         let mut used: usize;
 
-        let mut last: *mut utf8_data ;
-        let mut ud: *mut utf8_data ;
+        let mut last: *mut utf8_data;
+        let mut ud: *mut utf8_data;
 
         /* Work out where the cursor currently is. */
         let idx = (*c).prompt_index.saturating_sub(1);
@@ -1419,13 +1417,13 @@ unsafe fn status_prompt_backward_word(c: *mut client, separators: *const u8) {
 pub unsafe fn status_prompt_key(c: *mut client, mut key: key_code) -> i32 {
     unsafe {
         let oo = (*(*c).session).options;
-        let mut s ;
-        let cp ;
+        let mut s;
+        let cp;
         let mut prefix = b'=';
 
-        let histstr: *const u8 ;
-        let separators: *const u8 ;
-        let keystring: *const u8 ;
+        let histstr: *const u8;
+        let separators: *const u8;
+        let keystring: *const u8;
 
         let mut idx: usize;
 
@@ -2126,7 +2124,7 @@ unsafe fn status_prompt_complete_window_menu(
 ) -> *mut u8 {
     unsafe {
         let mut item: menu_item = zeroed();
-        let mut tmp: *mut u8 ;
+        let mut tmp: *mut u8;
         let mut list: *mut *mut u8 = null_mut();
         let lines = status_line_size(c);
 
@@ -2261,7 +2259,7 @@ unsafe fn status_prompt_complete_session(
     flag: u8,
 ) -> *mut u8 {
     unsafe {
-        let tmp ;
+        let tmp;
         let mut n: [u8; 11] = [0; 11];
 
         for loop_ in rb_foreach(&raw mut SESSIONS).map(NonNull::as_ptr) {
@@ -2295,7 +2293,7 @@ unsafe fn status_prompt_complete(c: *mut client, word: *const u8, mut offset: u3
     unsafe {
         let session: *mut session;
 
-        let s: *const u8 ;
+        let s: *const u8;
         let colon: *mut u8;
 
         let mut flag: u8 = b'\0';

@@ -382,11 +382,11 @@ pub unsafe fn tty_term_override_next(s: *const u8, offset: *mut usize) -> *mut u
 
 pub unsafe fn tty_term_apply(term: *mut tty_term, capabilities: *const u8, quiet: i32) {
     unsafe {
-        let mut code: *mut tty_code ;
+        let mut code: *mut tty_code;
         let mut offset = 0usize;
-        let mut cp ;
-        let mut value ;
-        let mut s ;
+        let mut cp;
+        let mut value;
+        let mut s;
 
         let name = (*term).name;
 
@@ -466,10 +466,10 @@ pub unsafe fn tty_term_apply(term: *mut tty_term, capabilities: *const u8, quiet
 }
 
 pub unsafe fn tty_term_apply_overrides(term: *mut tty_term) {
-    let mut ov: *mut options_value ;
-    let mut s: *const u8 ;
-    let mut acs: *const u8 ;
-    let mut offset: usize ;
+    let mut ov: *mut options_value;
+    let mut s: *const u8;
+    let mut acs: *const u8;
+    let mut offset: usize;
     let mut first: *mut u8;
 
     unsafe {

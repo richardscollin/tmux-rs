@@ -38,7 +38,7 @@ unsafe fn cmd_show_environment_escape(envent: *mut environ_entry) -> *mut u8 {
         let ret: *mut u8 = xmalloc(strlen(value) * 2 + 1).as_ptr().cast(); /* at most twice the size */
         let mut out = ret;
 
-        let mut c ;
+        let mut c;
         while {
             c = *value;
             value = value.add(1);

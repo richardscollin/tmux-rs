@@ -291,7 +291,7 @@ pub unsafe fn cmdq_append(c: *mut client, mut item: *mut cmdq_item) -> *mut cmdq
     unsafe {
         let queue = cmdq_get(c);
 
-        let mut next ;
+        let mut next;
         loop {
             next = (*item).next;
             (*item).next = null_mut();
@@ -578,7 +578,7 @@ pub unsafe fn cmdq_add_message(item: *mut cmdq_item) {
     unsafe {
         let c = (*item).client;
         let state = (*item).state;
-        let user ;
+        let user;
 
         let tmp = cmd_print((*item).cmd);
         if !c.is_null() {
@@ -616,13 +616,13 @@ pub unsafe fn cmdq_fire_command(item: *mut cmdq_item) -> cmd_retval {
         let cmd = (*item).cmd;
         let args = cmd_get_args(cmd);
         let entry = cmd_get_entry(cmd);
-        let tc ;
+        let tc;
         let saved = (*item).client;
         let mut retval;
         let mut fs: cmd_find_state = zeroed();
-        let mut fsp: *mut cmd_find_state ;
+        let mut fsp: *mut cmd_find_state;
         let mut quiet = 0;
-        let flags ;
+        let flags;
 
         'out: {
             if CFG_FINISHED.load(atomic::Ordering::Acquire) {

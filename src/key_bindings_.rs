@@ -672,7 +672,7 @@ pub unsafe fn key_bindings_dispatch(
             cmd_list_all_have((*bd).cmdlist, cmd_flag::CMD_READONLY)
         };
 
-        let mut new_item ;
+        let mut new_item;
         if !readonly {
             new_item = cmdq_get_callback!(key_bindings_read_only, null_mut()).as_ptr();
         } else {

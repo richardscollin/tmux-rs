@@ -873,7 +873,7 @@ pub unsafe fn tty_update_cursor(tty: *mut tty, mode: mode_flag, s: *mut screen) 
 
         // If nothing changed, do nothing.
         let changed = cmode ^ (*tty).mode;
-        if changed.intersects(CURSOR_MODES) && cstyle == (*tty).cstyle {
+        if !changed.intersects(CURSOR_MODES) && cstyle == (*tty).cstyle {
             return cmode;
         }
 

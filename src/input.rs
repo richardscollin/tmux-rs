@@ -32,7 +32,6 @@
 //!
 //! - Special handling for ESC inside a DCS to allow arbitrary byte sequences to
 //!   be passed to the underlying terminals.
-//!
 use crate::compat::b64::{b64_ntop, b64_pton};
 use crate::libc::{strchr, strpbrk, strtol};
 use crate::*;
@@ -42,8 +41,8 @@ use crate::*;
 struct input_cell {
     cell: grid_cell,
     set: i32,
-    g0set: i32, /* 1 if ACS */
-    g1set: i32, /* 1 if ACS */
+    g0set: i32, // 1 if ACS
+    g1set: i32, // 1 if ACS
 }
 
 #[repr(i32)]
@@ -333,7 +332,7 @@ impl input_state {
     }
 }
 
-/* State transitions available from all states. */
+// State transitions available from all states.
 const INPUT_STATE_ANYWHERE: [input_transition; 3] = [
     input_transition::new(
         0x18,
@@ -466,7 +465,8 @@ pub static mut INPUT_STATE_CONSUME_ST: input_state = input_state::new(
     c"consume_st",
     Some(input_enter_rename),
     None,
-    /* rename also waits for ST */ (&raw mut INPUT_STATE_CONSUME_ST_TABLE).cast(),
+    // rename also waits for ST
+    (&raw mut INPUT_STATE_CONSUME_ST_TABLE).cast(),
 );
 
 static mut INPUT_STATE_GROUND_TABLE: [input_transition; 10] = concat_array(
@@ -761,7 +761,7 @@ static mut INPUT_STATE_DCS_INTERMEDIATE_TABLE: [input_transition; 11] = concat_a
 );
 
 static mut INPUT_STATE_DCS_HANDLER_TABLE: [input_transition; 4] = [
-    /* No INPUT_STATE_ANYWHERE */
+    // No INPUT_STATE_ANYWHERE
     input_transition::new(0x00, 0x1a, Some(input_input), null_mut()),
     input_transition::new(0x1b, 0x1b, None, &raw mut INPUT_STATE_DCS_ESCAPE),
     input_transition::new(0x1c, 0xff, Some(input_input), null_mut()),
@@ -769,7 +769,7 @@ static mut INPUT_STATE_DCS_HANDLER_TABLE: [input_transition; 4] = [
 ];
 
 static mut INPUT_STATE_DCS_ESCAPE_TABLE: [input_transition; 4] = [
-    /* No INPUT_STATE_ANYWHERE */
+    // No INPUT_STATE_ANYWHERE
     input_transition::new(
         0x00,
         0x5b,
@@ -1401,8 +1401,8 @@ unsafe fn input_c0_dispatch(ictx: *mut input_ctx) -> i32 {
             BS => screen_write_backspace(sctx),
             HT => {
                 while (*s).cx < screen_size_x(s) - 1 {
-                    /* Don't tab beyond the end of the line. */
-                    /* Find the next tab point, or use the last column if none. */
+                    // Don't tab beyond the end of the line.
+                    // Find the next tab point, or use the last column if none.
                     (*s).cx += 1;
                     if bit_test((*s).tabs, (*s).cx) {
                         break;
@@ -1487,7 +1487,7 @@ unsafe fn input_esc_dispatch(ictx: *mut input_ctx) -> i32 {
             Ok(input_esc_type::INPUT_ESC_SCSG1_ON) => (*ictx).cell.g1set = 1,
             Ok(input_esc_type::INPUT_ESC_SCSG1_OFF) => (*ictx).cell.g1set = 0,
             Ok(input_esc_type::INPUT_ESC_ST) => (),
-            /* ST terminates OSC but the state transition already did it. */
+            // ST terminates OSC but the state transition already did it.
             Err(_) => (),
         }
 
@@ -1686,10 +1686,8 @@ unsafe fn input_csi_dispatch(ictx: *mut input_ctx) -> i32 {
                     2 => screen_write_clearscreen(sctx, bg),
                     3 => {
                         if input_get(ictx, 1, 0, 0) == 0 {
-                            /*
-                             * Linux console extension to clear history
-                             * (for example before locking the screen).
-                             */
+                            // Linux console extension to clear history
+                            // (for example before locking the screen).
                             screen_write_clearhistory(sctx);
                         }
                     }
@@ -1821,23 +1819,23 @@ unsafe fn input_csi_dispatch_rm_private(ictx: *mut input_ctx) {
             match input_get(ictx, i, 0, -1) {
                 -1 => (),
 
-                1 => screen_write_mode_clear(sctx, mode_flag::MODE_KCURSOR), /* DECCKM */
+                1 => screen_write_mode_clear(sctx, mode_flag::MODE_KCURSOR), // DECCKM
                 3 => {
-                    /* DECCOLM */
+                    // DECCOLM
                     screen_write_cursormove(sctx, 0, 0, 1);
                     screen_write_clearscreen(sctx, (*gc).bg as u32);
                 }
                 6 => {
-                    /* DECOM */
+                    // DECOM
                     screen_write_mode_clear(sctx, mode_flag::MODE_ORIGIN);
                     screen_write_cursormove(sctx, 0, 0, 1);
                 }
-                7 => screen_write_mode_clear(sctx, mode_flag::MODE_WRAP), /* DECAWM */
+                7 => screen_write_mode_clear(sctx, mode_flag::MODE_WRAP), // DECAWM
                 12 => {
                     screen_write_mode_clear(sctx, mode_flag::MODE_CURSOR_BLINKING);
                     screen_write_mode_set(sctx, mode_flag::MODE_CURSOR_BLINKING_SET);
                 }
-                25 => screen_write_mode_clear(sctx, mode_flag::MODE_CURSOR), /* TCEM */
+                25 => screen_write_mode_clear(sctx, mode_flag::MODE_CURSOR), // TCEM
                 1000..=1003 => screen_write_mode_clear(sctx, ALL_MOUSE_MODES),
                 1004 => screen_write_mode_clear(sctx, mode_flag::MODE_FOCUSON),
                 1005 => screen_write_mode_clear(sctx, mode_flag::MODE_MOUSE_UTF8),
@@ -1863,7 +1861,7 @@ unsafe fn input_csi_dispatch_sm(ictx: *mut input_ctx) {
         for i in 0..(*ictx).param_list_len {
             match input_get(ictx, i, 0, -1) {
                 -1 => (),
-                4 => screen_write_mode_set(sctx, mode_flag::MODE_INSERT), /* IRM */
+                4 => screen_write_mode_set(sctx, mode_flag::MODE_INSERT), // IRM
                 34 => screen_write_mode_clear(sctx, mode_flag::MODE_CURSOR_VERY_VISIBLE),
                 _ => log_debug!(
                     "{}: unknown '{}'",
@@ -1884,23 +1882,23 @@ unsafe fn input_csi_dispatch_sm_private(ictx: *mut input_ctx) {
         for i in 0..(*ictx).param_list_len {
             match input_get(ictx, i, 0, -1) {
                 -1 => (),
-                1 => screen_write_mode_set(sctx, mode_flag::MODE_KCURSOR), /* DECCKM */
+                1 => screen_write_mode_set(sctx, mode_flag::MODE_KCURSOR), // DECCKM
                 3 => {
-                    /* DECCOLM */
+                    // DECCOLM
                     screen_write_cursormove(sctx, 0, 0, 1);
                     screen_write_clearscreen(sctx, (*ictx).cell.cell.bg as u32);
                 }
                 6 => {
-                    /* DECOM */
+                    // DECOM
                     screen_write_mode_set(sctx, mode_flag::MODE_ORIGIN);
                     screen_write_cursormove(sctx, 0, 0, 1);
                 }
-                7 => screen_write_mode_set(sctx, mode_flag::MODE_WRAP), /* DECAWM */
+                7 => screen_write_mode_set(sctx, mode_flag::MODE_WRAP), // DECAWM
                 12 => {
                     screen_write_mode_set(sctx, mode_flag::MODE_CURSOR_BLINKING);
                     screen_write_mode_set(sctx, mode_flag::MODE_CURSOR_BLINKING_SET);
                 }
-                25 => screen_write_mode_set(sctx, mode_flag::MODE_CURSOR), /* TCEM */
+                25 => screen_write_mode_set(sctx, mode_flag::MODE_CURSOR), // TCEM
                 1000 => {
                     screen_write_mode_clear(sctx, ALL_MOUSE_MODES);
                     screen_write_mode_set(sctx, mode_flag::MODE_MOUSE_STANDARD);
@@ -1975,7 +1973,7 @@ unsafe fn input_csi_dispatch_winops(ictx: *mut input_ctx) {
                     if input_get(ictx, m as u32, 0, -1) == -1 {
                         return;
                     }
-                    /* FALLTHROUGH */
+                    // FALLTHROUGH
                     m += 1;
                     if input_get(ictx, m as u32, 0, -1) == -1 {
                         return;
@@ -2686,7 +2684,7 @@ unsafe fn input_osc_8(ictx: *mut input_ctx, p: *mut u8) {
                     id = xstrndup(start.add(3), end.offset_from_unsigned(start) - 3).as_ptr();
                 }
 
-                /* The first ; is the end of parameters and start of the URI. */
+                // The first ; is the end of parameters and start of the URI.
                 if *end == b';' {
                     break;
                 }
@@ -2944,7 +2942,7 @@ unsafe fn input_osc_12(ictx: *mut input_ctx, p: *const u8) {
 unsafe fn input_osc_112(ictx: *mut input_ctx, p: *const u8) {
     unsafe {
         if *p == b'\0' {
-            /* no arguments allowed */
+            // no arguments allowed
             screen_set_cursor_colour((*ictx).ctx.s, -1);
         }
     }

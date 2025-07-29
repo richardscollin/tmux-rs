@@ -10,7 +10,7 @@ pub enum msgtype {
     MSG_IDENTIFY_FLAGS = 100,
     MSG_IDENTIFY_TERM,
     MSG_IDENTIFY_TTYNAME,
-    MSG_IDENTIFY_OLDCWD, /* unused */
+    MSG_IDENTIFY_OLDCWD, // unused
     MSG_IDENTIFY_STDIN,
     MSG_IDENTIFY_ENVIRON,
     MSG_IDENTIFY_DONE,
@@ -32,9 +32,9 @@ pub enum msgtype {
     MSG_RESIZE,
     MSG_SHELL,
     MSG_SHUTDOWN,
-    MSG_OLDSTDERR, /* unused */
-    MSG_OLDSTDIN,  /* unused */
-    MSG_OLDSTDOUT, /* unused */
+    MSG_OLDSTDERR, // unused
+    MSG_OLDSTDIN,  // unused
+    MSG_OLDSTDOUT, // unused
     MSG_SUSPEND,
     MSG_UNLOCK,
     MSG_WAKEUP,

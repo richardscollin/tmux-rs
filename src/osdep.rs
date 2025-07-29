@@ -169,10 +169,8 @@ pub unsafe fn osdep_get_cwd(fd: i32) -> *const u8 {
 #[cfg(target_os = "macos")]
 pub unsafe fn osdep_event_init() -> *mut event_base {
     unsafe {
-        /*
-         * On OS X, kqueue and poll are both completely broken and don't
-         * work on anything except socket file descriptors (yes, really).
-         */
+        // On OS X, kqueue and poll are both completely broken and don't
+        // work on anything except socket file descriptors (yes, really).
         crate::libc::setenv(c!("EVENT_NOKQUEUE"), c!("1"), 1);
         crate::libc::setenv(c!("EVENT_NOPOLL"), c!("1"), 1);
 

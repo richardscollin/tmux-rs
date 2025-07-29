@@ -132,7 +132,7 @@ pub unsafe extern "C" fn window_buffer_cmp(a0: *const c_void, b0: *const c_void)
             result = ((*(*b)).size as isize - (*(*a)).size as isize) as i32;
         }
 
-        /* Use WINDOW_BUFFER_BY_NAME as default order and tie breaker. */
+        // Use WINDOW_BUFFER_BY_NAME as default order and tie breaker.
         if result == 0 {
             result = strcmp((*(*a)).name, (*(*b)).name);
         }
@@ -456,12 +456,10 @@ pub unsafe fn window_buffer_do_delete(
         if item == mode_tree_get_current((*data.as_ptr()).data).cast()
             && mode_tree_down((*data.as_ptr()).data, 0) == 0
         {
-            /*
-             *If we were unable to select the item further down we are at
-             * the end of the list. Move one element up instead, to make
-             * sure that we preserve a valid selection or we risk having
-             * the tree build logic reset it to the first item.
-             */
+            // If we were unable to select the item further down we are at
+            // the end of the list. Move one element up instead, to make
+            // sure that we preserve a valid selection or we risk having
+            // the tree build logic reset it to the first item.
             mode_tree_up((*data.as_ptr()).data, 0);
         }
 

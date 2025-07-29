@@ -35,7 +35,7 @@ impl tty_feature {
 }
 
 static TTY_FEATURE_TITLE_CAPABILITIES: &[SyncCharPtr] = &[
-    SyncCharPtr::new(c"tsl=\\E]0;"), /* should be using TS really */
+    SyncCharPtr::new(c"tsl=\\E]0;"), // should be using TS really
     SyncCharPtr::new(c"fsl=\\a"),
     SyncCharPtr::null(),
 ];

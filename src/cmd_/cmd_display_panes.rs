@@ -64,36 +64,36 @@ unsafe fn cmd_display_panes_draw_pane(ctx: *mut screen_redraw_ctx, wp: *mut wind
             let xoff: u32;
             let sx: u32;
             if (*wp).xoff >= (*ctx).ox && (*wp).xoff + (*wp).sx <= (*ctx).ox + (*ctx).sx {
-                /* All visible. */
+                // All visible.
                 xoff = (*wp).xoff - (*ctx).ox;
                 sx = (*wp).sx;
             } else if (*wp).xoff < (*ctx).ox && (*wp).xoff + (*wp).sx > (*ctx).ox + (*ctx).sx {
-                /* Both left and right not visible. */
+                // Both left and right not visible.
                 xoff = 0;
                 sx = (*ctx).sx;
             } else if (*wp).xoff < (*ctx).ox {
-                /* Left not visible. */
+                // Left not visible.
                 xoff = 0;
                 sx = (*wp).sx - ((*ctx).ox - (*wp).xoff);
             } else {
-                /* Right not visible. */
+                // Right not visible.
                 xoff = (*wp).xoff - (*ctx).ox;
                 sx = (*wp).sx - xoff;
             }
             if (*wp).yoff >= (*ctx).oy && (*wp).yoff + (*wp).sy <= (*ctx).oy + (*ctx).sy {
-                /* All visible. */
+                // All visible.
                 yoff = (*wp).yoff - (*ctx).oy;
                 sy = (*wp).sy;
             } else if (*wp).yoff < (*ctx).oy && (*wp).yoff + (*wp).sy > (*ctx).oy + (*ctx).sy {
-                /* Both top and bottom not visible. */
+                // Both top and bottom not visible.
                 yoff = 0;
                 sy = (*ctx).sy;
             } else if (*wp).yoff < (*ctx).oy {
-                /* Top not visible. */
+                // Top not visible.
                 yoff = 0;
                 sy = (*wp).sy - ((*ctx).oy - (*wp).yoff);
             } else {
-                /* Bottom not visible. */
+                // Bottom not visible.
                 yoff = (*wp).yoff - (*ctx).oy;
                 sy = (*wp).sy - yoff;
             }

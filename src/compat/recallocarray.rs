@@ -49,10 +49,8 @@ pub unsafe fn recallocarray(
         }
         let oldsize = oldnmemb * size;
 
-        /*
-         * Don't bother too much if we're shrinking just a bit,
-         * we do not shrink for series of small steps, oh well.
-         */
+        // Don't bother too much if we're shrinking just a bit,
+        // we do not shrink for series of small steps, oh well.
         if newsize <= oldsize {
             let d = oldsize - newsize;
 

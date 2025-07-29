@@ -90,10 +90,8 @@ pub unsafe fn spawn_window(sc: *mut spawn_context, cause: *mut *mut u8) -> *mut 
 
         spawn_log("spawn_window", sc);
 
-        /*
-         * If the window already exists, we are respawning, so destroy all the
-         * panes except one.
-         */
+        // If the window already exists, we are respawning, so destroy all the
+        // panes except one.
         if (*sc).flags & SPAWN_RESPAWN != 0 {
             w = (*(*sc).wl).window;
             if !(*sc).flags & SPAWN_KILL != 0 {
@@ -125,10 +123,8 @@ pub unsafe fn spawn_window(sc: *mut spawn_context, cause: *mut *mut u8) -> *mut 
             window_set_active_pane(w, (*sc).wp0, 0);
         }
 
-        /*
-         * Otherwise we have no window so we will need to create one. First
-         * check if the given index already exists and destroy it if so.
-         */
+        // Otherwise we have no window so we will need to create one. First
+        // check if the given index already exists and destroy it if so.
         if (!(*sc).flags & SPAWN_RESPAWN != 0) && idx != -1 {
             let wl = winlink_find_by_index(&raw mut (*s).windows, idx);
             if !wl.is_null() && (!(*sc).flags & SPAWN_KILL != 0) {
@@ -136,10 +132,8 @@ pub unsafe fn spawn_window(sc: *mut spawn_context, cause: *mut *mut u8) -> *mut 
                 return null_mut();
             }
             if !wl.is_null() {
-                /*
-                 * Can't use session_detach as it will destroy session
-                 * if this makes it empty.
-                 */
+                // Can't use session_detach as it will destroy session
+                // if this makes it empty.
                 (*wl).flags &= !WINLINK_ALERTFLAGS;
                 notify_session_window(c"window-unlinked", s, (*wl).window);
                 winlink_stack_remove(&raw mut (*s).lastw, wl);
@@ -152,7 +146,7 @@ pub unsafe fn spawn_window(sc: *mut spawn_context, cause: *mut *mut u8) -> *mut 
             }
         }
 
-        /* Then create a window if needed. */
+        // Then create a window if needed.
         if !(*sc).flags & SPAWN_RESPAWN != 0 {
             if idx == -1 {
                 idx = -1 - options_get_number_((*s).options, "base-index") as i32;
@@ -193,7 +187,7 @@ pub unsafe fn spawn_window(sc: *mut spawn_context, cause: *mut *mut u8) -> *mut 
         }
         (*sc).flags |= SPAWN_NONOTIFY;
 
-        /* Spawn the pane. */
+        // Spawn the pane.
         wp = spawn_pane(sc, cause);
         if wp.is_null() {
             if !(*sc).flags & SPAWN_RESPAWN != 0 {
@@ -202,7 +196,7 @@ pub unsafe fn spawn_window(sc: *mut spawn_context, cause: *mut *mut u8) -> *mut 
             return null_mut();
         }
 
-        /* Set the name of the new window. */
+        // Set the name of the new window.
         if !(*sc).flags & SPAWN_RESPAWN != 0 {
             free_((*w).name);
             if !(*sc).name.is_null() {
@@ -213,12 +207,12 @@ pub unsafe fn spawn_window(sc: *mut spawn_context, cause: *mut *mut u8) -> *mut 
             }
         }
 
-        /* Switch to the new window if required. */
+        // Switch to the new window if required.
         if !(*sc).flags & SPAWN_DETACHED != 0 {
             session_select(s, (*(*sc).wl).idx);
         }
 
-        /* Fire notification if new window. */
+        // Fire notification if new window.
         if !(*sc).flags & SPAWN_RESPAWN != 0 {
             notify_session_window(c"window-linked", s, w);
         }
@@ -272,10 +266,8 @@ pub unsafe fn spawn_pane(sc: *mut spawn_context, cause: *mut *mut u8) -> *mut wi
                 cwd = null_mut();
             }
 
-            /*
-             * If we are respawning then get rid of the old process. Otherwise
-             * either create a new cell or assign to the one we are given.
-             */
+            // If we are respawning then get rid of the old process. Otherwise
+            // either create a new cell or assign to the one we are given.
             hlimit = options_get_number_((*s).options, "history-limit") as u32;
             if (*sc).flags & SPAWN_RESPAWN != 0 {
                 if (*(*sc).wp0).fd != -1 && (!(*sc).flags & SPAWN_KILL != 0) {
@@ -312,11 +304,9 @@ pub unsafe fn spawn_pane(sc: *mut spawn_context, cause: *mut *mut u8) -> *mut wi
                 }
             }
 
-            /*
-             * Now we have a pane with nothing running in it ready for the new
-             * process. Work out the command and arguments and store the working
-             * directory.
-             */
+            // Now we have a pane with nothing running in it ready for the new
+            // process. Work out the command and arguments and store the working
+            // directory.
             if (*sc).argc == 0 && (!(*sc).flags & SPAWN_RESPAWN != 0) {
                 cmd = options_get_string_((*s).options, "default-command");
                 if !cmd.is_null() && *cmd != b'\0' {
@@ -335,30 +325,26 @@ pub unsafe fn spawn_pane(sc: *mut spawn_context, cause: *mut *mut u8) -> *mut wi
                 (*new_wp).cwd = cwd;
             }
 
-            /*
-             * Replace the stored arguments if there are new ones. If not, the
-             * existing ones will be used (they will only exist for respawn).
-             */
+            // Replace the stored arguments if there are new ones. If not, the
+            // existing ones will be used (they will only exist for respawn).
             if argc > 0 {
                 cmd_free_argv((*new_wp).argc, (*new_wp).argv);
                 (*new_wp).argc = argc;
                 (*new_wp).argv = cmd_copy_argv(argc, argv);
             }
 
-            /* Create an environment for this pane. */
+            // Create an environment for this pane.
             child = environ_for_session(s, 0);
             if !(*sc).environ.is_null() {
                 environ_copy((*sc).environ, child);
             }
             environ_set!(child, c!("TMUX_PANE"), 0, "%{}", (*new_wp).id,);
 
-            /*
-             * Then the PATH environment variable. The session one is replaced from
-             * the client if there is one because otherwise running "tmux new
-             * myprogram" wouldn't work if myprogram isn't in the session's path.
-             */
+            // Then the PATH environment variable. The session one is replaced from
+            // the client if there is one because otherwise running "tmux new
+            // myprogram" wouldn't work if myprogram isn't in the session's path.
             if !c.is_null() && (*c).session.is_null() {
-                /* only unattached clients */
+                // only unattached clients
                 ee = environ_find((*c).environ, c!("PATH"));
                 if !ee.is_null() {
                     environ_set!(child, c!("PATH"), 0, "{}", _s(transmute_ptr((*ee).value)));
@@ -368,7 +354,7 @@ pub unsafe fn spawn_pane(sc: *mut spawn_context, cause: *mut *mut u8) -> *mut wi
                 environ_set!(child, c!("PATH"), 0, "{}", _s(_PATH_DEFPATH));
             }
 
-            /* Then the shell. If respawning, use the old one. */
+            // Then the shell. If respawning, use the old one.
             if !(*sc).flags & SPAWN_RESPAWN != 0 {
                 tmp = options_get_string_((*s).options, "default-shell");
                 if !checkshell(tmp) {
@@ -379,7 +365,7 @@ pub unsafe fn spawn_pane(sc: *mut spawn_context, cause: *mut *mut u8) -> *mut wi
             }
             environ_set!(child, c!("SHELL"), 0, "{}", _s((*new_wp).shell));
 
-            /* Log the arguments we are going to use. */
+            // Log the arguments we are going to use.
             log_debug!("spawn_pane: shell={}", _s((*new_wp).shell));
             if (*new_wp).argc != 0 {
                 cp = cmd_stringify_argv((*new_wp).argc, (*new_wp).argv);
@@ -390,18 +376,18 @@ pub unsafe fn spawn_pane(sc: *mut spawn_context, cause: *mut *mut u8) -> *mut wi
             cmd_log_argv!((*new_wp).argc, (*new_wp).argv, "spawn_pan");
             environ_log!(child, "spawn_pan: environment ");
 
-            /* Initialize the window size. */
+            // Initialize the window size.
             memset0(&raw mut ws);
             ws.ws_col = screen_size_x(&raw mut (*new_wp).base) as u16;
             ws.ws_row = screen_size_y(&raw mut (*new_wp).base) as u16;
             ws.ws_xpixel = ((*w).xpixel * ws.ws_col as u32) as u16;
             ws.ws_ypixel = ((*w).ypixel * ws.ws_row as u32) as u16;
 
-            /* Block signals until fork has completed. */
+            // Block signals until fork has completed.
             sigfillset(&raw mut set);
             sigprocmask(SIG_BLOCK, &raw mut set, &raw mut oldset);
 
-            /* If the command is empty, don't fork a child process. */
+            // If the command is empty, don't fork a child process.
             if (*sc).flags & SPAWN_EMPTY != 0 {
                 (*new_wp).flags |= window_pane_flags::PANE_EMPTY;
                 (*new_wp).base.mode &= !mode_flag::MODE_CURSOR;
@@ -409,7 +395,7 @@ pub unsafe fn spawn_pane(sc: *mut spawn_context, cause: *mut *mut u8) -> *mut wi
                 break 'complete;
             }
 
-            /* Fork the new process. */
+            // Fork the new process.
             (*new_wp).pid = fdforkpty(
                 PTM_FD,
                 &raw mut (*new_wp).fd,
@@ -430,14 +416,12 @@ pub unsafe fn spawn_pane(sc: *mut spawn_context, cause: *mut *mut u8) -> *mut wi
                 return null_mut();
             }
 
-            /* In the parent process, everything is done now. */
+            // In the parent process, everything is done now.
             if (*new_wp).pid != 0 {
                 #[cfg(all(feature = "systemd", feature = "cgroups"))]
                 {
-                    /*
-                     * Move the child process into a new cgroup for systemd-oomd
-                     * isolation.
-                     */
+                    // Move the child process into a new cgroup for systemd-oomd
+                    // isolation.
                     if (systemd_move_pid_to_new_cgroup((*new_wp).pid, cause) < 0) {
                         log_debug!(
                             "{}: moving pane to new cgroup failed: {}",
@@ -450,10 +434,8 @@ pub unsafe fn spawn_pane(sc: *mut spawn_context, cause: *mut *mut u8) -> *mut wi
                 break 'complete;
             }
 
-            /*
-             * Child process. Change to the working directory or home if that
-             * fails.
-             */
+            // Child process. Change to the working directory or home if that
+            // fails.
             if chdir((*new_wp).cwd) == 0 {
                 environ_set!(child, c!("PWD"), 0, "{}", _s((*new_wp).cwd));
             } else if ({
@@ -468,10 +450,8 @@ pub unsafe fn spawn_pane(sc: *mut spawn_context, cause: *mut *mut u8) -> *mut wi
                 fatal("chdir failed");
             }
 
-            /*
-             * Update terminal escape characters from the session if available and
-             * force VERASE to tmux's backspace.
-             */
+            // Update terminal escape characters from the session if available and
+            // force VERASE to tmux's backspace.
             if tcgetattr(STDIN_FILENO, &raw mut now) != 0 {
                 _exit(1);
             }
@@ -492,27 +472,23 @@ pub unsafe fn spawn_pane(sc: *mut spawn_context, cause: *mut *mut u8) -> *mut wi
                 _exit(1);
             }
 
-            /* Clean up file descriptors and signals and update the environment. */
+            // Clean up file descriptors and signals and update the environment.
             proc_clear_signals(SERVER_PROC, 1);
             closefrom(STDERR_FILENO + 1);
             sigprocmask(SIG_SETMASK, &raw mut oldset, null_mut());
             log_close();
             environ_push(child);
 
-            /*
-             * If given multiple arguments, use execvp(). Copy the arguments to
-             * ensure they end in a NULL.
-             */
+            // If given multiple arguments, use execvp(). Copy the arguments to
+            // ensure they end in a NULL.
             if (*new_wp).argc != 0 && (*new_wp).argc != 1 {
                 argvp = cmd_copy_argv((*new_wp).argc, (*new_wp).argv);
                 execvp((*argvp).cast(), argvp.cast());
                 _exit(1);
             }
 
-            /*
-             * If one argument, pass it to $SHELL -c. Otherwise create a login
-             * shell.
-             */
+            // If one argument, pass it to $SHELL -c. Otherwise create a login
+            // shell.
             cp = strrchr((*new_wp).shell, b'/' as i32);
             if (*new_wp).argc == 1 {
                 tmp = *(*new_wp).argv;

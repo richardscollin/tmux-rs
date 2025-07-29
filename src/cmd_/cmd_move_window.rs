@@ -115,11 +115,9 @@ unsafe fn cmd_move_window_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
             server_unlink_window(src, wl);
         }
 
-        /*
-         * Renumber the winlinks in the src session only, the destination
-         * session already has the correct winlink id to us, either
-         * automatically or specified by -s.
-         */
+        // Renumber the winlinks in the src session only, the destination
+        // session already has the correct winlink id to us, either
+        // automatically or specified by -s.
         if !sflag && options_get_number_((*src).options, "renumber-windows") != 0 {
             session_renumber_windows(src);
         }

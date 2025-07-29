@@ -45,10 +45,8 @@ unsafe fn cmd_new_window_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retv
         // before;
         let mut cause = null_mut();
 
-        /*
-         * If -S and -n are given and -t is not and a single window with this
-         * name already exists, select it.
-         */
+        // If -S and -n are given and -t is not and a single window with this
+        // name already exists, select it.
         let name = args_get(args, b'n');
         if args_has_(args, 'S') && !name.is_null() && (*target).idx == -1 {
             let expanded = format_single(item, name, c, s, null_mut(), null_mut());

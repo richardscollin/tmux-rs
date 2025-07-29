@@ -72,15 +72,13 @@ macro_rules! concat_array {
     };
 }
 
-/*
-* N. B. the order of the enum variants is incremental
-    KEYC_MOUSEDOWN1_PANE,
-    KEYC_MOUSEDOWN1_STATUS,
-    KEYC_MOUSEDOWN1_STATUS_LEFT,
-    KEYC_MOUSEDOWN1_STATUS_RIGHT,
-    KEYC_MOUSEDOWN1_STATUS_DEFAULT,
-    KEYC_MOUSEDOWN1_BORDER,
-*/
+// N. B. the order of the enum variants is incremental
+// KEYC_MOUSEDOWN1_PANE,
+// KEYC_MOUSEDOWN1_STATUS,
+// KEYC_MOUSEDOWN1_STATUS_LEFT,
+// KEYC_MOUSEDOWN1_STATUS_RIGHT,
+// KEYC_MOUSEDOWN1_STATUS_DEFAULT,
+// KEYC_MOUSEDOWN1_BORDER,
 macro_rules! KEYC_MOUSE_STRING_I {
     ($name:ident, $s:literal, $i:literal) => {
         ::paste::paste! {
@@ -144,11 +142,9 @@ static KEY_STRING_TABLE: [key_string_table_entry; 469] = const {
         key_string_table_entry::new(c"BTab", keyc::KEYC_BTAB as u64),
         key_string_table_entry::new(c"Space", ' ' as key_code),
         key_string_table_entry::new(c"BSpace", keyc::KEYC_BSPACE as u64),
-        /*
-         * C0 control characters, with the exception of Tab, Enter,
-         * and Esc, should never appear as keys. We still render them,
-         * so to be able to spot them in logs in case of an abnormality.
-         */
+        // C0 control characters, with the exception of Tab, Enter,
+        // and Esc, should never appear as keys. We still render them,
+        // so to be able to spot them in logs in case of an abnormality.
         key_string_table_entry::new(c"[NUL]", c0::C0_NUL as u64),
         key_string_table_entry::new(c"[SOH]", c0::C0_SOH as u64),
         key_string_table_entry::new(c"[STX]", c0::C0_STX as u64),
@@ -181,7 +177,7 @@ static KEY_STRING_TABLE: [key_string_table_entry; 469] = const {
         key_string_table_entry::new(c"[GS]", c0::C0_GS as u64),
         key_string_table_entry::new(c"[RS]", c0::C0_RS as u64),
         key_string_table_entry::new(c"[US]", c0::C0_US as u64),
-        /* Arrow keys. */
+        // Arrow keys.
         key_string_table_entry::new(
             c"Up",
             keyc::KEYC_UP as u64 | KEYC_CURSOR | KEYC_IMPLIED_META,
@@ -198,7 +194,7 @@ static KEY_STRING_TABLE: [key_string_table_entry; 469] = const {
             c"Right",
             keyc::KEYC_RIGHT as u64 | KEYC_CURSOR | KEYC_IMPLIED_META,
         ),
-        /* Numeric keypad. */
+        // Numeric keypad.
         key_string_table_entry::new(c"KP/", keyc::KEYC_KP_SLASH as u64 | KEYC_KEYPAD),
         key_string_table_entry::new(c"KP*", keyc::KEYC_KP_STAR as u64 | KEYC_KEYPAD),
         key_string_table_entry::new(c"KP-", keyc::KEYC_KP_MINUS as u64 | KEYC_KEYPAD),
@@ -283,7 +279,7 @@ pub unsafe fn key_string_get_modifiers(string: *mut *const u8) -> key_code {
 // TODO
 const MB_LEN_MAX: usize = 16;
 
-/* Lookup a string and convert to a key value. */
+// Lookup a string and convert to a key value.
 
 pub unsafe fn key_string_lookup_string(mut string: *const u8) -> key_code {
     unsafe {
@@ -295,7 +291,7 @@ pub unsafe fn key_string_lookup_string(mut string: *const u8) -> key_code {
 
         let mut m = [MaybeUninit::<u8>::uninit(); MB_LEN_MAX + 1];
 
-        /* Is this no key or any key? */
+        // Is this no key or any key?
         if strcasecmp(string, c!("None")) == 0 {
             return KEYC_NONE;
         }
@@ -303,7 +299,7 @@ pub unsafe fn key_string_lookup_string(mut string: *const u8) -> key_code {
             return keyc::KEYC_ANY as key_code;
         }
 
-        /* Is this a hexadecimal value? */
+        // Is this a hexadecimal value?
         if *string == b'0' && *string.add(1) == b'x' {
             if sscanf(string.add(2).cast(), c"%x".as_ptr(), &raw mut u) != 1 {
                 return KEYC_UNKNOWN;
@@ -330,7 +326,7 @@ pub unsafe fn key_string_lookup_string(mut string: *const u8) -> key_code {
             return uc as u64;
         }
 
-        /* Check for short Ctrl key. */
+        // Check for short Ctrl key.
         if *string == b'^' && *string.add(1) != b'\0' {
             if *string.add(2) == b'\0' {
                 return (*string.add(1)).to_ascii_lowercase() as u64 | KEYC_CTRL;
@@ -345,14 +341,14 @@ pub unsafe fn key_string_lookup_string(mut string: *const u8) -> key_code {
             return KEYC_UNKNOWN;
         }
 
-        /* Is this a standard ASCII key? */
+        // Is this a standard ASCII key?
         if *string.add(1) == b'\0' && *string <= 127 {
             key = *string as u64;
             if key < 32 {
                 return KEYC_UNKNOWN;
             }
         } else {
-            /* Try as a UTF-8 key. */
+            // Try as a UTF-8 key.
             let mut more: utf8_state = utf8_open(&raw mut ud, *string);
             if more == utf8_state::UTF8_MORE {
                 if strlen(string) != ud.size as usize {
@@ -370,7 +366,7 @@ pub unsafe fn key_string_lookup_string(mut string: *const u8) -> key_code {
                 return uc as u64 | modifiers;
             }
 
-            /* Otherwise look the key up in the table. */
+            // Otherwise look the key up in the table.
             key = key_string_search_table(string);
             if key == KEYC_UNKNOWN {
                 return KEYC_UNKNOWN;
@@ -398,7 +394,7 @@ pub unsafe fn key_string_lookup_key(mut key: key_code, with_flags: i32) -> *cons
 
         'out: {
             'append: {
-                /* Literal keys are themselves. */
+                // Literal keys are themselves.
                 if key & KEYC_LITERAL != 0 {
                     snprintf(
                         (&raw mut OUT).cast(),
@@ -409,7 +405,7 @@ pub unsafe fn key_string_lookup_key(mut key: key_code, with_flags: i32) -> *cons
                     break 'out;
                 }
 
-                /* Fill in the modifiers. */
+                // Fill in the modifiers.
                 if key & KEYC_CTRL != 0 {
                     strlcat(&raw mut OUT as *mut u8, c!("C-"), sizeof_out);
                 }
@@ -421,13 +417,13 @@ pub unsafe fn key_string_lookup_key(mut key: key_code, with_flags: i32) -> *cons
                 }
                 key &= KEYC_MASK_KEY;
 
-                /* Handle no key. */
+                // Handle no key.
                 if key == KEYC_NONE {
                     s = c!("None");
                     break 'append;
                 }
 
-                /* Handle special keys. */
+                // Handle special keys.
                 if key == KEYC_UNKNOWN {
                     s = c!("Unknown");
                     break 'append;
@@ -508,7 +504,7 @@ pub unsafe fn key_string_lookup_key(mut key: key_code, with_flags: i32) -> *cons
                     break 'out;
                 }
 
-                /* Is this a Unicode key? */
+                // Is this a Unicode key?
                 if KEYC_IS_UNICODE(key) {
                     let ud = utf8_to_data(key as u32);
                     let off = strlen(&raw const OUT as *const u8);
@@ -521,7 +517,7 @@ pub unsafe fn key_string_lookup_key(mut key: key_code, with_flags: i32) -> *cons
                     break 'out;
                 }
 
-                /* Invalid keys are errors. */
+                // Invalid keys are errors.
                 if key > 255 {
                     snprintf(
                         (&raw mut OUT).cast(),
@@ -532,7 +528,7 @@ pub unsafe fn key_string_lookup_key(mut key: key_code, with_flags: i32) -> *cons
                     break 'out;
                 }
 
-                /* Printable ASCII keys. */
+                // Printable ASCII keys.
                 if key > 32 && key <= 126 {
                     tmp[0] = key as u8;
                     tmp[1] = b'\0';

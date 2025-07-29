@@ -102,12 +102,10 @@ unsafe fn cmd_display_message_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd
             template = DISPLAY_MESSAGE_TEMPLATE;
         }
 
-        /*
-         * -c is intended to be the client where the message should be
-         * displayed if -p is not given. But it makes sense to use it for the
-         * formats too, assuming it matches the session. If it doesn't, use the
-         * best client for the session.
-         */
+        // -c is intended to be the client where the message should be
+        // displayed if -p is not given. But it makes sense to use it for the
+        // formats too, assuming it matches the session. If it doesn't, use the
+        // best client for the session.
         let c = if !tc.is_null() && (*tc).session == s {
             tc
         } else if !s.is_null() {

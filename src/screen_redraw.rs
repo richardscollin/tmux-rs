@@ -16,7 +16,7 @@ use crate::*;
 const START_ISOLATE: *const u8 = c"\xe2\x81\xa6".as_ptr().cast();
 const END_ISOLATE: *const u8 = c"\xe2\x81\xa9".as_ptr().cast();
 
-/* Border in relation to a pane. */
+// Border in relation to a pane.
 #[repr(i32)]
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum screen_redraw_border_type {
@@ -327,7 +327,7 @@ pub unsafe fn screen_redraw_check_cell(
             return CELL_OUTSIDE;
         }
         if px == (*w).sx || py == (*w).sy {
-            /* window border */
+            // window border
             return screen_redraw_type_of_cell(ctx, px, py);
         }
 

@@ -103,17 +103,17 @@ pub unsafe fn cmd_set_option_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
                 let window =
                     std::ptr::eq(cmd_get_entry(self_), &CMD_SET_WINDOW_OPTION_ENTRY) as i32;
 
-                /* Expand argument. */
+                // Expand argument.
                 argument = format_single_from_target(item, args_string(args, 0));
 
-                /* If set-hook -R, fire the hook straight away. */
+                // If set-hook -R, fire the hook straight away.
                 if std::ptr::eq(cmd_get_entry(self_), &CMD_SET_HOOK_ENTRY) && args_has_(args, 'R') {
                     notify_hook(item, argument);
                     free_(argument);
                     return cmd_retval::CMD_RETURN_NORMAL;
                 }
 
-                /* Parse option name and index. */
+                // Parse option name and index.
                 name = options_match(argument, &raw mut idx, &raw mut ambiguous);
                 if name.is_null() {
                     if args_has_(args, 'q') {
@@ -136,7 +136,7 @@ pub unsafe fn cmd_set_option_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
                     value = expanded;
                 }
 
-                /* Get the scope and table for the option .*/
+                // Get the scope and table for the option .
                 scope = options_scope_from_name(
                     args,
                     window,
@@ -156,13 +156,13 @@ pub unsafe fn cmd_set_option_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
                 o = options_get_only(oo, name);
                 parent = options_get(oo, name);
 
-                /* Check that array options and indexes match up. */
+                // Check that array options and indexes match up.
                 if idx != -1 && (*name == b'@' as _ || options_is_array(parent) == 0) {
                     cmdq_error!(item, "not an array: {}", _s(argument));
                     break 'fail;
                 }
 
-                /* With -o, check this option is not already set. */
+                // With -o, check this option is not already set.
                 if !args_has_(args, 'u') && args_has_(args, 'o') {
                     if idx == -1 {
                         already = !o.is_null() as i32;
@@ -180,7 +180,7 @@ pub unsafe fn cmd_set_option_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
                     }
                 }
 
-                /* Change the option. */
+                // Change the option.
                 if args_has_(args, 'U') && scope == OPTIONS_TABLE_WINDOW {
                     for loop_ in tailq_foreach::<_, discr_entry>(&raw mut (*(*target).w).panes)
                         .map(NonNull::as_ptr)

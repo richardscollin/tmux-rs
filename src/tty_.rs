@@ -470,11 +470,9 @@ pub unsafe fn tty_stop_tty(tty: *mut tty) {
         event_del(&raw mut (*tty).event_in);
         event_del(&raw mut (*tty).event_out);
 
-        /*
-         * Be flexible about error handling and try not kill the server just
-         * because the fd is invalid. Things like ssh -t can easily leave us
-         * with a dead tty.
-         */
+        // Be flexible about error handling and try not kill the server just
+        // because the fd is invalid. Things like ssh -t can easily leave us
+        // with a dead tty.
         if libc::ioctl((*c).fd, libc::TIOCGWINSZ, &ws) == -1 {
             return;
         }
@@ -583,10 +581,8 @@ pub unsafe fn tty_update_features(tty: *mut tty) {
             tty_puts(tty, c!("\x1b[?7727h"));
         }
 
-        /*
-         * Features might have changed since the first draw during attach. For
-         * example, this happens when DA responses are received.
-         */
+        // Features might have changed since the first draw during attach. For
+        // example, this happens when DA responses are received.
         server_redraw_client(c);
 
         tty_invalidate(tty);
@@ -722,11 +718,9 @@ pub unsafe fn tty_putc(tty: *mut tty, ch: u8) {
                     (*tty).cy += 1;
                 }
 
-                /*
-                 * On !am terminals, force the cursor position to where
-                 * we think it should be after a line wrap - this means
-                 * it works on sensible terminals as well.
-                 */
+                // On !am terminals, force the cursor position to where
+                // we think it should be after a line wrap - this means
+                // it works on sensible terminals as well.
                 if (*(*tty).term).flags.intersects(term_flags::TERM_NOAM) {
                     tty_putcode_ii(
                         tty,
@@ -843,7 +837,7 @@ pub unsafe fn tty_update_cursor(tty: *mut tty, mode: mode_flag, s: *mut screen) 
             tty_force_cursor_colour(tty, ccolour);
         }
 
-        /* If cursor is off, set as invisible. */
+        // If cursor is off, set as invisible.
         if !cmode.intersects(mode_flag::MODE_CURSOR) {
             if (*tty).mode.intersects(mode_flag::MODE_CURSOR) {
                 tty_putcode(tty, tty_code_code::TTYC_CIVIS);
@@ -877,13 +871,11 @@ pub unsafe fn tty_update_cursor(tty: *mut tty, mode: mode_flag, s: *mut screen) 
             return cmode;
         }
 
-        /*
-         * Set cursor style. If an explicit style has been set with DECSCUSR,
-         * set it if supported, otherwise send cvvis for blinking styles.
-         *
-         * If no style, has been set (SCREEN_CURSOR_DEFAULT), then send cvvis
-         * if either the blinking or very visible flags are set.
-         */
+        // Set cursor style. If an explicit style has been set with DECSCUSR,
+        // set it if supported, otherwise send cvvis for blinking styles.
+        //
+        // If no style, has been set (SCREEN_CURSOR_DEFAULT), then send cvvis
+        // if either the blinking or very visible flags are set.
         tty_putcode(tty, tty_code_code::TTYC_CNORM);
         match cstyle {
             screen_cursor_style::SCREEN_CURSOR_DEFAULT => {
@@ -969,11 +961,9 @@ pub unsafe fn tty_update_mode(tty: *mut tty, mut mode: mode_flag, s: *mut screen
         }
 
         if changed.intersects(ALL_MOUSE_MODES) && tty_term_has(term, tty_code_code::TTYC_KMOUS) {
-            /*
-             * If the mouse modes have changed, clear then all and apply
-             * again. There are differences in how terminals track the
-             * various bits.
-             */
+            // If the mouse modes have changed, clear then all and apply
+            // again. There are differences in how terminals track the
+            // various bits.
             tty_puts(tty, c!("\x1b[?1006l\x1b[?1000l\x1b[?1002l\x1b[?1003l"));
             if mode.intersects(ALL_MOUSE_MODES) {
                 tty_puts(tty, c!("\x1b[?1006h"));
@@ -1281,22 +1271,22 @@ pub unsafe fn tty_clamp_line(
         *ry = (*ctx).yoff + py - (*ctx).woy;
 
         if xoff >= (*ctx).wox && xoff + nx <= (*ctx).wox + (*ctx).wsx {
-            /* All visible. */
+            // All visible.
             *i = 0;
             *x = (*ctx).xoff + px - (*ctx).wox;
             *rx = nx;
         } else if xoff < (*ctx).wox && xoff + nx > (*ctx).wox + (*ctx).wsx {
-            /* Both left and right not visible. */
+            // Both left and right not visible.
             *i = (*ctx).wox;
             *x = 0;
             *rx = (*ctx).wsx;
         } else if xoff < (*ctx).wox {
-            /* Left not visible. */
+            // Left not visible.
             *i = (*ctx).wox - ((*ctx).xoff + px);
             *x = 0;
             *rx = nx - *i;
         } else {
-            /* Right not visible. */
+            // Right not visible.
             *i = 0;
             *x = ((*ctx).xoff + px) - (*ctx).wox;
             *rx = (*ctx).wsx - *x;
@@ -1326,28 +1316,28 @@ pub unsafe fn tty_clear_line(
 
         // log_debug("%s: %s, %u at %u,%u", __func__, (*c).name, nx, px, py);
 
-        /* Nothing to clear. */
+        // Nothing to clear.
         if nx == 0 {
             return;
         }
 
-        /* If genuine BCE is available, can try escape sequences. */
+        // If genuine BCE is available, can try escape sequences.
         if (*c).overlay_check.is_none() && !tty_fake_bce(tty, defaults, bg) {
-            /* Off the end of the line, use EL if available. */
+            // Off the end of the line, use EL if available.
             if px + nx >= (*tty).sx && tty_term_has((*tty).term, tty_code_code::TTYC_EL) {
                 tty_cursor(tty, px, py);
                 tty_putcode(tty, tty_code_code::TTYC_EL);
                 return;
             }
 
-            /* At the start of the line. Use EL1. */
+            // At the start of the line. Use EL1.
             if px == 0 && tty_term_has((*tty).term, tty_code_code::TTYC_EL1) {
                 tty_cursor(tty, px + nx - 1, py);
                 tty_putcode(tty, tty_code_code::TTYC_EL1);
                 return;
             }
 
-            /* Section of line. Use ECH if possible. */
+            // Section of line. Use ECH if possible.
             if tty_term_has((*tty).term, tty_code_code::TTYC_ECH) {
                 tty_cursor(tty, px, py);
                 tty_putcode_i(tty, tty_code_code::TTYC_ECH, nx as i32);
@@ -1355,10 +1345,8 @@ pub unsafe fn tty_clear_line(
             }
         }
 
-        /*
-         * Couldn't use an escape sequence, use spaces. Clear only the visible
-         * bit if there is an overlay.
-         */
+        // Couldn't use an escape sequence, use spaces. Clear only the visible
+        // bit if there is an overlay.
         tty_check_overlay_range(tty, px, py, nx, &raw mut r);
         for i in 0..OVERLAY_MAX_RANGES {
             if r.nx[i] == 0 {
@@ -1435,22 +1423,22 @@ pub unsafe fn tty_clamp_area(
         }
 
         if xoff >= (*ctx).wox && xoff + nx <= (*ctx).wox + (*ctx).wsx {
-            /* All visible. */
+            // All visible.
             *i = 0;
             *x = (*ctx).xoff + px - (*ctx).wox;
             *rx = nx;
         } else if xoff < (*ctx).wox && xoff + nx > (*ctx).wox + (*ctx).wsx {
-            /* Both left and right not visible. */
+            // Both left and right not visible.
             *i = (*ctx).wox;
             *x = 0;
             *rx = (*ctx).wsx;
         } else if xoff < (*ctx).wox {
-            /* Left not visible. */
+            // Left not visible.
             *i = (*ctx).wox - ((*ctx).xoff + px);
             *x = 0;
             *rx = nx - *i;
         } else {
-            /* Right not visible. */
+            // Right not visible.
             *i = 0;
             *x = ((*ctx).xoff + px) - (*ctx).wox;
             *rx = (*ctx).wsx - *x;
@@ -1460,22 +1448,22 @@ pub unsafe fn tty_clamp_area(
         }
 
         if yoff >= (*ctx).woy && yoff + ny <= (*ctx).woy + (*ctx).wsy {
-            /* All visible. */
+            // All visible.
             *j = 0;
             *y = (*ctx).yoff + py - (*ctx).woy;
             *ry = ny;
         } else if yoff < (*ctx).woy && yoff + ny > (*ctx).woy + (*ctx).wsy {
-            /* Both top and bottom not visible. */
+            // Both top and bottom not visible.
             *j = (*ctx).woy;
             *y = 0;
             *ry = (*ctx).wsy;
         } else if yoff < (*ctx).woy {
-            /* Top not visible. */
+            // Top not visible.
             *j = (*ctx).woy - ((*ctx).yoff + py);
             *y = 0;
             *ry = ny - *j;
         } else {
-            /* Bottom not visible. */
+            // Bottom not visible.
             *j = 0;
             *y = ((*ctx).yoff + py) - (*ctx).woy;
             *ry = (*ctx).wsy - *y;
@@ -1505,14 +1493,14 @@ pub unsafe fn tty_clear_area(
 
         // log_debug("%s: %s, %u,%u at %u,%u", __func__, (*c).name, nx, ny, px, py);
 
-        /* Nothing to clear. */
+        // Nothing to clear.
         if nx == 0 || ny == 0 {
             return;
         }
 
-        /* If genuine BCE is available, can try escape sequences. */
+        // If genuine BCE is available, can try escape sequences.
         if (*c).overlay_check.is_none() && !tty_fake_bce(tty, defaults, bg) {
-            /* Use ED if clearing off the bottom of the terminal. */
+            // Use ED if clearing off the bottom of the terminal.
             if px == 0
                 && px + nx >= (*tty).sx
                 && py + ny >= (*tty).sy
@@ -1523,11 +1511,9 @@ pub unsafe fn tty_clear_area(
                 return;
             }
 
-            /*
-             * On VT420 compatible terminals we can use DECFRA if the
-             * background colour isn't default (because it doesn't work
-             * after SGR 0).
-             */
+            // On VT420 compatible terminals we can use DECFRA if the
+            // background colour isn't default (because it doesn't work
+            // after SGR 0).
             if (*(*tty).term).flags.intersects(term_flags::TERM_DECFRA)
                 && !COLOUR_DEFAULT(bg as i32)
             {
@@ -1544,7 +1530,7 @@ pub unsafe fn tty_clear_area(
                 return;
             }
 
-            /* Full lines can be scrolled away to clear them. */
+            // Full lines can be scrolled away to clear them.
             if px == 0
                 && px + nx >= (*tty).sx
                 && ny > 2
@@ -1557,10 +1543,8 @@ pub unsafe fn tty_clear_area(
                 return;
             }
 
-            /*
-             * If margins are supported, can just scroll the area off to
-             * clear it.
-             */
+            // If margins are supported, can just scroll the area off to
+            // clear it.
             if nx > 2
                 && ny > 2
                 && tty_term_has((*tty).term, tty_code_code::TTYC_CSR)
@@ -1672,18 +1656,18 @@ pub unsafe fn tty_draw_pane(tty: *mut tty, ctx: *const tty_ctx, py: u32) {
 pub unsafe fn tty_check_codeset(tty: *mut tty, gc: *const grid_cell) -> *const grid_cell {
     static mut NEW: grid_cell = unsafe { zeroed() };
     unsafe {
-        /* Characters less than 0x7f are always fine, no matter what. */
+        // Characters less than 0x7f are always fine, no matter what.
         if (*gc).data.size == 1 && (*gc).data.data[0] < 0x7f {
             return gc;
         }
 
-        /* UTF-8 terminal and a UTF-8 character - fine. */
+        // UTF-8 terminal and a UTF-8 character - fine.
         if (*(*tty).client).flags.intersects(client_flag::UTF8) {
             return gc;
         }
         memcpy__(&raw mut NEW, gc);
 
-        /* See if this can be mapped to an ACS character. */
+        // See if this can be mapped to an ACS character.
         let c = tty_acs_reverse_get(
             tty,
             (&raw const (*gc).data.data).cast(),
@@ -1695,7 +1679,7 @@ pub unsafe fn tty_check_codeset(tty: *mut tty, gc: *const grid_cell) -> *const g
             return &raw const NEW;
         }
 
-        /* Replace by the right number of underscores. */
+        // Replace by the right number of underscores.
         NEW.data.size = (*gc).data.width;
         if NEW.data.size > UTF8_SIZE as u8 {
             NEW.data.size = UTF8_SIZE as u8;
@@ -1714,11 +1698,9 @@ pub unsafe fn tty_check_overlay(tty: *mut tty, px: u32, py: u32) -> bool {
     unsafe {
         let mut r: overlay_ranges = zeroed();
 
-        /*
-         * A unit width range will always return nx[2] == 0 from a check, even
-         * with multiple overlays, so it's sufficient to check just the first
-         * two entries.
-         */
+        // A unit width range will always return nx[2] == 0 from a check, even
+        // with multiple overlays, so it's sufficient to check just the first
+        // two entries.
         tty_check_overlay_range(tty, px, py, 1, &raw mut r);
         r.nx[0] + r.nx[1] != 0
     }
@@ -1782,11 +1764,9 @@ pub unsafe fn tty_draw_line(
         // log_debug("%s: px=%u py=%u nx=%u atx=%u aty=%u", __func__, px, py, nx, atx, aty);
         // log_debug("%s: defaults: fg=%d, bg=%d", __func__, (*defaults).fg, (*defaults).bg);
 
-        /*
-         * py is the line in the screen to draw.
-         * px is the start x and nx is the width to draw.
-         * atx,aty is the line on the terminal to draw it.
-         */
+        // py is the line in the screen to draw.
+        // px is the start x and nx is the width to draw.
+        // atx,aty is the line on the terminal to draw it.
 
         let flags = (*tty).flags & tty_flags::TTY_NOCURSOR;
         (*tty).flags |= tty_flags::TTY_NOCURSOR;
@@ -1795,10 +1775,8 @@ pub unsafe fn tty_draw_line(
         tty_region_off(tty);
         tty_margin_off(tty);
 
-        /*
-         * Clamp the width to cellsize - note this is not cellused, because
-         * there may be empty background cells after it (from BCE).
-         */
+        // Clamp the width to cellsize - note this is not cellused, because
+        // there may be empty background cells after it (from BCE).
         let mut sx = screen_size_x(s);
         if nx > sx {
             nx = sx;
@@ -1903,7 +1881,7 @@ pub unsafe fn tty_draw_line(
                         if r.nx[j] == 0 {
                             continue;
                         }
-                        /* Effective width drawn so far. */
+                        // Effective width drawn so far.
                         let eux = r.px[j] - atx;
                         if eux < nx {
                             tty_cursor(tty, r.px[j], aty);
@@ -1971,7 +1949,7 @@ pub unsafe fn tty_set_client_cb(ttyctx: *mut tty_ctx, c: *mut client) -> i32 {
             return 0;
         }
 
-        /* Set the properties relevant to the current client. */
+        // Set the properties relevant to the current client.
         (*ttyctx).bigger = tty_window_offset(
             &raw mut (*c).tty,
             &raw mut (*ttyctx).wox,
@@ -2061,10 +2039,8 @@ pub unsafe fn tty_client_ready(ctx: *const tty_ctx, c: *mut client) -> i32 {
             return 0;
         }
 
-        /*
-         * If invisible panes are allowed (used for passthrough), don't care if
-         * redrawing or frozen.
-         */
+        // If invisible panes are allowed (used for passthrough), don't care if
+        // redrawing or frozen.
         if (*ctx).allow_invisible_panes != 0 {
             return 1;
         }
@@ -2396,13 +2372,11 @@ pub unsafe fn tty_cmd_linefeed(tty: *mut tty, ctx: *const tty_ctx) {
         tty_region_pane(tty, ctx, (*ctx).orupper, (*ctx).orlower);
         tty_margin_pane(tty, ctx);
 
-        /*
-         * If we want to wrap a pane while using margins, the cursor needs to
-         * be exactly on the right of the region. If the cursor is entirely off
-         * the edge - move it back to the right. Some terminals are funny about
-         * this and insert extra spaces, so only use the right if margins are
-         * enabled.
-         */
+        // If we want to wrap a pane while using margins, the cursor needs to
+        // be exactly on the right of the region. If the cursor is entirely off
+        // the edge - move it back to the right. Some terminals are funny about
+        // this and insert extra spaces, so only use the right if margins are
+        // enabled.
         if (*ctx).xoff + (*ctx).ocx > (*tty).rright {
             if !tty_use_margin(tty) {
                 tty_cursor(tty, 0, (*ctx).yoff + (*ctx).ocy);
@@ -2624,7 +2598,7 @@ pub unsafe fn tty_cmd_cell(tty: *mut tty, ctx: *const tty_ctx) {
             return;
         }
 
-        /* Handle partially obstructed wide characters. */
+        // Handle partially obstructed wide characters.
         if (*gcp).data.width > 1 {
             tty_check_overlay_range(tty, px, py, (*gcp).data.width as u32, &raw mut r);
             for i in 0..OVERLAY_MAX_RANGES {
@@ -2708,7 +2682,7 @@ pub unsafe fn tty_cmd_cells(tty: *mut tty, ctx: *const tty_ctx) {
             (*(*ctx).s).hyperlinks,
         );
 
-        /* Get tty position from pane position for overlay check. */
+        // Get tty position from pane position for overlay check.
         let px = (*ctx).xoff + (*ctx).ocx - (*ctx).wox;
         let py = (*ctx).yoff + (*ctx).ocy - (*ctx).woy;
 
@@ -2717,7 +2691,7 @@ pub unsafe fn tty_cmd_cells(tty: *mut tty, ctx: *const tty_ctx) {
             if r.nx[i] == 0 {
                 continue;
             }
-            /* Convert back to pane position for printing. */
+            // Convert back to pane position for printing.
             let cx = r.px[i] - (*ctx).xoff + (*ctx).wox;
             tty_cursor_pane_unless_wrap(tty, ctx, cx, (*ctx).ocy);
             tty_putn(
@@ -2876,7 +2850,7 @@ pub unsafe fn tty_cell(
     hl: *mut hyperlinks,
 ) {
     unsafe {
-        /* Skip last character if terminal is stupid. */
+        // Skip last character if terminal is stupid.
         if ((*(*tty).term).flags.intersects(term_flags::TERM_NOAM))
             && (*tty).cy == (*tty).sy - 1
             && (*tty).cx == (*tty).sx - 1
@@ -2884,16 +2858,16 @@ pub unsafe fn tty_cell(
             return;
         }
 
-        /* If this is a padding character, do nothing. */
+        // If this is a padding character, do nothing.
         if (*gc).flags.intersects(grid_flag::PADDING) {
             return;
         }
 
-        /* Check the output codeset and apply attributes. */
+        // Check the output codeset and apply attributes.
         let gcp = tty_check_codeset(tty, gc);
         tty_attributes(tty, gcp, defaults, palette, hl);
 
-        /* If it is a single character, write with putc to handle ACS. */
+        // If it is a single character, write with putc to handle ACS.
         if (*gcp).data.size == 1 {
             tty_attributes(tty, gcp, defaults, palette, hl);
             if (*gcp).data.data[0] < 0x20 || (*gcp).data.data[0] == 0x7f {
@@ -2903,7 +2877,7 @@ pub unsafe fn tty_cell(
             return;
         }
 
-        /* Write the data. */
+        // Write the data.
         tty_putn(
             tty,
             (&raw const (*gcp).data.data).cast(),
@@ -2992,12 +2966,10 @@ pub unsafe fn tty_region(tty: *mut tty, rupper: u32, rlower: u32) {
         (*tty).rupper = rupper;
         (*tty).rlower = rlower;
 
-        /*
-         * Some terminals (such as PuTTY) do not correctly reset the cursor to
-         * 0,0 if it is beyond the last column (they do not reset their wrap
-         * flag so further output causes a line feed). As a workaround, do an
-         * explicit move to 0 first.
-         */
+        // Some terminals (such as PuTTY) do not correctly reset the cursor to
+        // 0,0 if it is beyond the last column (they do not reset their wrap
+        // flag so further output causes a line feed). As a workaround, do an
+        // explicit move to 0 first.
         if (*tty).cx >= (*tty).sx {
             if (*tty).cy == u32::MAX {
                 tty_cursor(tty, 0, 0);
@@ -3035,7 +3007,7 @@ pub unsafe fn tty_margin_pane(tty: *mut tty, ctx: *const tty_ctx) {
     }
 }
 
-/* Set margin at absolute position. */
+// Set margin at absolute position.
 
 pub unsafe fn tty_margin(tty: *mut tty, rleft: u32, rright: u32) {
     unsafe {
@@ -3066,10 +3038,8 @@ pub unsafe fn tty_margin(tty: *mut tty, rleft: u32, rright: u32) {
     }
 }
 
-/*
- * Move the cursor, unless it would wrap itself when the next character is
- * printed.
- */
+// Move the cursor, unless it would wrap itself when the next character is
+// printed.
 
 pub unsafe fn tty_cursor_pane_unless_wrap(tty: *mut tty, ctx: *const tty_ctx, cx: u32, cy: u32) {
     unsafe {
@@ -3088,7 +3058,7 @@ pub unsafe fn tty_cursor_pane_unless_wrap(tty: *mut tty, ctx: *const tty_ctx, cx
     }
 }
 
-/* Move cursor inside pane. */
+// Move cursor inside pane.
 
 pub unsafe fn tty_cursor_pane(tty: *mut tty, ctx: *const tty_ctx, cx: u32, cy: u32) {
     unsafe {
@@ -3100,7 +3070,7 @@ pub unsafe fn tty_cursor_pane(tty: *mut tty, ctx: *const tty_ctx, cx: u32, cy: u
     }
 }
 
-/* Move cursor to absolute position. */
+// Move cursor to absolute position.
 
 pub unsafe fn tty_cursor(tty: *mut tty, mut cx: u32, cy: u32) {
     unsafe {
@@ -3115,10 +3085,8 @@ pub unsafe fn tty_cursor(tty: *mut tty, mut cx: u32, cy: u32) {
 
         'out: {
             'absolute: {
-                /*
-                 * If in the automargin space, and want to be there, do not move.
-                 * Otherwise, force the cursor to be in range (and complain).
-                 */
+                // If in the automargin space, and want to be there, do not move.
+                // Otherwise, force the cursor to be in range (and complain).
                 if cx == thisx && cy == thisy && cx == (*tty).sx {
                     return;
                 }
@@ -3126,17 +3094,17 @@ pub unsafe fn tty_cursor(tty: *mut tty, mut cx: u32, cy: u32) {
                     cx = (*tty).sx - 1;
                 } // log_debug("%s: x too big %u > %u", __func__, cx, (*tty).sx - 1);
 
-                /* No change. */
+                // No change.
                 if cx == thisx && cy == thisy {
                     return;
                 }
 
-                /* Currently at the very end of the line - use absolute movement. */
+                // Currently at the very end of the line - use absolute movement.
                 if thisx > (*tty).sx - 1 {
                     break 'absolute;
                 }
 
-                /* Move to home position (0, 0). */
+                // Move to home position (0, 0).
                 if cx == 0 && cy == 0 && tty_term_has(term, tty_code_code::TTYC_HOME) {
                     tty_putcode(tty, tty_code_code::TTYC_HOME);
                     break 'out;
@@ -3153,38 +3121,34 @@ pub unsafe fn tty_cursor(tty: *mut tty, mut cx: u32, cy: u32) {
                     break 'out;
                 }
 
-                /* Moving column or row. */
+                // Moving column or row.
                 if cy == thisy {
-                    /*
-                     * Moving column only, row staying the same.
-                     */
+                    // Moving column only, row staying the same.
 
-                    /* To left edge. */
+                    // To left edge.
                     if cx == 0 && (!tty_use_margin(tty) || (*tty).rleft == 0) {
                         tty_putc(tty, b'\r');
                         break 'out;
                     }
 
-                    /* One to the left. */
+                    // One to the left.
                     // TODO underflows on debug rust
                     if cx == thisx.wrapping_sub(1) && tty_term_has(term, tty_code_code::TTYC_CUB1) {
                         tty_putcode(tty, tty_code_code::TTYC_CUB1);
                         break 'out;
                     }
 
-                    /* One to the right. */
+                    // One to the right.
                     if cx == thisx + 1 && tty_term_has(term, tty_code_code::TTYC_CUF1) {
                         tty_putcode(tty, tty_code_code::TTYC_CUF1);
                         break 'out;
                     }
 
-                    /* Calculate difference. */
+                    // Calculate difference.
                     let change: i32 = thisx as i32 - cx as i32; /* +ve left, -ve right */
 
-                    /*
-                     * Use HPA if change is larger than absolute, otherwise move
-                     * the cursor with CUB/CUF.
-                     */
+                    // Use HPA if change is larger than absolute, otherwise move
+                    // the cursor with CUB/CUF.
                     if change.unsigned_abs() > cx && tty_term_has(term, tty_code_code::TTYC_HPA) {
                         tty_putcode_i(tty, tty_code_code::TTYC_HPA, cx as i32);
                         break 'out;
@@ -3207,11 +3171,9 @@ pub unsafe fn tty_cursor(tty: *mut tty, mut cx: u32, cy: u32) {
                         break 'out;
                     }
                 } else if cx == thisx {
-                    /*
-                     * Moving row only, column staying the same.
-                     */
+                    // Moving row only, column staying the same.
 
-                    /* One above. */
+                    // One above.
                     if thisy != (*tty).rupper
                         && cy + 1 == thisy // note avoids underflow in dev
                         && tty_term_has(term, tty_code_code::TTYC_CUU1)
@@ -3220,7 +3182,7 @@ pub unsafe fn tty_cursor(tty: *mut tty, mut cx: u32, cy: u32) {
                         break 'out;
                     }
 
-                    /* One below. */
+                    // One below.
                     if thisy != (*tty).rlower
                         && cy == thisy + 1
                         && tty_term_has(term, tty_code_code::TTYC_CUD1)
@@ -3229,13 +3191,11 @@ pub unsafe fn tty_cursor(tty: *mut tty, mut cx: u32, cy: u32) {
                         break 'out;
                     }
 
-                    /* Calculate difference. */
+                    // Calculate difference.
                     let change: i32 = thisy as i32 - cy as i32; /* +ve up, -ve down */
 
-                    /*
-                     * Try to use VPA if change is larger than absolute or if this
-                     * change would cross the scroll region, otherwise use CUU/CUD.
-                     */
+                    // Try to use VPA if change is larger than absolute or if this
+                    // change would cross the scroll region, otherwise use CUU/CUD.
                     if change.unsigned_abs() > cy
                         || (change < 0 && cy as i32 - change > (*tty).rlower as i32)
                         || (change > 0 && cy as i32 - change < (*tty).rupper as i32)
@@ -3254,7 +3214,7 @@ pub unsafe fn tty_cursor(tty: *mut tty, mut cx: u32, cy: u32) {
                 }
             } // absolute:
 
-            /* Absolute movement. */
+            // Absolute movement.
             tty_putcode_ii(tty, tty_code_code::TTYC_CUP, cy as i32, cx as i32);
         } // out:
         (*tty).cx = cx;
@@ -3295,7 +3255,7 @@ pub unsafe fn tty_attributes(
         let tc = &raw mut (*tty).cell;
         let mut gc2: grid_cell = zeroed();
 
-        /* Copy cell and update default colours. */
+        // Copy cell and update default colours.
         memcpy__(&raw mut gc2, gc);
         if !(*gc).flags.intersects(grid_flag::NOPALETTE) {
             if gc2.fg == 8 {
@@ -3306,7 +3266,7 @@ pub unsafe fn tty_attributes(
             }
         }
 
-        /* Ignore cell if it is the same as the last one. */
+        // Ignore cell if it is the same as the last one.
         if gc2.attr == (*tty).last_cell.attr
             && gc2.fg == (*tty).last_cell.fg
             && gc2.bg == (*tty).last_cell.bg
@@ -3316,11 +3276,9 @@ pub unsafe fn tty_attributes(
             return;
         }
 
-        /*
-         * If no setab, try to use the reverse attribute as a best-effort for a
-         * non-default background. This is a bit of a hack but it doesn't do
-         * any serious harm and makes a couple of applications happier.
-         */
+        // If no setab, try to use the reverse attribute as a best-effort for a
+        // non-default background. This is a bit of a hack but it doesn't do
+        // any serious harm and makes a couple of applications happier.
         if !tty_term_has((*tty).term, tty_code_code::TTYC_SETAB) {
             if gc2.attr.intersects(grid_attr::GRID_ATTR_REVERSE) {
                 if gc2.fg != 7 && !COLOUR_DEFAULT(gc2.fg) {
@@ -3331,30 +3289,26 @@ pub unsafe fn tty_attributes(
             }
         }
 
-        /* Fix up the colours if necessary. */
+        // Fix up the colours if necessary.
         tty_check_fg(tty, palette, &raw mut gc2);
         tty_check_bg(tty, palette, &raw mut gc2);
         tty_check_us(tty, palette, &raw mut gc2);
 
-        /*
-         * If any bits are being cleared or the underline colour is now default,
-         * reset everything.
-         */
+        // If any bits are being cleared or the underline colour is now default,
+        // reset everything.
         if (*tc).attr.intersects(!gc2.attr) || (*tc).us != gc2.us && gc2.us == 0 {
             tty_reset(tty);
         }
 
-        /*
-         * Set the colours. This may call tty_reset() (so it comes next) and
-         * may add to (NOT remove) the desired attributes.
-         */
+        // Set the colours. This may call tty_reset() (so it comes next) and
+        // may add to (NOT remove) the desired attributes.
         tty_colours(tty, &raw mut gc2);
 
-        /* Filter out attribute bits already set. */
+        // Filter out attribute bits already set.
         let changed = gc2.attr & !(*tc).attr;
         (*tc).attr = gc2.attr;
 
-        /* Set the attributes. */
+        // Set the attributes.
         if changed.intersects(grid_attr::GRID_ATTR_BRIGHT) {
             tty_putcode(tty, tty_code_code::TTYC_BOLD);
         }
@@ -3466,11 +3420,9 @@ pub unsafe fn tty_check_fg(tty: *const tty, palette: *const colour_palette, gc: 
     unsafe {
         let mut c: i32;
 
-        /*
-         * Perform substitution if this pane has a palette. If the bright
-         * attribute is set and Nobr is not present, use the bright entry in
-         * the palette by changing to the aixterm colour
-         */
+        // Perform substitution if this pane has a palette. If the bright
+        // attribute is set and Nobr is not present, use the bright entry in
+        // the palette by changing to the aixterm colour
         if !(*gc).flags.intersects(grid_flag::NOPALETTE) {
             c = (*gc).fg;
             if c < 8
@@ -3485,9 +3437,9 @@ pub unsafe fn tty_check_fg(tty: *const tty, palette: *const colour_palette, gc: 
             }
         }
 
-        /* Is this a 24-bit colour? */
+        // Is this a 24-bit colour?
         if (*gc).fg & COLOUR_FLAG_RGB != 0 {
-            /* Not a 24-bit terminal? Translate to 256-colour palette. */
+            // Not a 24-bit terminal? Translate to 256-colour palette.
             if (*(*tty).term).flags.intersects(term_flags::TERM_RGBCOLOURS) {
                 return;
             }
@@ -3495,16 +3447,16 @@ pub unsafe fn tty_check_fg(tty: *const tty, palette: *const colour_palette, gc: 
             (*gc).fg = colour_find_rgb(r, g, b);
         }
 
-        /* How many colours does this terminal have? */
+        // How many colours does this terminal have?
         let colours = if (*(*tty).term).flags.intersects(term_flags::TERM_256COLOURS) {
             256
         } else {
             tty_term_number((*tty).term, tty_code_code::TTYC_COLORS) as u32
         };
 
-        /* Is this a 256-colour colour? */
+        // Is this a 256-colour colour?
         if (*gc).fg & COLOUR_FLAG_256 != 0 {
-            /* And not a 256 colour mode? */
+            // And not a 256 colour mode?
             if colours < 256 {
                 (*gc).fg = colour_256to16((*gc).fg);
                 if ((*gc).fg & 8) != 0 {
@@ -3517,7 +3469,7 @@ pub unsafe fn tty_check_fg(tty: *const tty, palette: *const colour_palette, gc: 
             return;
         }
 
-        /* Is this an aixterm colour? */
+        // Is this an aixterm colour?
         if (*gc).fg >= 90 && (*gc).fg <= 97 && colours < 16 {
             (*gc).fg -= 90;
             (*gc).attr |= grid_attr::GRID_ATTR_BRIGHT;
@@ -3529,7 +3481,7 @@ pub unsafe fn tty_check_bg(tty: *const tty, palette: *const colour_palette, gc: 
     unsafe {
         let c: i32;
 
-        /* Perform substitution if this pane has a palette. */
+        // Perform substitution if this pane has a palette.
         if !(*gc).flags.intersects(grid_flag::NOPALETTE) {
             c = colour_palette_get(palette, (*gc).bg);
             if c != -1 {
@@ -3537,9 +3489,9 @@ pub unsafe fn tty_check_bg(tty: *const tty, palette: *const colour_palette, gc: 
             }
         }
 
-        /* Is this a 24-bit colour? */
+        // Is this a 24-bit colour?
         if (*gc).bg & COLOUR_FLAG_RGB != 0 {
-            /* Not a 24-bit terminal? Translate to 256-colour palette. */
+            // Not a 24-bit terminal? Translate to 256-colour palette.
             if (*(*tty).term).flags.intersects(term_flags::TERM_RGBCOLOURS) {
                 return;
             }
@@ -3547,20 +3499,18 @@ pub unsafe fn tty_check_bg(tty: *const tty, palette: *const colour_palette, gc: 
             (*gc).bg = colour_find_rgb(r, g, b);
         }
 
-        /* How many colours does this terminal have? */
+        // How many colours does this terminal have?
         let colours = if (*(*tty).term).flags.intersects(term_flags::TERM_256COLOURS) {
             256
         } else {
             tty_term_number((*tty).term, tty_code_code::TTYC_COLORS) as u32
         };
 
-        /* Is this a 256-colour colour? */
+        // Is this a 256-colour colour?
         if (*gc).bg & COLOUR_FLAG_256 != 0 {
-            /*
-             * And not a 256 colour mode? Translate to 16-colour
-             * palette. Bold background doesn't exist portably, so just
-             * discard the bold bit if set.
-             */
+            // And not a 256 colour mode? Translate to 16-colour
+            // palette. Bold background doesn't exist portably, so just
+            // discard the bold bit if set.
             if colours < 256 {
                 (*gc).bg = colour_256to16((*gc).bg);
                 if (*gc).bg & 8 != 0 {
@@ -3573,7 +3523,7 @@ pub unsafe fn tty_check_bg(tty: *const tty, palette: *const colour_palette, gc: 
             return;
         }
 
-        /* Is this an aixterm colour? */
+        // Is this an aixterm colour?
         if (*gc).bg >= 90 && (*gc).bg <= 97 && colours < 16 {
             (*gc).bg -= 90;
         }
@@ -3584,7 +3534,7 @@ pub unsafe fn tty_check_us(tty: *const tty, palette: *const colour_palette, gc: 
     unsafe {
         let mut c;
 
-        /* Perform substitution if this pane has a palette. */
+        // Perform substitution if this pane has a palette.
         if !(*gc).flags.intersects(grid_flag::NOPALETTE) {
             c = colour_palette_get(palette, (*gc).us);
             if c != -1 {
@@ -3592,7 +3542,7 @@ pub unsafe fn tty_check_us(tty: *const tty, palette: *const colour_palette, gc: 
             }
         }
 
-        /* Convert underscore colour if only RGB can be supported. */
+        // Convert underscore colour if only RGB can be supported.
         if !tty_term_has((*tty).term, tty_code_code::TTYC_SETULC1) {
             c = colour_force_rgb((*gc).us);
             if c == -1 {
@@ -3611,24 +3561,22 @@ pub unsafe fn tty_colours_fg(tty: *mut tty, gc: *const grid_cell) {
         let mut s: [u8; 32] = [0; 32];
 
         'save: {
-            /*
-             * If the current colour is an aixterm bright colour and the new is not,
-             * reset because some terminals do not clear bright correctly.
-             */
+            // If the current colour is an aixterm bright colour and the new is not,
+            // reset because some terminals do not clear bright correctly.
             if (*tty).cell.fg >= 90 && (*tty).cell.bg <= 97 && ((*gc).fg < 90 || (*gc).fg > 97) {
                 tty_reset(tty);
             }
 
-            /* Is this a 24-bit or 256-colour colour? */
+            // Is this a 24-bit or 256-colour colour?
             if (*gc).fg & COLOUR_FLAG_RGB != 0 || (*gc).fg & COLOUR_FLAG_256 != 0 {
                 if tty_try_colour(tty, (*gc).fg, c!("38")) == 0 {
                     break 'save;
                 }
-                /* Should not get here, already converted in tty_check_fg. */
+                // Should not get here, already converted in tty_check_fg.
                 return;
             }
 
-            /* Is this an aixterm bright colour? */
+            // Is this an aixterm bright colour?
             if (*gc).fg >= 90 && (*gc).fg <= 97 {
                 if (*(*tty).term).flags.intersects(term_flags::TERM_256COLOURS) {
                     _ = xsnprintf_!((&raw mut s).cast(), sizeof_s, "\x1b[{}m", (*gc).fg,);
@@ -3639,11 +3587,11 @@ pub unsafe fn tty_colours_fg(tty: *mut tty, gc: *const grid_cell) {
                 break 'save;
             }
 
-            /* Otherwise set the foreground colour. */
+            // Otherwise set the foreground colour.
             tty_putcode_i(tty, tty_code_code::TTYC_SETAF, (*gc).fg);
         } // save:
 
-        /* Save the new values in the terminal current cell. */
+        // Save the new values in the terminal current cell.
         (*tc).fg = (*gc).fg;
     }
 }
@@ -3655,16 +3603,16 @@ pub unsafe fn tty_colours_bg(tty: *mut tty, gc: *const grid_cell) {
         let mut s: [u8; 32] = [0; 32];
 
         'save: {
-            /* Is this a 24-bit or 256-colour colour? */
+            // Is this a 24-bit or 256-colour colour?
             if (*gc).bg & COLOUR_FLAG_RGB != 0 || (*gc).bg & COLOUR_FLAG_256 != 0 {
                 if tty_try_colour(tty, (*gc).bg, c!("48")) == 0 {
                     break 'save;
                 }
-                /* Should not get here, already converted in tty_check_bg. */
+                // Should not get here, already converted in tty_check_bg.
                 return;
             }
 
-            /* Is this an aixterm bright colour? */
+            // Is this an aixterm bright colour?
             if (*gc).bg >= 90 && (*gc).bg <= 97 {
                 if (*(*tty).term).flags.intersects(term_flags::TERM_256COLOURS) {
                     _ = xsnprintf_!((&raw mut s).cast(), sizeof_s, "\x1b[{}m", (*gc).bg + 10,);
@@ -3675,11 +3623,11 @@ pub unsafe fn tty_colours_bg(tty: *mut tty, gc: *const grid_cell) {
                 break 'save;
             }
 
-            /* Otherwise set the background colour. */
+            // Otherwise set the background colour.
             tty_putcode_i(tty, tty_code_code::TTYC_SETAB, (*gc).bg);
         } //save:
 
-        /* Save the new values in the terminal current cell. */
+        // Save the new values in the terminal current cell.
         (*tc).bg = (*gc).bg;
     }
 }
@@ -3690,16 +3638,14 @@ pub unsafe fn tty_colours_us(tty: *mut tty, gc: *const grid_cell) {
         let mut c: u32;
 
         'save: {
-            /* Clear underline colour. */
+            // Clear underline colour.
             if COLOUR_DEFAULT((*gc).us) {
                 tty_putcode(tty, tty_code_code::TTYC_OL);
                 break 'save;
             }
 
-            /*
-             * If this is not an RGB colour, use Setulc1 if it exists, otherwise
-             * convert.
-             */
+            // If this is not an RGB colour, use Setulc1 if it exists, otherwise
+            // convert.
             if !(*gc).us & COLOUR_FLAG_RGB != 0 {
                 c = (*gc).us as u32;
                 if (!c & COLOUR_FLAG_256 as u32 != 0) && (c >= 90 && c <= 97) {
@@ -3713,17 +3659,13 @@ pub unsafe fn tty_colours_us(tty: *mut tty, gc: *const grid_cell) {
                 return;
             }
 
-            /*
-             * Setulc and setal follows the ncurses(3) one argument "direct colour"
-             * capability format. Calculate the colour value.
-             */
+            // Setulc and setal follows the ncurses(3) one argument "direct colour"
+            // capability format. Calculate the colour value.
             let (r, g, b) = colour_split_rgb((*gc).us);
             c = (65536 * r as u32) + (256 * g as u32) + b as u32;
 
-            /*
-             * Write the colour. Only use setal if the RGB flag is set because the
-             * non-RGB version may be wrong.
-             */
+            // Write the colour. Only use setal if the RGB flag is set because the
+            // non-RGB version may be wrong.
             if tty_term_has((*tty).term, tty_code_code::TTYC_SETULC) {
                 tty_putcode_i(tty, tty_code_code::TTYC_SETULC, c as i32);
             } else if tty_term_has((*tty).term, tty_code_code::TTYC_SETAL)
@@ -3733,7 +3675,7 @@ pub unsafe fn tty_colours_us(tty: *mut tty, gc: *const grid_cell) {
             }
         } // save:
 
-        /* Save the new values in the terminal current cell. */
+        // Save the new values in the terminal current cell.
         (*tc).us = (*gc).us;
     }
 }

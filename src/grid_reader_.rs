@@ -192,7 +192,7 @@ pub unsafe fn grid_reader_in_set(gr: *mut grid_reader, set: *const u8) -> i32 {
 
 pub unsafe fn grid_reader_cursor_next_word(gr: *mut grid_reader, separators: *const u8) {
     unsafe {
-        /* Do not break up wrapped words. */
+        // Do not break up wrapped words.
         let mut xx = if (*grid_get_line((*gr).gd, (*gr).cy))
             .flags
             .intersects(grid_line_flag::WRAPPED)
@@ -240,7 +240,7 @@ pub unsafe fn grid_reader_cursor_next_word(gr: *mut grid_reader, separators: *co
 
 pub unsafe fn grid_reader_cursor_next_word_end(gr: *mut grid_reader, separators: *const u8) {
     unsafe {
-        /* Do not break up wrapped words. */
+        // Do not break up wrapped words.
         let mut xx = if (*grid_get_line((*gr).gd, (*gr).cy))
             .flags
             .intersects(grid_line_flag::WRAPPED)

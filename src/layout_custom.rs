@@ -167,7 +167,7 @@ pub unsafe fn layout_parse(w: *mut window, mut layout: *const u8, cause: *mut *m
         let mut csum: u16 = 0;
 
         'fail: {
-            /* Check validity. */
+            // Check validity.
             if sscanf(layout.cast(), c"%hx,".as_ptr(), &raw mut csum) != 1 {
                 *cause = xstrdup_(c"invalid layout").as_ptr();
                 return -1;
@@ -178,7 +178,7 @@ pub unsafe fn layout_parse(w: *mut window, mut layout: *const u8, cause: *mut *m
                 return -1;
             }
 
-            /* Build the layout. */
+            // Build the layout.
             lc = layout_construct(null_mut(), &raw mut layout);
             if lc.is_null() {
                 *cause = xstrdup_(c"invalid layout").as_ptr();
@@ -189,7 +189,7 @@ pub unsafe fn layout_parse(w: *mut window, mut layout: *const u8, cause: *mut *m
                 break 'fail;
             }
 
-            /* Check this window will fit into the layout. */
+            // Check this window will fit into the layout.
             loop {
                 let npanes = window_count_panes(w);
                 let ncells = layout_count_cells(lc);
@@ -201,16 +201,14 @@ pub unsafe fn layout_parse(w: *mut window, mut layout: *const u8, cause: *mut *m
                     break;
                 }
 
-                /* Fewer panes than cells - close the bottom right. */
+                // Fewer panes than cells - close the bottom right.
                 let lcchild = layout_find_bottomright(lc);
                 layout_destroy_cell(w, lcchild, &raw mut lc);
             }
 
-            /*
-             * It appears older versions of tmux were able to generate layouts with
-             * an incorrect top cell size - if it is larger than the top child then
-             * correct that (if this is still wrong the check code will catch it).
-             */
+            // It appears older versions of tmux were able to generate layouts with
+            // an incorrect top cell size - if it is larger than the top child then
+            // correct that (if this is still wrong the check code will catch it).
             let mut sy = 0;
             let mut sx = 0;
             match (*lc).type_ {
@@ -237,24 +235,24 @@ pub unsafe fn layout_parse(w: *mut window, mut layout: *const u8, cause: *mut *m
                 (*lc).sy = sy - 1;
             }
 
-            /* Check the new layout. */
+            // Check the new layout.
             if layout_check(lc) == 0 {
                 *cause = xstrdup_(c"size mismatch after applying layout").as_ptr();
                 break 'fail;
             }
 
-            /* Resize to the layout size. */
+            // Resize to the layout size.
             window_resize(w, (*lc).sx, (*lc).sy, -1, -1);
 
-            /* Destroy the old layout and swap to the new. */
+            // Destroy the old layout and swap to the new.
             layout_free_cell((*w).layout_root);
             (*w).layout_root = lc;
 
-            /* Assign the panes into the cells. */
+            // Assign the panes into the cells.
             let mut wp = tailq_first(&raw mut (*w).panes);
             layout_assign(&raw mut wp, lc);
 
-            /* Update pane offsets and sizes. */
+            // Update pane offsets and sizes.
             layout_fix_offsets(w);
             layout_fix_panes(w, null_mut());
             recalculate_sizes();
@@ -271,7 +269,7 @@ pub unsafe fn layout_parse(w: *mut window, mut layout: *const u8, cause: *mut *m
     }
 }
 
-/* Assign panes into cells. */
+// Assign panes into cells.
 
 unsafe fn layout_assign(wp: *mut *mut window_pane, lc: *mut layout_cell) {
     unsafe {

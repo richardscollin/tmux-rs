@@ -2919,11 +2919,9 @@ impl format_table_entry {
     }
 }
 
-/*
- * Format table. Default format variables (that are almost always in the tree
- * and where the value is expanded by a callback in this file) are listed
- * here. Only variables which are added by the caller go into the tree.
- */
+// Format table. Default format variables (that are almost always in the tree
+// and where the value is expanded by a callback in this file) are listed
+// here. Only variables which are added by the caller go into the tree.
 #[rustfmt::skip]
 static FORMAT_TABLE: [format_table_entry ; 171] = [
     format_table_entry::new(c"active_window_index", format_table_type::FORMAT_TABLE_STRING, format_cb_active_window_index),
@@ -3721,33 +3719,31 @@ pub unsafe fn format_build_modifiers(
         // char c, last[] = "X;:", **argv, *value;
         // int argc;
 
-        /*
-         * Modifiers are a ; separated list of the forms:
-         *      l,m,C,a,b,c,d,n,t,w,q,E,T,S,W,P,<,>
-         *	=a
-         *	=/a
-         *      =/a/
-         *	s/a/b/
-         *	s/a/b
-         *	||,&&,!=,==,<=,>=
-         */
+        // Modifiers are a ; separated list of the forms:
+        //      l,m,C,a,b,c,d,n,t,w,q,E,T,S,W,P,<,>
+        // 	=a
+        // 	=/a
+        //      =/a/
+        // 	s/a/b/
+        // 	s/a/b
+        // 	||,&&,!=,==,<=,>=
 
         *count = 0;
 
         while *cp != b'\0' && *cp != b':' {
-            /* Skip any separator character. */
+            // Skip any separator character.
             if *cp == b';' {
                 cp = cp.add(1);
             }
 
-            /* Check single character modifiers with no arguments. */
+            // Check single character modifiers with no arguments.
             if !strchr(c!("labcdnwETSWPL<>"), *cp as i32).is_null() && format_is_end(*cp.add(1)) {
                 format_add_modifier(&raw mut list, count, cp, 1, null_mut(), 0);
                 cp = cp.add(1);
                 continue;
             }
 
-            /* Then try double character with no arguments. */
+            // Then try double character with no arguments.
             if (memcmp(c!("||").cast(), cp.cast(), 2) == 0
                 || memcmp(c!("&&").cast(), cp.cast(), 2) == 0
                 || memcmp(c!("!=").cast(), cp.cast(), 2) == 0
@@ -3761,13 +3757,13 @@ pub unsafe fn format_build_modifiers(
                 continue;
             }
 
-            /* Now try single character with arguments. */
+            // Now try single character with arguments.
             if strchr(c!("mCNst=peq"), *cp as i32).is_null() {
                 break;
             }
             let mut c = *cp;
 
-            /* No arguments provided. */
+            // No arguments provided.
             if format_is_end(*cp.add(1)) {
                 format_add_modifier(&raw mut list, count, cp, 1, null_mut(), 0);
                 cp = cp.add(1);
@@ -3776,7 +3772,7 @@ pub unsafe fn format_build_modifiers(
             let mut argv: *mut *mut u8 = null_mut();
             let mut argc = 0;
 
-            /* Single argument with no wrapper character. */
+            // Single argument with no wrapper character.
             if ispunct(*cp.add(1) as i32) == 0 || *cp.add(1) == b'-' {
                 end = format_skip(cp.add(1), c!(":;"));
                 if end.is_null() {
@@ -3794,7 +3790,7 @@ pub unsafe fn format_build_modifiers(
                 continue;
             }
 
-            /* Multiple arguments with a wrapper character. */
+            // Multiple arguments with a wrapper character.
             *last = *cp.add(1);
             cp = cp.add(1);
             loop {
@@ -4200,13 +4196,13 @@ pub unsafe fn format_replace_expression(
                 break 'fail;
             }
 
-            /* The second argument may be flags. */
+            // The second argument may be flags.
             if argc >= 2 && !strchr(*(*mexp).argv.add(1), b'f' as i32).is_null() {
                 use_fp = 1;
                 prec = 2;
             }
 
-            /* The third argument may be precision. */
+            // The third argument may be precision.
             if argc >= 3 {
                 prec = match strtonum(*(*mexp).argv.add(2), i32::MIN, i32::MAX) {
                     Ok(value) => value as u32,
@@ -4354,7 +4350,7 @@ pub unsafe fn format_replace(
         let mut sub: *mut *mut format_modifier = null_mut();
         let mut mexp: *mut format_modifier = null_mut();
 
-        //let mut i = 0u32;
+        // let mut i = 0u32;
         let mut count = 0u32;
         let mut nsub = 0u32;
 
@@ -4481,14 +4477,14 @@ pub unsafe fn format_replace(
                     }
                 }
 
-                /* Is this a literal string? */
+                // Is this a literal string?
                 if modifiers.intersects(format_modifiers::FORMAT_LITERAL) {
                     format_log1!(es, __func__, "literal string is '{}'", _s(copy));
                     value = format_unescape(copy);
                     break 'done;
                 }
 
-                /* Is this a character? */
+                // Is this a character?
                 if modifiers.intersects(format_modifiers::FORMAT_CHARACTER) {
                     new = format_expand1(es, copy);
                     value = match strtonum::<u8>(new, 32, 126) {
@@ -4516,7 +4512,7 @@ pub unsafe fn format_replace(
                     break 'done;
                 }
 
-                /* Is this a loop, comparison or condition? */
+                // Is this a loop, comparison or condition?
                 if modifiers.intersects(format_modifiers::FORMAT_SESSIONS) {
                     value = format_loop_sessions(es, copy);
                     if value.is_null() {
@@ -4548,7 +4544,7 @@ pub unsafe fn format_replace(
                         break 'fail;
                     }
                 } else if !search.is_null() {
-                    /* Search in pane. */
+                    // Search in pane.
                     new = format_expand1(es, copy);
                     if wp.is_null() {
                         format_log1!(es, __func__, "search '{}' but no pane", _s(new));
@@ -4559,7 +4555,7 @@ pub unsafe fn format_replace(
                     }
                     free_(new);
                 } else if !cmp.is_null() {
-                    /* Comparison of left and right. */
+                    // Comparison of left and right.
                     if format_choose(es, copy, &raw mut left, &raw mut right, 1) != 0 {
                         format_log1!(
                             es,
@@ -4640,7 +4636,7 @@ pub unsafe fn format_replace(
                     free_(right);
                     free_(left);
                 } else if *copy == b'?' {
-                    /* Conditional: check first and choose second or third. */
+                    // Conditional: check first and choose second or third.
                     cp = format_skip(copy.add(1), c!(","));
                     if cp.is_null() {
                         format_log1!(es, __func__, "condition syntax error: {}", _s(copy.add(1)),);
@@ -4652,11 +4648,9 @@ pub unsafe fn format_replace(
 
                     found = format_find(ft, condition, modifiers, time_format);
                     if found.is_null() {
-                        /*
-                         * If the condition not found, try to expand it. If
-                         * the expansion doesn't have any effect, then assume
-                         * false.
-                         */
+                        // If the condition not found, try to expand it. If
+                        // the expansion doesn't have any effect, then assume
+                        // false.
                         found = format_expand1(es, condition);
                         if strcmp(found, condition) == 0 {
                             free_(found);
@@ -4787,7 +4781,7 @@ pub unsafe fn format_replace(
                 );
             }
 
-            /* Pad the value if needed. */
+            // Pad the value if needed.
             if width > 0 {
                 new = utf8_padcstr(value, width as u32);
                 free_(value);
@@ -4812,7 +4806,7 @@ pub unsafe fn format_replace(
                 );
             }
 
-            /* Replace with the length or width if needed. */
+            // Replace with the length or width if needed.
             if modifiers.intersects(format_modifiers::FORMAT_LENGTH) {
                 new = format_nul!("{}", strlen(value));
                 free_(value);
@@ -5004,10 +4998,8 @@ pub unsafe fn format_expand1(es: *mut format_expand_state, mut fmt: *const u8) -
                     continue;
                 }
                 b'[' | b'#' => {
-                    /*
-                     * If ##[ (with two or more #s), then it is a style and
-                     * can be left for format_draw to handle.
-                     */
+                    // If ##[ (with two or more #s), then it is a style and
+                    // can be left for format_draw to handle.
                     ptr = fmt.sub((ch == b'[') as usize);
                     n = 2 - (ch == b'[') as usize;
                     while *ptr == b'#' {
@@ -5026,7 +5018,7 @@ pub unsafe fn format_expand1(es: *mut format_expand_state, mut fmt: *const u8) -
                         fmt = ptr.add(1);
                         continue;
                     }
-                    /* FALLTHROUGH */
+                    // FALLTHROUGH
                     format_log1!(es, c!("format_expand1"), "found #{}", ch as char);
                     while len - off < 2 {
                         buf = xreallocarray(buf.cast(), 2, len).as_ptr().cast();
@@ -5036,7 +5028,7 @@ pub unsafe fn format_expand1(es: *mut format_expand_state, mut fmt: *const u8) -
                     off += 1;
                     continue;
                 }
-                /* FALLTHROUGH */
+                // FALLTHROUGH
                 b'}' | b',' => {
                     format_log1!(es, c!("format_expand1"), "found #{}", ch as char,);
                     while len - off < 2 {

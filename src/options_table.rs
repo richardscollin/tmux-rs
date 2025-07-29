@@ -13,12 +13,12 @@
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 use crate::*;
 
-//This file has a tables with all the server, session and window
-//options. These tables are the master copy of the options with their real
+// This file has a tables with all the server, session and window
+// options. These tables are the master copy of the options with their real
 //(user-visible) types, range limits and default values. At start these are
-//copied into the runtime global options trees (which only has number and
-//string types). These tables are then used to look up the real type when the
-//user sets an option or its value needs to be shown.
+// copied into the runtime global options trees (which only has number and
+// string types). These tables are then used to look up the real type when the
+// user sets an option or its value needs to be shown.
 
 // Choice option type lists.
 static mut OPTIONS_TABLE_MODE_KEYS_LIST: [*const u8; 3] = [c!("emacs"), c!("vi"), null()];
@@ -218,7 +218,7 @@ pub static mut OPTIONS_TABLE_STATUS_FORMAT_DEFAULT: [*const u8; 3] = [
     null(),
 ];
 
-/* Helpers for hook options. */
+// Helpers for hook options.
 macro_rules! options_table_hook {
     ($hook_name:expr, $default_value:expr) => {
         options_table_entry {
@@ -519,7 +519,7 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
         ),
         ..unsafe { zeroed() }
     },
-    /* Session options. */
+    // Session options.
     options_table_entry {
         name: c!("activity-action"),
         type_: options_table_type::OPTIONS_TABLE_CHOICE,
@@ -985,7 +985,7 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
         text: c!("Characters considered to separate words."),
         ..unsafe { zeroed() }
     },
-    /* Window options */
+    // Window options
     options_table_entry {
         name: c!("aggressive-resize"),
         type_: options_table_type::OPTIONS_TABLE_FLAG,
@@ -1462,7 +1462,7 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
         ),
         ..unsafe { zeroed() }
     },
-    /* Hook options. */
+    // Hook options.
     options_table_hook!(c"after-bind-key", ""),
     options_table_hook!(c"after-capture-pane", ""),
     options_table_hook!(c"after-copy-mode", ""),

@@ -18,7 +18,7 @@ pub static CMD_SELECT_PANE_ENTRY: cmd_entry = cmd_entry {
     name: SyncCharPtr::new(c"select-pane"),
     alias: SyncCharPtr::new(c"selectp"),
 
-    args: args_parse::new(c"DdegLlMmP:RT:t:UZ", 0, 0, None), /* -P and -g deprecated */
+    args: args_parse::new(c"DdegLlMmP:RT:t:UZ", 0, 0, None), // -P and -g deprecated
     usage: SyncCharPtr::new(c"[-DdeLlMmRUZ] [-T title] [-t target-pane]"),
 
     target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_PANE, cmd_find_flags::empty()),
@@ -48,10 +48,8 @@ pub static CMD_LAST_PANE_ENTRY: cmd_entry = cmd_entry {
 
 pub unsafe fn cmd_select_pane_redraw(w: *mut window) {
     unsafe {
-        /*
-         * Redraw entire window if it is bigger than the client (the
-         * offset may change), otherwise just draw borders.
-         */
+        // Redraw entire window if it is bigger than the client (the
+        // offset may change), otherwise just draw borders.
 
         for c in tailq_foreach(&raw mut CLIENTS).map(NonNull::as_ptr) {
             if (*c).session.is_null() || ((*c).flags.intersects(client_flag::CONTROL)) {
@@ -88,10 +86,8 @@ pub unsafe fn cmd_select_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd
         let markedwp;
 
         if std::ptr::eq(entry, &CMD_LAST_PANE_ENTRY) || args_has_(args, 'l') {
-            /*
-             * Check for no last pane found in case the other pane was
-             * spawned without being visited (for example split-window -d).
-             */
+            // Check for no last pane found in case the other pane was
+            // spawned without being visited (for example split-window -d).
             lastwp = tailq_first(&raw mut (*w).last_panes);
             if lastwp.is_null() && window_count_panes(w) == 2 {
                 lastwp = tailq_prev::<_, _, discr_entry>((*w).active);

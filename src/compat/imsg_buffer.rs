@@ -70,7 +70,7 @@ pub unsafe fn ibuf_dynamic(len: usize, max: usize) -> *mut ibuf {
 
 pub unsafe fn ibuf_realloc(buf: *mut ibuf, len: usize) -> i32 {
     unsafe {
-        /* on static buffers max is eq size and so the following fails */
+        // on static buffers max is eq size and so the following fails
         if len > usize::MAX - (*buf).wpos || (*buf).wpos + len > (*buf).max {
             errno!() = ERANGE;
             return -1;
@@ -203,7 +203,7 @@ pub unsafe fn ibuf_add_zero(buf: *mut ibuf, len: usize) -> c_int {
 
 pub unsafe fn ibuf_seek(buf: *mut ibuf, pos: usize, len: usize) -> *mut c_void {
     unsafe {
-        /* only allow seeking between rpos and wpos */
+        // only allow seeking between rpos and wpos
         if ibuf_size(buf) < pos || usize::MAX - pos < len || ibuf_size(buf) < pos + len {
             errno!() = ERANGE;
             return null_mut();
@@ -322,7 +322,7 @@ pub unsafe fn ibuf_truncate(buf: *mut ibuf, len: usize) -> c_int {
             return 0;
         }
         if (*buf).max == 0 {
-            /* only allow to truncate down */
+            // only allow to truncate down
             errno!() = ERANGE;
             return -1;
         }
@@ -442,7 +442,7 @@ pub unsafe fn ibuf_free(buf: *mut ibuf) {
             return;
         }
         if (*buf).max == 0 {
-            /* if buf lives on the stack */
+            // if buf lives on the stack
             abort(); /* abort before causing more harm */
         }
         if (*buf).fd != -1 {
@@ -468,7 +468,7 @@ pub unsafe fn ibuf_fd_get(buf: *mut ibuf) -> c_int {
 pub unsafe fn ibuf_fd_set(buf: *mut ibuf, fd: c_int) {
     unsafe {
         if (*buf).max == 0 {
-            /* if buf lives on the stack */
+            // if buf lives on the stack
             abort(); /* abort before causing more harm */
         }
         if (*buf).fd != -1 {
@@ -517,7 +517,7 @@ pub unsafe fn ibuf_write(msgbuf: *mut msgbuf) -> c_int {
         }
 
         if n == 0 {
-            /* connection closed */
+            // connection closed
             errno!() = 0;
             return 0;
         }
@@ -644,7 +644,7 @@ pub unsafe fn msgbuf_queuelen(msgbuf: *mut msgbuf) -> u32 {
 unsafe fn ibuf_enqueue(msgbuf: *mut msgbuf, buf: *mut ibuf) {
     unsafe {
         if (*buf).max == 0 {
-            /* if buf lives on the stack */
+            // if buf lives on the stack
             abort(); /* abort before causing more harm */
         }
         tailq_insert_tail::<_, _>(&raw mut (*msgbuf).bufs, buf);

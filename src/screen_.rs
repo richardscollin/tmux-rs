@@ -530,11 +530,9 @@ pub unsafe fn screen_check_selection(s: *mut screen, px: u32, py: u32) -> c_int 
                 }
             }
 
-            /*
-             * Need to include the selection start row, but not the cursor
-             * row, which means the selection changes depending on which
-             * one is on the left.
-             */
+            // Need to include the selection start row, but not the cursor
+            // row, which means the selection changes depending on which
+            // one is on the left.
             if (*sel).ex < (*sel).sx {
                 // Cursor (ex) is on the left.
                 if px < (*sel).ex {
@@ -555,10 +553,8 @@ pub unsafe fn screen_check_selection(s: *mut screen, px: u32, py: u32) -> c_int 
                 }
             }
         } else {
-            /*
-             * Like emacs, keep the top-left-most character, and drop the
-             * bottom-right-most, regardless of copy direction.
-             */
+            // Like emacs, keep the top-left-most character, and drop the
+            // bottom-right-most, regardless of copy direction.
             if (*sel).sy < (*sel).ey {
                 // starting line < ending line -- downward selection.
                 if py < (*sel).sy || py > (*sel).ey {

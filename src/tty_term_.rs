@@ -473,7 +473,7 @@ pub unsafe fn tty_term_apply_overrides(term: *mut tty_term) {
     let mut first: *mut u8;
 
     unsafe {
-        /* Update capabilities from the option. */
+        // Update capabilities from the option.
         let o = options_get_only(GLOBAL_OPTIONS, c!("terminal-overrides"));
         let mut a = options_array_first(o);
         while !a.is_null() {
@@ -488,13 +488,13 @@ pub unsafe fn tty_term_apply_overrides(term: *mut tty_term) {
             a = options_array_next(a);
         }
 
-        /* Log the SIXEL flag. */
+        // Log the SIXEL flag.
         log_debug!(
             "SIXEL flag is {}",
             ((*term).flags & term_flags::TERM_SIXEL).bits()
         );
 
-        /* Update the RGB flag if the terminal has RGB colours. */
+        // Update the RGB flag if the terminal has RGB colours.
         if tty_term_has(term, tty_code_code::TTYC_SETRGBF)
             && tty_term_has(term, tty_code_code::TTYC_SETRGBB)
         {
@@ -507,10 +507,8 @@ pub unsafe fn tty_term_apply_overrides(term: *mut tty_term) {
             ((*term).flags & term_flags::TERM_RGBCOLOURS).bits()
         );
 
-        /*
-         * Set or clear the DECSLRM flag if the terminal has the margin
-         * capabilities.
-         */
+        // Set or clear the DECSLRM flag if the terminal has the margin
+        // capabilities.
         if tty_term_has(term, tty_code_code::TTYC_CMG)
             && tty_term_has(term, tty_code_code::TTYC_CLMG)
         {
@@ -523,10 +521,8 @@ pub unsafe fn tty_term_apply_overrides(term: *mut tty_term) {
             ((*term).flags & term_flags::TERM_DECSLRM).bits()
         );
 
-        /*
-         * Set or clear the DECFRA flag if the terminal has the rectangle
-         * capability.
-         */
+        // Set or clear the DECFRA flag if the terminal has the rectangle
+        // capability.
         if tty_term_has(term, tty_code_code::TTYC_RECT) {
             (*term).flags |= term_flags::TERM_DECFRA;
         } else {
@@ -537,21 +533,19 @@ pub unsafe fn tty_term_apply_overrides(term: *mut tty_term) {
             ((*term).flags & term_flags::TERM_DECFRA).bits()
         );
 
-        /*
-         * Terminals without am (auto right margin) wrap at at $COLUMNS - 1
-         * rather than $COLUMNS (the cursor can never be beyond $COLUMNS - 1).
-         *
-         * Terminals without xenl (eat newline glitch) ignore a newline beyond
-         * the right edge of the terminal, but tmux doesn't care about this -
-         * it always uses absolute only moves the cursor with a newline when
-         * also sending a linefeed.
-         *
-         * This is irritating, most notably because it is painful to write to
-         * the very bottom-right of the screen without scrolling.
-         *
-         * Flag the terminal here and apply some workarounds in other places to
-         * do the best possible.
-         */
+        // Terminals without am (auto right margin) wrap at at $COLUMNS - 1
+        // rather than $COLUMNS (the cursor can never be beyond $COLUMNS - 1).
+        //
+        // Terminals without xenl (eat newline glitch) ignore a newline beyond
+        // the right edge of the terminal, but tmux doesn't care about this -
+        // it always uses absolute only moves the cursor with a newline when
+        // also sending a linefeed.
+        //
+        // This is irritating, most notably because it is painful to write to
+        // the very bottom-right of the screen without scrolling.
+        //
+        // Flag the terminal here and apply some workarounds in other places to
+        // do the best possible.
         if tty_term_flag(term, tty_code_code::TTYC_AM) == 0 {
             (*term).flags |= term_flags::TERM_NOAM;
         } else {
@@ -562,7 +556,7 @@ pub unsafe fn tty_term_apply_overrides(term: *mut tty_term) {
             ((*term).flags & term_flags::TERM_NOAM).bits()
         );
 
-        /* Generate ACS table. If none is present, use nearest ASCII. */
+        // Generate ACS table. If none is present, use nearest ASCII.
         memset(
             &raw mut (*term).acs as *mut c_void,
             0,
@@ -641,7 +635,7 @@ pub unsafe fn tty_term_create(
                 }
             }
 
-            /* Apply terminal features. */
+            // Apply terminal features.
             let o = options_get_only(GLOBAL_OPTIONS, c!("terminal-features"));
             let mut a = options_array_first(o);
             while !a.is_null() {
@@ -656,15 +650,15 @@ pub unsafe fn tty_term_create(
                 a = options_array_next(a);
             }
 
-            /* Delete curses data. */
+            // Delete curses data.
             // #if !defined(NCURSES_VERSION_MAJOR) || NCURSES_VERSION_MAJOR > 5 || (NCURSES_VERSION_MAJOR == 5 && NCURSES_VERSION_MINOR > 6)
             del_curterm(cur_term);
             // #endif
 
-            /* Apply overrides so any capabilities used for features are changed. */
+            // Apply overrides so any capabilities used for features are changed.
             tty_term_apply_overrides(term);
 
-            /* These are always required. */
+            // These are always required.
             if !tty_term_has(term, tty_code_code::TTYC_CLEAR) {
                 *cause = format_nul!("terminal does not support clear");
                 break 'error;
@@ -674,25 +668,23 @@ pub unsafe fn tty_term_create(
                 break 'error;
             }
 
-            /*
-             * If TERM has XT or clear starts with CSI then it is safe to assume
-             * the terminal is derived from the VT100. This controls whether device
-             * attributes requests are sent to get more information.
-             *
-             * This is a bit of a hack but there aren't that many alternatives.
-             * Worst case tmux will just fall back to using whatever terminfo(5)
-             * says without trying to correct anything that is missing.
-             *
-             * Also add few features that VT100-like terminals should either
-             * support or safely ignore.
-             */
+            // If TERM has XT or clear starts with CSI then it is safe to assume
+            // the terminal is derived from the VT100. This controls whether device
+            // attributes requests are sent to get more information.
+            //
+            // This is a bit of a hack but there aren't that many alternatives.
+            // Worst case tmux will just fall back to using whatever terminfo(5)
+            // says without trying to correct anything that is missing.
+            //
+            // Also add few features that VT100-like terminals should either
+            // support or safely ignore.
             let s = tty_term_string(term, tty_code_code::TTYC_CLEAR);
             if tty_term_flag(term, tty_code_code::TTYC_XT) != 0 || strncmp(s, c!("\x1b["), 2) == 0 {
                 (*term).flags |= term_flags::TERM_VT100LIKE;
                 tty_add_features(feat, "bpaste,focus,title", c!(","));
             }
 
-            /* Add RGB feature if terminal has RGB colours. */
+            // Add RGB feature if terminal has RGB colours.
             if (tty_term_flag(term, tty_code_code::TTYC_TC) != 0
                 || tty_term_has(term, tty_code_code::TTYC_RGB))
                 && (!tty_term_has(term, tty_code_code::TTYC_SETRGBF)
@@ -701,12 +693,12 @@ pub unsafe fn tty_term_create(
                 tty_add_features(feat, "RGB", c!(","));
             }
 
-            /* Apply the features and overrides again. */
+            // Apply the features and overrides again.
             if tty_apply_features(term, *feat) {
                 tty_term_apply_overrides(term);
             }
 
-            /* Log the capabilities. */
+            // Log the capabilities.
             for i in 0..tty_term_ncodes() {
                 log_debug!(
                     "{}{}",

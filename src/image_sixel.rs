@@ -279,7 +279,7 @@ unsafe fn sixel_parse_repeat(
         last = last.add(1);
         for i in 0..n {
             if sixel_parse_write(si, ch as u32) != 0 {
-                //log_debug("%s: width limit reached", __func__);
+                // log_debug("%s: width limit reached", __func__);
                 return null_mut();
             }
             (*si).dx += 1;
@@ -435,11 +435,9 @@ pub unsafe fn sixel_scale(
     colours: i32,
 ) -> *mut sixel_image {
     unsafe {
-        /*
-         * We want to get the section of the image at ox,oy in image cells and
-         * map it onto the same size in terminal cells, remembering that we
-         * can only draw vertical sections of six pixels.
-         */
+        // We want to get the section of the image at ox,oy in image cells and
+        // map it onto the same size in terminal cells, remembering that we
+        // can only draw vertical sections of six pixels.
 
         let mut cx: u32 = 0;
         let mut cy: u32 = 0;

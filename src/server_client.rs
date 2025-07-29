@@ -650,7 +650,7 @@ pub unsafe fn server_client_check_mouse(c: *mut client, event: *mut key_event) -
                     (*c).tty.mouse_drag_flag
                 );
 
-                /* What type of event is this? */
+                // What type of event is this?
                 if (*event).key == keyc::KEYC_DOUBLECLICK as u64 {
                     type_ = type_::Double;
                     x = (*m).x;
@@ -727,7 +727,7 @@ pub unsafe fn server_client_check_mouse(c: *mut client, event: *mut key_event) -
                         }
                     }
 
-                    /* DOWN is the only remaining event type. */
+                    // DOWN is the only remaining event type.
                     if type_ == type_::NoType {
                         type_ = type_::Down;
                         x = (*m).x;
@@ -753,13 +753,13 @@ pub unsafe fn server_client_check_mouse(c: *mut client, event: *mut key_event) -
                 return KEYC_UNKNOWN;
             }
 
-            /* Save the session. */
+            // Save the session.
             (*m).s = (*s).id as i32;
             (*m).w = -1;
             (*m).wp = -1;
             (*m).ignore = ignore;
 
-            /* Is this on the status line? */
+            // Is this on the status line?
             (*m).statusat = status_at_line(c);
             (*m).statuslines = status_line_size(c);
             if (*m).statusat != -1
@@ -816,7 +816,7 @@ pub unsafe fn server_client_check_mouse(c: *mut client, event: *mut key_event) -
                 }
             }
 
-            /* Not on status line. Adjust position and check for border or pane. */
+            // Not on status line. Adjust position and check for border or pane.
             if where_ == where_::Nowhere {
                 px = x;
                 if (*m).statusat == 0 && y >= (*m).statuslines {
@@ -1166,10 +1166,8 @@ pub unsafe fn server_client_check_mouse(c: *mut client, event: *mut key_event) -
                         }
                     }
 
-                    /*
-                     * Begin a drag by setting the flag to a non-zero value that
-                     * corresponds to the mouse button in use.
-                     */
+                    // Begin a drag by setting the flag to a non-zero value that
+                    // corresponds to the mouse button in use.
                     (*c).tty.mouse_drag_flag = MOUSE_BUTTONS(b) as i32 + 1;
                 }
                 type_::Wheel => {
@@ -1837,13 +1835,13 @@ pub unsafe fn server_client_key_callback(item: *mut cmdq_item, data: *mut c_void
 
         'out: {
             'forward_key: {
-                /* Check the client is good to accept input. */
+                // Check the client is good to accept input.
                 if s.is_null() || (*c).flags.intersects(CLIENT_UNATTACHEDFLAGS) {
                     break 'out;
                 }
                 wl = (*s).curw;
 
-                /* Update the activity timer. */
+                // Update the activity timer.
                 if libc::gettimeofday(&raw mut (*c).activity_time, null_mut()) != 0 {
                     fatal("gettimeofday failed");
                 }
@@ -1863,10 +1861,8 @@ pub unsafe fn server_client_key_callback(item: *mut cmdq_item, data: *mut c_void
                     (*m).valid = 1;
                     (*m).key = key;
 
-                    /*
-                     * Mouse drag is in progress, so fire the callback (now that
-                     * the mouse event is valid).
-                     */
+                    // Mouse drag is in progress, so fire the callback (now that
+                    // the mouse event is valid).
                     if (key & KEYC_MASK_KEY) == keyc::KEYC_DRAGGING as u64 {
                         (*c).tty.mouse_drag_update.unwrap()(c, m);
                         break 'out;
@@ -1874,7 +1870,7 @@ pub unsafe fn server_client_key_callback(item: *mut cmdq_item, data: *mut c_void
                     (*event).key = key;
                 }
 
-                /* Find affected pane. */
+                // Find affected pane.
                 if !KEYC_IS_MOUSE(key)
                     || cmd_find_from_mouse(&raw mut fs, m, cmd_find_flags::empty()) != 0
                 {
@@ -1882,17 +1878,17 @@ pub unsafe fn server_client_key_callback(item: *mut cmdq_item, data: *mut c_void
                 }
                 wp = fs.wp;
 
-                /* Forward mouse keys if disabled. */
+                // Forward mouse keys if disabled.
                 if KEYC_IS_MOUSE(key) && options_get_number_((*s).options, "mouse") == 0 {
                     break 'forward_key;
                 }
 
-                /* Forward if bracket pasting. */
+                // Forward if bracket pasting.
                 if server_client_is_bracket_pasting(c, key) != 0 {
                     break 'forward_key;
                 }
 
-                /* Treat everything as a regular key when pasting is detected. */
+                // Treat everything as a regular key when pasting is detected.
                 if !KEYC_IS_MOUSE(key)
                     && (!key & KEYC_SENT) != 0
                     && server_client_assume_paste(s) != 0
@@ -1900,10 +1896,8 @@ pub unsafe fn server_client_key_callback(item: *mut cmdq_item, data: *mut c_void
                     break 'forward_key;
                 }
 
-                /*
-                 * Work out the current key table. If the pane is in a mode, use
-                 * the mode table instead of the default key table.
-                 */
+                // Work out the current key table. If the pane is in a mode, use
+                // the mode table instead of the default key table.
                 table = if server_client_is_default_key_table(c, (*c).keytable) != 0
                     && !wp.is_null()
                     && ({
@@ -1919,10 +1913,8 @@ pub unsafe fn server_client_key_callback(item: *mut cmdq_item, data: *mut c_void
                 first = table;
 
                 'table_changed: loop {
-                    /*
-                     * The prefix always takes precedence and forces a switch to the prefix
-                     * table, unless we are already there.
-                     */
+                    // The prefix always takes precedence and forces a switch to the prefix
+                    // table, unless we are already there.
                     prefix = options_get_number_((*s).options, "prefix") as key_code;
                     prefix2 = options_get_number_((*s).options, "prefix2") as key_code;
                     key0 = key & (KEYC_MASK_KEY | KEYC_MASK_MODIFIERS);
@@ -2106,16 +2098,14 @@ pub unsafe fn server_client_handle_key(c: *mut client, event: *mut key_event) ->
     unsafe {
         let s = (*c).session;
 
-        /* Check the client is good to accept input. */
+        // Check the client is good to accept input.
         if s.is_null() || (*c).flags.intersects(CLIENT_UNATTACHEDFLAGS) {
             return 0;
         }
 
-        /*
-         * Key presses in overlay mode and the command prompt are a special
-         * case. The queue might be blocked so they need to be processed
-         * immediately rather than queued.
-         */
+        // Key presses in overlay mode and the command prompt are a special
+        // case. The queue might be blocked so they need to be processed
+        // immediately rather than queued.
         if !(*c).flags.intersects(client_flag::READONLY) {
             if !(*c).message_string.is_null() {
                 if (*c).message_ignore_keys != 0 {
@@ -2265,41 +2255,37 @@ pub unsafe fn server_client_check_pane_resize(wp: *mut window_pane) {
             );
         }
 
-        /*
-         * There are three cases that matter:
-         *
-         * - Only one resize. It can just be applied.
-         *
-         * - Multiple resizes and the ending size is different from the
-         *   starting size. We can discard all resizes except the most recent.
-         *
-         * - Multiple resizes and the ending size is the same as the starting
-         *   size. We must resize at least twice to force the application to
-         *   redraw. So apply the first and leave the last on the queue for
-         *   next time.
-         */
+        // There are three cases that matter:
+        //
+        // - Only one resize. It can just be applied.
+        //
+        // - Multiple resizes and the ending size is different from the
+        //   starting size. We can discard all resizes except the most recent.
+        //
+        // - Multiple resizes and the ending size is the same as the starting
+        //   size. We must resize at least twice to force the application to
+        //   redraw. So apply the first and leave the last on the queue for
+        //   next time.
         let first = tailq_first(&raw mut (*wp).resize_queue);
         let last = tailq_last(&raw mut (*wp).resize_queue);
         if first == last {
-            /* Only one resize. */
+            // Only one resize.
             window_pane_send_resize(wp, (*first).sx, (*first).sy);
             tailq_remove(&raw mut (*wp).resize_queue, first);
             free_(first);
         } else if (*last).sx != (*first).osx || (*last).sy != (*first).osy {
-            /* Multiple resizes ending up with a different size. */
+            // Multiple resizes ending up with a different size.
             window_pane_send_resize(wp, (*last).sx, (*last).sy);
             for r in tailq_foreach(&raw mut (*wp).resize_queue).map(NonNull::as_ptr) {
                 tailq_remove(&raw mut (*wp).resize_queue, r);
                 free_(r);
             }
         } else {
-            /*
-             * Multiple resizes ending up with the same size. There will
-             * not be more than one to the same size in succession so we
-             * can just use the last-but-one on the list and leave the last
-             * for later. We reduce the time until the next check to avoid
-             * a long delay between the resizes.
-             */
+            // Multiple resizes ending up with the same size. There will
+            // not be more than one to the same size in succession so we
+            // can just use the last-but-one on the list and leave the last
+            // for later. We reduce the time until the next check to avoid
+            // a long delay between the resizes.
             let r = tailq_prev(last);
             window_pane_send_resize(wp, (*r).sx, (*r).sy);
             for r in tailq_foreach(&raw mut (*wp).resize_queue).map(NonNull::as_ptr) {
@@ -2327,10 +2313,8 @@ pub unsafe fn server_client_check_pane_buffer(wp: *mut window_pane) {
         let mut new_size: usize = 0;
 
         'out: {
-            /*
-             * Work out the minimum used size. This is the most that can be removed
-             * from the buffer.
-             */
+            // Work out the minimum used size. This is the most that can be removed
+            // from the buffer.
             minimum = (*wp).offset.used;
             if (*wp).pipe_fd != -1 && (*wp).pipe_offset.used < minimum {
                 minimum = (*wp).pipe_offset.used;
@@ -2370,7 +2354,7 @@ pub unsafe fn server_client_check_pane_buffer(wp: *mut window_pane) {
                 break 'out;
             }
 
-            /* Drain the buffer. */
+            // Drain the buffer.
             log_debug!(
                 "{}: %%{} has {} minimum (of {}) bytes used",
                 "server_client_check_pane_buffer",
@@ -2380,10 +2364,8 @@ pub unsafe fn server_client_check_pane_buffer(wp: *mut window_pane) {
             );
             evbuffer_drain(evb, minimum);
 
-            /*
-             * Adjust the base offset. If it would roll over, all the offsets into
-             * the buffer need to be adjusted.
-             */
+            // Adjust the base offset. If it would roll over, all the offsets into
+            // the buffer need to be adjusted.
             if (*wp).base_offset > (usize::MAX - minimum) {
                 // log_debug("%s: %%%u base offset has wrapped", __func__, (*wp).id);
                 (*wp).offset.used -= (*wp).base_offset;
@@ -2405,12 +2387,10 @@ pub unsafe fn server_client_check_pane_buffer(wp: *mut window_pane) {
             }
         } // 'out:
 
-        /*
-         * If there is data remaining, and there are no clients able to consume
-         * it, do not read any more. This is true when there are attached
-         * clients, all of which are control clients which are not able to
-         * accept any more data.
-         */
+        // If there is data remaining, and there are no clients able to consume
+        // it, do not read any more. This is true when there are attached
+        // clients, all of which are control clients which are not able to
+        // accept any more data.
         // log_debug("%s: pane %%%u is %s", __func__, (*wp).id, off ? "off" : "on");
         if off != 0 {
             bufferevent_disable((*wp).event, EV_READ);
@@ -2453,11 +2433,11 @@ pub unsafe fn server_client_reset_state(c: *mut client) {
             return;
         }
 
-        /* Disable the block flag. */
+        // Disable the block flag.
         let flags = (*tty).flags & tty_flags::TTY_BLOCK;
         (*tty).flags &= !tty_flags::TTY_BLOCK;
 
-        /* Get mode from overlay if any, else from screen. */
+        // Get mode from overlay if any, else from screen.
         if (*c).overlay_draw.is_some() {
             if let Some(overlay_mode) = (*c).overlay_mode {
                 s = overlay_mode(c, (*c).overlay_data, &raw mut cx, &raw mut cy);
@@ -2472,7 +2452,7 @@ pub unsafe fn server_client_reset_state(c: *mut client) {
             // log_debug( "%s: client %s mode %s", __func__, (*c).name, screen_mode_to_string(mode),);
         }
 
-        /* Reset region and margin. */
+        // Reset region and margin.
         tty_region_off(tty);
         tty_margin_off(tty);
 
@@ -2515,10 +2495,8 @@ pub unsafe fn server_client_reset_state(c: *mut client) {
         // log_debug!("%s: cursor to %u,%u", __func__, cx, cy);
         tty_cursor(tty, cx, cy);
 
-        /*
-         * Set mouse mode if requested. To support dragging, always use button
-         * mode.
-         */
+        // Set mouse mode if requested. To support dragging, always use button
+        // mode.
         if options_get_number_(oo, "mouse") != 0 {
             if (*c).overlay_draw.is_none() {
                 mode &= !ALL_MOUSE_MODES;
@@ -2538,16 +2516,16 @@ pub unsafe fn server_client_reset_state(c: *mut client) {
             }
         }
 
-        /* Clear bracketed paste mode if at the prompt. */
+        // Clear bracketed paste mode if at the prompt.
         if (*c).overlay_draw.is_none() && !(*c).prompt_string.is_null() {
             mode &= !mode_flag::MODE_BRACKETPASTE;
         }
 
-        /* Set the terminal mode and reset attributes. */
+        // Set the terminal mode and reset attributes.
         tty_update_mode(tty, mode, s);
         tty_reset(tty);
 
-        /* All writing must be done, send a sync end (if it was started). */
+        // All writing must be done, send a sync end (if it was started).
         tty_sync_end(tty);
         (*tty).flags |= flags;
     }
@@ -2664,10 +2642,8 @@ pub unsafe extern "C-unwind" fn server_client_redraw_timer(_fd: i32, _events: i1
     log_debug!("redraw timer fired");
 }
 
-/*
- * Check if modes need to be updated. Only modes in the current window are
- * updated and it is done when the status line is redrawn.
- */
+// Check if modes need to be updated. Only modes in the current window are
+// updated and it is done when the status line is redrawn.
 pub unsafe fn server_client_check_modes(c: *mut client) {
     unsafe {
         let w = (*(*(*c).session).curw).window;
@@ -2724,11 +2700,9 @@ pub unsafe fn server_client_check_redraw(c: *mut client) {
             //           ((*c).flags & CLIENT_REDRAWPANES) ? " panes" : "");
         }
 
-        /*
-         * If there is outstanding data, defer the redraw until it has been
-         * consumed. We can just add a timer to get out of the event loop and
-         * end up back here.
-         */
+        // If there is outstanding data, defer the redraw until it has been
+        // consumed. We can just add a timer to get out of the event loop and
+        // end up back here.
         let mut needed = false;
         if (*c).flags.intersects(CLIENT_ALLREDRAWFLAGS) {
             needed = true;
@@ -2767,10 +2741,8 @@ pub unsafe fn server_client_check_redraw(c: *mut client) {
                     }
                     bit += 1;
                     if bit == 64 {
-                        /*
-                         * If more that 64 panes, give up and
-                         * just redraw the window.
-                         */
+                        // If more that 64 panes, give up and
+                        // just redraw the window.
                         client_flags &= client_flag::REDRAWPANES;
                         client_flags |= client_flag::REDRAWWINDOW;
                         break;
@@ -2792,10 +2764,8 @@ pub unsafe fn server_client_check_redraw(c: *mut client) {
             | tty_flags::TTY_NOCURSOR;
 
         if !(*c).flags.intersects(client_flag::REDRAWWINDOW) {
-            /*
-             * If not redrawing the entire window, check whether each pane
-             * needs to be redrawn.
-             */
+            // If not redrawing the entire window, check whether each pane
+            // needs to be redrawn.
             for wp in tailq_foreach::<_, discr_entry>(&raw mut (*w).panes).map(NonNull::as_ptr) {
                 redraw = false;
                 if (*wp).flags.intersects(window_pane_flags::PANE_REDRAW) {
@@ -2832,11 +2802,9 @@ pub unsafe fn server_client_check_redraw(c: *mut client) {
         (*c).flags &= !(CLIENT_ALLREDRAWFLAGS | client_flag::STATUSFORCE);
 
         if needed {
-            /*
-             * We would have deferred the redraw unless the output buffer
-             * was empty, so we can record how many bytes the redraw
-             * generated.
-             */
+            // We would have deferred the redraw unless the output buffer
+            // was empty, so we can record how many bytes the redraw
+            // generated.
             (*c).redraw = EVBUFFER_LENGTH((*tty).out);
             // log_debug("%s: redraw added %zu bytes", (*c).name, (*c).redraw);
         }
@@ -3237,11 +3205,9 @@ pub unsafe fn server_client_dispatch_identify(c: *mut client, imsg: *mut imsg) {
             (*c).out_fd = -1;
         }
 
-        /*
-         * If this is the first client, load configuration files. Any later
-         * clients are allowed to continue with their command even if the
-         * config has not been loaded - they might have been run from inside it
-         */
+        // If this is the first client, load configuration files. Any later
+        // clients are allowed to continue with their command even if the
+        // config has not been loaded - they might have been run from inside it
         if !(*c).flags.intersects(client_flag::EXIT)
             && !CFG_FINISHED.load(atomic::Ordering::Acquire)
             && c == tailq_first(&raw mut CLIENTS)

@@ -173,10 +173,8 @@ unsafe fn mode_tree_free_items(mtl: *mut mode_tree_list) {
 
 unsafe fn mode_tree_check_selected(mtd: *mut mode_tree_data) {
     unsafe {
-        /*
-         * If the current line would now be off screen reset the offset to the
-         * last visible line.
-         */
+        // If the current line would now be off screen reset the offset to the
+        // last visible line.
         if (*mtd).current > (*mtd).height - 1 {
             (*mtd).offset = (*mtd).current - (*mtd).height + 1;
         }
@@ -936,12 +934,12 @@ pub unsafe fn mode_tree_search_backward(mtd: *mut mode_tree_data) -> *mut mode_t
                 }
                 mti = prev;
             } else {
-                /* If prev is NULL, jump to the parent. */
+                // If prev is NULL, jump to the parent.
                 mti = (*mti).parent;
             }
 
             if mti.is_null() {
-                /* Point to the last child in the last root subtree. */
+                // Point to the last child in the last root subtree.
                 prev = tailq_last(&raw mut (*mtd).children);
                 while !tailq_empty(&raw mut (*prev).children) {
                     prev = tailq_last(&raw mut (*prev).children);
@@ -1376,10 +1374,8 @@ pub unsafe fn mode_tree_key(
                 }
             }
             code::T => {
-                /*
-                 * Do not allow parents and children to both be tagged: untag
-                 * all parents and children of current.
-                 */
+                // Do not allow parents and children to both be tagged: untag
+                // all parents and children of current.
                 if (*current).no_tag == 0 {
                     if (*current).tagged == 0 {
                         let mut parent = (*current).parent;

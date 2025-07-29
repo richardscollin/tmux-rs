@@ -628,7 +628,7 @@ pub unsafe fn popup_key_cb(c: *mut client, data: *mut c_void, event: *mut key_ev
                 }
                 if !(*pd).job.is_null() {
                     if KEYC_IS_MOUSE((*event).key) {
-                        /* Must be inside, checked already. */
+                        // Must be inside, checked already.
                         let (px, py) = if (*pd).border_lines == box_lines::BOX_LINES_NONE {
                             ((*m).x - (*pd).px, (*m).y - (*pd).py)
                         } else {

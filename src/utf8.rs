@@ -452,14 +452,14 @@ pub unsafe fn utf8_strvis(
                     more = utf8_append(&raw mut ud, *src);
                 }
                 if more == utf8_state::UTF8_DONE {
-                    /* UTF-8 character finished. */
+                    // UTF-8 character finished.
                     for i in 0..ud.size {
                         *dst = ud.data[i as usize];
                         dst = dst.add(1);
                     }
                     continue;
                 }
-                /* Not a complete, valid UTF-8 character. */
+                // Not a complete, valid UTF-8 character.
                 src = src.sub(ud.have as usize);
             }
             if flag.intersects(vis_flags::VIS_DQ) && *src == b'$' && src < end.sub(1) {

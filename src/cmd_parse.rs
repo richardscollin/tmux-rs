@@ -879,11 +879,9 @@ unsafe fn yylex_(ps: &mut cmd_parse_state) -> Option<Tok> {
             let mut ch = yylex_getc(ps);
 
             if ch == libc::EOF {
-                /*
-                 * Ensure every file or string is terminated by a
-                 * newline. This keeps the parser simpler and avoids
-                 * having to add a newline to each string.
-                 */
+                // Ensure every file or string is terminated by a
+                // newline. This keeps the parser simpler and avoids
+                // having to add a newline to each string.
                 if ps.eof != 0 {
                     break;
                 }
@@ -892,16 +890,12 @@ unsafe fn yylex_(ps: &mut cmd_parse_state) -> Option<Tok> {
             }
 
             if ch == ' ' as i32 || ch == '\t' as i32 {
-                /*
-                 * Ignore whitespace.
-                 */
+                // Ignore whitespace.
                 continue;
             }
 
             if ch == '\r' as i32 {
-                /*
-                 * Treat \r\n as \n.
-                 */
+                // Treat \r\n as \n.
                 ch = yylex_getc(ps);
                 if ch != '\n' as i32 {
                     yylex_ungetc(ps, ch);
@@ -909,9 +903,7 @@ unsafe fn yylex_(ps: &mut cmd_parse_state) -> Option<Tok> {
                 }
             }
             if ch == '\n' as i32 {
-                /*
-                 * End of line. Update the line number.
-                 */
+                // End of line. Update the line number.
                 ps.eol = 1;
                 return Some(Tok::Newline);
             }
@@ -927,10 +919,8 @@ unsafe fn yylex_(ps: &mut cmd_parse_state) -> Option<Tok> {
             }
 
             if ch == '#' as i32 {
-                /*
-                 * #{ after a condition opens a format; anything else
-                 * is a comment, ignore up to the end of the line.
-                 */
+                // #{ after a condition opens a format; anything else
+                // is a comment, ignore up to the end of the line.
                 let mut next = yylex_getc(ps);
                 if condition != 0 && next == '{' as i32 {
                     let yylval_token = yylex_format(ps);
@@ -954,10 +944,8 @@ unsafe fn yylex_(ps: &mut cmd_parse_state) -> Option<Tok> {
             }
 
             if ch == '%' as i32 {
-                /*
-                 * % is a condition unless it is all % or all numbers,
-                 * then it is a token.
-                 */
+                // % is a condition unless it is all % or all numbers,
+                // then it is a token.
                 let yylval_token = yylex_get_word(ps, '%' as i32);
                 let mut cp = yylval_token;
                 while *cp != b'\0' {
@@ -1194,7 +1182,7 @@ unsafe fn yylex_token(ps: &mut cmd_parse_state, mut ch: i32) -> *mut u8 {
             'aloop: loop {
                 'next: {
                     'skip: {
-                        /* EOF or \n are always the end of the token. */
+                        // EOF or \n are always the end of the token.
                         if ch == libc::EOF {
                             // log_debug("%s: end at EOF", __func__);
                             break 'aloop;
@@ -1211,7 +1199,7 @@ unsafe fn yylex_token(ps: &mut cmd_parse_state, mut ch: i32) -> *mut u8 {
                             break 'aloop;
                         }
 
-                        /* Whitespace or ; or } ends a token unless inside quotes. */
+                        // Whitespace or ; or } ends a token unless inside quotes.
                         if state == State::None && (ch == ' ' as i32 || ch == '\t' as i32) {
                             // log_debug("%s: end at WS", __func__);
                             break 'aloop;
@@ -1221,10 +1209,8 @@ unsafe fn yylex_token(ps: &mut cmd_parse_state, mut ch: i32) -> *mut u8 {
                             break 'aloop;
                         }
 
-                        /*
-                         * Spaces and comments inside quotes after \n are removed but
-                         * the \n is left.
-                         */
+                        // Spaces and comments inside quotes after \n are removed but
+                        // the \n is left.
                         if ch == '\n' as i32 && state != State::None {
                             yylex_append1(&raw mut buf, &raw mut len, b'\n');
                             while ({
@@ -1248,7 +1234,7 @@ unsafe fn yylex_token(ps: &mut cmd_parse_state, mut ch: i32) -> *mut u8 {
                             continue 'aloop;
                         }
 
-                        /* \ ~ and $ are expanded except in single quotes. */
+                        // \ ~ and $ are expanded except in single quotes.
                         if ch == '\\' as i32 && state != State::SingleQuotes {
                             if !yylex_token_escape(ps, &raw mut buf, &raw mut len) {
                                 break 'error;
@@ -1271,7 +1257,7 @@ unsafe fn yylex_token(ps: &mut cmd_parse_state, mut ch: i32) -> *mut u8 {
                             break 'error; /* unmatched (matched ones were handled) */
                         }
 
-                        /* ' and " starts or end quotes (and is consumed). */
+                        // ' and " starts or end quotes (and is consumed).
                         if ch == '\'' as i32 {
                             if state == State::None {
                                 state = State::SingleQuotes;
@@ -1293,7 +1279,7 @@ unsafe fn yylex_token(ps: &mut cmd_parse_state, mut ch: i32) -> *mut u8 {
                             }
                         }
 
-                        /* Otherwise add the character to the buffer. */
+                        // Otherwise add the character to the buffer.
                         yylex_append1(&raw mut buf, &raw mut len, ch as u8);
                     }
                     // skip:

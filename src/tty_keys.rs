@@ -46,13 +46,11 @@ impl tty_default_key_raw {
 }
 
 static TTY_DEFAULT_RAW_KEYS: [tty_default_key_raw; 100] = [
-    /* Application escape. */
+    // Application escape.
     tty_default_key_raw::new(c"\x1bO[", '\x1b' as u64),
-    /*
-     * Numeric keypad. Just use the vt100 escape sequences here and always
-     * put the terminal into keypad_xmit mode. Translation of numbers
-     * mode/applications mode is done in input-keys.c.
-     */
+    // Numeric keypad. Just use the vt100 escape sequences here and always
+    // put the terminal into keypad_xmit mode. Translation of numbers
+    // mode/applications mode is done in input-keys.c.
     tty_default_key_raw::new(c"\x1bOo", keyc::KEYC_KP_SLASH as u64 | KEYC_KEYPAD),
     tty_default_key_raw::new(c"\x1bOj", keyc::KEYC_KP_STAR as u64 | KEYC_KEYPAD),
     tty_default_key_raw::new(c"\x1bOm", keyc::KEYC_KP_MINUS as u64 | KEYC_KEYPAD),
@@ -78,11 +76,9 @@ static TTY_DEFAULT_RAW_KEYS: [tty_default_key_raw; 100] = [
     tty_default_key_raw::new(c"\x1b[B", keyc::KEYC_DOWN as u64 | KEYC_CURSOR),
     tty_default_key_raw::new(c"\x1b[C", keyc::KEYC_RIGHT as u64 | KEYC_CURSOR),
     tty_default_key_raw::new(c"\x1b[D", keyc::KEYC_LEFT as u64 | KEYC_CURSOR),
-    //
     // Meta arrow keys. These do not get the IMPLIED_META flag so they
     // don't match the xterm-style meta keys in the output tree - Escape+Up
     // should stay as Escape+Up and not become M-Up.
-    //
     tty_default_key_raw::new(
         c"\x1b\x1bOA",
         keyc::KEYC_UP as u64 | KEYC_CURSOR | KEYC_META,
@@ -115,7 +111,7 @@ static TTY_DEFAULT_RAW_KEYS: [tty_default_key_raw; 100] = [
         c"\x1b\x1b[D",
         keyc::KEYC_LEFT as u64 | KEYC_CURSOR | KEYC_META,
     ),
-    /* Other xterm keys. */
+    // Other xterm keys.
     tty_default_key_raw::new(c"\x1bOH", keyc::KEYC_HOME as u64),
     tty_default_key_raw::new(c"\x1bOF", keyc::KEYC_END as u64),
     tty_default_key_raw::new(
@@ -136,7 +132,7 @@ static TTY_DEFAULT_RAW_KEYS: [tty_default_key_raw; 100] = [
         c"\x1b\x1b[F",
         keyc::KEYC_END as u64 | KEYC_META | KEYC_IMPLIED_META,
     ),
-    /* rxvt arrow keys. */
+    // rxvt arrow keys.
     tty_default_key_raw::new(c"\x1bOa", keyc::KEYC_UP as u64 | KEYC_CTRL),
     tty_default_key_raw::new(c"\x1bOb", keyc::KEYC_DOWN as u64 | KEYC_CTRL),
     tty_default_key_raw::new(c"\x1bOc", keyc::KEYC_RIGHT as u64 | KEYC_CTRL),
@@ -145,7 +141,7 @@ static TTY_DEFAULT_RAW_KEYS: [tty_default_key_raw; 100] = [
     tty_default_key_raw::new(c"\x1b[b", keyc::KEYC_DOWN as u64 | KEYC_SHIFT),
     tty_default_key_raw::new(c"\x1b[c", keyc::KEYC_RIGHT as u64 | KEYC_SHIFT),
     tty_default_key_raw::new(c"\x1b[d", keyc::KEYC_LEFT as u64 | KEYC_SHIFT),
-    /* rxvt function keys. */
+    // rxvt function keys.
     tty_default_key_raw::new(c"\x1b[11~", keyc::KEYC_F1 as u64),
     tty_default_key_raw::new(c"\x1b[12~", keyc::KEYC_F2 as u64),
     tty_default_key_raw::new(c"\x1b[13~", keyc::KEYC_F3 as u64),
@@ -192,13 +188,13 @@ static TTY_DEFAULT_RAW_KEYS: [tty_default_key_raw; 100] = [
     tty_default_key_raw::new(c"\x1b[21@", keyc::KEYC_F10 as u64 | KEYC_CTRL | KEYC_SHIFT),
     tty_default_key_raw::new(c"\x1b[23@", keyc::KEYC_F11 as u64 | KEYC_CTRL | KEYC_SHIFT),
     tty_default_key_raw::new(c"\x1b[24@", keyc::KEYC_F12 as u64 | KEYC_CTRL | KEYC_SHIFT),
-    /* Focus tracking. */
+    // Focus tracking.
     tty_default_key_raw::new(c"\x1b[I", keyc::KEYC_FOCUS_IN as u64),
     tty_default_key_raw::new(c"\x1b[O", keyc::KEYC_FOCUS_OUT as u64),
-    /* Paste keys. */
+    // Paste keys.
     tty_default_key_raw::new(c"\x1b[200~", keyc::KEYC_PASTE_START as u64),
     tty_default_key_raw::new(c"\x1b[201~", keyc::KEYC_PASTE_END as u64),
-    /* Extended keys. */
+    // Extended keys.
     tty_default_key_raw::new(c"\x1b[1;5Z", '\x09' as u64 | KEYC_CTRL | KEYC_SHIFT),
 ];
 
@@ -278,7 +274,7 @@ impl tty_default_key_code {
 }
 
 static TTY_DEFAULT_CODE_KEYS: [tty_default_key_code; 136] = [
-    /* Function keys. */
+    // Function keys.
     tty_default_key_code::new(tty_code_code::TTYC_KF1, keyc::KEYC_F1 as key_code),
     tty_default_key_code::new(tty_code_code::TTYC_KF2, keyc::KEYC_F2 as key_code),
     tty_default_key_code::new(tty_code_code::TTYC_KF3, keyc::KEYC_F3 as key_code),
@@ -502,7 +498,7 @@ static TTY_DEFAULT_CODE_KEYS: [tty_default_key_code; 136] = [
     tty_default_key_code::new(tty_code_code::TTYC_KNP, keyc::KEYC_NPAGE as key_code),
     tty_default_key_code::new(tty_code_code::TTYC_KPP, keyc::KEYC_PPAGE as key_code),
     tty_default_key_code::new(tty_code_code::TTYC_KCBT, keyc::KEYC_BTAB as key_code),
-    /* Arrow keys from terminfo. */
+    // Arrow keys from terminfo.
     tty_default_key_code::new(
         tty_code_code::TTYC_KCUU1,
         keyc::KEYC_UP as key_code | KEYC_CURSOR,
@@ -519,7 +515,7 @@ static TTY_DEFAULT_CODE_KEYS: [tty_default_key_code; 136] = [
         tty_code_code::TTYC_KCUF1,
         keyc::KEYC_RIGHT as key_code | KEYC_CURSOR,
     ),
-    /* Key and modifier capabilities. */
+    // Key and modifier capabilities.
     tty_default_key_code::new(
         tty_code_code::TTYC_KDC2,
         keyc::KEYC_DC as key_code | KEYC_SHIFT,
@@ -973,7 +969,7 @@ unsafe fn tty_keys_next1(
 
         // log_debug!("{}: next key is {} (%.*s) (expired=%d)", _s((*c).name), len, len as i32, buf, expired);
 
-        /* Is this a known key? */
+        // Is this a known key?
         let tk = tty_keys_find(tty, buf, len, size);
         if !tk.is_null() && (*tk).key != KEYC_UNKNOWN {
             let mut tk1 = tk;
@@ -991,7 +987,7 @@ unsafe fn tty_keys_next1(
             return 0;
         }
 
-        /* Is this valid UTF-8? */
+        // Is this valid UTF-8?
         more = utf8_open(&mut ud, *buf);
         if more == utf8_state::UTF8_MORE {
             *size = ud.size as usize;
@@ -1021,7 +1017,7 @@ unsafe fn tty_keys_next1(
     }
 }
 
-/* Process at least one key in the buffer. Return 0 if no keys present. */
+// Process at least one key in the buffer. Return 0 if no keys present.
 
 pub unsafe fn tty_keys_next(tty: *mut tty) -> i32 {
     unsafe {
@@ -1052,7 +1048,7 @@ pub unsafe fn tty_keys_next(tty: *mut tty) -> i32 {
                             // Is this a clipboard response?
                             match tty_keys_clipboard(tty, buf.cast(), len, &raw mut size) {
                                 0 => {
-                                    /* yes */
+                                    // yes
                                     key = KEYC_UNKNOWN;
                                     break 'complete_key;
                                 }
@@ -1061,10 +1057,10 @@ pub unsafe fn tty_keys_next(tty: *mut tty) -> i32 {
                                 _ => (),
                             }
 
-                            /* Is this a primary device attributes response? */
+                            // Is this a primary device attributes response?
                             match tty_keys_device_attributes(tty, buf.cast(), len, &raw mut size) {
                                 0 =>
-                                /* yes */
+                                // yes
                                 {
                                     key = KEYC_UNKNOWN;
                                     break 'complete_key;
@@ -1074,10 +1070,10 @@ pub unsafe fn tty_keys_next(tty: *mut tty) -> i32 {
                                 _ => (),
                             }
 
-                            /* Is this a secondary device attributes response? */
+                            // Is this a secondary device attributes response?
                             match tty_keys_device_attributes2(tty, buf.cast(), len, &raw mut size) {
                                 0 => {
-                                    /* yes */
+                                    // yes
                                     key = KEYC_UNKNOWN;
                                     break 'complete_key;
                                 }
@@ -1094,11 +1090,11 @@ pub unsafe fn tty_keys_next(tty: *mut tty) -> i32 {
                                 &raw mut size,
                             ) {
                                 0 => {
-                                    /* yes */
+                                    // yes
                                     key = KEYC_UNKNOWN;
                                     break 'complete_key;
                                 }
-                                -1 => (), /* no, or not valid */
+                                -1 => (), // no, or not valid
                                 1 => break 'partial_key,
                                 _ => (),
                             }
@@ -1113,7 +1109,7 @@ pub unsafe fn tty_keys_next(tty: *mut tty) -> i32 {
                                 &raw mut (*tty).bg,
                             ) {
                                 0 => {
-                                    /* yes */
+                                    // yes
                                     key = KEYC_UNKNOWN;
                                     break 'complete_key;
                                 }
@@ -1122,17 +1118,17 @@ pub unsafe fn tty_keys_next(tty: *mut tty) -> i32 {
                                 _ => (),
                             }
 
-                            /* Is this a mouse key press? */
+                            // Is this a mouse key press?
                             #[allow(unused_assignments)]
                             match tty_keys_mouse(tty, buf.cast(), len, &raw mut size, &raw mut m) {
                                 0 => {
-                                    /* yes */
+                                    // yes
                                     key = keyc::KEYC_MOUSE as u64;
                                     break 'complete_key;
                                 }
-                                -1 => (), /* no, or not valid */
+                                -1 => (), // no, or not valid
                                 -2 => {
-                                    /* yes, but we don't care. */
+                                    // yes, but we don't care.
                                     key = keyc::KEYC_MOUSE as u64;
                                     break 'discard_key;
                                 }
@@ -1140,7 +1136,7 @@ pub unsafe fn tty_keys_next(tty: *mut tty) -> i32 {
                                 _ => (),
                             }
 
-                            /* Is this an extended key press? */
+                            // Is this an extended key press?
                             match tty_keys_extended_key(
                                 tty,
                                 buf.cast(),
@@ -1149,17 +1145,17 @@ pub unsafe fn tty_keys_next(tty: *mut tty) -> i32 {
                                 &raw mut key,
                             ) {
                                 0 => {
-                                    /* yes */
+                                    // yes
                                     break 'complete_key;
                                 }
-                                -1 => (), /* no, or not valid */
+                                -1 => (), // no, or not valid
                                 1 => break 'partial_key,
                                 _ => (),
                             }
                         } // if start
 
                         // 'first_key:
-                        /* Try to lookup complete key. */
+                        // Try to lookup complete key.
                         let n = tty_keys_next1(
                             tty,
                             buf.cast(),
@@ -1169,19 +1165,17 @@ pub unsafe fn tty_keys_next(tty: *mut tty) -> i32 {
                             expired,
                         );
                         if n == 0 {
-                            /* found */
+                            // found
                             break 'complete_key;
                         }
                         if n == 1 {
                             break 'partial_key;
                         }
 
-                        /*
-                         * If not a complete key, look for key with an escape prefix (meta
-                         * modifier).
-                         */
+                        // If not a complete key, look for key with an escape prefix (meta
+                        // modifier).
                         if *buf == b'\x1b' && len > 1 {
-                            /* Look for a key without the escape. */
+                            // Look for a key without the escape.
                             let n = tty_keys_next1(
                                 tty,
                                 buf.add(1).cast(),
@@ -1191,15 +1185,13 @@ pub unsafe fn tty_keys_next(tty: *mut tty) -> i32 {
                                 expired,
                             );
                             if n == 0 {
-                                /* found */
+                                // found
                                 if key & KEYC_IMPLIED_META != 0 {
-                                    /*
-                                     * We want the escape key as well as the xterm
-                                     * key, because the xterm sequence implicitly
-                                     * includes the escape (so if we see
-                                     * \x1b\x1b[1;3D we know it is an Escape
-                                     * followed by M-Left, not just M-Left).
-                                     */
+                                    // We want the escape key as well as the xterm
+                                    // key, because the xterm sequence implicitly
+                                    // includes the escape (so if we see
+                                    // \x1b\x1b[1;3D we know it is an Escape
+                                    // followed by M-Left, not just M-Left).
                                     key = b'\x1b' as u64;
                                     size = 1;
                                     break 'complete_key;
@@ -1209,15 +1201,13 @@ pub unsafe fn tty_keys_next(tty: *mut tty) -> i32 {
                                 break 'complete_key;
                             }
                             if n == 1 {
-                                /* partial */
+                                // partial
                                 break 'partial_key;
                             }
                         }
 
-                        /*
-                         * At this point, we know the key is not partial (with or without
-                         * escape). So pass it through even if the timer has not expired.
-                         */
+                        // At this point, we know the key is not partial (with or without
+                        // escape). So pass it through even if the timer has not expired.
                         if *buf == b'\x1b' && len >= 2 {
                             key = *buf.add(1) as u64 | KEYC_META;
                             size = 2;
@@ -1231,11 +1221,9 @@ pub unsafe fn tty_keys_next(tty: *mut tty) -> i32 {
                             key = b' ' as u64 | KEYC_CTRL | (key & KEYC_META);
                         }
 
-                        /*
-                         * Fix up all C0 control codes that don't have a dedicated key into
-                         * corresponding Ctrl keys. Convert characters in the A-Z range into
-                         * lowercase, so ^A becomes a|CTRL.
-                         */
+                        // Fix up all C0 control codes that don't have a dedicated key into
+                        // corresponding Ctrl keys. Convert characters in the A-Z range into
+                        // lowercase, so ^A becomes a|CTRL.
                         onlykey = key & KEYC_MASK_KEY;
                         if onlykey < 0x20
                             && onlykey != c0::C0_HT as u64
@@ -1251,9 +1239,9 @@ pub unsafe fn tty_keys_next(tty: *mut tty) -> i32 {
 
                         break 'complete_key;
                     } // partial_key:
-                    //log_debug("%s: partial key %.*s", (*c).name, len as i32, buf);
+                    // log_debug("%s: partial key %.*s", (*c).name, len as i32, buf);
 
-                    /* If timer is going, check for expiration. */
+                    // If timer is going, check for expiration.
                     if (*tty).flags.intersects(tty_flags::TTY_TIMER) {
                         if evtimer_initialized(&raw mut (*tty).key_timer)
                             && evtimer_pending(&raw mut (*tty).key_timer, null_mut()) == 0
@@ -1264,7 +1252,7 @@ pub unsafe fn tty_keys_next(tty: *mut tty) -> i32 {
                         return 0;
                     }
 
-                    /* Get the time period. */
+                    // Get the time period.
                     let mut delay = options_get_number(GLOBAL_OPTIONS, c!("escape-time"));
                     if delay == 0 {
                         delay = 1;
@@ -1287,13 +1275,11 @@ pub unsafe fn tty_keys_next(tty: *mut tty) -> i32 {
                     return 0;
                 }
                 // complete_key:
-                //log_debug("%s: complete key %.*s %#llx", (*c).name, (int)size, buf, key);
+                // log_debug("%s: complete key %.*s %#llx", (*c).name, (int)size, buf, key);
 
-                /*
-                 * Check for backspace key using termios VERASE - the terminfo
-                 * kbs entry is extremely unreliable, so cannot be safely
-                 * used. termios should have a better idea.
-                 */
+                // Check for backspace key using termios VERASE - the terminfo
+                // kbs entry is extremely unreliable, so cannot be safely
+                // used. termios should have a better idea.
 
                 let bspace: libc::cc_t = (*tty).tio.c_cc[libc::VERASE];
                 if bspace != libc::_POSIX_VDISABLE && (key & KEYC_MASK_KEY) as libc::cc_t == bspace
@@ -1310,7 +1296,7 @@ pub unsafe fn tty_keys_next(tty: *mut tty) -> i32 {
                 }
                 (*tty).flags &= !tty_flags::TTY_TIMER;
 
-                /* Check for focus events. */
+                // Check for focus events.
                 if key == keyc::KEYC_FOCUS_OUT as u64 {
                     (*c).flags &= !client_flag::FOCUSED;
                     window_update_focus((*(*(*c).session).curw).window);
@@ -1321,7 +1307,7 @@ pub unsafe fn tty_keys_next(tty: *mut tty) -> i32 {
                     window_update_focus((*(*(*c).session).curw).window);
                 }
 
-                /* Fire the key. */
+                // Fire the key.
                 if key != KEYC_UNKNOWN {
                     let event = xmalloc_::<key_event>().as_ptr();
                     (*event).key = key;
@@ -1377,7 +1363,7 @@ unsafe fn tty_keys_extended_key(
 
         *size = 0;
 
-        /* First two bytes are always \x1b[. */
+        // First two bytes are always \x1b[.
         if *buf != b'\x1b' {
             return -1;
         }
@@ -1391,10 +1377,8 @@ unsafe fn tty_keys_extended_key(
             return 1;
         }
 
-        /*
-         * Look for a terminator. Stop at either '~' or anything that isn't a
-         * number or ';'.
-         */
+        // Look for a terminator. Stop at either '~' or anything that isn't a
+        // number or ';'.
         for end in 2..len.min(SIZE_OF_TMP) {
             if *buf.add(end) == b'~' {
                 break;
@@ -1414,7 +1398,7 @@ unsafe fn tty_keys_extended_key(
         libc::memcpy(tmp.as_mut_ptr().cast(), buf.add(2).cast(), end);
         tmp[end] = 0;
 
-        /* Try to parse either form of key. */
+        // Try to parse either form of key.
         if *buf.add(end) == b'~' {
             if libc::sscanf(
                 tmp.as_ptr().cast(),
@@ -1436,7 +1420,7 @@ unsafe fn tty_keys_extended_key(
         }
         *size = end + 1;
 
-        /* Store the key. */
+        // Store the key.
 
         let bspace: libc::cc_t = (*tty).tio.c_cc[libc::VERASE];
 
@@ -1446,7 +1430,7 @@ unsafe fn tty_keys_extended_key(
             number as key_code
         };
 
-        /* Convert UTF-32 codepoint into internal representation. */
+        // Convert UTF-32 codepoint into internal representation.
         if nkey != keyc::KEYC_BSPACE as key_code && (nkey & !0x7f) != 0 {
             if utf8_fromwc(nkey as wchar_t, &raw mut ud) == utf8_state::UTF8_DONE
                 && utf8_from_data(&raw const ud, &raw mut uc) == utf8_state::UTF8_DONE
@@ -1457,7 +1441,7 @@ unsafe fn tty_keys_extended_key(
             }
         }
 
-        /* Update the modifiers. */
+        // Update the modifiers.
         if modifiers > 0 {
             modifiers -= 1;
             if (modifiers & 1) != 0 {
@@ -1474,25 +1458,23 @@ unsafe fn tty_keys_extended_key(
             }
         }
 
-        /* Convert S-Tab into Backtab. */
+        // Convert S-Tab into Backtab.
         if (nkey & KEYC_MASK_KEY) == b'\x09' as key_code && (nkey & KEYC_SHIFT) != 0 {
             nkey = (keyc::KEYC_BTAB as u64) | (nkey & !KEYC_MASK_KEY & !KEYC_SHIFT);
         }
 
-        /*
-         * Deal with the Shift modifier when present alone. The problem is that
-         * in mode 2 some terminals would report shifted keys, like S-a, as
-         * just A, and some as S-A.
-         *
-         * Because we need an unambiguous internal representation, and because
-         * restoring the Shift modifier when it's missing would require knowing
-         * the keyboard layout, and because S-A would cause a lot of issues
-         * downstream, we choose to lose the Shift for all printable
-         * characters.
-         *
-         * That still leaves some ambiguity, such as C-S-A vs. C-A, but that's
-         * OK, and applications can handle that.
-         */
+        // Deal with the Shift modifier when present alone. The problem is that
+        // in mode 2 some terminals would report shifted keys, like S-a, as
+        // just A, and some as S-A.
+        //
+        // Because we need an unambiguous internal representation, and because
+        // restoring the Shift modifier when it's missing would require knowing
+        // the keyboard layout, and because S-A would cause a lot of issues
+        // downstream, we choose to lose the Shift for all printable
+        // characters.
+        //
+        // That still leaves some ambiguity, such as C-S-A vs. C-A, but that's
+        // OK, and applications can handle that.
         let onlykey: key_code = nkey & KEYC_MASK_KEY;
         if ((onlykey > 0x20 && onlykey < 0x7f) || KEYC_IS_UNICODE(nkey))
             && (nkey & KEYC_MASK_MODIFIERS) == KEYC_SHIFT
@@ -1535,22 +1517,20 @@ unsafe fn tty_keys_mouse(
         let mut sgr_type: u8 = b' ';
         let mut ch: u8;
 
-        /*
-         * Standard mouse sequences are \x1b[M followed by three characters
-         * indicating button, X and Y, all based at 32 with 1,1 top-left.
-         *
-         * UTF-8 mouse sequences are similar but the three are expressed as
-         * UTF-8 characters.
-         *
-         * SGR extended mouse sequences are \x1b[< followed by three numbers in
-         * decimal and separated by semicolons indicating button, X and Y. A
-         * trailing 'M' is click or scroll and trailing 'm' release. All are
-         * based at 0 with 1,1 top-left.
-         */
+        // Standard mouse sequences are \x1b[M followed by three characters
+        // indicating button, X and Y, all based at 32 with 1,1 top-left.
+        //
+        // UTF-8 mouse sequences are similar but the three are expressed as
+        // UTF-8 characters.
+        //
+        // SGR extended mouse sequences are \x1b[< followed by three numbers in
+        // decimal and separated by semicolons indicating button, X and Y. A
+        // trailing 'M' is click or scroll and trailing 'm' release. All are
+        // based at 0 with 1,1 top-left.
 
         *size = 0;
 
-        /* First two bytes are always \x1b[. */
+        // First two bytes are always \x1b[.
         if *buf != b'\x1b' {
             return -1;
         }
@@ -1564,12 +1544,10 @@ unsafe fn tty_keys_mouse(
             return 1;
         }
 
-        /*
-         * Third byte is M in old standard (and UTF-8 extension which we do not
-         * support), < in SGR extension.
-         */
+        // Third byte is M in old standard (and UTF-8 extension which we do not
+        // support), < in SGR extension.
         if *buf.add(2) == b'M' {
-            /* Read the three inputs. */
+            // Read the three inputs.
             *size = 3;
             for i in 0..3 {
                 if len <= *size {
@@ -1587,7 +1565,7 @@ unsafe fn tty_keys_mouse(
             }
             log_debug!("{0}: mouse input: {2:1$}", _s((*c).name), *size, _s(buf));
 
-            /* Check and return the mouse input. */
+            // Check and return the mouse input.
             if b < MOUSE_PARAM_BTN_OFF || x < MOUSE_PARAM_POS_OFF || y < MOUSE_PARAM_POS_OFF {
                 return -2;
             }
@@ -1595,7 +1573,7 @@ unsafe fn tty_keys_mouse(
             x -= MOUSE_PARAM_POS_OFF;
             y -= MOUSE_PARAM_POS_OFF;
         } else if *buf.add(2) == b'<' {
-            /* Read the three inputs. */
+            // Read the three inputs.
             *size = 3;
             loop {
                 if len <= *size {
@@ -1646,7 +1624,7 @@ unsafe fn tty_keys_mouse(
                 _s(buf)
             );
 
-            /* Check and return the mouse input. */
+            // Check and return the mouse input.
             if x < 1 || y < 1 {
                 return -2;
             }
@@ -1654,18 +1632,16 @@ unsafe fn tty_keys_mouse(
             y -= 1;
             b = sgr_b;
 
-            /* Type is M for press, m for release. */
+            // Type is M for press, m for release.
             sgr_type = ch;
             if sgr_type == b'm' {
                 b = 3;
             }
 
-            /*
-             * Some terminals (like PuTTY 0.63) mistakenly send
-             * button-release events for scroll-wheel button-press event.
-             * Discard it before it reaches any program running inside
-             * tmux.
-             */
+            // Some terminals (like PuTTY 0.63) mistakenly send
+            // button-release events for scroll-wheel button-press event.
+            // Discard it before it reaches any program running inside
+            // tmux.
             if sgr_type == b'm' && MOUSE_WHEEL(sgr_b) {
                 return -2;
             }
@@ -1673,7 +1649,7 @@ unsafe fn tty_keys_mouse(
             return -1;
         }
 
-        /* Fill mouse event. */
+        // Fill mouse event.
         (*m).lx = (*tty).mouse_last_x;
         (*m).x = x;
         (*m).ly = (*tty).mouse_last_y;
@@ -1683,7 +1659,7 @@ unsafe fn tty_keys_mouse(
         (*m).sgr_type = sgr_type as u32;
         (*m).sgr_b = sgr_b;
 
-        /* Update last mouse state. */
+        // Update last mouse state.
         (*tty).mouse_last_x = x;
         (*tty).mouse_last_y = y;
         (*tty).mouse_last_b = b;
@@ -1692,10 +1668,8 @@ unsafe fn tty_keys_mouse(
     }
 }
 
-/*
- * Handle OSC 52 clipboard input. Returns 0 for success, -1 for failure, 1 for
- * partial.
- */
+// Handle OSC 52 clipboard input. Returns 0 for success, -1 for failure, 1 for
+// partial.
 
 unsafe fn tty_keys_clipboard(
     tty: *mut tty,
@@ -1711,7 +1685,7 @@ unsafe fn tty_keys_clipboard(
 
         *size = 0;
 
-        /* First five bytes are always \x1b]52;. */
+        // First five bytes are always \x1b]52;.
         if *buf != b'\x1b' {
             return -1;
         }
@@ -1743,7 +1717,7 @@ unsafe fn tty_keys_clipboard(
             return 1;
         }
 
-        /* Find the terminator if any. */
+        // Find the terminator if any.
         end = 5;
         while end < len {
             if *buf.add(end) == b'\x07' {
@@ -1761,14 +1735,14 @@ unsafe fn tty_keys_clipboard(
         }
         *size = end + 1;
 
-        /* Skip the initial part. */
+        // Skip the initial part.
         buf = buf.add(5);
         end -= 5;
 
-        /* Adjust end so that it points to the start of the terminator. */
+        // Adjust end so that it points to the start of the terminator.
         end -= terminator - 1;
 
-        /* Get the second argument. */
+        // Get the second argument.
         while end != 0 && *buf != b';' {
             buf = buf.add(1);
             end -= 1;
@@ -1779,19 +1753,19 @@ unsafe fn tty_keys_clipboard(
         buf = buf.add(1);
         end -= 1;
 
-        /* If we did not request this, ignore it. */
+        // If we did not request this, ignore it.
         if !(*tty).flags.intersects(tty_flags::TTY_OSC52QUERY) {
             return 0;
         }
         (*tty).flags &= !tty_flags::TTY_OSC52QUERY;
         evtimer_del(&raw mut (*tty).clipboard_timer);
 
-        /* It has to be a string so copy it. */
+        // It has to be a string so copy it.
         let copy: *mut u8 = xmalloc(end + 1).as_ptr().cast();
         libc::memcpy(copy.cast(), buf.cast(), end);
         *copy.add(end) = b'\0';
 
-        /* Convert from base64. */
+        // Convert from base64.
         let needed: usize = (end / 4) * 3;
         let out: *mut u8 = xmalloc(needed).as_ptr().cast();
         let outlen: i32 = b64_pton(copy, out.cast(), len);
@@ -1802,7 +1776,7 @@ unsafe fn tty_keys_clipboard(
         }
         free_(copy);
 
-        /* Create a new paste buffer and forward to panes. */
+        // Create a new paste buffer and forward to panes.
         // log_debug( c!("%s: %.*s\0"), __func__, outlen, out);
         if (*c).flags.intersects(client_flag::CLIPBOARDBUFFER) {
             paste_add(null_mut(), out, outlen as usize);
@@ -1824,10 +1798,8 @@ unsafe fn tty_keys_clipboard(
     }
 }
 
-/*
- * Handle primary device attributes input. Returns 0 for success, -1 for
- * failure, 1 for partial.
- */
+// Handle primary device attributes input. Returns 0 for success, -1 for
+// failure, 1 for partial.
 
 unsafe fn tty_keys_device_attributes(
     tty: *mut tty,
@@ -1848,7 +1820,7 @@ unsafe fn tty_keys_device_attributes(
             return -1;
         }
 
-        /* First three bytes are always \x1b[?. */
+        // First three bytes are always \x1b[?.
         if *buf != b'\x1b' {
             return -1;
         }
@@ -1868,7 +1840,7 @@ unsafe fn tty_keys_device_attributes(
             return 1;
         }
 
-        /* Copy the rest up to a c. */
+        // Copy the rest up to a c.
         let mut found = false;
         let mut i: usize = 0;
         for j in 0..tmp.len() {
@@ -1888,7 +1860,7 @@ unsafe fn tty_keys_device_attributes(
         tmp[i] = b'\0';
         *size = 4 + i;
 
-        /* Convert all arguments to numbers. */
+        // Convert all arguments to numbers.
         let mut cp = tmp.as_mut_ptr();
         let mut next: *mut u8;
         while {
@@ -1905,9 +1877,9 @@ unsafe fn tty_keys_device_attributes(
             }
         }
 
-        /* Add terminal features. */
+        // Add terminal features.
         if matches!(p[0], 61..=65) {
-            /* level 1-5 */
+            // level 1-5
             for i in 1..n {
                 // log_debug( c!("%s: DA feature: %d\0"), (*c).name, p[i as usize]);
                 if p[i as usize] == 4 {
@@ -1950,7 +1922,7 @@ unsafe fn tty_keys_device_attributes2(
             return -1;
         }
 
-        /* First three bytes are always \x1b[>. */
+        // First three bytes are always \x1b[>.
         if *buf != b'\x1b' {
             return -1;
         }
@@ -1970,7 +1942,7 @@ unsafe fn tty_keys_device_attributes2(
             return 1;
         }
 
-        /* Copy the rest up to a c. */
+        // Copy the rest up to a c.
         let mut found = false;
         let mut i: usize = 0;
         for j in 0..tmp.len() {
@@ -1990,7 +1962,7 @@ unsafe fn tty_keys_device_attributes2(
         tmp[i] = b'\0';
         *size = 4 + i;
 
-        /* Convert all arguments to numbers. */
+        // Convert all arguments to numbers.
         let mut cp = tmp.as_mut_ptr();
         let mut next: *mut u8;
         while {
@@ -2007,22 +1979,20 @@ unsafe fn tty_keys_device_attributes2(
             }
         }
 
-        /*
-         * Add terminal features. We add DECSLRM and DECFRA for some
-         * identification codes here, notably 64 will catch VT520, even though
-         * we can't use level 5 from DA because of VTE.
-         */
+        // Add terminal features. We add DECSLRM and DECFRA for some
+        // identification codes here, notably 64 will catch VT520, even though
+        // we can't use level 5 from DA because of VTE.
         match p[0] as u8 {
             b'M' => {
-                /* mintty */
+                // mintty
                 tty_default_features(features, c!("mintty"), 0);
             }
             b'T' => {
-                /* tmux */
+                // tmux
                 tty_default_features(features, c!("tmux"), 0);
             }
             b'U' => {
-                /* rxvt-unicode */
+                // rxvt-unicode
                 tty_default_features(features, c!("rxvt-unicode"), 0);
             }
             _ => {}
@@ -2036,10 +2006,8 @@ unsafe fn tty_keys_device_attributes2(
     }
 }
 
-/*
- * Handle extended device attributes input. Returns 0 for success, -1 for
- * failure, 1 for partial.
- */
+// Handle extended device attributes input. Returns 0 for success, -1 for
+// failure, 1 for partial.
 
 unsafe fn tty_keys_extended_device_attributes(
     tty: *mut tty,
@@ -2058,7 +2026,7 @@ unsafe fn tty_keys_extended_device_attributes(
             return -1;
         }
 
-        /* First four bytes are always \x1bP>|. */
+        // First four bytes are always \x1bP>|.
         if *buf != b'\x1b' {
             return -1;
         }
@@ -2084,7 +2052,7 @@ unsafe fn tty_keys_extended_device_attributes(
             return 1;
         }
 
-        /* Copy the rest up to \x1b\. */
+        // Copy the rest up to \x1b\.
         let mut found = false;
         for j in 0..tmp.len() - 1 {
             i = j;
@@ -2103,7 +2071,7 @@ unsafe fn tty_keys_extended_device_attributes(
         tmp[i - 1] = b'\0';
         *size = 5 + i;
 
-        /* Add terminal features. */
+        // Add terminal features.
         if libc::strncmp(tmp.as_ptr(), c!("iTerm2 "), 7) == 0 {
             tty_default_features(features, c!("iTerm2"), 0);
         } else if libc::strncmp(tmp.as_ptr(), c!("tmux "), 5) == 0 {
@@ -2125,10 +2093,8 @@ unsafe fn tty_keys_extended_device_attributes(
     }
 }
 
-/*
- * Handle foreground or background input. Returns 0 for success, -1 for
- * failure, 1 for partial.
- */
+// Handle foreground or background input. Returns 0 for success, -1 for
+// failure, 1 for partial.
 
 pub unsafe fn tty_keys_colours(
     tty: *mut tty,
@@ -2144,7 +2110,7 @@ pub unsafe fn tty_keys_colours(
 
         *size = 0;
 
-        /* First four bytes are always \x1b]1 and 0 or 1 and ;. */
+        // First four bytes are always \x1b]1 and 0 or 1 and ;.
         if *buf != b'\x1b' {
             return -1;
         }
@@ -2178,7 +2144,7 @@ pub unsafe fn tty_keys_colours(
 
         let mut found = false;
         let mut i: usize = 0;
-        /* Copy the rest up to \x1b\ or \x07. */
+        // Copy the rest up to \x1b\ or \x07.
         for j in 0..tmp.len() - 1 {
             i = j;
             if 5 + i == len {

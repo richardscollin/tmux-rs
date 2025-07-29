@@ -586,10 +586,8 @@ pub unsafe fn window_redraw_active_switch(w: *mut window, mut wp: *mut window_pa
         }
 
         loop {
-            /*
-             * If the active and inactive styles or palettes are different,
-             * need to redraw the panes.
-             */
+            // If the active and inactive styles or palettes are different,
+            // need to redraw the panes.
             let gc1 = &raw mut (*wp).cached_gc;
             let gc2 = &raw mut (*wp).cached_active_gc;
             if grid_cells_look_equal(gc1, gc2) == 0 {
@@ -1704,7 +1702,7 @@ pub unsafe fn winlink_shuffle_up(s: *mut session, mut wl: *mut winlink, before: 
             (*wl).idx + 1
         };
 
-        /* Find the next free index. */
+        // Find the next free index.
         let mut last = idx;
         for i in idx..i32::MAX {
             last = i;
@@ -1716,7 +1714,7 @@ pub unsafe fn winlink_shuffle_up(s: *mut session, mut wl: *mut winlink, before: 
             return -1;
         }
 
-        /* Move everything from last - 1 to idx up a bit. */
+        // Move everything from last - 1 to idx up a bit.
         while last > idx {
             wl = winlink_find_by_index(&raw mut (*s).windows, last - 1);
             rb_remove(&raw mut (*s).windows, wl);

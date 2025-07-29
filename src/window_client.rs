@@ -143,7 +143,7 @@ pub unsafe extern "C" fn window_client_cmp(a0: *const c_void, b0: *const c_void)
             _ => (),
         }
 
-        /* Use WINDOW_CLIENT_BY_NAME as default order and tie breaker. */
+        // Use WINDOW_CLIENT_BY_NAME as default order and tie breaker.
         if result == 0 {
             result = strcmp((*ca).name, (*cb).name);
         }

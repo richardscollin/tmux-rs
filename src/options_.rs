@@ -16,7 +16,6 @@ use crate::libc::{fnmatch, isdigit, sscanf, strcasecmp, strchr, strcmp, strncmp,
 use crate::options_table::OPTIONS_OTHER_NAMES_STR;
 use crate::*;
 
-//
 // Option handling; each option has a name, type and value and is stored in
 // a red-black tree.
 //

@@ -504,7 +504,7 @@ pub unsafe fn control_write_output(c: *mut client, wp: *mut window_pane) {
             bufferevent_enable((*cs).write_event, EV_WRITE);
             return;
         }
-        //ignore:
+        // ignore:
         log_debug!(
             "{}: {}: ignoring pane %%{}",
             __func__,

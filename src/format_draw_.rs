@@ -138,13 +138,13 @@ unsafe fn format_draw_put_list(
     frs: *mut format_ranges,
 ) {
     unsafe {
-        /* If there is enough space for the list, draw it entirely. */
+        // If there is enough space for the list, draw it entirely.
         if width >= (*list).cx {
             format_draw_put(octx, ocx, ocy, list, frs, offset, 0, width);
             return;
         }
 
-        /* The list needs to be trimmed. Try to keep the focus visible. */
+        // The list needs to be trimmed. Try to keep the focus visible.
         let focus_centre: u32 = (focus_start + (focus_end - focus_start) / 2) as u32;
         let mut start: u32 = focus_centre.saturating_sub(width / 2);
         if start + width > (*list).cx {
@@ -170,7 +170,7 @@ unsafe fn format_draw_put_list(
             width -= (*list_right).cx;
         }
 
-        /* Draw the list screen itself. */
+        // Draw the list screen itself.
         format_draw_put(octx, ocx, ocy, list, frs, offset, start, width);
     }
 }
@@ -219,12 +219,10 @@ unsafe fn format_draw_none(
             width_right,
         );
 
-        /*
-         * Write centre halfway between
-         *     width_left
-         * and
-         *     available - width_right.
-         */
+        // Write centre halfway between
+        //     width_left
+        // and
+        //     available - width_right.
         format_draw_put(
             octx,
             ocx,
@@ -280,10 +278,8 @@ unsafe fn format_draw_left(
         let mut width_after: u32 = (*after).cx;
         let mut ctx: screen_write_ctx = std::mem::zeroed(); // TODO use uninit
 
-        /*
-         * Trim first the centre, then the list, then the right, then after the
-         * list, then the left.
-         */
+        // Trim first the centre, then the list, then the right, then after the
+        // list, then the left.
         while width_left + width_centre + width_right + width_list + width_after > available {
             if width_centre > 0 {
                 width_centre -= 1;
@@ -298,7 +294,7 @@ unsafe fn format_draw_left(
             }
         }
 
-        /* If there is no list left, pass off to the no list function. */
+        // If there is no list left, pass off to the no list function.
         if width_list == 0 {
             screen_write_start(&raw mut ctx, left);
             screen_write_fast_copy(&raw mut ctx, after, 0, 0, width_after, 1);
@@ -313,7 +309,7 @@ unsafe fn format_draw_left(
         // Write left at 0.
         format_draw_put(octx, ocx, ocy, left, frs, 0, 0, width_left);
 
-        /* Write right at available - width_right. */
+        // Write right at available - width_right.
         format_draw_put(
             octx,
             ocx,
@@ -337,12 +333,10 @@ unsafe fn format_draw_left(
             width_after,
         );
 
-        /*
-         * Write centre halfway between
-         *     width_left + width_list + width_after
-         * and
-         *     available - width_right.
-         */
+        // Write centre halfway between
+        //     width_left + width_list + width_after
+        // and
+        //     available - width_right.
         format_draw_put(
             octx,
             ocx,
@@ -356,13 +350,11 @@ unsafe fn format_draw_left(
             width_centre,
         );
 
-        /*
-         * The list now goes from
-         *     width_left
-         * to
-         *     width_left + width_list.
-         * If there is no focus given, keep the left in focus.
-         */
+        // The list now goes from
+        //     width_left
+        // to
+        //     width_left + width_list.
+        // If there is no focus given, keep the left in focus.
         if focus_start == -1 || focus_end == -1 {
             focus_start = 0;
             focus_end = 0;
@@ -426,10 +418,8 @@ unsafe fn format_draw_centre(
         let mut width_abs_centre: u32 = (*abs_centre).cx;
         let mut ctx: screen_write_ctx = std::mem::zeroed(); // TODO use uninit
 
-        /*
-         * Trim first the list, then after the list, then the centre, then the
-         * right, then the left.
-         */
+        // Trim first the list, then after the list, then the centre, then the
+        // right, then the left.
         while width_left + width_centre + width_right + width_list + width_after > available {
             if width_list > 0 {
                 width_list -= 1;
@@ -444,7 +434,7 @@ unsafe fn format_draw_centre(
             }
         }
 
-        /* If there is no list left, pass off to the no list function. */
+        // If there is no list left, pass off to the no list function.
         if width_list == 0 {
             screen_write_start(&raw mut ctx, centre);
             screen_write_fast_copy(&raw mut ctx, after, 0, 0, width_after, 1);
@@ -471,16 +461,12 @@ unsafe fn format_draw_centre(
             width_right,
         );
 
-        /*
-         * All three centre sections are offset from the middle of the
-         * available space.
-         */
+        // All three centre sections are offset from the middle of the
+        // available space.
         let middle = width_left + ((available - width_right) - width_left) / 2;
 
-        /*
-         * Write centre at
-         *     middle - width_list / 2 - width_centre.
-         */
+        // Write centre at
+        //     middle - width_list / 2 - width_centre.
         format_draw_put(
             octx,
             ocx,
@@ -492,10 +478,8 @@ unsafe fn format_draw_centre(
             width_centre,
         );
 
-        /*
-         * Write after at
-         *     middle - width_list / 2 + width_list
-         */
+        // Write after at
+        //     middle - width_list / 2 + width_list
         format_draw_put(
             octx,
             ocx,
@@ -507,13 +491,11 @@ unsafe fn format_draw_centre(
             width_after,
         );
 
-        /*
-         * The list now goes from
-         *     middle - width_list / 2
-         * to
-         *     middle + width_list / 2
-         * If there is no focus given, keep the centre in focus.
-         */
+        // The list now goes from
+        //     middle - width_list / 2
+        // to
+        //     middle + width_list / 2
+        // If there is no focus given, keep the centre in focus.
         if focus_start == -1 || focus_end == -1 {
             focus_start = (*list).cx as i32 / 2;
             focus_end = (*list).cx as i32 / 2;
@@ -549,7 +531,7 @@ unsafe fn format_draw_centre(
     }
 }
 
-/* Draw format with list on the right. */
+// Draw format with list on the right.
 
 unsafe fn format_draw_right(
     octx: *mut screen_write_ctx,
@@ -577,10 +559,8 @@ unsafe fn format_draw_right(
         let mut width_abs_centre: u32 = (*abs_centre).cx;
         let mut ctx: screen_write_ctx = std::mem::zeroed(); // TODO use uninit
 
-        /*
-         * Trim first the centre, then the list, then the right, then
-         * after the list, then the left.
-         */
+        // Trim first the centre, then the list, then the right, then
+        // after the list, then the left.
         while width_left + width_centre + width_right + width_list + width_after > available {
             if width_centre > 0 {
                 width_centre -= 1;
@@ -595,7 +575,7 @@ unsafe fn format_draw_right(
             }
         }
 
-        /* If there is no list left, pass off to the no list function. */
+        // If there is no list left, pass off to the no list function.
         if width_list == 0 {
             screen_write_start(&raw mut ctx, right);
             screen_write_fast_copy(&raw mut ctx, after, 0, 0, width_after, 1);
@@ -622,10 +602,8 @@ unsafe fn format_draw_right(
             width_after,
         );
 
-        /*
-         * Write right at
-         *     available - width_right - width_list - width_after.
-         */
+        // Write right at
+        //     available - width_right - width_list - width_after.
         format_draw_put(
             octx,
             ocx,
@@ -637,12 +615,10 @@ unsafe fn format_draw_right(
             width_right,
         );
 
-        /*
-         * Write centre halfway between
-         *     width_left
-         * and
-         *     available - width_right - width_list - width_after.
-         */
+        // Write centre halfway between
+        //     width_left
+        // and
+        //     available - width_right - width_list - width_after.
         format_draw_put(
             octx,
             ocx,
@@ -655,13 +631,11 @@ unsafe fn format_draw_right(
             width_centre,
         );
 
-        /*
-         * The list now goes from
-         *     available - width_list - width_after
-         * to
-         *     available - width_after
-         * If there is no focus given, keep the right in focus.
-         */
+        // The list now goes from
+        //     available - width_list - width_after
+        // to
+        //     available - width_after
+        // If there is no focus given, keep the right in focus.
         if focus_start == -1 || focus_end == -1 {
             focus_start = 0;
             focus_end = 0;
@@ -722,9 +696,7 @@ unsafe fn format_draw_absolute_centre(
         let mut width_list: u32 = (*list).cx;
         let mut width_after: u32 = (*after).cx;
 
-        /*
-         * Trim first centre, then the right, then the left.
-         */
+        // Trim first centre, then the right, then the left.
         while width_left + width_centre + width_right > available {
             if width_centre > 0 {
                 width_centre -= 1;
@@ -735,11 +707,9 @@ unsafe fn format_draw_absolute_centre(
             }
         }
 
-        /*
-         * We trim list after and abs_centre independently, as we are drawing
-         * them over the rest. Trim first the list, then after the list, then
-         * abs_centre.
-         */
+        // We trim list after and abs_centre independently, as we are drawing
+        // them over the rest. Trim first the list, then after the list, then
+        // abs_centre.
         while width_list + width_after + width_abs_centre > available {
             if width_list > 0 {
                 width_list -= 1;
@@ -765,16 +735,12 @@ unsafe fn format_draw_absolute_centre(
             width_right,
         );
 
-        /*
-         * Keep writing centre at the relative centre. Only the list is written
-         * in the absolute centre of the horizontal space.
-         */
+        // Keep writing centre at the relative centre. Only the list is written
+        // in the absolute centre of the horizontal space.
         let middle = width_left + ((available - width_right) - width_left) / 2;
 
-        /*
-         * Write centre at
-         *     middle - width_centre.
-         */
+        // Write centre at
+        //     middle - width_centre.
         format_draw_put(
             octx,
             ocx,
@@ -861,11 +827,9 @@ unsafe fn format_leading_hashes(cp: *const u8, n: *mut u32, width: *mut u32) -> 
         }
         *width = *n / 2;
         if (*n).is_multiple_of(2) {
-            /*
-             * An even number of #s means that all #s are escaped, so not a
-             * style. The caller should not skip this. Return pointing to
-             * the [.
-             */
+            // An even number of #s means that all #s are escaped, so not a
+            // style. The caller should not skip this. Return pointing to
+            // the [.
             return cp.add(*n as usize);
         }
         // This is a style, so return pointing to the #.
@@ -1038,7 +1002,7 @@ pub unsafe fn format_draw(
                     continue;
                 }
 
-                /* This is a style. Work out where the end is and parse it. */
+                // This is a style. Work out where the end is and parse it.
                 let end = format_skip(cp.add(2), c!("]"));
                 if end.is_null() {
                     // log_debug("%s: no terminating ] at '%s'", __func__, cp + 2);
@@ -1071,12 +1035,12 @@ pub unsafe fn format_draw(
                     sy.gc.fg = (*base).fg;
                 }
 
-                /* If this style has a fill colour, store it for later. */
+                // If this style has a fill colour, store it for later.
                 if sy.fill != 8 {
                     fill = sy.fill;
                 }
 
-                /* If this style pushed or popped the default, update it. */
+                // If this style pushed or popped the default, update it.
                 if sy.default_type == style_default_type::STYLE_DEFAULT_PUSH {
                     memcpy__(&raw mut current_default, &raw const saved_sy.gc);
                     sy.default_type = style_default_type::STYLE_DEFAULT_BASE;
@@ -1085,13 +1049,11 @@ pub unsafe fn format_draw(
                     sy.default_type = style_default_type::STYLE_DEFAULT_BASE;
                 }
 
-                /* Check the list state. */
+                // Check the list state.
                 match sy.list {
                     style_list::STYLE_LIST_ON => {
-                        /*
-                         * Entering the list, exiting a marker, or exiting the
-                         * focus.
-                         */
+                        // Entering the list, exiting a marker, or exiting the
+                        // focus.
                         if list_state != 0 {
                             if !fr.is_null() {
                                 // abort any region
@@ -1102,7 +1064,7 @@ pub unsafe fn format_draw(
                             list_align = sy.align;
                         }
 
-                        /* End the focus if started. */
+                        // End the focus if started.
                         if focus_start != -1 && focus_end == -1 {
                             focus_end = s[Current::List as usize].cx as i32;
                         }
@@ -1110,7 +1072,7 @@ pub unsafe fn format_draw(
                         current = Current::List;
                     }
                     style_list::STYLE_LIST_FOCUS => {
-                        /* Entering the focus. */
+                        // Entering the focus.
                         if list_state != 0 {
                             break;
                         } /* not inside the list */
@@ -1119,10 +1081,10 @@ pub unsafe fn format_draw(
                         } /* focus already started */
                     }
                     style_list::STYLE_LIST_OFF => {
-                        /* Exiting or outside the list. */
+                        // Exiting or outside the list.
                         if list_state == 0 {
                             if !fr.is_null() {
-                                /* abort any region */
+                                // abort any region
                                 free_(fr);
                                 fr = null_mut();
                             }
@@ -1139,7 +1101,7 @@ pub unsafe fn format_draw(
                         current = map[sy.align as usize];
                     }
                     style_list::STYLE_LIST_LEFT_MARKER => {
-                        /* Entering left marker. */
+                        // Entering left marker.
                         if list_state != 0 {
                             break;
                         } /* not inside the list */
@@ -1147,7 +1109,7 @@ pub unsafe fn format_draw(
                             break;
                         } /* already have marker */
                         if !fr.is_null() {
-                            /* abort any region */
+                            // abort any region
                             free_(fr);
                             fr = null_mut();
                         }
@@ -1185,10 +1147,8 @@ pub unsafe fn format_draw(
                     last = current;
                 }
 
-                /*
-                 * Check if the range style has changed and if so end the
-                 * current range and start a new one if needed.
-                 */
+                // Check if the range style has changed and if so end the
+                // current range and start a new one if needed.
                 if !srs.is_null() {
                     if !fr.is_null() && !format_is_type(fr, &raw mut sy) {
                         if s[current as usize].cx != (*fr).start {
@@ -1248,10 +1208,8 @@ pub unsafe fn format_draw(
                 }
             }
 
-            /*
-             * Draw the screens. How they are arranged depends on where the list
-             * appears.
-             */
+            // Draw the screens. How they are arranged depends on where the list
+            // appears.
             match list_align {
                 // No list.
                 style_align::STYLE_ALIGN_DEFAULT => format_draw_none(

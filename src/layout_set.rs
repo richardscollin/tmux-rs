@@ -50,7 +50,7 @@ pub unsafe fn layout_set_lookup(name: *const u8) -> i32 {
         for (i, ls) in LAYOUT_SETS.iter().enumerate() {
             if libc::strncmp(ls.name.as_ptr(), name, strlen(name)) == 0 {
                 if matched != -1 {
-                    /* ambiguous */
+                    // ambiguous
                     return -1;
                 }
                 matched = i as i32;
@@ -128,13 +128,13 @@ pub unsafe fn layout_set_even(w: *mut window, type_: layout_type) {
 
         layout_print_cell((*w).layout_root, __func__, 1);
 
-        /* Get number of panes. */
+        // Get number of panes.
         let n = window_count_panes(w);
         if n <= 1 {
             return;
         }
 
-        /* Free the old root and construct a new. */
+        // Free the old root and construct a new.
         layout_free(w);
         let lc = layout_create_cell(null_mut());
         (*w).layout_root = lc;
@@ -154,7 +154,7 @@ pub unsafe fn layout_set_even(w: *mut window, type_: layout_type) {
         layout_set_size(lc, sx, sy, 0, 0);
         layout_make_node(lc, type_);
 
-        /* Build new leaf cells. */
+        // Build new leaf cells.
         for wp in tailq_foreach::<_, discr_entry>(&raw mut (*w).panes).map(NonNull::as_ptr) {
             let lcnew = layout_create_cell(lc);
             layout_make_leaf(lcnew, wp);
@@ -163,10 +163,10 @@ pub unsafe fn layout_set_even(w: *mut window, type_: layout_type) {
             tailq_insert_tail(&raw mut (*lc).cells, lcnew);
         }
 
-        /* Spread out cells. */
+        // Spread out cells.
         layout_spread_cell(w, lc);
 
-        /* Fix cell offsets. */
+        // Fix cell offsets.
         layout_fix_offsets(w);
         layout_fix_panes(w, null_mut());
 
@@ -202,17 +202,17 @@ pub unsafe fn layout_set_main_h(w: *mut window) {
 
         layout_print_cell((*w).layout_root, __func__, 1);
 
-        /* Get number of panes. */
+        // Get number of panes.
         let mut n = window_count_panes(w);
         if n <= 1 {
             return;
         }
         n -= 1; /* take off main pane */
 
-        /* Find available height - take off one line for the border. */
+        // Find available height - take off one line for the border.
         let sy = (*w).sy - 1;
 
-        /* Get the main pane height. */
+        // Get the main pane height.
         let mut s = options_get_string_((*w).options, "main-pane-height");
         let mut mainh = args_string_percentage(s, 0, sy as i64, sy as i64, &raw mut cause) as u32;
         if !cause.is_null() {
@@ -221,7 +221,7 @@ pub unsafe fn layout_set_main_h(w: *mut window) {
         }
 
         let mut otherh: u32;
-        /* Work out the other pane height. */
+        // Work out the other pane height.
         if mainh + PANE_MINIMUM >= sy {
             if sy <= PANE_MINIMUM + PANE_MINIMUM {
                 mainh = PANE_MINIMUM;
@@ -242,26 +242,26 @@ pub unsafe fn layout_set_main_h(w: *mut window) {
             }
         }
 
-        /* Work out what width is needed. */
+        // Work out what width is needed.
         let mut sx = (n * (PANE_MINIMUM + 1)) - 1;
         if sx < (*w).sx {
             sx = (*w).sx;
         }
 
-        /* Free old tree and create a new root. */
+        // Free old tree and create a new root.
         layout_free(w);
         let lc = layout_create_cell(null_mut());
         (*w).layout_root = lc;
         layout_set_size(lc, sx, mainh + otherh + 1, 0, 0);
         layout_make_node(lc, layout_type::LAYOUT_TOPBOTTOM);
 
-        /* Create the main pane. */
+        // Create the main pane.
         let lcmain = layout_create_cell(lc);
         layout_set_size(lcmain, sx, mainh, 0, 0);
         layout_make_leaf(lcmain, tailq_first(&raw mut (*w).panes));
         tailq_insert_tail(&raw mut (*lc).cells, lcmain);
 
-        /* Create the other pane. */
+        // Create the other pane.
         let lcother = layout_create_cell(lc);
         layout_set_size(lcother, sx, otherh, 0, 0);
         if n == 1 {
@@ -272,7 +272,7 @@ pub unsafe fn layout_set_main_h(w: *mut window) {
             layout_make_node(lcother, layout_type::LAYOUT_LEFTRIGHT);
             tailq_insert_tail(&raw mut (*lc).cells, lcother);
 
-            /* Add the remaining panes as children. */
+            // Add the remaining panes as children.
             for wp in tailq_foreach::<_, discr_entry>(&raw mut (*w).panes).map(NonNull::as_ptr) {
                 if wp == tailq_first(&raw mut (*w).panes) {
                     continue;
@@ -285,7 +285,7 @@ pub unsafe fn layout_set_main_h(w: *mut window) {
             layout_spread_cell(w, lcother);
         }
 
-        /* Fix cell offsets. */
+        // Fix cell offsets.
         layout_fix_offsets(w);
         layout_fix_panes(w, null_mut());
 

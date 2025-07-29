@@ -246,7 +246,7 @@ type key_code = core::ffi::c_ulonglong;
 
 // skipped C0 control characters
 
-/* C0 control characters */
+// C0 control characters
 #[repr(u64)]
 #[derive(Copy, Clone)]
 enum c0 {
@@ -287,14 +287,12 @@ enum c0 {
 // idea write a custom top level macro
 // which allows me to annotate a variant
 // that should be converted to mouse key
-/*
-enum mouse_keys {
-  KEYC_MOUSE,
-
-  #[keyc_mouse_key]
-  MOUSEMOVE,
-}
-*/
+// enum mouse_keys {
+// KEYC_MOUSE,
+//
+// #[keyc_mouse_key]
+// MOUSEMOVE,
+// }
 include!("keyc_mouse_key.rs");
 
 enum_try_from!(tty_code_code, u32, tty_code_code::TTYC_XT);
@@ -590,7 +588,7 @@ const MOUSE_PARAM_UTF8_MAX: u32 = 0x7ff;
 const MOUSE_PARAM_BTN_OFF: u32 = 0x20;
 const MOUSE_PARAM_POS_OFF: u32 = 0x21;
 
-/* A single UTF-8 character. */
+// A single UTF-8 character.
 type utf8_char = c_uint;
 
 // An expanded UTF-8 character. UTF8_SIZE must be big enough to hold combining
@@ -604,7 +602,7 @@ struct utf8_data {
     data: [u8; UTF8_SIZE],
 
     have: u8,
-    size: u8, // TODO check the codebase for things checking if size == 0, which is the sentinal value
+    size: u8, /* TODO check the codebase for things checking if size == 0, which is the sentinal value */
     /// 0xff if invalid
     width: u8,
 }
@@ -1588,11 +1586,11 @@ const MOUSE_MASK_CTRL: u32 = 16;
 const MOUSE_MASK_DRAG: u32 = 32;
 const MOUSE_MASK_MODIFIERS: u32 = MOUSE_MASK_SHIFT | MOUSE_MASK_META | MOUSE_MASK_CTRL;
 
-/* Mouse wheel type. */
+// Mouse wheel type.
 const MOUSE_WHEEL_UP: u32 = 64;
 const MOUSE_WHEEL_DOWN: u32 = 65;
 
-/* Mouse button type. */
+// Mouse button type.
 const MOUSE_BUTTON_1: u32 = 0;
 const MOUSE_BUTTON_2: u32 = 1;
 const MOUSE_BUTTON_3: u32 = 2;
@@ -1803,18 +1801,16 @@ struct tty_ctx {
 
     allow_invisible_panes: i32,
 
-    /*
-     * Cursor and region position before the screen was updated - this is
-     * where the command should be applied; the values in the screen have
-     * already been updated.
-     */
+    // Cursor and region position before the screen was updated - this is
+    // where the command should be applied; the values in the screen have
+    // already been updated.
     ocx: u32,
     ocy: u32,
 
     orupper: u32,
     orlower: u32,
 
-    /* Target region (usually pane) offset and size. */
+    // Target region (usually pane) offset and size.
     xoff: u32,
     yoff: u32,
     rxoff: u32,
@@ -1954,7 +1950,7 @@ struct cmd_list {
     list: *mut cmds,
 }
 
-/* Command return values. */
+// Command return values.
 #[repr(i32)]
 #[derive(Copy, Clone, Eq, PartialEq)]
 enum cmd_retval {
@@ -2093,7 +2089,7 @@ struct cmd_entry {
     exec: unsafe fn(*mut cmd, *mut cmdq_item) -> cmd_retval,
 }
 
-/* Status line. */
+// Status line.
 const STATUS_LINES_LIMIT: usize = 5;
 #[repr(C)]
 struct status_line_entry {
@@ -2126,7 +2122,7 @@ enum prompt_type {
     PROMPT_TYPE_INVALID = 0xff,
 }
 
-/* File in client. */
+// File in client.
 type client_file_cb = Option<unsafe fn(*mut client, *mut u8, i32, i32, *mut evbuffer, *mut c_void)>;
 #[repr(C)]
 struct client_file {
@@ -2173,7 +2169,7 @@ RB_GENERATE!(
     server_client_window_cmp
 );
 
-/* Visible areas not obstructed by overlays. */
+// Visible areas not obstructed by overlays.
 const OVERLAY_MAX_RANGES: usize = 3;
 #[repr(C)]
 struct overlay_ranges {
@@ -2486,7 +2482,7 @@ impl options_name_map {
     }
 }
 
-/* Common command usages. */
+// Common command usages.
 const CMD_TARGET_PANE_USAGE: &CStr = c"[-t target-pane]";
 const CMD_TARGET_WINDOW_USAGE: &CStr = c"[-t target-window]";
 const CMD_TARGET_SESSION_USAGE: &CStr = c"[-t target-session]";

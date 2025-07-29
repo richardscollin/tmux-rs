@@ -114,11 +114,9 @@ pub unsafe fn hyperlinks_put(
         let mut uri = null_mut();
         let mut internal_id = null_mut();
 
-        /*
-         * Anonymous URI are stored with an empty internal ID and the tree
-         * comparator will make sure they never match each other (so each
-         * anonymous URI is unique).
-         */
+        // Anonymous URI are stored with an empty internal ID and the tree
+        // comparator will make sure they never match each other (so each
+        // anonymous URI is unique).
         if internal_id_in.is_null() {
             internal_id_in = c!("");
         }

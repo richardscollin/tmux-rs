@@ -47,13 +47,13 @@ pub unsafe fn cmd_pipe_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
         let mut set: sigset_t = zeroed(); // TODO uninit
         let mut oldset: sigset_t = zeroed(); // TODO uninit
 
-        /* Do nothing if pane is dead. */
+        // Do nothing if pane is dead.
         if window_pane_exited(wp) {
             cmdq_error!(item, "target pane has exited");
             return cmd_retval::CMD_RETURN_ERROR;
         }
 
-        /* Destroy the old pipe. */
+        // Destroy the old pipe.
         let old_fd = (*wp).pipe_fd;
         if (*wp).pipe_fd != -1 {
             bufferevent_free((*wp).pipe_event);
@@ -66,22 +66,20 @@ pub unsafe fn cmd_pipe_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
             }
         }
 
-        /* If no pipe command, that is enough. */
+        // If no pipe command, that is enough.
         if args_count(args) == 0 || *args_string(args, 0) == b'\0' as _ {
             return cmd_retval::CMD_RETURN_NORMAL;
         }
 
-        /*
-         * With -o, only open the new pipe if there was no previous one. This
-         * allows a pipe to be toggled with a single key, for example:
-         *
-         *	bind ^p pipep -o 'cat >>~/output'
-         */
+        // With -o, only open the new pipe if there was no previous one. This
+        // allows a pipe to be toggled with a single key, for example:
+        //
+        // 	bind ^p pipep -o 'cat >>~/output'
         if args_has_(args, 'o') && old_fd != -1 {
             return cmd_retval::CMD_RETURN_NORMAL;
         }
 
-        /* What do we want to do? Neither -I or -O is -O. */
+        // What do we want to do? Neither -I or -O is -O.
         if args_has_(args, 'I') {
             in_ = 1;
             out = args_has(args, b'O');
@@ -90,13 +88,13 @@ pub unsafe fn cmd_pipe_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
             out = 1;
         }
 
-        /* Open the new pipe. */
+        // Open the new pipe.
         if socketpair(AF_UNIX, libc::SOCK_STREAM, PF_UNSPEC, pipe_fd.as_mut_ptr()) != 0 {
             cmdq_error!(item, "socketpair error: {}", _s(strerror(errno!())));
             return cmd_retval::CMD_RETURN_ERROR;
         }
 
-        /* Expand the command. */
+        // Expand the command.
         let ft = format_create(
             cmdq_get_client(item),
             item,
@@ -107,7 +105,7 @@ pub unsafe fn cmd_pipe_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
         let cmd = format_expand_time(ft, args_string(args, 0));
         format_free(ft);
 
-        /* Fork the child. */
+        // Fork the child.
         sigfillset(&raw mut set);
         sigprocmask(SIG_BLOCK, &raw const set, &raw mut oldset);
         match libc::fork() {
@@ -162,7 +160,7 @@ pub unsafe fn cmd_pipe_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
                 _exit(1)
             }
             _ => {
-                /* Parent process. */
+                // Parent process.
                 sigprocmask(SIG_SETMASK, &raw mut oldset, null_mut());
                 close(pipe_fd[1]);
 

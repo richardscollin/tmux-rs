@@ -234,7 +234,7 @@ pub unsafe fn imsg_get(imsgbuf: *mut imsgbuf, imsg: *mut imsg) -> isize {
                 return -1;
             }
             if ibuf_add((*m).buf, (*imsgbuf).r.rptr as *mut c_void, datalen) == -1 {
-                /* this should never fail */
+                // this should never fail
                 ibuf_free((*m).buf);
                 return -1;
             }

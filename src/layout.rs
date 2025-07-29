@@ -304,7 +304,7 @@ pub unsafe fn layout_resize_check(w: *mut window, lc: *mut layout_cell, type_: l
                 .unwrap();
 
         if (*lc).type_ == layout_type::LAYOUT_WINDOWPANE {
-            /* Space available in this cell only. */
+            // Space available in this cell only.
             if type_ == layout_type::LAYOUT_LEFTRIGHT {
                 available = (*lc).sx;
                 minimum = PANE_MINIMUM;
@@ -322,13 +322,13 @@ pub unsafe fn layout_resize_check(w: *mut window, lc: *mut layout_cell, type_: l
                 available = 0;
             }
         } else if (*lc).type_ == type_ {
-            /* Same type: total of available space in all child cells. */
+            // Same type: total of available space in all child cells.
             available = 0;
             for lcchild in tailq_foreach(&raw mut (*lc).cells) {
                 available += layout_resize_check(w, lcchild.as_ptr(), type_);
             }
         } else {
-            /* Different type: minimum of available space in child cells. */
+            // Different type: minimum of available space in child cells.
             minimum = u32::MAX;
             for lcchild in tailq_foreach(&raw mut (*lc).cells) {
                 available = layout_resize_check(w, lcchild.as_ptr(), type_);

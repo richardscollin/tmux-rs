@@ -166,10 +166,8 @@ unsafe fn alerts_check_bell(w: NonNull<window>) -> window_flag {
         for wl in
             tailq_foreach::<_, crate::discr_wentry>(&raw mut (*w).winlinks).map(NonNull::as_ptr)
         {
-            /*
-             * Bells are allowed even if there is an existing bell (so do
-             * not check WINLINK_BELL).
-             */
+            // Bells are allowed even if there is an existing bell (so do
+            // not check WINLINK_BELL).
             let s = (*wl).session;
             if (*s).curw != wl || (*s).attached == 0 {
                 (*wl).flags |= winlink_flags::WINLINK_BELL;

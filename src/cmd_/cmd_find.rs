@@ -1025,12 +1025,12 @@ pub unsafe fn cmd_find_target(
                                     fatalx("invalid current find state");
                                 }
 
-                                /* An empty or NULL target is the current. */
+                                // An empty or NULL target is the current.
                                 if target.is_null() || *target == b'\0' as _ {
                                     break 'current;
                                 }
 
-                                /* Mouse target is a plain = or {mouse}. */
+                                // Mouse target is a plain = or {mouse}.
                                 if streq_(target, "=") || streq_(target, "{mouse}") {
                                     m = &raw mut (*cmdq_get_event(item)).m;
                                     match type_ {
@@ -1043,7 +1043,7 @@ pub unsafe fn cmd_find_target(
                                             if !(*fs).wp.is_null() {
                                                 (*fs).w = (*(*fs).wl).window;
                                             } else {
-                                                /* FALLTHROUGH; copied from below */
+                                                // FALLTHROUGH; copied from below
                                                 (*fs).wl = transmute_ptr(cmd_mouse_window(
                                                     m,
                                                     &raw mut (*fs).s,
@@ -1360,20 +1360,20 @@ pub unsafe fn cmd_find_client(item: *mut cmdq_item, target: *const u8, quiet: i3
         // char *copy;
         // size_t size;
 
-        /* A NULL argument means the current client. */
+        // A NULL argument means the current client.
         if target.is_null() {
             return cmd_find_current_client(item, quiet);
         }
         let copy = xstrdup(target).as_ptr();
 
-        /* Trim a single trailing colon if any. */
+        // Trim a single trailing colon if any.
         let size = strlen(copy);
         if size != 0 && *copy.add(size - 1) == b':' as _ {
             *copy.add(size - 1) = b'\0' as _;
         }
 
         let mut c = null_mut();
-        /* Check name and path of each client. */
+        // Check name and path of each client.
         for c_ in tailq_foreach(&raw mut CLIENTS) {
             c = c_.as_ptr();
             if (*c).session.is_null() {

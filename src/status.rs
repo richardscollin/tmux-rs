@@ -74,10 +74,8 @@ unsafe fn status_prompt_add_typed_history(mut line: *mut u8) {
             type_ = status_prompt_type(typestr);
         }
         if type_ == prompt_type::PROMPT_TYPE_INVALID {
-            /*
-             * Invalid types are not expected, but this provides backward
-             * compatibility with old history files.
-             */
+            // Invalid types are not expected, but this provides backward
+            // compatibility with old history files.
             if !line.is_null() {
                 line = line.sub(1);
                 *(line) = b':';
@@ -370,7 +368,7 @@ pub unsafe fn status_redraw(c: *mut client) -> i32 {
         let mut ctx: screen_write_ctx = zeroed();
         let mut gc: grid_cell = zeroed();
 
-        //u_int lines, i, n;
+        // u_int lines, i, n;
 
         let width = (*c).tty.sx;
 
@@ -405,7 +403,7 @@ pub unsafe fn status_redraw(c: *mut client) -> i32 {
         let ft = format_create(c, null_mut(), FORMAT_NONE, flags);
         format_defaults(ft, c, None, None, None);
 
-        /* Set up default colour. */
+        // Set up default colour.
         style_apply(&raw mut gc, (*s).options, c!("status-style"), ft);
         let fg = options_get_number_((*s).options, "status-fg") as i32;
         if !COLOUR_DEFAULT(fg) {
@@ -480,10 +478,10 @@ pub unsafe fn status_redraw(c: *mut client) -> i32 {
         }
         screen_write_stop(&raw mut ctx);
 
-        /* Free the format tree. */
+        // Free the format tree.
         format_free(ft);
 
-        /* Return if the status line has changed. */
+        // Return if the status line has changed.
         // log_debug("%s exit: force=%d, changed=%d", __func__, force, changed);
         (force || changed) as i32
     }
@@ -522,10 +520,8 @@ pub unsafe fn status_message_set_(
         (*c).message_string = s;
         server_add_message!("{} message: {}", _s((*c).name), _s(s));
 
-        /*
-         * With delay -1, the display-time option is used; zero means wait for
-         * key press; more than zero is the actual delay time in milliseconds.
-         */
+        // With delay -1, the display-time option is used; zero means wait for
+        // key press; more than zero is the actual delay time in milliseconds.
         if delay == -1 {
             delay = options_get_number_((*(*c).session).options, "display-time") as i32;
         }
@@ -881,10 +877,8 @@ pub unsafe fn status_prompt_redraw(c: *mut client) -> i32 {
             let pcursor = utf8_strwidth((*c).prompt_buffer, (*c).prompt_index as isize);
             let mut pwidth = utf8_strwidth((*c).prompt_buffer, -1);
             if pcursor >= left {
-                /*
-                 * The cursor would be outside the screen so start drawing
-                 * with it on the right.
-                 */
+                // The cursor would be outside the screen so start drawing
+                // with it on the right.
                 offset = (pcursor - left) + 1;
                 pwidth = left;
             } else {
@@ -1206,11 +1200,11 @@ unsafe fn status_prompt_replace_complete(c: *mut client, mut s: *const u8) -> i3
         let mut last: *mut utf8_data;
         let mut ud: *mut utf8_data;
 
-        /* Work out where the cursor currently is. */
+        // Work out where the cursor currently is.
         let idx = (*c).prompt_index.saturating_sub(1);
         let mut size = utf8_strlen((*c).prompt_buffer);
 
-        /* Find the word we are in. */
+        // Find the word we are in.
         let mut first = (*c).prompt_buffer.add(idx);
         while first.addr() > (*c).prompt_buffer.addr() && status_prompt_space(first) == 0 {
             first = first.sub(1);
@@ -1252,7 +1246,7 @@ unsafe fn status_prompt_replace_complete(c: *mut client, mut s: *const u8) -> i3
             word[used] = b'\0';
         }
 
-        /* Try to complete it. */
+        // Try to complete it.
         if s.is_null() {
             allocated = status_prompt_complete(
                 c,
@@ -1265,12 +1259,12 @@ unsafe fn status_prompt_replace_complete(c: *mut client, mut s: *const u8) -> i3
             s = allocated;
         }
 
-        /* Trim out word. */
+        // Trim out word.
         let n: usize = size - last.offset_from_unsigned((*c).prompt_buffer) + 1; /* with \0 */
         libc::memmove(first.cast(), last.cast(), n * size_of::<utf8_data>());
         size -= last.offset_from_unsigned(first);
 
-        /* Insert the new word. */
+        // Insert the new word.
         size += strlen(s);
         let off: usize = first.offset_from_unsigned((*c).prompt_buffer);
         (*c).prompt_buffer = xreallocarray_::<utf8_data>((*c).prompt_buffer, size + 1).as_ptr();
@@ -1295,29 +1289,29 @@ unsafe fn status_prompt_forward_word(c: *mut client, size: usize, vi: i32, separ
     unsafe {
         let mut idx = (*c).prompt_index;
 
-        /* In emacs mode, skip until the first non-whitespace character. */
+        // In emacs mode, skip until the first non-whitespace character.
         if vi == 0 {
             while idx != size && status_prompt_space((*c).prompt_buffer.add(idx)) != 0 {
                 idx += 1;
             }
         }
 
-        /* Can't move forward if we're already at the end. */
+        // Can't move forward if we're already at the end.
         if idx == size {
             (*c).prompt_index = idx;
             return;
         }
 
-        /* Determine the current character class (separators or not). */
+        // Determine the current character class (separators or not).
         let word_is_separators =
             (status_prompt_in_list(separators, (*c).prompt_buffer.add(idx)) != 0
                 && status_prompt_space((*c).prompt_buffer.add(idx)) == 0) as i32;
 
-        /* Skip ahead until the first space or opposite character class. */
+        // Skip ahead until the first space or opposite character class.
         loop {
             idx += 1;
             if status_prompt_space((*c).prompt_buffer.add(idx)) != 0 {
-                /* In vi mode, go to the start of the next word. */
+                // In vi mode, go to the start of the next word.
                 if vi != 0 {
                     while idx != size && status_prompt_space((*c).prompt_buffer.add(idx)) != 0 {
                         idx += 1;
@@ -1344,12 +1338,12 @@ unsafe fn status_prompt_end_word(c: *mut client, size: usize, separators: *const
         let mut idx = (*c).prompt_index;
         // int word_is_separators;
 
-        /* Can't move forward if we're already at the end. */
+        // Can't move forward if we're already at the end.
         if idx == size {
             return;
         }
 
-        /* Find the next word. */
+        // Find the next word.
         loop {
             idx += 1;
             if idx == size {
@@ -1361,10 +1355,10 @@ unsafe fn status_prompt_end_word(c: *mut client, size: usize, separators: *const
             }
         }
 
-        /* Determine the character class (separators or not). */
+        // Determine the character class (separators or not).
         let word_is_separators = status_prompt_in_list(separators, (*c).prompt_buffer.add(idx));
 
-        /* Skip ahead until the next space or opposite character class. */
+        // Skip ahead until the next space or opposite character class.
         loop {
             idx += 1;
             if idx == size {
@@ -1378,7 +1372,7 @@ unsafe fn status_prompt_end_word(c: *mut client, size: usize, separators: *const
             }
         }
 
-        /* Back up to the previous character to stop at the end of the word. */
+        // Back up to the previous character to stop at the end of the word.
         (*c).prompt_index = idx - 1;
     }
 }
@@ -1388,7 +1382,7 @@ unsafe fn status_prompt_backward_word(c: *mut client, separators: *const u8) {
     unsafe {
         let mut idx = (*c).prompt_index;
 
-        /* Find non-whitespace. */
+        // Find non-whitespace.
         while idx != 0 {
             idx -= 1;
             if status_prompt_space((*c).prompt_buffer.add(idx)) == 0 {
@@ -1397,14 +1391,14 @@ unsafe fn status_prompt_backward_word(c: *mut client, separators: *const u8) {
         }
         let word_is_separators = status_prompt_in_list(separators, (*c).prompt_buffer.add(idx));
 
-        /* Find the character before the beginning of the word. */
+        // Find the character before the beginning of the word.
         while idx != 0 {
             idx -= 1;
             if status_prompt_space((*c).prompt_buffer.add(idx)) != 0
                 || word_is_separators
                     != status_prompt_in_list(separators, (*c).prompt_buffer.add(idx))
             {
-                /* Go back to the word. */
+                // Go back to the word.
                 idx += 1;
                 break;
             }
@@ -1541,7 +1535,7 @@ pub unsafe fn status_prompt_key(c: *mut client, mut key: key_code) -> i32 {
                         separators = options_get_string_(oo, "word-separators");
                         idx = (*c).prompt_index;
 
-                        /* Find non-whitespace. */
+                        // Find non-whitespace.
                         while idx != 0 {
                             idx -= 1;
                             if status_prompt_space((*c).prompt_buffer.add(idx)) == 0 {
@@ -1551,7 +1545,7 @@ pub unsafe fn status_prompt_key(c: *mut client, mut key: key_code) -> i32 {
                         word_is_separators =
                             status_prompt_in_list(separators, (*c).prompt_buffer.add(idx));
 
-                        /* Find the character before the beginning of the word. */
+                        // Find the character before the beginning of the word.
                         while idx != 0 {
                             idx -= 1;
                             if status_prompt_space((*c).prompt_buffer.add(idx)) != 0
@@ -1561,7 +1555,7 @@ pub unsafe fn status_prompt_key(c: *mut client, mut key: key_code) -> i32 {
                                         (*c).prompt_buffer.add(idx),
                                     )
                             {
-                                /* Go back to the word. */
+                                // Go back to the word.
                                 idx += 1;
                                 break;
                             }
@@ -1785,10 +1779,8 @@ pub unsafe fn status_prompt_key(c: *mut client, mut key: key_code) -> i32 {
 /// Get previous line from the history.
 unsafe fn status_prompt_up_history(idx: *mut u32, type_: u32) -> *mut u8 {
     unsafe {
-        /*
-         * History runs from 0 to size - 1. Index is from 0 to size. Zero is
-         * empty.
-         */
+        // History runs from 0 to size - 1. Index is from 0 to size. Zero is
+        // empty.
 
         if STATUS_PROMPT_HSIZE[type_ as usize] == 0
             || *idx.add(type_ as usize) == STATUS_PROMPT_HSIZE[type_ as usize]
@@ -2338,20 +2330,20 @@ unsafe fn status_prompt_complete(c: *mut client, word: *const u8, mut offset: u3
                 offset += 2;
             }
 
-            /* If this is a window completion, open the window menu. */
+            // If this is a window completion, open the window menu.
             if (*c).prompt_type == prompt_type::PROMPT_TYPE_WINDOW_TARGET {
                 out = status_prompt_complete_window_menu(c, (*c).session, s, offset, b'\0');
                 break 'found;
             }
             colon = libc::strchr(s, b':' as i32);
 
-            /* If there is no colon, complete as a session. */
+            // If there is no colon, complete as a session.
             if colon.is_null() {
                 out = status_prompt_complete_session(&raw mut list, &raw mut size, s, flag);
                 break 'found;
             }
 
-            /* If there is a colon but no period, find session and show a menu. */
+            // If there is a colon but no period, find session and show a menu.
             if libc::strchr(colon.add(1), b'.' as i32).is_null() {
                 if *s == b':' {
                     session = (*c).session;

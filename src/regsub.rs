@@ -112,10 +112,8 @@ pub unsafe fn regsub(
                 break;
             }
 
-            /*
-             * Append any text not part of this match (from the end of the
-             * last match).
-             */
+            // Append any text not part of this match (from the end of the
+            // last match).
             regsub_copy(
                 &raw mut buf,
                 &raw mut len,
@@ -124,11 +122,9 @@ pub unsafe fn regsub(
                 (m[0].rm_so as isize + start) as usize,
             );
 
-            /*
-             * If the last match was empty and this one isn't (it is either
-             * later or has matched text), expand this match. If it is
-             * empty, move on one character and try again from there.
-             */
+            // If the last match was empty and this one isn't (it is either
+            // later or has matched text), expand this match. If it is
+            // empty, move on one character and try again from there.
             if empty != 0 || start + m[0].rm_so as isize != last || m[0].rm_so != m[0].rm_eo {
                 regsub_expand(
                     &raw mut buf,

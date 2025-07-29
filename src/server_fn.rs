@@ -95,11 +95,9 @@ pub unsafe fn server_redraw_window_borders(w: *mut window) {
 
 pub unsafe fn server_status_window(w: *mut window) {
     unsafe {
-        /*
-         * This is slightly different. We want to redraw the status line of any
-         * clients containing this window rather than anywhere it is the
-         * current window.
-         */
+        // This is slightly different. We want to redraw the status line of any
+        // clients containing this window rather than anywhere it is the
+        // current window.
 
         for s in rb_foreach(&raw mut SESSIONS).map(NonNull::as_ptr) {
             if session_has(s, w) != 0 {
@@ -262,16 +260,14 @@ pub unsafe fn server_link_window(
                 return -1;
             }
             if killflag != 0 {
-                /*
-                 * Can't use session_detach as it will destroy session
-                 * if this makes it empty.
-                 */
+                // Can't use session_detach as it will destroy session
+                // if this makes it empty.
                 notify_session_window(c"window-unlinked", dst, (*dstwl).window);
                 (*dstwl).flags &= !WINLINK_ALERTFLAGS;
                 winlink_stack_remove(&raw mut (*dst).lastw, dstwl);
                 winlink_remove(&raw mut (*dst).windows, dstwl);
 
-                /* Force select/redraw if current. */
+                // Force select/redraw if current.
                 if dstwl == (*dst).curw {
                     selectflag = 1;
                     (*dst).curw = null_mut();
@@ -484,14 +480,14 @@ pub unsafe fn server_check_unattached() {
                 0 => continue, // off
                 1 => (),       // on
                 2 => {
-                    /* keep-last */
+                    // keep-last
                     let sg = session_group_contains(s);
                     if sg.is_null() || session_group_count(sg) <= 1 {
                         continue;
                     }
                 }
                 3 => {
-                    /* keep-group */
+                    // keep-group
                     let sg = session_group_contains(s);
                     if !sg.is_null() && session_group_count(sg) == 1 {
                         continue;

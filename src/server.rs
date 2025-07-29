@@ -325,10 +325,8 @@ pub unsafe fn server_loop() -> i32 {
             }
         }
 
-        /*
-         * No attached clients therefore want to exit - flush any waiting
-         * clients but don't actually exit until they've gone.
-         */
+        // No attached clients therefore want to exit - flush any waiting
+        // clients but don't actually exit until they've gone.
         cmd_wait_for_flush();
         if !tailq_empty(&raw const CLIENTS) {
             return 0;
@@ -415,7 +413,7 @@ unsafe extern "C-unwind" fn server_accept(fd: i32, events: i16, _data: *mut c_vo
             match errno!() {
                 libc::EAGAIN | libc::EINTR | libc::ECONNABORTED => return,
                 libc::ENFILE | libc::EMFILE => {
-                    /* Delete and don't try again for 1 second. */
+                    // Delete and don't try again for 1 second.
                     server_add_accept(1);
                     return;
                 }

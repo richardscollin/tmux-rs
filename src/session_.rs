@@ -675,23 +675,21 @@ pub unsafe fn session_group_synchronize_from(target: *mut session) {
     }
 }
 
-/*
- * Synchronize a session with a target session. This means destroying all
- * winlinks then recreating them, then updating the current window, last window
- * stack and alerts.
- */
+// Synchronize a session with a target session. This means destroying all
+// winlinks then recreating them, then updating the current window, last window
+// stack and alerts.
 pub unsafe fn session_group_synchronize1(target: *mut session, s: *mut session) {
     let mut old_windows = MaybeUninit::<winlinks>::uninit();
     let mut old_lastw = MaybeUninit::<winlink_stack>::uninit();
 
     unsafe {
-        /* Don't do anything if the session is empty (it'll be destroyed). */
+        // Don't do anything if the session is empty (it'll be destroyed).
         let ww: *mut winlinks = &raw mut (*target).windows;
         if rb_empty(ww) {
             return;
         }
 
-        /* If the current window has vanished, move to the next now. */
+        // If the current window has vanished, move to the next now.
         if !(*s).curw.is_null()
             && winlink_find_by_index(ww, (*(*s).curw).idx).is_null()
             && session_last(s) != 0
@@ -700,11 +698,11 @@ pub unsafe fn session_group_synchronize1(target: *mut session, s: *mut session) 
             session_next(s, 0);
         }
 
-        /* Save the old pointer and reset it. */
+        // Save the old pointer and reset it.
         memcpy__(old_windows.as_mut_ptr(), &raw mut (*s).windows);
         rb_init(&raw mut (*s).windows);
 
-        /* Link all the windows from the target. */
+        // Link all the windows from the target.
         for wl in rb_foreach(ww).map(|e| e.as_ptr()) {
             let wl2 = winlink_add(&raw mut (*s).windows, (*wl).idx);
             (*wl2).session = s;
@@ -713,14 +711,14 @@ pub unsafe fn session_group_synchronize1(target: *mut session, s: *mut session) 
             (*wl2).flags |= (*wl).flags & WINLINK_ALERTFLAGS;
         }
 
-        /* Fix up the current window. */
+        // Fix up the current window.
         if !(*s).curw.is_null() {
             (*s).curw = winlink_find_by_index(&raw mut (*s).windows, (*(*s).curw).idx);
         } else {
             (*s).curw = winlink_find_by_index(&raw mut (*s).windows, (*(*target).curw).idx);
         }
 
-        /* Fix up the last window stack. */
+        // Fix up the last window stack.
         memcpy__(old_lastw.as_mut_ptr(), &raw mut (*s).lastw);
         tailq_init(&raw mut (*s).lastw);
 
@@ -732,7 +730,7 @@ pub unsafe fn session_group_synchronize1(target: *mut session, s: *mut session) 
             }
         }
 
-        /* Then free the old winlinks list. */
+        // Then free the old winlinks list.
         while !rb_empty(old_windows.as_mut_ptr()) {
             let wl = rb_root(old_windows.as_mut_ptr());
             let wl2 = winlink_find_by_window_id(&raw mut (*s).windows, (*(*wl).window).id);

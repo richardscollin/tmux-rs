@@ -29,11 +29,11 @@ pub(crate) use cmdq_get_callback;
 
 use crate::libc::{getpwuid, getuid};
 
-/* Command queue flags. */
+// Command queue flags.
 pub const CMDQ_FIRED: i32 = 0x1;
 pub const CMDQ_WAITING: i32 = 0x2;
 
-/* Command queue item type. */
+// Command queue item type.
 #[repr(i32)]
 #[derive(Copy, Clone)]
 pub enum cmdq_type {
@@ -397,10 +397,8 @@ pub unsafe fn cmdq_insert_hook_(
         }
         log_debug!("running hook {} (parent {:p})", name, item);
 
-        /*
-         * The hooks get a new state because they should not update the current
-         * target or formats for any subsequent commands.
-         */
+        // The hooks get a new state because they should not update the current
+        // target or formats for any subsequent commands.
         let new_state = cmdq_new_state(
             current,
             &raw mut (*state).event,
@@ -827,7 +825,7 @@ pub unsafe fn cmdq_next(c: *mut client) -> u32 {
             log_debug!("{} {}: exit (empty)", __func__, _s(name));
             return items;
         } // 'waiting
-        //waiting:
+        // waiting:
         log_debug!("{} {}: exit (wait)", __func__, _s(name));
         items
     }

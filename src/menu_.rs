@@ -396,7 +396,7 @@ pub unsafe fn menu_key_cb(c: *mut client, data: *mut c_void, mut event: *mut key
                                                 match (*event).key & !KEYC_MASK_FLAGS {
                                                     K | UP => break 'up,
                                                     BSPACE => break 'backspace,
-                                                    TAB => break 'tab, // this will fallthrough after
+                                                    TAB => break 'tab, /* this will fallthrough after */
                                                     DOWN | J => break 'down,
                                                     PPAGE | CTRL_B => break 'previous,
                                                     NPAGE => break 'next,

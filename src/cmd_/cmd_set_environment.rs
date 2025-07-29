@@ -106,7 +106,7 @@ unsafe fn cmd_set_environment_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd
             }
         }
 
-        //out:
+        // out:
         free_(expanded);
         retval
     }

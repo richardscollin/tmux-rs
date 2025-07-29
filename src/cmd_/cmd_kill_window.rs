@@ -76,7 +76,7 @@ unsafe fn cmd_kill_window_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
                 return cmd_retval::CMD_RETURN_NORMAL;
             }
 
-            /* Kill all windows except the current one. */
+            // Kill all windows except the current one.
             loop {
                 found = 0;
                 for loop_ in rb_foreach(&raw mut (*s).windows).map(NonNull::as_ptr) {
@@ -92,10 +92,8 @@ unsafe fn cmd_kill_window_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
                 }
             }
 
-            /*
-             * If the current window appears in the session more than once,
-             * kill it as well.
-             */
+            // If the current window appears in the session more than once,
+            // kill it as well.
             found = 0;
             for loop_ in rb_foreach(&raw mut (*s).windows).map(NonNull::as_ptr) {
                 if (*loop_).window == (*wl).window {

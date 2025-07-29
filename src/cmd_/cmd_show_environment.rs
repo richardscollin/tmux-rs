@@ -44,7 +44,7 @@ unsafe fn cmd_show_environment_escape(envent: *mut environ_entry) -> *mut u8 {
             value = value.add(1);
             c != b'\0'
         } {
-            /* POSIX interprets $ ` " and \ in double quotes. */
+            // POSIX interprets $ ` " and \ in double quotes.
             if c == b'$' as _ || c == b'`' as _ || c == b'"' as _ || c == b'\\' as _ {
                 *out = b'\\' as _;
                 out = out.add(1);

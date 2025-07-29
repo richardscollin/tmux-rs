@@ -150,10 +150,8 @@ unsafe fn screen_write_set_client_cb(ttyctx: *mut tty_ctx, c: *mut client) -> i3
             return -1;
         }
         if (*c).flags.intersects(client_flag::REDRAWPANES) {
-            /*
-             * Redraw is already deferred to redraw another pane - redraw
-             * this one also when that happens.
-             */
+            // Redraw is already deferred to redraw another pane - redraw
+            // this one also when that happens.
             // log_debug("%s: adding %%%u to deferred redraw", __func__, (*wp).id);
             (*wp).flags |= window_pane_flags::PANE_REDRAW;
             return -1;
@@ -219,12 +217,10 @@ unsafe fn screen_write_initctx(ctx: *mut screen_write_ctx, ttyctx: *mut tty_ctx,
         }
 
         if (*ctx).flags & SCREEN_WRITE_SYNC == 0 {
-            /*
-             * For the active pane or for an overlay (no pane), we want to
-             * only use synchronized updates if requested (commands that
-             * move the cursor); for other panes, always use it, since the
-             * cursor will have to move.
-             */
+            // For the active pane or for an overlay (no pane), we want to
+            // only use synchronized updates if requested (commands that
+            // move the cursor); for other panes, always use it, since the
+            // cursor will have to move.
             if !(*ctx).wp.is_null() {
                 if (*ctx).wp != (*(*(*ctx).wp).window).active {
                     (*ttyctx).num = 1;
@@ -448,7 +444,7 @@ pub unsafe fn screen_write_text_(
 
         let mut left = (cx + width) - (*s).cx;
         loop {
-            /* Find the end of what can fit on the line. */
+            // Find the end of what can fit on the line.
             let mut at = 0;
             let mut end = idx;
             while (*text.add(end)).size != 0 {
@@ -462,10 +458,8 @@ pub unsafe fn screen_write_text_(
                 end += 1;
             }
 
-            /*
-             * If we're on a space, that's the end. If not, walk back to
-             * try and find one.
-             */
+            // If we're on a space, that's the end. If not, walk back to
+            // try and find one.
             let next = if (*text.add(end)).size == 0 {
                 end
             } else if ((*text.add(end)).size == 1 && (*text.add(end)).data[0] == b'\n')
@@ -504,10 +498,8 @@ pub unsafe fn screen_write_text_(
             left = width;
         }
 
-        /*
-         * Fail if on the last line and there is more to come or at the end, or
-         * if the text was not entirely consumed.
-         */
+        // Fail if on the last line and there is more to come or at the end, or
+        // if the text was not entirely consumed.
         if ((*s).cy == cy + lines - 1 && (!more || (*s).cx == cx + width))
             || (*text.add(idx)).size != 0
         {
@@ -516,10 +508,8 @@ pub unsafe fn screen_write_text_(
         }
         free_(text);
 
-        /*
-         * If no more to come, move to the next line. Otherwise, leave on
-         * the same line (except if at the end).
-         */
+        // If no more to come, move to the next line. Otherwise, leave on
+        // the same line (except if at the end).
         if !more || (*s).cx == cx + width {
             screen_write_cursormove(ctx, cx as i32, (*s).cy as i32 + 1, 0);
         }
@@ -851,7 +841,7 @@ pub unsafe fn screen_write_box(
         gc.attr |= grid_attr::GRID_ATTR_CHARSET;
         gc.flags |= grid_flag::NOPALETTE;
 
-        /* Draw top border */
+        // Draw top border
         screen_write_box_border_set(lines, CELL_TOPLEFT, &raw mut gc);
         screen_write_cell(ctx, &raw const gc);
         screen_write_box_border_set(lines, CELL_LEFTRIGHT, &raw mut gc);
@@ -861,7 +851,7 @@ pub unsafe fn screen_write_box(
         screen_write_box_border_set(lines, CELL_TOPRIGHT, &raw mut gc);
         screen_write_cell(ctx, &raw const gc);
 
-        /* Draw bottom border */
+        // Draw bottom border
         screen_write_set_cursor(ctx, cx as i32, (cy + ny - 1) as i32);
         screen_write_box_border_set(lines, CELL_BOTTOMLEFT, &raw mut gc);
         screen_write_cell(ctx, &gc);
@@ -872,13 +862,13 @@ pub unsafe fn screen_write_box(
         screen_write_box_border_set(lines, CELL_BOTTOMRIGHT, &raw mut gc);
         screen_write_cell(ctx, &raw const gc);
 
-        /* Draw sides */
+        // Draw sides
         screen_write_box_border_set(lines, CELL_TOPBOTTOM, &raw mut gc);
         for i in 1..(ny - 1) {
-            /* left side */
+            // left side
             screen_write_set_cursor(ctx, cx as i32, (cy + i) as i32);
             screen_write_cell(ctx, &raw const gc);
-            /* right side */
+            // right side
             screen_write_set_cursor(ctx, (cx + nx - 1) as i32, (cy + i) as i32);
             screen_write_cell(ctx, &raw const gc);
         }
@@ -902,10 +892,8 @@ pub unsafe fn screen_write_preview(ctx: *mut screen_write_ctx, src: *mut screen,
         let cx = (*s).cx;
         let cy = (*s).cy;
 
-        /*
-         * If the cursor is on, pick the area around the cursor, otherwise use
-         * the top left.
-         */
+        // If the cursor is on, pick the area around the cursor, otherwise use
+        // the top left.
         let mut px: u32;
         let mut py: u32;
         if (*src).mode.intersects(mode_flag::MODE_CURSOR) {
@@ -993,12 +981,12 @@ pub unsafe fn screen_write_cursorup(ctx: *mut screen_write_ctx, mut ny: u32) {
         }
 
         if cy < (*s).rupper {
-            /* Above region. */
+            // Above region.
             if ny > cy {
                 ny = cy;
             }
         } else {
-            /* Below region. */
+            // Below region.
             if ny > cy - (*s).rupper {
                 ny = cy - (*s).rupper;
             }
@@ -1025,12 +1013,12 @@ pub unsafe fn screen_write_cursordown(ctx: *mut screen_write_ctx, mut ny: u32) {
         }
 
         if cy > (*s).rlower {
-            /* Below region. */
+            // Below region.
             if ny > screen_size_y(s) - 1 - cy {
                 ny = screen_size_y(s) - 1 - cy;
             }
         } else {
-            /* Above region. */
+            // Above region.
             if ny > (*s).rlower - cy {
                 ny = (*s).rlower - cy;
             }
@@ -1589,7 +1577,7 @@ pub unsafe fn screen_write_scrollregion(
 
         screen_write_collect_flush(ctx, 0, "screen_write_scrollregion");
 
-        /* Cursor moves to top-left. */
+        // Cursor moves to top-left.
         screen_write_set_cursor(ctx, 0, 0);
 
         (*s).rupper = rupper;
@@ -1737,7 +1725,7 @@ pub unsafe fn screen_write_clearendofscreen(ctx: *mut screen_write_ctx, bg: u32)
         screen_write_initctx(ctx, &raw mut ttyctx, 1);
         ttyctx.bg = bg;
 
-        /* Scroll into history if it is enabled and clearing entire screen. */
+        // Scroll into history if it is enabled and clearing entire screen.
         if (*s).cx == 0
             && (*s).cy == 0
             && ((*gd).flags & GRID_HISTORY != 0)
@@ -1808,7 +1796,7 @@ pub unsafe fn screen_write_clearscreen(ctx: *mut screen_write_ctx, bg: u32) {
         screen_write_initctx(ctx, &raw mut ttyctx, 1);
         ttyctx.bg = bg;
 
-        /* Scroll into history if it is enabled. */
+        // Scroll into history if it is enabled.
         if ((*(*s).grid).flags & GRID_HISTORY != 0)
             && !(*ctx).wp.is_null()
             && options_get_number_((*(*ctx).wp).options, "scroll-on-clear") != 0
@@ -1865,19 +1853,19 @@ pub unsafe fn screen_write_collect_trim(
             let csx = (*ci).x;
             let cex = (*ci).x + (*ci).used - 1;
 
-            /* Item is entirely before. */
+            // Item is entirely before.
             if cex < sx {
                 continue;
             } // log_debug("%s: %p %u-%u before %u-%u", __func__, ci, csx, cex, sx, ex);
 
-            /* Item is entirely after. */
+            // Item is entirely after.
             if csx > ex {
                 // log_debug("%s: %p %u-%u after %u-%u", __func__, ci, csx, cex, sx, ex);
                 before = ci;
                 break;
             }
 
-            /* Item is entirely inside. */
+            // Item is entirely inside.
             if csx >= sx && cex <= ex {
                 // log_debug("%s: %p %u-%u inside %u-%u", __func__, ci, csx, cex, sx, ex);
                 tailq_remove(&raw mut (*cl).items, ci);
@@ -1888,7 +1876,7 @@ pub unsafe fn screen_write_collect_trim(
                 continue;
             }
 
-            /* Item under the start. */
+            // Item under the start.
             if csx < sx && cex >= sx && cex <= ex {
                 // log_debug("%s: %p %u-%u start %u-%u", __func__, ci, csx, cex, sx, ex);
                 (*ci).used = sx - csx;
@@ -1896,7 +1884,7 @@ pub unsafe fn screen_write_collect_trim(
                 continue;
             }
 
-            /* Item covers the end. */
+            // Item covers the end.
             if cex > ex && csx >= sx && csx <= ex {
                 // log_debug("%s: %p %u-%u end %u-%u", __func__, ci, csx, cex, sx, ex);
                 (*ci).x = ex + 1;
@@ -1906,7 +1894,7 @@ pub unsafe fn screen_write_collect_trim(
                 break;
             }
 
-            /* Item must cover both sides. */
+            // Item must cover both sides.
             // log_debug("%s: %p %u-%u under %u-%u", __func__, ci, csx, cex, sx, ex);
             let ci2 = screen_write_get_citem().as_ptr();
             (*ci2).type_ = (*ci).type_;
@@ -2101,11 +2089,9 @@ pub unsafe fn screen_write_collect_add(ctx: *mut screen_write_ctx, gc: *const gr
         let s = (*ctx).s;
         let sx = screen_size_x(s);
 
-        /*
-         * Don't need to check that the attributes and whatnot are still the
-         * same - input_parse will end the collection when anything that isn't
-         * a plain character is encountered.
-         */
+        // Don't need to check that the attributes and whatnot are still the
+        // same - input_parse will end the collection when anything that isn't
+        // a plain character is encountered.
 
         if ((*gc).data.width != 1 || (*gc).data.size != 1 || (*gc).data.data[0] >= 0x7f)
             || (*gc).attr.intersects(grid_attr::GRID_ATTR_CHARSET)
@@ -2169,20 +2155,20 @@ pub unsafe fn screen_write_cell(ctx: *mut screen_write_ctx, gc: *const grid_cell
         // xx, not_wrap;
         let mut skip = 1;
 
-        /* Ignore padding cells. */
+        // Ignore padding cells.
         if (*gc).flags.intersects(grid_flag::PADDING) {
             return;
         }
 
-        /* Get the previous cell to check for combining. */
+        // Get the previous cell to check for combining.
         if screen_write_combine(ctx, gc) != 0 {
             return;
         }
 
-        /* Flush any existing scrolling. */
+        // Flush any existing scrolling.
         screen_write_collect_flush(ctx, 1, "screen_write_cell");
 
-        /* If this character doesn't fit, ignore it. */
+        // If this character doesn't fit, ignore it.
         if !(*s).mode.intersects(mode_flag::MODE_WRAP)
             && width > 1
             && (width > sx || ((*s).cx != sx && (*s).cx > sx - width))
@@ -2190,13 +2176,13 @@ pub unsafe fn screen_write_cell(ctx: *mut screen_write_ctx, gc: *const grid_cell
             return;
         }
 
-        /* If in insert mode, make space for the cells. */
+        // If in insert mode, make space for the cells.
         if (*s).mode.intersects(mode_flag::MODE_INSERT) {
             grid_view_insert_cells((*s).grid, (*s).cx, (*s).cy, width, 8);
             skip = 0;
         }
 
-        /* Check this will fit on the current line and wrap if not. */
+        // Check this will fit on the current line and wrap if not.
         if (*s).mode.intersects(mode_flag::MODE_WRAP) && (*s).cx > sx - width {
             // log_debug("%s: wrapped at %u,%u", __func__, (*s).cx, (*s).cy);
             screen_write_linefeed(ctx, 1, 8);
@@ -2204,13 +2190,13 @@ pub unsafe fn screen_write_cell(ctx: *mut screen_write_ctx, gc: *const grid_cell
             screen_write_collect_flush(ctx, 1, "screen_write_cell");
         }
 
-        /* Sanity check cursor position. */
+        // Sanity check cursor position.
         if (*s).cx > sx - width || (*s).cy > sy - 1 {
             return;
         }
         screen_write_initctx(ctx, &raw mut ttyctx, 0);
 
-        /* Handle overwriting of UTF-8 characters. */
+        // Handle overwriting of UTF-8 characters.
         let gl: *mut grid_line = grid_get_line((*s).grid, (*(*s).grid).hsize + (*s).cy);
         if (*gl).flags.intersects(grid_line_flag::EXTENDED) {
             grid_view_get_cell(gd, (*s).cx, (*s).cy, &raw mut now_gc);
@@ -2219,10 +2205,8 @@ pub unsafe fn screen_write_cell(ctx: *mut screen_write_ctx, gc: *const grid_cell
             }
         }
 
-        /*
-         * If the new character is UTF-8 wide, fill in padding cells. Have
-         * already ensured there is enough room.
-         */
+        // If the new character is UTF-8 wide, fill in padding cells. Have
+        // already ensured there is enough room.
         for xx in ((*s).cx + 1)..((*s).cx + width) {
             // log_debug("%s: new padding at %u,%u", __func__, xx, (*s).cy);
             grid_view_set_padding(gd, xx, (*s).cy);
@@ -2249,7 +2233,7 @@ pub unsafe fn screen_write_cell(ctx: *mut screen_write_ctx, gc: *const grid_cell
             }
         }
 
-        /* Update the selected flag and set the cell. */
+        // Update the selected flag and set the cell.
         let selected = screen_check_selection(s, (*s).cx, (*s).cy) != 0;
         if selected && !(*gc).flags.intersects(grid_flag::SELECTED) {
             memcpy__(&raw mut tmp_gc, gc);
@@ -2266,10 +2250,8 @@ pub unsafe fn screen_write_cell(ctx: *mut screen_write_ctx, gc: *const grid_cell
             skip = 0;
         }
 
-        /*
-         * Move the cursor. If not wrapping, stick at the last character and
-         * replace it.
-         */
+        // Move the cursor. If not wrapping, stick at the last character and
+        // replace it.
         let not_wrap = !((*s).mode.intersects(mode_flag::MODE_WRAP)) as i32;
         if (*s).cx <= (sx as i32 - not_wrap - width as i32) as u32 {
             screen_write_set_cursor(ctx, ((*s).cx + width) as i32, -1);
@@ -2277,14 +2259,14 @@ pub unsafe fn screen_write_cell(ctx: *mut screen_write_ctx, gc: *const grid_cell
             screen_write_set_cursor(ctx, sx as i32 - not_wrap, -1);
         }
 
-        /* Create space for character in insert mode. */
+        // Create space for character in insert mode.
         if (*s).mode.intersects(mode_flag::MODE_INSERT) {
             screen_write_collect_flush(ctx, 0, "screen_write_cell");
             ttyctx.num = width;
             tty_write(tty_cmd_insertcharacter, &raw mut ttyctx);
         }
 
-        /* Write to the screen. */
+        // Write to the screen.
         if skip == 0 {
             if selected {
                 screen_select_cell(s, &raw mut tmp_gc, gc);
@@ -2312,11 +2294,9 @@ pub unsafe fn screen_write_combine(ctx: *mut screen_write_ctx, gc: *const grid_c
         let mut force_wide = 0;
         let mut zero_width = 0;
 
-        /*
-         * Is this character which makes no sense without being combined? If
-         * this is true then flag it here and discard the character (return 1)
-         * if we cannot combine it.
-         */
+        // Is this character which makes no sense without being combined? If
+        // this is true then flag it here and discard the character (return 1)
+        // if we cannot combine it.
         if utf8_is_zwj(ud) != 0 {
             zero_width = 1;
         } else if utf8_is_vs(ud) != 0 {
@@ -2326,13 +2306,13 @@ pub unsafe fn screen_write_combine(ctx: *mut screen_write_ctx, gc: *const grid_c
             zero_width = 1;
         }
 
-        /* Cannot combine empty character or at left. */
+        // Cannot combine empty character or at left.
         if (*ud).size < 2 || cx == 0 {
             return zero_width;
         }
         // log_debug("%s: character %.*s at %u,%u (width %u)", __func__, (int)(*ud).size, (*ud).data, cx, cy, (*ud).width);
 
-        /* Find the cell to combine with. */
+        // Find the cell to combine with.
         let mut n = 1;
         grid_view_get_cell(gd, cx - n, cy, &raw mut last);
         if cx != 1 && last.flags.intersects(grid_flag::PADDING) {
@@ -2343,11 +2323,9 @@ pub unsafe fn screen_write_combine(ctx: *mut screen_write_ctx, gc: *const grid_c
             return zero_width;
         }
 
-        /*
-         * Check if we need to combine characters. This could be zero width
-         * (set above), a modifier character (with an existing Unicode
-         * character) or a previous ZWJ.
-         */
+        // Check if we need to combine characters. This could be zero width
+        // (set above), a modifier character (with an existing Unicode
+        // character) or a previous ZWJ.
         if zero_width == 0 {
             if utf8_is_modifier(ud) != 0 {
                 if last.data.size < 2 {
@@ -2359,17 +2337,17 @@ pub unsafe fn screen_write_combine(ctx: *mut screen_write_ctx, gc: *const grid_c
             }
         }
 
-        /* Check if this combined character would be too long. */
+        // Check if this combined character would be too long.
         if last.data.size + (*ud).size > UTF8_SIZE as u8 {
             return 0;
         }
 
-        /* Combining; flush any pending output. */
+        // Combining; flush any pending output.
         screen_write_collect_flush(ctx, 0, "screen_write_combine");
 
         // log_debug("%s: %.*s -> %.*s at %u,%u (offset %u, width %u)", __func__, (int)(*ud).size, (*ud).data, (int)last.data.size, last.data.data, cx - n, cy, n, last.data.width);
 
-        /* Append the data. */
+        // Append the data.
         libc::memcpy(
             (&raw mut last.data.data[last.data.size as usize]).cast(),
             (&raw const (*ud).data).cast(),
@@ -2377,7 +2355,7 @@ pub unsafe fn screen_write_combine(ctx: *mut screen_write_ctx, gc: *const grid_c
         );
         last.data.size += (*ud).size;
 
-        /* Force the width to 2 for modifiers and variation selector. */
+        // Force the width to 2 for modifiers and variation selector.
         if last.data.width == 1 && force_wide != 0 {
             last.data.width = 2;
             n = 2;
@@ -2386,18 +2364,16 @@ pub unsafe fn screen_write_combine(ctx: *mut screen_write_ctx, gc: *const grid_c
             force_wide = 0;
         }
 
-        /* Set the new cell. */
+        // Set the new cell.
         grid_view_set_cell(gd, cx - n, cy, &last);
         if force_wide != 0 {
             grid_view_set_padding(gd, cx - 1, cy);
         }
 
-        /*
-         * Redraw the combined cell. If forcing the cell to width 2, reset the
-         * cached cursor position in the tty, since we don't really know
-         * whether the terminal thought the character was width 1 or width 2
-         * and what it is going to do now.
-         */
+        // Redraw the combined cell. If forcing the cell to width 2, reset the
+        // cached cursor position in the tty, since we don't really know
+        // whether the terminal thought the character was width 1 or width 2
+        // and what it is going to do now.
         screen_write_set_cursor(ctx, cx as i32 - n as i32, cy as i32);
         screen_write_initctx(ctx, &raw mut ttyctx, 0);
         ttyctx.cell = &raw const last;
@@ -2409,15 +2385,13 @@ pub unsafe fn screen_write_combine(ctx: *mut screen_write_ctx, gc: *const grid_c
     }
 }
 
-/*
- * UTF-8 wide characters are a bit of an annoyance. They take up more than one
- * cell on the screen, so following cells must not be drawn by marking them as
- * padding.
- *
- * So far, so good. The problem is, when overwriting a padding cell, or a UTF-8
- * character, it is necessary to also overwrite any other cells which covered
- * by the same character.
- */
+// UTF-8 wide characters are a bit of an annoyance. They take up more than one
+// cell on the screen, so following cells must not be drawn by marking them as
+// padding.
+//
+// So far, so good. The problem is, when overwriting a padding cell, or a UTF-8
+// character, it is necessary to also overwrite any other cells which covered
+// by the same character.
 
 pub unsafe fn screen_write_overwrite(
     ctx: *mut screen_write_ctx,
@@ -2432,11 +2406,9 @@ pub unsafe fn screen_write_overwrite(
         let mut done = 0;
 
         if (*gc).flags.intersects(grid_flag::PADDING) {
-            /*
-             * A padding cell, so clear any following and leading padding
-             * cells back to the character. Don't overwrite the current
-             * cell as that happens later anyway.
-             */
+            // A padding cell, so clear any following and leading padding
+            // cells back to the character. Don't overwrite the current
+            // cell as that happens later anyway.
             let mut xx = (*s).cx + 1;
             while {
                 xx -= 1;
@@ -2450,16 +2422,14 @@ pub unsafe fn screen_write_overwrite(
                 grid_view_set_cell(gd, xx, (*s).cy, &raw const GRID_DEFAULT_CELL);
             }
 
-            /* Overwrite the character at the start of this padding. */
+            // Overwrite the character at the start of this padding.
             // log_debug("%s: character at %u,%u", __func__, xx, (*s).cy);
             grid_view_set_cell(gd, xx, (*s).cy, &raw const GRID_DEFAULT_CELL);
             done = 1;
         }
 
-        /*
-         * Overwrite any padding cells that belong to any UTF-8 characters
-         * we'll be overwriting with the current character.
-         */
+        // Overwrite any padding cells that belong to any UTF-8 characters
+        // we'll be overwriting with the current character.
         if width != 1 || (*gc).data.width != 1 || (*gc).flags.intersects(grid_flag::PADDING) {
             let mut xx = (*s).cx + width - 1;
             while {
@@ -2552,7 +2522,7 @@ unsafe fn screen_write_sixelimage(ctx: *mut screen_write_ctx, si: *mut sixel_ima
             sixel_free(si);
             si = new;
 
-            /* Bail out if the image cannot be scaled. */
+            // Bail out if the image cannot be scaled.
             if si.is_null() {
                 return;
             }

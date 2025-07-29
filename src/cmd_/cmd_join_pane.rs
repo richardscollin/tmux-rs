@@ -85,7 +85,7 @@ unsafe fn cmd_join_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retva
             type_ = layout_type::LAYOUT_LEFTRIGHT;
         }
 
-        /* If the 'p' flag is dropped then this bit can be moved into 'l'. */
+        // If the 'p' flag is dropped then this bit can be moved into 'l'.
         if args_has_(args, 'l') || args_has_(args, 'p') {
             if args_has_(args, 'f') {
                 if type_ == layout_type::LAYOUT_TOPBOTTOM {

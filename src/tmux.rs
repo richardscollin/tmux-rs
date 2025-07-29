@@ -276,8 +276,8 @@ pub unsafe fn setblocking(fd: c_int, state: c_int) {
 pub unsafe fn get_timer() -> u64 {
     unsafe {
         let mut ts: timespec = zeroed();
-        //We want a timestamp in milliseconds suitable for time measurement,
-        //so prefer the monotonic clock.
+        // We want a timestamp in milliseconds suitable for time measurement,
+        // so prefer the monotonic clock.
         if clock_gettime(CLOCK_MONOTONIC, &raw mut ts) != 0 {
             clock_gettime(CLOCK_REALTIME, &raw mut ts);
         }
@@ -299,8 +299,8 @@ pub unsafe fn find_cwd() -> *mut u8 {
             return &raw mut CWD as _;
         }
 
-        //We want to use PWD so that symbolic links are maintained,
-        //but only if it matches the actual working directory.
+        // We want to use PWD so that symbolic links are maintained,
+        // but only if it matches the actual working directory.
 
         if realpath(pwd, &raw mut resolved1 as _).is_null() {
             return &raw mut CWD as _;

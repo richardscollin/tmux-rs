@@ -516,7 +516,7 @@ pub unsafe fn args_print(args: *mut args) -> *mut u8 {
         let mut len: usize = 1;
         let mut buf: *mut u8 = xcalloc(1, len).cast().as_ptr();
 
-        /* Process the flags first. */
+        // Process the flags first.
         for entry in rb_foreach(&raw mut (*args).tree).map(NonNull::as_ptr) {
             if (*entry).flags & ARGS_ENTRY_OPTIONAL_VALUE != 0 {
                 continue;
@@ -533,7 +533,7 @@ pub unsafe fn args_print(args: *mut args) -> *mut u8 {
             }
         }
 
-        /* Then the flags with arguments. */
+        // Then the flags with arguments.
         for entry in rb_foreach(&raw mut (*args).tree).map(NonNull::as_ptr) {
             if (*entry).flags & ARGS_ENTRY_OPTIONAL_VALUE != 0 {
                 if *buf != b'\0' {
@@ -563,7 +563,7 @@ pub unsafe fn args_print(args: *mut args) -> *mut u8 {
             args_print_add!(&raw mut buf, &raw mut len, " --");
         }
 
-        /* And finally the argument vector. */
+        // And finally the argument vector.
         for i in 0..(*args).count {
             args_print_add_value(&raw mut buf, &raw mut len, (*args).values.add(i as usize));
         }

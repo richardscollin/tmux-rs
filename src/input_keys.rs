@@ -49,10 +49,10 @@ static mut INPUT_KEY_TREE: input_key_tree = rb_initializer();
 const INPUT_KEY_DEFAULTS_LEN: usize = 83;
 
 static mut INPUT_KEY_DEFAULTS: [input_key_entry; 83] = [
-    /* Paste keys. */
+    // Paste keys.
     input_key_entry::new(keyc::KEYC_PASTE_START as u64, c"\x1b[200~"),
     input_key_entry::new(keyc::KEYC_PASTE_END as u64, c"\x1b[201~"),
-    /* Function keys. */
+    // Function keys.
     input_key_entry::new(keyc::KEYC_F1 as u64, c"\x1bOP"),
     input_key_entry::new(keyc::KEYC_F2 as u64, c"\x1bOQ"),
     input_key_entry::new(keyc::KEYC_F3 as u64, c"\x1bOR"),
@@ -72,7 +72,7 @@ static mut INPUT_KEY_DEFAULTS: [input_key_entry; 83] = [
     input_key_entry::new(keyc::KEYC_NPAGE as u64, c"\x1b[6~"),
     input_key_entry::new(keyc::KEYC_PPAGE as u64, c"\x1b[5~"),
     input_key_entry::new(keyc::KEYC_BTAB as u64, c"\x1b[Z"),
-    /* Arrow keys. */
+    // Arrow keys.
     input_key_entry::new(keyc::KEYC_UP as u64 | KEYC_CURSOR, c"\x1bOA"),
     input_key_entry::new(keyc::KEYC_DOWN as u64 | KEYC_CURSOR, c"\x1bOB"),
     input_key_entry::new(keyc::KEYC_RIGHT as u64 | KEYC_CURSOR, c"\x1bOC"),
@@ -81,7 +81,7 @@ static mut INPUT_KEY_DEFAULTS: [input_key_entry; 83] = [
     input_key_entry::new(keyc::KEYC_DOWN as u64, c"\x1b[B"),
     input_key_entry::new(keyc::KEYC_RIGHT as u64, c"\x1b[C"),
     input_key_entry::new(keyc::KEYC_LEFT as u64, c"\x1b[D"),
-    /* Keypad keys. */
+    // Keypad keys.
     input_key_entry::new(keyc::KEYC_KP_SLASH as u64 | KEYC_KEYPAD, c"\x1bOo"),
     input_key_entry::new(keyc::KEYC_KP_STAR as u64 | KEYC_KEYPAD, c"\x1bOj"),
     input_key_entry::new(keyc::KEYC_KP_MINUS as u64 | KEYC_KEYPAD, c"\x1bOm"),
@@ -114,7 +114,7 @@ static mut INPUT_KEY_DEFAULTS: [input_key_entry; 83] = [
     input_key_entry::new(keyc::KEYC_KP_ENTER as u64, c"\n"),
     input_key_entry::new(keyc::KEYC_KP_ZERO as u64, c"0"),
     input_key_entry::new(keyc::KEYC_KP_PERIOD as u64, c"."),
-    /* Keys with an embedded modifier. */
+    // Keys with an embedded modifier.
     input_key_entry::new(keyc::KEYC_F1 as u64 | KEYC_BUILD_MODIFIERS, c"\x1b[1;_P"),
     input_key_entry::new(keyc::KEYC_F2 as u64 | KEYC_BUILD_MODIFIERS, c"\x1b[1;_Q"),
     input_key_entry::new(keyc::KEYC_F3 as u64 | KEYC_BUILD_MODIFIERS, c"\x1b[1;_R"),
@@ -415,19 +415,19 @@ pub unsafe fn input_key(s: *mut screen, bev: *mut bufferevent, mut key: key_code
         let mut ike: *mut input_key_entry = null_mut();
         let mut ud: utf8_data = zeroed();
 
-        /* Mouse keys need a pane. */
+        // Mouse keys need a pane.
         if KEYC_IS_MOUSE(key) {
             return 0;
         }
 
-        /* Literal keys go as themselves (can't be more than eight bits). */
+        // Literal keys go as themselves (can't be more than eight bits).
         if key & KEYC_LITERAL != 0 {
             ud.data[0] = key as u8;
             input_key_write(__func__, bev, ud.data.as_ptr().cast(), 1);
             return 0;
         }
 
-        /* Is this backspace? */
+        // Is this backspace?
         if (key & KEYC_MASK_KEY) == keyc::KEYC_BSPACE as u64 {
             let mut newkey = options_get_number_(GLOBAL_OPTIONS, "backspace") as key_code;
             if newkey >= 0x7f {
@@ -436,22 +436,20 @@ pub unsafe fn input_key(s: *mut screen, bev: *mut bufferevent, mut key: key_code
             key = newkey | (key & (KEYC_MASK_MODIFIERS | KEYC_MASK_FLAGS));
         }
 
-        /* Is this backtab? */
+        // Is this backtab?
         if (key & KEYC_MASK_KEY) == keyc::KEYC_BTAB as u64 {
             if (*s).mode.intersects(EXTENDED_KEY_MODES) {
-                /* When in xterm extended mode, remap into S-Tab. */
+                // When in xterm extended mode, remap into S-Tab.
                 key = '\x09' as u64 | (key & !KEYC_MASK_KEY) | KEYC_SHIFT;
             } else {
-                /* Otherwise clear modifiers. */
+                // Otherwise clear modifiers.
                 key &= !KEYC_MASK_MODIFIERS;
             }
         }
 
-        /*
-         * A trivial case, that is a 7-bit key, excluding C0 control characters
-         * that can't be entered from the keyboard, and no modifiers; or a UTF-8
-         * key and no modifiers.
-         */
+        // A trivial case, that is a 7-bit key, excluding C0 control characters
+        // that can't be entered from the keyboard, and no modifiers; or a UTF-8
+        // key and no modifiers.
         if (key & !KEYC_MASK_KEY) == 0 {
             if key == c0::C0_HT as u64
                 || key == c0::C0_CR as u64
@@ -469,10 +467,8 @@ pub unsafe fn input_key(s: *mut screen, bev: *mut bufferevent, mut key: key_code
             }
         }
 
-        /*
-         * Look up the standard VT10x keys in the tree. If not in application
-         * keypad or cursor mode, remove the respective flags from the key.
-         */
+        // Look up the standard VT10x keys in the tree. If not in application
+        // keypad or cursor mode, remove the respective flags from the key.
         if !(*s).mode.intersects(mode_flag::MODE_KKEYPAD) {
             key &= !KEYC_KEYPAD;
         }
@@ -510,7 +506,7 @@ pub unsafe fn input_key(s: *mut screen, bev: *mut bufferevent, mut key: key_code
             return 0;
         }
 
-        /* Ignore internal function key codes. */
+        // Ignore internal function key codes.
         if (key >= KEYC_BASE && key < keyc::KEYC_BASE_END as u64)
             || (key >= KEYC_USER && key < KEYC_USER_END)
         {
@@ -518,15 +514,13 @@ pub unsafe fn input_key(s: *mut screen, bev: *mut bufferevent, mut key: key_code
             return 0;
         }
 
-        /*
-         * No builtin key sequence; construct an extended key sequence
-         * depending on the client mode.
-         *
-         * If something invalid reaches here, an invalid output may be
-         * produced. For example Ctrl-Shift-2 is invalid (as there's
-         * no way to enter it). The correct form is Ctrl-Shift-@, at
-         * least in US English keyboard layout.
-         */
+        // No builtin key sequence; construct an extended key sequence
+        // depending on the client mode.
+        //
+        // If something invalid reaches here, an invalid output may be
+        // produced. For example Ctrl-Shift-2 is invalid (as there's
+        // no way to enter it). The correct form is Ctrl-Shift-@, at
+        // least in US English keyboard layout.
         match (*s).mode & EXTENDED_KEY_MODES {
             mode_flag::MODE_KEYS_EXTENDED_2 =>
             /*
@@ -573,7 +567,7 @@ pub unsafe fn input_key_get_mouse(
         *rbuf = null_mut();
         *rlen = 0;
 
-        /* If this pane is not in button or all mode, discard motion events. */
+        // If this pane is not in button or all mode, discard motion events.
         if MOUSE_DRAG((*m).b) && !(*s).mode.intersects(MOTION_MOUSE_MODES) {
             return 0;
         }
@@ -581,12 +575,10 @@ pub unsafe fn input_key_get_mouse(
             return 0;
         }
 
-        /*
-         * If this event is a release event and not in all mode, discard it.
-         * In SGR mode we can tell absolutely because a release is normally
-         * shown by the last character. Without SGR, we check if the last
-         * buttons was also a release.
-         */
+        // If this event is a release event and not in all mode, discard it.
+        // In SGR mode we can tell absolutely because a release is normally
+        // shown by the last character. Without SGR, we check if the last
+        // buttons was also a release.
         if (*m).sgr_type != b' ' as u32 {
             if MOUSE_DRAG((*m).sgr_b)
                 && MOUSE_RELEASE((*m).sgr_b)
@@ -602,15 +594,13 @@ pub unsafe fn input_key_get_mouse(
             return 0;
         }
 
-        /*
-         * Use the SGR (1006) extension only if the application requested it
-         * and the underlying terminal also sent the event in this format (this
-         * is because an old style mouse release event cannot be converted into
-         * the new SGR format, since the released button is unknown). Otherwise
-         * pretend that tmux doesn't speak this extension, and fall back to the
-         * UTF-8 (1005) extension if the application requested, or to the
-         * legacy format.
-         */
+        // Use the SGR (1006) extension only if the application requested it
+        // and the underlying terminal also sent the event in this format (this
+        // is because an old style mouse release event cannot be converted into
+        // the new SGR format, since the released button is unknown). Otherwise
+        // pretend that tmux doesn't speak this extension, and fall back to the
+        // UTF-8 (1005) extension if the application requested, or to the
+        // legacy format.
         let mut len: usize;
         if (*m).sgr_type != ' ' as u32 && (*s).mode.intersects(mode_flag::MODE_MOUSE_SGR) {
             len = xsnprintf_!(
@@ -644,11 +634,9 @@ pub unsafe fn input_key_get_mouse(
             BUF[len] = ((*m).b + MOUSE_PARAM_BTN_OFF) as u8;
             len += 1;
 
-            /*
-             * The incoming x and y may be out of the range which can be
-             * supported by the "normal" mouse protocol. Clamp the
-             * coordinates to the supported range.
-             */
+            // The incoming x and y may be out of the range which can be
+            // supported by the "normal" mouse protocol. Clamp the
+            // coordinates to the supported range.
             if x + MOUSE_PARAM_POS_OFF > MOUSE_PARAM_MAX {
                 BUF[len] = MOUSE_PARAM_MAX as u8;
                 len += 1;
@@ -681,7 +669,7 @@ pub unsafe fn input_key_mouse(wp: *mut window_pane, m: *mut mouse_event) {
         let mut buf = null();
         let mut len: usize = 0;
 
-        /* Ignore events if no mouse mode or the pane is not visible. */
+        // Ignore events if no mouse mode or the pane is not visible.
         if (*m).ignore != 0 || !(*s).mode.intersects(ALL_MOUSE_MODES) {
             return;
         }

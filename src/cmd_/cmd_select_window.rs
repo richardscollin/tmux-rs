@@ -131,10 +131,8 @@ unsafe fn cmd_select_window_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
             server_redraw_session(s);
             cmdq_insert_hook!(s, item, current, "after-select-window");
         } else {
-            /*
-             * If -T and select-window is invoked on same window as
-             * current, switch to previous window.
-             */
+            // If -T and select-window is invoked on same window as
+            // current, switch to previous window.
             if args_has_(args, 'T') && wl == (*s).curw {
                 if session_last(s) != 0 {
                     cmdq_error!(item, "no last window");

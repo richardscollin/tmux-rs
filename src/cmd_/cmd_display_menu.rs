@@ -102,27 +102,23 @@ unsafe fn cmd_display_menu_get_position(
         let mut sx: u32 = 0;
         let mut sy: u32 = 0;
 
-        /*
-         * Work out the position from the -x and -y arguments. This is the
-         * bottom-left position.
-         */
+        // Work out the position from the -x and -y arguments. This is the
+        // bottom-left position.
 
-        /* If the popup is too big, stop now. */
+        // If the popup is too big, stop now.
         if w > (*tty).sx || h > (*tty).sy {
             return 0;
         }
 
-        /* Create format with mouse position if any. */
+        // Create format with mouse position if any.
         let ft = format_create_from_target(item);
         if (*event).m.valid != 0 {
             format_add!(ft, c!("popup_mouse_x"), "{}", (*event).m.x);
             format_add!(ft, c!("popup_mouse_y"), "{}", (*event).m.y);
         }
 
-        /*
-         * If there are any status lines, add this window position and the
-         * status line position.
-         */
+        // If there are any status lines, add this window position and the
+        // status line position.
         let mut top = status_at_line(tc);
         if top != -1 {
             let lines = status_line_size(tc);
@@ -174,7 +170,7 @@ unsafe fn cmd_display_menu_get_position(
             top = 0;
         }
 
-        /* Popup width and height. */
+        // Popup width and height.
         format_add!(ft, c!("popup_width"), "{w}");
         format_add!(ft, c!("popup_height"), "{h}");
 
@@ -192,7 +188,7 @@ unsafe fn cmd_display_menu_get_position(
             format_add!(ft, c!("popup_centre_y"), "{n}");
         }
 
-        /* Position of popup relative to mouse. */
+        // Position of popup relative to mouse.
         if (*event).m.valid != 0 {
             n = (*event).m.x as c_long - w as c_long / 2;
             if n < 0 {
@@ -220,7 +216,7 @@ unsafe fn cmd_display_menu_get_position(
             }
         }
 
-        /* Position in pane. */
+        // Position in pane.
         tty_window_offset(
             &raw mut (*tc).tty,
             &raw mut ox,
@@ -248,7 +244,7 @@ unsafe fn cmd_display_menu_get_position(
             format_add!(ft, c!("popup_pane_right"), "{n}");
         }
 
-        /* Expand horizontal position. */
+        // Expand horizontal position.
         let mut xp = args_get_(args, 'x');
         if xp.is_null() || streq_(xp, "C") {
             xp = c!("#{popup_centre_x}");
@@ -279,7 +275,7 @@ unsafe fn cmd_display_menu_get_position(
         );
         free_(p);
 
-        /* Expand vertical position  */
+        // Expand vertical position
         let mut yp = args_get_(args, 'y');
         if yp.is_null() || streq_(yp, "C") {
             yp = c!("#{popup_centre_y}");

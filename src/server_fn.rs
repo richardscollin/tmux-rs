@@ -453,7 +453,7 @@ pub unsafe fn server_destroy_session(s: *mut session) {
         };
 
         if s_new == s {
-            s_new = null_mut()
+            s_new = null_mut();
         }
         for c in tailq_foreach(&raw mut CLIENTS).map(NonNull::as_ptr) {
             if (*c).session != s {

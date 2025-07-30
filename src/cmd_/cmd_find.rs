@@ -416,7 +416,8 @@ pub unsafe fn cmd_find_get_window_with_session(fs: *mut cmd_find_state, window: 
             }
         }
 
-        #[expect(
+        #[expect(clippy::allow_attributes)]
+        #[allow(
             clippy::collapsible_if,
             reason = "collapsing doesn't work with if let; false positive"
         )]

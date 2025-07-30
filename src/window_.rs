@@ -102,7 +102,7 @@ unsafe fn winlink_next_index(wwl: *mut winlinks, idx: i32) -> i32 {
         }
 
         if i == i32::MAX {
-            i = 0
+            i = 0;
         } else {
             i += 1;
         }
@@ -500,7 +500,7 @@ pub unsafe fn window_pane_update_focus(wp: *mut window_pane) {
 
         if !wp.is_null() && !(*wp).flags.intersects(window_pane_flags::PANE_EXITED) {
             if wp != (*(*wp).window).active {
-                focused = false
+                focused = false;
             } else {
                 for c in tailq_foreach(&raw mut CLIENTS).map(NonNull::as_ptr) {
                     if !(*c).session.is_null()

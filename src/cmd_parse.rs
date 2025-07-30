@@ -18,8 +18,10 @@ use std::ops::BitOrAssign as _;
 use crate::xmalloc::xrecallocarray__;
 use crate::*;
 
-#[expect(clippy::allow_attributes)]
 #[expect(unused_imports)]
+#[allow(clippy::all)]
+#[allow(clippy::pedantic)]
+#[allow(clippy::restriction)]
 mod lalrpop {
     use lalrpop_util::lalrpop_mod;
     lalrpop_mod!(pub(crate) cmd_parse);
@@ -144,7 +146,7 @@ pub fn cmd_parse_print_commands(pi: &cmd_parse_input, cmdlist: &mut cmd_list) {
                 _s(s)
             );
         }
-        free_(s)
+        free_(s);
     }
 }
 
@@ -247,7 +249,7 @@ pub unsafe fn cmd_parse_log_commands(cmds: *mut cmd_parse_commands, prefix: *con
             {
                 match &mut (*arg).type_ {
                     cmd_parse_argument_type::String(string) => {
-                        log_debug!("{} {}:{}: {}", _s(prefix), i, j, _s(*string))
+                        log_debug!("{} {}:{}: {}", _s(prefix), i, j, _s(*string));
                     }
                     cmd_parse_argument_type::Commands(commands) => {
                         let s = format_nul!("{} {}:{}", _s(prefix), i, j);
@@ -281,14 +283,13 @@ pub unsafe fn cmd_parse_expand_alias<'a>(
         *pr = Err(null_mut());
 
         let first = tailq_first(&raw mut (*cmd).arguments);
-        if first.is_null() || !matches!((*first).type_, cmd_parse_argument_type::String(_)) {
+        if first.is_null() {
             *pr = Ok(cmd_list_new());
             return 1;
         }
-
-        let name = match (*first).type_ {
-            cmd_parse_argument_type::String(string) => string,
-            _ => panic!(),
+        let cmd_parse_argument_type::String(name) = (*first).type_ else {
+            *pr = Ok(cmd_list_new());
+            return 1;
         };
 
         let alias = cmd_get_alias(name);
@@ -779,12 +780,11 @@ fn yylex_getc1(ps: &mut cmd_parse_state) -> i32 {
         let mut buf: [u8; 1] = [0];
         match f.read(&mut buf) {
             Ok(count) => {
+                assert!(count == 0 || count == 1, "unexpected read size");
                 if count == 0 {
                     ch = libc::EOF;
-                } else if count == 1 {
-                    ch = buf[0] as i32;
                 } else {
-                    panic!("unexecpted read size");
+                    ch = buf[0] as i32;
                 }
             }
             Err(_) => {
@@ -803,7 +803,7 @@ fn yylex_getc1(ps: &mut cmd_parse_state) -> i32 {
 
 fn yylex_ungetc(ps: &mut cmd_parse_state, ch: i32) {
     if let Some(_f) = ps.f.as_mut() {
-        ps.unget_buf = Some(ch)
+        ps.unget_buf = Some(ch);
     } else if ps.off > 0 && ch != libc::EOF {
         ps.off -= 1;
     }

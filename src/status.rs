@@ -424,7 +424,7 @@ pub unsafe fn status_redraw(c: *mut client) -> i32 {
         {
             screen_resize(&raw mut (*sl).screen, width, lines, 0);
             changed = true;
-            force = true
+            force = true;
         }
         screen_write_start(&raw mut ctx, &raw mut (*sl).screen);
 
@@ -1882,7 +1882,7 @@ unsafe fn status_prompt_add_list(list: *mut *mut *mut u8, size: *mut u32, s: *co
         }
         *list = xreallocarray_(*list, *size as usize + 1).as_ptr();
         *(*list).add(*size as usize) = xstrdup(s).as_ptr();
-        (*size) += 1
+        (*size) += 1;
     }
 }
 
@@ -2266,7 +2266,7 @@ unsafe fn status_prompt_complete_session(
                     *list = xreallocarray_(*list, (*size) as usize + 2).as_ptr();
                     *(*list).add(*size as usize) =
                         format_nul!("${}:", _s((&raw const n).cast::<u8>()));
-                    (*size) += 1
+                    (*size) += 1;
                 }
             }
         }

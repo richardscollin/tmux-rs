@@ -1117,7 +1117,7 @@ pub unsafe extern "C-unwind" fn control_check_subs_timer(
                 control_sub_type::CONTROL_SUB_ALL_PANES => control_check_subs_all_panes(c, csub),
                 control_sub_type::CONTROL_SUB_WINDOW => control_check_subs_window(c, csub),
                 control_sub_type::CONTROL_SUB_ALL_WINDOWS => {
-                    control_check_subs_all_windows(c, csub)
+                    control_check_subs_all_windows(c, csub);
                 }
             }
         }

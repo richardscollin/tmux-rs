@@ -1356,14 +1356,14 @@ pub unsafe fn window_customize_set_option(
                     | window_customize_scope::WINDOW_CUSTOMIZE_SERVER
                     | window_customize_scope::WINDOW_CUSTOMIZE_GLOBAL_SESSION
                     | window_customize_scope::WINDOW_CUSTOMIZE_GLOBAL_WINDOW => {
-                        scope = (*item).scope
+                        scope = (*item).scope;
                     }
                     window_customize_scope::WINDOW_CUSTOMIZE_SESSION => {
-                        scope = window_customize_scope::WINDOW_CUSTOMIZE_GLOBAL_SESSION
+                        scope = window_customize_scope::WINDOW_CUSTOMIZE_GLOBAL_SESSION;
                     }
                     window_customize_scope::WINDOW_CUSTOMIZE_WINDOW
                     | window_customize_scope::WINDOW_CUSTOMIZE_PANE => {
-                        scope = window_customize_scope::WINDOW_CUSTOMIZE_GLOBAL_WINDOW
+                        scope = window_customize_scope::WINDOW_CUSTOMIZE_GLOBAL_WINDOW;
                     }
                 }
             } else {
@@ -1381,7 +1381,7 @@ pub unsafe fn window_customize_set_option(
                         }
                     }
                     window_customize_scope::WINDOW_CUSTOMIZE_GLOBAL_SESSION => {
-                        scope = window_customize_scope::WINDOW_CUSTOMIZE_SESSION
+                        scope = window_customize_scope::WINDOW_CUSTOMIZE_SESSION;
                     }
                     window_customize_scope::WINDOW_CUSTOMIZE_GLOBAL_WINDOW => {
                         if pane != 0 {

@@ -358,7 +358,7 @@ pub unsafe fn args_copy_copy_value(
                 (*to).union_.string = expanded;
             }
             args_type::ARGS_COMMANDS => {
-                (*to).union_.cmdlist = cmd_list_copy(&mut *(*from).union_.cmdlist, argc, argv)
+                (*to).union_.cmdlist = cmd_list_copy(&mut *(*from).union_.cmdlist, argc, argv);
             }
         }
     }
@@ -445,7 +445,7 @@ pub unsafe fn args_to_vector(args: *mut args, argc: *mut i32, argv: *mut *mut *m
             match (*(*args).values.add(i as usize)).type_ {
                 args_type::ARGS_NONE => (),
                 args_type::ARGS_STRING => {
-                    cmd_append_argv(argc, argv, (*(*args).values.add(i as usize)).union_.string)
+                    cmd_append_argv(argc, argv, (*(*args).values.add(i as usize)).union_.string);
                 }
                 args_type::ARGS_COMMANDS => {
                     let s =

@@ -212,7 +212,7 @@ pub unsafe fn server_start(
             if let Err(err) =
                 std::fs::write(format!("server-panic-{}.txt", std::process::id()), err_str)
             {
-                eprintln!("error in panic handler! {err}")
+                eprintln!("error in panic handler! {err}");
             }
         }));
 

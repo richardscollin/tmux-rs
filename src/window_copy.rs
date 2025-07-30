@@ -5792,7 +5792,7 @@ pub unsafe fn window_copy_other_end(wme: *mut window_mode_entry) {
 
         match (*data).cursordrag {
             cursordrag::CURSORDRAG_NONE | cursordrag::CURSORDRAG_SEL => {
-                (*data).cursordrag = cursordrag::CURSORDRAG_ENDSEL
+                (*data).cursordrag = cursordrag::CURSORDRAG_ENDSEL;
             }
             cursordrag::CURSORDRAG_ENDSEL => (*data).cursordrag = cursordrag::CURSORDRAG_SEL,
         }

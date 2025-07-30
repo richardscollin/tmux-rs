@@ -310,7 +310,7 @@ pub unsafe fn window_buffer_menu(modedata: NonNull<c_void>, c: *mut client, key:
         if let Some(wme) = NonNull::new(tailq_first(&raw mut (*wp).modes))
             && (*wme.as_ptr()).data == modedata.as_ptr()
         {
-            window_buffer_key(wme, c, null_mut(), null_mut(), key, null_mut())
+            window_buffer_key(wme, c, null_mut(), null_mut(), key, null_mut());
         }
     }
 }

@@ -18,7 +18,7 @@ pub extern "C" fn getdtablecount() -> libc::c_int {
         if libc::glob(c"/proc/self/fd".as_ptr(), 0, None, &raw mut g) == 0 {
             n = g.gl_pathc as libc::c_int;
         }
-        libc::globfree(&raw mut g)
+        libc::globfree(&raw mut g);
     }
 
     n

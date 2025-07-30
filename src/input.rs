@@ -1459,7 +1459,7 @@ unsafe fn input_esc_dispatch(ictx: *mut input_ctx) -> i32 {
                 screen_write_fullredraw(sctx);
             }
             Ok(input_esc_type::INPUT_ESC_IND) => {
-                screen_write_linefeed(sctx, 0, (*ictx).cell.cell.bg as u32)
+                screen_write_linefeed(sctx, 0, (*ictx).cell.cell.bg as u32);
             }
             Ok(input_esc_type::INPUT_ESC_NEL) => {
                 screen_write_carriagereturn(sctx);
@@ -1471,13 +1471,13 @@ unsafe fn input_esc_dispatch(ictx: *mut input_ctx) -> i32 {
                 }
             }
             Ok(input_esc_type::INPUT_ESC_RI) => {
-                screen_write_reverseindex(sctx, (*ictx).cell.cell.bg as u32)
+                screen_write_reverseindex(sctx, (*ictx).cell.cell.bg as u32);
             }
             Ok(input_esc_type::INPUT_ESC_DECKPAM) => {
-                screen_write_mode_set(sctx, mode_flag::MODE_KKEYPAD)
+                screen_write_mode_set(sctx, mode_flag::MODE_KKEYPAD);
             }
             Ok(input_esc_type::INPUT_ESC_DECKPNM) => {
-                screen_write_mode_clear(sctx, mode_flag::MODE_KKEYPAD)
+                screen_write_mode_clear(sctx, mode_flag::MODE_KKEYPAD);
             }
             Ok(input_esc_type::INPUT_ESC_DECSC) => input_save_state(ictx),
             Ok(input_esc_type::INPUT_ESC_DECRC) => input_restore_state(ictx),

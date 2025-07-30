@@ -477,7 +477,7 @@ where
                         rb_right!(parent) = child;
                     }
                 } else {
-                    rb_root!(head) = child
+                    rb_root!(head) = child;
                 }
                 if rb_parent(elm) == old {
                     parent = elm;

@@ -229,7 +229,7 @@ unsafe extern "C" fn window_tree_cmp_session(a0: *const c_void, b0: *const c_voi
         let mut result: i32 = 0;
         match window_tree_sort_type::try_from((*WINDOW_TREE_SORT).field as i32) {
             Ok(window_tree_sort_type::WINDOW_TREE_BY_INDEX) => {
-                result = ((*sa).id as i32).wrapping_sub((*sb).id as i32)
+                result = ((*sa).id as i32).wrapping_sub((*sb).id as i32);
             }
             Ok(window_tree_sort_type::WINDOW_TREE_BY_TIME) => {
                 if timer::new(&raw const (*sa).activity_time)
@@ -245,7 +245,7 @@ unsafe extern "C" fn window_tree_cmp_session(a0: *const c_void, b0: *const c_voi
                 }
             }
             Ok(window_tree_sort_type::WINDOW_TREE_BY_NAME) => {
-                result = libc::strcmp((*sa).name, (*sb).name)
+                result = libc::strcmp((*sa).name, (*sb).name);
             }
             Err(_) => (),
         }
@@ -284,7 +284,7 @@ unsafe extern "C" fn window_tree_cmp_window(a0: *const c_void, b0: *const c_void
                 }
             }
             Ok(window_tree_sort_type::WINDOW_TREE_BY_NAME) => {
-                result = libc::strcmp((*wa).name, (*wb).name)
+                result = libc::strcmp((*wa).name, (*wb).name);
             }
             Err(_) => (),
         }
@@ -989,7 +989,7 @@ unsafe fn window_tree_draw(
         match (*item.unwrap().as_ptr()).type_ {
             window_tree_type::WINDOW_TREE_NONE => (),
             window_tree_type::WINDOW_TREE_SESSION => {
-                window_tree_draw_session(modedata.cast(), transmute_ptr(sp), ctx, sx, sy)
+                window_tree_draw_session(modedata.cast(), transmute_ptr(sp), ctx, sx, sy);
             }
             window_tree_type::WINDOW_TREE_WINDOW => window_tree_draw_window(
                 modedata.cast(),
@@ -1000,7 +1000,7 @@ unsafe fn window_tree_draw(
                 sy,
             ),
             window_tree_type::WINDOW_TREE_PANE => {
-                screen_write_preview(ctx, &raw mut (*wp.as_ptr()).base, sx, sy)
+                screen_write_preview(ctx, &raw mut (*wp.as_ptr()).base, sx, sy);
             }
         };
     }

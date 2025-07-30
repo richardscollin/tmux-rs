@@ -50,7 +50,7 @@ fn main() {
             args.len() as i32,
             args.as_mut_slice().as_mut_ptr(),
             std::ptr::null_mut(),
-        )
+        );
     }
 
     drop(

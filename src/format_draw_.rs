@@ -1058,7 +1058,7 @@ pub unsafe fn format_draw(
                             if !fr.is_null() {
                                 // abort any region
                                 free_(fr);
-                                fr = null_mut()
+                                fr = null_mut();
                             }
                             list_state = 0;
                             list_align = sy.align;
@@ -1314,10 +1314,10 @@ pub unsafe fn format_draw(
                 match sr.type_ {
                     style_range_type::STYLE_RANGE_NONE => (),
                     style_range_type::STYLE_RANGE_LEFT => {
-                        log_debug!("{}: range left at {}-{}", func, sr.start, sr.end)
+                        log_debug!("{}: range left at {}-{}", func, sr.start, sr.end);
                     }
                     style_range_type::STYLE_RANGE_RIGHT => {
-                        log_debug!("{}: range right at {}-{}", func, sr.start, sr.end)
+                        log_debug!("{}: range right at {}-{}", func, sr.start, sr.end);
                     }
                     style_range_type::STYLE_RANGE_PANE => {
                         log_debug!(
@@ -1326,7 +1326,7 @@ pub unsafe fn format_draw(
                             sr.argument,
                             sr.start,
                             sr.end
-                        )
+                        );
                     }
                     style_range_type::STYLE_RANGE_WINDOW => {
                         log_debug!(
@@ -1335,7 +1335,7 @@ pub unsafe fn format_draw(
                             sr.argument,
                             sr.start,
                             sr.end
-                        )
+                        );
                     }
                     style_range_type::STYLE_RANGE_SESSION => {
                         log_debug!(
@@ -1344,7 +1344,7 @@ pub unsafe fn format_draw(
                             sr.argument,
                             sr.start,
                             sr.end
-                        )
+                        );
                     }
                     style_range_type::STYLE_RANGE_USER => {
                         log_debug!(
@@ -1353,7 +1353,7 @@ pub unsafe fn format_draw(
                             sr.argument,
                             sr.start,
                             sr.end
-                        )
+                        );
                     }
                 }
                 format_free_range(&raw mut frs, fr);

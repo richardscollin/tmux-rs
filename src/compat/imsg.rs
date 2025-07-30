@@ -519,7 +519,7 @@ pub unsafe fn imsg_close(imsgbuf: *mut imsgbuf, msg: *mut ibuf) {
         }
         (*hdr).len = ibuf_size(msg) as u16;
 
-        ibuf_close(&raw mut (*imsgbuf).w, msg)
+        ibuf_close(&raw mut (*imsgbuf).w, msg);
     }
 }
 

@@ -37,6 +37,9 @@ lalrpop      = { version = "0.22.2", default-features = false }
 
 # https://doc.rust-lang.org/rustc/lints/index.html
 [lints.rust]
+# enabled
+non_ascii_idents     = "warn"
+# disabled
 dead-code            = "allow" # TODO fix by adding annotations
 non_camel_case_types = "allow" # won't fix, track upstream type names. this lint is also included at the crate root due to a bug in rust-analyzer
 unpredictable_function_pointer_comparisons = "allow" # FIXME
@@ -44,13 +47,22 @@ unpredictable_function_pointer_comparisons = "allow" # FIXME
 # https://rust-lang.github.io/rust-clippy/master/index.html
 [lints.clippy]
 # disabled
-manual_range_contains          = "allow"
-missing_safety_doc             = "allow"
-shadow_reuse                   = "allow"
-shadow_unrelated               = "allow"
-too_many_arguments             = "allow"
+manual_range_contains               = "allow"
+missing_safety_doc                  = "allow"
+shadow_reuse                        = "allow"
+shadow_unrelated                    = "allow"
+too_many_arguments                  = "allow"
 # enabled
-allow_attributes               = "warn"
-multiple_crate_versions        = "warn"
-shadow_same                    = "warn"
-too_long_first_doc_paragraph   = "warn"
+allow_attributes                    = "warn"
+large_types_passed_by_value         = "warn"
+literal_string_with_formatting_args = "warn"
+manual_is_variant_and               = "warn"
+manual_let_else                     = "warn"
+manual_string_new                   = "warn"
+match_bool                          = "warn"
+multiple_crate_versions             = "warn"
+semicolon_if_nothing_returned       = "warn"
+shadow_same                         = "warn"
+too_long_first_doc_paragraph        = "warn"
+uninlined_format_args               = "warn"
+unused_result_ok                    = "warn"

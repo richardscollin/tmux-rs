@@ -11,7 +11,7 @@
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-use crate::libc::{memmem, qsort, strcmp, strstr};
+use crate::libc::{memmem, strcmp, strstr};
 use crate::*;
 
 const WINDOW_BUFFER_DEFAULT_COMMAND: *const u8 = c!("paste-buffer -p -b '%%'");
@@ -57,6 +57,12 @@ pub static WINDOW_BUFFER_MODE: window_mode = window_mode {
     formats: None,
 };
 
+enum_try_from!(
+    window_buffer_sort_type,
+    u32,
+    window_buffer_sort_type::WINDOW_BUFFER_BY_SIZE
+);
+#[expect(dead_code, reason = "enum_try_from transmutes from u32 to enum")]
 #[repr(u32)]
 enum window_buffer_sort_type {
     WINDOW_BUFFER_BY_TIME,
@@ -70,8 +76,6 @@ static mut WINDOW_BUFFER_SORT_LIST: [SyncCharPtr; 3] = [
     SyncCharPtr::new(c"name"),
     SyncCharPtr::new(c"size"),
 ];
-
-static mut WINDOW_BUFFER_SORT: *mut mode_tree_sort_criteria = null_mut();
 
 pub struct window_buffer_itemdata {
     pub name: *mut u8,
@@ -118,33 +122,6 @@ pub unsafe fn window_buffer_free_item(item: *mut window_buffer_itemdata) {
     }
 }
 
-pub unsafe extern "C" fn window_buffer_cmp(a0: *const c_void, b0: *const c_void) -> i32 {
-    unsafe {
-        let a = a0 as *const *const window_buffer_itemdata;
-        let b = b0 as *const *const window_buffer_itemdata;
-        let mut result = 0i32;
-
-        if (*WINDOW_BUFFER_SORT).field == window_buffer_sort_type::WINDOW_BUFFER_BY_TIME as u32 {
-            result = (*(*b)).order as i32 - (*(*a)).order as i32;
-        } else if (*WINDOW_BUFFER_SORT).field
-            == window_buffer_sort_type::WINDOW_BUFFER_BY_SIZE as u32
-        {
-            result = ((*(*b)).size as isize - (*(*a)).size as isize) as i32;
-        }
-
-        // Use WINDOW_BUFFER_BY_NAME as default order and tie breaker.
-        if result == 0 {
-            result = strcmp((*(*a)).name, (*(*b)).name);
-        }
-
-        if (*WINDOW_BUFFER_SORT).reversed != 0 {
-            result = -result;
-        }
-
-        result
-    }
-}
-
 pub unsafe fn window_buffer_build(
     modedata: NonNull<c_void>,
     sort_crit: *mut mode_tree_sort_criteria,
@@ -177,13 +154,44 @@ pub unsafe fn window_buffer_build(
             pb = paste_walk(pb);
         }
 
-        WINDOW_BUFFER_SORT = sort_crit;
-        qsort(
-            (*data).item_list.cast(),
-            (*data).item_size as usize,
-            size_of::<*const window_buffer_itemdata>(),
-            Some(window_buffer_cmp),
-        );
+        {
+            trait Reverseable {
+                fn maybe_reverse(self, reversed: i32) -> Self;
+            }
+            impl Reverseable for cmp::Ordering {
+                fn maybe_reverse(self, reversed: i32) -> Self {
+                    if reversed != 0 { self.reverse() } else { self }
+                }
+            }
+
+            let tmp = std::slice::from_raw_parts_mut((*data).item_list, (*data).item_size as usize);
+
+            // TODO double check this ordering is correct
+            match window_buffer_sort_type::try_from((*sort_crit).field) {
+                Ok(window_buffer_sort_type::WINDOW_BUFFER_BY_TIME) => {
+                    tmp.sort_by(|a, b| {
+                        ((**b).order)
+                            .cmp(&(**a).order)
+                            .then_with(|| i32_to_ordering(strcmp((**a).name, (**b).name)))
+                            .maybe_reverse((*sort_crit).reversed)
+                    });
+                }
+                Ok(window_buffer_sort_type::WINDOW_BUFFER_BY_SIZE) => {
+                    tmp.sort_by(|a, b| {
+                        ((**b).size)
+                            .cmp(&(**a).size)
+                            .then_with(|| i32_to_ordering(strcmp((**a).name, (**b).name)))
+                            .maybe_reverse((*sort_crit).reversed)
+                    });
+                }
+                Ok(window_buffer_sort_type::WINDOW_BUFFER_BY_NAME) | Err(_) => {
+                    tmp.sort_by(|a, b| {
+                        i32_to_ordering(strcmp((**a).name, (**b).name))
+                            .maybe_reverse((*sort_crit).reversed)
+                    });
+                }
+            }
+        }
 
         if cmd_find_valid_state(&raw mut (*data).fs) {
             s = NonNull::new((*data).fs.s);

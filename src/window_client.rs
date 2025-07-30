@@ -49,6 +49,7 @@ enum_try_from!(
     u32,
     window_client_sort_type::WINDOW_CLIENT_BY_ACTIVITY_TIME
 );
+#[expect(dead_code, reason = "enum_try_from transmutes from i32 to enum")]
 #[repr(u32)]
 pub enum window_client_sort_type {
     WINDOW_CLIENT_BY_NAME,

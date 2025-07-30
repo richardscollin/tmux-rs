@@ -179,17 +179,6 @@ pub unsafe fn screen_reset_tabs(s: *mut screen) {
     }
 }
 
-unsafe fn bit_alloc(nbits: u32) -> *mut u8 {
-    unsafe { libc::calloc(nbits.div_ceil(8) as usize, 1).cast() }
-}
-unsafe fn bit_set(bits: *mut u8, i: u32) {
-    unsafe {
-        let byte_index = i / 8;
-        let bit_index = i % 8;
-        *bits.add(byte_index as usize) |= 1 << bit_index;
-    }
-}
-
 /// Set screen cursor style and mode.
 pub unsafe fn screen_set_cursor_style(
     style: u32,

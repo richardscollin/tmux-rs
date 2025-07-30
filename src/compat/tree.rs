@@ -624,7 +624,8 @@ where
     null_mut()
 }
 
-pub unsafe fn rb_nfind<T, D>(head: *mut rb_head<T>, elm: *const T) -> *mut T
+#[expect(dead_code)]
+unsafe fn rb_nfind<T, D>(head: *mut rb_head<T>, elm: *const T) -> *mut T
 where
     T: GetEntry<T, D>,
 {

@@ -30,10 +30,6 @@ pub unsafe fn fopen(filename: *const u8, mode: *const u8) -> *mut FILE {
     unsafe { ::libc::fopen(filename.cast(), mode.cast()) }
 }
 
-pub unsafe fn fputs(s: *const u8, stream: *mut FILE) -> i32 {
-    unsafe { ::libc::fputs(s.cast(), stream) }
-}
-
 pub unsafe fn fnmatch(pattern: *const u8, name: *const u8, flags: c_int) -> c_int {
     unsafe { ::libc::fnmatch(pattern.cast(), name.cast(), flags) }
 }
@@ -144,17 +140,6 @@ pub unsafe fn tzset() {
 
 pub unsafe fn unlink(c: *const u8) -> i32 {
     unsafe { ::libc::unlink(c.cast()) }
-}
-
-#[inline]
-pub unsafe fn bsearch_<T>(
-    key: *const T,
-    base: *const T,
-    num: usize,
-    size: usize,
-    compar: unsafe extern "C" fn(*const c_void, *const c_void) -> i32,
-) -> *mut T {
-    unsafe { ::libc::bsearch(key.cast(), base.cast(), num, size, Some(compar)).cast() }
 }
 
 #[inline]
@@ -299,10 +284,6 @@ pub unsafe fn unsetenv(name: *const u8) -> i32 {
     unsafe { ::libc::unsetenv(name.cast()) }
 }
 
-pub unsafe fn streq(cs: *const u8, ct: *const u8) -> bool {
-    unsafe { strcmp(cs, ct) == 0 }
-}
-
 pub unsafe fn strcmp(cs: *const u8, ct: *const u8) -> i32 {
     unsafe { ::libc::strcmp(cs.cast(), ct.cast()) }
 }
@@ -373,6 +354,7 @@ pub unsafe fn streq_(left: *const u8, right: &'static str) -> bool {
     unsafe { matches!(strcmp_(left, right), std::cmp::Ordering::Equal) }
 }
 
+#[expect(dead_code)]
 pub unsafe fn strcaseeq_(left: *const u8, right: &'static str) -> bool {
     unsafe { matches!(strcasecmp_(left, right), std::cmp::Ordering::Equal) }
 }

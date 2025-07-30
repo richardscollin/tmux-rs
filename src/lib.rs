@@ -15,7 +15,7 @@
 #![cfg_attr(doc, doc = include_str!("../README.md"))]
 #![allow(
     non_camel_case_types,
-    reason = "this lint is here instead of in Cargo.toml because of "
+    reason = "this lint is here instead of in Cargo.toml because of a bug in rust analyzer"
 )]
 
 use std::{
@@ -117,7 +117,6 @@ struct discr_all_entry;
 struct discr_by_uri_entry;
 struct discr_by_inner_entry;
 struct discr_entry;
-struct discr_gentry;
 struct discr_name_entry;
 struct discr_pending_entry;
 struct discr_sentry;
@@ -168,6 +167,7 @@ const DEFAULT_YPIXEL: u32 = 32;
 
 enum_try_from!(alert_option, i32, alert_option::ALERT_OTHER);
 /// Alert option values
+#[expect(dead_code, reason = "enum_try_from transmutes from i32 to enum")]
 #[repr(i32)]
 #[derive(Copy, Clone)]
 enum alert_option {
@@ -179,6 +179,7 @@ enum alert_option {
 
 enum_try_from!(visual_option, i32, visual_option::VISUAL_BOTH);
 /// Visual option values
+#[expect(dead_code, reason = "enum_try_from transmutes from i32 to enum")]
 #[repr(i32)]
 #[derive(Copy, Clone, Eq, PartialEq)]
 enum visual_option {
@@ -571,6 +572,7 @@ bitflags::bitflags! {
     }
 }
 
+#[expect(dead_code)]
 const ALL_MODES: i32 = 0xffffff;
 const ALL_MOUSE_MODES: mode_flag = mode_flag::MODE_MOUSE_STANDARD
     .union(mode_flag::MODE_MOUSE_BUTTON)
@@ -1052,6 +1054,7 @@ struct screen_write_ctx {
 
 enum_try_from!(box_lines, i32, box_lines::BOX_LINES_NONE);
 /// Box border lines option.
+#[expect(dead_code, reason = "enum_try_from transmutes from i32 to enum")]
 #[repr(i32)]
 #[derive(Copy, Clone, Default, Eq, PartialEq)]
 enum box_lines {
@@ -1067,6 +1070,7 @@ enum box_lines {
 }
 
 enum_try_from!(pane_lines, i32, pane_lines::PANE_LINES_NUMBER);
+#[expect(dead_code, reason = "enum_try_from transmutes from i32 to enum")]
 /// Pane border lines option.
 #[repr(i32)]
 #[derive(Copy, Clone, Default, Eq, PartialEq)]
@@ -1084,6 +1088,7 @@ enum_try_from!(
     i32,
     pane_border_indicator::PANE_BORDER_BOTH
 );
+#[expect(dead_code, reason = "enum_try_from transmutes from i32 to enum")]
 #[repr(i32)]
 #[derive(Copy, Clone)]
 enum pane_border_indicator {
@@ -1835,14 +1840,12 @@ struct tty_ctx {
 
 // Saved message entry.
 impl_tailq_entry!(message_entry, entry, tailq_entry<message_entry>);
-// #[derive(Copy, Clone, crate::compat::TailQEntry)]
 #[repr(C)]
 struct message_entry {
     msg: *mut u8,
     msg_num: u32,
     msg_time: timeval,
 
-    // #[entry]
     entry: tailq_entry<message_entry>,
 }
 type message_list = tailq_head<message_entry>;
@@ -1876,11 +1879,12 @@ type args_tree = rb_head<args_entry>;
 
 /// Arguments parsing type.
 #[repr(C)]
-#[derive(Copy, Clone, Eq, PartialEq)]
+#[derive(Eq, PartialEq)]
 enum args_parse_type {
     ARGS_PARSE_INVALID,
     ARGS_PARSE_STRING,
     ARGS_PARSE_COMMANDS_OR_STRING,
+    #[expect(dead_code)]
     ARGS_PARSE_COMMANDS,
 }
 
@@ -2253,9 +2257,7 @@ const PROMPT_INCREMENTAL: i32 = 0x4;
 const PROMPT_NOFORMAT: i32 = 0x8;
 const PROMPT_KEY: i32 = 0x8;
 
-//#[derive(Copy, Clone)]
 impl_tailq_entry!(client, entry, tailq_entry<client>);
-// #[derive(crate::compat::TailQEntry)]
 #[repr(C)]
 struct client {
     name: *const u8,
@@ -2485,12 +2487,12 @@ impl options_name_map {
 // Common command usages.
 const CMD_TARGET_PANE_USAGE: &CStr = c"[-t target-pane]";
 const CMD_TARGET_WINDOW_USAGE: &CStr = c"[-t target-window]";
-const CMD_TARGET_SESSION_USAGE: &CStr = c"[-t target-session]";
-const CMD_TARGET_CLIENT_USAGE: &CStr = c"[-t target-client]";
-const CMD_SRCDST_PANE_USAGE: &CStr = c"[-s src-pane] [-t dst-pane]";
-const CMD_SRCDST_WINDOW_USAGE: &CStr = c"[-s src-window] [-t dst-window]";
-const CMD_SRCDST_SESSION_USAGE: &CStr = c"[-s src-session] [-t dst-session]";
-const CMD_SRCDST_CLIENT_USAGE: &CStr = c"[-s src-client] [-t dst-client]";
+// const CMD_TARGET_SESSION_USAGE: &CStr = c"[-t target-session]";
+// const CMD_TARGET_CLIENT_USAGE: &CStr = c"[-t target-client]";
+// const CMD_SRCDST_PANE_USAGE: &CStr = c"[-s src-pane] [-t dst-pane]";
+// const CMD_SRCDST_WINDOW_USAGE: &CStr = c"[-s src-window] [-t dst-window]";
+// const CMD_SRCDST_SESSION_USAGE: &CStr = c"[-s src-session] [-t dst-session]";
+// const CMD_SRCDST_CLIENT_USAGE: &CStr = c"[-s src-client] [-t dst-client]";
 const CMD_BUFFER_USAGE: &CStr = c"[-b buffer-name]";
 
 const SPAWN_KILL: i32 = 0x1;
@@ -2537,6 +2539,7 @@ const WINDOW_MAXIMUM: u32 = 10_000;
 
 #[repr(i32)]
 enum exit_type {
+    #[expect(dead_code)]
     CLIENT_EXIT_RETURN,
     CLIENT_EXIT_SHUTDOWN,
     CLIENT_EXIT_DETACH,
@@ -3010,12 +3013,6 @@ use crate::osdep::{osdep_event_init, osdep_get_cwd, osdep_get_name};
 mod utf8_combined;
 use crate::utf8_combined::{utf8_has_zwj, utf8_is_modifier, utf8_is_vs, utf8_is_zwj};
 
-// procname.c
-unsafe extern "C" {
-    unsafe fn get_proc_name(_: c_int, _: *mut u8) -> *mut u8;
-    unsafe fn get_proc_cwd(_: c_int) -> *mut u8;
-}
-
 #[macro_use] // log_debug
 mod log;
 use crate::log::{fatal, fatalx, log_add_level, log_close, log_get_level, log_open, log_toggle};
@@ -3074,11 +3071,6 @@ use crate::tmux_protocol::{
     msg_write_close, msg_write_data, msg_write_open, msg_write_ready, msgtype,
 };
 
-unsafe extern "C-unwind" {
-    fn vsnprintf(_: *mut u8, _: usize, _: *const u8, _: ...) -> c_int;
-    fn vasprintf(_: *mut *mut u8, _: *const u8, _: ...) -> c_int;
-}
-
 unsafe impl Sync for SyncCharPtr {}
 #[repr(transparent)]
 #[derive(Copy, Clone)]
@@ -3136,11 +3128,6 @@ impl ToU8Ptr for SyncCharPtr {
 /// Display wrapper for a *c_char pointer
 #[repr(transparent)]
 struct DisplayCStrPtr(*const u8);
-impl DisplayCStrPtr {
-    unsafe fn from_raw(s: *const u8) -> Self {
-        Self(s)
-    }
-}
 impl std::fmt::Display for DisplayCStrPtr {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         if self.0.is_null() {

@@ -27,6 +27,7 @@ pub unsafe fn list_first<T>(head: *mut list_head<T>) -> *mut T {
     unsafe { (*head).lh_first }
 }
 
+#[expect(dead_code)]
 pub unsafe fn list_empty<T>(head: *const list_head<T>) -> bool {
     unsafe { (*head).lh_first.is_null() }
 }
@@ -65,12 +66,14 @@ where
     }
 }
 
+#[expect(dead_code)]
 pub unsafe fn list_init<T>(head: *mut list_head<T>) {
     unsafe {
         (*head).lh_first = null_mut();
     }
 }
 
+#[expect(dead_code)]
 pub unsafe fn list_insert_after<T, D>(listelm: *mut T, elm: *mut T)
 where
     T: ListEntry<T, D>,
@@ -86,6 +89,7 @@ where
     }
 }
 
+#[expect(dead_code)]
 pub unsafe fn list_insert_before<T, D>(listelm: *mut T, elm: *mut T)
 where
     T: ListEntry<T, D>,
@@ -126,6 +130,7 @@ where
     }
 }
 
+#[expect(dead_code)]
 pub unsafe fn list_replace<T, D>(elm: *mut T, elm2: *mut T)
 where
     T: ListEntry<T, D>,
@@ -150,6 +155,7 @@ pub struct tailq_head<T> {
     pub tqh_last: *mut *mut T,
 }
 
+#[expect(dead_code)]
 pub const unsafe fn tailq_head_initializer<T>(head: *mut tailq_head<T>) {
     unsafe {
         (*head).tqh_first = null_mut();
@@ -187,10 +193,6 @@ pub trait Entry<T, Discriminant = ()> {
     unsafe fn entry(this: *mut Self) -> *mut tailq_entry<T>;
 }
 
-pub trait Head<T> {
-    unsafe fn head(this: *mut Self) -> *mut tailq_head<T>;
-}
-
 pub unsafe fn tailq_init<T>(head: *mut tailq_head<T>) {
     unsafe {
         (*head).tqh_first = core::ptr::null_mut();
@@ -201,6 +203,7 @@ pub unsafe fn tailq_init<T>(head: *mut tailq_head<T>) {
 pub unsafe fn tailq_first<T>(head: *mut tailq_head<T>) -> *mut T {
     unsafe { (*head).tqh_first }
 }
+#[expect(dead_code)]
 pub fn tailq_end<T>(_head: *mut tailq_head<T>) -> *mut T {
     core::ptr::null_mut()
 }
@@ -322,6 +325,7 @@ where
     }
 }
 
+#[expect(dead_code)]
 pub unsafe fn tailq_foreach_const<T, D>(
     head: *const tailq_head<T>,
 ) -> ConstTailqForwardIterator<T, D>

@@ -176,13 +176,7 @@ pub unsafe extern "C" fn utf8_table_cmp(vp1: *const c_void, vp2: *const c_void) 
 
 pub unsafe fn utf8_in_table(find: wchar_t, table: *const wchar_t, count: u32) -> i32 {
     unsafe {
-        let found = bsearch_(
-            &raw const find,
-            table,
-            count as usize,
-            size_of::<wchar_t>(),
-            utf8_table_cmp,
-        );
+        let found = bsearch__(&raw const find, table, count as usize, utf8_table_cmp);
         !found.is_null() as i32
     }
 }

@@ -507,33 +507,6 @@ pub unsafe fn cmd_parse_from_string(s: &str, pi: Option<&cmd_parse_input>) -> cm
     }
 }
 
-pub unsafe fn cmd_parse_and_insert(
-    s: &str,
-    pi: Option<&cmd_parse_input>,
-    after: *mut cmdq_item,
-    state: *mut cmdq_state,
-    error: *mut *mut u8,
-) -> cmd_parse_status {
-    unsafe {
-        match cmd_parse_from_string(s, pi) {
-            Err(err) => {
-                if !error.is_null() {
-                    *error = err;
-                } else {
-                    free_(err);
-                }
-                cmd_parse_status::CMD_PARSE_ERROR
-            }
-            Ok(cmdlist) => {
-                let item = cmdq_get_command(cmdlist, state);
-                cmdq_insert_after(after, item);
-                cmd_list_free(cmdlist);
-                cmd_parse_status::CMD_PARSE_SUCCESS
-            }
-        }
-    }
-}
-
 pub unsafe fn cmd_parse_and_append(
     s: &str,
     pi: Option<&cmd_parse_input>,
@@ -663,7 +636,6 @@ mod lexer {
 
     #[derive(Copy, Clone, Debug)]
     pub enum Tok {
-        Zero, // invalid
         Newline,
         Semicolon,
         LeftBrace,
@@ -683,7 +655,6 @@ mod lexer {
     impl std::fmt::Display for Tok {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
             match self {
-                Tok::Zero => write!(f, "zero"),
                 Tok::Newline => write!(f, "\\n"),
                 Tok::Semicolon => write!(f, ";"),
                 Tok::LeftBrace => write!(f, "{{"),

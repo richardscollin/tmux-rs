@@ -309,7 +309,8 @@ pub unsafe fn key_bindings_remove_table(name: *const u8) {
     }
 }
 
-pub unsafe fn key_bindings_reset_table(name: *const u8) {
+#[expect(dead_code)]
+unsafe fn key_bindings_reset_table(name: *const u8) {
     unsafe {
         let table = key_bindings_get_table(name, 0);
         if table.is_null() {

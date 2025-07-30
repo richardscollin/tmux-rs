@@ -737,7 +737,7 @@ unsafe fn client_dispatch_exit_message(mut data: *const u8, mut datalen: usize) 
 
 #[expect(clippy::deref_addrof)]
 unsafe fn client_dispatch_wait(imsg: *mut imsg) {
-    static mut PLEDGE_APPLIED: i32 = 0;
+    // static mut PLEDGE_APPLIED: i32 = 0;
 
     unsafe {
         /*

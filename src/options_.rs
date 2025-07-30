@@ -11,14 +11,11 @@
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-use crate::compat::tree::rb_find_by;
 use crate::libc::{fnmatch, isdigit, sscanf, strcasecmp, strchr, strcmp, strncmp, strstr};
 use crate::options_table::OPTIONS_OTHER_NAMES_STR;
 use crate::*;
 
-// Option handling; each option has a name, type and value and is stored in
-// a red-black tree.
-//
+// Option handling; each option has a name, type and value and is stored in a red-black tree.
 
 #[repr(C)]
 #[derive(Copy, Clone)]
@@ -820,7 +817,8 @@ pub unsafe fn options_match(s: *const u8, idx: *mut i32, ambiguous: *mut i32) ->
     }
 }
 
-pub unsafe fn options_match_get(
+#[expect(dead_code)]
+unsafe fn options_match_get(
     oo: *mut options,
     s: *const u8,
     idx: *mut i32,

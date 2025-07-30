@@ -1745,17 +1745,9 @@ pub unsafe fn tty_draw_line(
         let gd = (*s).grid;
         let mut gc: grid_cell = zeroed();
         let mut last: grid_cell = zeroed();
-        const SIZEOF_LAST: usize = size_of::<grid_cell>();
-        // const struct grid_cell *gcp;
-        // struct grid_line *gl;
         let c = (*tty).client;
 
         let mut r: overlay_ranges = zeroed();
-        // u_int i, j, ux, sx, width, hidden, eux, nxx;
-        // u_int cellsize;
-        // int flags, cleared = 0, wrapped = 0;
-        // char buf[512];
-        // size_t len;
         let mut cleared = 0;
         let mut wrapped = 0;
         const SIZEOF_BUF: usize = 512;
@@ -2255,7 +2247,8 @@ pub unsafe fn tty_cmd_deleteline(tty: *mut tty, ctx: *const tty_ctx) {
     }
 }
 
-pub unsafe fn tty_cmd_clearline(tty: *mut tty, ctx: *const tty_ctx) {
+#[expect(dead_code)]
+unsafe fn tty_cmd_clearline(tty: *mut tty, ctx: *const tty_ctx) {
     unsafe {
         tty_default_attributes(
             tty,
@@ -2269,7 +2262,8 @@ pub unsafe fn tty_cmd_clearline(tty: *mut tty, ctx: *const tty_ctx) {
     }
 }
 
-pub unsafe fn tty_cmd_clearendofline(tty: *mut tty, ctx: *const tty_ctx) {
+#[expect(dead_code)]
+unsafe fn tty_cmd_clearendofline(tty: *mut tty, ctx: *const tty_ctx) {
     unsafe {
         let nx = (*ctx).sx - (*ctx).ocx;
 
@@ -2285,7 +2279,8 @@ pub unsafe fn tty_cmd_clearendofline(tty: *mut tty, ctx: *const tty_ctx) {
     }
 }
 
-pub unsafe fn tty_cmd_clearstartofline(tty: *mut tty, ctx: *const tty_ctx) {
+#[expect(dead_code)]
+unsafe fn tty_cmd_clearstartofline(tty: *mut tty, ctx: *const tty_ctx) {
     unsafe {
         tty_default_attributes(
             tty,
@@ -2341,7 +2336,8 @@ pub unsafe fn tty_cmd_reverseindex(tty: *mut tty, ctx: *const tty_ctx) {
     }
 }
 
-pub unsafe fn tty_cmd_linefeed(tty: *mut tty, ctx: *const tty_ctx) {
+#[expect(dead_code)]
+unsafe fn tty_cmd_linefeed(tty: *mut tty, ctx: *const tty_ctx) {
     unsafe {
         let c = (*tty).client;
 

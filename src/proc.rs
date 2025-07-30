@@ -64,7 +64,6 @@ pub struct tmuxpeer {
     pub dispatchcb: Option<unsafe fn(*mut imsg, *mut c_void)>,
     pub arg: *mut c_void,
 
-    // #[entry]
     pub entry: tailq_entry<tmuxpeer>,
 }
 

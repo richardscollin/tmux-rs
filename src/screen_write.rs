@@ -15,8 +15,9 @@ use crate::options_::options_get_number_;
 use crate::*;
 
 #[repr(i32)]
-#[derive(Copy, Clone, Eq, PartialEq)]
+#[derive(Copy, Clone, Default, Eq, PartialEq)]
 pub enum screen_write_citem_type {
+    #[default]
     Text,
     Clear,
 }
@@ -1573,7 +1574,7 @@ pub unsafe fn screen_write_scrollregion(
         }
         if rupper >= rlower {
             return;
-        } /* cannot be one line */
+        } // cannot be one line
 
         screen_write_collect_flush(ctx, 0, "screen_write_scrollregion");
 
@@ -2108,7 +2109,7 @@ pub unsafe fn screen_write_collect_add(ctx: *mut screen_write_ctx, gc: *const gr
         if (*s).cx > sx - 1 || (*(*ctx).item).used > sx - 1 - (*s).cx {
             screen_write_collect_end(ctx);
         }
-        let ci = (*ctx).item; /* may have changed */
+        let ci = (*ctx).item; // may have changed
 
         if (*s).cx > sx - 1 {
             // log_debug!("%s: wrapped at %u,%u", __func__, (*s).cx, (*s).cy);
@@ -2143,7 +2144,6 @@ pub unsafe fn screen_write_cell(ctx: *mut screen_write_ctx, gc: *const grid_cell
 
         let gce: *mut grid_cell_entry;
 
-        const SIZE_OF_TMP_GC: usize = size_of::<grid_cell>();
         let mut tmp_gc: grid_cell = zeroed();
         let mut now_gc: grid_cell = zeroed();
         let mut ttyctx: tty_ctx = zeroed();
@@ -2377,7 +2377,7 @@ pub unsafe fn screen_write_combine(ctx: *mut screen_write_ctx, gc: *const grid_c
         screen_write_set_cursor(ctx, cx as i32 - n as i32, cy as i32);
         screen_write_initctx(ctx, &raw mut ttyctx, 0);
         ttyctx.cell = &raw const last;
-        ttyctx.num = force_wide; /* reset cached cursor position */
+        ttyctx.num = force_wide; // reset cached cursor position
         tty_write(tty_cmd_cell, &raw mut ttyctx);
         screen_write_set_cursor(ctx, cx as i32, cy as i32);
 

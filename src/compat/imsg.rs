@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use core::ffi::{c_int, c_uchar, c_void};
 use std::ptr::NonNull;
 use std::{mem::MaybeUninit, ptr::null_mut};

@@ -1,23 +1,15 @@
-# https://doc.rust-lang.org/cargo/reference/manifest.html
 [package]
-name = "tmux-rs"
-version = "0.0.2"
-edition = "2024"
-authors = ["Collin Richards"]
-repository = "https://github.com/richardscollin/tmux-rs"
-description = "A Rust port of tmux"
-license = "ISC"
+name         = "tmux-rs"
+version      = "0.0.2"
+authors      = ["Collin Richards <richardscollin@gatech.edu>"]
+categories   = ["command-line-utilities"]
+edition      = "2024"
+include      = ["/src", "COPYING", "README.md", "build.rs"]
+keywords     = ["tmux"]
+license      = "ISC"
+repository   = "https://github.com/richardscollin/tmux-rs"
 rust-version = "1.88" # let chains
-exclude = ["/docs", "/.cargo", "/tools", "CHANGELOG.md", "flake.lock", "flake.nix"]
-
-[dependencies]
-bitflags     = { version = "2.9.1"   }
-lalrpop-util = { version = "0.22.2", default-features = false, features = ["unicode"] }
-libc         = { version = "0.2.174" }
-paste        = { version = "1.0.15"  }
-
-[build-dependencies]
-lalrpop      = { version = "0.22.2", default-features = false  }
+description  = "A Rust port of tmux"
 
 # Note: none of these features are supported yet
 # they just exist to make matching upstream's
@@ -34,6 +26,15 @@ systemd     = []
 utempter    = []
 utf8proc    = []
 
+[dependencies]
+bitflags     = { version = "2.9.1" }
+lalrpop-util = { version = "0.22.2", features = ["unicode"], default-features = false }
+libc         = { version = "0.2.174" }
+paste        = { version = "1.0.15" }
+
+[build-dependencies]
+lalrpop      = { version = "0.22.2", default-features = false }
+
 # https://doc.rust-lang.org/rustc/lints/index.html
 [lints.rust]
 dead-code            = "allow" # TODO fix by adding annotations
@@ -42,14 +43,12 @@ unpredictable_function_pointer_comparisons = "allow" # FIXME
 
 # https://rust-lang.github.io/rust-clippy/master/index.html
 [lints.clippy]
-
 # disabled
-manual_range_contains        = "allow"
-missing_safety_doc           = "allow"
-shadow_reuse                 = "allow"
-shadow_unrelated             = "allow"
-too_many_arguments           = "allow"
-
+manual_range_contains          = "allow"
+missing_safety_doc             = "allow"
+shadow_reuse                   = "allow"
+shadow_unrelated               = "allow"
+too_many_arguments             = "allow"
 # enabled
 allow_attributes               = "warn"
 multiple_crate_versions        = "warn"

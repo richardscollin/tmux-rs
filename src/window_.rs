@@ -1464,7 +1464,7 @@ pub unsafe fn window_pane_find_up(wp: *mut window_pane) -> *mut window_pane {
             let end = (*next).xoff + (*next).sx - 1;
 
             let mut found = 0;
-            #[allow(clippy::if_same_then_else)]
+            #[expect(clippy::if_same_then_else)]
             if (*next).xoff < left && end > right {
                 found = 1;
             } else if (*next).xoff >= left && (*next).xoff <= right {
@@ -1532,7 +1532,7 @@ pub unsafe fn window_pane_find_down(wp: *mut window_pane) -> *mut window_pane {
             let end = (*next).xoff + (*next).sx - 1;
 
             let mut found = 0;
-            #[allow(clippy::if_same_then_else)]
+            #[expect(clippy::if_same_then_else)]
             if (*next).xoff < left && end > right {
                 found = 1;
             } else if (*next).xoff >= left && (*next).xoff <= right {
@@ -1583,7 +1583,7 @@ pub unsafe fn window_pane_find_left(wp: *mut window_pane) -> *mut window_pane {
             let end = (*next).yoff + (*next).sy - 1;
 
             let mut found = false;
-            #[allow(clippy::if_same_then_else)]
+            #[expect(clippy::if_same_then_else)]
             if (*next).yoff < top && end > bottom {
                 found = true;
             } else if (*next).yoff >= top && (*next).yoff <= bottom {
@@ -1634,7 +1634,7 @@ pub unsafe fn window_pane_find_right(wp: *mut window_pane) -> *mut window_pane {
             let end = (*next).yoff + (*next).sy - 1;
 
             let mut found = false;
-            #[allow(clippy::if_same_then_else)]
+            #[expect(clippy::if_same_then_else)]
             if (*next).yoff < top && end > bottom {
                 found = true;
             } else if (*next).yoff >= top && (*next).yoff <= bottom {

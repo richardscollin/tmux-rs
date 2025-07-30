@@ -40,7 +40,6 @@ pub fn attributes_tostring(attr: grid_attr) -> Cow<'static, str> {
     ))
 }
 
-#[allow(clippy::result_unit_err)]
 pub fn attributes_fromstring(str: &str) -> Result<grid_attr, ()> {
     struct table_entry {
         name: &'static str,

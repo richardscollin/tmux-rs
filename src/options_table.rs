@@ -133,7 +133,7 @@ pub static OPTIONS_OTHER_NAMES_STR: [options_name_map_str; 5] = [
     options_name_map_str::new("pane-colors", "pane-colours"),
 ];
 
-#[allow(clippy::disallowed_methods)]
+#[expect(clippy::disallowed_methods)]
 /// Status line format.
 pub const OPTIONS_TABLE_STATUS_FORMAT1: *const u8 = concat!(
     "#[align=left range=left #{E:status-left-style}]",
@@ -204,7 +204,7 @@ pub const OPTIONS_TABLE_STATUS_FORMAT1: *const u8 = concat!(
 .as_ptr()
 .cast();
 
-#[allow(clippy::disallowed_methods)]
+#[expect(clippy::disallowed_methods)]
 pub const OPTIONS_TABLE_STATUS_FORMAT2: *const u8 = concat!(
     "#[align=centre]#{P:#{?pane_active,#[reverse],}",
     "#{pane_index}[#{pane_width}x#{pane_height}]#[default] }\0"

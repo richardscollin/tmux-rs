@@ -218,7 +218,7 @@ const KEYC_MASK_KEY: c_ulonglong = 0x000fffffffffff;
 
 const KEYC_NUSER: c_ulonglong = 1000;
 
-#[allow(non_snake_case)]
+#[expect(non_snake_case)]
 #[inline(always)]
 fn KEYC_IS_MOUSE(key: key_code) -> bool {
     const KEYC_MOUSE: c_ulonglong = keyc::KEYC_MOUSE as c_ulonglong;
@@ -227,7 +227,7 @@ fn KEYC_IS_MOUSE(key: key_code) -> bool {
     (key & KEYC_MASK_KEY) >= KEYC_MOUSE && (key & KEYC_MASK_KEY) < KEYC_BSPACE
 }
 
-#[allow(non_snake_case)]
+#[expect(non_snake_case)]
 #[inline(always)]
 fn KEYC_IS_UNICODE(key: key_code) -> bool {
     let masked = key & KEYC_MASK_KEY;
@@ -646,7 +646,7 @@ const COLOUR_FLAG_256: i32 = 0x01000000;
 const COLOUR_FLAG_RGB: i32 = 0x02000000;
 
 /// Special colours.
-#[allow(non_snake_case)]
+#[expect(non_snake_case)]
 #[inline]
 fn COLOUR_DEFAULT(c: i32) -> bool {
     c == 8 || c == 9
@@ -1602,22 +1602,22 @@ const MOUSE_BUTTON_10: u32 = 130;
 const MOUSE_BUTTON_11: u32 = 131;
 
 // Mouse helpers.
-#[allow(non_snake_case)]
+#[expect(non_snake_case)]
 #[inline]
 fn MOUSE_BUTTONS(b: u32) -> u32 {
     b & MOUSE_MASK_BUTTONS
 }
-#[allow(non_snake_case)]
+#[expect(non_snake_case)]
 #[inline]
 fn MOUSE_WHEEL(b: u32) -> bool {
     ((b) & MOUSE_MASK_BUTTONS) == MOUSE_WHEEL_UP || ((b) & MOUSE_MASK_BUTTONS) == MOUSE_WHEEL_DOWN
 }
-#[allow(non_snake_case)]
+#[expect(non_snake_case)]
 #[inline]
 fn MOUSE_DRAG(b: u32) -> bool {
     b & MOUSE_MASK_DRAG != 0
 }
-#[allow(non_snake_case)]
+#[expect(non_snake_case)]
 #[inline]
 fn MOUSE_RELEASE(b: u32) -> bool {
     b & MOUSE_MASK_BUTTONS == 3
@@ -3229,6 +3229,7 @@ pub(crate) unsafe fn cstr_to_str<'a>(ptr: *const u8) -> &'a str {
 macro_rules! c {
     ($s:literal) => {{
         const S: &str = concat!($s, "\0");
+        #[allow(clippy::allow_attributes)]
         #[allow(unused_unsafe)]
         unsafe { std::ffi::CStr::from_bytes_with_nul_unchecked(S.as_bytes()) }
             .as_ptr()

@@ -5069,7 +5069,7 @@ pub unsafe fn format_expand1(es: *mut format_expand_state, mut fmt: *const u8) -
                 }
             }
 
-            #[allow(unreachable_code)]
+            #[expect(unreachable_code)]
             {
                 break;
             }

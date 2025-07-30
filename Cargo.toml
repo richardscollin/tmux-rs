@@ -42,10 +42,16 @@ unpredictable_function_pointer_comparisons = "allow" # FIXME
 
 # https://rust-lang.github.io/rust-clippy/master/index.html
 [lints.clippy]
-manual_range_contains   = "allow"
-missing_safety_doc      = "allow"
-multiple_crate_versions = "warn"
-shadow_reuse            = "allow"
-shadow_same             = "warn"
-shadow_unrelated        = "allow"
-too_many_arguments      = "allow"
+
+# disabled
+manual_range_contains        = "allow"
+missing_safety_doc           = "allow"
+shadow_reuse                 = "allow"
+shadow_unrelated             = "allow"
+too_many_arguments           = "allow"
+
+# enabled
+allow_attributes               = "warn"
+multiple_crate_versions        = "warn"
+shadow_same                    = "warn"
+too_long_first_doc_paragraph   = "warn"

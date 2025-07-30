@@ -110,6 +110,7 @@ unsafe fn cmd_select_window_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
 
         if next || previous || last {
             let activity = args_has(args, b'a');
+            #[expect(clippy::collapsible_else_if)]
             if next {
                 if session_next(s, activity) != 0 {
                     cmdq_error!(item, "no next window");
@@ -121,7 +122,6 @@ unsafe fn cmd_select_window_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
                     return cmd_retval::CMD_RETURN_ERROR;
                 }
             } else {
-                #[allow(clippy::collapsible_else_if)]
                 if session_last(s) != 0 {
                     cmdq_error!(item, "no last window");
                     return cmd_retval::CMD_RETURN_ERROR;

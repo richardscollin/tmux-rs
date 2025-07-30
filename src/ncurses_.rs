@@ -1,7 +1,7 @@
 pub const ERR: i32 = -1;
 pub const OK: i32 = 0;
 
-#[allow(clippy::upper_case_acronyms)]
+#[expect(clippy::upper_case_acronyms)]
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub struct TERMINAL {

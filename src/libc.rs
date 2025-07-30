@@ -18,7 +18,7 @@ pub unsafe fn free_<T>(p: *mut T) {
     unsafe { ::libc::free(p as *mut c_void) }
 }
 
-#[allow(
+#[expect(
     clippy::unnecessary_cast,
     reason = "mode_t is u16 on macos so cast is required for some platforms only"
 )]
@@ -182,7 +182,7 @@ macro_rules! errno {
 pub(crate) use errno;
 
 #[cfg(target_os = "linux")]
-#[allow(non_snake_case)]
+#[expect(non_snake_case)]
 #[inline]
 pub fn MB_CUR_MAX() -> usize {
     unsafe extern "C" {

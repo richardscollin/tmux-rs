@@ -30,13 +30,13 @@ const TTY_BLOCK_INTERVAL: libc::suseconds_t = 100_000; // 100 millis
 const TTY_QUERY_TIMEOUT: i32 = 5;
 const TTY_REQUEST_LIMIT: i32 = 30;
 
-#[allow(non_snake_case)]
+#[expect(non_snake_case)]
 #[inline]
 unsafe fn TTY_BLOCK_START(tty: *const tty) -> u32 {
     unsafe { 1 + ((*tty).sx * (*tty).sy) * 8 }
 }
 
-#[allow(non_snake_case)]
+#[expect(non_snake_case)]
 #[inline]
 unsafe fn TTY_BLOCK_STOP(tty: *const tty) -> u32 {
     unsafe { 1 + ((*tty).sx * (*tty).sy) / 8 }

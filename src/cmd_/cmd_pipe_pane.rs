@@ -122,16 +122,17 @@ pub unsafe fn cmd_pipe_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
                 close(pipe_fd[0]);
 
                 let null_fd = open(_PATH_DEVNULL, O_WRONLY, 0);
+                #[expect(clippy::collapsible_else_if)]
                 if out != 0 {
                     if dup2(pipe_fd[1], STDIN_FILENO) == -1 {
                         _exit(1);
                     }
                 } else {
-                    #[allow(clippy::collapsible_else_if)]
                     if dup2(null_fd, STDIN_FILENO) == -1 {
                         _exit(1);
                     }
                 }
+                #[expect(clippy::collapsible_else_if)]
                 if in_ != 0 {
                     if dup2(pipe_fd[1], STDOUT_FILENO) == -1 {
                         _exit(1);
@@ -140,7 +141,6 @@ pub unsafe fn cmd_pipe_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
                         close(pipe_fd[1]);
                     }
                 } else {
-                    #[allow(clippy::collapsible_else_if)]
                     if dup2(null_fd, STDOUT_FILENO) == -1 {
                         _exit(1);
                     }

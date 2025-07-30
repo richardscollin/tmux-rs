@@ -56,7 +56,7 @@ pub struct options {
     pub parent: *mut options,
 }
 
-#[allow(non_snake_case)]
+#[expect(non_snake_case)]
 #[inline]
 pub unsafe fn OPTIONS_IS_STRING(o: *const options_entry) -> bool {
     unsafe {
@@ -65,7 +65,7 @@ pub unsafe fn OPTIONS_IS_STRING(o: *const options_entry) -> bool {
     }
 }
 
-#[allow(non_snake_case)]
+#[expect(non_snake_case)]
 #[inline]
 pub fn OPTIONS_IS_NUMBER(o: *const options_entry) -> bool {
     unsafe {
@@ -78,7 +78,7 @@ pub fn OPTIONS_IS_NUMBER(o: *const options_entry) -> bool {
     }
 }
 
-#[allow(non_snake_case)]
+#[expect(non_snake_case)]
 #[inline]
 pub unsafe fn OPTIONS_IS_COMMAND(o: *const options_entry) -> bool {
     unsafe {
@@ -87,7 +87,7 @@ pub unsafe fn OPTIONS_IS_COMMAND(o: *const options_entry) -> bool {
     }
 }
 
-#[allow(non_snake_case)]
+#[expect(non_snake_case)]
 #[inline]
 pub unsafe fn OPTIONS_IS_ARRAY(o: *const options_entry) -> bool {
     unsafe {

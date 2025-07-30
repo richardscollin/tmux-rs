@@ -49,6 +49,7 @@ unsafe fn cmd_split_window_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
         }
 
         // If the 'p' flag is dropped then this bit can be moved into 'l'.
+        #[expect(clippy::collapsible_else_if)]
         if args_has_(args, 'l') || args_has_(args, 'p') {
             if args_has_(args, 'f') {
                 if type_ == layout_type::LAYOUT_TOPBOTTOM {
@@ -57,7 +58,6 @@ unsafe fn cmd_split_window_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
                     curval = (*w).sx;
                 }
             } else {
-                #[allow(clippy::collapsible_else_if)]
                 if type_ == layout_type::LAYOUT_TOPBOTTOM {
                     curval = (*wp).sy;
                 } else {

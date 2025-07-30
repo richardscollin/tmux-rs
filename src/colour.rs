@@ -111,7 +111,7 @@ pub fn colour_force_rgb(c: i32) -> i32 {
 }
 
 /// Convert colour to a string.
-#[allow(
+#[expect(
     static_mut_refs,
     reason = "TODO need to find a better way to make use of the write macro without invoking ub"
 )]

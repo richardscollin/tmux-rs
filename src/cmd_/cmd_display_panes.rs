@@ -153,7 +153,7 @@ unsafe fn cmd_display_panes_draw_pane(ctx: *mut screen_redraw_ctx, wp: *mut wind
                     null_mut(),
                     null_mut(),
                 );
-                #[allow(clippy::int_plus_one)]
+                #[expect(clippy::int_plus_one)]
                 if (sx as usize) >= len + llen + 1 {
                     len += llen + 1;
                     tty_cursor(tty, xoff + px - (len / 2) as u32, yoff + py);

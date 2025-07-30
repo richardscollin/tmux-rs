@@ -1,0 +1,7 @@
+# https://github.com/rust-lang/rustfmt/blob/master/Configurations.md
+
+# using nightly rustfmt options
+# use: cargo +nightly fmt
+
+group_imports = "StdExternalCrate"
+normalize_comments = true

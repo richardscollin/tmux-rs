@@ -18,8 +18,8 @@ use std::ops::BitOrAssign as _;
 use crate::xmalloc::xrecallocarray__;
 use crate::*;
 
+#[expect(clippy::allow_attributes)]
 #[expect(unused_imports)]
-#[allow(clippy::uninlined_format_args)]
 mod lalrpop {
     use lalrpop_util::lalrpop_mod;
     lalrpop_mod!(pub(crate) cmd_parse);

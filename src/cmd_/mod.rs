@@ -738,6 +738,7 @@ pub fn cmd_list_print(cmdlist: &mut cmd_list, escaped: c_int) -> *mut u8 {
             strlcat(buf, this, len);
 
             let next = tailq_next::<_, _, qentry>(cmd);
+            #[expect(clippy::collapsible_else_if)]
             if !next.is_null() {
                 if (*cmd).group != (*next).group {
                     if escaped != 0 {
@@ -746,7 +747,6 @@ pub fn cmd_list_print(cmdlist: &mut cmd_list, escaped: c_int) -> *mut u8 {
                         strlcat(buf, c!(" ;; "), len);
                     }
                 } else {
-                    #[allow(clippy::collapsible_else_if)]
                     if escaped != 0 {
                         strlcat(buf, c!(" \\; "), len);
                     } else {

@@ -201,7 +201,7 @@ pub unsafe fn imsg_read(imsgbuf: *mut imsgbuf) -> isize {
 pub unsafe fn imsg_get(imsgbuf: *mut imsgbuf, imsg: *mut imsg) -> isize {
     unsafe {
         let mut m = MaybeUninit::<imsg>::uninit();
-        #[allow(clippy::shadow_reuse)]
+        #[expect(clippy::shadow_reuse)]
         let m = m.as_mut_ptr();
         let av: usize = (*imsgbuf).r.wpos;
 
@@ -532,7 +532,7 @@ unsafe fn imsg_dequeue_fd(imsgbuf: *mut imsgbuf) -> i32 {
         let Some(ifd) = NonNull::new(tailq_first(&raw mut (*imsgbuf).fds)) else {
             return -1;
         };
-        #[allow(clippy::shadow_reuse)]
+        #[expect(clippy::shadow_reuse)]
         let ifd = ifd.as_ptr();
 
         let fd = (*ifd).fd;

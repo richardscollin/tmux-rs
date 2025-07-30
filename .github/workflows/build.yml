@@ -62,8 +62,11 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libncurses-dev libevent-dev
+      - uses: dtolnay/rust-toolchain@nightly
       - uses: dtolnay/rust-toolchain@stable
-      - run: cargo fmt --check
+      # should format cleanly on nightly and stable
+      - run: cargo +nightly fmt --check
+      - run: cargo +stable fmt --check # this will warn about unstable features, but that's fine
 
   build:
     runs-on: ${{ matrix.os }}

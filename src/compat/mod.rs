@@ -48,7 +48,7 @@ pub const ACCESSPERMS: libc::mode_t = libc::S_IRWXU | libc::S_IRWXG | libc::S_IR
 
 // #define S_ISDIR(mode)  (((mode) & S_IFMT) == S_IFDIR)
 // TODO move this to a better spot
-#[allow(non_snake_case)]
+#[expect(non_snake_case)]
 #[inline]
 pub fn S_ISDIR(mode: libc::mode_t) -> bool {
     mode & libc::S_IFMT == libc::S_IFDIR

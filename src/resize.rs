@@ -321,7 +321,7 @@ pub unsafe fn default_window_size_skip_client(
     0
 }
 
-#[allow(clippy::too_many_arguments)]
+#[expect(clippy::too_many_arguments)]
 pub unsafe fn default_window_size(
     mut c: *mut client,
     s: *mut session,

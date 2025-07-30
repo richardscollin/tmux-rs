@@ -15,7 +15,7 @@ macro_rules! evbuffer_add_printf {
     };
 }
 pub(crate) use evbuffer_add_printf;
-#[allow(clippy::disallowed_methods)]
+#[expect(clippy::disallowed_methods)]
 pub unsafe fn evbuffer_add_vprintf(buf: *mut evbuffer, args: std::fmt::Arguments) -> i32 {
     let s = args.to_string(); // TODO this is doing unecessary allocating and freeing
     unsafe { evbuffer_add(buf, s.as_ptr().cast(), s.len()) }
@@ -103,19 +103,19 @@ pub unsafe fn signal_set(
 // #define signal_pending(ev, tv)		event_pending((ev), EV_SIGNAL, (tv))
 // #define signal_initialized(ev)		event_initialized(ev)
 
-#[allow(non_snake_case)]
+#[expect(non_snake_case)]
 #[inline]
 pub unsafe fn EVBUFFER_LENGTH(x: *mut evbuffer) -> usize {
     unsafe { evbuffer_get_length(x) }
 }
 
-#[allow(non_snake_case)]
+#[expect(non_snake_case)]
 #[inline]
 pub unsafe fn EVBUFFER_DATA(x: *mut evbuffer) -> *mut u8 {
     unsafe { evbuffer_pullup(x, -1) }
 }
 
-#[allow(non_snake_case)]
+#[expect(non_snake_case)]
 #[inline]
 pub unsafe fn EVBUFFER_OUTPUT(x: *mut bufferevent) -> *mut evbuffer {
     unsafe { bufferevent_get_output(x) }

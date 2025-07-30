@@ -1119,7 +1119,7 @@ pub unsafe fn tty_keys_next(tty: *mut tty) -> i32 {
                             }
 
                             // Is this a mouse key press?
-                            #[allow(unused_assignments)]
+                            #[expect(unused_assignments)]
                             match tty_keys_mouse(tty, buf.cast(), len, &raw mut size, &raw mut m) {
                                 0 => {
                                     // yes

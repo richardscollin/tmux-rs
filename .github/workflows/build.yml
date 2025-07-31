@@ -7,18 +7,6 @@ on:
 name: build
 
 jobs:
-  unsafe-report:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Install system dependencies (ubuntu)
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libncurses-dev libevent-dev
-      - uses: dtolnay/rust-toolchain@nightly
-      - run: |
-         CLICOLOR_FORCE=1 ./tools/unsafe_usage_analyzer.rs . --csv docs/data/code-stats.csv --baseline docs/data/code-stats.csv
-
   asan-test:
     runs-on: ubuntu-latest
     steps:

@@ -3809,8 +3809,7 @@ pub unsafe fn window_copy_cellstring(
     }
 }
 
-// Find last match in given range.
-
+/// Find last match in given range.
 pub unsafe fn window_copy_last_regex(
     gd: *mut grid,
     py: u32,
@@ -4149,7 +4148,6 @@ pub unsafe fn window_copy_search_back_overlap(
 // found, jump to it. If cis then ignore case. The direction is 0 for searching
 // up, down otherwise. If wrap then go to begin/end of grid and try again if
 // not found.
-
 pub unsafe fn window_copy_search_jump(
     wme: *mut window_mode_entry,
     gd: *mut grid,
@@ -4165,15 +4163,10 @@ pub unsafe fn window_copy_search_jump(
     unsafe {
         let mut px = 0;
         let mut sx = 0;
-
-        // u_int i, px, sx;
         let mut ssize: u32 = 1;
         let mut found = 0;
         let mut cflags = libc::REG_EXTENDED;
-
         let mut reg: libc::regex_t = zeroed();
-        // char *sbuf;
-        // regex_t reg;
 
         if regex != 0 {
             let mut sbuf: *mut u8 = xmalloc(ssize as usize).as_ptr().cast();
@@ -4306,9 +4299,9 @@ pub unsafe fn window_copy_move_after_search_mark(
     }
 }
 
-// Search in for text searchstr. If direction is 0 then search up, otherwise
-// down.
-
+/// Search in for text searchstr.
+///
+/// If direction is 0 then search up, otherwise down.
 pub unsafe fn window_copy_search(
     wme: *mut window_mode_entry,
     direction: i32,
@@ -4419,8 +4412,7 @@ pub unsafe fn window_copy_search(
             }
 
             if direction != 0 {
-                // When in Emacs mode, position the cursor just after
-                // the mark.
+                // When in Emacs mode, position the cursor just after the mark.
                 if keys == Ok(modekey::MODEKEY_EMACS) {
                     window_copy_move_after_search_mark(data, &raw mut fx, &raw mut fy, wrapflag);
                     (*data).cx = fx;
@@ -5215,10 +5207,10 @@ pub unsafe fn window_copy_start_selection(wme: *mut window_mode_entry) {
     }
 }
 
-pub unsafe fn window_copy_adjust_selection(
+unsafe fn window_copy_adjust_selection(
     wme: *mut window_mode_entry,
-    selx: *mut u32,
-    sely: *mut u32,
+    selx: &mut u32,
+    sely: &mut u32,
 ) -> window_copy_rel_pos {
     unsafe {
         let data: *mut window_copy_mode_data = (*wme).data.cast();
@@ -5279,20 +5271,18 @@ pub unsafe fn window_copy_set_selection(
         let s: *mut screen = &raw mut (*data).screen;
         let oo: *mut options = (*(*wp).window).options;
         let mut gc: grid_cell = zeroed();
-        // u_int sx, sy, cy, endsx, endsy;
-        // int startrelpos, endrelpos;
 
         window_copy_synchronize_cursor(wme, no_reset);
 
         // Adjust the selection.
         let mut sx = (*data).selx;
         let mut sy = (*data).sely;
-        let startrelpos = window_copy_adjust_selection(wme, &raw mut sx, &raw mut sy);
+        let startrelpos = window_copy_adjust_selection(wme, &mut sx, &mut sy);
 
         // Adjust the end of selection.
         let mut endsx = (*data).endselx;
         let mut endsy = (*data).endsely;
-        let endrelpos = window_copy_adjust_selection(wme, &raw mut endsx, &raw mut endsy);
+        let endrelpos = window_copy_adjust_selection(wme, &mut endsx, &mut endsy);
 
         // Selection is outside of the current screen
         if startrelpos == endrelpos
@@ -5599,15 +5589,13 @@ pub unsafe fn window_copy_copy_line(
         let gd: *mut grid = (*(*data).backing).grid;
         let mut gc: grid_cell = zeroed();
         let mut ud: utf8_data = zeroed();
-        // const char *s;
         let mut wrapped: u32 = 0;
 
         if sx > ex {
             return;
         }
 
-        // Work out if the line was wrapped at the screen edge and all of it is
-        // on screen.
+        // Work out if the line was wrapped at the screen edge and all of it is on screen.
         let gl = grid_get_line(gd, sy);
         if (*gl).flags.intersects(grid_line_flag::WRAPPED) && (*gl).cellsize <= (*gd).sx {
             wrapped = 1;
@@ -6144,8 +6132,7 @@ pub unsafe fn window_copy_cursor_next_word(wme: *mut window_mode_entry, separato
     }
 }
 
-// Compute the next place where a word ends.
-
+/// Compute the next place where a word ends.
 pub unsafe fn window_copy_cursor_next_word_end_pos(
     wme: *mut window_mode_entry,
     separators: *const u8,
@@ -6180,8 +6167,7 @@ pub unsafe fn window_copy_cursor_next_word_end_pos(
     }
 }
 
-// Move to the next place where a word ends.
-
+/// Move to the next place where a word ends.
 pub unsafe fn window_copy_cursor_next_word_end(
     wme: *mut window_mode_entry,
     separators: *const u8,
@@ -6224,8 +6210,7 @@ pub unsafe fn window_copy_cursor_next_word_end(
     }
 }
 
-// Compute the previous place where a word begins.
-
+/// Compute the previous place where a word begins.
 pub unsafe fn window_copy_cursor_previous_word_pos(
     wme: *mut window_mode_entry,
     separators: *const u8,
@@ -6256,8 +6241,7 @@ pub unsafe fn window_copy_cursor_previous_word_pos(
     }
 }
 
-// Move to the previous place where a word begins.
-
+/// Move to the previous place where a word begins.
 pub unsafe fn window_copy_cursor_previous_word(
     wme: *mut window_mode_entry,
     separators: *const u8,
@@ -6615,8 +6599,7 @@ pub unsafe fn window_copy_jump_to_mark(wme: *mut window_mode_entry) {
     }
 }
 
-// Scroll up if the cursor went off the visible screen.
-
+/// Scroll up if the cursor went off the visible screen.
 pub unsafe fn window_copy_acquire_cursor_up(
     wme: *mut window_mode_entry,
     hsize: u32,
@@ -6652,7 +6635,7 @@ pub unsafe fn window_copy_acquire_cursor_up(
 
 // Scroll down if the cursor went off the visible screen.
 
-pub unsafe fn window_copy_acquire_cursor_down(
+unsafe fn window_copy_acquire_cursor_down(
     wme: *mut window_mode_entry,
     hsize: u32,
     sy: u32,

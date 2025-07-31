@@ -390,12 +390,12 @@ pub unsafe fn server_destroy_pane(wp: *mut window_pane, notify: i32) {
     }
 }
 
-pub unsafe fn server_destroy_session_group(s: *mut session) {
+pub unsafe fn server_destroy_session_group(sess: *mut session) {
     unsafe {
-        let sg = session_group_contains(s);
+        let sg = session_group_contains(sess);
         if sg.is_null() {
-            server_destroy_session(s);
-            session_destroy(s, 1, c!("server_destroy_session_group"));
+            server_destroy_session(sess);
+            session_destroy(sess, 1, c!("server_destroy_session_group"));
         } else {
             for s in tailq_foreach(&raw mut (*sg).sessions).map(NonNull::as_ptr) {
                 server_destroy_session(s);

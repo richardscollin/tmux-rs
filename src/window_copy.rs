@@ -3973,7 +3973,7 @@ pub unsafe fn window_copy_cstrtocellpos(
         }
 
         // Locate starting cell.
-        let mut cell = 0;
+        cell = 0;
         let len = strlen(str) as u32;
         while cell < ncells {
             let mut ccell = cell;

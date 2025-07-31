@@ -81,7 +81,7 @@ pub unsafe fn menu_add_item(
             return;
         }
 
-        let s = if !fs.is_null() {
+        let s0 = if !fs.is_null() {
             format_single_from_state(qitem, (*item).name.as_ptr(), c, fs)
         } else {
             format_single(
@@ -94,15 +94,15 @@ pub unsafe fn menu_add_item(
             )
         };
 
-        if *s == b'\0' {
+        if *s0 == b'\0' {
             (*menu).count -= 1;
             return;
         }
         let mut max_width = (*c).tty.sx - 4;
 
         let mut key = null();
-        let slen: usize = strlen(s);
-        if *s != b'-' && (*item).key != KEYC_UNKNOWN && (*item).key != KEYC_NONE {
+        let slen: usize = strlen(s0);
+        if *s0 != b'-' && (*item).key != KEYC_UNKNOWN && (*item).key != KEYC_NONE {
             key = key_string_lookup_key((*item).key, 0);
             let keylen: usize = strlen(key) + 3;
 
@@ -119,7 +119,7 @@ pub unsafe fn menu_add_item(
         } else {
             c!("")
         };
-        let trimmed = format_trim_right(s, max_width);
+        let trimmed = format_trim_right(s0, max_width);
         let name: *mut u8 = if !key.is_null() {
             format_nul!(
                 "{}{}#[default] #[align=right]({})",
@@ -133,10 +133,10 @@ pub unsafe fn menu_add_item(
         free_(trimmed);
 
         (*new_item).name = SyncCharPtr::from_ptr(name);
-        free_(s);
+        free_(s0);
 
         let cmd: *const u8 = (*item).command.as_ptr();
-        let s: *mut u8 = if !cmd.is_null() {
+        let s1: *mut u8 = if !cmd.is_null() {
             if !fs.is_null() {
                 format_single_from_state(qitem, cmd, c, fs)
             } else {
@@ -145,7 +145,7 @@ pub unsafe fn menu_add_item(
         } else {
             null_mut()
         };
-        (*new_item).command = SyncCharPtr::from_ptr(s);
+        (*new_item).command = SyncCharPtr::from_ptr(s1);
         (*new_item).key = (*item).key;
 
         let mut width = format_width((*new_item).name.as_ptr());

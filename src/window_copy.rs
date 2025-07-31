@@ -4835,12 +4835,6 @@ pub unsafe fn window_copy_update_style(
         if (*data).searchmark.is_null() {
             return;
         }
-
-        /* if let Ok(0) = window_copy_search_mark_at(data, fx, fy, &raw mut current) {
-        } else {
-            return;
-        } */
-
         let current = match window_copy_search_mark_at(data, fx, fy) {
             Ok(value) => value,
             Err(_) => return,

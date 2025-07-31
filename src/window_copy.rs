@@ -4758,9 +4758,8 @@ pub unsafe fn window_copy_match_at_cursor(data: *mut window_copy_mode_data) -> *
 
         let cy = screen_hsize((*data).backing) - (*data).oy + (*data).cy;
 
-        let mut at = match window_copy_search_mark_at(data, (*data).cx, cy) {
-            Ok(value) => value,
-            Err(_) => return null_mut(),
+        let Ok(mut at) = window_copy_search_mark_at(data, (*data).cx, cy) else {
+            return null_mut();
         };
 
         if *(*data).searchmark.add(at as usize) == 0
@@ -4832,9 +4831,9 @@ pub unsafe fn window_copy_update_style(
         if (*data).searchmark.is_null() {
             return;
         }
-        let current = match window_copy_search_mark_at(data, fx, fy) {
-            Ok(value) => value,
-            Err(_) => return,
+
+        let Ok(current) = window_copy_search_mark_at(data, fx, fy) else {
+            return;
         };
 
         let mark = *(*data).searchmark.add(current as usize) as u32;

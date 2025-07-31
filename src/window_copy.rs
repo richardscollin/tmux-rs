@@ -4284,9 +4284,8 @@ pub unsafe fn window_copy_move_after_search_mark(
 ) {
     unsafe {
         let s = (*data).backing;
-        let start = 0;
 
-        if window_copy_search_mark_at(data, *fx, *fy).is_ok()
+        if let Ok(start) = window_copy_search_mark_at(data, *fx, *fy)
             && *(*data).searchmark.add(start as usize) != 0
         {
             while let Ok(at) = window_copy_search_mark_at(data, *fx, *fy) {
@@ -4323,7 +4322,6 @@ pub unsafe fn window_copy_search(
         let mut ctx: screen_write_ctx = zeroed();
         let gd: *mut grid = (*s).grid;
         let str: *mut u8 = (*data).searchstr;
-        let start: u32 = 0;
         let visible_only: i32;
 
         if regex != 0 && *str.add(libc::strcspn(str, c!("^$*+()?[].\\"))) == b'\0' {
@@ -4431,7 +4429,7 @@ pub unsafe fn window_copy_search(
             } else {
                 // When searching backward, position the cursor at the
                 // beginning of the mark.
-                if window_copy_search_mark_at(data, fx, fy).is_ok() {
+                if let Ok(start) = window_copy_search_mark_at(data, fx, fy) {
                     while let Ok(at) = window_copy_search_mark_at(data, fx, fy)
                         && !(*data).searchmark.is_null()
                         && *(*data).searchmark.add(at as usize)
@@ -4512,7 +4510,6 @@ pub unsafe fn window_copy_search_marks(
 
         let mut cflags = libc::REG_EXTENDED;
         let mut px: u32;
-        let b: u32 = 0;
         let mut nfound: u32 = 0;
         let mut width: u32;
 
@@ -4611,7 +4608,7 @@ pub unsafe fn window_copy_search_marks(
                         }
                         nfound += 1;
 
-                        if let Ok(_) = window_copy_search_mark_at(data, px, py) {
+                        if let Ok(b) = window_copy_search_mark_at(data, px, py) {
                             if b + width > (*gd).sx * (*gd).sy {
                                 width = ((*gd).sx * (*gd).sy) - b;
                             }

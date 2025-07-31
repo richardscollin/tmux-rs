@@ -818,7 +818,7 @@ unsafe fn window_customize_draw_option(
         let mut default_value: *mut u8 = null_mut();
 
         let mut fs: cmd_find_state = zeroed();
-        let ft = null_mut();
+        let ft;
 
         'out: {
             if !window_customize_check_item(data, item, &raw mut fs) {
@@ -837,7 +837,7 @@ unsafe fn window_customize_draw_option(
                 space = c!(" ");
                 unit = (*oe).unit;
             }
-            let ft = format_create_from_state(null_mut(), null_mut(), &raw mut fs);
+            ft = format_create_from_state(null_mut(), null_mut(), &raw mut fs);
 
             let mut text = if oe.is_null() || (*oe).text.is_null() {
                 c!("This option doesn't have a description.")

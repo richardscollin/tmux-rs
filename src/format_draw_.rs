@@ -28,31 +28,28 @@ type format_ranges = tailq_head<format_range>;
 impl_tailq_entry!(format_range, entry, tailq_entry<format_range>);
 
 /// Does this range match this style?
-unsafe fn format_is_type(fr: *mut format_range, sy: *mut style) -> bool {
-    unsafe {
-        if (*fr).type_ != (*sy).range_type {
-            return false;
-        }
+fn format_is_type(fr: &format_range, sy: &style) -> bool {
+    if fr.type_ != sy.range_type {
+        return false;
+    }
 
-        match (*fr).type_ {
-            style_range_type::STYLE_RANGE_NONE
-            | style_range_type::STYLE_RANGE_LEFT
-            | style_range_type::STYLE_RANGE_RIGHT => true,
-            style_range_type::STYLE_RANGE_PANE
-            | style_range_type::STYLE_RANGE_WINDOW
-            | style_range_type::STYLE_RANGE_SESSION => (*fr).argument == (*sy).range_argument,
-            style_range_type::STYLE_RANGE_USER => {
-                libc::strcmp(
-                    (&raw const (*fr).string).cast(),
-                    (&raw const (*sy).range_string).cast(),
-                ) == 0
-            }
-        }
+    match fr.type_ {
+        style_range_type::STYLE_RANGE_NONE
+        | style_range_type::STYLE_RANGE_LEFT
+        | style_range_type::STYLE_RANGE_RIGHT => true,
+        style_range_type::STYLE_RANGE_PANE
+        | style_range_type::STYLE_RANGE_WINDOW
+        | style_range_type::STYLE_RANGE_SESSION => fr.argument == sy.range_argument,
+        style_range_type::STYLE_RANGE_USER => unsafe {
+            libc::strcmp(
+                (&raw const fr.string).cast(),
+                (&raw const sy.range_string).cast(),
+            ) == 0
+        },
     }
 }
 
-// Free a range.
-
+/// Free a range.
 unsafe fn format_free_range(frs: *mut format_ranges, fr: *mut format_range) {
     unsafe {
         tailq_remove(frs, fr);
@@ -390,8 +387,7 @@ unsafe fn format_draw_left(
     }
 }
 
-// Draw format with list in the centre.
-
+/// Draw format with list in the centre.
 unsafe fn format_draw_centre(
     octx: *mut screen_write_ctx,
     available: u32,
@@ -805,8 +801,7 @@ unsafe fn format_draw_absolute_centre(
     }
 }
 
-// Get width and count of any leading #s.
-
+/// Get width and count of any leading #s.
 unsafe fn format_leading_hashes(cp: *const u8, n: *mut u32, width: *mut u32) -> *const u8 {
     unsafe {
         *n = 0;
@@ -1150,7 +1145,7 @@ pub unsafe fn format_draw(
                 // Check if the range style has changed and if so end the
                 // current range and start a new one if needed.
                 if !srs.is_null() {
-                    if !fr.is_null() && !format_is_type(fr, &raw mut sy) {
+                    if !fr.is_null() && !format_is_type(&*fr, &sy) {
                         if s[current as usize].cx != (*fr).start {
                             (*fr).end = s[current as usize].cx + 1;
                             tailq_insert_tail(&raw mut frs, fr);
@@ -1208,8 +1203,7 @@ pub unsafe fn format_draw(
                 }
             }
 
-            // Draw the screens. How they are arranged depends on where the list
-            // appears.
+            // Draw the screens. How they are arranged depends on where the list appears.
             match list_align {
                 // No list.
                 style_align::STYLE_ALIGN_DEFAULT => format_draw_none(
@@ -1500,8 +1494,7 @@ pub unsafe fn format_trim_left(expanded: *const u8, limit: u32) -> *mut u8 {
     }
 }
 
-// Trim on the right, taking #[] into account.
-
+/// Trim on the right, taking #[] into account.
 pub unsafe fn format_trim_right(expanded: *const u8, limit: u32) -> *mut u8 {
     unsafe {
         let mut ud: utf8_data = std::mem::zeroed();

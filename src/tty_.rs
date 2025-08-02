@@ -3644,7 +3644,7 @@ pub unsafe fn tty_colours_us(tty: *mut tty, gc: *const grid_cell) {
             // convert.
             if !(*gc).us & COLOUR_FLAG_RGB != 0 {
                 c = (*gc).us as u32;
-                if (!c & COLOUR_FLAG_256 as u32 != 0) && (c >= 90 && c <= 97) {
+                if (!c & COLOUR_FLAG_256 as u32 != 0) && (90..=97).contains(&c) {
                     c -= 82;
                 }
                 tty_putcode_i(

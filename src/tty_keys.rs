@@ -1584,7 +1584,7 @@ unsafe fn tty_keys_mouse(
                 if ch == b';' {
                     break;
                 }
-                if ch < b'0' || ch > b'9' {
+                if !ch.is_ascii_digit() {
                     return -1;
                 }
                 sgr_b = 10 * sgr_b + (ch - b'0') as u32;
@@ -1598,7 +1598,7 @@ unsafe fn tty_keys_mouse(
                 if ch == b';' {
                     break;
                 }
-                if ch < b'0' || ch > b'9' {
+                if !ch.is_ascii_digit() {
                     return -1;
                 }
                 x = 10 * x + (ch - b'0') as u32;
@@ -1612,7 +1612,7 @@ unsafe fn tty_keys_mouse(
                 if ch == b'M' || ch == b'm' {
                     break;
                 }
-                if ch < b'0' || ch > b'9' {
+                if !ch.is_ascii_digit() {
                     return -1;
                 }
                 y = 10 * y + (ch - b'0') as u32;

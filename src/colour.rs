@@ -1097,14 +1097,10 @@ pub unsafe fn colour_parse_x11(mut p: *const u8) -> i32 {
                 &raw mut m,
                 &raw mut y,
             ) == 3)
-            && c >= 0.0
-            && c <= 1.0
-            && m >= 0.0
-            && m <= 1.0
-            && y >= 0.0
-            && y <= 1.0
-            && k >= 0.0
-            && k <= 1.0
+            && (0.0..=1.0).contains(&c)
+            && (0.0..=1.0).contains(&m)
+            && (0.0..=1.0).contains(&y)
+            && (0.0..=1.0).contains(&k)
         {
             colour = colour_join_rgb(
                 ((1f64 - c) * (1f64 - k) * 255f64) as u8,

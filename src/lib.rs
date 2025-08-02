@@ -235,8 +235,8 @@ fn KEYC_IS_UNICODE(key: key_code) -> bool {
 
     const KEYC_BASE_END: c_ulonglong = keyc::KEYC_BASE_END as c_ulonglong;
     masked > 0x7f
-        && (masked < KEYC_BASE || masked >= KEYC_BASE_END)
-        && (masked < KEYC_USER || masked >= KEYC_USER_END)
+        && !(KEYC_BASE..KEYC_BASE_END).contains(&masked)
+        && !(KEYC_USER..KEYC_USER_END).contains(&masked)
 }
 
 const KEYC_CLICK_TIMEOUT: i32 = 300;

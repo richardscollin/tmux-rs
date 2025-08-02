@@ -309,7 +309,7 @@ pub unsafe fn utf8_width(ud: *mut utf8_data, width: *mut i32) -> utf8_state {
             *width = wcwidth(wc);
             log_debug!("wcwidth({:05X}) returned {}", wc, *width);
             if *width < 0 {
-                *width = if wc >= 0x80 && wc <= 0x9f { 0 } else { 1 };
+                *width = if (0x80..=0x9f).contains(&wc) { 0 } else { 1 };
             }
         }
         if *width >= 0 && *width <= 0xff {

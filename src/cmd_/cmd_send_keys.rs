@@ -111,7 +111,7 @@ pub unsafe fn cmd_send_keys_inject_string(
 
         if args_has_(args, 'H') {
             let n = strtol(s, &raw mut endptr, 16);
-            if *s == b'\0' as _ || n < 0 || n > 0xff || *endptr != b'\0' as _ {
+            if *s == b'\0' as _ || !(0..=0xff).contains(&n) || *endptr != b'\0' as _ {
                 return item;
             }
             return cmd_send_keys_inject_key(item, after, args, KEYC_LITERAL | n as u64);

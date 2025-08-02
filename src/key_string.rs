@@ -476,7 +476,7 @@ pub unsafe fn key_string_lookup_key(mut key: key_code, with_flags: i32) -> *cons
                     s = c!("MouseMoveBorder");
                     break 'append;
                 }
-                if key >= KEYC_USER && key < KEYC_USER_END {
+                if (KEYC_USER..KEYC_USER_END).contains(&key) {
                     snprintf(
                         (&raw mut tmp).cast(),
                         sizeof_tmp,

@@ -92,7 +92,8 @@ pub unsafe fn cmd_refresh_client_control_client_size(
             &raw mut y,
         ) == 3
         {
-            if x < WINDOW_MINIMUM || x > WINDOW_MAXIMUM || y < WINDOW_MINIMUM || y > WINDOW_MAXIMUM
+            if !(WINDOW_MINIMUM..=WINDOW_MAXIMUM).contains(&x)
+                || !(WINDOW_MINIMUM..=WINDOW_MAXIMUM).contains(&y)
             {
                 cmdq_error!(item, "size too small or too big");
                 return cmd_retval::CMD_RETURN_ERROR;
@@ -134,7 +135,9 @@ pub unsafe fn cmd_refresh_client_control_client_size(
             cmdq_error!(item, "bad size argument");
             return cmd_retval::CMD_RETURN_ERROR;
         }
-        if x < WINDOW_MINIMUM || x > WINDOW_MAXIMUM || y < WINDOW_MINIMUM || y > WINDOW_MAXIMUM {
+        if !(WINDOW_MINIMUM..=WINDOW_MAXIMUM).contains(&x)
+            || !(WINDOW_MINIMUM..=WINDOW_MAXIMUM).contains(&y)
+        {
             cmdq_error!(item, "size too small or too big");
             return cmd_retval::CMD_RETURN_ERROR;
         }

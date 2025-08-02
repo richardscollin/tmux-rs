@@ -5042,9 +5042,9 @@ pub unsafe fn format_expand1(es: *mut format_expand_state, mut fmt: *const u8) -
                 _ => {
                     s = null_mut();
                     if fmt > style_end {
-                        if ch >= b'A' && ch <= b'Z' {
+                        if ch.is_ascii_uppercase() {
                             s = FORMAT_UPPER[(ch - b'A') as usize].as_ptr();
-                        } else if ch >= b'a' && ch <= b'z' {
+                        } else if ch.is_ascii_lowercase() {
                             s = FORMAT_LOWER[(ch - b'a') as usize].as_ptr();
                         }
                     } /* skip inside #[] */

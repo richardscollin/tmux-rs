@@ -156,7 +156,7 @@ pub unsafe fn unvis(cp: *mut u8, c: u8, astate: *mut i32, flag: i32) -> i32 {
                 1
             }
             5 => {
-                if c >= b'0' && c <= b'7' {
+                if (b'0'..=b'7').contains(&c) {
                     *cp = (((*cp as libc::c_int) << 3 as libc::c_int) + (c - b'0') as i32) as u8;
                     *astate = 6;
                     return 0;
@@ -166,7 +166,7 @@ pub unsafe fn unvis(cp: *mut u8, c: u8, astate: *mut i32, flag: i32) -> i32 {
             }
             6 => {
                 *astate = 0 as libc::c_int;
-                if c >= b'0' && c <= b'7' {
+                if (b'0'..=b'7').contains(&c) {
                     *cp = (((*cp as libc::c_int) << 3 as libc::c_int) + (c - b'0') as i32) as u8;
                     return 1;
                 }

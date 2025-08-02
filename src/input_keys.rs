@@ -454,7 +454,7 @@ pub unsafe fn input_key(s: *mut screen, bev: *mut bufferevent, mut key: key_code
             if key == c0::C0_HT as u64
                 || key == c0::C0_CR as u64
                 || key == c0::C0_ESC as u64
-                || (key >= 0x20 && key <= 0x7f)
+                || (0x20..=0x7f).contains(&key)
             {
                 ud.data[0] = key as u8;
                 input_key_write(__func__, bev, ud.data.as_ptr().cast(), 1);
@@ -508,7 +508,7 @@ pub unsafe fn input_key(s: *mut screen, bev: *mut bufferevent, mut key: key_code
 
         // Ignore internal function key codes.
         if (key >= KEYC_BASE && key < keyc::KEYC_BASE_END as u64)
-            || (key >= KEYC_USER && key < KEYC_USER_END)
+            || (KEYC_USER..KEYC_USER_END).contains(&key)
         {
             log_debug!("{}: ignoring key 0x{}", _s(__func__), key);
             return 0;

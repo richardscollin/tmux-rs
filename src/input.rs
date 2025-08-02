@@ -2629,7 +2629,7 @@ unsafe fn input_osc_4(ictx: *mut input_ctx, p: *mut u8) {
                 bad = true;
                 break;
             }
-            if idx < 0 || idx >= 256 {
+            if !(0..256).contains(&idx) {
                 bad = true;
                 break;
             }
@@ -3070,7 +3070,7 @@ unsafe fn input_osc_104(ictx: *mut input_ctx, p: *const u8) {
                 bad = true;
                 break;
             }
-            if idx < 0 || idx >= 256 {
+            if !(0..256).contains(&idx) {
                 bad = true;
                 break;
             }

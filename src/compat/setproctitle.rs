@@ -24,8 +24,7 @@ pub unsafe fn setproctitle_(_fmt: *const u8, name: *const u8, socket_path: *cons
         let used = libc::snprintf(
             &raw mut title as _,
             title.len(),
-            c"%s: %s (%s)".as_ptr(),
-            getprogname(),
+            c"tmux: %s (%s)".as_ptr(),
             name,
             socket_path,
         );
@@ -41,7 +40,3 @@ pub unsafe fn setproctitle_(_fmt: *const u8, name: *const u8, socket_path: *cons
 
 #[cfg(target_os = "macos")]
 pub unsafe fn setproctitle_(_: *const u8, _: *const u8, _: *const u8) {}
-
-fn getprogname() -> *const u8 {
-    c"tmux".as_ptr().cast()
-}

@@ -54,7 +54,6 @@ pub fn log_open(name: &CStr) {
     let pid = std::process::id();
     let Ok(file) = std::fs::File::options()
         .read(false)
-        .write(true)
         .append(true)
         .create(true)
         .open(format!("tmux-{}-{}.log", name.to_str().unwrap(), pid))

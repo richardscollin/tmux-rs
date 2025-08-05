@@ -341,7 +341,7 @@ pub unsafe fn format_job_complete(job: *mut job) {
             _s(buf)
         );
 
-        if *buf != b'\0' || !(*fj).updated != 0 {
+        if *buf != b'\0' || (*fj).updated == 0 {
             free((*fj).out.cast());
             (*fj).out = buf;
         } else {

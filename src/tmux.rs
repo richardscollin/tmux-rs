@@ -417,7 +417,7 @@ pub unsafe fn tmux_main(mut argc: i32, mut argv: *mut *mut u8, _env: *mut *mut u
                     CFG_QUIET.store(false, atomic::Ordering::Relaxed);
                 }
                 b'V' => {
-                    println!("tmux {}", getversion());
+                    println!("tmux-rs {}", getversion());
                     std::process::exit(0);
                 }
                 b'l' => flags |= client_flag::LOGIN,

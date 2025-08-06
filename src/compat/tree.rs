@@ -315,11 +315,12 @@ where
     T: GetEntry<T, D>,
 {
     unsafe {
-        while let Some(parent) = NonNull::new(rb_parent(elm))
-            && rb_color(parent.as_ptr()) == rb_color::RB_RED
-        {
+        while let Some(parent) = NonNull::new(rb_parent(elm)) {
             #[expect(clippy::shadow_reuse)]
             let mut parent = parent.as_ptr();
+            if rb_color(parent) != rb_color::RB_RED {
+                break;
+            }
             let gparent = rb_parent(parent);
             if parent == rb_left(gparent) {
                 let mut tmp = rb_right(gparent);

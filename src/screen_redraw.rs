@@ -713,11 +713,11 @@ pub unsafe fn screen_redraw_screen(c: *mut client) {
             log_debug!("{}: redrawing status", _s((*c).name));
             screen_redraw_draw_status(ctx);
         }
-        if let Some(overlay_draw) = (*c).overlay_draw
-            && flags.intersects(client_flag::REDRAWOVERLAY)
-        {
-            log_debug!("{}: redrawing overlay", _s((*c).name));
-            overlay_draw(c, (*c).overlay_data, ctx);
+        if let Some(overlay_draw) = (*c).overlay_draw {
+            if flags.intersects(client_flag::REDRAWOVERLAY) {
+                log_debug!("{}: redrawing overlay", _s((*c).name));
+                overlay_draw(c, (*c).overlay_data, ctx);
+            }
         }
 
         tty_reset(&raw mut (*c).tty);

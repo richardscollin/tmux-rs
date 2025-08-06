@@ -278,10 +278,10 @@ pub unsafe fn window_client_menu(modedata: NonNull<c_void>, c: *mut client, key:
         let data: NonNull<window_client_modedata> = modedata.cast();
         let wp: *mut window_pane = (*data.as_ptr()).wp;
 
-        if let Some(wme) = NonNull::new(tailq_first(&raw mut (*wp).modes))
-            && (*wme.as_ptr()).data == modedata.as_ptr()
-        {
-            window_client_key(wme, c, null_mut(), null_mut(), key, null_mut());
+        if let Some(wme) = NonNull::new(tailq_first(&raw mut (*wp).modes)) {
+            if (*wme.as_ptr()).data == modedata.as_ptr() {
+                window_client_key(wme, c, null_mut(), null_mut(), key, null_mut());
+            }
         }
     }
 }

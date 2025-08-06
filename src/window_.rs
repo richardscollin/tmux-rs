@@ -1294,13 +1294,14 @@ pub unsafe fn window_pane_key(
         return -1;
     }
     unsafe {
-        if let Some(wme) = NonNull::new(tailq_first(&raw mut (*wp).modes))
-            && let Some(key_fn) = (*(*wme.as_ptr()).mode).key
-            && !c.is_null()
-        {
-            key &= !KEYC_MASK_FLAGS;
-            key_fn(wme, c, s, wl, key, m);
-            return 0;
+        if let Some(wme) = NonNull::new(tailq_first(&raw mut (*wp).modes)) {
+            if let Some(key_fn) = (*(*wme.as_ptr()).mode).key {
+                if !c.is_null() {
+                    key &= !KEYC_MASK_FLAGS;
+                    key_fn(wme, c, s, wl, key, m);
+                    return 0;
+                }
+            }
         }
 
         if (*wp).fd == -1 || (*wp).flags.intersects(window_pane_flags::PANE_INPUTOFF) {

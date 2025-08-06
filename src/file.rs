@@ -131,10 +131,10 @@ pub unsafe extern "C-unwind" fn file_fire_done_cb(_fd: i32, _events: i16, arg: *
         let cf: *mut client_file = arg as _;
         let c: *mut client = (*cf).c;
 
-        if let Some(cb) = (*cf).cb
-            && ((*cf).closed != 0 || c.is_null() || !(*c).flags.intersects(client_flag::DEAD))
-        {
-            cb(c, (*cf).path, (*cf).error, 1, (*cf).buffer, (*cf).data);
+        if let Some(cb) = (*cf).cb {
+            if (*cf).closed != 0 || c.is_null() || !(*c).flags.intersects(client_flag::DEAD) {
+                cb(c, (*cf).path, (*cf).error, 1, (*cf).buffer, (*cf).data);
+            }
         }
         file_free(cf);
     }

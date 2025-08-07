@@ -1387,26 +1387,27 @@ pub unsafe fn format_width(expanded: *const u8) -> u32 {
                     }
                     cp = end.add(1);
                 }
-            } else if let mut more = utf8_open(&raw mut ud, *cp)
-                && more == utf8_state::UTF8_MORE
-            {
-                while ({
-                    cp = cp.add(1);
-                    *cp != b'\0'
-                } && more == utf8_state::UTF8_MORE)
-                {
-                    more = utf8_append(&raw mut ud, *cp);
-                }
-                if more == utf8_state::UTF8_DONE {
-                    width += ud.width as u32;
-                } else {
-                    cp = cp.wrapping_sub(ud.have as usize);
-                }
-            } else if *cp > 0x1f && *cp < 0x7f {
-                width += 1;
-                cp = cp.add(1);
             } else {
-                cp = cp.add(1);
+                let mut more = utf8_open(&raw mut ud, *cp);
+                if more == utf8_state::UTF8_MORE {
+                    while ({
+                        cp = cp.add(1);
+                        *cp != b'\0'
+                    } && more == utf8_state::UTF8_MORE)
+                    {
+                        more = utf8_append(&raw mut ud, *cp);
+                    }
+                    if more == utf8_state::UTF8_DONE {
+                        width += ud.width as u32;
+                    } else {
+                        cp = cp.wrapping_sub(ud.have as usize);
+                    }
+                } else if *cp > 0x1f && *cp < 0x7f {
+                    width += 1;
+                    cp = cp.add(1);
+                } else {
+                    cp = cp.add(1);
+                }
             }
         }
         width
@@ -1459,34 +1460,35 @@ pub unsafe fn format_trim_left(expanded: *const u8, limit: u32) -> *mut u8 {
                     out = out.offset(end.add(1).offset_from(cp));
                     cp = end.add(1);
                 }
-            } else if let mut more = utf8_open(&raw mut ud, *cp)
-                && more == utf8_state::UTF8_MORE
-            {
-                while ({
-                    cp = cp.add(1);
-                    *cp != b'\0'
-                }) && more == utf8_state::UTF8_MORE
-                {
-                    more = utf8_append(&raw mut ud, *cp);
-                }
-                if more == utf8_state::UTF8_DONE {
-                    if width + ud.width as u32 <= limit {
-                        libc::memcpy(out.cast(), ud.data.as_ptr().cast(), ud.size as usize);
-                        out = out.add(ud.size as usize);
-                    }
-                    width += ud.width as u32;
-                } else {
-                    cp = cp.wrapping_sub(ud.have as usize).add(1);
-                }
-            } else if *cp > 0x1f && *cp < 0x7f {
-                if width < limit {
-                    *out = *cp;
-                    out = out.add(1);
-                }
-                width += 1;
-                cp = cp.add(1);
             } else {
-                cp = cp.add(1);
+                let mut more = utf8_open(&raw mut ud, *cp);
+                if more == utf8_state::UTF8_MORE {
+                    while ({
+                        cp = cp.add(1);
+                        *cp != b'\0'
+                    }) && more == utf8_state::UTF8_MORE
+                    {
+                        more = utf8_append(&raw mut ud, *cp);
+                    }
+                    if more == utf8_state::UTF8_DONE {
+                        if width + ud.width as u32 <= limit {
+                            libc::memcpy(out.cast(), ud.data.as_ptr().cast(), ud.size as usize);
+                            out = out.add(ud.size as usize);
+                        }
+                        width += ud.width as u32;
+                    } else {
+                        cp = cp.wrapping_sub(ud.have as usize).add(1);
+                    }
+                } else if *cp > 0x1f && *cp < 0x7f {
+                    if width < limit {
+                        *out = *cp;
+                        out = out.add(1);
+                    }
+                    width += 1;
+                    cp = cp.add(1);
+                } else {
+                    cp = cp.add(1);
+                }
             }
         }
         *out = b'\0';
@@ -1547,34 +1549,35 @@ pub unsafe fn format_trim_right(expanded: *const u8, limit: u32) -> *mut u8 {
                     out = out.offset(end.add(1).offset_from(cp));
                     cp = end.add(1);
                 }
-            } else if let mut more = utf8_open(&raw mut ud, *cp)
-                && more == utf8_state::UTF8_MORE
-            {
-                while ({
-                    cp = cp.add(1);
-                    *(cp) != b'\0'
-                }) && more == utf8_state::UTF8_MORE
-                {
-                    more = utf8_append(&raw mut ud, *cp);
-                }
-                if more == utf8_state::UTF8_DONE {
-                    if width >= skip {
-                        libc::memcpy(out.cast(), ud.data.as_ptr().cast(), ud.size as usize);
-                        out = out.add(ud.size as usize);
-                    }
-                    width += ud.width as u32;
-                } else {
-                    cp = cp.wrapping_sub(ud.have as usize).add(1);
-                }
-            } else if *cp > 0x1f && *cp < 0x7f {
-                if width >= skip {
-                    *out = *cp;
-                    out = out.add(1);
-                }
-                width += 1;
-                cp = cp.add(1);
             } else {
-                cp = cp.add(1);
+                let mut more = utf8_open(&raw mut ud, *cp);
+                if more == utf8_state::UTF8_MORE {
+                    while ({
+                        cp = cp.add(1);
+                        *(cp) != b'\0'
+                    }) && more == utf8_state::UTF8_MORE
+                    {
+                        more = utf8_append(&raw mut ud, *cp);
+                    }
+                    if more == utf8_state::UTF8_DONE {
+                        if width >= skip {
+                            libc::memcpy(out.cast(), ud.data.as_ptr().cast(), ud.size as usize);
+                            out = out.add(ud.size as usize);
+                        }
+                        width += ud.width as u32;
+                    } else {
+                        cp = cp.wrapping_sub(ud.have as usize).add(1);
+                    }
+                } else if *cp > 0x1f && *cp < 0x7f {
+                    if width >= skip {
+                        *out = *cp;
+                        out = out.add(1);
+                    }
+                    width += 1;
+                    cp = cp.add(1);
+                } else {
+                    cp = cp.add(1);
+                }
             }
         }
         *out = b'\0';

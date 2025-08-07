@@ -1068,10 +1068,10 @@ fn input_parse(ictx: *mut input_ctx, buf: *mut u8, len: usize) {
 
             // Execute the handler, if any. Don't switch state if it
             // returns non-zero.
-            if let Some(handler) = (*itr).handler
-                && handler(ictx) != 0
-            {
-                continue;
+            if let Some(handler) = (*itr).handler {
+                if handler(ictx) != 0 {
+                    continue;
+                }
             }
 
             // And switch state, if necessary.

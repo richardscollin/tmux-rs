@@ -33,7 +33,6 @@ struct cmd_command_prompt_prompt {
     prompt: *mut u8,
 }
 
-#[derive(Default)]
 struct cmd_command_prompt_cdata<'a> {
     item: *mut cmdq_item,
     state: *mut args_command_state<'a>,
@@ -47,6 +46,22 @@ struct cmd_command_prompt_cdata<'a> {
 
     argc: i32,
     argv: *mut *mut u8,
+}
+
+impl<'a> Default for cmd_command_prompt_cdata<'a> {
+    fn default() -> Self {
+        Self {
+            item: null_mut(),
+            state: null_mut(),
+            flags: 0,
+            prompt_type: prompt_type::default(),
+            prompts: null_mut(),
+            count: 0,
+            current: 0,
+            argc: 0,
+            argv: null_mut(),
+        }
+    }
 }
 
 fn cmd_command_prompt_args_parse(

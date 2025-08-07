@@ -110,7 +110,7 @@ pub struct cmd_parse_state<'a> {
 pub unsafe fn cmd_parse_get_error(file: Option<&str>, line: u32, error: &str) -> CString {
     match file {
         None => CString::new(error).unwrap(),
-        Some(file) => CString::new(format!("{}:{}: {}", file, line, error)).unwrap(),
+        Some(file) => CString::new(format!("{file}:{line}: {error}")).unwrap(),
     }
 }
 

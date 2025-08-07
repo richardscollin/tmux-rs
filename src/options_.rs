@@ -564,7 +564,7 @@ pub unsafe fn options_array_set(
         {
             let number = colour_fromstring_(value);
             if number == -1 {
-                return Err(CString::new(format!("bad colour: {}", value)).unwrap());
+                return Err(CString::new(format!("bad colour: {value}")).unwrap());
             }
             let mut a = options_array_item(o, idx);
             if a.is_null() {
@@ -1238,8 +1238,7 @@ unsafe fn options_from_string_choice(
             }
             choice
         } else {
-            let choice = options_find_choice(oe, value)? as i64;
-            choice
+            options_find_choice(oe, value)? as i64
         };
         options_set_number(oo, name, choice);
         Ok(())

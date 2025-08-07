@@ -389,7 +389,13 @@ pub unsafe fn tmux_main(mut argc: i32, mut argv: *mut *mut u8, _env: *mut *mut u
 
         let cwd = find_cwd();
         if !cwd.is_null() {
-            environ_set!(GLOBAL_ENVIRON, c!("PWD"), environ_flags::empty(), "{}", _s(cwd));
+            environ_set!(
+                GLOBAL_ENVIRON,
+                c!("PWD"),
+                environ_flags::empty(),
+                "{}",
+                _s(cwd)
+            );
         }
         expand_paths(TMUX_CONF, &mut CFG_FILES.lock().unwrap(), 1);
 

@@ -55,8 +55,8 @@ jobs:
           components: clippy, rustfmt
       - uses: dtolnay/rust-toolchain@stable
       # should format cleanly on nightly and stable
-      - run: cargo +nightly fmt --check
       - run: cargo +stable fmt --check # this will warn about unstable features, but that's fine
+      - run: cargo +nightly fmt --check
 
   build:
     runs-on: ${{ matrix.os }}

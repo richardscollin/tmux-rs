@@ -107,14 +107,10 @@ pub struct cmd_parse_state<'a> {
     pub stack: tailq_head<cmd_parse_scope>,
 }
 
-pub unsafe fn cmd_parse_get_error(file: Option<&str>, line: u32, error: &str) -> *mut u8 {
+pub unsafe fn cmd_parse_get_error(file: Option<&str>, line: u32, error: &str) -> CString {
     match file {
-        None => {
-            let mut s = error.to_string();
-            s.push('\0');
-            s.leak().as_mut_ptr().cast()
-        }
-        Some(file) => format_nul!("{}:{}: {}", file, line, error),
+        None => CString::new(error).unwrap(),
+        Some(file) => CString::new(format!("{}:{}: {}", file, line, error)).unwrap(),
     }
 }
 
@@ -397,7 +393,9 @@ pub unsafe fn cmd_parse_build_command(
                         pi.file,
                         pi.line.load(atomic::Ordering::SeqCst),
                         cstr_to_str(cause),
-                    ));
+                    )
+                    .into_raw()
+                    .cast());
                     free_(cause);
                     break 'out;
                 }
@@ -712,7 +710,9 @@ unsafe fn yyerror_(ps: &mut cmd_parse_state, args: std::fmt::Arguments) -> i32 {
         let mut error = args.to_string();
         error.push('\0');
 
-        ps.error = cmd_parse_get_error(pi.file, pi.line.load(atomic::Ordering::SeqCst), &error);
+        ps.error = cmd_parse_get_error(pi.file, pi.line.load(atomic::Ordering::SeqCst), &error)
+            .into_raw()
+            .cast();
         0
     }
 }

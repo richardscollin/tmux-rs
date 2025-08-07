@@ -90,11 +90,9 @@ pub unsafe fn cmd_set_option_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
         let name: *mut u8;
         let argument: *mut u8;
         let mut expanded: *mut u8 = null_mut();
-        let mut cause: *mut u8 = null_mut();
         let mut value: *const u8;
         let mut idx: i32 = 0;
         let already: i32;
-        let error: i32;
         let mut ambiguous: i32 = 0;
         let scope: i32;
 
@@ -136,6 +134,7 @@ pub unsafe fn cmd_set_option_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
                     value = expanded;
                 }
 
+                let mut cause = null_mut();
                 // Get the scope and table for the option .
                 scope = options_scope_from_name(
                     args,
@@ -189,9 +188,8 @@ pub unsafe fn cmd_set_option_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
                         if po.is_null() {
                             continue;
                         }
-                        if options_remove_or_default(po, idx, &raw mut cause) != 0 {
-                            cmdq_error!(item, "{}", _s(cause));
-                            free_(cause);
+                        if let Err(cause) = options_remove_or_default(po, idx) {
+                            cmdq_error!(item, "{}", cause.to_str().unwrap());
                             break 'fail;
                         }
                     }
@@ -200,9 +198,8 @@ pub unsafe fn cmd_set_option_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
                     if o.is_null() {
                         break 'out;
                     }
-                    if options_remove_or_default(o, idx, &raw mut cause) != 0 {
-                        cmdq_error!(item, "{}", _s(cause));
-                        free_(cause);
+                    if let Err(cause) = options_remove_or_default(o, idx) {
+                        cmdq_error!(item, "{}", cause.to_str().unwrap());
                         break 'fail;
                     }
                 } else if *name == b'@' {
@@ -212,17 +209,14 @@ pub unsafe fn cmd_set_option_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
                     }
                     options_set_string!(oo, name, append, "{}", _s(value));
                 } else if idx == -1 && options_is_array(parent) == 0 {
-                    error = options_from_string(
+                    if let Err(cause) = options_from_string(
                         oo,
                         options_table_entry(parent),
                         (*options_table_entry(parent)).name,
                         value,
                         args_has(args, 'a'),
-                        &raw mut cause,
-                    );
-                    if error != 0 {
-                        cmdq_error!(item, "{}", _s(cause));
-                        free_(cause);
+                    ) {
+                        cmdq_error!(item, "{}", cause.to_str().unwrap());
                         break 'fail;
                     }
                 } else {
@@ -237,21 +231,14 @@ pub unsafe fn cmd_set_option_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
                         if !append {
                             options_array_clear(o);
                         }
-                        if options_array_assign(o, cstr_to_str(value), &raw mut cause) != 0 {
-                            cmdq_error!(item, "{}", _s(cause));
-                            free_(cause);
+                        if let Err(cause) = options_array_assign(o, cstr_to_str(value)) {
+                            cmdq_error!(item, "{}", cause.to_str().unwrap());
                             break 'fail;
                         }
-                    } else if options_array_set(
-                        o,
-                        idx as u32,
-                        Some(cstr_to_str(value)),
-                        append,
-                        &raw mut cause,
-                    ) != 0
+                    } else if let Err(cause) =
+                        options_array_set(o, idx as u32, Some(cstr_to_str(value)), append)
                     {
-                        cmdq_error!(item, "{}", _s(cause));
-                        free_(cause);
+                        cmdq_error!(item, "{}", cause.to_str().unwrap());
                         break 'fail;
                     }
                 }

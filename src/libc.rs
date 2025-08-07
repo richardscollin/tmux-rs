@@ -355,7 +355,6 @@ pub unsafe fn streq_(left: *const u8, right: &'static str) -> bool {
     unsafe { matches!(strcmp_(left, right), std::cmp::Ordering::Equal) }
 }
 
-#[expect(dead_code)]
 pub unsafe fn strcaseeq_(left: *const u8, right: &'static str) -> bool {
     unsafe { matches!(strcasecmp_(left, right), std::cmp::Ordering::Equal) }
 }

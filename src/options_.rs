@@ -11,7 +11,7 @@
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-use crate::libc::{fnmatch, isdigit, sscanf, strcasecmp, strchr, strcmp, strncmp, strstr};
+use crate::libc::{fnmatch, isdigit, sscanf, strchr, strcmp, strncmp, strstr};
 use crate::options_table::OPTIONS_OTHER_NAMES_STR;
 use crate::*;
 
@@ -351,17 +351,16 @@ pub unsafe fn options_default(
 
         if (*oe).flags & OPTIONS_TABLE_IS_ARRAY != 0 {
             if (*oe).default_arr.is_null() {
-                options_array_assign(o, (*oe).default_str.unwrap(), null_mut());
+                _ = options_array_assign(o, (*oe).default_str.unwrap());
                 return o;
             }
             let mut i = 0usize;
             while !(*(*oe).default_arr.add(i)).is_null() {
-                options_array_set(
+                _ = options_array_set(
                     o,
                     i as u32,
                     Some(cstr_to_str(*(*oe).default_arr.add(i))),
                     false,
-                    null_mut(),
                 );
                 i += 1;
             }
@@ -511,14 +510,10 @@ pub unsafe fn options_array_set(
     idx: u32,
     value: Option<&str>,
     append: bool,
-    cause: *mut *mut u8,
-) -> i32 {
+) -> Result<(), CString> {
     unsafe {
         if !OPTIONS_IS_ARRAY(o) {
-            if !cause.is_null() {
-                *cause = xstrdup(c!("not an array")).as_ptr();
-            }
-            return -1;
+            return Err(CString::new("not an array").unwrap());
         }
 
         let Some(value) = value else {
@@ -526,18 +521,13 @@ pub unsafe fn options_array_set(
             if !a.is_null() {
                 options_array_free(o, a);
             }
-            return 0;
+            return Ok(());
         };
 
         if OPTIONS_IS_COMMAND(o) {
             let cmdlist = match cmd_parse_from_string(value, None) {
                 Err(error) => {
-                    if !cause.is_null() {
-                        *cause = error;
-                    } else {
-                        free_(error);
-                    }
-                    return -1;
+                    return Err(CString::from_raw(error.cast()));
                 }
                 Ok(cmdlist) => cmdlist,
             };
@@ -549,7 +539,7 @@ pub unsafe fn options_array_set(
                 options_value_free(o, &raw mut (*a).value);
             }
             (*a).value.cmdlist = cmdlist;
-            return 0;
+            return Ok(());
         }
 
         if OPTIONS_IS_STRING(o) {
@@ -566,7 +556,7 @@ pub unsafe fn options_array_set(
                 options_value_free(o, &mut (*a).value);
             }
             (*a).value.string = new;
-            return 0;
+            return Ok(());
         }
 
         if !(*o).tableentry.is_null()
@@ -574,8 +564,7 @@ pub unsafe fn options_array_set(
         {
             let number = colour_fromstring_(value);
             if number == -1 {
-                *cause = format_nul!("bad colour: {}", value);
-                return -1;
+                return Err(CString::new(format!("bad colour: {}", value)).unwrap());
             }
             let mut a = options_array_item(o, idx);
             if a.is_null() {
@@ -584,17 +573,15 @@ pub unsafe fn options_array_set(
                 options_value_free(o, &raw mut (*a).value);
             }
             (*a).value.number = number as i64;
-            return 0;
+            return Ok(());
         }
 
-        if !cause.is_null() {
-            *cause = xstrdup(c!("wrong array type")).as_ptr();
-        }
-        -1
+        Err(CString::new("wrong array type").unwrap())
     }
 }
 
-pub unsafe fn options_array_assign(o: *mut options_entry, s: &str, cause: *mut *mut u8) -> i32 {
+// note one difference was that this function previously could avoid allocation on error
+pub unsafe fn options_array_assign(o: *mut options_entry, s: &str) -> Result<(), CString> {
     unsafe {
         let mut separator = (*(*o).tableentry).separator;
         if separator.is_null() {
@@ -602,7 +589,7 @@ pub unsafe fn options_array_assign(o: *mut options_entry, s: &str, cause: *mut *
         }
         if *separator == 0 {
             if s.is_empty() {
-                return 0;
+                return Ok(());
             }
             let mut i = 0;
             while i < u32::MAX {
@@ -611,11 +598,11 @@ pub unsafe fn options_array_assign(o: *mut options_entry, s: &str, cause: *mut *
                 }
                 i += 1;
             }
-            return options_array_set(o, i, Some(s), false, cause);
+            return options_array_set(o, i, Some(s), false);
         }
 
         if s.is_empty() {
-            return 0;
+            return Ok(());
         }
         let copy = xstrdup__(s);
         let mut string = copy;
@@ -634,13 +621,13 @@ pub unsafe fn options_array_assign(o: *mut options_entry, s: &str, cause: *mut *
             if i == u32::MAX {
                 break;
             }
-            if options_array_set(o, i, Some(cstr_to_str(next)), false, cause) != 0 {
+            if let Err(cause) = options_array_set(o, i, Some(cstr_to_str(next)), false) {
                 free_(copy);
-                return -1;
+                return Err(cause);
             }
         }
         free_(copy);
-        0
+        Ok(())
     }
 }
 
@@ -1171,30 +1158,26 @@ pub unsafe fn options_string_to_style(
 unsafe fn options_from_string_check(
     oe: *const options_table_entry,
     value: *const u8,
-    cause: *mut *mut u8,
-) -> c_int {
+) -> Result<(), CString> {
     unsafe {
         let mut sy: style = std::mem::zeroed();
 
         if oe.is_null() {
-            return 0;
+            return Ok(());
         }
         if streq_((*oe).name, "default-shell") && !checkshell(value) {
-            *cause = format_nul!("not a suitable shell: {}", _s(value));
-            return -1;
+            return Err(CString::new(format!("not a suitable shell: {}", _s(value))).unwrap());
         }
         if !(*oe).pattern.is_null() && fnmatch((*oe).pattern, value, 0) != 0 {
-            *cause = format_nul!("value is invalid: {}", _s(value));
-            return -1;
+            return Err(CString::new(format!("value is invalid: {}", _s(value))).unwrap());
         }
         if ((*oe).flags & OPTIONS_TABLE_IS_STYLE) != 0
             && strstr(value, c!("#{")).is_null()
             && style_parse(&mut sy, &GRID_DEFAULT_CELL, value) != 0
         {
-            *cause = format_nul!("invalid style: {}", _s(value));
-            return -1;
+            return Err(CString::new(format!("invalid style: {}", _s(value))).unwrap());
         }
-        0
+        Ok(())
     }
 }
 
@@ -1202,35 +1185,26 @@ unsafe fn options_from_string_flag(
     oo: *mut options,
     name: *const u8,
     value: *const u8,
-    cause: *mut *mut u8,
-) -> c_int {
+) -> Result<(), CString> {
     unsafe {
         let flag = if value.is_null() || *value == 0 {
-            !options_get_number(oo, name)
-        } else if streq_(value, "1")
-            || strcasecmp(value, c!("on")) == 0
-            || strcasecmp(value, c!("yes")) == 0
-        {
-            1
-        } else if streq_(value, "0")
-            || strcasecmp(value, c!("off")) == 0
-            || strcasecmp(value, c!("no")) == 0
-        {
-            0
+            options_get_number(oo, name) == 0
+        } else if streq_(value, "1") || strcaseeq_(value, "on") || strcaseeq_(value, "yes") {
+            true
+        } else if streq_(value, "0") || strcaseeq_(value, "off") || strcaseeq_(value, "no") {
+            false
         } else {
-            *cause = format_nul!("bad value: {}", _s(value));
-            return -1;
+            return Err(CString::new(format!("bad value: {}", _s(value))).unwrap());
         };
-        options_set_number(oo, name, flag);
-        0
+        options_set_number(oo, name, flag as i64);
+        Ok(())
     }
 }
 
 pub unsafe fn options_find_choice(
     oe: *const options_table_entry,
     value: *const u8,
-    cause: *mut *mut u8,
-) -> c_int {
+) -> Result<i32, CString> {
     unsafe {
         let mut n = 0;
         let mut choice = -1;
@@ -1244,10 +1218,9 @@ pub unsafe fn options_find_choice(
             cp = cp.add(1);
         }
         if choice == -1 {
-            *cause = format_nul!("unknown value: {}", _s(value));
-            return -1;
+            return Err(CString::new(format!("unknown value: {}", _s(value))).unwrap());
         }
-        choice
+        Ok(choice)
     }
 }
 
@@ -1256,8 +1229,7 @@ unsafe fn options_from_string_choice(
     oo: *mut options,
     name: *const u8,
     value: *const u8,
-    cause: *mut *mut u8,
-) -> c_int {
+) -> Result<(), CString> {
     unsafe {
         let choice = if value.is_null() {
             let mut choice = options_get_number(oo, name);
@@ -1266,14 +1238,11 @@ unsafe fn options_from_string_choice(
             }
             choice
         } else {
-            let choice = options_find_choice(oe, value, cause) as i64;
-            if choice < 0 {
-                return -1;
-            }
+            let choice = options_find_choice(oe, value)? as i64;
             choice
         };
         options_set_number(oo, name, choice);
-        0
+        Ok(())
     }
 }
 
@@ -1283,8 +1252,7 @@ pub unsafe fn options_from_string(
     name: *const u8,
     value: *const u8,
     append: bool,
-    cause: *mut *mut u8,
-) -> c_int {
+) -> Result<(), CString> {
     unsafe {
         let new: *const u8;
         let old: *mut u8;
@@ -1295,14 +1263,12 @@ pub unsafe fn options_from_string(
                 && (*oe).type_ != options_table_type::OPTIONS_TABLE_FLAG
                 && (*oe).type_ != options_table_type::OPTIONS_TABLE_CHOICE
             {
-                *cause = format_nul!("empty value");
-                return -1;
+                return Err(CString::new("empty value").unwrap());
             }
             (*oe).type_
         } else {
             if *name != b'@' {
-                *cause = format_nul!("bad option name");
-                return -1;
+                return Err(CString::new("bad option name").unwrap());
             }
             options_table_type::OPTIONS_TABLE_STRING
         };
@@ -1313,24 +1279,28 @@ pub unsafe fn options_from_string(
                 options_set_string!(oo, name, append, "{}", _s(value));
 
                 new = options_get_string(oo, name);
-                if options_from_string_check(oe, new, cause) != 0 {
+                if let Err(err) = options_from_string_check(oe, new) {
                     options_set_string!(oo, name, false, "{}", _s(old));
                     free_(old);
-                    return -1;
+                    return Err(err);
                 }
                 free_(old);
-                return 0;
+                return Ok(());
             }
 
             options_table_type::OPTIONS_TABLE_NUMBER => {
                 match strtonum(value, (*oe).minimum as i64, (*oe).maximum as i64) {
                     Ok(number) => {
                         options_set_number(oo, name, number);
-                        return 0;
+                        return Ok(());
                     }
                     Err(errstr) => {
-                        *cause = format_nul!("value is {}: {}", _s(errstr.as_ptr()), _s(value));
-                        return -1;
+                        return Err(CString::new(format!(
+                            "value is {}: {}",
+                            _s(errstr.as_ptr()),
+                            _s(value)
+                        ))
+                        .unwrap());
                     }
                 }
             }
@@ -1338,34 +1308,33 @@ pub unsafe fn options_from_string(
             options_table_type::OPTIONS_TABLE_KEY => {
                 key = key_string_lookup_string(value);
                 if key == KEYC_UNKNOWN {
-                    *cause = format_nul!("bad key: {}", _s(value));
-                    return -1;
+                    return Err(CString::new(format!("bad key: {}", _s(value))).unwrap());
                 }
                 options_set_number(oo, name, key as i64);
-                return 0;
+                return Ok(());
             }
 
             options_table_type::OPTIONS_TABLE_COLOUR => {
                 let number = colour_fromstring(value) as i64;
                 if number == -1 {
-                    *cause = format_nul!("bad colour: {}", _s(value));
-                    return -1;
+                    return Err(CString::new(format!("bad colour: {}", _s(value))).unwrap());
                 }
                 options_set_number(oo, name, number);
-                return 0;
+                return Ok(());
             }
 
             options_table_type::OPTIONS_TABLE_FLAG => {
-                return options_from_string_flag(oo, name, value, cause);
+                return options_from_string_flag(oo, name, value);
             }
 
             options_table_type::OPTIONS_TABLE_CHOICE => {
-                return options_from_string_choice(oe, oo, name, value, cause);
+                return options_from_string_choice(oe, oo, name, value);
             }
 
             options_table_type::OPTIONS_TABLE_COMMAND => {}
         }
-        -1
+
+        Err(CString::new("").unwrap())
     }
 }
 
@@ -1457,11 +1426,8 @@ pub unsafe fn options_push_changes(name: *const u8) {
     }
 }
 
-pub unsafe fn options_remove_or_default(
-    o: *mut options_entry,
-    idx: i32,
-    cause: *mut *mut u8,
-) -> i32 {
+// note one difference was that this function previously could avoid allocation on error
+pub unsafe fn options_remove_or_default(o: *mut options_entry, idx: i32) -> Result<(), CString> {
     unsafe {
         let oo = (*o).owner;
 
@@ -1473,9 +1439,9 @@ pub unsafe fn options_remove_or_default(
             } else {
                 options_remove(o);
             }
-        } else if options_array_set(o, idx as u32, None, false, cause) != 0 {
-            return -1;
+        } else {
+            options_array_set(o, idx as u32, None, false)?;
         }
-        0
+        Ok(())
     }
 }

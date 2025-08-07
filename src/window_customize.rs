@@ -1270,50 +1270,45 @@ pub unsafe fn window_customize_set_option_callback(
         let oo: *mut options = (*item).oo;
         let name: *mut u8 = (*item).name;
 
-        let mut cause: *mut u8 = null_mut();
         let mut idx: i32 = (*item).idx;
 
-        'fail: {
-            if s.is_null() || *s == b'\0' || (*data).dead != 0 {
-                return 0;
-            }
-            if item.is_null() || !window_customize_check_item(data, item, null_mut()) {
-                return 0;
-            }
-            let o = options_get(oo, name);
-            if o.is_null() {
-                return 0;
-            }
-            let oe = options_table_entry(o);
+        if s.is_null() || *s == b'\0' || (*data).dead != 0 {
+            return 0;
+        }
+        if item.is_null() || !window_customize_check_item(data, item, null_mut()) {
+            return 0;
+        }
+        let o = options_get(oo, name);
+        if o.is_null() {
+            return 0;
+        }
+        let oe = options_table_entry(o);
 
-            if !oe.is_null() && (*oe).flags & OPTIONS_TABLE_IS_ARRAY != 0 {
-                if idx == -1 {
-                    for idx_ in 0..i32::MAX {
-                        idx = idx_;
-                        if options_array_get(o, idx as u32).is_null() {
-                            break;
-                        }
+        if !oe.is_null() && (*oe).flags & OPTIONS_TABLE_IS_ARRAY != 0 {
+            if idx == -1 {
+                for idx_ in 0..i32::MAX {
+                    idx = idx_;
+                    if options_array_get(o, idx as u32).is_null() {
+                        break;
                     }
                 }
-                if options_array_set(o, idx as u32, Some(cstr_to_str(s)), false, &raw mut cause)
-                    != 0
-                {
-                    break 'fail;
-                }
-            } else if options_from_string(oo, oe, name, s, false, &raw mut cause) != 0 {
-                break 'fail;
             }
+            if let Err(err) = options_array_set(o, idx as u32, Some(cstr_to_str(s)), false) {
+                let mut err_msg = err.into_string().unwrap();
+                err_msg[0..=0].make_ascii_uppercase();
+                status_message_set!(c, -1, 1, false, "{err_msg}");
+            }
+        } else if let Err(err) = options_from_string(oo, oe, name, s, false) {
+            let mut err_msg = err.into_string().unwrap();
+            err_msg[0..=0].make_ascii_uppercase();
+            status_message_set!(c, -1, 1, false, "{err_msg}");
+        }
 
-            options_push_changes((*item).name);
-            mode_tree_build((*data).data);
-            mode_tree_draw((*data).data);
-            (*(*data).wp).flags |= window_pane_flags::PANE_REDRAW;
+        options_push_changes((*item).name);
+        mode_tree_build((*data).data);
+        mode_tree_draw((*data).data);
+        (*(*data).wp).flags |= window_pane_flags::PANE_REDRAW;
 
-            return 0;
-        } // 'fail:
-        *cause = (*cause).to_ascii_uppercase();
-        status_message_set!(c, -1, 1, false, "{}", _s(cause));
-        free_(cause);
         0
     }
 }
@@ -1478,7 +1473,7 @@ pub unsafe fn window_customize_unset_option(
         if (*item).idx != -1 && item.cast() == mode_tree_get_current((*data).data).as_ptr() {
             mode_tree_up((*data).data, 0);
         }
-        options_remove_or_default(o, (*item).idx, null_mut());
+        _ = options_remove_or_default(o, (*item).idx);
     }
 }
 
@@ -1498,7 +1493,7 @@ pub unsafe fn window_customize_reset_option(
         while !oo.is_null() {
             let o = options_get_only((*item).oo, (*item).name);
             if !o.is_null() {
-                options_remove_or_default(o, -1, null_mut());
+                _ = options_remove_or_default(o, -1);
             }
             oo = options_get_parent(oo);
         }

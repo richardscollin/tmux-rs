@@ -412,10 +412,8 @@ unsafe fn cmd_display_menu_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
         let value = args_get_(args, 'b');
         if !value.is_null() {
             let oe = options_get(o, c!("menu-border-lines"));
-            let lines = options_find_choice(options_table_entry(oe), value, &raw mut cause);
-            if lines == -1 {
-                cmdq_error!(item, "menu-border-lines {}", _s(cause));
-                free_(cause);
+            if let Err(cause) = options_find_choice(options_table_entry(oe), value) {
+                cmdq_error!(item, "menu-border-lines {}", cause.to_str().unwrap());
                 return cmd_retval::CMD_RETURN_ERROR;
             }
         }
@@ -524,12 +522,13 @@ unsafe fn cmd_display_popup_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
             lines = box_lines::BOX_LINES_NONE as i32;
         } else if !value.is_null() {
             let oe = options_get(o, c!("popup-border-lines"));
-            lines = options_find_choice(options_table_entry(oe), value, &raw mut cause);
-            if !cause.is_null() {
-                cmdq_error!(item, "popup-border-lines {}", _s(cause));
-                free_(cause);
-                return cmd_retval::CMD_RETURN_ERROR;
-            }
+            lines = match options_find_choice(options_table_entry(oe), value) {
+                Ok(ok) => ok,
+                Err(cause) => {
+                    cmdq_error!(item, "popup-border-lines {}", cause.to_str().unwrap());
+                    return cmd_retval::CMD_RETURN_ERROR;
+                }
+            };
         }
 
         value = args_get(args, b'd');

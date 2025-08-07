@@ -90,8 +90,8 @@ unsafe fn cmd_move_window_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
         let dst = target.s;
         let mut idx = target.idx;
 
-        let kflag = args_has(args, b'k');
-        let dflag = args_has(args, b'd');
+        let kflag = args_has_(args, 'k');
+        let dflag = args_has_(args, 'd');
         let sflag = args_has_(args, 's');
 
         let before = args_has(args, b'b');

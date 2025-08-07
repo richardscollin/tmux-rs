@@ -237,8 +237,8 @@ pub unsafe fn server_link_window(
     srcwl: *mut winlink,
     dst: *mut session,
     mut dstidx: i32,
-    killflag: i32,
-    mut selectflag: i32,
+    killflag: bool,
+    mut selectflag: bool,
     cause: *mut *mut u8,
 ) -> i32 {
     unsafe {
@@ -259,7 +259,7 @@ pub unsafe fn server_link_window(
                 *cause = format_nul!("same index: {}", dstidx);
                 return -1;
             }
-            if killflag != 0 {
+            if killflag {
                 // Can't use session_detach as it will destroy session
                 // if this makes it empty.
                 notify_session_window(c"window-unlinked", dst, (*dstwl).window);
@@ -269,7 +269,7 @@ pub unsafe fn server_link_window(
 
                 // Force select/redraw if current.
                 if dstwl == (*dst).curw {
-                    selectflag = 1;
+                    selectflag = true;
                     (*dst).curw = null_mut();
                 }
             }
@@ -283,7 +283,7 @@ pub unsafe fn server_link_window(
             return -1;
         }
 
-        if selectflag != 0 {
+        if selectflag {
             session_select(dst, (*dstwl).idx);
         }
         server_redraw_session_group(dst);

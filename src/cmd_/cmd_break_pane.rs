@@ -69,8 +69,8 @@ pub unsafe fn cmd_break_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
                 wl,
                 dst_s,
                 idx,
-                0,
-                !args_has(args, b'd'),
+                false,
+                !args_has_(args, 'd'),
                 &raw mut cause,
             ) != 0
             {

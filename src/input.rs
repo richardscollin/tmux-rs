@@ -1411,7 +1411,7 @@ unsafe fn input_c0_dispatch(ictx: *mut input_ctx) -> i32 {
             }
 
             LF | VT | FF => {
-                screen_write_linefeed(sctx, 0, (*ictx).cell.cell.bg as u32);
+                screen_write_linefeed(sctx, false, (*ictx).cell.cell.bg as u32);
                 if (*s).mode.intersects(mode_flag::MODE_CRLF) {
                     screen_write_carriagereturn(sctx);
                 }
@@ -1459,11 +1459,11 @@ unsafe fn input_esc_dispatch(ictx: *mut input_ctx) -> i32 {
                 screen_write_fullredraw(sctx);
             }
             Ok(input_esc_type::INPUT_ESC_IND) => {
-                screen_write_linefeed(sctx, 0, (*ictx).cell.cell.bg as u32);
+                screen_write_linefeed(sctx, false, (*ictx).cell.cell.bg as u32);
             }
             Ok(input_esc_type::INPUT_ESC_NEL) => {
                 screen_write_carriagereturn(sctx);
-                screen_write_linefeed(sctx, 0, (*ictx).cell.cell.bg as u32);
+                screen_write_linefeed(sctx, false, (*ictx).cell.cell.bg as u32);
             }
             Ok(input_esc_type::INPUT_ESC_HTS) => {
                 if (*s).cx < screen_size_x(s) {

@@ -1805,7 +1805,7 @@ struct tty_ctx {
     arg: *mut c_void,
 
     cell: *const grid_cell,
-    wrapped: i32,
+    wrapped: bool,
 
     num: u32,
     ptr: *mut c_void,

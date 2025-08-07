@@ -1749,7 +1749,7 @@ pub unsafe fn tty_draw_line(
 
         let mut r: overlay_ranges = zeroed();
         let mut cleared = 0;
-        let mut wrapped = 0;
+        let mut wrapped = false;
         const SIZEOF_BUF: usize = 512;
         let mut buf: [u8; SIZEOF_BUF] = [0; SIZEOF_BUF];
 
@@ -1811,7 +1811,7 @@ pub unsafe fn tty_draw_line(
             }
         } else {
             // log_debug("%s: wrapped line %u", __func__, aty);
-            wrapped = 1;
+            wrapped = true;
         }
 
         memcpy__(&raw mut last, &raw const GRID_DEFAULT_CELL);
@@ -1838,7 +1838,7 @@ pub unsafe fn tty_draw_line(
                     // log_debug("%s: %zu cleared", __func__, len);
                     tty_clear_line(tty, defaults, aty, atx + ux, width, last.bg as u32);
                 } else {
-                    if wrapped == 0 || atx != 0 || ux != 0 {
+                    if !wrapped || atx != 0 || ux != 0 {
                         tty_cursor(tty, atx + ux, aty);
                     }
                     tty_putn(tty, (&raw const buf).cast(), len, width);
@@ -1847,7 +1847,7 @@ pub unsafe fn tty_draw_line(
 
                 len = 0;
                 width = 0;
-                wrapped = 0;
+                wrapped = false;
             }
 
             if (*gcp).flags.intersects(grid_flag::SELECTED) {
@@ -1909,7 +1909,7 @@ pub unsafe fn tty_draw_line(
                 // log_debug("%s: %zu cleared (end)", __func__, len);
                 tty_clear_line(tty, defaults, aty, atx + ux, width, last.bg as u32);
             } else {
-                if wrapped == 0 || atx != 0 || ux != 0 {
+                if !wrapped || atx != 0 || ux != 0 {
                     tty_cursor(tty, atx + ux, aty);
                 }
                 tty_putn(tty, (&raw const buf).cast(), len, width);
@@ -2653,7 +2653,7 @@ pub unsafe fn tty_cmd_cells(tty: *mut tty, ctx: *const tty_ctx) {
             && ((*ctx).xoff + (*ctx).ocx < (*ctx).wox
                 || (*ctx).xoff + (*ctx).ocx + (*ctx).num > (*ctx).wox + (*ctx).wsx)
         {
-            if !(*ctx).wrapped != 0
+            if !(*ctx).wrapped
                 || !tty_full_width(tty, ctx)
                 || ((*(*tty).term).flags.intersects(term_flags::TERM_NOAM))
                 || (*ctx).xoff + (*ctx).ocx != 0
@@ -3039,7 +3039,7 @@ pub unsafe fn tty_margin(tty: *mut tty, rleft: u32, rright: u32) {
 
 pub unsafe fn tty_cursor_pane_unless_wrap(tty: *mut tty, ctx: *const tty_ctx, cx: u32, cy: u32) {
     unsafe {
-        if !(*ctx).wrapped != 0
+        if !(*ctx).wrapped
             || !tty_full_width(tty, ctx)
             || (*(*tty).term).flags.intersects(term_flags::TERM_NOAM)
             || (*ctx).xoff + cx != 0

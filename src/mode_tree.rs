@@ -1178,7 +1178,7 @@ pub unsafe fn mode_tree_display_menu(
         }
         if menu_display(
             menu,
-            0,
+            menu_flags::empty(),
             0,
             null_mut(),
             x,

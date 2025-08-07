@@ -668,7 +668,7 @@ pub unsafe fn popup_key_cb(c: *mut client, data: *mut c_void, event: *mut key_ev
             let x = (*m).x.saturating_sub(((*(*pd).menu).width + 4) / 2);
             (*pd).md = menu_prepare(
                 (*pd).menu,
-                0,
+                menu_flags::empty(),
                 0,
                 null_mut(),
                 x,

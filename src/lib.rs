@@ -3041,9 +3041,19 @@ mod log;
 use crate::log::{fatal, fatalx, log_add_level, log_close, log_get_level, log_open, log_toggle};
 use crate::log::{fatalx_, log_debug};
 
-const MENU_NOMOUSE: i32 = 0x1;
-const MENU_TAB: i32 = 0x2;
-const MENU_STAYOPEN: i32 = 0x4;
+bitflags::bitflags! {
+    #[repr(transparent)]
+    #[derive(Copy, Clone, Eq, PartialEq)]
+    struct menu_flags: i32 {
+        const MENU_NOMOUSE = 0x1;
+        const MENU_TAB = 0x2;
+        const MENU_STAYOPEN = 0x4;
+    }
+}
+const MENU_NOMOUSE: menu_flags = menu_flags::MENU_NOMOUSE;
+const MENU_TAB: menu_flags = menu_flags::MENU_TAB;
+const MENU_STAYOPEN: menu_flags = menu_flags::MENU_STAYOPEN;
+
 mod menu_;
 use crate::menu_::{
     menu_add_item, menu_add_items, menu_check_cb, menu_create, menu_data, menu_display,

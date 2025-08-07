@@ -16,7 +16,7 @@ use crate::*;
 #[repr(C)]
 pub struct menu_data {
     pub item: *mut cmdq_item,
-    pub flags: i32,
+    pub flags: menu_flags,
 
     pub style: grid_cell,
     pub border_style: grid_cell,
@@ -311,7 +311,7 @@ pub unsafe fn menu_key_cb(c: *mut client, data: *mut c_void, mut event: *mut key
 
         'chosen: {
             if KEYC_IS_MOUSE((*event).key) {
-                if (*md).flags & MENU_NOMOUSE != 0 {
+                if (*md).flags.intersects(menu_flags::MENU_NOMOUSE) {
                     if MOUSE_BUTTONS((*m).b) != MOUSE_BUTTON_1 {
                         return 1;
                     }
@@ -322,7 +322,7 @@ pub unsafe fn menu_key_cb(c: *mut client, data: *mut c_void, mut event: *mut key
                     || (*m).y < (*md).py + 1
                     || (*m).y > (*md).py + 1 + count - 1
                 {
-                    if !(*md).flags & MENU_STAYOPEN != 0 {
+                    if !(*md).flags.intersects(menu_flags::MENU_STAYOPEN) {
                         if MOUSE_RELEASE((*m).b) {
                             return 1;
                         }
@@ -336,7 +336,7 @@ pub unsafe fn menu_key_cb(c: *mut client, data: *mut c_void, mut event: *mut key
                     }
                     return 0;
                 }
-                if !(*md).flags & MENU_STAYOPEN != 0 {
+                if !(*md).flags.intersects(MENU_STAYOPEN) {
                     if MOUSE_RELEASE((*m).b) {
                         break 'chosen;
                     }
@@ -434,14 +434,14 @@ pub unsafe fn menu_key_cb(c: *mut client, data: *mut c_void, mut event: *mut key
                                         }
 
                                         // 'backspace:
-                                        if !(*md).flags & MENU_TAB == 0 {
+                                        if !(*md).flags.intersects(menu_flags::MENU_TAB) {
                                             return 1;
                                         }
                                         break 'outer;
                                     }
 
                                     // 'tab:
-                                    if !(*md).flags & MENU_TAB != 0 {
+                                    if !(*md).flags.intersects(menu_flags::MENU_TAB) {
                                         break 'outer;
                                     }
                                     if (*md).choice == count as i32 - 1 {
@@ -546,7 +546,7 @@ pub unsafe fn menu_key_cb(c: *mut client, data: *mut c_void, mut event: *mut key
         }
         let item = (*menu).items.add((*md).choice as usize);
         if (*item).name.as_ptr().is_null() || *(*item).name.as_ptr() == b'-' {
-            if (*md).flags & MENU_STAYOPEN != 0 {
+            if (*md).flags.intersects(MENU_STAYOPEN) {
                 return 0;
             }
             return 1;
@@ -605,7 +605,7 @@ pub unsafe fn menu_set_style(
 
 pub unsafe fn menu_prepare(
     menu: *mut menu,
-    flags: i32,
+    flags: menu_flags,
     mut starting_choice: i32,
     item: *mut cmdq_item,
     mut px: u32,
@@ -663,7 +663,7 @@ pub unsafe fn menu_prepare(
             cmd_find_copy_state(&raw mut (*md).fs, fs);
         }
         screen_init(&raw mut (*md).s, (*menu).width + 4, (*menu).count + 2, 0);
-        if !(*md).flags & MENU_NOMOUSE != 0 {
+        if !(*md).flags.intersects(menu_flags::MENU_NOMOUSE) {
             (*md).s.mode |= mode_flag::MODE_MOUSE_ALL | mode_flag::MODE_MOUSE_BUTTON;
         }
         (*md).s.mode &= !mode_flag::MODE_CURSOR;
@@ -674,7 +674,7 @@ pub unsafe fn menu_prepare(
         (*md).menu = menu;
         (*md).choice = -1;
 
-        if (*md).flags & MENU_NOMOUSE != 0 {
+        if (*md).flags.intersects(MENU_NOMOUSE) {
             if starting_choice >= (*menu).count as i32 {
                 starting_choice = (*menu).count as i32 - 1;
                 choice = starting_choice + 1;
@@ -719,7 +719,7 @@ pub unsafe fn menu_prepare(
 
 pub unsafe fn menu_display(
     menu: *mut menu,
-    flags: i32,
+    flags: menu_flags,
     starting_choice: i32,
     item: *mut cmdq_item,
     px: u32,

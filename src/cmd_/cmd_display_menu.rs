@@ -330,7 +330,7 @@ unsafe fn cmd_display_menu_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
         let lines = box_lines::BOX_LINES_DEFAULT;
 
         let mut cause = null_mut();
-        let mut flags = 0;
+        let mut flags = menu_flags::empty();
         let mut starting_choice: i32 = 0;
         let mut px: u32 = 0;
         let mut py: u32 = 0;
@@ -421,10 +421,10 @@ unsafe fn cmd_display_menu_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
         }
 
         if args_has_(args, 'O') {
-            flags |= MENU_STAYOPEN;
+            flags |= menu_flags::MENU_STAYOPEN;
         }
         if !(*event).m.valid != 0 && !args_has_(args, 'M') {
-            flags |= MENU_NOMOUSE;
+            flags |= menu_flags::MENU_NOMOUSE;
         }
         if menu_display(
             menu,

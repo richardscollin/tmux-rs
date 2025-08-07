@@ -837,7 +837,7 @@ pub unsafe fn cmd_mouse_window(
     unsafe {
         let mut s: *mut session = null_mut();
 
-        if (*m).valid == 0 {
+        if !(*m).valid {
             return None;
         }
         if (*m).s == -1

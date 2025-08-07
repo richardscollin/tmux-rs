@@ -59,8 +59,7 @@ unsafe fn cmd_resize_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
         }
 
         if args_has_(args, 'M') {
-            if (*event).m.valid == 0 || cmd_mouse_window(&raw mut (*event).m, &raw mut s).is_none()
-            {
+            if !(*event).m.valid || cmd_mouse_window(&raw mut (*event).m, &raw mut s).is_none() {
                 return cmd_retval::CMD_RETURN_NORMAL;
             }
             if c.is_null() || (*c).session != s {

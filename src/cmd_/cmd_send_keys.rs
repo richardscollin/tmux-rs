@@ -188,7 +188,7 @@ pub unsafe fn cmd_send_keys_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
                 cmdq_error!(item, "not in a mode");
                 return cmd_retval::CMD_RETURN_ERROR;
             }
-            if (*m).valid == 0 {
+            if !(*m).valid {
                 m = null_mut();
             }
             (*(*wme).mode).command.unwrap()(NonNull::new_unchecked(wme), tc, s, wl, args, m);

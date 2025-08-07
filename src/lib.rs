@@ -1632,7 +1632,7 @@ fn MOUSE_RELEASE(b: u32) -> bool {
 #[repr(C)]
 #[derive(Copy, Clone)]
 struct mouse_event {
-    valid: i32,
+    valid: bool,
     ignore: i32,
 
     key: key_code,

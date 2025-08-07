@@ -1183,7 +1183,7 @@ pub unsafe fn format_cb_cursor_character(ft: *mut format_tree) -> *mut c_void {
 /// Callback for mouse_word.
 pub unsafe fn format_cb_mouse_word(ft: *mut format_tree) -> *mut c_void {
     unsafe {
-        if (*ft).m.valid == 0 {
+        if !(*ft).m.valid {
             return null_mut();
         }
         let Some(wp) = cmd_mouse_pane(&raw mut (*ft).m, null_mut(), null_mut()) else {
@@ -1209,7 +1209,7 @@ pub unsafe fn format_cb_mouse_word(ft: *mut format_tree) -> *mut c_void {
 /// Callback for mouse_hyperlink.
 pub unsafe fn format_cb_mouse_hyperlink(ft: *mut format_tree) -> *mut c_void {
     unsafe {
-        if (*ft).m.valid == 0 {
+        if !(*ft).m.valid {
             return null_mut();
         }
         let Some(wp) = cmd_mouse_pane(&raw mut (*ft).m, null_mut(), null_mut()) else {
@@ -1228,7 +1228,7 @@ pub unsafe fn format_cb_mouse_hyperlink(ft: *mut format_tree) -> *mut c_void {
 /// Callback for mouse_line.
 pub unsafe fn format_cb_mouse_line(ft: *mut format_tree) -> *mut c_void {
     unsafe {
-        if (*ft).m.valid == 0 {
+        if !(*ft).m.valid {
             return null_mut();
         }
         let Some(wp) = cmd_mouse_pane(&raw mut (*ft).m, null_mut(), null_mut()) else {
@@ -1254,7 +1254,7 @@ pub unsafe fn format_cb_mouse_line(ft: *mut format_tree) -> *mut c_void {
 /// Callback for mouse_status_line.
 pub unsafe fn format_cb_mouse_status_line(ft: *mut format_tree) -> *mut c_void {
     unsafe {
-        if (*ft).m.valid == 0 {
+        if !(*ft).m.valid {
             return null_mut();
         }
         if (*ft).c.is_null() || !(*(*ft).c).tty.flags.intersects(tty_flags::TTY_STARTED) {
@@ -1276,7 +1276,7 @@ pub unsafe fn format_cb_mouse_status_line(ft: *mut format_tree) -> *mut c_void {
 /// Callback for mouse_status_range.
 pub unsafe fn format_cb_mouse_status_range(ft: *mut format_tree) -> *mut c_void {
     unsafe {
-        if (*ft).m.valid == 0 {
+        if !(*ft).m.valid {
             return null_mut();
         }
         if (*ft).c.is_null() || !(*(*ft).c).tty.flags.intersects(tty_flags::TTY_STARTED) {
@@ -1751,7 +1751,7 @@ pub unsafe fn format_cb_mouse_button_flag(ft: *mut format_tree) -> *mut c_void {
 /// Callback for mouse_pane.
 pub unsafe fn format_cb_mouse_pane(ft: *mut format_tree) -> *mut c_void {
     unsafe {
-        if (*ft).m.valid != 0 {
+        if (*ft).m.valid {
             if let Some(wp) = cmd_mouse_pane(&raw mut (*ft).m, null_mut(), null_mut()) {
                 return format_printf!("%{}", (*wp.as_ptr()).id).cast();
             }
@@ -1807,7 +1807,7 @@ pub unsafe fn format_cb_mouse_utf8_flag(ft: *mut format_tree) -> *mut c_void {
 /// Callback for mouse_x.
 pub unsafe fn format_cb_mouse_x(ft: *mut format_tree) -> *mut c_void {
     unsafe {
-        if (*ft).m.valid == 0 {
+        if !(*ft).m.valid {
             return null_mut();
         }
         let wp = cmd_mouse_pane(&raw mut (*ft).m, null_mut(), null_mut());
@@ -1833,7 +1833,7 @@ pub unsafe fn format_cb_mouse_x(ft: *mut format_tree) -> *mut c_void {
 /// Callback for mouse_y.
 pub unsafe fn format_cb_mouse_y(ft: *mut format_tree) -> *mut c_void {
     unsafe {
-        if (*ft).m.valid == 0 {
+        if !(*ft).m.valid {
             return null_mut();
         }
         let wp = cmd_mouse_pane(&raw mut (*ft).m, null_mut(), null_mut());

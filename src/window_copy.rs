@@ -514,7 +514,7 @@ pub unsafe fn window_copy_vadd(wp: *mut window_pane, parse: i32, args: std::fmt:
             // On the second or later line, do a CRLF before writing
             // (so it's on a new line).
             screen_write_carriagereturn(&raw mut backing_ctx);
-            screen_write_linefeed(&raw mut backing_ctx, 0, 8);
+            screen_write_linefeed(&raw mut backing_ctx, false, 8);
         } else {
             (*data).backing_written = 1;
         }
@@ -5589,7 +5589,7 @@ pub unsafe fn window_copy_copy_line(
         let gd: *mut grid = (*(*data).backing).grid;
         let mut gc: grid_cell = zeroed();
         let mut ud: utf8_data = zeroed();
-        let mut wrapped: u32 = 0;
+        let mut wrapped = false;
 
         if sx > ex {
             return;
@@ -5598,11 +5598,11 @@ pub unsafe fn window_copy_copy_line(
         // Work out if the line was wrapped at the screen edge and all of it is on screen.
         let gl = grid_get_line(gd, sy);
         if (*gl).flags.intersects(grid_line_flag::WRAPPED) && (*gl).cellsize <= (*gd).sx {
-            wrapped = 1;
+            wrapped = true;
         }
 
         // If the line was wrapped, don't strip spaces (use the full length).
-        let xx = if wrapped != 0 {
+        let xx = if wrapped {
             (*gl).cellsize
         } else {
             window_copy_find_length(wme, sy)
@@ -5643,7 +5643,7 @@ pub unsafe fn window_copy_copy_line(
         }
 
         // Only add a newline if the line wasn't wrapped.
-        if wrapped == 0 || ex != xx {
+        if !wrapped || ex != xx {
             *buf = xrealloc((*buf).cast(), (*off) + 1).as_ptr().cast();
             *(*buf).add(*off) = b'\n';
             (*off) += 1;

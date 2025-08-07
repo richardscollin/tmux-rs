@@ -1406,7 +1406,7 @@ unsafe fn grid_reflow_join(
         let mut from: *mut grid_line = null_mut();
         let mut gc = zeroed();
         let mut lines = 0;
-        let mut wrapped = 1;
+        let mut wrapped = true;
         let mut want = 0;
 
         // Add a new target line
@@ -1434,10 +1434,10 @@ unsafe fn grid_reflow_join(
                 .flags
                 .intersects(grid_line_flag::WRAPPED)
             {
-                wrapped = 0;
+                wrapped = false;
             }
             if (*(*gd).linedata.add(line as usize)).cellused == 0 {
-                if wrapped == 0 {
+                if !wrapped {
                     break;
                 }
                 lines += 1;
@@ -1471,7 +1471,7 @@ unsafe fn grid_reflow_join(
 
             // If line wasn't wrapped or we didn't consume entire line,
             // don't try to join further lines
-            if wrapped == 0 || want != (*from).cellused || width == sx {
+            if !wrapped || want != (*from).cellused || width == sx {
                 break;
             }
         }
@@ -1487,7 +1487,7 @@ unsafe fn grid_reflow_join(
             (*from).cellsize = left;
             (*from).cellused = left;
             lines -= 1;
-        } else if wrapped == 0 {
+        } else if !wrapped {
             (*gl).flags &= !grid_line_flag::WRAPPED;
         }
 

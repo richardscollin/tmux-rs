@@ -354,7 +354,7 @@ pub unsafe fn server_destroy_pane(wp: *mut window_pane, notify: i32) {
                         screen_write_start_pane(ctx, wp, &raw mut (*wp).base);
                         screen_write_scrollregion(ctx, 0, sy - 1);
                         screen_write_cursormove(ctx, 0, sy as i32 - 1, 0);
-                        screen_write_linefeed(ctx, 1, 8);
+                        screen_write_linefeed(ctx, true, 8);
                         memcpy_(gc, &raw const GRID_DEFAULT_CELL, size_of::<grid_cell>());
 
                         let expanded =

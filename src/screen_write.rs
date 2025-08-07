@@ -26,7 +26,7 @@ impl_tailq_entry!(screen_write_citem, entry, tailq_entry<screen_write_citem>);
 #[repr(C)]
 pub struct screen_write_citem {
     x: u32,
-    wrapped: i32,
+    wrapped: bool,
 
     type_: screen_write_citem_type,
     used: u32,
@@ -594,7 +594,7 @@ pub(crate) unsafe fn screen_write_vnputs_(
                 if *ptr == b'\x01' {
                     gc.attr ^= grid_attr::GRID_ATTR_CHARSET;
                 } else if *ptr == b'\n' {
-                    screen_write_linefeed(ctx, 0, 8);
+                    screen_write_linefeed(ctx, false, 8);
                     screen_write_carriagereturn(ctx);
                 } else if *ptr > 0x1f && *ptr < 0x7f {
                     size += 1;
@@ -1587,7 +1587,7 @@ pub unsafe fn screen_write_scrollregion(
 }
 
 /// Line feed.
-pub unsafe fn screen_write_linefeed(ctx: *mut screen_write_ctx, wrapped: i32, bg: u32) {
+pub unsafe fn screen_write_linefeed(ctx: *mut screen_write_ctx, wrapped: bool, bg: u32) {
     unsafe {
         let s = (*ctx).s;
         let gd = (*s).grid;
@@ -1596,7 +1596,7 @@ pub unsafe fn screen_write_linefeed(ctx: *mut screen_write_ctx, wrapped: i32, bg
         let rlower = (*s).rlower;
 
         let gl = grid_get_line(gd, (*gd).hsize + (*s).cy);
-        if wrapped != 0 {
+        if wrapped {
             (*gl).flags |= grid_line_flag::WRAPPED;
         }
 
@@ -1839,7 +1839,7 @@ pub unsafe fn screen_write_collect_trim(
     y: u32,
     x: u32,
     used: u32,
-    wrapped: *mut i32,
+    wrapped: *mut bool,
 ) -> *mut screen_write_citem {
     unsafe {
         let cl = (*(*ctx).s).write_list.add(y as usize);
@@ -1871,8 +1871,8 @@ pub unsafe fn screen_write_collect_trim(
                 // log_debug("%s: %p %u-%u inside %u-%u", __func__, ci, csx, cex, sx, ex);
                 tailq_remove(&raw mut (*cl).items, ci);
                 screen_write_free_citem(ci);
-                if csx == 0 && (*ci).wrapped != 0 && !wrapped.is_null() {
-                    *wrapped = 1;
+                if csx == 0 && (*ci).wrapped && !wrapped.is_null() {
+                    *wrapped = true;
                 }
                 continue;
             }
@@ -2113,8 +2113,8 @@ pub unsafe fn screen_write_collect_add(ctx: *mut screen_write_ctx, gc: *const gr
 
         if (*s).cx > sx - 1 {
             // log_debug!("%s: wrapped at %u,%u", __func__, (*s).cx, (*s).cy);
-            (*ci).wrapped = 1;
-            screen_write_linefeed(ctx, 1, 8);
+            (*ci).wrapped = true;
+            screen_write_linefeed(ctx, true, 8);
             screen_write_set_cursor(ctx, 0, -1);
         }
 
@@ -2185,7 +2185,7 @@ pub unsafe fn screen_write_cell(ctx: *mut screen_write_ctx, gc: *const grid_cell
         // Check this will fit on the current line and wrap if not.
         if (*s).mode.intersects(mode_flag::MODE_WRAP) && (*s).cx > sx - width {
             // log_debug("%s: wrapped at %u,%u", __func__, (*s).cx, (*s).cy);
-            screen_write_linefeed(ctx, 1, 8);
+            screen_write_linefeed(ctx, true, 8);
             screen_write_set_cursor(ctx, 0, -1);
             screen_write_collect_flush(ctx, 1, "screen_write_cell");
         }

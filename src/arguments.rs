@@ -622,13 +622,28 @@ pub unsafe fn args_escape(s: *const u8) -> *mut u8 {
     }
 }
 
-pub unsafe fn args_has(args: *mut args, flag: u8) -> i32 {
+// a better name for this might be args_count, but that name already exists
+// so it would be confusing to use
+pub unsafe fn args_has_count(args: *mut args, flag: u8) -> i32 {
     unsafe {
         let entry = args_find(args, flag);
         if entry.is_null() {
             return 0;
         }
         (*entry).count as i32
+    }
+}
+
+pub unsafe fn args_has(args: *mut args, flag: char) -> bool {
+    debug_assert!(flag.is_ascii());
+
+    unsafe {
+        let flag = flag as u8;
+        let entry = args_find(args, flag);
+        if entry.is_null() {
+            return false;
+        }
+        (*entry).count != 0
     }
 }
 
@@ -724,7 +739,7 @@ pub unsafe fn args_make_commands_now(
     self_: *mut cmd,
     item: *mut cmdq_item,
     idx: u32,
-    expand: i32,
+    expand: bool,
 ) -> *mut cmd_list {
     unsafe {
         let mut error = null_mut();
@@ -748,7 +763,7 @@ pub unsafe fn args_make_commands_prepare<'a>(
     idx: u32,
     default_command: *const u8,
     wait: bool,
-    expand: i32,
+    expand: bool,
 ) -> *mut args_command_state<'a> {
     let __func__ = "args_make_commands_prepare";
     unsafe {
@@ -773,7 +788,7 @@ pub unsafe fn args_make_commands_prepare<'a>(
             default_command
         };
 
-        if expand != 0 {
+        if expand {
             (*state).cmd = format_single_from_target(item, cmd);
         } else {
             (*state).cmd = xstrdup(cmd).as_ptr();

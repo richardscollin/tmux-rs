@@ -291,9 +291,9 @@ unsafe fn alerts_set_message(wl: *mut winlink, type_: &str, option: &str) {
                 continue;
             }
             if (*(*c).session).curw == wl {
-                status_message_set!(c, -1, 1, 0, "{type_} in current window",);
+                status_message_set!(c, -1, 1, false, "{type_} in current window",);
             } else {
-                status_message_set!(c, -1, 1, 0, "{type_} in window {}", (*wl).idx);
+                status_message_set!(c, -1, 1, false, "{type_} in window {}", (*wl).idx);
             }
         }
     }

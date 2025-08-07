@@ -31,11 +31,11 @@ pub static CMD_ATTACH_SESSION_ENTRY: cmd_entry = cmd_entry {
 pub unsafe fn cmd_attach_session(
     item: *mut cmdq_item,
     tflag: *const u8,
-    dflag: c_int,
-    xflag: c_int,
-    rflag: c_int,
+    dflag: bool,
+    xflag: bool,
+    rflag: bool,
     cflag: *const u8,
-    eflag: c_int,
+    eflag: bool,
     fflag: *const u8,
 ) -> cmd_retval {
     unsafe {
@@ -102,14 +102,14 @@ pub unsafe fn cmd_attach_session(
         if !fflag.is_null() {
             server_client_set_flags(c, fflag);
         }
-        if rflag != 0 {
+        if rflag {
             (*c).flags |= client_flag::READONLY | client_flag::IGNORESIZE;
         }
 
         (*c).last_session = (*c).session;
         if !(*c).session.is_null() {
-            if dflag != 0 || xflag != 0 {
-                if xflag != 0 {
+            if dflag || xflag {
+                if xflag {
                     msgtype = msgtype::MSG_DETACHKILL;
                 } else {
                     msgtype = msgtype::MSG_DETACH;
@@ -123,7 +123,7 @@ pub unsafe fn cmd_attach_session(
                     }
                 }
             }
-            if eflag == 0 {
+            if !eflag {
                 environ_update((*s).options, (*c).environ, (*s).environ);
             }
 
@@ -138,8 +138,8 @@ pub unsafe fn cmd_attach_session(
                 return cmd_retval::CMD_RETURN_ERROR;
             }
 
-            if dflag != 0 || xflag != 0 {
-                msgtype = if xflag != 0 {
+            if dflag || xflag {
+                msgtype = if xflag {
                     msgtype::MSG_DETACHKILL
                 } else {
                     msgtype::MSG_DETACH
@@ -151,7 +151,7 @@ pub unsafe fn cmd_attach_session(
                     server_client_detach(c_loop, msgtype);
                 }
             }
-            if eflag == 0 {
+            if !eflag {
                 environ_update((*s).options, (*c).environ, (*s).environ);
             }
 
@@ -179,11 +179,11 @@ unsafe fn cmd_attach_session_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
         cmd_attach_session(
             item,
             args_get(args, b't'),
-            args_has(args, b'd'),
-            args_has(args, b'x'),
-            args_has(args, b'r'),
+            args_has(args, 'd'),
+            args_has(args, 'x'),
+            args_has(args, 'r'),
             args_get(args, b'c'),
-            args_has(args, b'E'),
+            args_has(args, 'E'),
             args_get(args, b'f'),
         )
     }

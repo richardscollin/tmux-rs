@@ -35,7 +35,7 @@ unsafe fn cmd_kill_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retva
         let wl = (*target).wl;
         let wp = (*target).wp;
 
-        if args_has(args, b'a') != 0 {
+        if args_has(args, 'a') {
             server_unzoom_window((*wl).window);
             for loopwp in
                 tailq_foreach::<_, discr_entry>(&raw mut (*(*wl).window).panes).map(NonNull::as_ptr)

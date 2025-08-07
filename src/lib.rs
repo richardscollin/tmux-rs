@@ -2554,7 +2554,7 @@ struct spawn_context {
 #[repr(C)]
 struct mode_tree_sort_criteria {
     field: u32,
-    reversed: i32,
+    reversed: bool,
 }
 
 const WINDOW_MINIMUM: u32 = PANE_MINIMUM;
@@ -2706,12 +2706,6 @@ use crate::tty_keys::{tty_key, tty_keys_build, tty_keys_colours, tty_keys_free, 
 
 mod arguments;
 
-// TODO convert calls to args_has to args_has_
-unsafe fn args_has_(args: *mut args, flag: char) -> bool {
-    debug_assert!(flag.is_ascii());
-    unsafe { args_has(args, flag as u8) != 0 }
-}
-
 // unsafe fn args_get(_: *mut args, _: c_uchar) -> *const c_char;
 unsafe fn args_get_(args: *mut args, flag: char) -> *const u8 {
     debug_assert!(flag.is_ascii());
@@ -2721,7 +2715,7 @@ unsafe fn args_get_(args: *mut args, flag: char) -> *const u8 {
 use crate::arguments::{
     args, args_command_state, args_copy, args_count, args_create, args_entry, args_escape,
     args_first, args_first_value, args_free, args_free_value, args_free_values, args_from_vector,
-    args_get, args_has, args_make_commands, args_make_commands_free,
+    args_get, args_has, args_has_count, args_make_commands, args_make_commands_free,
     args_make_commands_get_command, args_make_commands_now, args_make_commands_prepare, args_next,
     args_next_value, args_parse, args_percentage, args_percentage_and_expand, args_print, args_set,
     args_string, args_string_percentage, args_strtonum, args_strtonum_and_expand, args_to_vector,

@@ -80,7 +80,7 @@ unsafe fn cmd_capture_pane_pending(
         let linelen = EVBUFFER_LENGTH(pending);
 
         let mut buf = xstrdup(c!("")).as_ptr();
-        if args_has(args, b'C') != 0 {
+        if args_has(args, 'C') {
             for i in 0usize..linelen {
                 if *line.add(i) >= b' ' && *line.add(i) != b'\\' {
                     tmp[0] = *line.add(i) as _;
@@ -119,10 +119,10 @@ unsafe fn cmd_capture_pane_history(
         let mut linelen: usize;
 
         let sx = screen_size_x(&raw mut (*wp).base);
-        if args_has(args, b'a') != 0 {
+        if args_has(args, 'a') {
             gd = (*wp).base.saved_grid;
             if gd.is_null() {
-                if args_has(args, b'q') == 0 {
+                if !args_has(args, 'q') {
                     cmdq_error!(item, "no alternate screen");
                     return null_mut();
                 }
@@ -189,17 +189,17 @@ unsafe fn cmd_capture_pane_history(
             top = tmp;
         }
 
-        let join_lines = args_has(args, b'J');
-        if args_has(args, b'e') != 0 {
+        let join_lines = args_has(args, 'J');
+        if args_has(args, 'e') {
             flags |= grid_string_flags::GRID_STRING_WITH_SEQUENCES;
         }
-        if args_has(args, b'C') != 0 {
+        if args_has(args, 'C') {
             flags |= grid_string_flags::GRID_STRING_ESCAPE_SEQUENCES;
         }
-        if join_lines == 0 && args_has(args, b'T') == 0 {
+        if !join_lines && !args_has(args, 'T') {
             flags |= grid_string_flags::GRID_STRING_EMPTY_CELLS;
         }
-        if join_lines == 0 && args_has(args, b'N') == 0 {
+        if !join_lines && !args_has(args, 'N') {
             flags |= grid_string_flags::GRID_STRING_TRIM_SPACES;
         }
 
@@ -211,7 +211,7 @@ unsafe fn cmd_capture_pane_history(
             buf = cmd_capture_pane_append(buf, len, line, linelen);
 
             gl = grid_peek_line(gd, i);
-            if join_lines == 0 || !(*gl).flags.intersects(grid_line_flag::WRAPPED) {
+            if !join_lines || !(*gl).flags.intersects(grid_line_flag::WRAPPED) {
                 *buf.add(*len) = b'\n' as _;
                 (*len) += 1;
             }
@@ -231,14 +231,14 @@ unsafe fn cmd_capture_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
         if std::ptr::eq(cmd_get_entry(self_), &CMD_CLEAR_HISTORY_ENTRY) {
             window_pane_reset_mode_all(wp);
             grid_clear_history((*wp).base.grid);
-            if args_has(args, b'H') != 0 {
+            if args_has(args, 'H') {
                 screen_reset_hyperlinks((*wp).screen);
             }
             return cmd_retval::CMD_RETURN_NORMAL;
         }
 
         let mut len = 0;
-        let buf = if args_has(args, b'P') != 0 {
+        let buf = if args_has(args, 'P') {
             cmd_capture_pane_pending(args, wp, &raw mut len)
         } else {
             cmd_capture_pane_history(args, item, wp, &raw mut len)
@@ -247,7 +247,7 @@ unsafe fn cmd_capture_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
             return cmd_retval::CMD_RETURN_ERROR;
         }
 
-        if args_has(args, b'p') != 0 {
+        if args_has(args, 'p') {
             if len > 0 && *buf.add(len - 1) == b'\n' as _ {
                 len -= 1;
             }
@@ -266,7 +266,7 @@ unsafe fn cmd_capture_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
         } else {
             let mut bufname = null();
             let mut cause = null_mut();
-            if args_has(args, b'b') != 0 {
+            if args_has(args, 'b') {
                 bufname = args_get(args, b'b');
             }
 

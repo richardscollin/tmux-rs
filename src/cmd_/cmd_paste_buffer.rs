@@ -32,7 +32,7 @@ unsafe fn cmd_paste_buffer_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
         let args = cmd_get_args(self_);
         let target = cmdq_get_target(item);
         let wp = (*target).wp;
-        let bracket = args_has(args, b'p') != 0;
+        let bracket = args_has(args, 'p');
 
         if window_pane_exited(wp) {
             cmdq_error!(item, "target pane has exited");
@@ -40,7 +40,7 @@ unsafe fn cmd_paste_buffer_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
         }
 
         let mut bufname = null();
-        if args_has(args, b'b') != 0 {
+        if args_has(args, 'b') {
             bufname = args_get(args, b'b');
         }
 
@@ -60,7 +60,7 @@ unsafe fn cmd_paste_buffer_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
         {
             let mut sepstr = args_get(args, b's');
             if sepstr.is_null() {
-                if args_has(args, b'r') != 0 {
+                if args_has(args, 'r') {
                     sepstr = c!("\n");
                 } else {
                     sepstr = c!("\r");
@@ -106,7 +106,7 @@ unsafe fn cmd_paste_buffer_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
         }
 
         if let Some(non_null_pb) = NonNull::new(pb)
-            && args_has_(args, 'd')
+            && args_has(args, 'd')
         {
             paste_free(non_null_pb);
         }

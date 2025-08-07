@@ -39,9 +39,9 @@ unsafe fn cmd_list_panes_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retv
         let s = (*target).s;
         let wl = (*target).wl;
 
-        if args_has_(args, 'a') {
+        if args_has(args, 'a') {
             cmd_list_panes_server(self_, item);
-        } else if args_has_(args, 's') {
+        } else if args_has(args, 's') {
             cmd_list_panes_session(self_, s, item, 1);
         } else {
             cmd_list_panes_window(self_, s, wl, item, 0);

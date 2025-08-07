@@ -154,13 +154,13 @@ unsafe fn cmd_source_file_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
         let cdata = xcalloc_::<cmd_source_file_data>(1).as_ptr();
         (*cdata).item = item;
 
-        if args_has_(args, 'q') {
+        if args_has(args, 'q') {
             (*cdata).flags |= cmd_parse_input_flags::CMD_PARSE_QUIET;
         }
-        if args_has_(args, 'n') {
+        if args_has(args, 'n') {
             (*cdata).flags |= cmd_parse_input_flags::CMD_PARSE_PARSEONLY;
         }
-        if args_has_(args, 'v') {
+        if args_has(args, 'v') {
             (*cdata).flags |= cmd_parse_input_flags::CMD_PARSE_VERBOSE;
         }
 
@@ -172,7 +172,7 @@ unsafe fn cmd_source_file_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
 
         for i in 0..args_count(args) {
             let mut path = args_string(args, i);
-            if args_has_(args, 'F') {
+            if args_has(args, 'F') {
                 free_(expanded);
                 expanded = format_single_from_target(item, path);
                 path = expanded;

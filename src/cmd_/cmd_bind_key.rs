@@ -44,14 +44,14 @@ unsafe fn cmd_bind_key_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retval
             return cmd_retval::CMD_RETURN_ERROR;
         }
 
-        let tablename: *const u8 = if args_has(args, b'T') != 0 {
+        let tablename: *const u8 = if args_has(args, 'T') {
             args_get(args, b'T')
-        } else if args_has(args, b'n') != 0 {
+        } else if args_has(args, 'n') {
             c!("root")
         } else {
             c!("prefix")
         };
-        let repeat = args_has(args, b'r');
+        let repeat = args_has(args, 'r');
 
         if count == 1 {
             key_bindings_add(tablename, key, note, repeat, null_mut());

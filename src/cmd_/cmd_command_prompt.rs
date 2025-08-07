@@ -69,13 +69,13 @@ unsafe fn cmd_command_prompt_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
         let mut inputs = null_mut();
         let mut next_input;
         let count = args_count(args);
-        let mut wait = !args_has_(args, 'b');
+        let mut wait = !args_has(args, 'b');
         let mut space = 1;
 
         if !(*tc).prompt_string.is_null() {
             return cmd_retval::CMD_RETURN_NORMAL;
         }
-        if args_has(args, b'i') != 0 {
+        if args_has(args, 'i') {
             wait = false;
         }
 
@@ -84,7 +84,7 @@ unsafe fn cmd_command_prompt_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
             cdata.item = item;
         }
         cdata.state =
-            args_make_commands_prepare(self_, item, 0, c!("%1"), wait, args_has(args, b'F'));
+            args_make_commands_prepare(self_, item, 0, c!("%1"), wait, args_has(args, 'F'));
 
         let mut s = args_get(args, b'p');
         if s.is_null() {
@@ -152,13 +152,13 @@ unsafe fn cmd_command_prompt_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
             cdata.prompt_type = prompt_type::PROMPT_TYPE_COMMAND;
         }
 
-        if args_has(args, b'1') != 0 {
+        if args_has(args, '1') {
             cdata.flags |= PROMPT_SINGLE;
-        } else if args_has(args, b'N') != 0 {
+        } else if args_has(args, 'N') {
             cdata.flags |= PROMPT_NUMERIC;
-        } else if args_has(args, b'i') != 0 {
+        } else if args_has(args, 'i') {
             cdata.flags |= PROMPT_INCREMENTAL;
-        } else if args_has(args, b'k') != 0 {
+        } else if args_has(args, 'k') {
             cdata.flags |= PROMPT_KEY;
         }
 

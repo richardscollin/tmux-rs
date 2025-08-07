@@ -61,7 +61,7 @@ unsafe fn cmd_respawn_window_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
         sc.cwd = args_get(args, b'c');
 
         sc.flags = SPAWN_RESPAWN;
-        if args_has(args, b'k') != 0 {
+        if args_has(args, 'k') {
             sc.flags |= SPAWN_KILL;
         }
 

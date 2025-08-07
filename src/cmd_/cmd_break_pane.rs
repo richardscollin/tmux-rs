@@ -50,8 +50,8 @@ pub unsafe fn cmd_break_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
         let mut idx = (*target).idx;
         let mut template: *const u8;
 
-        let before = args_has(args, b'b');
-        if args_has(args, b'a') != 0 || before != 0 {
+        let before = args_has(args, 'b');
+        if args_has(args, 'a') || before {
             idx = if !(*target).wl.is_null() {
                 winlink_shuffle_up(dst_s, (*target).wl, before)
             } else {
@@ -69,8 +69,8 @@ pub unsafe fn cmd_break_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
                 wl,
                 dst_s,
                 idx,
-                0,
-                !args_has(args, b'd'),
+                false,
+                !args_has(args, 'd'),
                 &raw mut cause,
             ) != 0
             {
@@ -78,7 +78,7 @@ pub unsafe fn cmd_break_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
                 free_(cause);
                 return cmd_retval::CMD_RETURN_ERROR;
             }
-            if args_has(args, b'n') != 0 {
+            if args_has(args, 'n') {
                 window_set_name(w, args_get(args, b'n'));
                 options_set_number((*w).options, c!("automatic-rename"), 0);
             }
@@ -104,7 +104,7 @@ pub unsafe fn cmd_break_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
         (*w).active = wp;
         (*w).latest = tc as *mut c_void;
 
-        if args_has(args, b'n') == 0 {
+        if !args_has(args, 'n') {
             name = default_window_name(w);
             window_set_name(w, name);
             free_(name);
@@ -121,7 +121,7 @@ pub unsafe fn cmd_break_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
             idx = -1 - options_get_number_((*dst_s).options, "base-index") as i32;
         }
         wl = session_attach(dst_s, w, idx, &raw mut cause);
-        if args_has(args, b'd') == 0 {
+        if !args_has(args, 'd') {
             session_select(dst_s, (*wl).idx);
             cmd_find_from_session(current, dst_s, cmd_find_flags::empty());
         }
@@ -135,7 +135,7 @@ pub unsafe fn cmd_break_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
             server_status_session_group(dst_s);
         }
 
-        if args_has(args, b'P') != 0 {
+        if args_has(args, 'P') {
             template = args_get(args, b'F');
             if template.is_null() {
                 template = c!("#{session_name}:#{window_index}.#{pane_index}");

@@ -66,14 +66,14 @@ unsafe fn cmd_show_environment_print(
     unsafe {
         let args = cmd_get_args(self_);
 
-        if !args_has_(args, 'h') && (*envent).flags.intersects(ENVIRON_HIDDEN) {
+        if !args_has(args, 'h') && (*envent).flags.intersects(ENVIRON_HIDDEN) {
             return;
         }
-        if args_has_(args, 'h') && !(*envent).flags.intersects(ENVIRON_HIDDEN) {
+        if args_has(args, 'h') && !(*envent).flags.intersects(ENVIRON_HIDDEN) {
             return;
         }
 
-        if !args_has_(args, 's') {
+        if !args_has(args, 's') {
             if let Some(value) = (*envent).value {
                 cmdq_print!(
                     item,
@@ -116,7 +116,7 @@ unsafe fn cmd_show_environment_exec(self_: *mut cmd, item: *mut cmdq_item) -> cm
             return cmd_retval::CMD_RETURN_ERROR;
         }
 
-        if args_has_(args, 'g') {
+        if args_has(args, 'g') {
             env = GLOBAL_ENVIRON;
         } else {
             if (*target).s.is_null() {

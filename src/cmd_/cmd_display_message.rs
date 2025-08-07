@@ -56,10 +56,10 @@ unsafe fn cmd_display_message_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd
         let wp = (*target).wp;
         let mut cause: *mut u8 = null_mut();
         let mut delay = -1;
-        let nflag = args_has(args, b'N');
+        let nflag = args_has(args, 'N');
         let count = args_count(args);
 
-        if args_has_(args, 'I') {
+        if args_has(args, 'I') {
             if wp.is_null() {
                 return cmd_retval::CMD_RETURN_NORMAL;
             }
@@ -79,12 +79,12 @@ unsafe fn cmd_display_message_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd
             }
         }
 
-        if args_has_(args, 'F') && count != 0 {
+        if args_has(args, 'F') && count != 0 {
             cmdq_error!(item, "only one of -F or argument must be given");
             return cmd_retval::CMD_RETURN_ERROR;
         }
 
-        if args_has_(args, 'd') {
+        if args_has(args, 'd') {
             delay = args_strtonum(args, b'd', 0, u32::MAX as i64, &raw mut cause);
             if !cause.is_null() {
                 cmdq_error!(item, "delay {}", _s(cause));
@@ -114,7 +114,7 @@ unsafe fn cmd_display_message_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd
             null_mut()
         };
 
-        let flags = if args_has_(args, 'v') {
+        let flags = if args_has(args, 'v') {
             format_flags::FORMAT_VERBOSE
         } else {
             format_flags::empty()
@@ -122,12 +122,12 @@ unsafe fn cmd_display_message_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd
         let ft = format_create(cmdq_get_client(item), item, FORMAT_NONE, flags);
         format_defaults(ft, c, NonNull::new(s), NonNull::new(wl), NonNull::new(wp));
 
-        if args_has_(args, 'a') {
+        if args_has(args, 'a') {
             format_each(ft, Some(cmd_display_message_each), item);
             return cmd_retval::CMD_RETURN_NORMAL;
         }
 
-        let msg = if args_has_(args, 'l') {
+        let msg = if args_has(args, 'l') {
             xstrdup(template).as_ptr()
         } else {
             format_expand_time(ft, template)
@@ -135,7 +135,7 @@ unsafe fn cmd_display_message_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd
 
         if cmdq_get_client(item).is_null() {
             cmdq_error!(item, "{}", _s(msg));
-        } else if args_has_(args, 'p') {
+        } else if args_has(args, 'p') {
             cmdq_print!(item, "{}", _s(msg));
         } else if !tc.is_null() && (*tc).flags.intersects(client_flag::CONTROL) {
             let evb = evbuffer_new();

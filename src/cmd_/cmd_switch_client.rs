@@ -51,7 +51,7 @@ unsafe fn cmd_switch_client_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
         let wl = target.wl;
         let wp = target.wp;
 
-        if args_has_(args, 'r') {
+        if args_has(args, 'r') {
             if (*tc).flags.intersects(client_flag::READONLY) {
                 (*tc).flags &= !(client_flag::READONLY | client_flag::IGNORESIZE);
             } else {
@@ -72,19 +72,19 @@ unsafe fn cmd_switch_client_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
             return cmd_retval::CMD_RETURN_NORMAL;
         }
 
-        if args_has_(args, 'n') {
+        if args_has(args, 'n') {
             s = session_next_session((*tc).session);
             if s.is_null() {
                 cmdq_error!(item, "can't find next session");
                 return cmd_retval::CMD_RETURN_ERROR;
             }
-        } else if args_has_(args, 'p') {
+        } else if args_has(args, 'p') {
             s = session_previous_session((*tc).session);
             if s.is_null() {
                 cmdq_error!(item, "can't find previous session");
                 return cmd_retval::CMD_RETURN_ERROR;
             }
-        } else if args_has_(args, 'l') {
+        } else if args_has(args, 'l') {
             if !(*tc).last_session.is_null() && session_alive((*tc).last_session) {
                 s = (*tc).last_session;
             } else {
@@ -100,7 +100,7 @@ unsafe fn cmd_switch_client_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
             }
             if !wl.is_null() && !wp.is_null() && wp != (*(*wl).window).active {
                 let w = (*wl).window;
-                if window_push_zoom(w, 0, args_has(args, b'Z')) != 0 {
+                if window_push_zoom(w, false, args_has(args, 'Z')) {
                     server_redraw_window(w);
                 }
                 window_redraw_active_switch(w, wp);
@@ -115,7 +115,7 @@ unsafe fn cmd_switch_client_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
             }
         }
 
-        if !args_has_(args, 'E') {
+        if !args_has(args, 'E') {
             environ_update((*s).options, (*tc).environ, (*s).environ);
         }
 

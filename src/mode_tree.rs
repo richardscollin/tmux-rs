@@ -444,7 +444,7 @@ pub unsafe fn mode_tree_start(
         (*mtd).sort_list = sort_list;
         (*mtd).sort_size = sort_size;
 
-        (*mtd).preview = (!args_has_(args, 'N')) as i32;
+        (*mtd).preview = (!args_has(args, 'N')) as i32;
 
         let sort = args_get_(args, 'O');
         if !sort.is_null() {
@@ -454,9 +454,9 @@ pub unsafe fn mode_tree_start(
                 }
             }
         }
-        (*mtd).sort_crit.reversed = args_has(args, b'r');
+        (*mtd).sort_crit.reversed = args_has(args, 'r');
 
-        if args_has_(args, 'f') {
+        if args_has(args, 'f') {
             (*mtd).filter = xstrdup(args_get_(args, 'f')).as_ptr();
         } else {
             (*mtd).filter = null_mut();
@@ -488,7 +488,7 @@ pub unsafe fn mode_tree_zoom(mtd: *mut mode_tree_data, args: *mut args) {
     unsafe {
         let wp: *mut window_pane = (*mtd).wp;
 
-        if args_has_(args, 'Z') {
+        if args_has(args, 'Z') {
             (*mtd).zoomed = ((*(*wp).window).flags & window_flag::ZOOMED).bits();
             if (*mtd).zoomed == 0 && window_zoom(wp) == 0 {
                 server_redraw_window((*wp).window);
@@ -858,7 +858,7 @@ pub unsafe fn mode_tree_draw(mtd: *mut mode_tree_data) {
                     " {} (sort: {}{})",
                     _s((*mti).name),
                     _s(*(*mtd).sort_list.add((*mtd).sort_crit.field as usize)),
-                    if (*mtd).sort_crit.reversed != 0 {
+                    if (*mtd).sort_crit.reversed {
                         ", reversed"
                     } else {
                         ""
@@ -1519,7 +1519,7 @@ pub unsafe fn mode_tree_run_command(
             if status == cmd_parse_status::CMD_PARSE_ERROR {
                 if !c.is_null() {
                     *error = (*error).to_ascii_uppercase();
-                    status_message_set!(c, -1, 1, 0, "{}", _s(error));
+                    status_message_set!(c, -1, 1, false, "{}", _s(error));
                 }
                 free_(error);
             }

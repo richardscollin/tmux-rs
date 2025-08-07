@@ -38,13 +38,13 @@ unsafe fn cmd_kill_session_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
         let target = cmdq_get_target(item);
         let s = (*target).s;
 
-        if args_has(args, b'C') != 0 {
+        if args_has(args, 'C') {
             for wl in rb_foreach(&raw mut (*s).windows).map(NonNull::as_ptr) {
                 (*(*wl).window).flags &= !WINDOW_ALERTFLAGS;
                 (*wl).flags &= !WINLINK_ALERTFLAGS;
             }
             server_redraw_session(s);
-        } else if args_has(args, b'a') != 0 {
+        } else if args_has(args, 'a') {
             for sloop in rb_foreach(&raw mut SESSIONS).map(NonNull::as_ptr) {
                 if sloop != s {
                     server_destroy_session(sloop);

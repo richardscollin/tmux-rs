@@ -129,7 +129,7 @@ struct window_tree_modedata {
     format: *mut u8,
     key_format: *mut u8,
     command: *mut u8,
-    squash_groups: i32,
+    squash_groups: bool,
 
     item_list: *mut *mut window_tree_itemdata,
     item_size: u32,
@@ -251,7 +251,7 @@ unsafe extern "C" fn window_tree_cmp_session(a0: *const c_void, b0: *const c_voi
             Err(_) => (),
         }
 
-        if (*WINDOW_TREE_SORT).reversed != 0 {
+        if (*WINDOW_TREE_SORT).reversed {
             result = -result;
         }
 
@@ -290,7 +290,7 @@ unsafe extern "C" fn window_tree_cmp_window(a0: *const c_void, b0: *const c_void
             Err(_) => (),
         }
 
-        if (*WINDOW_TREE_SORT).reversed != 0 {
+        if (*WINDOW_TREE_SORT).reversed {
             result = -result;
         }
         result
@@ -313,7 +313,7 @@ unsafe extern "C" fn window_tree_cmp_pane(a0: *const c_void, b0: *const c_void) 
             window_pane_index(*b, &raw mut bi);
             result = ai as i32 - bi as i32;
         }
-        if (*WINDOW_TREE_SORT).reversed != 0 {
+        if (*WINDOW_TREE_SORT).reversed {
             result = -result;
         }
         result
@@ -580,7 +580,7 @@ unsafe fn window_tree_build(
         let mut l: *mut *mut session = null_mut();
         let mut n: u32 = 0;
         for s in rb_foreach(&raw mut SESSIONS).map(NonNull::as_ptr) {
-            if (*data).squash_groups != 0
+            if (*data).squash_groups
                 && ({
                     sg = session_group_contains(s);
                     !sg.is_null()
@@ -1116,21 +1116,21 @@ unsafe fn window_tree_init(
         (*data).wp = wp;
         (*data).references = 1;
 
-        if args_has_(args, 's') {
+        if args_has(args, 's') {
             (*data).type_ = window_tree_type::WINDOW_TREE_SESSION;
-        } else if args_has_(args, 'w') {
+        } else if args_has(args, 'w') {
             (*data).type_ = window_tree_type::WINDOW_TREE_WINDOW;
         } else {
             (*data).type_ = window_tree_type::WINDOW_TREE_PANE;
         }
         memcpy__(&raw mut (*data).fs, fs);
 
-        if args.is_null() || !args_has_(args, 'F') {
+        if args.is_null() || !args_has(args, 'F') {
             (*data).format = xstrdup_(WINDOW_TREE_DEFAULT_FORMAT).as_ptr();
         } else {
             (*data).format = xstrdup(args_get_(args, 'F')).as_ptr();
         }
-        if args.is_null() || !args_has_(args, 'K') {
+        if args.is_null() || !args_has(args, 'K') {
             (*data).key_format = xstrdup_(WINDOW_TREE_DEFAULT_KEY_FORMAT).as_ptr();
         } else {
             (*data).key_format = xstrdup(args_get_(args, 'K')).as_ptr();
@@ -1140,7 +1140,7 @@ unsafe fn window_tree_init(
         } else {
             (*data).command = xstrdup(args_string(args, 0)).as_ptr();
         }
-        (*data).squash_groups = !args_has(args, b'G');
+        (*data).squash_groups = !args_has(args, 'G');
 
         (*data).data = mode_tree_start(
             wp,

@@ -82,7 +82,7 @@ pub fn cmd_set_option_args_parse(
 pub unsafe fn cmd_set_option_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retval {
     unsafe {
         let args = cmd_get_args(self_);
-        let append = args_has(args, b'a');
+        let append = args_has(args, 'a');
         let target = cmdq_get_target(item);
         let mut oo: *mut options = null_mut();
         let parent: *mut options_entry;
@@ -107,7 +107,7 @@ pub unsafe fn cmd_set_option_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
                 argument = format_single_from_target(item, args_string(args, 0));
 
                 // If set-hook -R, fire the hook straight away.
-                if std::ptr::eq(cmd_get_entry(self_), &CMD_SET_HOOK_ENTRY) && args_has_(args, 'R') {
+                if std::ptr::eq(cmd_get_entry(self_), &CMD_SET_HOOK_ENTRY) && args_has(args, 'R') {
                     notify_hook(item, argument);
                     free_(argument);
                     return cmd_retval::CMD_RETURN_NORMAL;
@@ -116,7 +116,7 @@ pub unsafe fn cmd_set_option_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
                 // Parse option name and index.
                 name = options_match(argument, &raw mut idx, &raw mut ambiguous);
                 if name.is_null() {
-                    if args_has_(args, 'q') {
+                    if args_has(args, 'q') {
                         break 'out;
                     }
                     if ambiguous != 0 {
@@ -131,7 +131,7 @@ pub unsafe fn cmd_set_option_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
                 } else {
                     value = args_string(args, 1);
                 }
-                if !value.is_null() && args_has_(args, 'F') {
+                if !value.is_null() && args_has(args, 'F') {
                     expanded = format_single_from_target(item, value);
                     value = expanded;
                 }
@@ -146,7 +146,7 @@ pub unsafe fn cmd_set_option_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
                     &raw mut cause,
                 );
                 if scope == OPTIONS_TABLE_NONE {
-                    if args_has_(args, 'q') {
+                    if args_has(args, 'q') {
                         break 'out;
                     }
                     cmdq_error!(item, "{}", _s(cause));
@@ -163,7 +163,7 @@ pub unsafe fn cmd_set_option_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
                 }
 
                 // With -o, check this option is not already set.
-                if !args_has_(args, 'u') && args_has_(args, 'o') {
+                if !args_has(args, 'u') && args_has(args, 'o') {
                     if idx == -1 {
                         already = !o.is_null() as i32;
                     } else if o.is_null() {
@@ -172,7 +172,7 @@ pub unsafe fn cmd_set_option_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
                         already = (!options_array_get(o, idx as u32).is_null()) as i32;
                     }
                     if already != 0 {
-                        if args_has_(args, 'q') {
+                        if args_has(args, 'q') {
                             break 'out;
                         }
                         cmdq_error!(item, "already set: {}", _s(argument));
@@ -181,7 +181,7 @@ pub unsafe fn cmd_set_option_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
                 }
 
                 // Change the option.
-                if args_has_(args, 'U') && scope == OPTIONS_TABLE_WINDOW {
+                if args_has(args, 'U') && scope == OPTIONS_TABLE_WINDOW {
                     for loop_ in tailq_foreach::<_, discr_entry>(&raw mut (*(*target).w).panes)
                         .map(NonNull::as_ptr)
                     {
@@ -196,7 +196,7 @@ pub unsafe fn cmd_set_option_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
                         }
                     }
                 }
-                if args_has_(args, 'u') || args_has_(args, 'U') {
+                if args_has(args, 'u') || args_has(args, 'U') {
                     if o.is_null() {
                         break 'out;
                     }
@@ -217,7 +217,7 @@ pub unsafe fn cmd_set_option_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
                         options_table_entry(parent),
                         (*options_table_entry(parent)).name,
                         value,
-                        args_has(args, b'a'),
+                        args_has(args, 'a'),
                         &raw mut cause,
                     );
                     if error != 0 {
@@ -234,7 +234,7 @@ pub unsafe fn cmd_set_option_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
                         o = options_empty(oo, options_table_entry(parent));
                     }
                     if idx == -1 {
-                        if append == 0 {
+                        if !append {
                             options_array_clear(o);
                         }
                         if options_array_assign(o, cstr_to_str(value), &raw mut cause) != 0 {

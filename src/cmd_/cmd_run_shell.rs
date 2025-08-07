@@ -55,7 +55,7 @@ pub unsafe fn cmd_run_shell_args_parse(
     _cause: *mut *mut u8,
 ) -> args_parse_type {
     unsafe {
-        if args_has_(args, 'C') {
+        if args_has(args, 'C') {
             return args_parse_type::ARGS_PARSE_COMMANDS_OR_STRING;
         }
     }
@@ -113,7 +113,7 @@ pub unsafe fn cmd_run_shell_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
         let wp = (*target).wp;
         let mut d: f64 = 0.0;
         let mut end: *mut u8 = null_mut();
-        let wait = !args_has_(args, 'b');
+        let wait = !args_has(args, 'b');
 
         let delay = args_get(args, b'd');
         if !delay.is_null() {
@@ -127,16 +127,16 @@ pub unsafe fn cmd_run_shell_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
         }
 
         let cdata = xcalloc1::<cmd_run_shell_data>() as *mut cmd_run_shell_data;
-        if !args_has_(args, 'C') {
+        if !args_has(args, 'C') {
             let cmd = args_string(args, 0);
             if !cmd.is_null() {
                 (*cdata).cmd = format_single_from_target(item, cmd);
             }
         } else {
-            (*cdata).state = args_make_commands_prepare(self_, item, 0, null_mut(), wait, 1);
+            (*cdata).state = args_make_commands_prepare(self_, item, 0, null_mut(), wait, true);
         }
 
-        if args_has_(args, 't') && !wp.is_null() {
+        if args_has(args, 't') && !wp.is_null() {
             (*cdata).wp_id = (*wp).id as i32;
         } else {
             (*cdata).wp_id = -1;
@@ -152,7 +152,7 @@ pub unsafe fn cmd_run_shell_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
         if !(*cdata).client.is_null() {
             (*(*cdata).client).references += 1;
         }
-        if args_has_(args, 'c') {
+        if args_has(args, 'c') {
             (*cdata).cwd = xstrdup(args_get_(args, 'c')).as_ptr();
         } else {
             (*cdata).cwd = xstrdup(server_client_get_cwd(c, s)).as_ptr();
@@ -231,7 +231,7 @@ pub unsafe extern "C-unwind" fn cmd_run_shell_timer(
         if cmdlist.is_null() {
             if (*cdata).item.is_null() {
                 *error = (*error).to_ascii_uppercase();
-                status_message_set!(c, -1, 1, 0, "{}", _s(error));
+                status_message_set!(c, -1, 1, false, "{}", _s(error));
             } else {
                 cmdq_error!((*cdata).item, "{}", _s(error));
             }

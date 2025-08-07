@@ -505,7 +505,7 @@ pub unsafe fn tmux_main(mut argc: i32, mut argv: *mut *mut u8, _env: *mut *mut u
         options_set_string!(
             GLOBAL_S_OPTIONS,
             c!("default-shell"),
-            0,
+            false,
             "{}",
             _s(getshell()),
         );
@@ -518,7 +518,7 @@ pub unsafe fn tmux_main(mut argc: i32, mut argv: *mut *mut u8, _env: *mut *mut u
                 !s.is_null()
             })
         {
-            options_set_string!(GLOBAL_OPTIONS, c!("editor"), 0, "{}", _s(s));
+            options_set_string!(GLOBAL_OPTIONS, c!("editor"), false, "{}", _s(s));
             if !strrchr(s, b'/' as _).is_null() {
                 s = strrchr(s, b'/' as _).add(1);
             }

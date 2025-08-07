@@ -57,14 +57,14 @@ unsafe fn cmd_if_shell_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retval
         let tc = cmdq_get_target_client(item);
         let s = (*target).s;
         let count = args_count(args);
-        let wait = !args_has_(args, 'b');
+        let wait = !args_has(args, 'b');
 
         let shellcmd = format_single_from_target(item, args_string(args, 0));
-        if args_has_(args, 'F') {
+        if args_has(args, 'F') {
             let cmdlist = if *shellcmd != b'0' as _ && *shellcmd != b'\0' as _ {
-                args_make_commands_now(self_, item, 1, 0)
+                args_make_commands_now(self_, item, 1, false)
             } else if count == 3 {
-                args_make_commands_now(self_, item, 2, 0)
+                args_make_commands_now(self_, item, 2, false)
             } else {
                 free_(shellcmd);
                 return cmd_retval::CMD_RETURN_NORMAL;
@@ -80,9 +80,9 @@ unsafe fn cmd_if_shell_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retval
 
         let cdata = xcalloc_::<cmd_if_shell_data>(1).as_ptr();
 
-        (*cdata).cmd_if = args_make_commands_prepare(self_, item, 1, null_mut(), wait, 0);
+        (*cdata).cmd_if = args_make_commands_prepare(self_, item, 1, null_mut(), wait, false);
         if count == 3 {
-            (*cdata).cmd_else = args_make_commands_prepare(self_, item, 2, null_mut(), wait, 0);
+            (*cdata).cmd_else = args_make_commands_prepare(self_, item, 2, null_mut(), wait, false);
         }
 
         if wait {
@@ -150,7 +150,7 @@ unsafe fn cmd_if_shell_callback(job: *mut job) {
             if cmdlist.is_null() {
                 if (*cdata).item.is_null() {
                     *error = (*error).to_ascii_uppercase();
-                    status_message_set!(c, -1, 1, 0, "{}", _s(error));
+                    status_message_set!(c, -1, 1, false, "{}", _s(error));
                 } else {
                     cmdq_error!((*cdata).item, "{}", _s(error));
                 }

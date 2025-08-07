@@ -47,18 +47,18 @@ unsafe fn cmd_swap_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retva
         let mut src_w = (*(*source).wl).window;
         let mut src_wp = (*source).wp;
 
-        if window_push_zoom(dst_w, 0, args_has(args, b'Z')) != 0 {
+        if window_push_zoom(dst_w, false, args_has(args, 'Z')) {
             server_redraw_window(dst_w);
         }
 
         'out: {
-            if args_has_(args, 'D') {
+            if args_has(args, 'D') {
                 src_w = dst_w;
                 src_wp = tailq_next::<_, _, discr_entry>(dst_wp);
                 if src_wp.is_null() {
                     src_wp = tailq_first(&raw mut (*dst_w).panes);
                 }
-            } else if args_has_(args, 'U') {
+            } else if args_has(args, 'U') {
                 src_w = dst_w;
                 src_wp = tailq_prev::<_, _, discr_entry>(dst_wp);
                 if src_wp.is_null() {
@@ -66,7 +66,7 @@ unsafe fn cmd_swap_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retva
                 }
             }
 
-            if src_w != dst_w && window_push_zoom(src_w, 0, args_has(args, b'Z')) != 0 {
+            if src_w != dst_w && window_push_zoom(src_w, false, args_has(args, 'Z')) {
                 server_redraw_window(src_w);
             }
 
@@ -114,7 +114,7 @@ unsafe fn cmd_swap_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retva
             (*dst_wp).yoff = yoff;
             window_pane_resize(dst_wp, sx, sy);
 
-            if !args_has_(args, 'd') {
+            if !args_has(args, 'd') {
                 if src_w != dst_w {
                     window_set_active_pane(src_w, dst_wp, 1);
                     window_set_active_pane(dst_w, src_wp, 1);

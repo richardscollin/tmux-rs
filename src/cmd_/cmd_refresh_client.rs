@@ -280,11 +280,11 @@ pub unsafe fn cmd_refresh_client_exec(self_: *mut cmd, item: *mut cmdq_item) -> 
         let tty = &raw mut (*tc).tty;
 
         'not_control_client: {
-            if args_has_(args, 'c')
-                || args_has_(args, 'L')
-                || args_has_(args, 'R')
-                || args_has_(args, 'U')
-                || args_has_(args, 'D')
+            if args_has(args, 'c')
+                || args_has(args, 'L')
+                || args_has(args, 'R')
+                || args_has(args, 'U')
+                || args_has(args, 'D')
             {
                 let adjust = if args_count(args) == 0 {
                     1
@@ -298,7 +298,7 @@ pub unsafe fn cmd_refresh_client_exec(self_: *mut cmd, item: *mut cmdq_item) -> 
                     }
                 };
 
-                if args_has_(args, 'c') {
+                if args_has(args, 'c') {
                     (*tc).pan_window = null_mut();
                 } else {
                     let w = (*(*(*tc).session).curw).window;
@@ -307,24 +307,24 @@ pub unsafe fn cmd_refresh_client_exec(self_: *mut cmd, item: *mut cmdq_item) -> 
                         (*tc).pan_ox = (*tty).oox;
                         (*tc).pan_oy = (*tty).ooy;
                     }
-                    if args_has_(args, 'L') {
+                    if args_has(args, 'L') {
                         if (*tc).pan_ox > adjust {
                             (*tc).pan_ox -= adjust;
                         } else {
                             (*tc).pan_ox = 0;
                         }
-                    } else if args_has_(args, 'R') {
+                    } else if args_has(args, 'R') {
                         (*tc).pan_ox += adjust;
                         if (*tc).pan_ox > (*w).sx - (*tty).osx {
                             (*tc).pan_ox = (*w).sx - (*tty).osx;
                         }
-                    } else if args_has_(args, 'U') {
+                    } else if args_has(args, 'U') {
                         if (*tc).pan_oy > adjust {
                             (*tc).pan_oy -= adjust;
                         } else {
                             (*tc).pan_oy = 0;
                         }
-                    } else if args_has_(args, 'D') {
+                    } else if args_has(args, 'D') {
                         (*tc).pan_oy += adjust;
                         if (*tc).pan_oy > (*w).sy - (*tty).osy {
                             (*tc).pan_oy = (*w).sy - (*tty).osy;
@@ -336,21 +336,21 @@ pub unsafe fn cmd_refresh_client_exec(self_: *mut cmd, item: *mut cmdq_item) -> 
                 return cmd_retval::CMD_RETURN_NORMAL;
             }
 
-            if args_has_(args, 'l') {
+            if args_has(args, 'l') {
                 return cmd_refresh_client_clipboard(self_, item);
             }
 
-            if args_has_(args, 'F') {
+            if args_has(args, 'F') {
                 server_client_set_flags(tc, args_get(args, b'F'));
             } /* -F is an alias for -f */
-            if args_has_(args, 'f') {
+            if args_has(args, 'f') {
                 server_client_set_flags(tc, args_get(args, b'f'));
             }
-            if args_has_(args, 'r') {
+            if args_has(args, 'r') {
                 cmd_refresh_report(tty, args_get(args, b'r'));
             }
 
-            if args_has_(args, 'A') {
+            if args_has(args, 'A') {
                 if !(*tc).flags.intersects(client_flag::CONTROL) {
                     break 'not_control_client;
                 }
@@ -361,7 +361,7 @@ pub unsafe fn cmd_refresh_client_exec(self_: *mut cmd, item: *mut cmdq_item) -> 
                 }
                 return cmd_retval::CMD_RETURN_NORMAL;
             }
-            if args_has_(args, 'B') {
+            if args_has(args, 'B') {
                 if !(*tc).flags.intersects(client_flag::CONTROL) {
                     break 'not_control_client;
                 }
@@ -372,14 +372,14 @@ pub unsafe fn cmd_refresh_client_exec(self_: *mut cmd, item: *mut cmdq_item) -> 
                 }
                 return cmd_retval::CMD_RETURN_NORMAL;
             }
-            if args_has_(args, 'C') {
+            if args_has(args, 'C') {
                 if !(*tc).flags.intersects(client_flag::CONTROL) {
                     break 'not_control_client;
                 }
                 return cmd_refresh_client_control_client_size(self_, item);
             }
 
-            if args_has_(args, 'S') {
+            if args_has(args, 'S') {
                 (*tc).flags |= client_flag::STATUSFORCE;
                 server_status_client(tc);
             } else {

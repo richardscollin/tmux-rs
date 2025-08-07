@@ -96,20 +96,20 @@ unsafe fn cmd_select_window_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
         let s = (*target).s;
 
         let mut next = std::ptr::eq(cmd_get_entry(self_), &CMD_NEXT_WINDOW_ENTRY);
-        if args_has_(args, 'n') {
+        if args_has(args, 'n') {
             next = true;
         }
         let mut previous = std::ptr::eq(cmd_get_entry(self_), &CMD_PREVIOUS_WINDOW_ENTRY);
-        if args_has_(args, 'p') {
+        if args_has(args, 'p') {
             previous = true;
         }
         let mut last = std::ptr::eq(cmd_get_entry(self_), &CMD_LAST_WINDOW_ENTRY);
-        if args_has_(args, 'l') {
+        if args_has(args, 'l') {
             last = true;
         }
 
         if next || previous || last {
-            let activity = args_has(args, b'a');
+            let activity = args_has(args, 'a');
             #[expect(clippy::collapsible_else_if)]
             if next {
                 if session_next(s, activity) != 0 {
@@ -133,7 +133,7 @@ unsafe fn cmd_select_window_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
         } else {
             // If -T and select-window is invoked on same window as
             // current, switch to previous window.
-            if args_has_(args, 'T') && wl == (*s).curw {
+            if args_has(args, 'T') && wl == (*s).curw {
                 if session_last(s) != 0 {
                     cmdq_error!(item, "no last window");
                     return cmd_retval::CMD_RETURN_ERROR;

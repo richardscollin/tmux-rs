@@ -49,9 +49,9 @@ unsafe fn cmd_rotate_window_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
         let xoff: u32;
         let yoff: u32;
 
-        window_push_zoom(w, 0, args_has(args, b'Z'));
+        window_push_zoom(w, false, args_has(args, 'Z'));
 
-        if args_has_(args, 'D') {
+        if args_has(args, 'D') {
             wp = tailq_last(&raw mut (*w).panes);
             tailq_remove::<_, discr_entry>(&raw mut (*w).panes, wp);
             tailq_insert_head::<_, discr_entry>(&raw mut (*w).panes, wp);

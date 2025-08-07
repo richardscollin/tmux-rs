@@ -31,7 +31,7 @@ pub struct cmd_confirm_before_data {
     item: *mut cmdq_item,
     cmdlist: *mut cmd_list,
     confirm_key: u8,
-    default_yes: i32,
+    default_yes: bool,
 }
 
 unsafe fn cmd_confirm_before_args_parse(_: *mut args, _: u32, _: *mut *mut u8) -> args_parse_type {
@@ -43,20 +43,20 @@ unsafe fn cmd_confirm_before_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
         let args = cmd_get_args(self_);
         let tc = cmdq_get_target_client(item);
         let target = cmdq_get_target(item);
-        let wait = !args_has(args, b'b');
+        let wait = !args_has(args, 'b');
 
         let mut cdata: Box<cmd_confirm_before_data> = Box::default();
-        cdata.cmdlist = args_make_commands_now(self_, item, 0, 1);
+        cdata.cmdlist = args_make_commands_now(self_, item, 0, true);
         if cdata.cmdlist.is_null() {
             // free_(cdata);
             return cmd_retval::CMD_RETURN_ERROR;
         }
 
-        if wait != 0 {
+        if wait {
             cdata.item = item;
         }
 
-        cdata.default_yes = args_has(args, b'y');
+        cdata.default_yes = args_has(args, 'y');
         let confirm_key = args_get(args, b'c');
         if !confirm_key.is_null() {
             if *confirm_key.add(1) == b'\0' as _ && *confirm_key > 31 && *confirm_key < 127 {
@@ -91,7 +91,7 @@ unsafe fn cmd_confirm_before_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
         );
         free_(new_prompt);
 
-        if wait == 0 {
+        if !wait {
             return cmd_retval::CMD_RETURN_NORMAL;
         }
         cmd_retval::CMD_RETURN_WAIT
@@ -117,7 +117,7 @@ unsafe fn cmd_confirm_before_callback(
                 break 'out;
             }
             if *s != (*cdata.as_ptr()).confirm_key as _
-                && (*s != b'\0' as _ || (*cdata.as_ptr()).default_yes == 0)
+                && (*s != b'\0' as _ || !(*cdata.as_ptr()).default_yes)
             {
                 break 'out;
             }

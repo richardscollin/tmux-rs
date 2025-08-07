@@ -41,7 +41,7 @@ unsafe fn cmd_list_clients_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
         let args = cmd_get_args(self_);
         let target = cmdq_get_target(item);
 
-        let s = if args_has(args, b't') != 0 {
+        let s = if args_has(args, 't') {
             (*target).s
         } else {
             null_mut()

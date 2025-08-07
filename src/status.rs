@@ -499,7 +499,7 @@ pub unsafe fn status_message_set_(
     c: *mut client,
     mut delay: i32,
     ignore_styles: i32,
-    ignore_keys: i32,
+    ignore_keys: bool,
     args: std::fmt::Arguments,
 ) {
     unsafe {
@@ -542,7 +542,7 @@ pub unsafe fn status_message_set_(
         }
 
         if delay != 0 {
-            (*c).message_ignore_keys = ignore_keys;
+            (*c).message_ignore_keys = ignore_keys as i32;
         }
         (*c).message_ignore_styles = ignore_styles;
 

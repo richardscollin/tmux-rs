@@ -186,7 +186,7 @@ pub unsafe fn key_bindings_add(
     name: *const u8,
     key: key_code,
     note: *const u8,
-    repeat: i32,
+    repeat: bool,
     cmdlist: *mut cmd_list,
 ) {
     unsafe {
@@ -216,7 +216,7 @@ pub unsafe fn key_bindings_add(
         }
         rb_insert(&raw mut (*table).key_bindings, bd);
 
-        if repeat != 0 {
+        if repeat {
             (*bd).flags |= KEY_BINDING_REPEAT;
         }
         (*bd).cmdlist = cmdlist;

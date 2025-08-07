@@ -57,7 +57,7 @@ unsafe fn cmd_resize_window_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
         let mut sx = (*w).sx;
         let mut sy = (*w).sy;
 
-        if args_has(args, b'x') != 0 {
+        if args_has(args, 'x') {
             sx = args_strtonum(
                 args,
                 b'x',
@@ -71,7 +71,7 @@ unsafe fn cmd_resize_window_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
                 return cmd_retval::CMD_RETURN_ERROR;
             }
         }
-        if args_has(args, b'y') != 0 {
+        if args_has(args, 'y') {
             sy = args_strtonum(
                 args,
                 b'y',
@@ -86,21 +86,21 @@ unsafe fn cmd_resize_window_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
             }
         }
 
-        if args_has(args, b'L') != 0 {
+        if args_has(args, 'L') {
             if sx >= adjust {
                 sx -= adjust;
             }
-        } else if args_has(args, b'R') != 0 {
+        } else if args_has(args, 'R') {
             sx += adjust;
-        } else if args_has(args, b'U') != 0 {
+        } else if args_has(args, 'U') {
             if sy >= adjust {
                 sy -= adjust;
             }
-        } else if args_has(args, b'D') != 0 {
+        } else if args_has(args, 'D') {
             sy += adjust;
         }
 
-        if args_has(args, b'A') != 0 {
+        if args_has(args, 'A') {
             default_window_size(
                 null_mut(),
                 s,
@@ -111,7 +111,7 @@ unsafe fn cmd_resize_window_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
                 &raw mut ypixel,
                 Some(window_size_option::WINDOW_SIZE_LARGEST),
             );
-        } else if args_has(args, b'a') != 0 {
+        } else if args_has(args, 'a') {
             default_window_size(
                 null_mut(),
                 s,

@@ -52,12 +52,12 @@ unsafe fn cmd_copy_mode_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retva
         let mut s = null_mut();
         let wp = (*target).wp;
 
-        if args_has(args, b'q') != 0 {
+        if args_has(args, 'q') {
             window_pane_reset_mode_all(wp);
             return cmd_retval::CMD_RETURN_NORMAL;
         }
 
-        if args_has(args, b'M') != 0 {
+        if args_has(args, 'M') {
             let wp = cmd_mouse_pane(&raw mut (*event).m, &raw mut s, null_mut());
             if wp.is_none() {
                 return cmd_retval::CMD_RETURN_NORMAL;
@@ -78,21 +78,21 @@ unsafe fn cmd_copy_mode_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retva
             return cmd_retval::CMD_RETURN_NORMAL;
         }
 
-        let swp = if args_has(args, b's') != 0 {
+        let swp = if args_has(args, 's') {
             (*source).wp
         } else {
             wp
         };
         if window_pane_set_mode(wp, swp, &raw const WINDOW_COPY_MODE, null_mut(), args) == 0
-            && args_has(args, b'M') != 0
+            && args_has(args, 'M')
         {
             window_copy_start_drag(c, &raw mut (*event).m);
         }
-        if args_has(args, b'u') != 0 {
+        if args_has(args, 'u') {
             window_copy_pageup(wp, 0);
         }
-        if args_has(args, b'd') != 0 {
-            window_copy_pagedown(wp, 0, args_has(args, b'e'));
+        if args_has(args, 'd') {
+            window_copy_pagedown(wp, 0, args_has(args, 'e'));
         }
 
         cmd_retval::CMD_RETURN_NORMAL

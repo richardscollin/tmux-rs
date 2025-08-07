@@ -37,18 +37,18 @@ unsafe fn cmd_find_window_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
         let mut suffix = c!("");
         let mut star = c!("*");
 
-        let mut c = args_has_(args, 'C');
-        let mut n = args_has_(args, 'N');
-        let mut t = args_has_(args, 'T');
+        let mut c = args_has(args, 'C');
+        let mut n = args_has(args, 'N');
+        let mut t = args_has(args, 'T');
 
-        if args_has(args, b'r') != 0 {
+        if args_has(args, 'r') {
             star = c!("");
         }
-        if args_has(args, b'r') != 0 && args_has(args, b'i') != 0 {
+        if args_has(args, 'r') && args_has(args, 'i') {
             suffix = c!("/ri");
-        } else if args_has(args, b'r') != 0 {
+        } else if args_has(args, 'r') {
             suffix = c!("/r");
-        } else if args_has(args, b'i') != 0 {
+        } else if args_has(args, 'i') {
             suffix = c!("/i");
         }
 
@@ -128,7 +128,7 @@ unsafe fn cmd_find_window_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
         };
 
         let new_args: *mut args = args_create();
-        if args_has_(args, 'Z') {
+        if args_has(args, 'Z') {
             args_set(new_args, b'Z', null_mut(), 0);
         }
         args_set(new_args, b'f', filter, 0);

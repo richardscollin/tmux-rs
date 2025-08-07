@@ -2621,7 +2621,7 @@ pub unsafe fn format_cb_window_last_flag(ft: *mut format_tree) -> *mut c_void {
 pub unsafe fn format_cb_window_linked(ft: *mut format_tree) -> *mut c_void {
     unsafe {
         if !(*ft).wl.is_null() {
-            if session_is_linked((*(*ft).wl).session, (*(*ft).wl).window) != 0 {
+            if session_is_linked((*(*ft).wl).session, (*(*ft).wl).window) {
                 return xstrdup(c!("1")).as_ptr().cast();
             }
             return xstrdup(c!("0")).as_ptr().cast();

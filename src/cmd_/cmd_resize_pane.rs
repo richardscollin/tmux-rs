@@ -44,7 +44,7 @@ unsafe fn cmd_resize_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
         let mut y: i32;
         let gd = (*wp).base.grid;
 
-        if args_has_(args, 'T') {
+        if args_has(args, 'T') {
             if !tailq_empty(&raw mut (*wp).modes) {
                 return cmd_retval::CMD_RETURN_NORMAL;
             }
@@ -58,7 +58,7 @@ unsafe fn cmd_resize_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
             return cmd_retval::CMD_RETURN_NORMAL;
         }
 
-        if args_has_(args, 'M') {
+        if args_has(args, 'M') {
             if (*event).m.valid == 0 || cmd_mouse_window(&raw mut (*event).m, &raw mut s).is_none()
             {
                 return cmd_retval::CMD_RETURN_NORMAL;
@@ -71,7 +71,7 @@ unsafe fn cmd_resize_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
             return cmd_retval::CMD_RETURN_NORMAL;
         }
 
-        if args_has_(args, 'Z') {
+        if args_has(args, 'Z') {
             if (*w).flags.intersects(window_flag::ZOOMED) {
                 window_unzoom(w, 1);
             } else {
@@ -94,7 +94,7 @@ unsafe fn cmd_resize_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
             }
         };
 
-        if args_has_(args, 'x') {
+        if args_has(args, 'x') {
             x = args_percentage(
                 args,
                 b'x',
@@ -110,7 +110,7 @@ unsafe fn cmd_resize_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
             }
             layout_resize_pane_to(wp, layout_type::LAYOUT_LEFTRIGHT, x as u32);
         }
-        if args_has_(args, 'y') {
+        if args_has(args, 'y') {
             y = args_percentage(
                 args,
                 b'y',
@@ -142,13 +142,13 @@ unsafe fn cmd_resize_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
             layout_resize_pane_to(wp, layout_type::LAYOUT_TOPBOTTOM, y as u32);
         }
 
-        if args_has_(args, 'L') {
+        if args_has(args, 'L') {
             layout_resize_pane(wp, layout_type::LAYOUT_LEFTRIGHT, -(adjust as i32), 1);
-        } else if args_has_(args, 'R') {
+        } else if args_has(args, 'R') {
             layout_resize_pane(wp, layout_type::LAYOUT_LEFTRIGHT, adjust as i32, 1);
-        } else if args_has_(args, 'U') {
+        } else if args_has(args, 'U') {
             layout_resize_pane(wp, layout_type::LAYOUT_TOPBOTTOM, -(adjust as i32), 1);
-        } else if args_has_(args, 'D') {
+        } else if args_has(args, 'D') {
             layout_resize_pane(wp, layout_type::LAYOUT_TOPBOTTOM, adjust as i32, 1);
         }
         server_redraw_window((*wl).window);

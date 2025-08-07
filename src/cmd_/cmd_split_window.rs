@@ -44,14 +44,14 @@ unsafe fn cmd_split_window_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
         let mut curval = 0;
 
         let mut type_ = layout_type::LAYOUT_TOPBOTTOM;
-        if args_has_(args, 'h') {
+        if args_has(args, 'h') {
             type_ = layout_type::LAYOUT_LEFTRIGHT;
         }
 
         // If the 'p' flag is dropped then this bit can be moved into 'l'.
         #[expect(clippy::collapsible_else_if)]
-        if args_has_(args, 'l') || args_has_(args, 'p') {
-            if args_has_(args, 'f') {
+        if args_has(args, 'l') || args_has(args, 'p') {
+            if args_has(args, 'f') {
                 if type_ == layout_type::LAYOUT_TOPBOTTOM {
                     curval = (*w).sy;
                 } else {
@@ -67,7 +67,7 @@ unsafe fn cmd_split_window_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
         }
 
         let mut size: i32 = -1;
-        if args_has_(args, 'l') {
+        if args_has(args, 'l') {
             size = args_percentage_and_expand(
                 args,
                 b'l',
@@ -77,7 +77,7 @@ unsafe fn cmd_split_window_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
                 item,
                 &raw mut cause,
             ) as _;
-        } else if args_has_(args, 'p') {
+        } else if args_has(args, 'p') {
             size = args_strtonum_and_expand(args, b'p', 0, 100, item, &raw mut cause) as _;
             if cause.is_null() {
                 size = curval as i32 * size / 100;
@@ -89,14 +89,14 @@ unsafe fn cmd_split_window_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
             return cmd_retval::CMD_RETURN_ERROR;
         }
 
-        window_push_zoom((*wp).window, 1, args_has(args, b'Z'));
-        let mut input = args_has_(args, 'I') && count == 0;
+        window_push_zoom((*wp).window, true, args_has(args, 'Z'));
+        let mut input = args_has(args, 'I') && count == 0;
 
         let mut flags = spawn_flags::empty();
-        if args_has_(args, 'b') {
+        if args_has(args, 'b') {
             flags |= SPAWN_BEFORE;
         }
-        if args_has_(args, 'f') {
+        if args_has(args, 'f') {
             flags |= SPAWN_FULLSIZE;
         }
         if input || (count == 1 && *args_string(args, 0) == b'\0' as _) {
@@ -130,10 +130,10 @@ unsafe fn cmd_split_window_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
         sc.cwd = args_get_(args, 'c');
 
         sc.flags = flags;
-        if args_has_(args, 'd') {
+        if args_has(args, 'd') {
             sc.flags |= SPAWN_DETACHED;
         }
-        if args_has_(args, 'Z') {
+        if args_has(args, 'Z') {
             sc.flags |= SPAWN_ZOOM;
         }
 
@@ -167,14 +167,14 @@ unsafe fn cmd_split_window_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
                 _ => (),
             }
         }
-        if !args_has_(args, 'd') {
+        if !args_has(args, 'd') {
             cmd_find_from_winlink_pane(current, wl, new_wp, cmd_find_flags::empty());
         }
         window_pop_zoom((*wp).window);
         server_redraw_window((*wp).window);
         server_status_session(s);
 
-        if args_has_(args, 'P') {
+        if args_has(args, 'P') {
             let mut template = args_get_(args, 'F');
             if template.is_null() {
                 template = SPLIT_WINDOW_TEMPLATE;

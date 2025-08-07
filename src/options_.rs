@@ -360,7 +360,7 @@ pub unsafe fn options_default(
                     o,
                     i as u32,
                     Some(cstr_to_str(*(*oe).default_arr.add(i))),
-                    0,
+                    false,
                     null_mut(),
                 );
                 i += 1;
@@ -510,7 +510,7 @@ pub unsafe fn options_array_set(
     o: *mut options_entry,
     idx: u32,
     value: Option<&str>,
-    append: i32,
+    append: bool,
     cause: *mut *mut u8,
 ) -> i32 {
     unsafe {
@@ -554,7 +554,7 @@ pub unsafe fn options_array_set(
 
         if OPTIONS_IS_STRING(o) {
             let mut a = options_array_item(o, idx);
-            let new = if !a.is_null() && append != 0 {
+            let new = if !a.is_null() && append {
                 format_nul!("{}{}", _s((*a).value.string), value)
             } else {
                 xstrdup__(value)
@@ -611,7 +611,7 @@ pub unsafe fn options_array_assign(o: *mut options_entry, s: &str, cause: *mut *
                 }
                 i += 1;
             }
-            return options_array_set(o, i, Some(s), 0, cause);
+            return options_array_set(o, i, Some(s), false, cause);
         }
 
         if s.is_empty() {
@@ -634,7 +634,7 @@ pub unsafe fn options_array_assign(o: *mut options_entry, s: &str, cause: *mut *
             if i == u32::MAX {
                 break;
             }
-            if options_array_set(o, i, Some(cstr_to_str(next)), 0, cause) != 0 {
+            if options_array_set(o, i, Some(cstr_to_str(next)), false, cause) != 0 {
                 free_(copy);
                 return -1;
             }
@@ -905,7 +905,7 @@ pub(crate) use options_set_string;
 pub unsafe fn options_set_string_(
     oo: *mut options,
     name: *const u8,
-    append: c_int,
+    append: bool,
     args: std::fmt::Arguments,
 ) -> *mut options_entry {
     unsafe {
@@ -917,7 +917,7 @@ pub unsafe fn options_set_string_(
         let s = s.leak().as_mut_ptr().cast();
 
         let mut o = options_get_only(oo, name);
-        if !o.is_null() && append != 0 && OPTIONS_IS_STRING(o) {
+        if !o.is_null() && append && OPTIONS_IS_STRING(o) {
             if *name != b'@' {
                 separator = (*(*o).tableentry).separator;
                 if separator.is_null() {
@@ -1014,7 +1014,7 @@ pub unsafe fn options_scope_from_name(
                 scope = OPTIONS_TABLE_SERVER;
             }
             OPTIONS_TABLE_SESSION => {
-                if args_has_(args, 'g') {
+                if args_has(args, 'g') {
                     *oo = GLOBAL_S_OPTIONS;
                     scope = OPTIONS_TABLE_SESSION;
                 } else if s.is_null() && !target.is_null() {
@@ -1027,7 +1027,7 @@ pub unsafe fn options_scope_from_name(
                 }
             }
             OPTIONS_TABLE_WINDOW_AND_PANE => {
-                if args_has_(args, 'p') {
+                if args_has(args, 'p') {
                     if wp.is_null() && !target.is_null() {
                         *cause = format_nul!("no such pane: {}", _s(target));
                     } else if wp.is_null() {
@@ -1038,7 +1038,7 @@ pub unsafe fn options_scope_from_name(
                     }
                 } else {
                     // FALLTHROUGH same as OPTIONS_TABLE_WINDOW case
-                    if args_has_(args, 'g') {
+                    if args_has(args, 'g') {
                         *oo = GLOBAL_W_OPTIONS;
                         scope = OPTIONS_TABLE_WINDOW;
                     } else if wl.is_null() && !target.is_null() {
@@ -1052,7 +1052,7 @@ pub unsafe fn options_scope_from_name(
                 }
             }
             OPTIONS_TABLE_WINDOW => {
-                if args_has_(args, 'g') {
+                if args_has(args, 'g') {
                     *oo = GLOBAL_W_OPTIONS;
                     scope = OPTIONS_TABLE_WINDOW;
                 } else if wl.is_null() && !target.is_null() {
@@ -1083,12 +1083,12 @@ pub unsafe fn options_scope_from_flags(
         let wp = (*fs).wp;
         let target = args_get_(args, 't');
 
-        if args_has_(args, 's') {
+        if args_has(args, 's') {
             *oo = GLOBAL_OPTIONS;
             return OPTIONS_TABLE_SERVER;
         }
 
-        if args_has_(args, 'p') {
+        if args_has(args, 'p') {
             if wp.is_null() {
                 if !target.is_null() {
                     *cause = format_nul!("no such pane: {}", _s(target));
@@ -1099,8 +1099,8 @@ pub unsafe fn options_scope_from_flags(
             }
             *oo = (*wp).options;
             OPTIONS_TABLE_PANE
-        } else if window != 0 || args_has_(args, 'w') {
-            if args_has_(args, 'g') {
+        } else if window != 0 || args_has(args, 'w') {
+            if args_has(args, 'g') {
                 *oo = GLOBAL_W_OPTIONS;
                 return OPTIONS_TABLE_WINDOW;
             }
@@ -1115,7 +1115,7 @@ pub unsafe fn options_scope_from_flags(
             *oo = (*(*wl).window).options;
             OPTIONS_TABLE_WINDOW
         } else {
-            if args_has_(args, 'g') {
+            if args_has(args, 'g') {
                 *oo = GLOBAL_S_OPTIONS;
                 return OPTIONS_TABLE_SESSION;
             }
@@ -1282,7 +1282,7 @@ pub unsafe fn options_from_string(
     oe: *const options_table_entry,
     name: *const u8,
     value: *const u8,
-    append: c_int,
+    append: bool,
     cause: *mut *mut u8,
 ) -> c_int {
     unsafe {
@@ -1314,7 +1314,7 @@ pub unsafe fn options_from_string(
 
                 new = options_get_string(oo, name);
                 if options_from_string_check(oe, new, cause) != 0 {
-                    options_set_string!(oo, name, 0, "{}", _s(old));
+                    options_set_string!(oo, name, false, "{}", _s(old));
                     free_(old);
                     return -1;
                 }
@@ -1473,7 +1473,7 @@ pub unsafe fn options_remove_or_default(
             } else {
                 options_remove(o);
             }
-        } else if options_array_set(o, idx as u32, None, 0, cause) != 0 {
+        } else if options_array_set(o, idx as u32, None, false, cause) != 0 {
             return -1;
         }
         0

@@ -149,7 +149,7 @@ pub unsafe extern "C" fn window_client_cmp(a0: *const c_void, b0: *const c_void)
             result = strcmp((*ca).name, (*cb).name);
         }
 
-        if (*WINDOW_CLIENT_SORT).reversed != 0 {
+        if (*WINDOW_CLIENT_SORT).reversed {
             result = -result;
         }
 
@@ -321,12 +321,12 @@ pub unsafe fn window_client_init(
         (*wme.as_ptr()).data = data.cast();
         (*data).wp = wp;
 
-        if args.is_null() || !args_has_(args, 'F') {
+        if args.is_null() || !args_has(args, 'F') {
             (*data).format = xstrdup_(WINDOW_CLIENT_DEFAULT_FORMAT).as_ptr();
         } else {
             (*data).format = xstrdup(args_get_(args, 'F')).as_ptr();
         }
-        if args.is_null() || !args_has_(args, 'K') {
+        if args.is_null() || !args_has(args, 'K') {
             (*data).key_format = xstrdup_(WINDOW_CLIENT_DEFAULT_KEY_FORMAT).as_ptr();
         } else {
             (*data).key_format = xstrdup(args_get_(args, 'K')).as_ptr();

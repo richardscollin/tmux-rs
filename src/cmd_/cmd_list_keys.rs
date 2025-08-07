@@ -90,7 +90,7 @@ unsafe fn cmd_list_keys_print_notes(
         while !bd.is_null() {
             if (only != KEYC_UNKNOWN && (*bd).key != only)
                 || KEYC_IS_MOUSE((*bd).key)
-                || (((*bd).note.is_null() || *(*bd).note == b'\0' as _) && !args_has_(args, 'a'))
+                || (((*bd).note.is_null() || *(*bd).note == b'\0' as _) && !args_has(args, 'a'))
             {
                 bd = key_bindings_next(table, bd);
                 continue;
@@ -105,15 +105,15 @@ unsafe fn cmd_list_keys_print_notes(
             };
 
             let tmp = utf8_padcstr(key, keywidth + 1);
-            if args_has_(args, '1') && !tc.is_null() {
-                status_message_set!(tc, -1, 1, 0, "{}{}{}", _s(prefix), _s(tmp), _s(note));
+            if args_has(args, '1') && !tc.is_null() {
+                status_message_set!(tc, -1, 1, false, "{}{}{}", _s(prefix), _s(tmp), _s(note));
             } else {
                 cmdq_print!(item, "{}{}{}", _s(prefix), _s(tmp), _s(note));
             }
             free_(tmp);
             free_(note);
 
-            if args_has_(args, '1') {
+            if args_has(args, '1') {
                 break;
             }
             bd = key_bindings_next(table, bd);
@@ -125,7 +125,7 @@ unsafe fn cmd_list_keys_print_notes(
 unsafe fn cmd_list_keys_get_prefix(args: *mut args, prefix: *mut key_code) -> NonNull<u8> {
     unsafe {
         *prefix = options_get_number_(GLOBAL_S_OPTIONS, "prefix") as _;
-        if !args_has_(args, 'P') {
+        if !args_has(args, 'P') {
             if *prefix != KEYC_NONE {
                 let s = format_nul!("{} ", _s(key_string_lookup_key(*prefix, 0)));
                 NonNull::new(s).unwrap()
@@ -170,7 +170,7 @@ unsafe fn cmd_list_keys_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retva
                 return cmd_retval::CMD_RETURN_ERROR;
             }
 
-            if args_has_(args, 'N') {
+            if args_has(args, 'N') {
                 let start;
                 if tablename.is_null() {
                     start = cmd_list_keys_get_prefix(args, &raw mut prefix).as_ptr();
@@ -207,7 +207,7 @@ unsafe fn cmd_list_keys_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retva
                     }
                     free_(empty);
                 } else {
-                    start = if args_has_(args, 'P') {
+                    start = if args_has(args, 'P') {
                         xstrdup(args_get_(args, 'P')).as_ptr()
                     } else {
                         xstrdup(c!("")).as_ptr()
@@ -319,14 +319,14 @@ unsafe fn cmd_list_keys_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retva
                     strlcat(tmp.as_ptr(), cp, tmpsize);
                     free_(cp);
 
-                    if args_has_(args, '1') && tc.is_null() {
-                        status_message_set!(tc, -1, 1, 0, "bind-key {}", _s(tmp.as_ptr()));
+                    if args_has(args, '1') && tc.is_null() {
+                        status_message_set!(tc, -1, 1, false, "bind-key {}", _s(tmp.as_ptr()));
                     } else {
                         cmdq_print!(item, "bind-key {}", _s(tmp.as_ptr()));
                     }
                     free_(key);
 
-                    if args_has_(args, '1') {
+                    if args_has(args, '1') {
                         break;
                     }
                     bd = key_bindings_next(table, bd);

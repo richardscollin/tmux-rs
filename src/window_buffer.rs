@@ -156,11 +156,11 @@ pub unsafe fn window_buffer_build(
 
         {
             trait Reverseable {
-                fn maybe_reverse(self, reversed: i32) -> Self;
+                fn maybe_reverse(self, reversed: bool) -> Self;
             }
             impl Reverseable for cmp::Ordering {
-                fn maybe_reverse(self, reversed: i32) -> Self {
-                    if reversed != 0 { self.reverse() } else { self }
+                fn maybe_reverse(self, reversed: bool) -> Self {
+                    if reversed { self.reverse() } else { self }
                 }
             }
 
@@ -371,12 +371,12 @@ pub unsafe fn window_buffer_init(
         data.wp = wp;
         cmd_find_copy_state(&raw mut data.fs, fs);
 
-        if args.is_null() || !args_has_(args, 'F') {
+        if args.is_null() || !args_has(args, 'F') {
             data.format = xstrdup(WINDOW_BUFFER_DEFAULT_FORMAT).as_ptr();
         } else {
             data.format = xstrdup(args_get_(args, 'F')).as_ptr();
         }
-        if args.is_null() || !args_has_(args, 'K') {
+        if args.is_null() || !args_has(args, 'K') {
             data.key_format = xstrdup_(WINDOW_BUFFER_DEFAULT_KEY_FORMAT).as_ptr();
         } else {
             data.key_format = xstrdup(args_get_(args, 'K')).as_ptr();

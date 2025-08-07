@@ -1172,7 +1172,7 @@ pub unsafe fn window_customize_init(
 
         memcpy__(&raw mut (*data).fs, fs);
 
-        if args.is_null() || !args_has_(args, 'F') {
+        if args.is_null() || !args_has(args, 'F') {
             (*data).format = xstrdup_(WINDOW_CUSTOMIZE_DEFAULT_FORMAT).as_ptr();
         } else {
             (*data).format = xstrdup(args_get_(args, 'F')).as_ptr();
@@ -1295,10 +1295,12 @@ pub unsafe fn window_customize_set_option_callback(
                         }
                     }
                 }
-                if options_array_set(o, idx as u32, Some(cstr_to_str(s)), 0, &raw mut cause) != 0 {
+                if options_array_set(o, idx as u32, Some(cstr_to_str(s)), false, &raw mut cause)
+                    != 0
+                {
                     break 'fail;
                 }
-            } else if options_from_string(oo, oe, name, s, 0, &raw mut cause) != 0 {
+            } else if options_from_string(oo, oe, name, s, false, &raw mut cause) != 0 {
                 break 'fail;
             }
 
@@ -1310,7 +1312,7 @@ pub unsafe fn window_customize_set_option_callback(
             return 0;
         } // 'fail:
         *cause = (*cause).to_ascii_uppercase();
-        status_message_set!(c, -1, 1, 0, "{}", _s(cause));
+        status_message_set!(c, -1, 1, false, "{}", _s(cause));
         free_(cause);
         0
     }
@@ -1541,7 +1543,7 @@ pub unsafe fn window_customize_set_command_callback(
         }
         // 'fail:
         *error = (*error).to_ascii_uppercase();
-        status_message_set!(c, -1, 1, 0, "{}", _s(error));
+        status_message_set!(c, -1, 1, false, "{}", _s(error));
         free_(error);
         0
     }

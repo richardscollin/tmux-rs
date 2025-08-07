@@ -40,7 +40,7 @@ unsafe fn cmd_show_messages_terminals(
 
         let mut n = 0u32;
         for term in list_foreach::<_, discr_entry>(&raw mut TTY_TERMS).map(NonNull::as_ptr) {
-            if args_has(args, b't') != 0 && term != (*tc).tty.term {
+            if args_has(args, 't') && term != (*tc).tty.term {
                 continue;
             }
             if blank != 0 {
@@ -74,11 +74,11 @@ unsafe fn cmd_show_messages_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
 
         let mut done = false;
         let mut blank = 0;
-        if args_has_(args, 'T') {
+        if args_has(args, 'T') {
             blank = cmd_show_messages_terminals(self_, item, blank);
             done = true;
         }
-        if args_has_(args, 'J') {
+        if args_has(args, 'J') {
             job_print_summary(item, blank);
             done = true;
         }

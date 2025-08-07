@@ -57,13 +57,13 @@ pub unsafe fn cmd_detach_client_exec(self_: *mut cmd, item: *mut cmdq_item) -> c
             return cmd_retval::CMD_RETURN_NORMAL;
         }
 
-        let msgtype = if args_has(args, b'P') != 0 {
+        let msgtype = if args_has(args, 'P') {
             msgtype::MSG_DETACHKILL
         } else {
             msgtype::MSG_DETACH
         };
 
-        if args_has(args, b's') != 0 {
+        if args_has(args, 's') {
             let s = (*source).s;
             if s.is_null() {
                 return cmd_retval::CMD_RETURN_NORMAL;
@@ -80,7 +80,7 @@ pub unsafe fn cmd_detach_client_exec(self_: *mut cmd, item: *mut cmdq_item) -> c
             return cmd_retval::CMD_RETURN_STOP;
         }
 
-        if args_has(args, b'a') != 0 {
+        if args_has(args, 'a') {
             for loop_ in tailq_foreach(&raw mut CLIENTS).map(NonNull::as_ptr) {
                 if !(*loop_).session.is_null() && loop_ != tc {
                     if !cmd.is_null() {

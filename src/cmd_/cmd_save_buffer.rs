@@ -101,7 +101,7 @@ unsafe fn cmd_save_buffer_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
         } else {
             path = format_single_from_target(item, args_string(args, 0));
         }
-        let flags = if args_has_(args, 'a') {
+        let flags = if args_has(args, 'a') {
             O_APPEND
         } else {
             O_TRUNC

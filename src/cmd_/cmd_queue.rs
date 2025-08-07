@@ -920,7 +920,7 @@ pub unsafe fn cmdq_error_(item: *mut cmdq_item, args: std::fmt::Arguments) {
             (*c).retval = 1;
         } else {
             *msg = (*msg).to_ascii_uppercase();
-            status_message_set!(c, -1, 1, 0, "{}", _s(msg));
+            status_message_set!(c, -1, 1, false, "{}", _s(msg));
         }
 
         free_(msg);

@@ -730,21 +730,21 @@ pub unsafe fn window_unzoom(w: *mut window, notify: i32) -> i32 {
     }
 }
 
-pub unsafe fn window_push_zoom(w: *mut window, always: i32, flag: i32) -> i32 {
+pub unsafe fn window_push_zoom(w: *mut window, always: bool, flag: bool) -> bool {
     unsafe {
         log_debug!(
             "{}: @{} {}",
             "window_push_zoom",
             (*w).id,
-            (flag != 0 && (*w).flags.intersects(window_flag::ZOOMED)) as i32,
+            (flag && (*w).flags.intersects(window_flag::ZOOMED)) as i32,
         );
-        if flag != 0 && (always != 0 || (*w).flags.intersects(window_flag::ZOOMED)) {
+        if flag && (always || (*w).flags.intersects(window_flag::ZOOMED)) {
             (*w).flags |= window_flag::WASZOOMED;
         } else {
             (*w).flags &= !window_flag::WASZOOMED;
         }
 
-        if window_unzoom(w, 1) == 0 { 1 } else { 0 }
+        window_unzoom(w, 1) == 0
     }
 }
 
@@ -1691,16 +1691,12 @@ pub unsafe fn winlink_clear_flags(wl: *mut winlink) {
 }
 
 /// Shuffle window indexes up.
-pub unsafe fn winlink_shuffle_up(s: *mut session, mut wl: *mut winlink, before: i32) -> i32 {
+pub unsafe fn winlink_shuffle_up(s: *mut session, mut wl: *mut winlink, before: bool) -> i32 {
     if wl.is_null() {
         return -1;
     }
     unsafe {
-        let idx = if before != 0 {
-            (*wl).idx
-        } else {
-            (*wl).idx + 1
-        };
+        let idx = if before { (*wl).idx } else { (*wl).idx + 1 };
 
         // Find the next free index.
         let mut last = idx;

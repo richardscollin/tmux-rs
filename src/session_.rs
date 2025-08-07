@@ -390,8 +390,8 @@ pub unsafe fn session_attach(
 /// Detach a window from a session.
 pub unsafe fn session_detach(s: *mut session, wl: *mut winlink) -> i32 {
     unsafe {
-        if (*s).curw == wl && session_last(s) != 0 && session_previous(s, 0) != 0 {
-            session_next(s, 0);
+        if (*s).curw == wl && session_last(s) != 0 && session_previous(s, false) != 0 {
+            session_next(s, false);
         }
 
         (*wl).flags &= !WINLINK_ALERTFLAGS;
@@ -417,13 +417,13 @@ pub unsafe fn session_has(s: *mut session, w: *mut window) -> i32 {
 }
 
 /// Return 1 if a window is linked outside this session (not including session groups). The window must be in this session!
-pub unsafe fn session_is_linked(s: *mut session, w: *mut window) -> i32 {
+pub unsafe fn session_is_linked(s: *mut session, w: *mut window) -> bool {
     unsafe {
         let sg = session_group_contains(s);
         if !sg.is_null() {
-            return ((*w).references != session_group_count(sg)) as i32;
+            return (*w).references != session_group_count(sg);
         }
-        ((*w).references != 1) as i32
+        (*w).references != 1
     }
 }
 
@@ -440,19 +440,19 @@ pub unsafe fn session_next_alert(mut wl: *mut winlink) -> *mut winlink {
 }
 
 /// Move session to next window.
-pub unsafe fn session_next(s: *mut session, alert: i32) -> i32 {
+pub unsafe fn session_next(s: *mut session, alert: bool) -> i32 {
     unsafe {
         if (*s).curw.is_null() {
             return -1;
         }
 
         let mut wl = winlink_next((*s).curw);
-        if alert != 0 {
+        if alert {
             wl = session_next_alert(wl);
         }
         if wl.is_null() {
             wl = rb_min(&raw mut (*s).windows);
-            if alert != 0
+            if alert
                 && ({
                     (wl = session_next_alert(wl));
                     wl.is_null()
@@ -478,19 +478,19 @@ pub unsafe fn session_previous_alert(mut wl: *mut winlink) -> *mut winlink {
 }
 
 /// Move session to previous window.
-pub unsafe fn session_previous(s: *mut session, alert: i32) -> i32 {
+pub unsafe fn session_previous(s: *mut session, alert: bool) -> i32 {
     unsafe {
         if (*s).curw.is_null() {
             return -1;
         }
 
         let mut wl = winlink_previous((*s).curw);
-        if alert != 0 {
+        if alert {
             wl = session_previous_alert(wl);
         }
         if wl.is_null() {
             wl = rb_max(&raw mut (*s).windows);
-            if alert != 0
+            if alert
                 && ({
                     (wl = session_previous_alert(wl));
                     wl.is_null()
@@ -693,9 +693,9 @@ pub unsafe fn session_group_synchronize1(target: *mut session, s: *mut session) 
         if !(*s).curw.is_null()
             && winlink_find_by_index(ww, (*(*s).curw).idx).is_null()
             && session_last(s) != 0
-            && session_previous(s, 0) != 0
+            && session_previous(s, false) != 0
         {
-            session_next(s, 0);
+            session_next(s, false);
         }
 
         // Save the old pointer and reset it.

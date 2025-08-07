@@ -156,10 +156,10 @@ pub struct window_copy_mode_data {
     cursordrag: cursordrag,
 
     modekeys: modekey,
-    lineflag: line_sel, // line selection mode
-    rectflag: i32,      // in rectangle copy mode?
-    scroll_exit: i32,   // exit on scroll to end?
-    hide_position: i32, // hide position marker
+    lineflag: line_sel,  // line selection mode
+    rectflag: i32,       // in rectangle copy mode?
+    scroll_exit: bool,   // exit on scroll to end?
+    hide_position: bool, // hide position marker
 
     selflag: selflag,
 
@@ -385,8 +385,8 @@ pub unsafe fn window_copy_init(
             (*data).oy = 0;
         }
 
-        (*data).scroll_exit = args_has(args, b'e');
-        (*data).hide_position = args_has(args, b'H');
+        (*data).scroll_exit = args_has(args, 'e');
+        (*data).hide_position = args_has(args, 'H');
 
         if !(*base).hyperlinks.is_null() {
             (*data).screen.hyperlinks = hyperlinks_copy((*base).hyperlinks);
@@ -601,9 +601,9 @@ pub unsafe fn window_copy_pageup1(wme: *mut window_mode_entry, half_page: i32) {
     }
 }
 
-pub unsafe fn window_copy_pagedown(wp: *mut window_pane, half_page: i32, scroll_exit: i32) {
+pub unsafe fn window_copy_pagedown(wp: *mut window_pane, half_page: i32, scroll_exit: bool) {
     unsafe {
-        if window_copy_pagedown1(tailq_first(&raw mut (*wp).modes), half_page, scroll_exit) != 0 {
+        if window_copy_pagedown1(tailq_first(&raw mut (*wp).modes), half_page, scroll_exit) {
             window_pane_reset_mode(wp);
         }
     }
@@ -612,8 +612,8 @@ pub unsafe fn window_copy_pagedown(wp: *mut window_pane, half_page: i32, scroll_
 pub unsafe fn window_copy_pagedown1(
     wme: *mut window_mode_entry,
     half_page: i32,
-    scroll_exit: i32,
-) -> i32 {
+    scroll_exit: bool,
+) -> bool {
     unsafe {
         let data: *mut window_copy_mode_data = (*wme).data.cast();
         let s: *mut screen = &raw mut (*data).screen;
@@ -655,8 +655,8 @@ pub unsafe fn window_copy_pagedown1(
             }
         }
 
-        if scroll_exit != 0 && (*data).oy == 0 {
-            return 1;
+        if scroll_exit && (*data).oy == 0 {
+            return true;
         }
         if !(*data).searchmark.is_null() && (*data).timeout == 0 {
             window_copy_search_marks(wme, null_mut(), (*data).searchregex, 1);
@@ -664,7 +664,7 @@ pub unsafe fn window_copy_pagedown1(
         window_copy_update_selection(wme, 1, 0);
         window_copy_redraw_screen(wme);
 
-        0
+        false
     }
 }
 
@@ -911,7 +911,7 @@ pub unsafe fn window_copy_expand_search_string(cs: *mut window_copy_cmd_state) -
             return 0;
         }
 
-        if args_has_((*cs).args, 'F') {
+        if args_has((*cs).args, 'F') {
             let expanded = format_single(
                 null_mut(),
                 ss,
@@ -1434,7 +1434,7 @@ pub unsafe fn window_copy_cmd_halfpage_down(
         let mut np = (*wme).prefix;
 
         while np != 0 {
-            if window_copy_pagedown1(wme, 1, (*data).scroll_exit) != 0 {
+            if window_copy_pagedown1(wme, 1, (*data).scroll_exit) {
                 return window_copy_cmd_action::WINDOW_COPY_CMD_CANCEL;
             }
             np -= 1;
@@ -1451,7 +1451,7 @@ pub unsafe fn window_copy_cmd_halfpage_down_and_cancel(
         let mut np = (*wme).prefix;
 
         while np != 0 {
-            if window_copy_pagedown1(wme, 1, 1) != 0 {
+            if window_copy_pagedown1(wme, 1, true) {
                 return window_copy_cmd_action::WINDOW_COPY_CMD_CANCEL;
             }
             np -= 1;
@@ -1963,7 +1963,7 @@ pub unsafe fn window_copy_cmd_page_down(cs: *mut window_copy_cmd_state) -> windo
         let mut np = (*wme).prefix;
 
         while np != 0 {
-            if window_copy_pagedown1(wme, 0, (*data).scroll_exit) != 0 {
+            if window_copy_pagedown1(wme, 0, (*data).scroll_exit) {
                 return window_copy_cmd_action::WINDOW_COPY_CMD_CANCEL;
             }
             np -= 1;
@@ -1980,7 +1980,7 @@ pub unsafe fn window_copy_cmd_page_down_and_cancel(
         let mut np = (*wme).prefix;
 
         while np != 0 {
-            if window_copy_pagedown1(wme, 0, 1) != 0 {
+            if window_copy_pagedown1(wme, 0, true) {
                 return window_copy_cmd_action::WINDOW_COPY_CMD_CANCEL;
             }
             np -= 1;
@@ -2103,7 +2103,7 @@ pub unsafe fn window_copy_cmd_scroll_down(
             window_copy_cursor_down(wme, 1);
             np -= 1;
         }
-        if (*data).scroll_exit != 0 && (*data).oy == 0 {
+        if (*data).scroll_exit && (*data).oy == 0 {
             window_copy_cmd_action::WINDOW_COPY_CMD_CANCEL
         } else {
             window_copy_cmd_action::WINDOW_COPY_CMD_NOTHING
@@ -4933,7 +4933,7 @@ pub unsafe fn window_copy_write_line(
         style_apply(&raw mut mkgc, oo, c!("copy-mode-mark-style"), null_mut());
         mkgc.flags |= grid_flag::NOPALETTE;
 
-        if py == 0 && (*s).rupper < (*s).rlower && (*data).hide_position == 0 {
+        if py == 0 && (*s).rupper < (*s).rlower && !(*data).hide_position {
             gl = grid_get_line((*(*data).backing).grid, hsize - (*data).oy);
             if (*gl).time == 0 {
                 _ = xsnprintf_!((&raw mut tmp).cast(), 512, "[{}/{}]", (*data).oy, hsize,);

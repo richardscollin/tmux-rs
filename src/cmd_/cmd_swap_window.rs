@@ -69,7 +69,7 @@ unsafe fn cmd_swap_window_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
         (*wl_src).window = w_dst;
         tailq_insert_tail::<_, discr_wentry>(&raw mut (*w_dst).winlinks, wl_src);
 
-        if args_has(args, b'd') != 0 {
+        if args_has(args, 'd') {
             session_select(dst, (*wl_dst).idx);
             if src != dst {
                 session_select(src, (*wl_src).idx);

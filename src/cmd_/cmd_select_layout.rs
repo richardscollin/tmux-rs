@@ -77,11 +77,11 @@ unsafe fn cmd_select_layout_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
         'error: {
             'changed: {
                 let mut next = std::ptr::eq(cmd_get_entry(self_), &CMD_NEXT_LAYOUT_ENTRY);
-                if args_has_(args, 'n') {
+                if args_has(args, 'n') {
                     next = true;
                 }
                 let mut previous = std::ptr::eq(cmd_get_entry(self_), &CMD_PREVIOUS_LAYOUT_ENTRY);
-                if args_has_(args, 'p') {
+                if args_has(args, 'p') {
                     previous = true;
                 }
 
@@ -97,20 +97,20 @@ unsafe fn cmd_select_layout_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
                     break 'changed;
                 }
 
-                if args_has_(args, 'E') {
+                if args_has(args, 'E') {
                     layout_spread_out(wp);
                     break 'changed;
                 }
 
                 let layoutname = if args_count(args) != 0 {
                     args_string(args, 0)
-                } else if args_has_(args, 'o') {
+                } else if args_has(args, 'o') {
                     oldlayout
                 } else {
                     null()
                 };
 
-                if !args_has_(args, 'o') {
+                if !args_has(args, 'o') {
                     let layout = if layoutname.is_null() {
                         (*w).lastlayout
                     } else {

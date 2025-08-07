@@ -115,13 +115,13 @@ pub unsafe fn cmd_wait_for_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
         find.name = name as *mut u8; // TODO casting away const
         let wc = rb_find(&raw mut WAIT_CHANNELS, &raw mut find);
 
-        if args_has_(args, 'S') {
+        if args_has(args, 'S') {
             return cmd_wait_for_signal(item, name, wc);
         }
-        if args_has_(args, 'L') {
+        if args_has(args, 'L') {
             return cmd_wait_for_lock(item, name, wc);
         }
-        if args_has_(args, 'U') {
+        if args_has(args, 'U') {
             return cmd_wait_for_unlock(item, name, wc);
         }
 

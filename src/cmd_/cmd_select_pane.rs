@@ -85,7 +85,7 @@ pub unsafe fn cmd_select_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd
         let mut lastwp: *mut window_pane;
         let markedwp;
 
-        if std::ptr::eq(entry, &CMD_LAST_PANE_ENTRY) || args_has_(args, 'l') {
+        if std::ptr::eq(entry, &CMD_LAST_PANE_ENTRY) || args_has(args, 'l') {
             // Check for no last pane found in case the other pane was
             // spawned without being visited (for example split-window -d).
             lastwp = tailq_first(&raw mut (*w).last_panes);
@@ -99,16 +99,16 @@ pub unsafe fn cmd_select_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd
                 cmdq_error!(item, "no last pane");
                 return cmd_retval::CMD_RETURN_ERROR;
             }
-            if args_has_(args, 'e') {
+            if args_has(args, 'e') {
                 (*lastwp).flags &= !window_pane_flags::PANE_INPUTOFF;
                 server_redraw_window_borders((*lastwp).window);
                 server_status_window((*lastwp).window);
-            } else if args_has_(args, 'd') {
+            } else if args_has(args, 'd') {
                 (*lastwp).flags |= window_pane_flags::PANE_INPUTOFF;
                 server_redraw_window_borders((*lastwp).window);
                 server_status_window((*lastwp).window);
             } else {
-                if window_push_zoom(w, 0, args_has(args, b'Z')) != 0 {
+                if window_push_zoom(w, false, args_has(args, 'Z')) {
                     server_redraw_window(w);
                 }
                 window_redraw_active_switch(w, lastwp);
@@ -123,8 +123,8 @@ pub unsafe fn cmd_select_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd
             return cmd_retval::CMD_RETURN_NORMAL;
         }
 
-        if args_has_(args, 'm') || args_has_(args, 'M') {
-            if args_has_(args, 'm') && !window_pane_visible(wp) {
+        if args_has(args, 'm') || args_has(args, 'M') {
+            if args_has(args, 'm') && !window_pane_visible(wp) {
                 return cmd_retval::CMD_RETURN_NORMAL;
             }
             if server_check_marked() {
@@ -133,7 +133,7 @@ pub unsafe fn cmd_select_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd
                 lastwp = null_mut();
             }
 
-            if args_has_(args, 'M') || server_is_marked(s, wl, wp) {
+            if args_has(args, 'M') || server_is_marked(s, wl, wp) {
                 server_clear_marked();
             } else {
                 server_set_marked(s, wl, wp);
@@ -157,33 +157,33 @@ pub unsafe fn cmd_select_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd
 
         let style = args_get(args, b'P');
         if !style.is_null() {
-            let o = options_set_string!(oo, c!("window-style"), 0, "{}", _s(style));
+            let o = options_set_string!(oo, c!("window-style"), false, "{}", _s(style));
             if o.is_null() {
                 cmdq_error!(item, "bad style: {}", _s(style));
                 return cmd_retval::CMD_RETURN_ERROR;
             }
-            options_set_string!(oo, c!("window-active-style"), 0, "{}", _s(style),);
+            options_set_string!(oo, c!("window-active-style"), false, "{}", _s(style),);
             (*wp).flags |= window_pane_flags::PANE_REDRAW | window_pane_flags::PANE_STYLECHANGED;
         }
-        if args_has_(args, 'g') {
+        if args_has(args, 'g') {
             cmdq_print!(item, "{}", _s(options_get_string_(oo, "window-style")),);
             return cmd_retval::CMD_RETURN_NORMAL;
         }
 
-        if args_has_(args, 'L') {
-            window_push_zoom(w, 0, 1);
+        if args_has(args, 'L') {
+            window_push_zoom(w, false, true);
             wp = window_pane_find_left(wp);
             window_pop_zoom(w);
-        } else if args_has_(args, 'R') {
-            window_push_zoom(w, 0, 1);
+        } else if args_has(args, 'R') {
+            window_push_zoom(w, false, true);
             wp = window_pane_find_right(wp);
             window_pop_zoom(w);
-        } else if args_has_(args, 'U') {
-            window_push_zoom(w, 0, 1);
+        } else if args_has(args, 'U') {
+            window_push_zoom(w, false, true);
             wp = window_pane_find_up(wp);
             window_pop_zoom(w);
-        } else if args_has_(args, 'D') {
-            window_push_zoom(w, 0, 1);
+        } else if args_has(args, 'D') {
+            window_push_zoom(w, false, true);
             wp = window_pane_find_down(wp);
             window_pop_zoom(w);
         }
@@ -191,20 +191,20 @@ pub unsafe fn cmd_select_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd
             return cmd_retval::CMD_RETURN_NORMAL;
         }
 
-        if args_has_(args, 'e') {
+        if args_has(args, 'e') {
             (*wp).flags &= !window_pane_flags::PANE_INPUTOFF;
             server_redraw_window_borders((*wp).window);
             server_status_window((*wp).window);
             return cmd_retval::CMD_RETURN_NORMAL;
         }
-        if args_has_(args, 'd') {
+        if args_has(args, 'd') {
             (*wp).flags |= window_pane_flags::PANE_INPUTOFF;
             server_redraw_window_borders((*wp).window);
             server_status_window((*wp).window);
             return cmd_retval::CMD_RETURN_NORMAL;
         }
 
-        if args_has_(args, 'T') {
+        if args_has(args, 'T') {
             let title = format_single_from_target(item, args_get_(args, 'T'));
             if screen_set_title(&raw mut (*wp).base, title) != 0 {
                 notify_pane(c"pane-title-changed", wp);
@@ -226,7 +226,7 @@ pub unsafe fn cmd_select_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd
         if wp == activewp {
             return cmd_retval::CMD_RETURN_NORMAL;
         }
-        if window_push_zoom(w, 0, args_has(args, b'Z')) != 0 {
+        if window_push_zoom(w, false, args_has(args, 'Z')) {
             server_redraw_window(w);
         }
         window_redraw_active_switch(w, wp);

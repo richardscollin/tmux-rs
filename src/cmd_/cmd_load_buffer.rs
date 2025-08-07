@@ -92,7 +92,7 @@ unsafe fn cmd_load_buffer_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
         if !bufname.is_null() {
             (*cdata).name = xstrdup(bufname).as_ptr();
         }
-        if args_has(args, b'w') != 0 && !tc.is_null() {
+        if args_has(args, 'w') && !tc.is_null() {
             (*cdata).client = tc;
             (*(*cdata).client).references += 1;
         }

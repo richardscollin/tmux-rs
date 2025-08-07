@@ -42,8 +42,8 @@ pub unsafe fn cmd_pipe_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
         let wl = (*target).wl;
         let wpo = &raw mut (*wp).pipe_offset;
         let mut pipe_fd: [i32; 2] = [0; 2];
-        let in_: i32;
-        let out: i32;
+        let in_: bool;
+        let out: bool;
         let mut set: sigset_t = zeroed(); // TODO uninit
         let mut oldset: sigset_t = zeroed(); // TODO uninit
 
@@ -75,17 +75,17 @@ pub unsafe fn cmd_pipe_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
         // allows a pipe to be toggled with a single key, for example:
         //
         // 	bind ^p pipep -o 'cat >>~/output'
-        if args_has_(args, 'o') && old_fd != -1 {
+        if args_has(args, 'o') && old_fd != -1 {
             return cmd_retval::CMD_RETURN_NORMAL;
         }
 
         // What do we want to do? Neither -I or -O is -O.
-        if args_has_(args, 'I') {
-            in_ = 1;
-            out = args_has(args, b'O');
+        if args_has(args, 'I') {
+            in_ = true;
+            out = args_has(args, 'O');
         } else {
-            in_ = 0;
-            out = 1;
+            in_ = false;
+            out = true;
         }
 
         // Open the new pipe.
@@ -123,7 +123,7 @@ pub unsafe fn cmd_pipe_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
 
                 let null_fd = open(_PATH_DEVNULL, O_WRONLY, 0);
                 #[expect(clippy::collapsible_else_if)]
-                if out != 0 {
+                if out {
                     if dup2(pipe_fd[1], STDIN_FILENO) == -1 {
                         _exit(1);
                     }
@@ -133,7 +133,7 @@ pub unsafe fn cmd_pipe_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
                     }
                 }
                 #[expect(clippy::collapsible_else_if)]
-                if in_ != 0 {
+                if in_ {
                     if dup2(pipe_fd[1], STDOUT_FILENO) == -1 {
                         _exit(1);
                     }
@@ -178,10 +178,10 @@ pub unsafe fn cmd_pipe_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
                 if (*wp).pipe_event.is_null() {
                     fatalx("out of memory");
                 }
-                if out != 0 {
+                if out {
                     bufferevent_enable((*wp).pipe_event, EV_WRITE);
                 }
-                if in_ != 0 {
+                if in_ {
                     bufferevent_enable((*wp).pipe_event, EV_READ);
                 }
 

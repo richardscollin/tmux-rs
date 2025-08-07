@@ -218,7 +218,7 @@ pub unsafe fn args_parse_flags(
                 return -1;
             }
             if *found.add(1) != b':' {
-                log_debug!("{}: -{}", __func__, flag as i32);
+                log_debug!("{}: -{}", __func__, flag as char);
                 args_set(args, flag, null_mut(), 0);
                 continue;
             }

@@ -2495,14 +2495,30 @@ const CMD_TARGET_WINDOW_USAGE: &CStr = c"[-t target-window]";
 // const CMD_SRCDST_CLIENT_USAGE: &CStr = c"[-s src-client] [-t dst-client]";
 const CMD_BUFFER_USAGE: &CStr = c"[-b buffer-name]";
 
-const SPAWN_KILL: i32 = 0x1;
-const SPAWN_DETACHED: i32 = 0x2;
-const SPAWN_RESPAWN: i32 = 0x4;
-const SPAWN_BEFORE: i32 = 0x8;
-const SPAWN_NONOTIFY: i32 = 0x10;
-const SPAWN_FULLSIZE: i32 = 0x20;
-const SPAWN_EMPTY: i32 = 0x40;
-const SPAWN_ZOOM: i32 = 0x80;
+bitflags::bitflags! {
+    #[repr(transparent)]
+    #[derive(Copy, Clone, Eq, PartialEq)]
+    struct spawn_flags: i32 {
+        const SPAWN_KILL = 0x1;
+        const SPAWN_DETACHED = 0x2;
+        const SPAWN_RESPAWN = 0x4;
+        const SPAWN_BEFORE = 0x8;
+        const SPAWN_NONOTIFY = 0x10;
+        const SPAWN_FULLSIZE = 0x20;
+        const SPAWN_EMPTY = 0x40;
+        const SPAWN_ZOOM = 0x80;
+    }
+}
+
+// TODO inline these and remove the definitions
+const SPAWN_KILL: spawn_flags = spawn_flags::SPAWN_KILL;
+const SPAWN_DETACHED: spawn_flags = spawn_flags::SPAWN_DETACHED;
+const SPAWN_RESPAWN: spawn_flags = spawn_flags::SPAWN_RESPAWN;
+const SPAWN_BEFORE: spawn_flags = spawn_flags::SPAWN_BEFORE;
+const SPAWN_NONOTIFY: spawn_flags = spawn_flags::SPAWN_NONOTIFY;
+const SPAWN_FULLSIZE: spawn_flags = spawn_flags::SPAWN_FULLSIZE;
+const SPAWN_EMPTY: spawn_flags = spawn_flags::SPAWN_EMPTY;
+const SPAWN_ZOOM: spawn_flags = spawn_flags::SPAWN_ZOOM;
 
 /// Spawn common context.
 #[repr(C)]
@@ -2524,7 +2540,7 @@ struct spawn_context {
     idx: i32,
     cwd: *const u8,
 
-    flags: i32,
+    flags: spawn_flags,
 }
 
 /// Mode tree sort order.

@@ -104,7 +104,7 @@ unsafe fn cmd_new_window_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retv
         sc.idx = idx;
         sc.cwd = args_get_(args, 'c');
 
-        sc.flags = 0;
+        sc.flags = spawn_flags::empty();
         if args_has_(args, 'd') {
             sc.flags |= SPAWN_DETACHED;
         }

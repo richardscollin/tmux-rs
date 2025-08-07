@@ -92,9 +92,9 @@ pub unsafe fn spawn_window(sc: *mut spawn_context, cause: *mut *mut u8) -> *mut 
 
         // If the window already exists, we are respawning, so destroy all the
         // panes except one.
-        if (*sc).flags & SPAWN_RESPAWN != 0 {
+        if (*sc).flags.intersects(spawn_flags::SPAWN_RESPAWN) {
             w = (*(*sc).wl).window;
-            if !(*sc).flags & SPAWN_KILL != 0 {
+            if !(*sc).flags.intersects(SPAWN_KILL) {
                 for wp_ in tailq_foreach::<_, discr_entry>(&raw mut (*w).panes).map(NonNull::as_ptr)
                 {
                     wp = wp_;
@@ -125,9 +125,9 @@ pub unsafe fn spawn_window(sc: *mut spawn_context, cause: *mut *mut u8) -> *mut 
 
         // Otherwise we have no window so we will need to create one. First
         // check if the given index already exists and destroy it if so.
-        if (!(*sc).flags & SPAWN_RESPAWN != 0) && idx != -1 {
+        if !(*sc).flags.intersects(SPAWN_RESPAWN) && idx != -1 {
             let wl = winlink_find_by_index(&raw mut (*s).windows, idx);
-            if !wl.is_null() && (!(*sc).flags & SPAWN_KILL != 0) {
+            if !wl.is_null() && !(*sc).flags.intersects(SPAWN_KILL) {
                 *cause = format_nul!("index {} in use", idx);
                 return null_mut();
             }
@@ -147,7 +147,7 @@ pub unsafe fn spawn_window(sc: *mut spawn_context, cause: *mut *mut u8) -> *mut 
         }
 
         // Then create a window if needed.
-        if !(*sc).flags & SPAWN_RESPAWN != 0 {
+        if !(*sc).flags.intersects(SPAWN_RESPAWN) {
             if idx == -1 {
                 idx = -1 - options_get_number_((*s).options, "base-index") as i32;
             }
@@ -190,14 +190,14 @@ pub unsafe fn spawn_window(sc: *mut spawn_context, cause: *mut *mut u8) -> *mut 
         // Spawn the pane.
         wp = spawn_pane(sc, cause);
         if wp.is_null() {
-            if !(*sc).flags & SPAWN_RESPAWN != 0 {
+            if !(*sc).flags.intersects(SPAWN_RESPAWN) {
                 winlink_remove(&raw mut (*s).windows, (*sc).wl);
             }
             return null_mut();
         }
 
         // Set the name of the new window.
-        if !(*sc).flags & SPAWN_RESPAWN != 0 {
+        if !(*sc).flags.intersects(SPAWN_RESPAWN) {
             free_((*w).name);
             if !(*sc).name.is_null() {
                 (*w).name = format_single(item, (*sc).name, c, s, null_mut(), null_mut());
@@ -208,12 +208,12 @@ pub unsafe fn spawn_window(sc: *mut spawn_context, cause: *mut *mut u8) -> *mut 
         }
 
         // Switch to the new window if required.
-        if !(*sc).flags & SPAWN_DETACHED != 0 {
+        if !(*sc).flags.intersects(SPAWN_DETACHED) {
             session_select(s, (*(*sc).wl).idx);
         }
 
         // Fire notification if new window.
-        if !(*sc).flags & SPAWN_RESPAWN != 0 {
+        if !(*sc).flags.intersects(SPAWN_RESPAWN) {
             notify_session_window(c"window-linked", s, w);
         }
 
@@ -260,7 +260,7 @@ pub unsafe fn spawn_pane(sc: *mut spawn_context, cause: *mut *mut u8) -> *mut wi
                     free_(cwd);
                     cwd = new_cwd;
                 }
-            } else if !(*sc).flags & SPAWN_RESPAWN != 0 {
+            } else if !(*sc).flags.intersects(SPAWN_RESPAWN) {
                 cwd = xstrdup(server_client_get_cwd(c, (*target).s)).as_ptr();
             } else {
                 cwd = null_mut();
@@ -269,8 +269,8 @@ pub unsafe fn spawn_pane(sc: *mut spawn_context, cause: *mut *mut u8) -> *mut wi
             // If we are respawning then get rid of the old process. Otherwise
             // either create a new cell or assign to the one we are given.
             hlimit = options_get_number_((*s).options, "history-limit") as u32;
-            if (*sc).flags & SPAWN_RESPAWN != 0 {
-                if (*(*sc).wp0).fd != -1 && (!(*sc).flags & SPAWN_KILL != 0) {
+            if (*sc).flags.intersects(SPAWN_RESPAWN) {
+                if (*(*sc).wp0).fd != -1 && !(*sc).flags.intersects(SPAWN_KILL) {
                     window_pane_index((*sc).wp0, &raw mut idx);
                     *cause = format_nul!(
                         "pane {}:{}.{} still active",
@@ -297,7 +297,7 @@ pub unsafe fn spawn_pane(sc: *mut spawn_context, cause: *mut *mut u8) -> *mut wi
                 layout_init(w, new_wp);
             } else {
                 new_wp = window_add_pane(w, (*sc).wp0, hlimit, (*sc).flags);
-                if (*sc).flags & SPAWN_ZOOM != 0 {
+                if (*sc).flags.intersects(SPAWN_ZOOM) {
                     layout_assign_pane((*sc).lc, new_wp, 1);
                 } else {
                     layout_assign_pane((*sc).lc, new_wp, 0);
@@ -307,7 +307,7 @@ pub unsafe fn spawn_pane(sc: *mut spawn_context, cause: *mut *mut u8) -> *mut wi
             // Now we have a pane with nothing running in it ready for the new
             // process. Work out the command and arguments and store the working
             // directory.
-            if (*sc).argc == 0 && (!(*sc).flags & SPAWN_RESPAWN != 0) {
+            if (*sc).argc == 0 && !(*sc).flags.intersects(SPAWN_RESPAWN) {
                 cmd = options_get_string_((*s).options, "default-command");
                 if !cmd.is_null() && *cmd != b'\0' {
                     argc = 1;
@@ -355,7 +355,7 @@ pub unsafe fn spawn_pane(sc: *mut spawn_context, cause: *mut *mut u8) -> *mut wi
             }
 
             // Then the shell. If respawning, use the old one.
-            if !(*sc).flags & SPAWN_RESPAWN != 0 {
+            if !(*sc).flags.intersects(SPAWN_RESPAWN) {
                 tmp = options_get_string_((*s).options, "default-shell");
                 if !checkshell(tmp) {
                     tmp = _PATH_BSHELL;
@@ -388,7 +388,7 @@ pub unsafe fn spawn_pane(sc: *mut spawn_context, cause: *mut *mut u8) -> *mut wi
             sigprocmask(SIG_BLOCK, &raw mut set, &raw mut oldset);
 
             // If the command is empty, don't fork a child process.
-            if (*sc).flags & SPAWN_EMPTY != 0 {
+            if (*sc).flags.intersects(SPAWN_EMPTY) {
                 (*new_wp).flags |= window_pane_flags::PANE_EMPTY;
                 (*new_wp).base.mode &= !mode_flag::MODE_CURSOR;
                 (*new_wp).base.mode |= mode_flag::MODE_CRLF;
@@ -406,7 +406,7 @@ pub unsafe fn spawn_pane(sc: *mut spawn_context, cause: *mut *mut u8) -> *mut wi
             if (*new_wp).pid == -1 {
                 *cause = format_nul!("fork failed: {}", _s(strerror(errno!())));
                 (*new_wp).fd = -1;
-                if !(*sc).flags & SPAWN_RESPAWN != 0 {
+                if !(*sc).flags.intersects(SPAWN_RESPAWN) {
                     server_client_remove_pane(new_wp);
                     layout_close_pane(new_wp);
                     window_remove_pane(w, new_wp);
@@ -533,17 +533,17 @@ pub unsafe fn spawn_pane(sc: *mut spawn_context, cause: *mut *mut u8) -> *mut wi
 
         environ_free(child);
 
-        if (*sc).flags & SPAWN_RESPAWN != 0 {
+        if (*sc).flags.intersects(SPAWN_RESPAWN) {
             return new_wp;
         }
-        if (!(*sc).flags & SPAWN_DETACHED != 0) || (*w).active.is_null() {
-            if (*sc).flags & SPAWN_NONOTIFY != 0 {
+        if !(*sc).flags.intersects(SPAWN_DETACHED) || (*w).active.is_null() {
+            if (*sc).flags.intersects(SPAWN_NONOTIFY) {
                 window_set_active_pane(w, new_wp, 0);
             } else {
                 window_set_active_pane(w, new_wp, 1);
             }
         }
-        if !(*sc).flags & SPAWN_NONOTIFY != 0 {
+        if !(*sc).flags.intersects(SPAWN_NONOTIFY) {
             notify_window(c"window-layout-changed", w);
         }
 

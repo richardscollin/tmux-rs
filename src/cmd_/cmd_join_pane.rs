@@ -126,7 +126,7 @@ unsafe fn cmd_join_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retva
             return cmd_retval::CMD_RETURN_ERROR;
         }
 
-        let mut flags: i32 = 0;
+        let mut flags: spawn_flags = spawn_flags::empty();
         if args_has_(args, 'b') {
             flags |= SPAWN_BEFORE;
         }
@@ -149,7 +149,7 @@ unsafe fn cmd_join_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retva
         (*src_wp).window = dst_w;
         options_set_parent((*src_wp).options, (*dst_w).options);
         (*src_wp).flags |= window_pane_flags::PANE_STYLECHANGED;
-        if flags & SPAWN_BEFORE != 0 {
+        if flags.intersects(SPAWN_BEFORE) {
             tailq_insert_before::<_, discr_entry>(dst_wp, src_wp);
         } else {
             tailq_insert_after::<_, discr_entry>(&raw mut (*dst_w).panes, dst_wp, src_wp);

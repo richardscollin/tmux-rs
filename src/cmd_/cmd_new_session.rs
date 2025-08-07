@@ -310,7 +310,7 @@ unsafe fn cmd_new_session_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
             sc.idx = -1;
             sc.cwd = args_get_(args, 'c');
 
-            sc.flags = 0;
+            sc.flags = spawn_flags::empty();
 
             if spawn_window(&raw mut sc, &raw mut cause).is_null() {
                 session_destroy(s, 0, __func__);

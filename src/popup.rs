@@ -403,9 +403,9 @@ pub fn popup_make_pane(pd: *mut popup_data, type_: layout_type) {
 
         window_unzoom(w, 1);
 
-        let lc = layout_split_pane(wp, type_, -1, 0);
+        let lc = layout_split_pane(wp, type_, -1, spawn_flags::empty());
         let hlimit = options_get_number_((*s).options, "history-limit") as u32;
-        let new_wp = window_add_pane((*wp).window, null_mut(), hlimit, 0);
+        let new_wp = window_add_pane((*wp).window, null_mut(), hlimit, spawn_flags::empty());
         layout_assign_pane(lc, new_wp, 0);
 
         (*new_wp).fd = job_transfer(

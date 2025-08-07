@@ -918,12 +918,12 @@ pub unsafe fn layout_split_pane(
     wp: *mut window_pane,
     type_: layout_type,
     size: i32,
-    flags: i32,
+    flags: spawn_flags,
 ) -> *mut layout_cell {
     unsafe {
         let minimum: u32;
         let mut resize_first: u32 = 0;
-        let full_size = (flags & SPAWN_FULLSIZE) != 0;
+        let full_size = flags.intersects(SPAWN_FULLSIZE);
 
         // If full_size is specified, add a new cell at the top of the window
         // layout. Otherwise, split the cell for the current pane.
@@ -974,7 +974,7 @@ pub unsafe fn layout_split_pane(
 
         let mut size2 = if size < 0 {
             saved_size.div_ceil(2) - 1
-        } else if (flags & SPAWN_BEFORE) != 0 {
+        } else if flags.intersects(SPAWN_BEFORE) {
             saved_size - size as u32 - 1
         } else {
             size as u32
@@ -988,7 +988,7 @@ pub unsafe fn layout_split_pane(
         let size1 = saved_size - 1 - size2;
 
         // Which size are we using?
-        let new_size = if (flags & SPAWN_BEFORE) != 0 {
+        let new_size = if flags.intersects(SPAWN_BEFORE) {
             size2
         } else {
             size1
@@ -1007,7 +1007,7 @@ pub unsafe fn layout_split_pane(
             // create a new cell and insert it after this one.
             lcparent = (*lc).parent;
             lcnew = layout_create_cell(lcparent);
-            if (flags & SPAWN_BEFORE) != 0 {
+            if flags.intersects(SPAWN_BEFORE) {
                 tailq_insert_before(lc, lcnew);
             } else {
                 tailq_insert_after(&raw mut (*lcparent).cells, lc, lcnew);
@@ -1036,7 +1036,7 @@ pub unsafe fn layout_split_pane(
             } else if (*lc).type_ == layout_type::LAYOUT_TOPBOTTOM {
                 layout_set_size(lcnew, sx, size, 0, 0);
             }
-            if (flags & SPAWN_BEFORE) != 0 {
+            if flags.intersects(SPAWN_BEFORE) {
                 tailq_insert_head(&raw mut (*lc).cells, lcnew);
             } else {
                 tailq_insert_tail(&raw mut (*lc).cells, lcnew);
@@ -1060,14 +1060,14 @@ pub unsafe fn layout_split_pane(
 
             // Create the new child cell.
             lcnew = layout_create_cell(lcparent);
-            if (flags & SPAWN_BEFORE) != 0 {
+            if flags.intersects(SPAWN_BEFORE) {
                 tailq_insert_head(&raw mut (*lcparent).cells, lcnew);
             } else {
                 tailq_insert_tail(&raw mut (*lcparent).cells, lcnew);
             }
         }
 
-        let (lc1, lc2) = if (flags & SPAWN_BEFORE) != 0 {
+        let (lc1, lc2) = if flags.intersects(SPAWN_BEFORE) {
             (lcnew, lc)
         } else {
             (lc, lcnew)

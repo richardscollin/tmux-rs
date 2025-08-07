@@ -768,7 +768,7 @@ pub unsafe fn window_add_pane(
     w: *mut window,
     mut other: *mut window_pane,
     hlimit: u32,
-    flags: i32,
+    flags: spawn_flags,
 ) -> *mut window_pane {
     let func = "window_add_pane";
     unsafe {
@@ -780,16 +780,16 @@ pub unsafe fn window_add_pane(
         if tailq_empty(&raw mut (*w).panes) {
             log_debug!("{}: @{} at start", func, (*w).id);
             tailq_insert_head::<_, discr_entry>(&raw mut (*w).panes, wp);
-        } else if flags & SPAWN_BEFORE != 0 {
+        } else if flags.intersects(SPAWN_BEFORE) {
             log_debug!("{}: @{} before %%{}", func, (*w).id, (*wp).id);
-            if flags & SPAWN_FULLSIZE != 0 {
+            if flags.intersects(SPAWN_FULLSIZE) {
                 tailq_insert_head::<_, discr_entry>(&raw mut (*w).panes, wp);
             } else {
                 tailq_insert_before::<_, discr_entry>(other, wp);
             }
         } else {
             log_debug!("{}: @{} after %%{}", func, (*w).id, (*wp).id);
-            if flags & SPAWN_FULLSIZE != 0 {
+            if flags.intersects(SPAWN_FULLSIZE) {
                 tailq_insert_tail::<_, discr_entry>(&raw mut (*w).panes, wp);
             } else {
                 tailq_insert_after::<_, discr_entry>(&raw mut (*w).panes, other, wp);

@@ -92,7 +92,7 @@ unsafe fn cmd_split_window_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
         window_push_zoom((*wp).window, 1, args_has(args, b'Z'));
         let mut input = args_has_(args, 'I') && count == 0;
 
-        let mut flags = 0;
+        let mut flags = spawn_flags::empty();
         if args_has_(args, 'b') {
             flags |= SPAWN_BEFORE;
         }

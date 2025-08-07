@@ -57,7 +57,7 @@ unsafe fn cmd_if_shell_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retval
         let tc = cmdq_get_target_client(item);
         let s = (*target).s;
         let count = args_count(args);
-        let wait = !args_has(args, b'b');
+        let wait = !args_has_(args, 'b');
 
         let shellcmd = format_single_from_target(item, args_string(args, 0));
         if args_has_(args, 'F') {
@@ -85,7 +85,7 @@ unsafe fn cmd_if_shell_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retval
             (*cdata).cmd_else = args_make_commands_prepare(self_, item, 2, null_mut(), wait, 0);
         }
 
-        if wait != 0 {
+        if wait {
             (*cdata).client = cmdq_get_client(item);
             (*cdata).item = item;
         } else {
@@ -119,7 +119,7 @@ unsafe fn cmd_if_shell_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retval
         }
         free_(shellcmd);
 
-        if wait == 0 {
+        if !wait {
             return cmd_retval::CMD_RETURN_NORMAL;
         }
         cmd_retval::CMD_RETURN_WAIT

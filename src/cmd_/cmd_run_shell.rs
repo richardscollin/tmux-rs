@@ -113,7 +113,7 @@ pub unsafe fn cmd_run_shell_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
         let wp = (*target).wp;
         let mut d: f64 = 0.0;
         let mut end: *mut u8 = null_mut();
-        let wait = !args_has(args, b'b') as i32;
+        let wait = !args_has_(args, 'b');
 
         let delay = args_get(args, b'd');
         if !delay.is_null() {
@@ -142,7 +142,7 @@ pub unsafe fn cmd_run_shell_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
             (*cdata).wp_id = -1;
         }
 
-        if wait != 0 {
+        if wait {
             (*cdata).client = c;
             (*cdata).item = item;
         } else {
@@ -178,7 +178,7 @@ pub unsafe fn cmd_run_shell_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
             event_active(&raw mut (*cdata).timer, EV_TIMEOUT as i32, 1);
         }
 
-        if wait == 0 {
+        if !wait {
             return cmd_retval::CMD_RETURN_NORMAL;
         }
     }

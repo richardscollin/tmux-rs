@@ -728,7 +728,7 @@ pub unsafe fn args_make_commands_now(
 ) -> *mut cmd_list {
     unsafe {
         let mut error = null_mut();
-        let state = args_make_commands_prepare(self_, item, idx, null_mut(), 0, expand);
+        let state = args_make_commands_prepare(self_, item, idx, null_mut(), false, expand);
         let cmdlist = args_make_commands(state, 0, null_mut(), &raw mut error);
         if cmdlist.is_null() {
             cmdq_error!(item, "{}", _s(error));
@@ -747,7 +747,7 @@ pub unsafe fn args_make_commands_prepare<'a>(
     item: *mut cmdq_item,
     idx: u32,
     default_command: *const u8,
-    wait: i32,
+    wait: bool,
     expand: i32,
 ) -> *mut args_command_state<'a> {
     let __func__ = "args_make_commands_prepare";
@@ -780,7 +780,7 @@ pub unsafe fn args_make_commands_prepare<'a>(
         }
         log_debug!("{}: {}", __func__, _s((*state).cmd));
 
-        if wait != 0 {
+        if wait {
             (*state).pi.item = item;
         }
         let mut file = null();

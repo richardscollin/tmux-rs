@@ -313,7 +313,7 @@ unsafe fn cmd_display_panes_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
         let s = (*tc).session;
         let delay: u32;
         let mut cause = null_mut();
-        let wait = !args_has(args, b'b');
+        let wait = !args_has_(args, 'b');
 
         if (*tc).overlay_draw.is_some() {
             return cmd_retval::CMD_RETURN_NORMAL;
@@ -331,7 +331,7 @@ unsafe fn cmd_display_panes_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
         }
 
         let cdata = xcalloc_::<cmd_display_panes_data>(1).as_ptr();
-        if wait != 0 {
+        if wait {
             (*cdata).item = item;
         }
         (*cdata).state =
@@ -363,7 +363,7 @@ unsafe fn cmd_display_panes_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
             );
         }
 
-        if wait == 0 {
+        if !wait {
             return cmd_retval::CMD_RETURN_NORMAL;
         }
         cmd_retval::CMD_RETURN_WAIT

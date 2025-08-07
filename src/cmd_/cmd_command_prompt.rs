@@ -69,18 +69,18 @@ unsafe fn cmd_command_prompt_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
         let mut inputs = null_mut();
         let mut next_input;
         let count = args_count(args);
-        let mut wait = !args_has(args, b'b');
+        let mut wait = !args_has_(args, 'b');
         let mut space = 1;
 
         if !(*tc).prompt_string.is_null() {
             return cmd_retval::CMD_RETURN_NORMAL;
         }
         if args_has(args, b'i') != 0 {
-            wait = 0;
+            wait = false;
         }
 
         let mut cdata: Box<cmd_command_prompt_cdata> = Box::default();
-        if wait != 0 {
+        if wait {
             cdata.item = item;
         }
         cdata.state =
@@ -176,7 +176,7 @@ unsafe fn cmd_command_prompt_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
             prompt_type,
         );
 
-        if wait == 0 {
+        if !wait {
             return cmd_retval::CMD_RETURN_NORMAL;
         }
         cmd_retval::CMD_RETURN_WAIT

@@ -1234,7 +1234,7 @@ unsafe fn options_from_string_choice(
         let choice = if value.is_null() {
             let mut choice = options_get_number(oo, name);
             if choice < 2 {
-                choice = !choice;
+                choice = if choice == 0 { 1 } else { 0 };
             }
             choice
         } else {

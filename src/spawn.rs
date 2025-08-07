@@ -338,7 +338,13 @@ pub unsafe fn spawn_pane(sc: *mut spawn_context, cause: *mut *mut u8) -> *mut wi
             if !(*sc).environ.is_null() {
                 environ_copy((*sc).environ, child);
             }
-            environ_set!(child, c!("TMUX_PANE"), 0, "%{}", (*new_wp).id,);
+            environ_set!(
+                child,
+                c!("TMUX_PANE"),
+                environ_flags::empty(),
+                "%{}",
+                (*new_wp).id,
+            );
 
             // Then the PATH environment variable. The session one is replaced from
             // the client if there is one because otherwise running "tmux new
@@ -347,11 +353,23 @@ pub unsafe fn spawn_pane(sc: *mut spawn_context, cause: *mut *mut u8) -> *mut wi
                 // only unattached clients
                 ee = environ_find((*c).environ, c!("PATH"));
                 if !ee.is_null() {
-                    environ_set!(child, c!("PATH"), 0, "{}", _s(transmute_ptr((*ee).value)));
+                    environ_set!(
+                        child,
+                        c!("PATH"),
+                        environ_flags::empty(),
+                        "{}",
+                        _s(transmute_ptr((*ee).value))
+                    );
                 }
             }
             if environ_find(child, c!("PATH")).is_null() {
-                environ_set!(child, c!("PATH"), 0, "{}", _s(_PATH_DEFPATH));
+                environ_set!(
+                    child,
+                    c!("PATH"),
+                    environ_flags::empty(),
+                    "{}",
+                    _s(_PATH_DEFPATH)
+                );
             }
 
             // Then the shell. If respawning, use the old one.
@@ -363,7 +381,13 @@ pub unsafe fn spawn_pane(sc: *mut spawn_context, cause: *mut *mut u8) -> *mut wi
                 free_((*new_wp).shell);
                 (*new_wp).shell = xstrdup(tmp).as_ptr();
             }
-            environ_set!(child, c!("SHELL"), 0, "{}", _s((*new_wp).shell));
+            environ_set!(
+                child,
+                c!("SHELL"),
+                environ_flags::empty(),
+                "{}",
+                _s((*new_wp).shell)
+            );
 
             // Log the arguments we are going to use.
             log_debug!("spawn_pane: shell={}", _s((*new_wp).shell));
@@ -437,15 +461,21 @@ pub unsafe fn spawn_pane(sc: *mut spawn_context, cause: *mut *mut u8) -> *mut wi
             // Child process. Change to the working directory or home if that
             // fails.
             if chdir((*new_wp).cwd) == 0 {
-                environ_set!(child, c!("PWD"), 0, "{}", _s((*new_wp).cwd));
+                environ_set!(
+                    child,
+                    c!("PWD"),
+                    environ_flags::empty(),
+                    "{}",
+                    _s((*new_wp).cwd)
+                );
             } else if ({
                 tmp = find_home();
                 !tmp.is_null()
             }) && chdir(tmp) == 0
             {
-                environ_set!(child, c!("PWD"), 0, "{}", _s(tmp));
+                environ_set!(child, c!("PWD"), environ_flags::empty(), "{}", _s(tmp));
             } else if chdir(c!("/")) == 0 {
-                environ_set!(child, c!("PWD"), 0, "/");
+                environ_set!(child, c!("PWD"), environ_flags::empty(), "/");
             } else {
                 fatal("chdir failed");
             }

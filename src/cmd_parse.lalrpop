@@ -93,7 +93,7 @@ pub Assignment: () = {
     <arg1:equals> => unsafe {
       let flags = &(*ps.as_ptr()).input.as_ref().unwrap().flags;
       if !flags.intersects(cmd_parse_input_flags::CMD_PARSE_PARSEONLY) && (*ps.as_ptr()).scope.as_ref().is_none_or(|scope| scope.flag != 0) {
-        environ_put(GLOBAL_ENVIRON, transmute_ptr(arg1), 0);
+        environ_put(GLOBAL_ENVIRON, transmute_ptr(arg1), environ_flags::empty());
       }
       free_(transmute_ptr(arg1));
     }

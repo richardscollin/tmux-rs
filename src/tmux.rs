@@ -383,13 +383,13 @@ pub unsafe fn tmux_main(mut argc: i32, mut argv: *mut *mut u8, _env: *mut *mut u
 
         let mut var = environ;
         while !(*var).is_null() {
-            environ_put(GLOBAL_ENVIRON, *var, 0);
+            environ_put(GLOBAL_ENVIRON, *var, environ_flags::empty());
             var = var.add(1);
         }
 
         let cwd = find_cwd();
         if !cwd.is_null() {
-            environ_set!(GLOBAL_ENVIRON, c!("PWD"), 0, "{}", _s(cwd));
+            environ_set!(GLOBAL_ENVIRON, c!("PWD"), environ_flags::empty(), "{}", _s(cwd));
         }
         expand_paths(TMUX_CONF, &mut CFG_FILES.lock().unwrap(), 1);
 

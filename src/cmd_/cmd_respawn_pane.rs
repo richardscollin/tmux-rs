@@ -51,7 +51,7 @@ unsafe fn cmd_respawn_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
 
         let mut av = args_first_value(args, b'e');
         while !av.is_null() {
-            environ_put(sc.environ, (*av).union_.string, 0);
+            environ_put(sc.environ, (*av).union_.string, environ_flags::empty());
             av = args_next_value(av);
         }
 

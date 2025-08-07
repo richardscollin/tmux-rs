@@ -3159,7 +3159,7 @@ pub unsafe fn server_client_dispatch_identify(c: *mut client, imsg: *mut imsg) {
                     fatalx("bad MSG_IDENTIFY_ENVIRON string");
                 }
                 if !libc::strchr(data.cast(), b'=' as i32).is_null() {
-                    environ_put((*c).environ, data.cast(), 0);
+                    environ_put((*c).environ, data.cast(), environ_flags::empty());
                 }
                 // log_debug("client %p IDENTIFY_ENVIRON %s", c, data);
             }

@@ -1521,7 +1521,14 @@ struct layout_cell {
     entry: tailq_entry<layout_cell>,
 }
 
-const ENVIRON_HIDDEN: i32 = 0x1;
+bitflags::bitflags! {
+    #[repr(transparent)]
+    #[derive(Copy, Clone)]
+    struct environ_flags: i32 {
+        const ENVIRON_HIDDEN = 0x1;
+    }
+}
+const ENVIRON_HIDDEN: environ_flags = environ_flags::ENVIRON_HIDDEN;
 
 /// Environment variable.
 #[repr(C)]
@@ -1529,7 +1536,7 @@ struct environ_entry {
     name: Option<NonNull<u8>>,
     value: Option<NonNull<u8>>,
 
-    flags: i32,
+    flags: environ_flags,
     entry: rb_entry<environ_entry>,
 }
 

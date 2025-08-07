@@ -66,10 +66,10 @@ unsafe fn cmd_show_environment_print(
     unsafe {
         let args = cmd_get_args(self_);
 
-        if !args_has_(args, 'h') && ((*envent).flags & ENVIRON_HIDDEN != 0) {
+        if !args_has_(args, 'h') && (*envent).flags.intersects(ENVIRON_HIDDEN) {
             return;
         }
-        if args_has_(args, 'h') && (!(*envent).flags & ENVIRON_HIDDEN != 0) {
+        if args_has_(args, 'h') && !(*envent).flags.intersects(ENVIRON_HIDDEN) {
             return;
         }
 

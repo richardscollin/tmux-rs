@@ -92,7 +92,7 @@ pub(crate) use environ_set;
 pub unsafe fn environ_set_(
     env: *mut environ,
     name: *const u8,
-    flags: c_int,
+    flags: environ_flags,
     args: std::fmt::Arguments,
 ) {
     unsafe {
@@ -124,14 +124,14 @@ pub unsafe fn environ_clear(env: *mut environ, name: *const u8) {
         } else {
             envent = xmalloc_::<environ_entry>().as_ptr();
             (*envent).name = Some(xstrdup(name).cast());
-            (*envent).flags = 0;
+            (*envent).flags = environ_flags::empty();
             (*envent).value = None;
             rb_insert(env, envent);
         }
     }
 }
 
-pub unsafe fn environ_put(env: *mut environ, var: *const u8, flags: c_int) {
+pub unsafe fn environ_put(env: *mut environ, var: *const u8, flags: environ_flags) {
     unsafe {
         let mut value = libc::strchr(var, b'=' as c_int);
         if value.is_null() {
@@ -177,7 +177,7 @@ pub unsafe fn environ_update(oo: *mut options, src: *mut environ, dst: *mut envi
                     environ_set!(
                         dst,
                         transmute_ptr((*envent).name),
-                        0,
+                        environ_flags::empty(),
                         "{}",
                         _s(transmute_ptr((*envent).value)),
                     );
@@ -198,7 +198,7 @@ pub unsafe fn environ_push(env: *mut environ) {
         for envent in rb_foreach(env).map(NonNull::as_ptr) {
             if (*envent).value.is_some()
                 && *(*envent).name.unwrap().as_ptr() != b'\0'
-                && !(*envent).flags & ENVIRON_HIDDEN != 0
+                && !(*envent).flags.intersects(ENVIRON_HIDDEN)
             {
                 libc::setenv(
                     transmute_ptr((*envent).name),
@@ -245,9 +245,21 @@ pub unsafe fn environ_for_session(s: *mut session, no_term: c_int) -> *mut envir
 
         if no_term == 0 {
             let value = options_get_string_(GLOBAL_OPTIONS, "default-terminal");
-            environ_set!(env, c!("TERM"), 0, "{}", _s(value));
-            environ_set!(env, c!("TERM_PROGRAM"), 0, "{}", "tmux");
-            environ_set!(env, c!("TERM_PROGRAM_VERSION"), 0, "{}", getversion());
+            environ_set!(env, c!("TERM"), environ_flags::empty(), "{}", _s(value));
+            environ_set!(
+                env,
+                c!("TERM_PROGRAM"),
+                environ_flags::empty(),
+                "{}",
+                "tmux"
+            );
+            environ_set!(
+                env,
+                c!("TERM_PROGRAM_VERSION"),
+                environ_flags::empty(),
+                "{}",
+                getversion()
+            );
         }
 
         #[cfg(feature = "systemd")]
@@ -262,7 +274,7 @@ pub unsafe fn environ_for_session(s: *mut session, no_term: c_int) -> *mut envir
         environ_set!(
             env,
             c!("TMUX"),
-            0,
+            environ_flags::empty(),
             "{},{},{}",
             _s(SOCKET_PATH),
             std::process::id(),

@@ -101,7 +101,7 @@ unsafe fn cmd_set_environment_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd
                 if args_has_(args, 'h') {
                     environ_set!(env, name, ENVIRON_HIDDEN, "{}", _s(value));
                 } else {
-                    environ_set!(env, name, 0, "{}", _s(value));
+                    environ_set!(env, name, environ_flags::empty(), "{}", _s(value));
                 }
             }
         }

@@ -3410,7 +3410,7 @@ pub unsafe fn window_copy_command(
         }
         let command = args_string(args, 0);
 
-        if !m.is_null() && (*m).valid != 0 && !MOUSE_WHEEL((*m).b) {
+        if !m.is_null() && (*m).valid && !MOUSE_WHEEL((*m).b) {
             window_copy_move_mouse(m);
         }
 

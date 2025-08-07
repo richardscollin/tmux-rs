@@ -1848,7 +1848,7 @@ pub unsafe fn server_client_key_callback(item: *mut cmdq_item, data: *mut c_void
                 session_update_activity(s, &raw mut (*c).activity_time);
 
                 // Check for mouse keys.
-                (*m).valid = 0;
+                (*m).valid = false;
                 if key == keyc::KEYC_MOUSE as u64 || key == keyc::KEYC_DOUBLECLICK as u64 {
                     if (*c).flags.intersects(client_flag::READONLY) {
                         break 'out;
@@ -1858,7 +1858,7 @@ pub unsafe fn server_client_key_callback(item: *mut cmdq_item, data: *mut c_void
                         break 'out;
                     }
 
-                    (*m).valid = 1;
+                    (*m).valid = true;
                     (*m).key = key;
 
                     // Mouse drag is in progress, so fire the callback (now that

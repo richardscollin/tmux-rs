@@ -850,7 +850,7 @@ pub unsafe fn cmd_find_from_mouse(
     unsafe {
         cmd_find_clear_state(fs, flags);
 
-        if (*m).valid == 0 {
+        if !(*m).valid {
             return -1;
         }
 

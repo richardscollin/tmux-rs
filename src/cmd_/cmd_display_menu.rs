@@ -112,7 +112,7 @@ unsafe fn cmd_display_menu_get_position(
 
         // Create format with mouse position if any.
         let ft = format_create_from_target(item);
-        if (*event).m.valid != 0 {
+        if (*event).m.valid {
             format_add!(ft, c!("popup_mouse_x"), "{}", (*event).m.x);
             format_add!(ft, c!("popup_mouse_y"), "{}", (*event).m.y);
         }
@@ -189,7 +189,7 @@ unsafe fn cmd_display_menu_get_position(
         }
 
         // Position of popup relative to mouse.
-        if (*event).m.valid != 0 {
+        if (*event).m.valid {
             n = (*event).m.x as c_long - w as c_long / 2;
             if n < 0 {
                 format_add!(ft, c!("popup_mouse_centre_x"), "0");
@@ -421,7 +421,7 @@ unsafe fn cmd_display_menu_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
         if args_has(args, 'O') {
             flags |= menu_flags::MENU_STAYOPEN;
         }
-        if !(*event).m.valid != 0 && !args_has(args, 'M') {
+        if !(*event).m.valid && !args_has(args, 'M') {
             flags |= menu_flags::MENU_NOMOUSE;
         }
         if menu_display(

@@ -51,7 +51,7 @@ pub struct yystype_elif {
 impl_tailq_entry!(cmd_parse_scope, entry, tailq_entry<cmd_parse_scope>);
 #[repr(C)]
 pub struct cmd_parse_scope {
-    pub flag: i32,
+    pub flag: bool,
     // #[entry]
     pub entry: tailq_entry<cmd_parse_scope>,
 }

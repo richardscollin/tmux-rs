@@ -3655,13 +3655,8 @@ pub unsafe fn format_choose(
 }
 
 /// Is this true?
-pub unsafe fn format_true(s: *const u8) -> c_int {
-    unsafe {
-        if !s.is_null() && *s != b'\0' && (*s != b'0' || *s.add(1) != b'\0') {
-            return 1;
-        }
-        0
-    }
+pub unsafe fn format_true(s: *const u8) -> bool {
+    unsafe { !s.is_null() && *s != b'\0' && (*s != b'0' || *s.add(1) != b'\0') }
 }
 
 /// Check if modifier end.
@@ -4582,13 +4577,13 @@ pub unsafe fn format_replace(
                     );
 
                     if streq_((*cmp).modifier.as_ptr(), "||") {
-                        if format_true(left) != 0 || format_true(right) != 0 {
+                        if format_true(left) || format_true(right) {
                             value = xstrdup(c!("1")).as_ptr();
                         } else {
                             value = xstrdup(c!("0")).as_ptr();
                         }
                     } else if streq_((*cmp).modifier.as_ptr(), "&&") {
-                        if format_true(left) != 0 && format_true(right) != 0 {
+                        if format_true(left) && format_true(right) {
                             value = xstrdup(c!("1")).as_ptr();
                         } else {
                             value = xstrdup(c!("0")).as_ptr();
@@ -4683,7 +4678,7 @@ pub unsafe fn format_replace(
                         free_(found);
                         break 'fail;
                     }
-                    if format_true(found) != 0 {
+                    if format_true(found) {
                         format_log1!(es, __func__, "condition '{}' is true", _s(condition));
                         value = format_expand1(es, left);
                     } else {

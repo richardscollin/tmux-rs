@@ -101,9 +101,9 @@ unsafe fn cmd_list_windows_session(
                 flag = format_true(expanded);
                 free_(expanded);
             } else {
-                flag = 1;
+                flag = true;
             }
-            if flag != 0 {
+            if flag {
                 let line = format_expand(ft, template);
                 cmdq_print!(item, "{}", _s(line));
                 free_(line);

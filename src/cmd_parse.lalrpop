@@ -40,7 +40,7 @@ pub Statement: &'static mut cmd_parse_commands = {
       value
     },
     <arg1:Condition> => unsafe {
-      if (*ps.as_ptr()).scope.as_ref().is_none_or(|scope| scope.flag != 0) {
+      if (*ps.as_ptr()).scope.as_ref().is_none_or(|scope| scope.flag) {
         arg1
       } else {
         let value = cmd_parse_new_commands();
@@ -49,7 +49,7 @@ pub Statement: &'static mut cmd_parse_commands = {
       }
     },
     <arg1:Commands> => unsafe {
-      if (*ps.as_ptr()).scope.as_ref().is_none_or(|scope| scope.flag != 0) {
+      if (*ps.as_ptr()).scope.as_ref().is_none_or(|scope| scope.flag) {
         arg1
       } else {
         let value = cmd_parse_new_commands();
@@ -92,7 +92,7 @@ pub OptionalAssignment: () = { Assignment? };
 pub Assignment: () = {
     <arg1:equals> => unsafe {
       let flags = &(*ps.as_ptr()).input.as_ref().unwrap().flags;
-      if !flags.intersects(cmd_parse_input_flags::CMD_PARSE_PARSEONLY) && (*ps.as_ptr()).scope.as_ref().is_none_or(|scope| scope.flag != 0) {
+      if !flags.intersects(cmd_parse_input_flags::CMD_PARSE_PARSEONLY) && (*ps.as_ptr()).scope.as_ref().is_none_or(|scope| scope.flag) {
         environ_put(GLOBAL_ENVIRON, transmute_ptr(arg1), environ_flags::empty());
       }
       free_(transmute_ptr(arg1));
@@ -102,14 +102,14 @@ pub Assignment: () = {
 pub HiddenAssignment: () = {
     "%hidden" <arg2:equals> => unsafe {
       let flags = &(*ps.as_ptr()).input.as_ref().unwrap().flags;
-      if !flags.intersects(cmd_parse_input_flags::CMD_PARSE_PARSEONLY) && (*ps.as_ptr()).scope.as_ref().is_none_or(|scope|scope .flag != 0) {
+      if !flags.intersects(cmd_parse_input_flags::CMD_PARSE_PARSEONLY) && (*ps.as_ptr()).scope.as_ref().is_none_or(|scope|scope .flag) {
         environ_put(GLOBAL_ENVIRON, transmute_ptr(arg2), ENVIRON_HIDDEN);
       }
       free_(transmute_ptr(arg2));
     }
 };
 
-pub IfOpen: i32 = {
+pub IfOpen: bool = {
     "%if" <arg2:Expanded> => unsafe {
       let scope = xcalloc1::<cmd_parse_scope>();
       let value = format_true(arg2.as_ptr());
@@ -135,7 +135,7 @@ pub IfElse: () = {
     }
 };
 
-pub IfElif: i32 = {
+pub IfElif: bool = {
     "%elif" <arg2:Expanded> => unsafe {
       let scope = xcalloc1::<cmd_parse_scope>();
       let value = format_true(arg2.as_ptr());
@@ -166,7 +166,7 @@ pub IfClose: () = {
 
 pub Condition: &'static mut cmd_parse_commands = {
     <arg1:IfOpen> "\n" <arg3:Statements> <arg4:IfClose> => unsafe {
-      if arg1 != 0 {
+      if arg1 {
         arg3
       } else {
         cmd_parse_free_commands(arg3);
@@ -174,7 +174,7 @@ pub Condition: &'static mut cmd_parse_commands = {
       }
     },
     <arg1:IfOpen> "\n" <arg3:Statements> <arg4:IfElse> "\n" <arg6:Statements> <arg7:IfClose> => unsafe {
-      if arg1 != 0 {
+      if arg1 {
         cmd_parse_free_commands(arg6);
         arg3
       } else {
@@ -183,7 +183,7 @@ pub Condition: &'static mut cmd_parse_commands = {
       }
     },
     <arg1:IfOpen> "\n" <arg3:Statements> <arg4:Elif> IfClose => unsafe {
-      if arg1 != 0 {
+      if arg1 {
         cmd_parse_free_commands(arg4.commands);
         arg3
       } else if arg4.flag != 0 {
@@ -197,7 +197,7 @@ pub Condition: &'static mut cmd_parse_commands = {
       }
     },
     <arg1:IfOpen> "\n" <arg3:Statements> <arg4:Elif> <arg5:IfElse> "\n" <arg7:Statements> <arg8:IfClose> => unsafe {
-      if arg1 != 0 {
+      if arg1 {
         cmd_parse_free_commands(arg4.commands);
         cmd_parse_free_commands(arg7);
         arg3
@@ -217,7 +217,7 @@ pub Condition: &'static mut cmd_parse_commands = {
 
 pub Elif: yystype_elif = {
     <arg1:IfElif> "\n" <arg3:Statements> => unsafe {
-      if arg1 != 0 {
+      if arg1 {
         yystype_elif {
             flag : 1,
             commands : arg3,
@@ -232,7 +232,7 @@ pub Elif: yystype_elif = {
       }
     },
     <arg1:IfElif> "\n" <arg3:Statements> <arg4:Elif> => unsafe {
-      if arg1 != 0 {
+      if arg1 {
         let tmp = yystype_elif {
             flag : 1,
             commands : arg3,
@@ -262,7 +262,7 @@ pub Commands: &'static mut cmd_parse_commands = {
     <arg1:Command> => unsafe {
       let value = cmd_parse_new_commands();
 
-      if !tailq_empty(&raw mut arg1.arguments) && (*ps.as_ptr()).scope.as_ref().is_none_or(|scope| scope.flag != 0) {
+      if !tailq_empty(&raw mut arg1.arguments) && (*ps.as_ptr()).scope.as_ref().is_none_or(|scope| scope.flag) {
         tailq_insert_tail(value, arg1);
       } else {
         cmd_parse_free_command(arg1);
@@ -284,7 +284,7 @@ pub Commands: &'static mut cmd_parse_commands = {
 
     <arg1:Commands> <_arg2:";"> <arg3:Command> => unsafe {
       let value;
-      if !tailq_empty(&raw mut arg3.arguments) && (*ps.as_ptr()).scope.as_ref().is_none_or(|scope| scope.flag != 0) {
+      if !tailq_empty(&raw mut arg3.arguments) && (*ps.as_ptr()).scope.as_ref().is_none_or(|scope| scope.flag) {
         value = arg1;
         tailq_insert_tail(value, arg3);
       } else {
@@ -334,7 +334,7 @@ pub Command: &'static mut cmd_parse_command = {
 
 pub Condition1: &'static mut cmd_parse_commands = {
     <arg1:IfOpen> <arg2:Commands> <_arg3:IfClose> => unsafe {
-      if arg1 != 0 {
+      if arg1 {
         arg2
       } else {
         let value = cmd_parse_new_commands();
@@ -343,7 +343,7 @@ pub Condition1: &'static mut cmd_parse_commands = {
       }
     },
     <arg1:IfOpen> <arg2:Commands> <_arg3:IfElse> <arg4:Commands> <_arg5:IfClose> => unsafe {
-      if arg1 != 0 {
+      if arg1 {
         cmd_parse_free_commands(arg4);
         arg2
       } else {
@@ -352,7 +352,7 @@ pub Condition1: &'static mut cmd_parse_commands = {
       }
     },
     <arg1:IfOpen> <arg2:Commands> <arg3:Elif1> <arg4:IfClose> => unsafe {
-      if arg1 != 0 {
+      if arg1 {
         cmd_parse_free_commands(arg3.commands);
         arg2
       } else if arg3.flag != 0 {
@@ -366,7 +366,7 @@ pub Condition1: &'static mut cmd_parse_commands = {
       }
     },
     <arg1:IfOpen> <arg2:Commands> <arg3:Elif1> <arg4:IfElse> <arg5:Commands> <arg6:IfClose> => unsafe {
-      if arg1 != 0 {
+      if arg1 {
         let value = arg2;
         cmd_parse_free_commands(arg3.commands);
         cmd_parse_free_commands(arg5);
@@ -387,7 +387,7 @@ pub Condition1: &'static mut cmd_parse_commands = {
 
 pub Elif1: yystype_elif  = {
     <arg1:IfElif> <arg2:Commands> => unsafe {
-      if arg1 != 0 {
+      if arg1 {
         yystype_elif {
             flag : 1,
             commands : arg2,
@@ -402,7 +402,7 @@ pub Elif1: yystype_elif  = {
       }
     },
     <arg1:IfElif> <arg2:Commands> <arg3:Elif1> => unsafe {
-      if arg1 != 0 {
+      if arg1 {
         let tmp = yystype_elif {
           flag : 1,
           commands : arg2,

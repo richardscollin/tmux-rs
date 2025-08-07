@@ -199,7 +199,7 @@ pub unsafe fn window_client_build(
 
             if !filter.is_null() {
                 let cp = format_single(null_mut(), filter, c, null_mut(), null_mut(), null_mut());
-                if format_true(cp) == 0 {
+                if !format_true(cp) {
                     free_(cp);
                     continue;
                 }

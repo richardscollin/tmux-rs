@@ -212,7 +212,7 @@ pub unsafe fn window_buffer_build(
 
             if !filter.is_null() {
                 let cp = format_expand(ft, filter);
-                if format_true(cp) == 0 {
+                if !format_true(cp) {
                     free_(cp);
                     format_free(ft);
                     continue;

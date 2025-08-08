@@ -123,7 +123,7 @@ pub unsafe fn style_parse(sy: *mut style, base: *const grid_cell, mut in_: *cons
                     found = strchr(tmp.add(6), b'|' as i32);
                     if !found.is_null() {
                         *found = b'\0' as _;
-                        *found += 1;
+                        found = found.add(1);
                         if *found == b'\0' as _ {
                             break 'error;
                         }

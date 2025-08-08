@@ -173,7 +173,7 @@ pub unsafe fn parse_window_name(in_: *const u8) -> *mut u8 {
                 && !(*ptr as u8).is_ascii_punctuation()
             {
                 *ptr = b'\0';
-                *ptr -= 1;
+                ptr = ptr.wrapping_sub(1);
             }
         }
 

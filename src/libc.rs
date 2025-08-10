@@ -92,7 +92,7 @@ pub unsafe fn strcspn(cs: *const u8, ct: *const u8) -> usize {
 }
 
 pub unsafe fn strrchr(cs: *const u8, c: c_int) -> *mut u8 {
-    unsafe { ::libc::strchr(cs.cast(), c).cast() }
+    unsafe { ::libc::strrchr(cs.cast(), c).cast() }
 }
 
 pub unsafe fn strchr(cs: *const u8, c: i32) -> *mut u8 {

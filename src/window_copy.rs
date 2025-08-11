@@ -2257,7 +2257,7 @@ pub unsafe fn window_copy_cmd_select_word(
             nexty += 1;
         }
         if px >= window_copy_find_length(wme, py)
-            || window_copy_in_set(wme, nextx, nexty, WHITESPACE) == 0
+            || !window_copy_in_set(wme, nextx, nexty, WHITESPACE)
         {
             window_copy_cursor_next_word_end(wme, (*data).separators, 1);
         } else {
@@ -5103,7 +5103,7 @@ pub unsafe fn window_copy_synchronize_cursor_end(
                     } else {
                         // Left to right selection.
                         if xx >= window_copy_find_length(wme, yy)
-                            || window_copy_in_set(wme, xx + 1, yy, WHITESPACE) == 0
+                            || !window_copy_in_set(wme, xx + 1, yy, WHITESPACE)
                         {
                             window_copy_cursor_next_word_end_pos(
                                 wme,
@@ -5674,14 +5674,14 @@ pub unsafe fn window_copy_in_set(
     px: u32,
     py: u32,
     set: *const u8,
-) -> i32 {
+) -> bool {
     unsafe {
         let data: *mut window_copy_mode_data = (*wme).data.cast();
         let mut gc: grid_cell = zeroed();
 
         grid_get_cell((*(*data).backing).grid, px, py, &raw mut gc);
         if gc.flags.intersects(grid_flag::PADDING) {
-            return 0;
+            return false;
         }
         utf8_cstrhas(set, &raw mut gc.data)
     }
@@ -6153,7 +6153,7 @@ pub unsafe fn window_copy_cursor_next_word_end_pos(
         grid_reader_start(&raw mut gr, (*back_s).grid, px, py);
         if modekey::try_from(options_get_number_(oo, "mode-keys") as i32) == Ok(modekey::MODEKEY_VI)
         {
-            if grid_reader_in_set(&raw mut gr, WHITESPACE) == 0 {
+            if !grid_reader_in_set(&raw mut gr, WHITESPACE) {
                 grid_reader_cursor_right(&raw mut gr, 0, 0);
             }
             grid_reader_cursor_next_word_end(&raw mut gr, separators);
@@ -6188,7 +6188,7 @@ pub unsafe fn window_copy_cursor_next_word_end(
         grid_reader_start(&raw mut gr, (*back_s).grid, px, py);
         if modekey::try_from(options_get_number_(oo, "mode-keys") as i32) == Ok(modekey::MODEKEY_VI)
         {
-            if grid_reader_in_set(&raw mut gr, WHITESPACE) == 0 {
+            if !grid_reader_in_set(&raw mut gr, WHITESPACE) {
                 grid_reader_cursor_right(&raw mut gr, 0, 0);
             }
             grid_reader_cursor_next_word_end(&raw mut gr, separators);

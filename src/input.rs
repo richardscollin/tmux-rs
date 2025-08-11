@@ -83,7 +83,7 @@ enum input_end_type {
     INPUT_END_BEL,
 }
 
-// Input parser context.
+/// Input parser context.
 #[repr(C)]
 pub struct input_ctx {
     wp: *mut window_pane,
@@ -938,21 +938,22 @@ pub unsafe fn input_init(
     palette: *mut colour_palette,
 ) -> *mut input_ctx {
     unsafe {
-        let ictx = xcalloc1::<input_ctx>();
-        ictx.wp = wp;
-        ictx.event = bev;
-        ictx.palette = palette;
+        let ictx = Box::into_raw(Box::new(input_ctx {
+            wp,
+            event: bev,
+            palette,
+            input_space: INPUT_BUF_START,
+            input_buf: xmalloc(INPUT_BUF_START).as_ptr().cast(),
+            since_ground: evbuffer_new(),
+            ..zeroed()
+        }));
 
-        ictx.input_space = INPUT_BUF_START;
-        ictx.input_buf = xmalloc(INPUT_BUF_START).as_ptr().cast();
-
-        ictx.since_ground = evbuffer_new();
-        if ictx.since_ground.is_null() {
+        if (*ictx).since_ground.is_null() {
             fatalx("out of memory");
         }
 
         evtimer_set(
-            &raw mut ictx.timer,
+            &raw mut (*ictx).timer,
             input_timer_callback,
             NonNull::new(ictx).unwrap(),
         );

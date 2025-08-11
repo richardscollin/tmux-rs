@@ -47,10 +47,6 @@ pub unsafe fn memcpy__<T>(dest: *mut T, src: *const T) -> *mut T {
     unsafe { ::libc::memcpy(dest as *mut c_void, src as *const c_void, size_of::<T>()).cast() }
 }
 
-pub unsafe fn realpath(pathname: *const u8, resolved: *mut u8) -> *mut u8 {
-    unsafe { ::libc::realpath(pathname.cast(), resolved.cast()).cast() }
-}
-
 pub unsafe fn setlocale(category: i32, locale: *const u8) -> *mut u8 {
     unsafe { ::libc::setlocale(category, locale.cast()).cast() }
 }

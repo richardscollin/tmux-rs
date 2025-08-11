@@ -11,6 +11,8 @@
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+use std::path::Path;
+
 use crate::compat::{closefrom, fdforkpty::fdforkpty};
 use crate::libc::{
     AF_UNIX, O_RDWR, PF_UNSPEC, SHUT_WR, SIG_BLOCK, SIG_SETMASK, SIGCONT, SIGTERM, SIGTTIN,
@@ -167,12 +169,11 @@ pub unsafe fn job_run(
                     proc_clear_signals(SERVER_PROC, 1);
                     sigprocmask(SIG_SETMASK, oldset.as_mut_ptr(), null_mut());
 
-                    if cwd.is_null() || chdir(cwd) != 0 {
-                        if find_home().is_none_or(|home| chdir(home.as_ptr().cast()) != 0)
-                            && chdir(c!("/")) != 0
-                        {
-                            fatal("chdir failed");
-                        }
+                    if (cwd.is_null() || chdir(cwd) != 0)
+                        && find_home().is_none_or(|home| chdir(home.as_ptr().cast()) != 0)
+                        && std::env::set_current_dir(Path::new("/")).is_err()
+                    {
+                        fatal("chdir failed");
                     }
 
                     environ_push(env);

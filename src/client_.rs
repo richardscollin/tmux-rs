@@ -319,15 +319,18 @@ pub unsafe extern "C-unwind" fn client_main(
         }
         CLIENT_PEER = proc_add_peer(CLIENT_PROC, fd, Some(client_dispatch), null_mut());
 
-        let cwd = find_cwd();
-        let cwd = cwd.as_deref().or_else(||find_home()).unwrap_or(c"/");
+        let cwd =
+            find_cwd().map(|e| CString::new(e.into_os_string().into_string().unwrap()).unwrap());
+        let cwd = cwd.as_deref().or_else(|| find_home()).unwrap_or(c"/");
 
         ttynam = ttyname(STDIN_FILENO);
         if ttynam.is_null() {
             ttynam = c!("");
         }
 
-        let termname = std::env::var("TERM").map(|s|CString::new(s).unwrap()).unwrap_or_default();
+        let termname = std::env::var("TERM")
+            .map(|s| CString::new(s).unwrap())
+            .unwrap_or_default();
 
         /*
             // TODO no pledge

@@ -11,6 +11,8 @@
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+use std::path::Path;
+
 use crate::compat::{closefrom, fdforkpty::fdforkpty};
 use crate::libc::{
     _exit, SIG_BLOCK, SIG_SETMASK, STDERR_FILENO, STDIN_FILENO, TCSANOW, VERASE, chdir, close,
@@ -477,7 +479,7 @@ pub unsafe fn spawn_pane(sc: *mut spawn_context, cause: *mut *mut u8) -> *mut wi
                     "{}",
                     tmp.to_str().unwrap()
                 );
-            } else if chdir(c!("/")) == 0 {
+            } else if std::env::set_current_dir(Path::new("/")).is_ok() {
                 environ_set!(child, c!("PWD"), environ_flags::empty(), "/");
             } else {
                 fatal("chdir failed");

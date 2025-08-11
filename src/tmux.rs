@@ -1,6 +1,3 @@
-use std::borrow::Cow;
-use std::sync::OnceLock;
-
 // Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
 //
 // Permission to use, copy, modify, and distribute this software for any
@@ -14,13 +11,17 @@ use std::sync::OnceLock;
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+use std::borrow::Cow;
+use std::path::PathBuf;
+use std::sync::OnceLock;
+
 use crate::compat::getopt::{OPTARG, OPTIND, getopt};
 use crate::compat::{S_ISDIR, fdforkpty::getptmfd, getprogname::getprogname};
 use crate::libc::{
     CLOCK_MONOTONIC, CLOCK_REALTIME, CODESET, EEXIST, F_GETFL, F_SETFL, LC_CTYPE, LC_TIME,
-    O_NONBLOCK, PATH_MAX, S_IRWXO, S_IRWXU, X_OK, access, clock_gettime, fcntl, getpwuid, getuid,
-    lstat, mkdir, nl_langinfo, realpath, setlocale, stat, strcasecmp, strchr, strcspn, strerror,
-    strncmp, strrchr, timespec,
+    O_NONBLOCK, S_IRWXO, S_IRWXU, X_OK, access, clock_gettime, fcntl, getpwuid, getuid, lstat,
+    mkdir, nl_langinfo, setlocale, stat, strcasecmp, strchr, strcspn, strerror, strncmp, strrchr,
+    timespec,
 };
 use crate::*;
 
@@ -125,11 +126,8 @@ unsafe fn areshell(shell: &CStr) -> bool {
 unsafe fn expand_path(path: *const u8, home: Option<&CStr>) -> Option<CString> {
     unsafe {
         if strncmp(path, c!("~/"), 2) == 0 {
-            let Some(home) = home else {
-                return None;
-            };
             return Some(
-                CString::new(format!("{}{}", home.to_str().unwrap(), _s(path.add(1)))).unwrap(),
+                CString::new(format!("{}{}", home?.to_str().unwrap(), _s(path.add(1)))).unwrap(),
             );
         }
 
@@ -162,7 +160,6 @@ unsafe fn expand_path(path: *const u8, home: Option<&CStr>) -> Option<CString> {
 unsafe fn expand_paths(s: &str, paths: &mut Vec<CString>, ignore_errors: i32) {
     unsafe {
         let home = find_home();
-        let mut resolved: [u8; PATH_MAX as usize] = zeroed(); // TODO use unint version
         let mut path: CString;
 
         let func = "expand_paths";
@@ -177,28 +174,31 @@ unsafe fn expand_paths(s: &str, paths: &mut Vec<CString>, ignore_errors: i32) {
             !next.is_null()
         } {
             let Some(expanded) = expand_path(next, home) else {
-                log_debug!("{}: invalid path: {}", func, _s(next));
+                log_debug!("{func}: invalid path: {}", _s(next));
                 continue;
             };
-            if realpath(expanded.as_ptr().cast(), resolved.as_mut_ptr()).is_null() {
-                log_debug!(
-                    "{}: realpath(\"{}\") failed: {}",
-                    func,
-                    expanded.to_string_lossy(),
-                    _s(strerror(errno!())),
-                );
-                if ignore_errors != 0 {
+
+            match PathBuf::from(expanded.to_str().unwrap()).canonicalize() {
+                Ok(resolved) => {
+                    path = CString::new(resolved.into_os_string().into_string().unwrap()).unwrap();
                     // free_(expanded);
-                    continue;
                 }
-                path = expanded;
-            } else {
-                path = CString::new(cstr_to_str(resolved.as_ptr())).unwrap();
-                // free_(expanded);
+                Err(_) => {
+                    log_debug!(
+                        "{func}: realpath(\"{}\") failed: {}",
+                        expanded.to_string_lossy(),
+                        _s(strerror(errno!())),
+                    );
+                    if ignore_errors != 0 {
+                        // free_(expanded);
+                        continue;
+                    }
+                    path = expanded;
+                }
             }
 
             if paths.contains(&path) {
-                log_debug!("{}: duplicate path: {}", func, path.to_string_lossy());
+                log_debug!("{func}: duplicate path: {}", path.to_string_lossy());
                 // free_(path);
                 continue;
             }
@@ -311,33 +311,30 @@ pub unsafe fn get_timer() -> u64 {
     }
 }
 
-pub unsafe fn find_cwd() -> Option<CString> {
-    unsafe {
-        let mut resolved1: [u8; PATH_MAX as usize] = [0; PATH_MAX as usize];
-        let mut resolved2: [u8; PATH_MAX as usize] = [0; PATH_MAX as usize];
+pub fn find_cwd() -> Option<PathBuf> {
+    let cwd = std::env::current_dir().ok()?;
 
-        let cwd = std::env::current_dir().ok()?;
-        let cwd = CString::new(cwd.into_os_string().into_string().unwrap()).unwrap();
+    let pwd = match std::env::var("PWD") {
+        Ok(val) if !val.is_empty() => PathBuf::from(val),
+        _ => return Some(cwd),
+    };
 
-        let pwd = match std::env::var("PWD") {
-            Ok(val) if !val.is_empty() => CString::new(val).unwrap(),
-            _ => return Some(cwd),
-        };
+    // We want to use PWD so that symbolic links are maintained,
+    // but only if it matches the actual working directory.
 
-        // We want to use PWD so that symbolic links are maintained,
-        // but only if it matches the actual working directory.
+    let Ok(resolved1) = pwd.canonicalize() else {
+        return Some(cwd);
+    };
 
-        if realpath(pwd.as_ptr().cast(), &raw mut resolved1 as _).is_null() {
-            return Some(cwd);
-        }
-        if realpath(cwd.as_ptr().cast(), &raw mut resolved2 as _).is_null() {
-            return Some(cwd);
-        }
-        if libc::strcmp(&raw mut resolved1 as _, &raw mut resolved2 as _) != 0 {
-            return Some(cwd);
-        }
-        Some(pwd)
+    let Ok(resolved2) = cwd.canonicalize() else {
+        return Some(cwd);
+    };
+
+    if resolved1 == resolved2 {
+        return Some(cwd);
     }
+
+    Some(pwd)
 }
 
 pub fn find_home() -> Option<&'static CStr> {
@@ -345,13 +342,8 @@ pub fn find_home() -> Option<&'static CStr> {
         static HOME: OnceLock<Option<CString>> = OnceLock::new();
         HOME.get_or_init(|| match std::env::var("HOME") {
             Ok(home) if !home.is_empty() => Some(CString::new(home).unwrap()),
-            _ => {
-                if let Some(pw) = NonNull::new(getpwuid(getuid())) {
-                    Some(CString::new(cstr_to_str((*pw.as_ptr()).pw_dir.cast())).unwrap())
-                } else {
-                    None
-                }
-            }
+            _ => NonNull::new(getpwuid(getuid()))
+                .map(|pw| CString::new(cstr_to_str((*pw.as_ptr()).pw_dir.cast())).unwrap()),
         })
         .as_deref()
     }
@@ -493,7 +485,6 @@ pub unsafe fn tmux_main(mut argc: i32, mut argv: *mut *mut u8, _env: *mut *mut u
         if std::env::var("TMUX").is_ok() {
             flags |= client_flag::UTF8;
         } else {
-
             let s = std::env::var("LC_ALL")
                 .or_else(|_| std::env::var("LC_CTYPE"))
                 .or_else(|_| std::env::var("LANG"))
@@ -533,15 +524,14 @@ pub unsafe fn tmux_main(mut argc: i32, mut argv: *mut *mut u8, _env: *mut *mut u
         );
 
         // Override keys to vi if VISUAL or EDITOR are set.
-        if let Ok(s) = std::env::var("VISUAL").or_else(|_| std::env::var("EDITOR"))
-        {
+        if let Ok(s) = std::env::var("VISUAL").or_else(|_| std::env::var("EDITOR")) {
             options_set_string!(GLOBAL_OPTIONS, c!("editor"), false, "{s}");
 
-let s = if let Some(slash_end) = s.rfind('/') {
-    &s[slash_end + 1..]
-} else {
-    &s
-};
+            let s = if let Some(slash_end) = s.rfind('/') {
+                &s[slash_end + 1..]
+            } else {
+                &s
+            };
 
             let keys = if s.contains("vi") {
                 modekey::MODEKEY_VI
@@ -555,14 +545,15 @@ let s = if let Some(slash_end) = s.rfind('/') {
         // If socket is specified on the command-line with -S or -L, it is
         // used. Otherwise, $TMUX is checked and if that fails "default" is
         // used.
-        if path.is_null() && label.is_null() {
-            if let Ok(s) = std::env::var("TMUX")
-            && s.as_bytes().len() != 0 && s.as_bytes()[0] != b','
-            {
-                let tmp: *mut u8 = xstrdup__(&s);
-                *tmp.add(strcspn(tmp, c!(","))) = b'\0';
-                path = tmp;
-            }
+        if path.is_null()
+            && label.is_null()
+            && let Ok(s) = std::env::var("TMUX")
+            && !s.is_empty()
+            && s.as_bytes()[0] != b','
+        {
+            let tmp: *mut u8 = xstrdup__(&s);
+            *tmp.add(strcspn(tmp, c!(","))) = b'\0';
+            path = tmp;
         }
         if path.is_null() {
             path = make_label(label.cast(), &raw mut cause);

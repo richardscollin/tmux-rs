@@ -306,7 +306,6 @@ pub unsafe fn menu_key_cb(c: *mut client, data: *mut c_void, mut event: *mut key
         let count = (*menu).count;
         let mut old = (*md).choice;
 
-        let mut name: *const u8 = null();
         let mut error = null_mut();
 
         'chosen: {
@@ -350,7 +349,7 @@ pub unsafe fn menu_key_cb(c: *mut client, data: *mut c_void, mut event: *mut key
                 return 0;
             }
             for i in 0..count {
-                name = (*(*menu).items.add(i as usize)).name.as_ptr();
+                let name = (*(*menu).items.add(i as usize)).name.as_ptr();
                 if name.is_null() || *name == b'-' {
                     continue;
                 }
@@ -395,7 +394,7 @@ pub unsafe fn menu_key_cb(c: *mut client, data: *mut c_void, mut event: *mut key
                         } else {
                             (*md).choice -= 1;
                         }
-                        name = (*(*menu).items.add((*md).choice as usize)).name.as_ptr();
+                        let name = (*(*menu).items.add((*md).choice as usize)).name.as_ptr();
                         if !((name.is_null() || *name == b'-') && (*md).choice != old) {
                             break;
                         }
@@ -427,7 +426,7 @@ pub unsafe fn menu_key_cb(c: *mut client, data: *mut c_void, mut event: *mut key
                         } else {
                             (*md).choice += 1;
                         }
-                        name = (*(*menu).items.add((*md).choice as usize)).name.as_ptr();
+                        let name = (*(*menu).items.add((*md).choice as usize)).name.as_ptr();
                         if !((name.is_null() || *name == b'-') && (*md).choice != old) {
                             break;
                         }
@@ -442,7 +441,7 @@ pub unsafe fn menu_key_cb(c: *mut client, data: *mut c_void, mut event: *mut key
                         let mut i = 5;
                         while i > 0 {
                             (*md).choice -= 1;
-                            name = (*(*menu).items.add((*md).choice as usize)).name.as_ptr();
+                            let name = (*(*menu).items.add((*md).choice as usize)).name.as_ptr();
                             if (*md).choice != 0 && (!name.is_null() && *name != b'-') {
                                 i -= 1;
                             } else if (*md).choice == 0 {
@@ -453,18 +452,22 @@ pub unsafe fn menu_key_cb(c: *mut client, data: *mut c_void, mut event: *mut key
                     (*c).flags |= client_flag::REDRAWOVERLAY;
                 }
                 NPAGE => {
+                    let mut name;
                     if (*md).choice > count as i32 - 6 {
                         (*md).choice = count as i32 - 1;
                         name = (*(*menu).items.add((*md).choice as usize)).name.as_ptr();
                     } else {
                         let mut i = 5;
-                        while i > 0 {
+                        loop {
                             (*md).choice += 1;
                             name = (*(*menu).items.add((*md).choice as usize)).name.as_ptr();
                             if (*md).choice != count as i32 - 1
                                 && (!name.is_null() && *name != b'-')
                             {
                                 i -= 1;
+                                if i <= 0 {
+                                    break;
+                                }
                             } else if (*md).choice == count as i32 - 1 {
                                 break;
                             }
@@ -478,7 +481,7 @@ pub unsafe fn menu_key_cb(c: *mut client, data: *mut c_void, mut event: *mut key
                 }
                 G | HOME => {
                     (*md).choice = 0;
-                    name = (*(*menu).items.add((*md).choice as usize)).name.as_ptr();
+                    let mut name = (*(*menu).items.add((*md).choice as usize)).name.as_ptr();
                     while name.is_null() || *name == b'-' {
                         (*md).choice += 1;
                         name = (*(*menu).items.add((*md).choice as usize)).name.as_ptr();
@@ -487,7 +490,7 @@ pub unsafe fn menu_key_cb(c: *mut client, data: *mut c_void, mut event: *mut key
                 }
                 G_UPPER | END => {
                     (*md).choice = count as i32 - 1;
-                    name = (*(*menu).items.add((*md).choice as usize)).name.as_ptr();
+                    let mut name = (*(*menu).items.add((*md).choice as usize)).name.as_ptr();
                     while name.is_null() || *name == b'-' {
                         (*md).choice -= 1;
                         name = (*(*menu).items.add((*md).choice as usize)).name.as_ptr();

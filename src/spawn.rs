@@ -239,7 +239,6 @@ pub unsafe fn spawn_pane(sc: *mut spawn_context, cause: *mut *mut u8) -> *mut wi
         let mut cwd: *mut u8;
         let new_cwd: *mut u8;
         let mut cmd: *const u8;
-        let mut tmp: *const u8;
         let argc;
         let mut idx: u32 = 0;
         let mut now: libc::termios = zeroed();
@@ -374,8 +373,8 @@ pub unsafe fn spawn_pane(sc: *mut spawn_context, cause: *mut *mut u8) -> *mut wi
 
             // Then the shell. If respawning, use the old one.
             if !(*sc).flags.intersects(SPAWN_RESPAWN) {
-                tmp = options_get_string_((*s).options, "default-shell");
-                if !checkshell(tmp) {
+                let mut tmp = options_get_string_((*s).options, "default-shell");
+                if !checkshell_(tmp) {
                     tmp = _PATH_BSHELL;
                 }
                 free_((*new_wp).shell);
@@ -468,12 +467,16 @@ pub unsafe fn spawn_pane(sc: *mut spawn_context, cause: *mut *mut u8) -> *mut wi
                     "{}",
                     _s((*new_wp).cwd)
                 );
-            } else if ({
-                tmp = find_home();
-                !tmp.is_null()
-            }) && chdir(tmp) == 0
+            } else if let Some(tmp) = find_home()
+                && chdir(tmp.as_ptr().cast()) == 0
             {
-                environ_set!(child, c!("PWD"), environ_flags::empty(), "{}", _s(tmp));
+                environ_set!(
+                    child,
+                    c!("PWD"),
+                    environ_flags::empty(),
+                    "{}",
+                    tmp.to_str().unwrap()
+                );
             } else if chdir(c!("/")) == 0 {
                 environ_set!(child, c!("PWD"), environ_flags::empty(), "/");
             } else {
@@ -521,7 +524,7 @@ pub unsafe fn spawn_pane(sc: *mut spawn_context, cause: *mut *mut u8) -> *mut wi
             // shell.
             cp = strrchr((*new_wp).shell, b'/' as i32);
             if (*new_wp).argc == 1 {
-                tmp = *(*new_wp).argv;
+                let tmp = *(*new_wp).argv;
                 argv0 = if !cp.is_null() && *cp.add(1) != b'\0' {
                     format_nul!("{}", _s(cp.add(1)))
                 } else {

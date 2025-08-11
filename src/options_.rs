@@ -1165,7 +1165,7 @@ unsafe fn options_from_string_check(
         if oe.is_null() {
             return Ok(());
         }
-        if streq_((*oe).name, "default-shell") && !checkshell(value) {
+        if streq_((*oe).name, "default-shell") && !checkshell_(value) {
             return Err(CString::new(format!("not a suitable shell: {}", _s(value))).unwrap());
         }
         if !(*oe).pattern.is_null() && fnmatch((*oe).pattern, value, 0) != 0 {

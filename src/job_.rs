@@ -15,8 +15,8 @@ use crate::compat::{closefrom, fdforkpty::fdforkpty};
 use crate::libc::{
     AF_UNIX, O_RDWR, PF_UNSPEC, SHUT_WR, SIG_BLOCK, SIG_SETMASK, SIGCONT, SIGTERM, SIGTTIN,
     SIGTTOU, SOCK_STREAM, STDERR_FILENO, STDIN_FILENO, STDOUT_FILENO, TIOCSWINSZ, WIFSTOPPED,
-    WSTOPSIG, chdir, close, dup2, execl, execvp, fork, ioctl, kill, killpg, memset, open, setenv,
-    shutdown, sigfillset, sigprocmask, sigset_t, socketpair, winsize,
+    WSTOPSIG, chdir, close, dup2, execl, execvp, fork, ioctl, kill, killpg, memset, open, shutdown,
+    sigfillset, sigprocmask, sigset_t, socketpair, winsize,
 };
 use crate::*;
 
@@ -85,7 +85,6 @@ pub unsafe fn job_run(
         let nullfd: i32;
         let mut out: [i32; 2] = [0; 2];
         let mut master: i32 = 0;
-        let home: *mut u8;
         let mut shell: *const u8;
         let mut set = MaybeUninit::<sigset_t>::uninit();
         let mut oldset = MaybeUninit::<sigset_t>::uninit();
@@ -111,7 +110,7 @@ pub unsafe fn job_run(
                     oo = GLOBAL_S_OPTIONS;
                 }
                 shell = options_get_string_(oo, "default-shell");
-                if !checkshell(shell) {
+                if !checkshell_(shell) {
                     shell = _PATH_BSHELL;
                 }
             }
@@ -168,14 +167,12 @@ pub unsafe fn job_run(
                     proc_clear_signals(SERVER_PROC, 1);
                     sigprocmask(SIG_SETMASK, oldset.as_mut_ptr(), null_mut());
 
-                    if (cwd.is_null() || chdir(cwd) != 0)
-                        && (({
-                            home = find_home();
-                            home.is_null()
-                        }) || chdir(home) != 0)
-                        && chdir(c!("/")) != 0
-                    {
-                        fatal("chdir failed");
+                    if cwd.is_null() || chdir(cwd) != 0 {
+                        if find_home().is_none_or(|home| chdir(home.as_ptr().cast()) != 0)
+                            && chdir(c!("/")) != 0
+                        {
+                            fatal("chdir failed");
+                        }
                     }
 
                     environ_push(env);
@@ -207,7 +204,7 @@ pub unsafe fn job_run(
                     closefrom(STDERR_FILENO + 1);
 
                     if !cmd.is_null() {
-                        setenv(c!("SHELL"), shell, 1);
+                        std::env::set_var("SHELL", cstr_to_str(shell));
                         execl(
                             shell.cast(),
                             argv0.cast(),

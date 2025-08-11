@@ -2580,7 +2580,7 @@ mod tmux;
 pub use crate::tmux::tmux_main;
 use crate::tmux::{
     GLOBAL_ENVIRON, GLOBAL_OPTIONS, GLOBAL_S_OPTIONS, GLOBAL_W_OPTIONS, PTM_FD, SHELL_COMMAND,
-    SOCKET_PATH, START_TIME, checkshell, find_cwd, find_home, get_timer, getversion, setblocking,
+    SOCKET_PATH, START_TIME, checkshell_, find_cwd, find_home, get_timer, getversion, setblocking,
     shell_argv0,
 };
 

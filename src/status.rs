@@ -53,9 +53,9 @@ unsafe fn status_prompt_find_history_file() -> Option<String> {
             return None;
         }
 
-        let home = NonNull::new(find_home())?;
+        let home = find_home()?;
 
-        let str = format_nul!("{}{}", _s(home.as_ptr()), _s(history_file.add(1)));
+        let str = format_nul!("{}{}", home.to_str().unwrap(), _s(history_file.add(1)));
         Some(
             std::ffi::CStr::from_ptr(str.cast())
                 .to_string_lossy()

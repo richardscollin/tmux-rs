@@ -20,9 +20,9 @@ use crate::libc::{
     IXANY, LOCK_EX, LOCK_NB, O_CREAT, O_WRONLY, ONLCR, OPOST, SA_RESTART, SIG_DFL, SIG_IGN,
     SIGCHLD, SIGCONT, SIGHUP, SIGTERM, SIGTSTP, SIGWINCH, SOCK_STREAM, STDERR_FILENO, STDIN_FILENO,
     STDOUT_FILENO, TCSAFLUSH, TCSANOW, VMIN, VTIME, WNOHANG, cfgetispeed, cfgetospeed, cfmakeraw,
-    cfsetispeed, cfsetospeed, close, connect, dup, execl, flock, getenv, getppid, isatty, kill,
-    memcpy, memset, open, printf, setenv, sigaction, sigemptyset, sockaddr, sockaddr_un, socket,
-    strerror, strlen, strsignal, system, tcgetattr, tcsetattr, unlink, waitpid,
+    cfsetispeed, cfsetospeed, close, connect, dup, execl, flock, getppid, isatty, kill, memcpy,
+    memset, open, printf, sigaction, sigemptyset, sockaddr, sockaddr_un, socket, strerror, strlen,
+    strsignal, system, tcgetattr, tcsetattr, unlink, waitpid,
 };
 use crate::*;
 
@@ -246,9 +246,7 @@ pub unsafe extern "C-unwind" fn client_main(
     unsafe {
         let data: *mut msg_command;
         let fd;
-        let mut cwd: *const u8;
         let mut ttynam: *const u8;
-        let mut termname: *const u8;
         let msg: msgtype;
         let mut tio: termios = zeroed();
         let mut saved_tio: termios = zeroed();
@@ -321,23 +319,15 @@ pub unsafe extern "C-unwind" fn client_main(
         }
         CLIENT_PEER = proc_add_peer(CLIENT_PROC, fd, Some(client_dispatch), null_mut());
 
-        cwd = find_cwd();
-        if cwd.is_null()
-            && ({
-                cwd = find_home();
-                cwd.is_null()
-            })
-        {
-            cwd = c!("/");
-        }
+        let cwd = find_cwd();
+        let cwd = cwd.as_deref().or_else(||find_home()).unwrap_or(c"/");
+
         ttynam = ttyname(STDIN_FILENO);
         if ttynam.is_null() {
             ttynam = c!("");
         }
-        termname = getenv(c!("TERM"));
-        if termname.is_null() {
-            termname = c!("");
-        }
+
+        let termname = std::env::var("TERM").map(|s|CString::new(s).unwrap()).unwrap_or_default();
 
         /*
             // TODO no pledge
@@ -347,9 +337,9 @@ pub unsafe extern "C-unwind" fn client_main(
         */
 
         if isatty(STDIN_FILENO) != 0
-            && *termname != b'\0'
+            && !termname.is_empty()
             && tty_term_read_list(
-                termname,
+                termname.as_ptr().cast(),
                 STDIN_FILENO,
                 &raw mut caps,
                 &raw mut ncaps,
@@ -389,7 +379,7 @@ pub unsafe extern "C-unwind" fn client_main(
             tcsetattr(STDIN_FILENO, TCSANOW, &tio);
         }
 
-        client_send_identify(ttynam, termname, caps, ncaps, cwd, feat);
+        client_send_identify(ttynam, &termname, caps, ncaps, cwd, feat);
         tty_term_free_list(caps, ncaps);
         proc_flush_peer(CLIENT_PEER);
 
@@ -482,10 +472,10 @@ pub unsafe extern "C-unwind" fn client_main(
 
 unsafe fn client_send_identify(
     ttynam: *const u8,
-    termname: *const u8,
+    termname: &CStr,
     caps: *mut *mut u8,
     ncaps: u32,
-    cwd: *const u8,
+    cwd: &CStr,
     mut feat: i32,
 ) {
     unsafe {
@@ -510,8 +500,8 @@ unsafe fn client_send_identify(
             CLIENT_PEER,
             msgtype::MSG_IDENTIFY_TERM,
             -1,
-            termname as _,
-            strlen(termname) + 1,
+            termname.as_ptr().cast(),
+            termname.to_bytes_with_nul().len(),
         );
         proc_send(
             CLIENT_PEER,
@@ -532,8 +522,8 @@ unsafe fn client_send_identify(
             CLIENT_PEER,
             msgtype::MSG_IDENTIFY_CWD,
             -1,
-            cwd as _,
-            strlen(cwd) + 1,
+            cwd.as_ptr().cast(),
+            cwd.to_bytes_with_nul().len(),
         );
 
         for i in 0..ncaps {
@@ -596,7 +586,9 @@ unsafe fn client_exec(shell: *mut u8, shellcmd: *mut u8) {
             shell,
             (*&raw const CLIENT_FLAGS).intersects(client_flag::LOGIN) as c_int,
         );
-        setenv(c!("SHELL"), shell, 1);
+
+        let shell_str = cstr_to_str(shell);
+        std::env::set_var("SHELL", shell_str);
 
         proc_clear_signals(CLIENT_PROC, 1);
 

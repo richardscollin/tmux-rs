@@ -549,7 +549,7 @@ unsafe fn cmd_display_popup_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
         if count <= 1 && (shellcmd.is_null() || *shellcmd == b'\0' as _) {
             shellcmd = null_mut();
             let mut shell = options_get_string_((*s).options, "default-shell");
-            if !checkshell(shell) {
+            if !checkshell_(shell) {
                 shell = _PATH_BSHELL;
             }
             cmd_append_argv(&raw mut argc, &raw mut argv, shell);

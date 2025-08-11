@@ -565,7 +565,7 @@ pub unsafe fn server_client_exec(c: *mut client, cmd: *const u8) {
         } else {
             options_get_string_(GLOBAL_S_OPTIONS, "default-shell")
         };
-        if !checkshell(shell) {
+        if !checkshell_(shell) {
             shell = _PATH_BSHELL;
         }
         let shellsize = strlen(shell) + 1;
@@ -3133,8 +3133,8 @@ pub unsafe fn server_client_dispatch_identify(c: *mut client, imsg: *mut imsg) {
                 }
                 if libc::access(data.cast(), libc::X_OK) == 0 {
                     (*c).cwd = xstrdup(data.cast()).as_ptr();
-                } else if let Some(home) = NonNull::new(find_home()) {
-                    (*c).cwd = xstrdup(home.as_ptr()).as_ptr();
+                } else if let Some(home) = find_home() {
+                    (*c).cwd = xstrdup_(home).as_ptr();
                 } else {
                     (*c).cwd = xstrdup(c!("/")).as_ptr();
                 }
@@ -3221,7 +3221,7 @@ pub unsafe fn server_client_dispatch_identify(c: *mut client, imsg: *mut imsg) {
 pub unsafe fn server_client_dispatch_shell(c: *mut client) {
     unsafe {
         let mut shell = options_get_string_(GLOBAL_S_OPTIONS, "default-shell");
-        if !checkshell(shell) {
+        if !checkshell_(shell) {
             shell = _PATH_BSHELL;
         }
         proc_send(
@@ -3253,8 +3253,8 @@ pub unsafe fn server_client_get_cwd(c: *mut client, mut s: *mut session) -> *con
             && !(*s).cwd.is_null()
         {
             (*s).cwd
-        } else if let Some(home) = NonNull::new(find_home()) {
-            home.as_ptr()
+        } else if let Some(home) = find_home() {
+            home.as_ptr().cast()
         } else {
             c!("/")
         }

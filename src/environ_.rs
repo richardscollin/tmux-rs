@@ -200,10 +200,9 @@ pub unsafe fn environ_push(env: *mut environ) {
                 && *(*envent).name.unwrap().as_ptr() != b'\0'
                 && !(*envent).flags.intersects(ENVIRON_HIDDEN)
             {
-                libc::setenv(
-                    transmute_ptr((*envent).name),
-                    transmute_ptr((*envent).value),
-                    1,
+                std::env::set_var(
+                    cstr_to_str(transmute_ptr((*envent).name)),
+                    cstr_to_str(transmute_ptr((*envent).value)),
                 );
             }
         }

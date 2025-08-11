@@ -1,3 +1,6 @@
+use std::borrow::Cow;
+use std::sync::OnceLock;
+
 // Copyright (c) 2007 Nicholas Marriott <nicholas.marriott@gmail.com>
 //
 // Permission to use, copy, modify, and distribute this software for any
@@ -15,9 +18,9 @@ use crate::compat::getopt::{OPTARG, OPTIND, getopt};
 use crate::compat::{S_ISDIR, fdforkpty::getptmfd, getprogname::getprogname};
 use crate::libc::{
     CLOCK_MONOTONIC, CLOCK_REALTIME, CODESET, EEXIST, F_GETFL, F_SETFL, LC_CTYPE, LC_TIME,
-    O_NONBLOCK, PATH_MAX, S_IRWXO, S_IRWXU, X_OK, access, clock_gettime, fcntl, getcwd, getenv,
-    getpwuid, getuid, lstat, mkdir, nl_langinfo, realpath, setlocale, stat, strcasecmp, strcasestr,
-    strchr, strcspn, strerror, strncmp, strrchr, strstr, timespec,
+    O_NONBLOCK, PATH_MAX, S_IRWXO, S_IRWXU, X_OK, access, clock_gettime, fcntl, getpwuid, getuid,
+    lstat, mkdir, nl_langinfo, realpath, setlocale, stat, strcasecmp, strchr, strcspn, strerror,
+    strncmp, strrchr, timespec,
 };
 use crate::*;
 
@@ -47,28 +50,53 @@ pub fn usage() -> ! {
     std::process::exit(1)
 }
 
-pub unsafe fn getshell() -> *const u8 {
+unsafe fn getshell() -> Cow<'static, CStr> {
     unsafe {
-        let shell = getenv(c!("SHELL"));
-        if checkshell(shell) {
-            return shell;
+        if let Ok(shell) = std::env::var("SHELL")
+            && let shell = CString::new(shell).unwrap()
+            && checkshell(Some(&shell))
+        {
+            return Cow::Owned(shell);
         }
 
-        let pw = getpwuid(getuid());
-        if !pw.is_null() && checkshell((*pw).pw_shell.cast()) {
-            return (*pw).pw_shell.cast();
+        if let Some(pw) = NonNull::new(getpwuid(getuid()))
+            && !(*pw.as_ptr()).pw_shell.is_null()
+            && checkshell(Some(CStr::from_ptr((*pw.as_ptr()).pw_shell)))
+        {
+            return Cow::Owned(CString::new(cstr_to_str((*pw.as_ptr()).pw_shell.cast())).unwrap());
         }
 
-        _PATH_BSHELL
+        Cow::Borrowed(CStr::from_ptr(_PATH_BSHELL.cast()))
     }
 }
 
-pub unsafe fn checkshell(shell: *const u8) -> bool {
+pub unsafe fn checkshell(shell: Option<&CStr>) -> bool {
     unsafe {
-        if shell.is_null() || *shell != b'/' {
+        let Some(shell) = shell else {
+            return false;
+        };
+        if shell.to_bytes()[0] != b'/' {
             return false;
         }
-        if areshell(shell) != 0 {
+        if areshell(shell) {
+            return false;
+        }
+        if access(shell.as_ptr().cast(), X_OK) != 0 {
+            return false;
+        }
+    }
+    true
+}
+
+pub unsafe fn checkshell_(shell: *const u8) -> bool {
+    unsafe {
+        if shell.is_null() {
+            return false;
+        };
+        if *shell != b'/' {
+            return false;
+        }
+        if areshell(CStr::from_ptr(shell.cast())) {
             return false;
         }
         if access(shell.cast(), X_OK) != 0 {
@@ -78,33 +106,31 @@ pub unsafe fn checkshell(shell: *const u8) -> bool {
     true
 }
 
-pub unsafe fn areshell(shell: *const u8) -> c_int {
+unsafe fn areshell(shell: &CStr) -> bool {
     unsafe {
-        let ptr = strrchr(shell, b'/' as c_int);
+        let ptr = strrchr(shell.as_ptr().cast(), b'/' as c_int);
         let ptr = if !ptr.is_null() {
             ptr.wrapping_add(1)
         } else {
-            shell
+            shell.as_ptr().cast()
         };
         let mut progname = getprogname();
         if *progname == b'-' {
             progname = progname.wrapping_add(1);
         }
-        if libc::strcmp(ptr, progname) == 0 {
-            1
-        } else {
-            0
-        }
+        libc::strcmp(ptr, progname) == 0
     }
 }
 
-pub unsafe fn expand_path(path: *const u8, home: *const u8) -> Option<CString> {
+unsafe fn expand_path(path: *const u8, home: Option<&CStr>) -> Option<CString> {
     unsafe {
         if strncmp(path, c!("~/"), 2) == 0 {
-            if home.is_null() {
+            let Some(home) = home else {
                 return None;
-            }
-            return Some(CString::new(format!("{}{}", _s(home), _s(path.add(1)))).unwrap());
+            };
+            return Some(
+                CString::new(format!("{}{}", home.to_str().unwrap(), _s(path.add(1)))).unwrap(),
+            );
         }
 
         if *path == b'$' {
@@ -285,55 +311,49 @@ pub unsafe fn get_timer() -> u64 {
     }
 }
 
-pub unsafe fn find_cwd() -> *mut u8 {
-    static mut CWD: [u8; PATH_MAX as usize] = [0; PATH_MAX as usize];
+pub unsafe fn find_cwd() -> Option<CString> {
     unsafe {
         let mut resolved1: [u8; PATH_MAX as usize] = [0; PATH_MAX as usize];
         let mut resolved2: [u8; PATH_MAX as usize] = [0; PATH_MAX as usize];
 
-        if getcwd(&raw mut CWD as _, size_of::<[u8; PATH_MAX as usize]>()).is_null() {
-            return null_mut();
-        }
-        let pwd = getenv(c!("PWD"));
-        if pwd.is_null() || *pwd == b'\0' {
-            return &raw mut CWD as _;
-        }
+        let cwd = std::env::current_dir().ok()?;
+        let cwd = CString::new(cwd.into_os_string().into_string().unwrap()).unwrap();
+
+        let pwd = match std::env::var("PWD") {
+            Ok(val) if !val.is_empty() => CString::new(val).unwrap(),
+            _ => return Some(cwd),
+        };
 
         // We want to use PWD so that symbolic links are maintained,
         // but only if it matches the actual working directory.
 
-        if realpath(pwd, &raw mut resolved1 as _).is_null() {
-            return &raw mut CWD as _;
+        if realpath(pwd.as_ptr().cast(), &raw mut resolved1 as _).is_null() {
+            return Some(cwd);
         }
-        if realpath(&raw mut CWD as _, &raw mut resolved2 as _).is_null() {
-            return &raw mut CWD as _;
+        if realpath(cwd.as_ptr().cast(), &raw mut resolved2 as _).is_null() {
+            return Some(cwd);
         }
         if libc::strcmp(&raw mut resolved1 as _, &raw mut resolved2 as _) != 0 {
-            return &raw mut CWD as _;
+            return Some(cwd);
         }
-        pwd
+        Some(pwd)
     }
 }
 
-pub unsafe fn find_home() -> *mut u8 {
-    static mut HOME: *mut u8 = null_mut();
-
+pub fn find_home() -> Option<&'static CStr> {
     unsafe {
-        if !HOME.is_null() {
-            HOME
-        } else {
-            HOME = getenv(c!("HOME"));
-            if HOME.is_null() || *HOME == b'\0' {
-                let pw = getpwuid(getuid());
-                if !pw.is_null() {
-                    HOME = (*pw).pw_dir.cast();
+        static HOME: OnceLock<Option<CString>> = OnceLock::new();
+        HOME.get_or_init(|| match std::env::var("HOME") {
+            Ok(home) if !home.is_empty() => Some(CString::new(home).unwrap()),
+            _ => {
+                if let Some(pw) = NonNull::new(getpwuid(getuid())) {
+                    Some(CString::new(cstr_to_str((*pw.as_ptr()).pw_dir.cast())).unwrap())
                 } else {
-                    HOME = null_mut();
+                    None
                 }
             }
-
-            HOME
-        }
+        })
+        .as_deref()
     }
 }
 
@@ -387,14 +407,13 @@ pub unsafe fn tmux_main(mut argc: i32, mut argv: *mut *mut u8, _env: *mut *mut u
             var = var.add(1);
         }
 
-        let cwd = find_cwd();
-        if !cwd.is_null() {
+        if let Some(cwd) = find_cwd() {
             environ_set!(
                 GLOBAL_ENVIRON,
                 c!("PWD"),
                 environ_flags::empty(),
                 "{}",
-                _s(cwd)
+                cwd.to_str().unwrap()
             );
         }
         expand_paths(TMUX_CONF, &mut CFG_FILES.lock().unwrap(), 1);
@@ -471,20 +490,17 @@ pub unsafe fn tmux_main(mut argc: i32, mut argv: *mut *mut u8, _env: *mut *mut u
         // UTF-8, it is a safe assumption that either they are using a UTF-8
         // terminal, or if not they know that output from UTF-8-capable
         // programs may be wrong.
-        if !getenv(c!("TMUX")).is_null() {
+        if std::env::var("TMUX").is_ok() {
             flags |= client_flag::UTF8;
         } else {
-            let mut s = getenv(c!("LC_ALL")) as *const u8;
-            if s.is_null() || *s == b'\0' {
-                s = getenv(c!("LC_CTYPE")) as *const u8;
-            }
-            if s.is_null() || *s == b'\0' {
-                s = getenv(c!("LANG")) as *const u8;
-            }
-            if s.is_null() || *s == b'\0' {
-                s = c!("");
-            }
-            if !strcasestr(s, c!("UTF-8")).is_null() || !strcasestr(s, c!("UTF8")).is_null() {
+
+            let s = std::env::var("LC_ALL")
+                .or_else(|_| std::env::var("LC_CTYPE"))
+                .or_else(|_| std::env::var("LANG"))
+                .unwrap_or_default()
+                .to_ascii_lowercase();
+
+            if s.contains("utf-8") || s.contains("utf8") {
                 flags |= client_flag::UTF8;
             }
         }
@@ -513,22 +529,21 @@ pub unsafe fn tmux_main(mut argc: i32, mut argv: *mut *mut u8, _env: *mut *mut u
             c!("default-shell"),
             false,
             "{}",
-            _s(getshell()),
+            getshell().to_string_lossy(),
         );
 
         // Override keys to vi if VISUAL or EDITOR are set.
-        let mut s = getenv(c!("VISUAL"));
-        if !s.is_null()
-            || ({
-                s = getenv(c!("EDITOR"));
-                !s.is_null()
-            })
+        if let Ok(s) = std::env::var("VISUAL").or_else(|_| std::env::var("EDITOR"))
         {
-            options_set_string!(GLOBAL_OPTIONS, c!("editor"), false, "{}", _s(s));
-            if !strrchr(s, b'/' as _).is_null() {
-                s = strrchr(s, b'/' as _).add(1);
-            }
-            let keys = if !strstr(s, c!("vi")).is_null() {
+            options_set_string!(GLOBAL_OPTIONS, c!("editor"), false, "{s}");
+
+let s = if let Some(slash_end) = s.rfind('/') {
+    &s[slash_end + 1..]
+} else {
+    &s
+};
+
+            let keys = if s.contains("vi") {
                 modekey::MODEKEY_VI
             } else {
                 modekey::MODEKEY_EMACS
@@ -541,9 +556,10 @@ pub unsafe fn tmux_main(mut argc: i32, mut argv: *mut *mut u8, _env: *mut *mut u
         // used. Otherwise, $TMUX is checked and if that fails "default" is
         // used.
         if path.is_null() && label.is_null() {
-            s = getenv(c!("TMUX"));
-            if !s.is_null() && *s != b'\0' && *s != b',' {
-                let tmp: *mut u8 = xstrdup(s).cast().as_ptr();
+            if let Ok(s) = std::env::var("TMUX")
+            && s.as_bytes().len() != 0 && s.as_bytes()[0] != b','
+            {
+                let tmp: *mut u8 = xstrdup__(&s);
                 *tmp.add(strcspn(tmp, c!(","))) = b'\0';
                 path = tmp;
             }

@@ -423,7 +423,7 @@ pub fn popup_make_pane(pd: *mut popup_data, type_: layout_type) {
         screen_init(&raw mut (*pd).s, 1, 1, 0);
 
         let mut shell = options_get_string_((*s).options, "default-shell");
-        if !checkshell(shell) {
+        if !checkshell_(shell) {
             shell = _PATH_BSHELL;
         }
         (*new_wp).shell = xstrdup(shell).as_ptr();

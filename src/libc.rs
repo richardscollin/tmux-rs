@@ -107,10 +107,6 @@ pub unsafe fn strstr(cs: *const u8, ct: *const u8) -> *mut u8 {
     unsafe { ::libc::strstr(cs.cast(), ct.cast()).cast() }
 }
 
-pub unsafe fn strcasestr(cs: *const u8, ct: *const u8) -> *mut u8 {
-    unsafe { ::libc::strcasestr(cs.cast(), ct.cast()).cast() }
-}
-
 pub unsafe fn strtol(s: *const u8, endp: *mut *mut u8, base: i32) -> i64 {
     unsafe { ::libc::strtol(s.cast(), endp.cast(), base) }
 }
@@ -271,14 +267,6 @@ impl PartialOrd for timer {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         Some(self.cmp(other))
     }
-}
-
-pub unsafe fn getenv(s: *const u8) -> *mut u8 {
-    unsafe { ::libc::getenv(s.cast()).cast() }
-}
-
-pub unsafe fn setenv(name: *const u8, val: *const u8, overwrite: i32) -> i32 {
-    unsafe { ::libc::setenv(name.cast(), val.cast(), overwrite) }
 }
 
 pub unsafe fn strcmp(cs: *const u8, ct: *const u8) -> i32 {

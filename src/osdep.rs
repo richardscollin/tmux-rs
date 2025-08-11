@@ -90,10 +90,12 @@ pub unsafe fn osdep_get_cwd(fd: i32) -> *const u8 {
 pub unsafe fn osdep_event_init() -> *mut event_base {
     unsafe {
         // On Linux, epoll doesn't work on /dev/null (yes, really).
-        libc::setenv(c!("EVENT_NOEPOLL"), c!("1"), 1);
+        std::env::set_var("EVENT_NOEPOLL", "1");
 
         let base = event_init();
-        libc::unsetenv(c!("EVENT_NOEPOLL"));
+
+        std::env::remove_var("EVENT_NOEPOLL");
+
         base
     }
 }
@@ -171,12 +173,13 @@ pub unsafe fn osdep_event_init() -> *mut event_base {
     unsafe {
         // On OS X, kqueue and poll are both completely broken and don't
         // work on anything except socket file descriptors (yes, really).
-        crate::libc::setenv(c!("EVENT_NOKQUEUE"), c!("1"), 1);
-        crate::libc::setenv(c!("EVENT_NOPOLL"), c!("1"), 1);
+        std::env::set_var("EVENT_NOKQUEUE", "1");
+        std::env::set_var("EVENT_NOPOLL", "1");
 
         let base: *mut event_base = event_init();
-        crate::libc::unsetenv(c!("EVENT_NOKQUEUE"));
-        crate::libc::unsetenv(c!("EVENT_NOPOLL"));
+
+        std::env::remove_var("EVENT_NOKQUEUE");
+        std::env::remove_var("EVENT_NOPOLL");
 
         base
     }

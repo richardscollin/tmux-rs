@@ -1120,7 +1120,7 @@ pub unsafe fn screen_write_alignmenttest(ctx: *mut screen_write_ctx) {
 
         #[cfg(feature = "sixel")]
         {
-            if image_free_all(s) && !(*ctx).wp.is_null() {
+            if crate::image_::image_free_all(s) && !(*ctx).wp.is_null() {
                 (*(*ctx).wp).flags |= window_pane_flags::PANE_REDRAW;
             }
         }
@@ -1166,7 +1166,7 @@ pub unsafe fn screen_write_insertcharacter(ctx: *mut screen_write_ctx, mut nx: u
 
         #[cfg(feature = "sixel")]
         {
-            if image_check_line(s, (*s).cy, 1) && !(*ctx).wp.is_null() {
+            if crate::image_::image_check_line(s, (*s).cy, 1) && !(*ctx).wp.is_null() {
                 (*(*ctx).wp).flags |= window_pane_flags::PANE_REDRAW;
             }
         }
@@ -1205,7 +1205,7 @@ pub unsafe fn screen_write_deletecharacter(ctx: *mut screen_write_ctx, mut nx: u
 
         #[cfg(feature = "sixel")]
         {
-            if image_check_line(s, (*s).cy, 1) && !(*ctx).wp.is_null() {
+            if crate::image_::image_check_line(s, (*s).cy, 1) && !(*ctx).wp.is_null() {
                 (*(*ctx).wp).flags |= window_pane_flags::PANE_REDRAW;
             }
         }
@@ -1244,7 +1244,7 @@ pub unsafe fn screen_write_clearcharacter(ctx: *mut screen_write_ctx, mut nx: u3
 
         #[cfg(feature = "sixel")]
         {
-            if image_check_line(s, (*s).cy, 1) && !(*ctx).wp.is_null() {
+            if crate::image_::image_check_line(s, (*s).cy, 1) && !(*ctx).wp.is_null() {
                 (*(*ctx).wp).flags |= window_pane_flags::PANE_REDRAW;
             }
         }
@@ -1274,7 +1274,7 @@ pub unsafe fn screen_write_insertline(ctx: *mut screen_write_ctx, mut ny: u32, b
         #[cfg(feature = "sixel")]
         {
             let sy = screen_size_y(s);
-            if image_check_line(s, (*s).cy, sy - (*s).cy) && !(*ctx).wp.is_null() {
+            if crate::image_::image_check_line(s, (*s).cy, sy - (*s).cy) && !(*ctx).wp.is_null() {
                 (*(*ctx).wp).flags |= window_pane_flags::PANE_REDRAW;
             }
         }
@@ -1335,7 +1335,7 @@ pub unsafe fn screen_write_deleteline(ctx: *mut screen_write_ctx, mut ny: u32, b
 
         #[cfg(feature = "sixel")]
         {
-            if image_check_line(s, (*s).cy, sy - (*s).cy) && !(*ctx).wp.is_null() {
+            if crate::image_::image_check_line(s, (*s).cy, sy - (*s).cy) && !(*ctx).wp.is_null() {
                 (*(*ctx).wp).flags |= window_pane_flags::PANE_REDRAW;
             }
         }
@@ -1395,7 +1395,7 @@ pub unsafe fn screen_write_clearline(ctx: *mut screen_write_ctx, bg: u32) {
 
         #[cfg(feature = "sixel")]
         {
-            if image_check_line(s, (*s).cy, 1) && !(*ctx).wp.is_null() {
+            if crate::image_::image_check_line(s, (*s).cy, 1) && !(*ctx).wp.is_null() {
                 (*(*ctx).wp).flags |= window_pane_flags::PANE_REDRAW;
             }
         }
@@ -1434,7 +1434,7 @@ pub unsafe fn screen_write_clearendofline(ctx: *mut screen_write_ctx, bg: u32) {
 
         #[cfg(feature = "sixel")]
         {
-            if image_check_line(s, (*s).cy, 1) && !(*ctx).wp.is_null() {
+            if crate::image_::image_check_line(s, (*s).cy, 1) && !(*ctx).wp.is_null() {
                 (*(*ctx).wp).flags |= window_pane_flags::PANE_REDRAW;
             }
         }
@@ -1472,7 +1472,7 @@ pub unsafe fn screen_write_clearstartofline(ctx: *mut screen_write_ctx, bg: u32)
 
         #[cfg(feature = "sixel")]
         {
-            if image_check_line(s, (*s).cy, 1) && !(*ctx).wp.is_null() {
+            if crate::image_::image_check_line(s, (*s).cy, 1) && !(*ctx).wp.is_null() {
                 (*(*ctx).wp).flags |= window_pane_flags::PANE_REDRAW;
             }
         }
@@ -1539,7 +1539,7 @@ pub unsafe fn screen_write_reverseindex(ctx: *mut screen_write_ctx, bg: u32) {
         if (*s).cy == (*s).rupper {
             #[cfg(feature = "sixel")]
             {
-                if image_free_all(s) && !(*ctx).wp.is_null() {
+                if crate::image_::image_free_all(s) && !(*ctx).wp.is_null() {
                     (*(*ctx).wp).flags |= window_pane_flags::PANE_REDRAW;
                 }
             }
@@ -1616,13 +1616,12 @@ pub unsafe fn screen_write_linefeed(ctx: *mut screen_write_ctx, wrapped: bool, b
         if (*s).cy == (*s).rlower {
             #[cfg(feature = "sixel")]
             {
-                let mut redraw: i32 = 0;
-                if (rlower == screen_size_y(s) - 1) {
-                    redraw = image_scroll_up(s, 1);
+                let redraw = if rlower == screen_size_y(s) - 1 {
+                    crate::image_::image_scroll_up(s, 1)
                 } else {
-                    redraw = image_check_line(s, rupper, rlower - rupper);
-                }
-                if redraw != 0 && !(*ctx).wp.is_null() {
+                    crate::image_::image_check_line(s, rupper, rlower - rupper)
+                };
+                if redraw && !(*ctx).wp.is_null() {
                     (*(*ctx).wp).flags |= window_pane_flags::PANE_REDRAW;
                 }
             }
@@ -1654,8 +1653,8 @@ pub unsafe fn screen_write_scrollup(ctx: *mut screen_write_ctx, mut lines: u32, 
 
         #[cfg(feature = "sixel")]
         {
-            if image_scroll_up(s, lines) && !(*ctx).wp.is_null() {
-                (*(*ctx).wp).flags |= window_pane_flag::PANE_REDRAW;
+            if crate::image_::image_scroll_up(s, lines) && !(*ctx).wp.is_null() {
+                (*(*ctx).wp).flags |= window_pane_flags::PANE_REDRAW;
             }
         }
 
@@ -1685,7 +1684,7 @@ pub unsafe fn screen_write_scrolldown(ctx: *mut screen_write_ctx, mut lines: u32
 
         #[cfg(feature = "sixel")]
         {
-            if image_free_all(s) && !(*ctx).wp.is_null() {
+            if crate::image_::image_free_all(s) && !(*ctx).wp.is_null() {
                 (*(*ctx).wp).flags |= window_pane_flags::PANE_REDRAW;
             }
         }
@@ -1718,7 +1717,7 @@ pub unsafe fn screen_write_clearendofscreen(ctx: *mut screen_write_ctx, bg: u32)
 
         #[cfg(feature = "sixel")]
         {
-            if image_check_line(s, (*s).cy, sy - (*s).cy) && !(*ctx).wp.is_null() {
+            if crate::image_::image_check_line(s, (*s).cy, sy - (*s).cy) && !(*ctx).wp.is_null() {
                 (*(*ctx).wp).flags |= window_pane_flags::PANE_REDRAW;
             }
         }
@@ -1756,8 +1755,8 @@ pub unsafe fn screen_write_clearstartofscreen(ctx: *mut screen_write_ctx, bg: u3
 
         #[cfg(feature = "sixel")]
         {
-            if image_check_line(s, 0, (*s).cy - 1) && (*ctx).wp.is_null() {
-                (*(*ctx).wp).flags |= window_pane_flag::PANE_REDRAW;
+            if crate::image_::image_check_line(s, 0, (*s).cy - 1) && (*ctx).wp.is_null() {
+                (*(*ctx).wp).flags |= window_pane_flags::PANE_REDRAW;
             }
         }
 
@@ -1789,8 +1788,8 @@ pub unsafe fn screen_write_clearscreen(ctx: *mut screen_write_ctx, bg: u32) {
 
         #[cfg(feature = "sixel")]
         {
-            if image_free_all(s) && !(*ctx).wp.is_null() {
-                (*(*ctx).wp).flags |= window_pane_flag::PANE_REDRAW;
+            if crate::image_::image_free_all(s) && !(*ctx).wp.is_null() {
+                (*(*ctx).wp).flags |= window_pane_flags::PANE_REDRAW;
             }
         }
 
@@ -2059,8 +2058,10 @@ pub unsafe fn screen_write_collect_end(ctx: *mut screen_write_ctx) {
 
         #[cfg(feature = "sixel")]
         {
-            if image_check_area(s, (*s).cx, (*s).cy, (*ci).used, 1) && !(*ctx).wp.is_null() {
-                (*(*ctx).wp).flags |= window_pane_flag::PANE_REDRAW;
+            if crate::image_::image_check_area(s, (*s).cx, (*s).cy, (*ci).used, 1)
+                && !(*ctx).wp.is_null()
+            {
+                (*(*ctx).wp).flags |= window_pane_flags::PANE_REDRAW;
             }
         }
 
@@ -2488,32 +2489,38 @@ pub unsafe fn screen_write_rawstring(
     }
 }
 
-// TODO
-#[cfg(feature = "sixel")]
 /// Write a SIXEL image.
-unsafe fn screen_write_sixelimage(ctx: *mut screen_write_ctx, si: *mut sixel_image, bg: u32) {
+#[cfg(feature = "sixel")]
+#[unsafe(no_mangle)]
+pub(crate) unsafe fn screen_write_sixelimage(
+    ctx: *mut screen_write_ctx,
+    mut si: *mut sixel_image,
+    bg: u32,
+) {
+    use crate::image_::{image_scroll_up, image_store};
+    use crate::image_sixel::{sixel_free, sixel_scale, sixel_size_in_cells};
+
     unsafe {
-        let mut s = (*ctx).s;
-        let mut gd = (*s).grid;
+        let s = (*ctx).s;
+        let gd = (*s).grid;
         let mut ttyctx: tty_ctx = zeroed();
 
-        // u_int x, y, sx, sy, cx = (*s).cx, cy = (*s).cy, i, lines;
         let mut x: u32 = 0;
         let mut y: u32 = 0;
-        let mut sx: u32 = 0;
-        let mut sy: u32 = 0;
-        let mut cx: u32 = (*s).cx;
-        let mut cy: u32 = (*s).cy;
-        let mut new: *mut sixel_image = null_mut();
+        let sx: u32;
+        let mut sy: u32;
+        let cx: u32 = (*s).cx;
+        let cy: u32 = (*s).cy;
+        let new: *mut sixel_image;
 
         sixel_size_in_cells(si, &raw mut x, &raw mut y);
-        if (x > screen_size_x(s) || y > screen_size_y(s)) {
-            if (x > screen_size_x(s) - cx) {
+        if x > screen_size_x(s) || y > screen_size_y(s) {
+            if x > screen_size_x(s) - cx {
                 sx = screen_size_x(s) - cx;
             } else {
                 sx = x;
             }
-            if (y > screen_size_y(s) - 1) {
+            if y > screen_size_y(s) - 1 {
                 sy = screen_size_y(s) - 1;
             } else {
                 sy = y;
@@ -2526,34 +2533,38 @@ unsafe fn screen_write_sixelimage(ctx: *mut screen_write_ctx, si: *mut sixel_ima
             if si.is_null() {
                 return;
             }
-            sixel_size_in_cells(si, &x, &y);
+            sixel_size_in_cells(si, &raw mut x, &raw mut y);
         }
 
         sy = screen_size_y(s) - cy;
-        if (sy < y) {
-            lines = y - sy + 1;
-            if image_scroll_up(s, lines) && (*ctx).wp != NULL {
-                (*(*ctx).wp).flags |= PANE_REDRAW;
+        if sy < y {
+            let lines = y - sy + 1;
+            if image_scroll_up(s, lines) && !(*ctx).wp.is_null() {
+                (*(*ctx).wp).flags |= window_pane_flags::PANE_REDRAW;
             }
-            for i in 0..lines {
+            for _ in 0..lines {
                 grid_view_scroll_region_up(gd, 0, screen_size_y(s) - 1, bg);
                 screen_write_collect_scroll(ctx, bg);
             }
             (*ctx).scrolled += lines;
-            if (lines > cy) {
+            if lines > cy {
                 screen_write_cursormove(ctx, -1, 0, 0);
             } else {
-                screen_write_cursormove(ctx, -1, cy - lines, 0);
+                screen_write_cursormove(ctx, -1, cy as i32 - lines as i32, 0);
             }
         }
-        screen_write_collect_flush(ctx, 0, __func__);
+        screen_write_collect_flush(ctx, 0, "screen_write_sixelimage");
 
-        screen_write_initctx(ctx, &ttyctx, 0);
-        ttyctx.ptr = image_store(s, si);
+        log_debug!("before screen_write_initctx");
+        screen_write_initctx(ctx, &raw mut ttyctx, 0);
+        log_debug!("before image_store");
+        ttyctx.ptr = image_store(s, si).cast();
 
-        tty_write(tty_cmd_sixelimage, &ttyctx);
+        log_debug!("before tty_write");
+        tty_write(crate::tty_::tty_cmd_sixelimage, &raw mut ttyctx);
 
-        screen_write_cursormove(ctx, 0, cy + y, 0);
+        log_debug!("before screen_write_cursormove");
+        screen_write_cursormove(ctx, 0, (cy + y) as i32, 0);
     }
 }
 

@@ -15,6 +15,7 @@ description  = "A Rust port of tmux"
 # they just exist to make matching upstream's
 # configuration options easier
 [features]
+default     = ["sixel"]
 cgroups     = []
 hyperlinks  = []
 iutf8       = []

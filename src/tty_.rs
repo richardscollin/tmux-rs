@@ -1932,7 +1932,7 @@ pub unsafe fn tty_draw_line(
 #[cfg(feature = "sixel")]
 pub unsafe fn tty_set_client_cb(ttyctx: *mut tty_ctx, c: *mut client) -> i32 {
     unsafe {
-        let mut wp: *mut window_pane = (*ttyctx).arg.cast();
+        let wp: *mut window_pane = (*ttyctx).arg.cast();
 
         if (*(*(*c).session).curw).window != (*wp).window {
             return 0;
@@ -1963,7 +1963,7 @@ pub unsafe fn tty_set_client_cb(ttyctx: *mut tty_ctx, c: *mut client) -> i32 {
 #[cfg(feature = "sixel")]
 pub unsafe fn tty_draw_images(c: *mut client, wp: *mut window_pane, s: *mut screen) {
     unsafe {
-        for im in tailq_foreach(&raw mut (*s).images).map(NonNull::as_ptr) {
+        for im in tailq_foreach::<image, discr_entry>(&raw mut (*s).images).map(NonNull::as_ptr) {
             let mut ttyctx: tty_ctx = zeroed();
             memset0(&raw mut ttyctx);
 
@@ -2071,7 +2071,7 @@ pub unsafe fn tty_write(cmdfn: unsafe fn(*mut tty, *const tty_ctx), ctx: *mut tt
 /// Only write to the incoming tty instead of every client.
 #[cfg(feature = "sixel")]
 pub unsafe fn tty_write_one(
-    cmdfn: fn(*mut tty, *const tty_ctx),
+    cmdfn: unsafe fn(*mut tty, *const tty_ctx),
     c: *mut client,
     ctx: *mut tty_ctx,
 ) {
@@ -2741,16 +2741,17 @@ pub unsafe fn tty_cmd_rawstring(tty: *mut tty, ctx: *const tty_ctx) {
 
 #[cfg(feature = "sixel")]
 pub unsafe fn tty_cmd_sixelimage(tty: *mut tty, ctx: *const tty_ctx) {
+    use crate::image_sixel::{sixel_free, sixel_print, sixel_scale, sixel_size_in_cells};
+
     unsafe {
-        let mut im: *mut image = (*ctx).ptr.cast();
-        let mut si: *mut sixel_image = (*im).data;
+        let im: *mut image = (*ctx).ptr.cast();
+        let si: *mut sixel_image = (*im).data;
         let mut new: *mut sixel_image = null_mut();
-        let mut data: *mut u8 = null_mut();
+        let data: *mut u8;
         let mut size = 0;
         let cx = (*ctx).ocx;
         let cy = (*ctx).ocy;
-        // sx, sy;
-        // u_int i, j, x, y, rx, ry;
+
         let mut i: u32 = 0;
         let mut j: u32 = 0;
         let mut x: u32 = 0;
@@ -2771,7 +2772,7 @@ pub unsafe fn tty_cmd_sixelimage(tty: *mut tty, ctx: *const tty_ctx) {
         }
 
         sixel_size_in_cells(si, &raw mut sx, &raw mut sy);
-        // log_debug("%s: image is %ux%u", __func__, sx, sy);
+        log_debug!("tty_cmd_sixelimage: image is {sx}x{sy}");
         if !tty_clamp_area(
             tty,
             ctx,
@@ -2788,9 +2789,9 @@ pub unsafe fn tty_cmd_sixelimage(tty: *mut tty, ctx: *const tty_ctx) {
         ) {
             return;
         }
-        // log_debug("%s: clamping to %u,%u-%u,%u", __func__, i, j, rx, ry);
+        log_debug!("tty_cmd_sixelimage: clamping to {i},{j}-{rx},{ry} fallback={fallback}");
 
-        if (fallback == 1) {
+        if fallback == 1 {
             data = xstrdup((*im).fallback).as_ptr();
             size = strlen(data);
         } else {
@@ -2799,10 +2800,10 @@ pub unsafe fn tty_cmd_sixelimage(tty: *mut tty, ctx: *const tty_ctx) {
                 return;
             }
 
-            data = sixel_print(new, si, &size);
+            data = sixel_print(new, si, &raw mut size);
         }
         if !data.is_null() {
-            // log_debug("%s: %zu bytes: %s", __func__, size, data);
+            log_debug!("tty_cmd_sixelimage: {} bytes: {}", size, _s(data));
             tty_region_off(tty);
             tty_margin_off(tty);
             tty_cursor(tty, x, y);

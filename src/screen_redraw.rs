@@ -1033,6 +1033,6 @@ pub unsafe fn screen_redraw_draw_pane(ctx: *mut screen_redraw_ctx, wp: *mut wind
         }
 
         #[cfg(feature = "sixel")]
-        tty_draw_images(c, wp, s);
+        crate::tty_::tty_draw_images(c, wp, s);
     }
 }

@@ -117,7 +117,7 @@ pub unsafe fn screen_reinit(s: *mut screen) {
         screen_free_titles(s);
 
         #[cfg(feature = "sixel")]
-        image_free_all(s);
+        crate::image_::image_free_all(s);
 
         screen_reset_hyperlinks(s);
     }
@@ -157,7 +157,7 @@ pub unsafe fn screen_free(s: *mut screen) {
         screen_free_titles(s);
 
         #[cfg(feature = "sixel")]
-        image_free_all(s);
+        crate::image_::image_free_all(s);
     }
 }
 
@@ -325,7 +325,7 @@ pub unsafe fn screen_resize_cursor(
         }
 
         #[cfg(feature = "sixel")]
-        image_free_all(s);
+        crate::image_::image_free_all(s);
 
         if reflow != 0 {
             screen_reflow(s, sx, &mut cx, &mut cy, cursor);

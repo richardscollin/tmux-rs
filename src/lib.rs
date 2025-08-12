@@ -951,9 +951,17 @@ struct style {
 }
 
 #[cfg(feature = "sixel")]
-impl_tailq_entry!(image, all_entry, tailq_entry<image>);
+impl crate::compat::queue::Entry<image, discr_all_entry> for image {
+    unsafe fn entry(this: *mut Self) -> *mut tailq_entry<image> {
+        unsafe { &raw mut (*this).all_entry }
+    }
+}
 #[cfg(feature = "sixel")]
-impl_tailq_entry!(image, entry, tailq_entry<image>);
+impl crate::compat::queue::Entry<image, discr_entry> for image {
+    unsafe fn entry(this: *mut Self) -> *mut tailq_entry<image> {
+        unsafe { &raw mut (*this).entry }
+    }
+}
 #[cfg(feature = "sixel")]
 #[repr(C)]
 #[derive(Copy, Clone)]

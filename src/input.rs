@@ -1235,8 +1235,8 @@ pub unsafe fn input_get(ictx: *mut input_ctx, validx: u32, minval: i32, defval: 
 }
 
 macro_rules! input_reply {
-   ($ictx:expr, $fmt:literal $(, $args:expr)* $(,)?) => {
-        crate::input::input_reply_($ictx, format_args!($fmt $(, $args)*))
+    ($ictx:expr, $($args:expr),* $(,)?) => {
+        crate::input::input_reply_($ictx, format_args!($($args),*))
     };
 }
 /// Reply to terminal query.
@@ -1634,7 +1634,7 @@ unsafe fn input_csi_dispatch(ictx: *mut input_ctx) -> i32 {
                 0 => {
                     #[cfg(feature = "sixel")]
                     {
-                        input_reply(ictx, c!("\x1b[?1;2;4c"));
+                        input_reply!(ictx, "\x1b[?1;2;4c");
                     }
                     #[cfg(not(feature = "sixel"))]
                     {
@@ -1929,9 +1929,11 @@ unsafe fn input_csi_dispatch_sm_private(ictx: *mut input_ctx) {
 }
 
 /// Handle CSI graphics SM.
-unsafe fn input_csi_dispatch_sm_graphics(_ictx: *mut input_ctx) {
+unsafe fn input_csi_dispatch_sm_graphics(ictx: *mut input_ctx) {
     #[cfg(feature = "sixel")]
     unsafe {
+        use crate::image_sixel::SIXEL_COLOUR_REGISTERS;
+
         if (*ictx).param_list_len > 3 {
             return;
         }
@@ -1940,9 +1942,9 @@ unsafe fn input_csi_dispatch_sm_graphics(_ictx: *mut input_ctx) {
         let o = input_get(ictx, 2, 0, 0);
 
         if n == 1 && (m == 1 || m == 2 || m == 4) {
-            input_reply(ictx, c!("\x1b[?%d;0;%uS"), n, SIXEL_COLOUR_REGISTERS);
+            input_reply!(ictx, "\x1b[?{n};0;{SIXEL_COLOUR_REGISTERS}S");
         } else {
-            input_reply(ictx, c!("\x1b[?%d;3;%dS"), n, o);
+            input_reply!(ictx, "\x1b[?{n};3;{o}S");
         }
     }
 }
@@ -2342,11 +2344,14 @@ unsafe fn input_dcs_dispatch(ictx: *mut input_ctx) -> i32 {
 
         #[cfg(feature = "sixel")]
         {
+            use crate::image_sixel::sixel_parse;
+            use crate::screen_write::screen_write_sixelimage;
+
             let w = (*wp).window;
-            if *buf == b'q' {
-                if let Some(si) = sixel_parse(buf, len, (*w).xpixel, (*w).ypixel) {
-                    screen_write_sixelimage(sctx, si, (*ictx).cell.cell.bg);
-                }
+            if *buf == b'q'
+                && let Some(si) = NonNull::new(sixel_parse(buf, len, (*w).xpixel, (*w).ypixel))
+            {
+                screen_write_sixelimage(sctx, si.as_ptr(), (*ictx).cell.cell.bg as _);
             }
         }
 

@@ -63,7 +63,7 @@ pub fn image_fallback(sx: u32, sy: u32) -> CString {
         buf.extend_from_slice(label.as_bytes());
     } else {
         buf.extend_from_slice(&label.as_bytes()[..(lsize - 3)]);
-        buf.extend(std::iter::repeat_n(b'+', (sx - lsize + 3) as usize));
+        buf.extend(std::iter::repeat_n(b'+', sx - lsize + 3));
         buf.extend_from_slice("\r\n".as_bytes());
     }
 

@@ -306,7 +306,6 @@ pub unsafe fn menu_key_cb(c: *mut client, data: *mut c_void, mut event: *mut key
         let count = (*menu).count;
         let mut old = (*md).choice;
 
-        let mut name: *const u8 = null();
         let mut error = null_mut();
 
         'chosen: {
@@ -350,7 +349,7 @@ pub unsafe fn menu_key_cb(c: *mut client, data: *mut c_void, mut event: *mut key
                 return 0;
             }
             for i in 0..count {
-                name = (*(*menu).items.add(i as usize)).name.as_ptr();
+                let name = (*(*menu).items.add(i as usize)).name.as_ptr();
                 if name.is_null() || *name == b'-' {
                     continue;
                 }
@@ -367,6 +366,7 @@ pub unsafe fn menu_key_cb(c: *mut client, data: *mut c_void, mut event: *mut key
 
             const UP: u64 = keyc::KEYC_UP as u64;
             const DOWN: u64 = keyc::KEYC_DOWN as u64;
+            const BTAB: u64 = keyc::KEYC_BTAB as u64;
             const BSPACE: u64 = keyc::KEYC_BSPACE as u64;
             const HOME: u64 = keyc::KEYC_HOME as u64;
             const END: u64 = keyc::KEYC_END as u64;
@@ -383,164 +383,129 @@ pub unsafe fn menu_key_cb(c: *mut client, data: *mut c_void, mut event: *mut key
             const CTRL_G: u64 = 'g' as u64 | KEYC_CTRL;
             const CTRL_F: u64 = 'f' as u64 | KEYC_CTRL;
 
-            // https://huonw.github.io/blog/2025/03/rust-fallthrough/
-            'outer: {
-                'bottom: {
-                    'top: {
-                        'next: {
-                            'previous: {
-                                'down: {
-                                    'tab: {
-                                        'backspace: {
-                                            'up: {
-                                                match (*event).key & !KEYC_MASK_FLAGS {
-                                                    K | UP => break 'up,
-                                                    BSPACE => break 'backspace,
-                                                    TAB => break 'tab, /* this will fallthrough after */
-                                                    DOWN | J => break 'down,
-                                                    PPAGE | CTRL_B => break 'previous,
-                                                    NPAGE => break 'next,
-                                                    G | HOME => break 'top,
-                                                    G_UPPER | END => break 'bottom,
-                                                    CTRL_F => (), // break // is this right
-                                                    RETURN => break 'chosen,
-                                                    ESCAPE | CTRL_C | CTRL_G | Q => return 1,
-                                                    _ => (),
-                                                }
-                                            }
-                                            // 'up:
-                                            if old == -1 {
-                                                old = 0;
-                                            }
-                                            loop {
-                                                if (*md).choice == -1 || (*md).choice == 0 {
-                                                    (*md).choice = count as i32 - 1;
-                                                } else {
-                                                    (*md).choice -= 1;
-                                                }
-                                                name = (*(*menu).items.add((*md).choice as usize))
-                                                    .name
-                                                    .as_ptr();
-                                                if !((name.is_null() || *name == b'-')
-                                                    && (*md).choice != old)
-                                                {
-                                                    break;
-                                                }
-                                            }
-                                            (*c).flags |= client_flag::REDRAWOVERLAY;
-                                            return 0;
-
-                                            // break 'outer;
-                                        }
-
-                                        // 'backspace:
-                                        if !(*md).flags.intersects(menu_flags::MENU_TAB) {
-                                            return 1;
-                                        }
-                                        break 'outer;
-                                    }
-
-                                    // 'tab:
-                                    if !(*md).flags.intersects(menu_flags::MENU_TAB) {
-                                        break 'outer;
-                                    }
-                                    if (*md).choice == count as i32 - 1 {
-                                        return 1;
-                                    }
-                                    // fallthrough
-                                }
-                                // 'down:
-
-                                if old == -1 {
-                                    old = 0;
-                                }
-                                loop {
-                                    if (*md).choice == -1 || (*md).choice == count as i32 - 1 {
-                                        (*md).choice = 0;
-                                    } else {
-                                        (*md).choice += 1;
-                                    }
-                                    name =
-                                        (*(*menu).items.add((*md).choice as usize)).name.as_ptr();
-                                    if !((name.is_null() || *name == b'-') && (*md).choice != old) {
-                                        break;
-                                    }
-                                }
-                                (*c).flags |= client_flag::REDRAWOVERLAY;
-                                return 0;
-                            }
-                            // 'previous:
-
-                            if (*md).choice < 6 {
-                                (*md).choice = 0;
-                            } else {
-                                let mut i = 5;
-                                while i > 0 {
-                                    (*md).choice -= 1;
-                                    name =
-                                        (*(*menu).items.add((*md).choice as usize)).name.as_ptr();
-                                    if (*md).choice != 0 && (!name.is_null() && *name != b'-') {
-                                        i -= 1;
-                                    } else if (*md).choice == 0 {
-                                        break;
-                                    }
-                                }
-                            }
-                            (*c).flags |= client_flag::REDRAWOVERLAY;
-                            break 'outer;
-                        }
-                        // 'next:
-
-                        if (*md).choice > count as i32 - 6 {
+            match (*event).key & !KEYC_MASK_FLAGS {
+                UP | K | BTAB => {
+                    if old == -1 {
+                        old = 0;
+                    }
+                    loop {
+                        if (*md).choice == -1 || (*md).choice == 0 {
                             (*md).choice = count as i32 - 1;
-                            name = (*(*menu).items.add((*md).choice as usize)).name.as_ptr();
                         } else {
-                            let mut i = 5;
-                            while i > 0 {
-                                (*md).choice += 1;
-                                name = (*(*menu).items.add((*md).choice as usize)).name.as_ptr();
-                                if (*md).choice != count as i32 - 1
-                                    && (!name.is_null() && *name != b'-')
-                                {
-                                    i += 1;
-                                } else if (*md).choice == count as i32 - 1 {
+                            (*md).choice -= 1;
+                        }
+                        let name = (*(*menu).items.add((*md).choice as usize)).name.as_ptr();
+                        if !((name.is_null() || *name == b'-') && (*md).choice != old) {
+                            break;
+                        }
+                    }
+                    (*c).flags |= client_flag::REDRAWOVERLAY;
+                    return 0;
+                }
+                BSPACE => {
+                    if !(*md).flags.intersects(menu_flags::MENU_TAB) {
+                        return 0;
+                    }
+                    return 1;
+                }
+                key @ (TAB | DOWN | J) => {
+                    if key == TAB {
+                        if !(*md).flags.intersects(menu_flags::MENU_TAB) {
+                            return 0;
+                        }
+                        if (*md).choice == count as i32 - 1 {
+                            return 1;
+                        }
+                    }
+                    if old == -1 {
+                        old = 0;
+                    }
+                    loop {
+                        if (*md).choice == -1 || (*md).choice == count as i32 - 1 {
+                            (*md).choice = 0;
+                        } else {
+                            (*md).choice += 1;
+                        }
+                        let name = (*(*menu).items.add((*md).choice as usize)).name.as_ptr();
+                        if !((name.is_null() || *name == b'-') && (*md).choice != old) {
+                            break;
+                        }
+                    }
+                    (*c).flags |= client_flag::REDRAWOVERLAY;
+                    return 0;
+                }
+                PPAGE | CTRL_B => {
+                    if (*md).choice < 6 {
+                        (*md).choice = 0;
+                    } else {
+                        let mut i = 5;
+                        while i > 0 {
+                            (*md).choice -= 1;
+                            let name = (*(*menu).items.add((*md).choice as usize)).name.as_ptr();
+                            if (*md).choice != 0 && (!name.is_null() && *name != b'-') {
+                                i -= 1;
+                            } else if (*md).choice == 0 {
+                                break;
+                            }
+                        }
+                    }
+                    (*c).flags |= client_flag::REDRAWOVERLAY;
+                }
+                NPAGE => {
+                    let mut name;
+                    if (*md).choice > count as i32 - 6 {
+                        (*md).choice = count as i32 - 1;
+                        name = (*(*menu).items.add((*md).choice as usize)).name.as_ptr();
+                    } else {
+                        let mut i = 5;
+                        loop {
+                            (*md).choice += 1;
+                            name = (*(*menu).items.add((*md).choice as usize)).name.as_ptr();
+                            if (*md).choice != count as i32 - 1
+                                && (!name.is_null() && *name != b'-')
+                            {
+                                i -= 1;
+                                if i <= 0 {
                                     break;
                                 }
+                            } else if (*md).choice == count as i32 - 1 {
+                                break;
                             }
                         }
-                        while name.is_null() || *name == b'-' {
-                            (*md).choice -= 1;
-                            name = (*(*menu).items.add((*md).choice as usize)).name.as_ptr();
-                        }
-                        (*c).flags |= client_flag::REDRAWOVERLAY;
-                        break 'outer;
                     }
-                    // 'top:
-
+                    while name.is_null() || *name == b'-' {
+                        (*md).choice -= 1;
+                        name = (*(*menu).items.add((*md).choice as usize)).name.as_ptr();
+                    }
+                    (*c).flags |= client_flag::REDRAWOVERLAY;
+                }
+                G | HOME => {
                     (*md).choice = 0;
-                    name = (*(*menu).items.add((*md).choice as usize)).name.as_ptr();
+                    let mut name = (*(*menu).items.add((*md).choice as usize)).name.as_ptr();
                     while name.is_null() || *name == b'-' {
                         (*md).choice += 1;
                         name = (*(*menu).items.add((*md).choice as usize)).name.as_ptr();
                     }
                     (*c).flags |= client_flag::REDRAWOVERLAY;
-                    break 'outer;
                 }
-                // 'bottom:
-
-                (*md).choice = count as i32 - 1;
-                name = (*(*menu).items.add((*md).choice as usize)).name.as_ptr();
-                while name.is_null() || *name == b'-' {
-                    (*md).choice -= 1;
-                    name = (*(*menu).items.add((*md).choice as usize)).name.as_ptr();
+                G_UPPER | END => {
+                    (*md).choice = count as i32 - 1;
+                    let mut name = (*(*menu).items.add((*md).choice as usize)).name.as_ptr();
+                    while name.is_null() || *name == b'-' {
+                        (*md).choice -= 1;
+                        name = (*(*menu).items.add((*md).choice as usize)).name.as_ptr();
+                    }
+                    (*c).flags |= client_flag::REDRAWOVERLAY;
                 }
-                (*c).flags |= client_flag::REDRAWOVERLAY;
-                break 'outer;
+                CTRL_F => (),
+                RETURN => break 'chosen,
+                ESCAPE | CTRL_C | CTRL_G | Q => return 1,
+                _ => (),
             }
 
             return 0;
-        }
-        // chosen:
+        } // 'chosen
+
         if (*md).choice == -1 {
             return 1;
         }

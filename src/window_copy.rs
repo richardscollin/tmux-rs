@@ -157,7 +157,7 @@ pub struct window_copy_mode_data {
 
     modekeys: modekey,
     lineflag: line_sel,  // line selection mode
-    rectflag: i32,       // in rectangle copy mode?
+    rectflag: bool,      // in rectangle copy mode?
     scroll_exit: bool,   // exit on scroll to end?
     hide_position: bool, // hide position marker
 
@@ -585,7 +585,7 @@ pub unsafe fn window_copy_pageup1(wme: *mut window_mode_entry, half_page: i32) {
             (*data).oy += n;
         }
 
-        if (*data).screen.sel.is_null() || (*data).rectflag == 0 {
+        if (*data).screen.sel.is_null() || !(*data).rectflag {
             let py = screen_hsize((*data).backing) + (*data).cy - (*data).oy;
             let px = window_copy_find_length(wme, py);
             if ((*data).cx >= (*data).lastsx && (*data).cx != px) || (*data).cx > px {
@@ -647,7 +647,7 @@ pub unsafe fn window_copy_pagedown1(
             (*data).oy -= n;
         }
 
-        if (*data).screen.sel.is_null() || (*data).rectflag == 0 {
+        if (*data).screen.sel.is_null() || !(*data).rectflag {
             let py = screen_hsize((*data).backing) + (*data).cy - (*data).oy;
             let px = window_copy_find_length(wme, py);
             if ((*data).cx >= (*data).lastsx && (*data).cx != px) || (*data).cx > px {
@@ -779,7 +779,7 @@ pub unsafe fn window_copy_formats(wme: *mut window_mode_entry, ft: *mut format_t
         let data: *mut window_copy_mode_data = (*wme).data.cast();
 
         format_add!(ft, c!("scroll_position"), "{}", (*data).oy);
-        format_add!(ft, c!("rectangle_toggle"), "{}", (*data).rectflag,);
+        format_add!(ft, c!("rectangle_toggle"), "{}", (*data).rectflag as i32);
 
         format_add!(ft, c!("copy_cursor_x"), "{}", (*data).cx);
         format_add!(ft, c!("copy_cursor_y"), "{}", (*data).cy);
@@ -1332,7 +1332,7 @@ pub unsafe fn window_copy_cmd_cursor_right(
         while np != 0 {
             window_copy_cursor_right(
                 wme,
-                (!(*data).screen.sel.is_null() && (*data).rectflag != 0) as i32,
+                (!(*data).screen.sel.is_null() && (*data).rectflag) as i32,
             );
             np -= 1;
         }
@@ -2057,7 +2057,7 @@ pub unsafe fn window_copy_cmd_rectangle_on(
         let data: *mut window_copy_mode_data = (*wme).data.cast();
 
         (*data).lineflag = line_sel::LINE_SEL_NONE;
-        window_copy_rectangle_set(wme, 1);
+        window_copy_rectangle_set(wme, true);
 
         window_copy_cmd_action::WINDOW_COPY_CMD_NOTHING
     }
@@ -2071,7 +2071,7 @@ pub unsafe fn window_copy_cmd_rectangle_off(
         let data: *mut window_copy_mode_data = (*wme).data.cast();
 
         (*data).lineflag = line_sel::LINE_SEL_NONE;
-        window_copy_rectangle_set(wme, 0);
+        window_copy_rectangle_set(wme, false);
 
         window_copy_cmd_action::WINDOW_COPY_CMD_NOTHING
     }
@@ -2199,7 +2199,7 @@ pub unsafe fn window_copy_cmd_select_line(
         let mut np = (*wme).prefix;
 
         (*data).lineflag = line_sel::LINE_SEL_LEFT_RIGHT;
-        (*data).rectflag = 0;
+        (*data).rectflag = false;
         (*data).selflag = selflag::SEL_LINE;
         (*data).dx = (*data).cx;
         (*data).dy = screen_hsize((*data).backing) + (*data).cy - (*data).oy;
@@ -2232,7 +2232,7 @@ pub unsafe fn window_copy_cmd_select_word(
         // u_int px, py, nextx, nexty;
 
         (*data).lineflag = line_sel::LINE_SEL_LEFT_RIGHT;
-        (*data).rectflag = 0;
+        (*data).rectflag = false;
         (*data).selflag = selflag::SEL_WORD;
         (*data).dx = (*data).cx;
         (*data).dy = screen_hsize((*data).backing) + (*data).cy - (*data).oy;
@@ -5223,13 +5223,13 @@ unsafe fn window_copy_adjust_selection(
         let ty = screen_hsize((*data).backing) - (*data).oy;
         if sy < ty {
             relpos = window_copy_rel_pos::WINDOW_COPY_REL_POS_ABOVE;
-            if (*data).rectflag == 0 {
+            if !(*data).rectflag {
                 sx = 0;
             }
             sy = 0;
         } else if sy > ty + screen_size_y(s) - 1 {
             relpos = window_copy_rel_pos::WINDOW_COPY_REL_POS_BELOW;
-            if (*data).rectflag == 0 {
+            if !(*data).rectflag {
                 sx = screen_size_x(s) - 1;
             }
             sy = screen_size_y(s) - 1;
@@ -5306,7 +5306,7 @@ pub unsafe fn window_copy_set_selection(
             &raw mut gc,
         );
 
-        if (*data).rectflag != 0 && may_redraw != 0 {
+        if (*data).rectflag && may_redraw != 0 {
             // Can't rely on the caller to redraw the right lines for
             // rectangle selection - find the highest line and the number
             // of lines, and redraw just past that in both directions
@@ -5386,7 +5386,7 @@ pub unsafe fn window_copy_get_selection(wme: *mut window_mode_entry, len: *mut u
         // keep bottom-right-most character.
         let keys =
             modekey::try_from(options_get_number_((*(*wp).window).options, "mode-keys") as i32);
-        if (*data).rectflag != 0 {
+        if (*data).rectflag {
             // Need to ignore the column with the cursor in it, which for
             // rectangular copy means knowing which side the cursor is on.
             let selx = if (*data).cursordrag == cursordrag::CURSORDRAG_ENDSEL {
@@ -5743,7 +5743,7 @@ pub unsafe fn window_copy_cursor_end_of_line(wme: *mut window_mode_entry) {
         let oldy = (*data).cy;
 
         grid_reader_start(&raw mut gr, (*back_s).grid, px, py);
-        if !(*data).screen.sel.is_null() && (*data).rectflag != 0 {
+        if !(*data).screen.sel.is_null() && (*data).rectflag {
             grid_reader_cursor_end_of_line(&raw mut gr, 1, 1);
         } else {
             grid_reader_cursor_end_of_line(&raw mut gr, 1, 0);
@@ -5865,7 +5865,7 @@ pub unsafe fn window_copy_cursor_up(wme: *mut window_mode_entry, scroll_only: i3
         let data: *mut window_copy_mode_data = (*wme).data.cast();
         let s: *mut screen = &raw mut (*data).screen;
 
-        let norectsel = (*data).screen.sel.is_null() || (*data).rectflag == 0;
+        let norectsel = (*data).screen.sel.is_null() || !(*data).rectflag;
         let oy = screen_hsize((*data).backing) + (*data).cy - (*data).oy;
         let ox = window_copy_find_length(wme, oy);
         if norectsel && (*data).cx != ox {
@@ -5919,7 +5919,7 @@ pub unsafe fn window_copy_cursor_up(wme: *mut window_mode_entry, scroll_only: i3
 
         if (*data).lineflag == line_sel::LINE_SEL_LEFT_RIGHT {
             py = screen_hsize((*data).backing) + (*data).cy - (*data).oy;
-            if (*data).rectflag != 0 {
+            if (*data).rectflag {
                 px = screen_size_x((*data).backing);
             } else {
                 px = window_copy_find_length(wme, py);
@@ -5942,7 +5942,7 @@ pub unsafe fn window_copy_cursor_down(wme: *mut window_mode_entry, scroll_only: 
         let data: *mut window_copy_mode_data = (*wme).data.cast();
         let s: *mut screen = &raw mut (*data).screen;
 
-        let norectsel = (*data).screen.sel.is_null() || (*data).rectflag == 0;
+        let norectsel = (*data).screen.sel.is_null() || !(*data).rectflag;
         let oy = screen_hsize((*data).backing) + (*data).cy - (*data).oy;
         let ox = window_copy_find_length(wme, oy);
         if norectsel && (*data).cx != ox {
@@ -5988,7 +5988,7 @@ pub unsafe fn window_copy_cursor_down(wme: *mut window_mode_entry, scroll_only: 
 
         if (*data).lineflag == line_sel::LINE_SEL_LEFT_RIGHT {
             py = screen_hsize((*data).backing) + (*data).cy - (*data).oy;
-            if (*data).rectflag != 0 {
+            if (*data).rectflag {
                 px = screen_size_x((*data).backing);
             } else {
                 px = window_copy_find_length(wme, py);
@@ -6407,7 +6407,7 @@ pub unsafe fn window_copy_scroll_down(wme: *mut window_mode_entry, mut ny: u32) 
     }
 }
 
-pub unsafe fn window_copy_rectangle_set(wme: *mut window_mode_entry, rectflag: i32) {
+pub unsafe fn window_copy_rectangle_set(wme: *mut window_mode_entry, rectflag: bool) {
     unsafe {
         let data: *mut window_copy_mode_data = (*wme).data.cast();
 

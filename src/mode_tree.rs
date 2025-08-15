@@ -81,7 +81,7 @@ pub struct mode_tree_data {
 
     screen: screen,
 
-    preview: i32,
+    preview: bool,
     search: *mut u8,
     filter: *mut u8,
     no_matches: i32,
@@ -444,7 +444,7 @@ pub unsafe fn mode_tree_start(
         (*mtd).sort_list = sort_list;
         (*mtd).sort_size = sort_size;
 
-        (*mtd).preview = (!args_has(args, 'N')) as i32;
+        (*mtd).preview = !args_has(args, 'N');
 
         let sort = args_get_(args, 'O');
         if !sort.is_null() {
@@ -564,7 +564,7 @@ pub unsafe fn mode_tree_build(mtd: *mut mode_tree_data) {
         mode_tree_set_current(mtd, tag);
 
         (*mtd).width = screen_size_x(s);
-        if (*mtd).preview != 0 {
+        if (*mtd).preview {
             mode_tree_set_height(mtd);
         } else {
             (*mtd).height = screen_size_y(s);
@@ -833,7 +833,7 @@ pub unsafe fn mode_tree_draw(mtd: *mut mode_tree_data) {
             }
 
             let sy = screen_size_y(s);
-            if (*mtd).preview == 0 || sy <= 4 || h <= 4 || sy - h <= 4 || w <= 4 {
+            if !(*mtd).preview || sy <= 4 || h <= 4 || sy - h <= 4 || w <= 4 {
                 break 'done;
             }
 
@@ -1225,7 +1225,7 @@ pub unsafe fn mode_tree_key(
                 if *key == keyc::KEYC_MOUSEDOWN3_PANE as u64 {
                     mode_tree_display_menu(mtd, c, x, y, 1);
                 }
-                if (*mtd).preview == 0 {
+                if !(*mtd).preview {
                     *key = KEYC_NONE;
                 }
                 return 0;
@@ -1493,7 +1493,7 @@ pub unsafe fn mode_tree_key(
             code::V => {
                 (*mtd).preview = !(*mtd).preview;
                 mode_tree_build(mtd);
-                if (*mtd).preview != 0 {
+                if (*mtd).preview {
                     mode_tree_check_selected(mtd);
                 }
             }

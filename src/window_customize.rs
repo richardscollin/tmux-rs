@@ -89,7 +89,7 @@ pub struct window_customize_modedata {
 
     data: *mut mode_tree_data,
     format: *mut u8,
-    hide_global: i32,
+    hide_global: bool,
 
     item_list: *mut *mut window_customize_itemdata,
     item_size: u32,
@@ -293,7 +293,7 @@ unsafe fn window_customize_build_option(
         {
             global = 1;
         }
-        if (*data).hide_global != 0 && global != 0 {
+        if (*data).hide_global && global != 0 {
             return;
         }
 

@@ -221,7 +221,7 @@ pub unsafe fn window_client_build(
                 c as u64,
                 (*c).name,
                 text,
-                -1,
+                true,
             );
             free_(text);
         }

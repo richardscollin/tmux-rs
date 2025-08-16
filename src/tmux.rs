@@ -231,7 +231,7 @@ unsafe fn make_label(mut label: *const u8, cause: *mut *mut u8) -> *const u8 {
             paths.truncate(1);
             let mut path = paths.pop().unwrap(); /* can only have one socket! */
 
-            base = format_nul!("{}/tmux-{}", path.to_string_lossy(), uid);
+            base = format_nul!("{}/tmux-rs-{}", path.to_string_lossy(), uid);
             if mkdir(base.cast(), S_IRWXU) != 0 && errno!() != EEXIST {
                 *cause = format_nul!(
                     "couldn't create directory {} ({})",

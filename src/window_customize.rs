@@ -252,7 +252,7 @@ unsafe fn window_customize_build_array(
 
             let text: *mut u8 = format_expand(ft, (*data).format);
             let tag = window_customize_get_tag(o, idx as i32, oe);
-            mode_tree_add((*data).data, top, item.cast(), tag, name, text, -1);
+            mode_tree_add((*data).data, top, item.cast(), tag, name, text, None);
             free_(text);
 
             free_(name);
@@ -337,7 +337,7 @@ unsafe fn window_customize_build_option(
             text = format_expand(ft, (*data).format);
         }
         let tag = window_customize_get_tag(o, -1, oe);
-        let top = mode_tree_add((*data).data, top, item.cast(), tag, name, text, 0);
+        let top = mode_tree_add((*data).data, top, item.cast(), tag, name, text, Some(false));
         free_(text);
 
         if array != 0 {
@@ -405,7 +405,7 @@ unsafe fn window_customize_build_options(
             tag,
             title,
             null_mut(),
-            0,
+            Some(false),
         );
         mode_tree_no_tag(top);
 
@@ -488,7 +488,7 @@ unsafe fn window_customize_build_keys(
             tag,
             title,
             null_mut(),
-            0,
+            Some(false),
         );
         mode_tree_no_tag(top);
         free_(title);
@@ -527,7 +527,7 @@ unsafe fn window_customize_build_keys(
                 bd as u64,
                 expanded,
                 null_mut(),
-                0,
+                Some(false),
             );
             free_(expanded);
 
@@ -541,7 +541,7 @@ unsafe fn window_customize_build_keys(
                 tag | ((*bd).key << 3) | 1,
                 c!("Command"),
                 text,
-                -1,
+                None,
             );
             mode_tree_draw_as_parent(mti);
             mode_tree_no_tag(mti);
@@ -559,7 +559,7 @@ unsafe fn window_customize_build_keys(
                 tag | ((*bd).key << 3) | (1 << 1) | 1,
                 c!("Note"),
                 text,
-                -1,
+                None,
             );
             mode_tree_draw_as_parent(mti);
             mode_tree_no_tag(mti);
@@ -577,7 +577,7 @@ unsafe fn window_customize_build_keys(
                 tag | ((*bd).key << 3) | (2 << 1) | 1,
                 c!("Repeat"),
                 flag,
-                -1,
+                None,
             );
             mode_tree_draw_as_parent(mti);
             mode_tree_no_tag(mti);

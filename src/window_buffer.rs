@@ -228,7 +228,7 @@ pub unsafe fn window_buffer_build(
                 (*item).order as u64,
                 (*item).name,
                 text,
-                -1,
+                None,
             );
             free_(text);
 

@@ -350,7 +350,7 @@ unsafe fn window_tree_build_pane(
             wp as u64,
             name,
             text,
-            -1,
+            None,
         );
         free_(text);
         free_(name);
@@ -395,7 +395,6 @@ unsafe fn window_tree_build_window(
         let mut l: *mut *mut window_pane;
 
         let mut n: u32;
-        let expanded: i32;
 
         'empty: {
             item = window_tree_add_item(data);
@@ -414,14 +413,11 @@ unsafe fn window_tree_build_window(
             );
             name = format_nul!("{}", (*wl).idx);
 
-            if matches!(
+            let expanded = !matches!(
                 (*data.as_ptr()).type_,
                 window_tree_type::WINDOW_TREE_SESSION | window_tree_type::WINDOW_TREE_WINDOW
-            ) {
-                expanded = 0;
-            } else {
-                expanded = 1;
-            }
+            );
+
             mti = mode_tree_add(
                 (*data.as_ptr()).data,
                 parent,
@@ -429,7 +425,7 @@ unsafe fn window_tree_build_window(
                 wl as u64,
                 name,
                 text,
-                expanded,
+                Some(expanded),
             );
             free_(text);
             free_(name);
@@ -509,11 +505,7 @@ unsafe fn window_tree_build_session(
             null_mut(),
         );
 
-        let expanded = if (*data).type_ == window_tree_type::WINDOW_TREE_SESSION {
-            0
-        } else {
-            1
-        };
+        let expanded = (*data).type_ != window_tree_type::WINDOW_TREE_SESSION;
         let mti = mode_tree_add(
             (*data).data,
             null_mut(),
@@ -521,7 +513,7 @@ unsafe fn window_tree_build_session(
             s as u64,
             (*s).name,
             text,
-            expanded,
+            Some(expanded),
         );
         free_(text);
 

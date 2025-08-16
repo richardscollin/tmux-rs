@@ -622,7 +622,7 @@ pub unsafe fn mode_tree_add(
     tag: u64,
     name: *const u8,
     text: *const u8,
-    expanded: i32,
+    expanded: Option<bool>,
 ) -> *mut mode_tree_item {
     unsafe {
         // log_debug("%s: %llu, %s %s", __func__, (unsigned long long)tag, name, (text == NULL ? "" : text));
@@ -643,10 +643,8 @@ pub unsafe fn mode_tree_add(
                 (*mti).tagged = (*saved).tagged;
             }
             (*mti).expanded = (*saved).expanded;
-        } else if expanded == -1 {
-            (*mti).expanded = true;
         } else {
-            (*mti).expanded = expanded != 0;
+            (*mti).expanded = expanded.unwrap_or(true);
         }
 
         tailq_init(&raw mut (*mti).children);

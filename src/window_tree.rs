@@ -1027,17 +1027,12 @@ unsafe fn window_tree_search(
                 }
             }
             window_tree_type::WINDOW_TREE_WINDOW => {
-                if s.is_some()
-                    && let Some(wl) = wl
-                {
+                if let (Some(_s), Some(wl)) = (s, wl) {
                     return !libc::strstr((*(*wl.as_ptr()).window).name, ss).is_null();
                 }
             }
             window_tree_type::WINDOW_TREE_PANE => {
-                if s.is_some()
-                    && wl.is_some()
-                    && let Some(wp) = wp
-                {
+                if let (Some(_s), Some(_wl), Some(wp)) = (s, wl, wp) {
                     let cmd: *mut u8 =
                         osdep_get_name((*wp.as_ptr()).fd, (&raw const (*wp.as_ptr()).tty).cast());
                     if cmd.is_null() || *cmd == b'\0' {
@@ -1236,17 +1231,12 @@ unsafe fn window_tree_get_target(
                 }
             }
             window_tree_type::WINDOW_TREE_WINDOW => {
-                if let Some(s) = s
-                    && let Some(wl) = wl
-                {
+                if let (Some(s), Some(wl)) = (s, wl) {
                     target = format_nul!("={}:{}.", _s((*s.as_ptr()).name), (*wl.as_ptr()).idx);
                 }
             }
             window_tree_type::WINDOW_TREE_PANE => {
-                if let Some(s) = s
-                    && let Some(wl) = wl
-                    && let Some(wp) = wp
-                {
+                if let (Some(s), Some(wl), Some(wp)) = (s, wl, wp) {
                     target = format_nul!(
                         "={}:{}.%{}",
                         _s((*s.as_ptr()).name),

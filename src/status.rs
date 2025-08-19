@@ -745,8 +745,8 @@ pub unsafe fn status_prompt_clear(c: *mut client) {
             return;
         }
 
-        if let Some(prompt_freecb) = (*c).prompt_freecb
-            && let Some(prompt_data) = NonNull::new((*c).prompt_data)
+        if let (Some(prompt_freecb), Some(prompt_data)) =
+            ((*c).prompt_freecb, NonNull::new((*c).prompt_data))
         {
             prompt_freecb(prompt_data);
         }

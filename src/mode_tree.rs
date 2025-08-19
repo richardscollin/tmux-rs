@@ -81,7 +81,7 @@ pub struct mode_tree_data {
 
     screen: screen,
 
-    preview: i32,
+    preview: bool,
     search: *mut u8,
     filter: *mut u8,
     no_matches: i32,
@@ -102,7 +102,7 @@ pub struct mode_tree_item {
     name: *mut u8,
     text: *mut u8,
 
-    expanded: i32,
+    expanded: bool,
     tagged: i32,
 
     draw_as_parent: i32,
@@ -208,7 +208,7 @@ unsafe fn mode_tree_build_lines(mtd: *mut mode_tree_data, mtl: *mut mode_tree_li
             if !tailq_empty(&raw const (*mti).children) {
                 flat = 0;
             }
-            if (*mti).expanded != 0 {
+            if (*mti).expanded {
                 mode_tree_build_lines(mtd, &raw mut (*mti).children, depth + 1);
             }
 
@@ -305,8 +305,8 @@ pub unsafe fn mode_tree_get_current_name(mtd: *mut mode_tree_data) -> *const u8 
 
 pub unsafe fn mode_tree_expand_current(mtd: *mut mode_tree_data) {
     unsafe {
-        if (*(*(*mtd).line_list.add((*mtd).current as usize)).item).expanded == 0 {
-            (*(*(*mtd).line_list.add((*mtd).current as usize)).item).expanded = 1;
+        if !(*(*(*mtd).line_list.add((*mtd).current as usize)).item).expanded {
+            (*(*(*mtd).line_list.add((*mtd).current as usize)).item).expanded = true;
             mode_tree_build(mtd);
         }
     }
@@ -314,8 +314,8 @@ pub unsafe fn mode_tree_expand_current(mtd: *mut mode_tree_data) {
 
 pub unsafe fn mode_tree_collapse_current(mtd: *mut mode_tree_data) {
     unsafe {
-        if ((*(*(*mtd).line_list.add((*mtd).current as usize)).item).expanded) != 0 {
-            (*(*(*mtd).line_list.add((*mtd).current as usize)).item).expanded = 0;
+        if (*(*(*mtd).line_list.add((*mtd).current as usize)).item).expanded {
+            (*(*(*mtd).line_list.add((*mtd).current as usize)).item).expanded = false;
             mode_tree_build(mtd);
         }
     }
@@ -345,8 +345,8 @@ pub unsafe fn mode_tree_expand(mtd: *mut mode_tree_data, tag: u64) {
         if mode_tree_get_tag(mtd, tag, &raw mut found) == 0 {
             return;
         }
-        if (*(*(*mtd).line_list.add(found as usize)).item).expanded == 0 {
-            (*(*(*mtd).line_list.add(found as usize)).item).expanded = 1;
+        if !(*(*(*mtd).line_list.add(found as usize)).item).expanded {
+            (*(*(*mtd).line_list.add(found as usize)).item).expanded = true;
             mode_tree_build(mtd);
         }
     }
@@ -444,7 +444,7 @@ pub unsafe fn mode_tree_start(
         (*mtd).sort_list = sort_list;
         (*mtd).sort_size = sort_size;
 
-        (*mtd).preview = (!args_has(args, 'N')) as i32;
+        (*mtd).preview = !args_has(args, 'N');
 
         let sort = args_get_(args, 'O');
         if !sort.is_null() {
@@ -564,7 +564,7 @@ pub unsafe fn mode_tree_build(mtd: *mut mode_tree_data) {
         mode_tree_set_current(mtd, tag);
 
         (*mtd).width = screen_size_x(s);
-        if (*mtd).preview != 0 {
+        if (*mtd).preview {
             mode_tree_set_height(mtd);
         } else {
             (*mtd).height = screen_size_y(s);
@@ -622,7 +622,7 @@ pub unsafe fn mode_tree_add(
     tag: u64,
     name: *const u8,
     text: *const u8,
-    expanded: i32,
+    expanded: Option<bool>,
 ) -> *mut mode_tree_item {
     unsafe {
         // log_debug("%s: %llu, %s %s", __func__, (unsigned long long)tag, name, (text == NULL ? "" : text));
@@ -639,14 +639,12 @@ pub unsafe fn mode_tree_add(
 
         let saved = mode_tree_find_item(&raw mut (*mtd).saved, tag);
         if !saved.is_null() {
-            if parent.is_null() || (*parent).expanded != 0 {
+            if parent.is_null() || (*parent).expanded {
                 (*mti).tagged = (*saved).tagged;
             }
             (*mti).expanded = (*saved).expanded;
-        } else if expanded == -1 {
-            (*mti).expanded = 1;
         } else {
-            (*mti).expanded = expanded;
+            (*mti).expanded = expanded.unwrap_or(true);
         }
 
         tailq_init(&raw mut (*mti).children);
@@ -745,7 +743,7 @@ pub unsafe fn mode_tree_draw(mtd: *mut mode_tree_data) {
                     c!("")
                 } else if tailq_empty(&raw const (*mti).children) {
                     c!("  ")
-                } else if (*mti).expanded != 0 {
+                } else if (*mti).expanded {
                     c!("- ")
                 } else {
                     c!("+ ")
@@ -833,7 +831,7 @@ pub unsafe fn mode_tree_draw(mtd: *mut mode_tree_data) {
             }
 
             let sy = screen_size_y(s);
-            if (*mtd).preview == 0 || sy <= 4 || h <= 4 || sy - h <= 4 || w <= 4 {
+            if !(*mtd).preview || sy <= 4 || h <= 4 || sy - h <= 4 || w <= 4 {
                 break 'done;
             }
 
@@ -1033,7 +1031,7 @@ pub unsafe fn mode_tree_search_set(mtd: *mut mode_tree_data) {
 
         let mut loop_ = (*mti).parent;
         while !loop_.is_null() {
-            (*loop_).expanded = 1;
+            (*loop_).expanded = true;
             loop_ = (*loop_).parent;
         }
 
@@ -1225,7 +1223,7 @@ pub unsafe fn mode_tree_key(
                 if *key == keyc::KEYC_MOUSEDOWN3_PANE as u64 {
                     mode_tree_display_menu(mtd, c, x, y, 1);
                 }
-                if (*mtd).preview == 0 {
+                if !(*mtd).preview {
                     *key = KEYC_NONE;
                 }
                 return 0;
@@ -1423,34 +1421,34 @@ pub unsafe fn mode_tree_key(
                 mode_tree_build(mtd);
             }
             code::KEYC_LEFT | code::H | code::MINUS => {
-                if (*line).flat != 0 || !(*current).expanded != 0 {
+                if (*line).flat != 0 || !(*current).expanded {
                     current = (*current).parent;
                 }
                 if current.is_null() {
                     mode_tree_up(mtd, 0);
                 } else {
-                    (*current).expanded = 0;
+                    (*current).expanded = false;
                     (*mtd).current = (*current).line;
                     mode_tree_build(mtd);
                 }
             }
             code::KEYC_RIGHT | code::L | code::PLUS => {
-                if (*line).flat != 0 || (*current).expanded != 0 {
+                if (*line).flat != 0 || (*current).expanded {
                     mode_tree_down(mtd, 0);
                 } else if (*line).flat == 0 {
-                    (*current).expanded = 1;
+                    (*current).expanded = true;
                     mode_tree_build(mtd);
                 }
             }
             code::MINUS_META => {
                 for mti in tailq_foreach(&raw mut (*mtd).children).map(NonNull::as_ptr) {
-                    (*mti).expanded = 0;
+                    (*mti).expanded = false;
                 }
                 mode_tree_build(mtd);
             }
             code::PLUS_META => {
                 for mti in tailq_foreach(&raw mut (*mtd).children).map(NonNull::as_ptr) {
-                    (*mti).expanded = 1;
+                    (*mti).expanded = true;
                 }
                 mode_tree_build(mtd);
             }
@@ -1493,7 +1491,7 @@ pub unsafe fn mode_tree_key(
             code::V => {
                 (*mtd).preview = !(*mtd).preview;
                 mode_tree_build(mtd);
-                if (*mtd).preview != 0 {
+                if (*mtd).preview {
                     mode_tree_check_selected(mtd);
                 }
             }

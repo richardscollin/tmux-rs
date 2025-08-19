@@ -5334,7 +5334,7 @@ pub unsafe fn format_grid_word(gd: *mut grid, mut x: u32, mut y: u32) -> *mut u8
             if (*gc).flags.intersects(grid_flag::PADDING) {
                 break;
             }
-            if utf8_cstrhas(ws, &raw mut (*gc).data) != 0
+            if utf8_cstrhas(ws, &raw mut (*gc).data)
                 || ((*gc).data.size == 1 && (*gc).data.data[0] == b' ')
             {
                 found = true;
@@ -5380,7 +5380,7 @@ pub unsafe fn format_grid_word(gd: *mut grid, mut x: u32, mut y: u32) -> *mut u8
             if (*gc).flags.intersects(grid_flag::PADDING) {
                 break;
             }
-            if utf8_cstrhas(ws, &raw mut (*gc).data) != 0
+            if utf8_cstrhas(ws, &raw mut (*gc).data)
                 || ((*gc).data.size == 1 && (*gc).data.data[0] == b' ')
             {
                 break;

@@ -723,8 +723,8 @@ pub unsafe fn utf8_rpadcstr(s: *const u8, width: u32) -> *mut u8 {
     }
 }
 
-pub unsafe fn utf8_cstrhas(s: *const u8, ud: *const utf8_data) -> i32 {
-    let mut found: i32 = 0;
+pub unsafe fn utf8_cstrhas(s: *const u8, ud: *const utf8_data) -> bool {
+    let mut found = false;
 
     unsafe {
         let copy = utf8_fromcstr(s);
@@ -740,7 +740,7 @@ pub unsafe fn utf8_cstrhas(s: *const u8, ud: *const utf8_data) -> i32 {
                 (*loop_).size as usize,
             ) == 0
             {
-                found = 1;
+                found = true;
                 break;
             }
             loop_ = loop_.add(1);

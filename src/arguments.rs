@@ -580,32 +580,32 @@ pub unsafe fn args_escape(s: *const u8) -> *mut u8 {
 
         let mut escaped: *mut u8 = null_mut();
 
-        let mut quotes: i32 = 0;
-
         if *s == b'\0' {
             return format_nul!("''");
         }
-        if *s.add(libc::strcspn(s, dquoted)) != b'\0' as _ {
-            quotes = b'"' as _;
+        let quotes = if *s.add(libc::strcspn(s, dquoted)) != b'\0' as _ {
+            Some('"')
         } else if *s.add(libc::strcspn(s, squoted)) != b'\0' as _ {
-            quotes = b'\'' as _;
-        }
+            Some('\'')
+        } else {
+            None
+        };
 
-        if *s != b' ' as _ && *s.add(1) == b'\0' as _ && (quotes != 0 || *s == b'~' as _) {
+        if *s != b' ' as _ && *s.add(1) == b'\0' as _ && (quotes.is_some() || *s == b'~' as _) {
             escaped = format_nul!("\\{}", *s as char);
             return escaped;
         }
 
         let mut flags =
             vis_flags::VIS_OCTAL | vis_flags::VIS_CSTYLE | vis_flags::VIS_TAB | vis_flags::VIS_NL;
-        if quotes == b'"' as _ {
+        if quotes == Some('"') {
             flags |= vis_flags::VIS_DQ;
         }
         utf8_stravis(&raw mut escaped, s, flags);
 
-        let result = if quotes == b'\'' as i32 {
+        let result = if quotes == Some('\'') {
             format_nul!("'{}'", _s(escaped))
-        } else if quotes == b'"' as i32 {
+        } else if quotes == Some('"') {
             if *escaped == b'~' {
                 format_nul!("\"\\{}\"", _s(escaped))
             } else {

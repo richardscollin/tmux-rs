@@ -353,7 +353,12 @@ pub fn getversion() -> &'static str {
     crate::TMUX_VERSION
 }
 
-/// entrypoint for tmux binary
+/// Entrypoint for tmux binary
+///
+/// # Safety
+///
+/// This code is work in progress. There is no guarantee that the code is safe.
+/// This function should only be called by the tmux binary crate to start tmux.
 pub unsafe fn tmux_main(mut argc: i32, mut argv: *mut *mut u8, _env: *mut *mut u8) {
     std::panic::set_hook(Box::new(|_panic_info| {
         let backtrace = std::backtrace::Backtrace::capture();

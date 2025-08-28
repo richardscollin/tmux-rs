@@ -79,12 +79,7 @@ pub static WINDOW_TREE_MODE: window_mode = window_mode {
     formats: None,
 };
 
-enum_try_from!(
-    window_tree_sort_type,
-    i32,
-    window_tree_sort_type::WINDOW_TREE_BY_TIME
-);
-#[expect(dead_code, reason = "enum_try_from transmutes from i32 to enum")]
+#[derive(num_enum::TryFromPrimitive)]
 #[repr(i32)]
 enum window_tree_sort_type {
     WINDOW_TREE_BY_INDEX,

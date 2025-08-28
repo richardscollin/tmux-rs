@@ -57,12 +57,7 @@ pub static WINDOW_BUFFER_MODE: window_mode = window_mode {
     formats: None,
 };
 
-enum_try_from!(
-    window_buffer_sort_type,
-    u32,
-    window_buffer_sort_type::WINDOW_BUFFER_BY_SIZE
-);
-#[expect(dead_code, reason = "enum_try_from transmutes from u32 to enum")]
+#[derive(num_enum::TryFromPrimitive)]
 #[repr(u32)]
 enum window_buffer_sort_type {
     WINDOW_BUFFER_BY_TIME,

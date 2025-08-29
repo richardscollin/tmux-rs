@@ -396,16 +396,8 @@ unsafe fn sixel_log(si: *mut sixel_image) {
 
 pub unsafe fn sixel_size_in_cells(si: *mut sixel_image, x: *mut u32, y: *mut u32) {
     unsafe {
-        if ((*si).x % (*si).xpixel) == 0 {
-            *x = (*si).x / (*si).xpixel;
-        } else {
-            *x = 1 + ((*si).x / (*si).xpixel);
-        }
-        if ((*si).y % (*si).ypixel) == 0 {
-            *y = (*si).y / (*si).ypixel;
-        } else {
-            *y = 1 + ((*si).y / (*si).ypixel);
-        }
+        *x = (*si).x.div_ceil((*si).xpixel);
+        *y = (*si).y.div_ceil((*si).ypixel);
     }
 }
 

@@ -30,9 +30,7 @@ pub struct sixel_image {
     xpixel: u32,
     ypixel: u32,
 
-    colours: *mut u32,
-    ncolours: u32,
-
+    colours: Vec<u32>,
     dx: u32,
     dy: u32,
     dc: u32,
@@ -216,12 +214,11 @@ unsafe fn sixel_parse_colour(si: *mut sixel_image, cp: *const u8, end: *const u8
             log_debug!("sixel_parse_colour: invalid type_ {}", type_);
             return null_mut();
         }
-        if c + 1 > (*si).ncolours {
-            (*si).colours =
-                xrecallocarray__((*si).colours, (*si).ncolours as usize, c as usize + 1).as_ptr();
-            (*si).ncolours = c + 1;
+
+        if c as usize + 1 > (*si).colours.len() {
+            (*si).colours.resize(c as usize + 1, 0);
         }
-        *(*si).colours.add(c as usize) = (type_ << 24) | (r << 16) | (g << 8) | b;
+        (&mut *(*si).colours)[c as usize] = (type_ << 24) | (r << 16) | (g << 8) | b;
         last
     }
 }
@@ -353,7 +350,7 @@ pub unsafe fn sixel_free(si: *mut sixel_image) {
         }
         free_((*si).lines);
 
-        free_((*si).colours);
+        (*si).colours = Vec::new();
         free_(si);
     }
 }
@@ -365,12 +362,8 @@ unsafe fn sixel_log(si: *mut sixel_image) {
 
         let (cx, cy) = sixel_size_in_cells(&*si);
         log_debug!("sixel_log: image {}x{} ({cx}x{cy})", (*si).x, (*si).y);
-        for i in 0..(*si).ncolours {
-            log_debug!(
-                "sixel_log: colour {} is {:07x}",
-                i,
-                *(*si).colours.add(i as usize)
-            );
+        for (i, c) in (*si).colours.iter().copied().enumerate() {
+            log_debug!("sixel_log: colour {i} is {c:07x}");
         }
 
         let mut xx: u32 = 0;
@@ -454,13 +447,7 @@ pub unsafe fn sixel_scale(
         }
 
         if colours != 0 {
-            (*new).colours = xmalloc((*si).ncolours as usize * size_of::<u32>())
-                .as_ptr()
-                .cast();
-            for i in 0..(*si).ncolours {
-                *(*new).colours.add(i as usize) = *(*si).colours.add(i as usize);
-            }
-            (*new).ncolours = (*si).ncolours;
+            (*new).colours = (*si).colours.clone();
         }
         new
     }
@@ -526,16 +513,15 @@ pub(crate) unsafe fn sixel_print(
         let mut len: usize;
         let mut used: usize = 0;
 
-        let (colours, ncolours) = if !map.is_null() {
-            ((*map).colours, (*map).ncolours)
+        let colours = if !map.is_null() {
+            &(*map).colours
         } else {
-            ((*si).colours, (*si).ncolours)
+            &(*si).colours
         };
 
-        if ncolours == 0 {
+        if colours.len() == 0 {
             return null_mut();
         }
-        let contains: *mut u8 = xcalloc(1, ncolours as usize).as_ptr().cast();
 
         len = 8192;
         buf = xmalloc(len).as_ptr().cast();
@@ -552,8 +538,7 @@ pub(crate) unsafe fn sixel_print(
         );
 
         log_debug!("sixel_print before colours");
-        for i in 0..ncolours {
-            let c = *colours.add(i as usize);
+        for (i, c) in colours.iter().copied().enumerate() {
             let tmp = CString::new(format!(
                 "#{};{};{};{};{}",
                 i,
@@ -572,9 +557,10 @@ pub(crate) unsafe fn sixel_print(
             );
         }
 
+        let mut contains: Vec<u8> = vec![0u8; colours.len()];
         let mut y = 0;
         while y < (*si).y {
-            libc::memset(contains.cast(), 0, ncolours as usize);
+            contains.fill(0);
             for x in 0..(*si).x {
                 for i in 0..6 {
                     if y + i >= (*si).y {
@@ -582,14 +568,14 @@ pub(crate) unsafe fn sixel_print(
                     }
                     let sl = (*si).lines.add((y + i) as usize);
                     if x < (*sl).x && *(*sl).data.add(x as usize) != 0 {
-                        *contains.add(*(*sl).data.add(x as usize) as usize - 1) = 1;
+                        contains[*(*sl).data.add(x as usize) as usize - 1] = 1
                     }
                 }
             }
 
             log_debug!("sixel_print mid {y}");
-            for c in 0..ncolours {
-                if *contains.add(c as usize) == 0 {
+            for c in 0..colours.len() {
+                if contains[c as usize] == 0 {
                     continue;
                 }
                 let tmp = CString::new(format!("#{c}")).unwrap();
@@ -609,7 +595,7 @@ pub(crate) unsafe fn sixel_print(
                             break;
                         }
                         let sl = (*si).lines.add((y + i) as usize);
-                        if x < (*sl).x && *(*sl).data.add(x as usize) as u32 == c + 1 {
+                        if x < (*sl).x && *(*sl).data.add(x as usize) as u32 == c as u32 + 1 {
                             data |= 1 << i;
                         }
                     }
@@ -647,7 +633,6 @@ pub(crate) unsafe fn sixel_print(
             *size = used;
         }
 
-        free_(contains);
         buf
     }
 }

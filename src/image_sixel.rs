@@ -493,7 +493,7 @@ unsafe fn sixel_print_repeat(
             sixel_print_add(buf, len, used, &raw const ch, 1);
             sixel_print_add(buf, len, used, &raw const ch, 1);
         } else if count != 0 {
-            let tmp = CString::new(format!("{count}{}", ch as char)).unwrap();
+            let tmp = CString::new(format!("!{count}{}", ch as char)).unwrap();
             sixel_print_add(buf, len, used, tmp.as_ptr().cast(), tmp.to_bytes().len());
         }
     }

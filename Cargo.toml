@@ -1,6 +1,6 @@
 [package]
 name         = "tmux-rs"
-version      = "0.0.2"
+version      = "0.0.3"
 authors      = ["Collin Richards <richardscollin@gatech.edu>"]
 categories   = ["command-line-utilities"]
 edition      = "2024"

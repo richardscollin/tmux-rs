@@ -156,22 +156,8 @@ pub unsafe fn grid_view_delete_lines(gd: *mut grid, mut py: u32, ny: u32, bg: u3
 
         let sy = grid_view_y(gd, (*gd).sy);
 
-        // TODO does this bug exist upstream?
-        grid_move_lines(
-            gd,
-            py,
-            py + ny,
-            sy.saturating_sub(py).saturating_sub(ny),
-            bg,
-        );
-        grid_clear(
-            gd,
-            0,
-            sy.saturating_sub(ny),
-            (*gd).sx,
-            (py + ny + ny).saturating_sub(sy),
-            bg,
-        );
+        grid_move_lines(gd, py, py + ny, sy - py - ny, bg);
+        grid_clear(gd, 0, sy.saturating_sub(ny), (*gd).sx, ny, bg);
     }
 }
 
@@ -220,7 +206,7 @@ pub unsafe fn grid_view_delete_cells(gd: *mut grid, mut px: u32, mut py: u32, nx
         let sx = grid_view_x(gd, (*gd).sx);
 
         grid_move_cells(gd, px, px + nx, py, sx - px - nx, bg);
-        grid_clear(gd, sx - nx, py, px + nx - (sx - nx), 1, bg);
+        grid_clear(gd, sx - nx, py, nx, 1, bg);
     }
 }
 

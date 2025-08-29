@@ -92,7 +92,7 @@ pub unsafe fn image_store(s: *mut screen, si: *mut sixel_image) -> *mut image {
 
         (im.sx, im.sy) = crate::image_sixel::sixel_size_in_cells(&*si);
 
-        (*im).fallback = image_fallback((*im).sx, (*im).sy).into_raw().cast();
+        im.fallback = image_fallback(im.sx, im.sy).into_raw().cast();
 
         tailq_insert_tail::<image, discr_entry>(&raw mut (*s).images, &mut *im);
         tailq_insert_tail::<image, discr_all_entry>(&raw mut ALL_IMAGES, &mut *im);

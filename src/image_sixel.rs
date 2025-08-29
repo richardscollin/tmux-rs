@@ -519,7 +519,7 @@ pub(crate) unsafe fn sixel_print(
             &(*si).colours
         };
 
-        if colours.len() == 0 {
+        if colours.is_empty() {
             return null_mut();
         }
 
@@ -557,10 +557,10 @@ pub(crate) unsafe fn sixel_print(
             );
         }
 
-        let mut contains: Vec<u8> = vec![0u8; colours.len()];
+        let mut contains: Vec<bool> = vec![false; colours.len()];
         let mut y = 0;
         while y < (*si).y {
-            contains.fill(0);
+            contains.fill(false);
             for x in 0..(*si).x {
                 for i in 0..6 {
                     if y + i >= (*si).y {
@@ -568,14 +568,14 @@ pub(crate) unsafe fn sixel_print(
                     }
                     let sl = (*si).lines.add((y + i) as usize);
                     if x < (*sl).x && *(*sl).data.add(x as usize) != 0 {
-                        contains[*(*sl).data.add(x as usize) as usize - 1] = 1
+                        contains[*(*sl).data.add(x as usize) as usize - 1] = true;
                     }
                 }
             }
 
             log_debug!("sixel_print mid {y}");
-            for c in 0..colours.len() {
-                if contains[c as usize] == 0 {
+            for (c, contains_c) in contains.iter().copied().enumerate() {
+                if !contains_c {
                     continue;
                 }
                 let tmp = CString::new(format!("#{c}")).unwrap();

@@ -362,10 +362,8 @@ pub unsafe fn sixel_free(si: *mut sixel_image) {
 unsafe fn sixel_log(si: *mut sixel_image) {
     unsafe {
         let mut s: [u8; SIXEL_WIDTH_LIMIT as usize + 1] = [0; SIXEL_WIDTH_LIMIT as usize + 1];
-        let mut cx: u32 = 0;
-        let mut cy: u32 = 0;
 
-        sixel_size_in_cells(si, &raw mut cx, &raw mut cy);
+        let (cx, cy) = sixel_size_in_cells(&*si);
         log_debug!("sixel_log: image {}x{} ({cx}x{cy})", (*si).x, (*si).y);
         for i in 0..(*si).ncolours {
             log_debug!(
@@ -394,11 +392,8 @@ unsafe fn sixel_log(si: *mut sixel_image) {
     }
 }
 
-pub unsafe fn sixel_size_in_cells(si: *mut sixel_image, x: *mut u32, y: *mut u32) {
-    unsafe {
-        *x = (*si).x.div_ceil((*si).xpixel);
-        *y = (*si).y.div_ceil((*si).ypixel);
-    }
+pub fn sixel_size_in_cells(si: &sixel_image) -> (u32, u32) {
+    (si.x.div_ceil(si.xpixel), si.y.div_ceil(si.ypixel))
 }
 
 pub unsafe fn sixel_scale(
@@ -417,10 +412,7 @@ pub unsafe fn sixel_scale(
         // map it onto the same size in terminal cells, remembering that we
         // can only draw vertical sections of six pixels.
 
-        let mut cx: u32 = 0;
-        let mut cy: u32 = 0;
-
-        sixel_size_in_cells(si, &raw mut cx, &raw mut cy);
+        let (cx, cy) = sixel_size_in_cells(&*si);
         if ox >= cx {
             return null_mut();
         }
@@ -666,10 +658,7 @@ unsafe fn sixel_to_screen(si: *mut sixel_image) -> *mut screen {
         let mut ctx: screen_write_ctx = zeroed();
         let mut gc: grid_cell = zeroed();
 
-        let mut sx: u32 = 0;
-        let mut sy: u32 = 0;
-
-        sixel_size_in_cells(si, &raw mut sx, &raw mut sy);
+        let (sx, sy) = sixel_size_in_cells(&*si);
 
         let s = xmalloc_::<screen>().as_ptr();
         screen_init(s, sx, sy, 0);

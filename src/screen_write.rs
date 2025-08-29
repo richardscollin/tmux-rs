@@ -2505,15 +2505,13 @@ pub(crate) unsafe fn screen_write_sixelimage(
         let gd = (*s).grid;
         let mut ttyctx: tty_ctx = zeroed();
 
-        let mut x: u32 = 0;
-        let mut y: u32 = 0;
         let sx: u32;
         let mut sy: u32;
         let cx: u32 = (*s).cx;
         let cy: u32 = (*s).cy;
         let new: *mut sixel_image;
 
-        sixel_size_in_cells(si, &raw mut x, &raw mut y);
+        let (mut x, mut y) = sixel_size_in_cells(&*si);
         if x > screen_size_x(s) || y > screen_size_y(s) {
             if x > screen_size_x(s) - cx {
                 sx = screen_size_x(s) - cx;
@@ -2533,7 +2531,10 @@ pub(crate) unsafe fn screen_write_sixelimage(
             if si.is_null() {
                 return;
             }
-            sixel_size_in_cells(si, &raw mut x, &raw mut y);
+            #[expect(unused_assignments)]
+            {
+                (x, y) = sixel_size_in_cells(&*si);
+            }
         }
 
         sy = screen_size_y(s) - cy;

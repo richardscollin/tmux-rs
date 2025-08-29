@@ -78,24 +78,30 @@ pub fn image_fallback(sx: u32, sy: u32) -> CString {
 
 pub unsafe fn image_store(s: *mut screen, si: *mut sixel_image) -> *mut image {
     unsafe {
-        let im = xcalloc1::<image>() as *mut image;
-        (*im).s = s;
-        (*im).data = si;
+        let mut im = Box::new(image {
+            s,
+            data: si,
+            px: (*s).cx,
+            py: (*s).cy,
+            sx: 0,
+            sy: 0,
+            fallback: null_mut(),
+            all_entry: zeroed(),
+            entry: zeroed(),
+        });
 
-        (*im).px = (*s).cx;
-        (*im).py = (*s).cy;
-        crate::image_sixel::sixel_size_in_cells(si, &raw mut (*im).sx, &raw mut (*im).sy);
+        (im.sx, im.sy) = crate::image_sixel::sixel_size_in_cells(&*si);
 
         (*im).fallback = image_fallback((*im).sx, (*im).sy).into_raw().cast();
 
-        tailq_insert_tail::<image, discr_entry>(&raw mut (*s).images, im);
-        tailq_insert_tail::<image, discr_all_entry>(&raw mut ALL_IMAGES, im);
+        tailq_insert_tail::<image, discr_entry>(&raw mut (*s).images, &mut *im);
+        tailq_insert_tail::<image, discr_all_entry>(&raw mut ALL_IMAGES, &mut *im);
         ALL_IMAGES_COUNT += 1;
         if ALL_IMAGES_COUNT == 10 {
             image_free(NonNull::new(tailq_first::<image>(&raw mut ALL_IMAGES)).unwrap());
         }
 
-        im
+        Box::leak(im)
     }
 }
 
@@ -163,11 +169,8 @@ pub unsafe fn image_scroll_up(s: *mut screen, lines: u32) -> bool {
             (*im.as_ptr()).data = new;
 
             (*im.as_ptr()).py = 0;
-            crate::image_sixel::sixel_size_in_cells(
-                (*im.as_ptr()).data,
-                &raw mut (*im.as_ptr()).sx,
-                &raw mut (*im.as_ptr()).sy,
-            );
+            ((*im.as_ptr()).sx, (*im.as_ptr()).sy) =
+                crate::image_sixel::sixel_size_in_cells(&*(*im.as_ptr()).data);
 
             free_((*im.as_ptr()).fallback);
             (*im.as_ptr()).fallback = image_fallback((*im.as_ptr()).sx, (*im.as_ptr()).sy)

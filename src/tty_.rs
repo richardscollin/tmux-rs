@@ -2758,8 +2758,6 @@ pub unsafe fn tty_cmd_sixelimage(tty: *mut tty, ctx: *const tty_ctx) {
         let mut y: u32 = 0;
         let mut rx: u32 = 0;
         let mut ry: u32 = 0;
-        let mut sx: u32 = 0;
-        let mut sy: u32 = 0;
         let mut fallback = 0;
 
         if !(*(*tty).term).flags.intersects(term_flags::TERM_SIXEL)
@@ -2771,7 +2769,7 @@ pub unsafe fn tty_cmd_sixelimage(tty: *mut tty, ctx: *const tty_ctx) {
             fallback = 1;
         }
 
-        sixel_size_in_cells(si, &raw mut sx, &raw mut sy);
+        let (sx, sy) = sixel_size_in_cells(&*si);
         log_debug!("tty_cmd_sixelimage: image is {sx}x{sy}");
         if !tty_clamp_area(
             tty,

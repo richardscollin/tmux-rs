@@ -27,6 +27,11 @@ systemd     = []
 utempter    = []
 utf8proc    = []
 
+# configure linking of external libraries
+# defaults to static linking on macOS, and dynamic linking on all other platforms
+static      = []
+dynamic     = []
+
 [dependencies]
 bitflags     = { version = "2.9.1" }
 lalrpop-util = { version = "0.22.2", features = ["unicode"], default-features = false }

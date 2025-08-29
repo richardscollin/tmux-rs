@@ -28,6 +28,8 @@ not something else.
 
 ## Installation
 
+### Linux
+
 Like `tmux`, it requires `libevent2` and `libtinfo` (usually packaged with ncurses).
 
 ```sh
@@ -36,5 +38,10 @@ cargo install tmux-rs
 tmux-rs
 ```
 
-Also don't run `tmux-rs` if there is an existing tmux session running in
-the background. It could result in crashes of the original tmux session.
+### macOS
+
+```sh
+brew install libevent ncurses
+cargo install tmux-rs
+tmux-rs
+```

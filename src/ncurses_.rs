@@ -11,7 +11,8 @@ pub struct TERMINAL {
 
 // note I've modified the bindings under the assumption that
 // *c_char can be mixed with *u8
-#[link(name = "ncurses")]
+//
+// ncurses
 unsafe extern "C" {
     pub fn setupterm(term: *const u8, filedes: i32, errret: *mut i32) -> i32;
 

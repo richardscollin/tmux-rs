@@ -63,8 +63,6 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest, ubuntu-24.04-arm]
-    env:
-      LIBRARY_PATH: /opt/homebrew/lib
     steps:
       - name: Install system dependencies (ubuntu)
         if: startsWith(matrix.os, 'ubuntu')

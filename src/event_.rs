@@ -299,7 +299,7 @@ pub struct bufferevent_ops {
     pub _address: u8,
 }
 
-#[link(name = "event_core")]
+// event_core
 unsafe extern "C" {
     pub fn evbuffer_new() -> *mut evbuffer;
     pub fn evbuffer_free(buf: *mut evbuffer);

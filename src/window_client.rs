@@ -44,12 +44,7 @@ pub static WINDOW_CLIENT_MODE: window_mode = window_mode {
     formats: None,
 };
 
-enum_try_from!(
-    window_client_sort_type,
-    u32,
-    window_client_sort_type::WINDOW_CLIENT_BY_ACTIVITY_TIME
-);
-#[expect(dead_code, reason = "enum_try_from transmutes from i32 to enum")]
+#[derive(num_enum::TryFromPrimitive)]
 #[repr(u32)]
 pub enum window_client_sort_type {
     WINDOW_CLIENT_BY_NAME,

@@ -154,6 +154,7 @@ impl input_table_entry {
 }
 
 // Escape commands.
+#[derive(num_enum::TryFromPrimitive)]
 #[repr(i32)]
 enum input_esc_type {
     INPUT_ESC_DECALN,
@@ -172,7 +173,6 @@ enum input_esc_type {
     INPUT_ESC_SCSG1_ON,
     INPUT_ESC_ST,
 }
-enum_try_from!(input_esc_type, i32, input_esc_type::INPUT_ESC_ST);
 
 /// Escape command table.
 static INPUT_ESC_TABLE: [input_table_entry; 15] = [
@@ -193,8 +193,8 @@ static INPUT_ESC_TABLE: [input_table_entry; 15] = [
     input_table_entry::new_esc('c', c"", input_esc_type::INPUT_ESC_RIS),
 ];
 
-enum_try_from!(input_csi_type, i32, input_csi_type::INPUT_CSI_XDA);
 /// Control (CSI) commands.
+#[derive(num_enum::TryFromPrimitive)]
 #[repr(i32)]
 enum input_csi_type {
     INPUT_CSI_CBT,

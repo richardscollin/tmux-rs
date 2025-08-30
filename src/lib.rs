@@ -1128,8 +1128,9 @@ unsafe fn screen_hlimit(s: *const screen) -> u32 {
     unsafe { (*(*s).grid).hlimit }
 }
 
-// Menu.
+/// Menu.
 #[repr(C)]
+#[derive(Default)]
 struct menu_item {
     name: SyncCharPtr,
     key: key_code,
@@ -1148,8 +1149,7 @@ impl menu_item {
 #[repr(C)]
 struct menu {
     title: *const u8,
-    items: *mut menu_item,
-    count: u32,
+    items: Vec<menu_item>,
     width: u32,
 }
 type menu_choice_cb = Option<unsafe fn(*mut menu, u32, key_code, *mut c_void)>;
@@ -3054,10 +3054,6 @@ use crate::spawn::{spawn_pane, spawn_window};
 mod regsub;
 use crate::regsub::regsub;
 
-// TODO
-// image.c
-// image-sixel.c
-
 mod server_acl;
 use crate::server_acl::{
     server_acl_display, server_acl_get_uid, server_acl_init, server_acl_join,
@@ -3085,7 +3081,7 @@ use crate::tmux_protocol::{
 
 unsafe impl Sync for SyncCharPtr {}
 #[repr(transparent)]
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Default)]
 struct SyncCharPtr(*const u8);
 impl SyncCharPtr {
     const fn new(value: &'static CStr) -> Self {

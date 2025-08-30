@@ -60,22 +60,14 @@ pub unsafe fn menu_add_item(
     unsafe {
         let line =
             item.is_null() || (*item).name.as_ptr().is_null() || *(*item).name.as_ptr() == b'\0';
-        if line && (*menu).count == 0 {
+        if line && (*menu).items.is_empty() {
             return;
         }
-        if line
-            && (*(*menu).items.add((*menu).count as usize - 1))
-                .name
-                .as_ptr()
-                .is_null()
-        {
+        if line && (*menu).items.last().unwrap().name.as_ptr().is_null() {
             return;
         }
 
-        (*menu).items = xreallocarray_((*menu).items, (*menu).count as usize + 1).as_ptr();
-        let new_item = (*menu).items.add((*menu).count as usize);
-        (*menu).count += 1;
-        memset0(new_item);
+        (*menu).items.push(menu_item::default());
 
         if line {
             return;
@@ -95,7 +87,7 @@ pub unsafe fn menu_add_item(
         };
 
         if *s0 == b'\0' {
-            (*menu).count -= 1;
+            (*menu).items.pop();
             return;
         }
         let mut max_width = (*c).tty.sx - 4;
@@ -132,7 +124,9 @@ pub unsafe fn menu_add_item(
         };
         free_(trimmed);
 
-        (*new_item).name = SyncCharPtr::from_ptr(name);
+        let new_item = (*menu).items.last_mut().unwrap();
+
+        new_item.name = SyncCharPtr::from_ptr(name);
         free_(s0);
 
         let cmd: *const u8 = (*item).command.as_ptr();
@@ -145,11 +139,11 @@ pub unsafe fn menu_add_item(
         } else {
             null_mut()
         };
-        (*new_item).command = SyncCharPtr::from_ptr(s1);
-        (*new_item).key = (*item).key;
+        new_item.command = SyncCharPtr::from_ptr(s1);
+        new_item.key = (*item).key;
 
-        let mut width = format_width((*new_item).name.as_ptr());
-        if *(*new_item).name.as_ptr() == b'-' {
+        let mut width = format_width(new_item.name.as_ptr());
+        if *new_item.name.as_ptr() == b'-' {
             width -= 1;
         }
         if width > (*menu).width {
@@ -170,12 +164,11 @@ pub unsafe fn menu_create(title: *const u8) -> *mut menu {
 
 pub unsafe fn menu_free(menu: *mut menu) {
     unsafe {
-        for i in 0..(*menu).count {
-            // TODO consider making the struct hold mut pointer
-            free_((*(*menu).items.add(i as usize)).name.as_ptr().cast_mut());
-            free_((*(*menu).items.add(i as usize)).command.as_ptr().cast_mut());
+        for item in (*menu).items.drain(..) {
+            free_(item.name.as_ptr().cast_mut());
+            free_(item.command.as_ptr().cast_mut());
         }
-        free_((*menu).items);
+        (*menu).items = Vec::new();
 
         free_((*menu).title.cast_mut());
         free_(menu);
@@ -218,7 +211,7 @@ pub unsafe fn menu_check_cb(
             (*md).px,
             (*md).py,
             (*menu).width + 4,
-            (*menu).count + 2,
+            (*menu).items.len() as u32 + 2,
             px,
             py,
             nx,
@@ -246,7 +239,7 @@ pub unsafe fn menu_draw_cb(c: *mut client, data: *mut c_void, _rctx: *mut screen
             screen_write_box(
                 ctx,
                 (*menu).width + 4,
-                (*menu).count + 2,
+                (*menu).items.len() as u32 + 2,
                 (*md).border_lines,
                 &raw mut (*md).border_style,
                 (*menu).title,
@@ -303,7 +296,7 @@ pub unsafe fn menu_key_cb(c: *mut client, data: *mut c_void, mut event: *mut key
         let md = data as *mut menu_data;
         let menu = (*md).menu;
         let m = &raw mut (*event).m;
-        let count = (*menu).count;
+        let count = (*menu).items.len();
         let mut old = (*md).choice;
 
         let mut error = null_mut();
@@ -319,7 +312,7 @@ pub unsafe fn menu_key_cb(c: *mut client, data: *mut c_void, mut event: *mut key
                 if (*m).x < (*md).px
                     || (*m).x > (*md).px + 4 + (*menu).width
                     || (*m).y < (*md).py + 1
-                    || (*m).y > (*md).py + 1 + count - 1
+                    || (*m).y > (*md).py + 1 + count as u32 - 1
                 {
                     if !(*md).flags.intersects(menu_flags::MENU_STAYOPEN) {
                         if MOUSE_RELEASE((*m).b) {
@@ -349,11 +342,11 @@ pub unsafe fn menu_key_cb(c: *mut client, data: *mut c_void, mut event: *mut key
                 return 0;
             }
             for i in 0..count {
-                let name = (*(*menu).items.add(i as usize)).name.as_ptr();
+                let name = (&mut (*menu).items)[i].name.as_ptr();
                 if name.is_null() || *name == b'-' {
                     continue;
                 }
-                if (*event).key == (*(*menu).items.add(i as usize)).key {
+                if (*event).key == (&(*menu).items)[i].key {
                     (*md).choice = i as i32;
                     break 'chosen;
                 }
@@ -395,7 +388,7 @@ pub unsafe fn menu_key_cb(c: *mut client, data: *mut c_void, mut event: *mut key
                             } else {
                                 (*md).choice -= 1;
                             }
-                            let name = (*(*menu).items.add((*md).choice as usize)).name.as_ptr();
+                            let name = (&mut (*menu).items)[(*md).choice as usize].name.as_ptr();
                             if !((name.is_null() || *name == b'-') && (*md).choice != old) {
                                 break;
                             }
@@ -427,7 +420,7 @@ pub unsafe fn menu_key_cb(c: *mut client, data: *mut c_void, mut event: *mut key
                             } else {
                                 (*md).choice += 1;
                             }
-                            let name = (*(*menu).items.add((*md).choice as usize)).name.as_ptr();
+                            let name = (&mut (*menu).items)[(*md).choice as usize].name.as_ptr();
                             if !((name.is_null() || *name == b'-') && (*md).choice != old) {
                                 break;
                             }
@@ -442,8 +435,7 @@ pub unsafe fn menu_key_cb(c: *mut client, data: *mut c_void, mut event: *mut key
                             let mut i = 5;
                             while i > 0 {
                                 (*md).choice -= 1;
-                                let name =
-                                    (*(*menu).items.add((*md).choice as usize)).name.as_ptr();
+                                let name = (&(*menu).items)[(*md).choice as usize].name.as_ptr();
                                 if (*md).choice != 0 && (!name.is_null() && *name != b'-') {
                                     i -= 1;
                                 } else if (*md).choice == 0 {
@@ -457,12 +449,12 @@ pub unsafe fn menu_key_cb(c: *mut client, data: *mut c_void, mut event: *mut key
                         let mut name;
                         if (*md).choice > count as i32 - 6 {
                             (*md).choice = count as i32 - 1;
-                            name = (*(*menu).items.add((*md).choice as usize)).name.as_ptr();
+                            name = (&mut (*menu).items)[(*md).choice as usize].name.as_ptr();
                         } else {
                             let mut i = 5;
                             loop {
                                 (*md).choice += 1;
-                                name = (*(*menu).items.add((*md).choice as usize)).name.as_ptr();
+                                name = (&mut (*menu).items)[(*md).choice as usize].name.as_ptr();
                                 if (*md).choice != count as i32 - 1
                                     && (!name.is_null() && *name != b'-')
                                 {
@@ -477,25 +469,25 @@ pub unsafe fn menu_key_cb(c: *mut client, data: *mut c_void, mut event: *mut key
                         }
                         while name.is_null() || *name == b'-' {
                             (*md).choice -= 1;
-                            name = (*(*menu).items.add((*md).choice as usize)).name.as_ptr();
+                            name = (&mut (*menu).items)[(*md).choice as usize].name.as_ptr();
                         }
                         (*c).flags |= client_flag::REDRAWOVERLAY;
                     }
                     G | HOME => {
                         (*md).choice = 0;
-                        let mut name = (*(*menu).items.add((*md).choice as usize)).name.as_ptr();
+                        let mut name = (&(*menu).items)[(*md).choice as usize].name.as_ptr();
                         while name.is_null() || *name == b'-' {
                             (*md).choice += 1;
-                            name = (*(*menu).items.add((*md).choice as usize)).name.as_ptr();
+                            name = (&(*menu).items)[(*md).choice as usize].name.as_ptr();
                         }
                         (*c).flags |= client_flag::REDRAWOVERLAY;
                     }
                     G_UPPER | END => {
                         (*md).choice = count as i32 - 1;
-                        let mut name = (*(*menu).items.add((*md).choice as usize)).name.as_ptr();
+                        let mut name = (&mut (*menu).items)[(*md).choice as usize].name.as_ptr();
                         while name.is_null() || *name == b'-' {
                             (*md).choice -= 1;
-                            name = (*(*menu).items.add((*md).choice as usize)).name.as_ptr();
+                            name = (&mut (*menu).items)[(*md).choice as usize].name.as_ptr();
                         }
                         (*c).flags |= client_flag::REDRAWOVERLAY;
                     }
@@ -511,15 +503,15 @@ pub unsafe fn menu_key_cb(c: *mut client, data: *mut c_void, mut event: *mut key
         if (*md).choice == -1 {
             return 1;
         }
-        let item = (*menu).items.add((*md).choice as usize);
-        if (*item).name.as_ptr().is_null() || *(*item).name.as_ptr() == b'-' {
+        let item = &mut (&mut (*menu).items)[(*md).choice as usize];
+        if item.name.as_ptr().is_null() || *item.name.as_ptr() == b'-' {
             if (*md).flags.intersects(MENU_STAYOPEN) {
                 return 0;
             }
             return 1;
         }
         if let Some(cb) = (*md).cb {
-            cb((*md).menu, (*md).choice as u32, (*item).key, (*md).data);
+            cb((*md).menu, (*md).choice as u32, item.key, (*md).data);
             (*md).cb = None;
             return 1;
         }
@@ -531,7 +523,7 @@ pub unsafe fn menu_key_cb(c: *mut client, data: *mut c_void, mut event: *mut key
         }
         let state = cmdq_new_state(&raw mut (*md).fs, event, cmdq_state_flags::empty());
 
-        let ptr = (*item).command.as_ptr();
+        let ptr = item.command.as_ptr();
         let cmd_str =
             std::str::from_utf8(std::slice::from_raw_parts(ptr.cast(), libc::strlen(ptr))).unwrap();
         let status = cmd_parse_and_append(cmd_str, None, c, state, &raw mut error);
@@ -592,14 +584,14 @@ pub unsafe fn menu_prepare(
 
         let o = (*(*(*(*c).session).curw).window).options;
 
-        if (*c).tty.sx < (*menu).width + 4 || (*c).tty.sy < (*menu).count + 2 {
+        if (*c).tty.sx < (*menu).width + 4 || (*c).tty.sy < (*menu).items.len() as u32 + 2 {
             return null_mut();
         }
         if px + (*menu).width + 4 > (*c).tty.sx {
             px = (*c).tty.sx - (*menu).width - 4;
         }
-        if py + (*menu).count + 2 > (*c).tty.sy {
-            py = (*c).tty.sy - (*menu).count - 2;
+        if py + (*menu).items.len() as u32 + 2 > (*c).tty.sy {
+            py = (*c).tty.sy - (*menu).items.len() as u32 - 2;
         }
 
         if lines == box_lines::BOX_LINES_DEFAULT {
@@ -629,7 +621,12 @@ pub unsafe fn menu_prepare(
         if !fs.is_null() {
             cmd_find_copy_state(&raw mut (*md).fs, fs);
         }
-        screen_init(&raw mut (*md).s, (*menu).width + 4, (*menu).count + 2, 0);
+        screen_init(
+            &raw mut (*md).s,
+            (*menu).width + 4,
+            (*menu).items.len() as u32 + 2,
+            0,
+        );
         if !(*md).flags.intersects(menu_flags::MENU_NOMOUSE) {
             (*md).s.mode |= mode_flag::MODE_MOUSE_ALL | mode_flag::MODE_MOUSE_BUTTON;
         }
@@ -642,18 +639,18 @@ pub unsafe fn menu_prepare(
         (*md).choice = -1;
 
         if (*md).flags.intersects(MENU_NOMOUSE) {
-            if starting_choice >= (*menu).count as i32 {
-                starting_choice = (*menu).count as i32 - 1;
+            if starting_choice >= (*menu).items.len() as i32 {
+                starting_choice = (*menu).items.len() as i32 - 1;
                 choice = starting_choice + 1;
                 loop {
-                    name = (*(*menu).items.add(choice as usize - 1)).name.as_ptr();
+                    name = (&(*menu).items)[choice as usize - 1].name.as_ptr();
                     if !name.is_null() && *name != b'-' {
                         (*md).choice = choice - 1;
                         break;
                     }
                     choice -= 1;
                     if choice == 0 {
-                        choice = (*menu).count as i32;
+                        choice = (*menu).items.len() as i32;
                     }
                     if choice == starting_choice + 1 {
                         break;
@@ -662,13 +659,13 @@ pub unsafe fn menu_prepare(
             } else if starting_choice >= 0 {
                 choice = starting_choice;
                 loop {
-                    name = (*(*menu).items.add(choice as usize)).name.as_ptr();
+                    name = (&(*menu).items)[choice as usize].name.as_ptr();
                     if !name.is_null() && *name != b'-' {
                         (*md).choice = choice;
                         break;
                     }
                     choice += 1;
-                    if choice == (*menu).count as i32 {
+                    if choice == (*menu).items.len() as i32 {
                         choice = 0;
                     }
                     if choice == starting_choice {

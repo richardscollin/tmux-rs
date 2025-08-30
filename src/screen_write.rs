@@ -778,30 +778,30 @@ pub unsafe fn screen_write_menu(
         screen_write_box(
             ctx,
             (*menu).width + 4,
-            (*menu).count + 2,
+            (*menu).items.len() as u32 + 2,
             lines,
             border_gc,
             (*menu).title,
         );
 
-        for i in 0..(*menu).count {
-            let name = (*(*menu).items.add(i as usize)).name.as_ptr();
+        for (i, item) in (*menu).items.iter_mut().enumerate() {
+            let name = item.name.as_ptr();
             if name.is_null() {
-                screen_write_cursormove(ctx, cx as i32, (cy + 1 + i) as i32, 0);
+                screen_write_cursormove(ctx, cx as i32, (cy + 1 + i as u32) as i32, 0);
                 screen_write_hline(ctx, width + 4, 1, 1, lines, border_gc);
                 continue;
             }
 
-            if choice >= 0 && i == choice as u32 && *name != b'-' {
+            if choice >= 0 && i as u32 == choice as u32 && *name != b'-' {
                 gc = choice_gc;
             }
 
-            screen_write_cursormove(ctx, cx as i32 + 1, (cy + 1 + i) as i32, 0);
+            screen_write_cursormove(ctx, cx as i32 + 1, (cy + 1 + i as u32) as i32, 0);
             for _ in 0..(width + 2) {
                 screen_write_putc(ctx, gc, b' ');
             }
 
-            screen_write_cursormove(ctx, cx as i32 + 2, (cy + 1 + i) as i32, 0);
+            screen_write_cursormove(ctx, cx as i32 + 2, (cy + 1 + i as u32) as i32, 0);
             if *name == b'-' {
                 default_gc.attr |= grid_attr::GRID_ATTR_DIM;
                 format_draw(ctx, gc, width, name.add(1), null_mut(), 0);

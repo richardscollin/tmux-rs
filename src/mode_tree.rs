@@ -1386,6 +1386,7 @@ pub unsafe fn mode_tree_key(
                     }
                 }
             }
+            #[expect(clippy::needless_borrow, reason = "false positive")]
             code::O_UPPER => {
                 (*mtd).sort_crit.field += 1;
                 if (*mtd).sort_crit.field >= (&(*mtd).sort_list).len() as u32 {

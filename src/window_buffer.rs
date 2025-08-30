@@ -65,7 +65,6 @@ enum window_buffer_sort_type {
     WINDOW_BUFFER_BY_SIZE,
 }
 
-const WINDOW_BUFFER_SORT_LIST_LEN: u32 = 3;
 static mut WINDOW_BUFFER_SORT_LIST: [SyncCharPtr; 3] = [
     SyncCharPtr::new(c"time"),
     SyncCharPtr::new(c"name"),
@@ -393,14 +392,13 @@ pub unsafe fn window_buffer_init(
             Some(window_buffer_get_key),
             data as *mut window_buffer_modedata as *mut c_void,
             WINDOW_BUFFER_MENU_ITEMS.as_slice(),
-            &raw mut WINDOW_BUFFER_SORT_LIST as *mut *const u8,
-            WINDOW_BUFFER_SORT_LIST_LEN,
+            &raw mut WINDOW_BUFFER_SORT_LIST,
             &raw mut s,
         );
         mode_tree_zoom(data.data, args);
 
         mode_tree_build(data.data);
-        mode_tree_draw(data.data);
+        mode_tree_draw(&mut *data.data);
 
         s
     }
@@ -441,7 +439,7 @@ pub unsafe fn window_buffer_update(wme: NonNull<window_mode_entry>) {
         let data = (*wme.as_ptr()).data as *mut window_buffer_modedata;
 
         mode_tree_build((*data).data);
-        mode_tree_draw((*data).data);
+        mode_tree_draw(&mut *(*data).data);
         (*(*data).wp).flags |= window_pane_flags::PANE_REDRAW;
     }
 }
@@ -531,7 +529,7 @@ pub unsafe fn window_buffer_edit_close_cb(buf: *mut u8, mut len: usize, arg: *mu
             if (*wme).mode == &raw const WINDOW_BUFFER_MODE {
                 let data = (*wme).data as *mut window_buffer_modedata;
                 mode_tree_build((*data).data);
-                mode_tree_draw((*data).data);
+                mode_tree_draw(&mut *(*data).data);
             }
             (*wp).flags |= window_pane_flags::PANE_REDRAW;
         }
@@ -619,7 +617,7 @@ pub unsafe fn window_buffer_key(
         if finished || paste_is_empty() != 0 {
             window_pane_reset_mode(wp);
         } else {
-            mode_tree_draw(mtd);
+            mode_tree_draw(&mut *mtd);
             (*wp).flags |= window_pane_flags::PANE_REDRAW;
         }
     }

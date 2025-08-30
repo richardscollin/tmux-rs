@@ -2536,6 +2536,7 @@ struct spawn_context {
 
 /// Mode tree sort order.
 #[repr(C)]
+#[derive(Default)]
 struct mode_tree_sort_criteria {
     field: u32,
     reversed: bool,

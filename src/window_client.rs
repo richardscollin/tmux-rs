@@ -52,9 +52,12 @@ pub enum window_client_sort_type {
     WINDOW_CLIENT_BY_CREATION_TIME,
     WINDOW_CLIENT_BY_ACTIVITY_TIME,
 }
-const WINDOW_CLIENT_SORT_LIST_LEN: u32 = 4;
-static mut WINDOW_CLIENT_SORT_LIST: [*const u8; 4] =
-    [c!("name"), c!("size"), c!("creation"), c!("activity")];
+static mut WINDOW_CLIENT_SORT_LIST: [SyncCharPtr; 4] = [
+    SyncCharPtr::new(c"name"),
+    SyncCharPtr::new(c"size"),
+    SyncCharPtr::new(c"creation"),
+    SyncCharPtr::new(c"activity"),
+];
 
 static mut WINDOW_CLIENT_SORT: *mut mode_tree_sort_criteria = null_mut();
 
@@ -343,14 +346,13 @@ pub unsafe fn window_client_init(
             Some(window_client_get_key),
             data.cast(),
             WINDOW_CLIENT_MENU_ITEMS.as_slice(),
-            &raw mut WINDOW_CLIENT_SORT_LIST as *mut *const u8,
-            WINDOW_CLIENT_SORT_LIST_LEN,
+            &raw mut WINDOW_CLIENT_SORT_LIST,
             &raw mut s,
         );
         mode_tree_zoom((*data).data, args);
 
         mode_tree_build((*data).data);
-        mode_tree_draw((*data).data);
+        mode_tree_draw(&mut *(*data).data);
 
         s
     }
@@ -392,7 +394,7 @@ pub unsafe fn window_client_update(wme: NonNull<window_mode_entry>) {
         let data = (*wme.as_ptr()).data as *mut window_client_modedata;
 
         mode_tree_build((*data).data);
-        mode_tree_draw((*data).data);
+        mode_tree_draw(&mut *(*data).data);
         (*(*data).wp).flags |= window_pane_flags::PANE_REDRAW;
     }
 }
@@ -462,7 +464,7 @@ pub unsafe fn window_client_key(
         if finished || server_client_how_many() == 0 {
             window_pane_reset_mode(wp);
         } else {
-            mode_tree_draw(mtd);
+            mode_tree_draw(&mut *mtd);
             (*wp).flags |= window_pane_flags::PANE_REDRAW;
         }
     }

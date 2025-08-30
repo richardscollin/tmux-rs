@@ -54,8 +54,7 @@ pub struct mode_tree_data {
     modedata: *mut c_void,
     menu: &'static [menu_item],
 
-    sort_list: *const *const u8,
-    sort_size: u32,
+    sort_list: &'static mut [SyncCharPtr],
     sort_crit: mode_tree_sort_criteria,
 
     buildcb: mode_tree_build_cb,
@@ -68,8 +67,7 @@ pub struct mode_tree_data {
     children: mode_tree_list,
     saved: mode_tree_list,
 
-    line_list: *mut mode_tree_line,
-    line_size: u32,
+    line_list: Vec<mode_tree_line>,
 
     depth: u32,
 
@@ -183,9 +181,7 @@ unsafe fn mode_tree_check_selected(mtd: *mut mode_tree_data) {
 
 unsafe fn mode_tree_clear_lines(mtd: *mut mode_tree_data) {
     unsafe {
-        free_((*mtd).line_list);
-        (*mtd).line_list = null_mut();
-        (*mtd).line_size = 0;
+        (*mtd).line_list = Vec::new();
     }
 }
 
@@ -195,16 +191,14 @@ unsafe fn mode_tree_build_lines(mtd: *mut mode_tree_data, mtl: *mut mode_tree_li
 
         (*mtd).depth = depth;
         for mti in tailq_foreach(mtl).map(NonNull::as_ptr) {
-            (*mtd).line_list =
-                xreallocarray_((*mtd).line_list, (*mtd).line_size as usize + 1).as_ptr();
+            (*mtd).line_list.push(mode_tree_line {
+                item: mti,
+                depth,
+                last: (mti == tailq_last(mtl)) as i32,
+                flat: 0,
+            });
 
-            let line = (*mtd).line_list.add((*mtd).line_size as usize);
-            (*mtd).line_size += 1;
-            (*line).item = mti;
-            (*line).depth = depth;
-            (*line).last = (mti == tailq_last(mtl)) as i32;
-
-            (*mti).line = (*mtd).line_size - 1;
+            (*mti).line = (*mtd).line_list.len() as u32 - 1;
             if !tailq_empty(&raw const (*mti).children) {
                 flat = 0;
             }
@@ -237,10 +231,9 @@ unsafe fn mode_tree_build_lines(mtd: *mut mode_tree_data, mtl: *mut mode_tree_li
             }
         }
         for mti in tailq_foreach(mtl).map(NonNull::as_ptr) {
-            for i in 0..(*mtd).line_size {
-                let line = (*mtd).line_list.add(i as usize);
-                if (*line).item == mti {
-                    (*line).flat = flat;
+            for line in (*mtd).line_list.iter_mut() {
+                if line.item == mti {
+                    line.flat = flat;
                 }
             }
         }
@@ -260,9 +253,9 @@ pub unsafe fn mode_tree_up(mtd: *mut mode_tree_data, wrap: i32) {
     unsafe {
         if (*mtd).current == 0 {
             if wrap != 0 {
-                (*mtd).current = (*mtd).line_size - 1;
-                if (*mtd).line_size >= (*mtd).height {
-                    (*mtd).offset = (*mtd).line_size - (*mtd).height;
+                (*mtd).current = (*mtd).line_list.len() as u32 - 1;
+                if (*mtd).line_list.len() as u32 >= (*mtd).height {
+                    (*mtd).offset = (*mtd).line_list.len() as u32 - (*mtd).height;
                 }
             }
         } else {
@@ -276,7 +269,7 @@ pub unsafe fn mode_tree_up(mtd: *mut mode_tree_data, wrap: i32) {
 
 pub unsafe fn mode_tree_down(mtd: *mut mode_tree_data, wrap: i32) -> i32 {
     unsafe {
-        if (*mtd).current == (*mtd).line_size - 1 {
+        if (*mtd).current == (*mtd).line_list.len() as u32 - 1 {
             if wrap != 0 {
                 (*mtd).current = 0;
                 (*mtd).offset = 0;
@@ -295,18 +288,18 @@ pub unsafe fn mode_tree_down(mtd: *mut mode_tree_data, wrap: i32) -> i32 {
 }
 
 pub unsafe fn mode_tree_get_current(mtd: *mut mode_tree_data) -> NonNull<c_void> {
-    NonNull::new(unsafe { (*(*(*mtd).line_list.add((*mtd).current as usize)).item).itemdata })
+    NonNull::new(unsafe { (*(&mut (*mtd).line_list)[(*mtd).current as usize].item).itemdata })
         .unwrap()
 }
 
 pub unsafe fn mode_tree_get_current_name(mtd: *mut mode_tree_data) -> *const u8 {
-    unsafe { (*(*(*mtd).line_list.add((*mtd).current as usize)).item).name }
+    unsafe { (*(&(*mtd).line_list)[(*mtd).current as usize].item).name }
 }
 
 pub unsafe fn mode_tree_expand_current(mtd: *mut mode_tree_data) {
     unsafe {
-        if !(*(*(*mtd).line_list.add((*mtd).current as usize)).item).expanded {
-            (*(*(*mtd).line_list.add((*mtd).current as usize)).item).expanded = true;
+        if !(*(&(*mtd).line_list)[(*mtd).current as usize].item).expanded {
+            (*(&mut (*mtd).line_list)[(*mtd).current as usize].item).expanded = true;
             mode_tree_build(mtd);
         }
     }
@@ -314,39 +307,28 @@ pub unsafe fn mode_tree_expand_current(mtd: *mut mode_tree_data) {
 
 pub unsafe fn mode_tree_collapse_current(mtd: *mut mode_tree_data) {
     unsafe {
-        if (*(*(*mtd).line_list.add((*mtd).current as usize)).item).expanded {
-            (*(*(*mtd).line_list.add((*mtd).current as usize)).item).expanded = false;
+        if (*(&(*mtd).line_list)[(*mtd).current as usize].item).expanded {
+            (*(&mut (*mtd).line_list)[(*mtd).current as usize].item).expanded = false;
             mode_tree_build(mtd);
         }
     }
 }
 
-pub unsafe fn mode_tree_get_tag(mtd: *mut mode_tree_data, tag: u64, found: *mut u32) -> i32 {
+pub unsafe fn mode_tree_get_tag(mtd: &mode_tree_data, tag: u64) -> Option<usize> {
     unsafe {
-        let mut i = 0;
-        for j in 0..(*mtd).line_size {
-            i = j;
-            if (*(*(*mtd).line_list.add(i as usize)).item).tag == tag {
-                break;
-            }
-        }
-
-        if i != (*mtd).line_size {
-            *found = i;
-            return 1;
-        }
-        0
+        mtd.line_list
+            .iter()
+            .position(|line| (*line.item).tag == tag)
     }
 }
 
 pub unsafe fn mode_tree_expand(mtd: *mut mode_tree_data, tag: u64) {
     unsafe {
-        let mut found: u32 = 0;
-        if mode_tree_get_tag(mtd, tag, &raw mut found) == 0 {
+        let Some(found) = mode_tree_get_tag(&*mtd, tag) else {
             return;
-        }
-        if !(*(*(*mtd).line_list.add(found as usize)).item).expanded {
-            (*(*(*mtd).line_list.add(found as usize)).item).expanded = true;
+        };
+        if !(*(&(*mtd).line_list)[found].item).expanded {
+            (*(&mut (*mtd).line_list)[found].item).expanded = true;
             mode_tree_build(mtd);
         }
     }
@@ -354,10 +336,8 @@ pub unsafe fn mode_tree_expand(mtd: *mut mode_tree_data, tag: u64) {
 
 pub unsafe fn mode_tree_set_current(mtd: *mut mode_tree_data, tag: u64) -> i32 {
     unsafe {
-        let mut found: u32 = 0;
-
-        if mode_tree_get_tag(mtd, tag, &raw mut found) != 0 {
-            (*mtd).current = found;
+        if let Some(found) = mode_tree_get_tag(&*mtd, tag) {
+            (*mtd).current = found as u32;
             // TODO does this same problem exist in upstream?
             if (*mtd).current > (*mtd).height.saturating_sub(1) {
                 (*mtd).offset = (*mtd).current - (*mtd).height + 1;
@@ -374,14 +354,11 @@ pub unsafe fn mode_tree_set_current(mtd: *mut mode_tree_data, tag: u64) -> i32 {
 
 pub unsafe fn mode_tree_count_tagged(mtd: *mut mode_tree_data) -> u32 {
     unsafe {
-        let mut tagged: u32 = 0;
-        for i in 0..(*mtd).line_size {
-            let mti = (*(*mtd).line_list.add(i as usize)).item;
-            if (*mti).tagged != 0 {
-                tagged += 1;
-            }
-        }
-        tagged
+        (*mtd)
+            .line_list
+            .iter()
+            .filter(|line| (*line.item).tagged != 0)
+            .count() as u32
     }
 }
 
@@ -394,8 +371,8 @@ pub unsafe fn mode_tree_each_tagged(
 ) {
     unsafe {
         let mut fired = false;
-        for i in 0..(*mtd).line_size {
-            let mti = (*(*mtd).line_list.add(i as usize)).item;
+        for line in (*mtd).line_list.iter_mut() {
+            let mti = line.item;
             if (*mti).tagged != 0 {
                 fired = true;
                 cb.unwrap()(
@@ -407,7 +384,7 @@ pub unsafe fn mode_tree_each_tagged(
             }
         }
         if !fired && current != 0 {
-            let mti = (*(*mtd).line_list.add((*mtd).current as usize)).item;
+            let mti = (&(*mtd).line_list)[(*mtd).current as usize].item;
             cb.unwrap()(
                 NonNull::new((*mtd).modedata).unwrap(),
                 NonNull::new((*mti).itemdata).unwrap(),
@@ -418,7 +395,7 @@ pub unsafe fn mode_tree_each_tagged(
     }
 }
 
-pub unsafe fn mode_tree_start(
+pub unsafe fn mode_tree_start<const N: usize>(
     wp: *mut window_pane,
     args: *mut args,
     buildcb: mode_tree_build_cb,
@@ -429,49 +406,59 @@ pub unsafe fn mode_tree_start(
     keycb: mode_tree_key_cb,
     modedata: *mut c_void,
     menu: &'static [menu_item],
-    sort_list: *const *const u8,
-    sort_size: u32,
+    sort_list: *mut [SyncCharPtr; N],
     s: *mut *mut screen,
 ) -> *mut mode_tree_data {
     unsafe {
-        let mtd: *mut mode_tree_data = xcalloc1::<mode_tree_data>() as *mut mode_tree_data;
-        (*mtd).references = 1;
+        let mut mtd = Box::new(mode_tree_data {
+            references: 1,
+            wp,
+            modedata,
+            menu,
+            sort_list: &mut *sort_list,
+            preview: !args_has(args, 'N'),
 
-        (*mtd).wp = wp;
-        (*mtd).modedata = modedata;
-        (*mtd).menu = menu;
-
-        (*mtd).sort_list = sort_list;
-        (*mtd).sort_size = sort_size;
-
-        (*mtd).preview = !args_has(args, 'N');
+            buildcb,
+            drawcb,
+            searchcb,
+            menucb,
+            heightcb,
+            keycb,
+            dead: 0,
+            zoomed: 0,
+            sort_crit: Default::default(),
+            children: zeroed(),
+            saved: zeroed(),
+            line_list: Default::default(),
+            depth: Default::default(),
+            width: Default::default(),
+            height: Default::default(),
+            offset: Default::default(),
+            current: Default::default(),
+            screen: zeroed(),
+            search: Default::default(),
+            filter: if args_has(args, 'f') {
+                xstrdup(args_get_(args, 'f')).as_ptr()
+            } else {
+                null_mut()
+            },
+            no_matches: Default::default(),
+            search_dir: zeroed(),
+        });
 
         let sort = args_get_(args, 'O');
         if !sort.is_null() {
-            for i in 0..sort_size {
-                if strcasecmp(sort, *sort_list.add(i as usize)) == 0 {
-                    (*mtd).sort_crit.field = i;
+            for i in 0..mtd.sort_list.len() {
+                if strcasecmp(sort, mtd.sort_list[i].as_ptr()) == 0 {
+                    mtd.sort_crit.field = i as u32;
                 }
             }
         }
-        (*mtd).sort_crit.reversed = args_has(args, 'r');
+        mtd.sort_crit.reversed = args_has(args, 'r');
 
-        if args_has(args, 'f') {
-            (*mtd).filter = xstrdup(args_get_(args, 'f')).as_ptr();
-        } else {
-            (*mtd).filter = null_mut();
-        }
+        tailq_init(&mut mtd.children);
 
-        (*mtd).buildcb = buildcb;
-        (*mtd).drawcb = drawcb;
-        (*mtd).searchcb = searchcb;
-        (*mtd).menucb = menucb;
-        (*mtd).heightcb = heightcb;
-        (*mtd).keycb = keycb;
-
-        tailq_init(&raw mut (*mtd).children);
-
-        *s = &raw mut (*mtd).screen;
+        *s = &raw mut mtd.screen;
         screen_init(
             *s,
             screen_size_x(&raw mut (*wp).base),
@@ -480,7 +467,7 @@ pub unsafe fn mode_tree_start(
         );
         (*(*s)).mode &= !mode_flag::MODE_CURSOR;
 
-        mtd
+        Box::leak(mtd)
     }
 }
 
@@ -510,7 +497,7 @@ pub unsafe fn mode_tree_set_height(mtd: *mut mode_tree_data) {
             }
         } else {
             (*mtd).height = (screen_size_y(s) / 3) * 2;
-            if (*mtd).height > (*mtd).line_size {
+            if (*mtd).height > (*mtd).line_list.len() as u32 {
                 (*mtd).height = screen_size_y(s) / 2;
             }
         }
@@ -527,8 +514,8 @@ pub unsafe fn mode_tree_build(mtd: *mut mode_tree_data) {
     unsafe {
         let s = &raw mut (*mtd).screen;
 
-        let mut tag = if !(*mtd).line_list.is_null() {
-            (*(*(*mtd).line_list.add((*mtd).current as usize)).item).tag
+        let mut tag = if !(*mtd).line_list.is_empty() {
+            (*(&(*mtd).line_list)[(*mtd).current as usize].item).tag
         } else {
             u64::MAX
         };
@@ -558,8 +545,8 @@ pub unsafe fn mode_tree_build(mtd: *mut mode_tree_data) {
         mode_tree_clear_lines(mtd);
         mode_tree_build_lines(mtd, &raw mut (*mtd).children, 0);
 
-        if !(*mtd).line_list.is_null() && tag == u64::MAX {
-            tag = (*(*(*mtd).line_list.add((*mtd).current as usize)).item).tag;
+        if !(*mtd).line_list.is_empty() && tag == u64::MAX {
+            tag = (*(&(*mtd).line_list)[(*mtd).current as usize].item).tag;
         }
         mode_tree_set_current(mtd, tag);
 
@@ -609,7 +596,7 @@ pub unsafe fn mode_tree_resize(mtd: *mut mode_tree_data, sx: u32, sy: u32) {
         screen_resize(s, sx, sy, 0);
 
         mode_tree_build(mtd);
-        mode_tree_draw(mtd);
+        mode_tree_draw(&mut *mtd);
 
         (*(*mtd).wp).flags |= window_pane_flags::PANE_REDRAW;
     }
@@ -684,10 +671,10 @@ pub unsafe fn mode_tree_remove(mtd: *mut mode_tree_data, mti: *mut mode_tree_ite
     }
 }
 
-pub unsafe fn mode_tree_draw(mtd: *mut mode_tree_data) {
+pub unsafe fn mode_tree_draw(mtd: &mut mode_tree_data) {
     unsafe {
-        let wp = (*mtd).wp;
-        let s = &raw mut (*mtd).screen;
+        let wp = mtd.wp;
+        let s = &raw mut mtd.screen;
         let oo = (*(*wp).window).options;
         let mut ctx: screen_write_ctx = zeroed();
 
@@ -695,7 +682,7 @@ pub unsafe fn mode_tree_draw(mtd: *mut mode_tree_data) {
         let mut gc: grid_cell = zeroed();
 
         'done: {
-            if (*mtd).line_size == 0 {
+            if mtd.line_list.is_empty() {
                 return;
             }
 
@@ -703,15 +690,15 @@ pub unsafe fn mode_tree_draw(mtd: *mut mode_tree_data) {
             memcpy__(&raw mut gc, &raw const GRID_DEFAULT_CELL);
             style_apply(&raw mut gc, oo, c!("mode-style"), null_mut());
 
-            let w = (*mtd).width;
-            let h = (*mtd).height;
+            let w = mtd.width;
+            let h = mtd.height;
 
             screen_write_start(&raw mut ctx, s);
             screen_write_clearscreen(&raw mut ctx, 8);
 
             let mut keylen: i32 = 0;
-            for i in 0..(*mtd).line_size {
-                let mti = (*(*mtd).line_list.add(i as usize)).item;
+            for line in mtd.line_list.iter() {
+                let mti = line.item;
                 if (*mti).key == KEYC_NONE {
                     continue;
                 }
@@ -720,17 +707,17 @@ pub unsafe fn mode_tree_draw(mtd: *mut mode_tree_data) {
                 }
             }
 
-            for i in 0..(*mtd).line_size {
-                if i < (*mtd).offset {
+            for i in 0..mtd.line_list.len() {
+                // line = &mtd.line_list[i] // but we don't want to borrow
+                if (i as u32) < mtd.offset {
                     continue;
                 }
-                if i > (*mtd).offset + h - 1 {
+                if i as u32 > mtd.offset + h - 1 {
                     break;
                 }
-                let line = (*mtd).line_list.add(i as usize);
-                let mti = (*line).item;
+                let mti = mtd.line_list[i].item;
 
-                screen_write_cursormove(&raw mut ctx, 0, i as i32 - (*mtd).offset as i32, 0);
+                screen_write_cursormove(&raw mut ctx, 0, i as i32 - mtd.offset as i32, 0);
 
                 let pad = keylen - 2 - (*mti).keylen as i32;
                 let key = if (*mti).key != KEYC_NONE {
@@ -739,7 +726,7 @@ pub unsafe fn mode_tree_draw(mtd: *mut mode_tree_data) {
                     xstrdup_(c"").as_ptr()
                 };
 
-                let symbol = if (*line).flat != 0 {
+                let symbol = if mtd.line_list[i].flat != 0 {
                     c!("")
                 } else if tailq_empty(&raw const (*mti).children) {
                     c!("  ")
@@ -750,22 +737,22 @@ pub unsafe fn mode_tree_draw(mtd: *mut mode_tree_data) {
                 };
 
                 let start: *mut u8;
-                if (*line).depth == 0 {
+                if mtd.line_list[i].depth == 0 {
                     start = xstrdup(symbol).as_ptr();
                 } else {
-                    let size = (4 * (*line).depth as usize) + 32;
+                    let size = (4 * mtd.line_list[i].depth as usize) + 32;
 
                     start = xcalloc(1, size).as_ptr().cast();
-                    for _ in 1..(*line).depth {
+                    for _ in 1..mtd.line_list[i].depth {
                         if !(*mti).parent.is_null()
-                            && (*(*mtd).line_list.add((*(*mti).parent).line as usize)).last != 0
+                            && mtd.line_list[(*(*mti).parent).line as usize].last != 0
                         {
                             strlcat(start, c!("    "), size);
                         } else {
                             strlcat(start, c!("\x01x\x01   "), size);
                         }
                     }
-                    if (*line).last != 0 {
+                    if mtd.line_list[i].last != 0 {
                         strlcat(start, c!("\x01mq\x01> "), size);
                     } else {
                         strlcat(start, c!("\x01tq\x01> "), size);
@@ -794,7 +781,7 @@ pub unsafe fn mode_tree_draw(mtd: *mut mode_tree_data) {
                     gc0.attr ^= grid_attr::GRID_ATTR_BRIGHT;
                 }
 
-                if i != (*mtd).current {
+                if i as u32 != mtd.current {
                     screen_write_clearendofline(&raw mut ctx, 8);
                     screen_write_nputs!(&raw mut ctx, w as isize, &raw mut gc0, "{}", _s(text),);
                     if !(*mti).text.is_null() {
@@ -831,12 +818,12 @@ pub unsafe fn mode_tree_draw(mtd: *mut mode_tree_data) {
             }
 
             let sy = screen_size_y(s);
-            if !(*mtd).preview || sy <= 4 || h <= 4 || sy - h <= 4 || w <= 4 {
+            if !mtd.preview || sy <= 4 || h <= 4 || sy - h <= 4 || w <= 4 {
                 break 'done;
             }
 
-            let line = (*mtd).line_list.add((*mtd).current as usize);
-            let mut mti = (*line).item;
+            let line = &mtd.line_list[mtd.current as usize];
+            let mut mti = line.item;
             if (*mti).draw_as_parent != 0 {
                 mti = (*mti).parent;
             }
@@ -851,12 +838,12 @@ pub unsafe fn mode_tree_draw(mtd: *mut mode_tree_data) {
                 null(),
             );
 
-            let text = if !(*mtd).sort_list.is_null() {
+            let text = if !mtd.sort_list.is_empty() {
                 format_nul!(
                     " {} (sort: {}{})",
                     _s((*mti).name),
-                    _s(*(*mtd).sort_list.add((*mtd).sort_crit.field as usize)),
-                    if (*mtd).sort_crit.reversed {
+                    _s(mtd.sort_list[mtd.sort_crit.field as usize]),
+                    if mtd.sort_crit.reversed {
                         ", reversed"
                     } else {
                         ""
@@ -869,15 +856,15 @@ pub unsafe fn mode_tree_draw(mtd: *mut mode_tree_data) {
                 screen_write_cursormove(&raw mut ctx, 1, h as i32, 0);
                 screen_write_puts!(&raw mut ctx, &raw mut gc0, "{}", _s(text));
 
-                let n = if (*mtd).no_matches != 0 {
+                let n = if mtd.no_matches != 0 {
                     "no matches".len()
                 } else {
                     "active".len()
                 };
 
-                if !(*mtd).filter.is_null() && w as usize - 2 >= strlen(text) + 10 + n + 2 {
+                if !mtd.filter.is_null() && w as usize - 2 >= strlen(text) + 10 + n + 2 {
                     screen_write_puts!(&raw mut ctx, &raw mut gc0, " (filter: ");
-                    if (*mtd).no_matches != 0 {
+                    if mtd.no_matches != 0 {
                         screen_write_puts!(&raw mut ctx, &raw mut gc, "no matches");
                     } else {
                         screen_write_puts!(&raw mut ctx, &raw mut gc0, "active");
@@ -894,8 +881,8 @@ pub unsafe fn mode_tree_draw(mtd: *mut mode_tree_data) {
 
             if box_x != 0 && box_y != 0 {
                 screen_write_cursormove(&raw mut ctx, 2, h as i32 + 1, 0);
-                (*mtd).drawcb.unwrap()(
-                    (*mtd).modedata,
+                mtd.drawcb.unwrap()(
+                    mtd.modedata,
                     NonNull::new((*mti).itemdata),
                     &raw mut ctx,
                     box_x,
@@ -904,12 +891,7 @@ pub unsafe fn mode_tree_draw(mtd: *mut mode_tree_data) {
             }
         }
         // done:
-        screen_write_cursormove(
-            &raw mut ctx,
-            0,
-            (*mtd).current as i32 - (*mtd).offset as i32,
-            0,
-        );
+        screen_write_cursormove(&raw mut ctx, 0, mtd.current as i32 - mtd.offset as i32, 0);
         screen_write_stop(&raw mut ctx);
     }
 }
@@ -920,7 +902,7 @@ pub unsafe fn mode_tree_search_backward(mtd: *mut mode_tree_data) -> *mut mode_t
             return null_mut();
         }
 
-        let last = (*(*mtd).line_list.add((*mtd).current as usize)).item;
+        let last = (&(*mtd).line_list)[(*mtd).current as usize].item;
         let mut mti = last;
 
         loop {
@@ -972,7 +954,7 @@ pub unsafe fn mode_tree_search_forward(mtd: *mut mode_tree_data) -> *mut mode_tr
             return null_mut();
         }
 
-        let last = (*(*mtd).line_list.add((*mtd).current as usize)).item;
+        let last = (&(*mtd).line_list)[(*mtd).current as usize].item;
         let mut mti = last;
         loop {
             if !tailq_empty(&raw mut (*mti).children) {
@@ -1037,7 +1019,7 @@ pub unsafe fn mode_tree_search_set(mtd: *mut mode_tree_data) {
 
         mode_tree_build(mtd);
         mode_tree_set_current(mtd, tag);
-        mode_tree_draw(mtd);
+        mode_tree_draw(&mut *mtd);
         (*(*mtd).wp).flags |= window_pane_flags::PANE_REDRAW;
     }
 }
@@ -1096,7 +1078,7 @@ pub unsafe fn mode_tree_filter_callback(
         }
 
         mode_tree_build(mtd);
-        mode_tree_draw(mtd);
+        mode_tree_draw(&mut *mtd);
         (*(*mtd).wp).flags |= window_pane_flags::PANE_REDRAW;
 
         0
@@ -1124,7 +1106,7 @@ pub unsafe fn mode_tree_menu_callback(
                 break 'out;
             }
 
-            if (*mtm).line >= (*mtd).line_size {
+            if (*mtm).line >= (*mtd).line_list.len() as u32 {
                 break 'out;
             }
             (*mtd).current = (*mtm).line;
@@ -1144,12 +1126,12 @@ pub unsafe fn mode_tree_display_menu(
     outside: i32,
 ) {
     unsafe {
-        let line = if (*mtd).offset + y > (*mtd).line_size - 1 {
+        let line = if (*mtd).offset + y > (*mtd).line_list.len() as u32 - 1 {
             (*mtd).current
         } else {
             (*mtd).offset + y
         };
-        let mti = (*(*mtd).line_list.add(line as usize)).item;
+        let mti = (&(*mtd).line_list)[line as usize].item;
 
         let (items, title) = if outside == 0 {
             (
@@ -1228,7 +1210,7 @@ pub unsafe fn mode_tree_key(
                 }
                 return 0;
             }
-            if (*mtd).offset + y < (*mtd).line_size {
+            if (*mtd).offset + y < (*mtd).line_list.len() as u32 {
                 if *key == keyc::KEYC_MOUSEDOWN1_PANE as u64
                     || *key == keyc::KEYC_MOUSEDOWN3_PANE as u64
                     || *key == keyc::KEYC_DOUBLECLICK1_PANE as u64
@@ -1252,18 +1234,15 @@ pub unsafe fn mode_tree_key(
             return 0;
         }
 
-        let line = (*mtd).line_list.add((*mtd).current as usize);
-        let mut current = (*line).item;
+        let line = &((&(*mtd).line_list)[(*mtd).current as usize]);
+        let mut current = line.item;
 
-        let mut choice = -1;
-        for i in 0..(*mtd).line_size {
-            if *key == (*(*(*mtd).line_list.add(i as usize)).item).key {
-                choice = i as i32;
-                break;
-            }
-        }
-        if choice != -1 {
-            if (choice as u32) > (*mtd).line_size - 1 {
+        if let Some(choice) = (*mtd)
+            .line_list
+            .iter()
+            .position(|line| *key == (*line.item).key)
+        {
+            if (choice as u32) > (*mtd).line_list.len() as u32 - 1 {
                 *key = KEYC_NONE;
                 return 0;
             }
@@ -1353,7 +1332,7 @@ pub unsafe fn mode_tree_key(
             }
             code::KEYC_NPAGE | code::F_CTRL => {
                 for _ in 0..(*mtd).height {
-                    if (*mtd).current == (*mtd).line_size - 1 {
+                    if (*mtd).current == (*mtd).line_list.len() as u32 - 1 {
                         break;
                     }
                     mode_tree_down(mtd, 1);
@@ -1364,7 +1343,7 @@ pub unsafe fn mode_tree_key(
                 (*mtd).offset = 0;
             }
             code::G_UPPER | code::KEYC_END => {
-                (*mtd).current = (*mtd).line_size - 1;
+                (*mtd).current = (*mtd).line_list.len() as u32 - 1;
                 if (*mtd).current > (*mtd).height - 1 {
                     (*mtd).offset = (*mtd).current - (*mtd).height + 1;
                 } else {
@@ -1392,26 +1371,24 @@ pub unsafe fn mode_tree_key(
                 }
             }
             code::T_UPPER => {
-                for i in 0..(*mtd).line_size {
-                    (*(*(*mtd).line_list.add(i as usize)).item).tagged = 0;
+                for line in (*mtd).line_list.iter_mut() {
+                    (*line.item).tagged = 0;
                 }
             }
             code::T_CTRL => {
-                for i in 0..(*mtd).line_size {
-                    if ((*(*(*mtd).line_list.add(i as usize)).item).parent.is_null()
-                        && (*(*(*mtd).line_list.add(i as usize)).item).no_tag == 0)
-                        || (!(*(*(*mtd).line_list.add(i as usize)).item).parent.is_null()
-                            && (*(*(*(*mtd).line_list.add(i as usize)).item).parent).no_tag != 0)
+                for line in (*mtd).line_list.iter_mut() {
+                    if ((*line.item).parent.is_null() && (*line.item).no_tag == 0)
+                        || (!(*line.item).parent.is_null() && (*(*line.item).parent).no_tag != 0)
                     {
-                        (*(*(*mtd).line_list.add(i as usize)).item).tagged = 1;
+                        (*line.item).tagged = 1;
                     } else {
-                        (*(*(*mtd).line_list.add(i as usize)).item).tagged = 0;
+                        (*line.item).tagged = 0;
                     }
                 }
             }
             code::O_UPPER => {
                 (*mtd).sort_crit.field += 1;
-                if (*mtd).sort_crit.field >= (*mtd).sort_size {
+                if (*mtd).sort_crit.field >= (&(*mtd).sort_list).len() as u32 {
                     (*mtd).sort_crit.field = 0;
                 }
                 mode_tree_build(mtd);
@@ -1421,7 +1398,7 @@ pub unsafe fn mode_tree_key(
                 mode_tree_build(mtd);
             }
             code::KEYC_LEFT | code::H | code::MINUS => {
-                if (*line).flat != 0 || !(*current).expanded {
+                if line.flat != 0 || !(*current).expanded {
                     current = (*current).parent;
                 }
                 if current.is_null() {
@@ -1433,9 +1410,9 @@ pub unsafe fn mode_tree_key(
                 }
             }
             code::KEYC_RIGHT | code::L | code::PLUS => {
-                if (*line).flat != 0 || (*current).expanded {
+                if line.flat != 0 || (*current).expanded {
                     mode_tree_down(mtd, 0);
-                } else if (*line).flat == 0 {
+                } else if line.flat == 0 {
                     (*current).expanded = true;
                     mode_tree_build(mtd);
                 }

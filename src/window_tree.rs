@@ -87,9 +87,7 @@ enum window_tree_sort_type {
     WINDOW_TREE_BY_TIME,
 }
 
-const WINDOW_TREE_SORT_LIST_LEN: usize = 3;
-
-static mut WINDOW_TREE_SORT_LIST: [SyncCharPtr; WINDOW_TREE_SORT_LIST_LEN] = [
+static mut WINDOW_TREE_SORT_LIST: [SyncCharPtr; 3] = [
     SyncCharPtr::new(c"index"),
     SyncCharPtr::new(c"name"),
     SyncCharPtr::new(c"time"),
@@ -1135,14 +1133,13 @@ unsafe fn window_tree_init(
             Some(window_tree_get_key),
             data.cast(),
             WINDOW_TREE_MENU_ITEMS.as_slice(),
-            (&raw mut WINDOW_TREE_SORT_LIST).cast(),
-            WINDOW_TREE_SORT_LIST_LEN as u32,
+            &raw mut WINDOW_TREE_SORT_LIST,
             &raw mut s,
         );
         mode_tree_zoom((*data).data, args);
 
         mode_tree_build((*data).data);
-        mode_tree_draw((*data).data);
+        mode_tree_draw(&mut *(*data).data);
 
         (*data).type_ = window_tree_type::WINDOW_TREE_NONE;
 
@@ -1193,7 +1190,7 @@ unsafe fn window_tree_update(wme: NonNull<window_mode_entry>) {
         let data: *mut window_tree_modedata = (*wme.as_ptr()).data.cast();
 
         mode_tree_build((*data).data);
-        mode_tree_draw((*data).data);
+        mode_tree_draw(&mut *(*data).data);
         (*(*data).wp).flags |= window_pane_flags::PANE_REDRAW;
     }
 }
@@ -1273,7 +1270,7 @@ unsafe fn window_tree_command_done(_: *mut cmdq_item, modedata: *mut c_void) -> 
 
         if (*data.as_ptr()).dead == 0 {
             mode_tree_build((*data.as_ptr()).data);
-            mode_tree_draw((*data.as_ptr()).data);
+            mode_tree_draw(&mut *(*data.as_ptr()).data);
             (*(*data.as_ptr()).wp).flags |= window_pane_flags::PANE_REDRAW;
         }
         window_tree_destroy(data);
@@ -1650,7 +1647,7 @@ unsafe fn window_tree_key(
             if finished != 0 {
                 window_pane_reset_mode(wp);
             } else {
-                mode_tree_draw((*data).data);
+                mode_tree_draw(&mut *(*data).data);
                 (*wp).flags |= window_pane_flags::PANE_REDRAW;
             }
             break 'again;

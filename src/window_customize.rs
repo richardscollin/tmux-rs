@@ -1189,14 +1189,13 @@ pub unsafe fn window_customize_init(
             None,
             data.cast(),
             WINDOW_CUSTOMIZE_MENU_ITEMS.as_slice(),
-            null_mut(),
-            0,
+            &mut [],
             &raw mut s,
         );
         mode_tree_zoom((*data).data, args);
 
         mode_tree_build((*data).data);
-        mode_tree_draw((*data).data);
+        mode_tree_draw(&mut *(*data).data);
 
         s
     }
@@ -1306,7 +1305,7 @@ pub unsafe fn window_customize_set_option_callback(
 
         options_push_changes((*item).name);
         mode_tree_build((*data).data);
-        mode_tree_draw((*data).data);
+        mode_tree_draw(&mut *(*data).data);
         (*(*data).wp).flags |= window_pane_flags::PANE_REDRAW;
 
         0
@@ -1531,7 +1530,7 @@ pub unsafe fn window_customize_set_command_callback(
             (*bd).cmdlist = cmdlist;
 
             mode_tree_build((*data).data);
-            mode_tree_draw((*data).data);
+            mode_tree_draw(&mut *(*data).data);
             (*(*data).wp).flags |= window_pane_flags::PANE_REDRAW;
 
             return 0;
@@ -1566,7 +1565,7 @@ pub unsafe fn window_customize_set_note_callback(
         (*bd).note = xstrdup(s).as_ptr();
 
         mode_tree_build((*data).data);
-        mode_tree_draw((*data).data);
+        mode_tree_draw(&mut *(*data).data);
         (*(*data).wp).flags |= window_pane_flags::PANE_REDRAW;
 
         0
@@ -1770,7 +1769,7 @@ pub unsafe fn window_customize_change_current_callback(
             options_push_changes((*item).name);
         }
         mode_tree_build((*data).data);
-        mode_tree_draw((*data).data);
+        mode_tree_draw(&mut *(*data).data);
         (*(*data).wp).flags |= window_pane_flags::PANE_REDRAW;
 
         0
@@ -1800,8 +1799,8 @@ pub unsafe fn window_customize_change_tagged_callback(
             KEYC_NONE,
             0,
         );
-        mode_tree_build((*data).data);
-        mode_tree_draw((*data).data);
+        mode_tree_build(&mut *(*data).data);
+        mode_tree_draw(&mut *(*data).data);
         (*(*data).wp).flags |= window_pane_flags::PANE_REDRAW;
 
         0
@@ -1952,7 +1951,7 @@ pub unsafe fn window_customize_key(
         if finished != 0 {
             window_pane_reset_mode(wp);
         } else {
-            mode_tree_draw((*data).data);
+            mode_tree_draw(&mut *(*data).data);
             (*wp).flags |= window_pane_flags::PANE_REDRAW;
         }
     }

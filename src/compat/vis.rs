@@ -31,7 +31,10 @@ bitflags::bitflags! {
     #[repr(transparent)]
     #[derive(Copy, Clone, Eq, PartialEq)]
     pub(crate) struct vis_flags: i32 {
-        /// Use a three digit octal sequence.  The form is '\ddd' where d represents an octal digit.
+        /// Use a three digit octal sequence. The form is '\ddd' where each 'd' represents an octal
+        /// digit.
+        ///
+        /// tmux-rs considers this flag to be set unconditionally.
         const VIS_OCTAL   = 0x0001;
 
         /// Use C-style backslash sequences to represent standard non-printable characters.
@@ -45,6 +48,8 @@ bitflags::bitflags! {
         /// \r - CR  (015)
         /// \s - SP  (040)
         /// \0 - NUL (000)
+        ///
+        /// tmux-rs considers this flag to be set unconditionally.
         const VIS_CSTYLE  = 0x0002;
 
         /// encode tab
@@ -58,9 +63,6 @@ bitflags::bitflags! {
         /// with this flag set, the encoding is ambiguous and non-invertible.
         const VIS_NOSLASH = 0x0040;
 
-        /// encode the magic characters *, ?, [, and # recognized by glob(3)
-        const VIS_GLOB    = 0x1000;
-
         /// encode double quote
         const VIS_DQ      = 0x0200;
     }
@@ -70,33 +72,18 @@ bitflags::bitflags! {
 /// The string is null terminated, and a pointer to the end of the string is returned.
 pub unsafe fn vis_(dst: *mut u8, c: c_int, flag: vis_flags, nextc: c_int) -> *mut u8 {
     unsafe {
-        if flag.intersects(vis_flags::VIS_CSTYLE) {
-            match c as u8 {
-                b'\0' if !matches!(nextc as u8, b'0'..=b'7') => encode_cstyle(dst, b'0'),
-                b'\t' if flag.intersects(vis_flags::VIS_TAB) => encode_cstyle(dst, b't'),
-                b'\n' if flag.intersects(vis_flags::VIS_NL) => encode_cstyle(dst, b'n'),
-                b'\\' if !flag.intersects(vis_flags::VIS_NOSLASH) => encode_cstyle(dst, b'\\'),
-                b'*' | b'?' | b'[' | b'#' if flag.intersects(vis_flags::VIS_GLOB) => {
-                    encode_cstyle(dst, c as u8)
-                }
-                7..9 | 11..14 => {
-                    const CSTYLE: [u8; 7] = [b'a', b'b', 0, 0, b'v', b'f', b'r'];
-                    encode_cstyle(dst, CSTYLE[c as usize - 7])
-                }
-                0..7 | 14..32 | 92 | 127.. => encode_octal(dst, c),
-                _ => encode_passthrough(dst, c),
+        match c as u8 {
+            b'\0' if !matches!(nextc as u8, b'0'..=b'7') => encode_cstyle(dst, b'0'),
+            b'\t' if flag.intersects(vis_flags::VIS_TAB) => encode_cstyle(dst, b't'),
+            b'\n' if flag.intersects(vis_flags::VIS_NL) => encode_cstyle(dst, b'n'),
+            b'\\' if !flag.intersects(vis_flags::VIS_NOSLASH) => encode_cstyle(dst, b'\\'),
+            b'"' if flag.intersects(vis_flags::VIS_DQ) => encode_cstyle(dst, b'"'),
+            7..9 | 11..14 => {
+                const CSTYLE: [u8; 7] = [b'a', b'b', 0, 0, b'v', b'f', b'r'];
+                encode_cstyle(dst, CSTYLE[c as usize - 7])
             }
-        } else {
-            match c as u8 {
-                b'\t' if flag.intersects(vis_flags::VIS_TAB) => encode_octal(dst, c),
-                b'\n' if flag.intersects(vis_flags::VIS_NL) => encode_octal(dst, c),
-                b'*' | b'?' | b'[' | b'#' if flag.intersects(vis_flags::VIS_GLOB) => {
-                    encode_octal(dst, c)
-                }
-                b'\\' if !flag.intersects(vis_flags::VIS_NOSLASH) => encode_octal(dst, c),
-                0..9 | 11..32 | 127.. => encode_octal(dst, c),
-                _ => encode_passthrough(dst, c),
-            }
+            0..7 | 14..32 | 127.. => encode_octal(dst, c),
+            _ => encode_passthrough(dst, c),
         }
     }
 }
@@ -207,7 +194,6 @@ mod test {
                 vis_flags::VIS_OCTAL | vis_flags::VIS_CSTYLE,
             ] {
                 for f2 in [
-                    vis_flags::VIS_GLOB, //
                     vis_flags::VIS_TAB | vis_flags::VIS_NL,
                     vis_flags::VIS_TAB,
                     vis_flags::VIS_NL,

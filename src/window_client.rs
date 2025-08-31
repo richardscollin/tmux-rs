@@ -11,7 +11,7 @@
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-use crate::libc::{qsort, strcmp};
+use crate::libc::strcmp;
 use crate::*;
 
 static WINDOW_CLIENT_DEFAULT_COMMAND: &CStr = c"detach-client -t '%%'";
@@ -59,8 +59,6 @@ static mut WINDOW_CLIENT_SORT_LIST: [SyncCharPtr; 4] = [
     SyncCharPtr::new(c"activity"),
 ];
 
-static mut WINDOW_CLIENT_SORT: *mut mode_tree_sort_criteria = null_mut();
-
 #[repr(C)]
 pub struct window_client_itemdata {
     c: *mut client,
@@ -75,21 +73,18 @@ pub struct window_client_modedata {
     key_format: *mut u8,
     command: *mut u8,
 
-    item_list: *mut *mut window_client_itemdata,
-    item_size: u32,
+    item_list: Vec<*mut window_client_itemdata>,
 }
 
 pub unsafe fn window_client_add_item(
     data: *mut window_client_modedata,
 ) -> *mut window_client_itemdata {
     unsafe {
-        (*data).item_list =
-            xreallocarray_((*data).item_list, (*data).item_size as usize + 1).as_ptr();
-        let item = xcalloc1::<window_client_itemdata>() as *mut window_client_itemdata;
-        *(*data).item_list.add((*data).item_size as usize) = item;
-        (*data).item_size += 1;
+        (*data)
+            .item_list
+            .push(xcalloc1::<window_client_itemdata>() as *mut window_client_itemdata);
 
-        item
+        (*data).item_list.last().copied().unwrap()
     }
 }
 
@@ -97,61 +92,6 @@ pub unsafe fn window_client_free_item(item: *mut window_client_itemdata) {
     unsafe {
         server_client_unref((*item).c);
         free_(item);
-    }
-}
-
-pub unsafe extern "C" fn window_client_cmp(a0: *const c_void, b0: *const c_void) -> i32 {
-    unsafe {
-        let a: *const *const window_client_itemdata = a0 as _;
-        let b: *const *const window_client_itemdata = b0 as _;
-        let itema: *const window_client_itemdata = *a;
-        let itemb: *const window_client_itemdata = *b;
-        let ca = (*itema).c;
-        let cb = (*itemb).c;
-        let mut result: i32 = 0;
-
-        match window_client_sort_type::try_from((*WINDOW_CLIENT_SORT).field) {
-            Ok(window_client_sort_type::WINDOW_CLIENT_BY_SIZE) => {
-                result = (*ca).tty.sx.wrapping_sub((*cb).tty.sx) as i32;
-                if result == 0 {
-                    result = (*ca).tty.sy.wrapping_sub((*cb).tty.sy) as i32;
-                }
-            }
-            Ok(window_client_sort_type::WINDOW_CLIENT_BY_CREATION_TIME) => {
-                if timer::new(&raw const (*ca).creation_time)
-                    > timer::new(&raw const (*cb).creation_time)
-                {
-                    result = -1;
-                } else if timer::new(&raw mut (*ca).creation_time)
-                    < timer::new(&raw mut (*cb).creation_time)
-                {
-                    result = 1;
-                }
-            }
-            Ok(window_client_sort_type::WINDOW_CLIENT_BY_ACTIVITY_TIME) => {
-                if timer::new(&raw mut (*ca).activity_time)
-                    > timer::new(&raw mut (*cb).activity_time)
-                {
-                    result = -1;
-                } else if timer::new(&raw mut (*ca).activity_time)
-                    < timer::new(&raw mut (*cb).activity_time)
-                {
-                    result = 1;
-                }
-            }
-            _ => (),
-        }
-
-        // Use WINDOW_CLIENT_BY_NAME as default order and tie breaker.
-        if result == 0 {
-            result = strcmp((*ca).name, (*cb).name);
-        }
-
-        if (*WINDOW_CLIENT_SORT).reversed {
-            result = -result;
-        }
-
-        result
     }
 }
 
@@ -165,12 +105,10 @@ pub unsafe fn window_client_build(
         let data: NonNull<window_client_modedata> = modedata.cast();
         let data = data.as_ptr();
 
-        for i in 0..(*data).item_size {
-            window_client_free_item(*(*data).item_list.add(i as usize));
+        for item in (*data).item_list.drain(..) {
+            window_client_free_item(item);
         }
-        free_((*data).item_list);
-        (*data).item_list = null_mut();
-        (*data).item_size = 0;
+        (*data).item_list = Vec::new();
 
         for c in crate::compat::queue::tailq_foreach(&raw mut CLIENTS).map(NonNull::as_ptr) {
             if (*c).session.is_null() || (*c).flags.intersects(CLIENT_UNATTACHEDFLAGS) {
@@ -183,16 +121,48 @@ pub unsafe fn window_client_build(
             (*c).references += 1;
         }
 
-        WINDOW_CLIENT_SORT = sort_crit;
-        qsort(
-            (*data).item_list.cast(),
-            (*data).item_size as usize,
-            size_of::<window_client_itemdata>(),
-            Some(window_client_cmp),
-        );
+        // TODO double check this ordering is correct
+        match window_client_sort_type::try_from((*sort_crit).field) {
+            Ok(window_client_sort_type::WINDOW_CLIENT_BY_SIZE) => {
+                (*data).item_list.sort_by(|itema, itemb| {
+                    let ca = (**itema).c;
+                    let cb = (**itemb).c;
 
-        for i in 0..(*data).item_size {
-            let item = *(*data).item_list.add(i as usize);
+                    (*cb)
+                        .tty
+                        .sx
+                        .cmp(&(*ca).tty.sx)
+                        .then_with(|| (*cb).tty.sy.cmp(&(*ca).tty.sy))
+                        .then_with(|| i32_to_ordering(strcmp((*ca).name, (*cb).name)))
+                        .maybe_reverse((*sort_crit).reversed)
+                });
+            }
+            Ok(window_client_sort_type::WINDOW_CLIENT_BY_CREATION_TIME) => {
+                (*data).item_list.sort_by(|itema, itemb| {
+                    let ca = (**itema).c;
+                    let cb = (**itemb).c;
+
+                    timer::new(&raw const (*cb).creation_time)
+                        .cmp(&timer::new(&raw const (*ca).creation_time))
+                        .then_with(|| i32_to_ordering(strcmp((*ca).name, (*cb).name)))
+                        .maybe_reverse((*sort_crit).reversed)
+                });
+            }
+            Ok(window_client_sort_type::WINDOW_CLIENT_BY_ACTIVITY_TIME) => {
+                (*data).item_list.sort_by(|itema, itemb| {
+                    let ca = (**itema).c;
+                    let cb = (**itemb).c;
+
+                    timer::new(&raw const (*cb).activity_time)
+                        .cmp(&timer::new(&raw const (*ca).activity_time))
+                        .then_with(|| i32_to_ordering(strcmp((*ca).name, (*cb).name)))
+                        .maybe_reverse((*sort_crit).reversed)
+                });
+            }
+            _ => {}
+        }
+
+        for item in (*data).item_list.iter().copied() {
             let c = (*item).c;
 
             if !filter.is_null() {
@@ -368,10 +338,10 @@ pub unsafe fn window_client_free(wme: NonNull<window_mode_entry>) {
 
         mode_tree_free((*data).data);
 
-        for i in 0..(*data).item_size {
-            window_client_free_item(*(*data).item_list.add(i as usize));
+        for item in (*data).item_list.drain(..) {
+            window_client_free_item(item);
         }
-        free_((*data).item_list);
+        (*data).item_list = Vec::new();
 
         free_((*data).format);
         free_((*data).key_format);

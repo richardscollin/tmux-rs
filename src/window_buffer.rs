@@ -149,15 +149,6 @@ pub unsafe fn window_buffer_build(
         }
 
         {
-            trait Reverseable {
-                fn maybe_reverse(self, reversed: bool) -> Self;
-            }
-            impl Reverseable for cmp::Ordering {
-                fn maybe_reverse(self, reversed: bool) -> Self {
-                    if reversed { self.reverse() } else { self }
-                }
-            }
-
             let tmp = std::slice::from_raw_parts_mut((*data).item_list, (*data).item_size as usize);
 
             // TODO double check this ordering is correct

@@ -3271,3 +3271,12 @@ macro_rules! cstring_concat {
     };
 }
 pub(crate) use cstring_concat;
+
+trait Reverseable {
+    fn maybe_reverse(self, reversed: bool) -> Self;
+}
+impl Reverseable for cmp::Ordering {
+    fn maybe_reverse(self, reversed: bool) -> Self {
+        if reversed { self.reverse() } else { self }
+    }
+}

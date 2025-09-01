@@ -961,16 +961,13 @@ unsafe fn window_customize_draw_option(
                 free_(expanded);
             }
 
-            const SIZEOF_CHOICES: usize = 256;
-            let mut choices: [u8; SIZEOF_CHOICES] = [0; SIZEOF_CHOICES];
+            let mut choices = String::with_capacity(256);
             if !oe.is_null() && (*oe).type_ == options_table_type::OPTIONS_TABLE_CHOICE {
-                let mut choice = (*oe).choices;
-                while !(*choice).is_null() {
-                    strlcat(choices.as_mut_ptr(), *choice, SIZEOF_CHOICES);
-                    strlcat(choices.as_mut_ptr(), c!(", "), SIZEOF_CHOICES);
-                    choice = choice.add(1);
+                for &choice in (*oe).choices {
+                    choices.push_str(choice);
+                    choices.push_str(", ");
                 }
-                choices[libc::strlen(choices.as_ptr()) - 2] = b'\0';
+                let choices = choices.strip_suffix(", ").unwrap();
                 if !screen_write_text!(
                     ctx,
                     cx,
@@ -979,7 +976,7 @@ unsafe fn window_customize_draw_option(
                     0,
                     &raw const GRID_DEFAULT_CELL,
                     "Available values are: {}",
-                    _s((&raw const choices) as *const u8),
+                    choices
                 ) {
                     break 'out;
                 }
@@ -1322,7 +1319,6 @@ pub unsafe fn window_customize_set_option(
     unsafe {
         let idx = (*item).idx;
 
-        let mut choice: u32;
         let name = (*item).name;
         let mut space = c!("");
         let mut fs: cmd_find_state = zeroed();
@@ -1400,8 +1396,8 @@ pub unsafe fn window_customize_set_option(
             let flag = options_get_number(oo, name) as i32;
             options_set_number(oo, name, (flag == 0) as i64);
         } else if !oe.is_null() && (*oe).type_ == options_table_type::OPTIONS_TABLE_CHOICE {
-            choice = options_get_number(oo, name) as u32;
-            if (*(*oe).choices.add(choice as usize + 1)).is_null() {
+            let mut choice: u32 = options_get_number(oo, name) as u32;
+            if choice as usize + 1 >= (&(*oe).choices).len() {
                 choice = 0;
             } else {
                 choice += 1;

@@ -2440,7 +2440,7 @@ struct options_table_entry {
     minimum: u32,
     maximum: u32,
 
-    choices: *const *const u8,
+    choices: &'static [&'static str],
 
     default_str: Option<&'static str>,
     default_num: c_longlong,
@@ -2451,6 +2451,28 @@ struct options_table_entry {
 
     text: *const u8,
     unit: *const u8,
+}
+
+impl options_table_entry {
+    pub const fn const_default() -> Self {
+        Self {
+            name: null(),
+            alternative_name: null_mut(),
+            type_: options_table_type::OPTIONS_TABLE_STRING,
+            scope: 0,
+            flags: 0,
+            minimum: 0,
+            maximum: 0,
+            choices: &[],
+            default_str: None,
+            default_num: 0,
+            default_arr: null(),
+            separator: null(),
+            pattern: null(),
+            text: null(),
+            unit: null(),
+        }
+    }
 }
 
 #[repr(C)]
@@ -2470,8 +2492,11 @@ struct options_name_map {
     to: *const u8,
 }
 impl options_name_map {
-    const fn new(from: *const u8, to: *const u8) -> Self {
-        Self { from, to }
+    const fn new(from: &'static CStr, to: &'static CStr) -> Self {
+        Self {
+            from: from.as_ptr().cast(),
+            to: to.as_ptr().cast(),
+        }
     }
 }
 

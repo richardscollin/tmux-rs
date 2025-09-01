@@ -183,7 +183,7 @@ pub unsafe fn options_value_to_string(
                     }
                 }
                 options_table_type::OPTIONS_TABLE_CHOICE => {
-                    xstrdup(*(*(*o).tableentry).choices.add((*ov).number as usize)).as_ptr()
+                    xstrdup__((*(*o).tableentry).choices[(*ov).number as usize])
                 }
                 _ => {
                     fatalx("not a number option type");
@@ -401,7 +401,7 @@ pub unsafe fn options_default_to_string(oe: *const options_table_entry) -> NonNu
                 c"off"
             }),
             options_table_type::OPTIONS_TABLE_CHOICE => {
-                xstrdup(*(*oe).choices.add((*oe).default_num as usize))
+                NonNull::new(xstrdup__((*oe).choices[(*oe).default_num as usize])).unwrap()
             }
         }
     }
@@ -1206,21 +1206,10 @@ pub unsafe fn options_find_choice(
     value: *const u8,
 ) -> Result<i32, CString> {
     unsafe {
-        let mut n = 0;
-        let mut choice = -1;
-        let mut cp = (*oe).choices;
-
-        while !(*cp).is_null() {
-            if strcmp(*cp, value) == 0 {
-                choice = n;
-            }
-            n += 1;
-            cp = cp.add(1);
-        }
-        if choice == -1 {
+        let Some(choice) = (*oe).choices.iter().position(|&cp| streq_(value, cp)) else {
             return Err(CString::new(format!("unknown value: {}", _s(value))).unwrap());
-        }
-        Ok(choice)
+        };
+        Ok(choice as i32)
     }
 }
 

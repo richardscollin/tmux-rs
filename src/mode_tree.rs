@@ -11,7 +11,7 @@
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-use crate::libc::{strcasecmp, strstr};
+use crate::libc::strstr;
 use crate::*;
 
 pub type mode_tree_build_cb = Option<
@@ -54,7 +54,7 @@ pub struct mode_tree_data {
     modedata: *mut c_void,
     menu: &'static [menu_item],
 
-    sort_list: &'static mut [SyncCharPtr],
+    sort_list: &'static [&'static str],
     sort_crit: mode_tree_sort_criteria,
 
     buildcb: mode_tree_build_cb,
@@ -395,7 +395,7 @@ pub unsafe fn mode_tree_each_tagged(
     }
 }
 
-pub unsafe fn mode_tree_start<const N: usize>(
+pub unsafe fn mode_tree_start(
     wp: *mut window_pane,
     args: *mut args,
     buildcb: mode_tree_build_cb,
@@ -406,7 +406,7 @@ pub unsafe fn mode_tree_start<const N: usize>(
     keycb: mode_tree_key_cb,
     modedata: *mut c_void,
     menu: &'static [menu_item],
-    sort_list: *mut [SyncCharPtr; N],
+    sort_list: &'static [&'static str],
     s: *mut *mut screen,
 ) -> *mut mode_tree_data {
     unsafe {
@@ -415,7 +415,7 @@ pub unsafe fn mode_tree_start<const N: usize>(
             wp,
             modedata,
             menu,
-            sort_list: &mut *sort_list,
+            sort_list,
             preview: !args_has(args, 'N'),
 
             buildcb,
@@ -448,10 +448,8 @@ pub unsafe fn mode_tree_start<const N: usize>(
 
         let sort = args_get_(args, 'O');
         if !sort.is_null() {
-            for i in 0..mtd.sort_list.len() {
-                if strcasecmp(sort, mtd.sort_list[i].as_ptr()) == 0 {
-                    mtd.sort_crit.field = i as u32;
-                }
+            if let Some(pos) = mtd.sort_list.iter().position(|e| strcaseeq_(sort, e)) {
+                mtd.sort_crit.field = pos as u32;
             }
         }
         mtd.sort_crit.reversed = args_has(args, 'r');
@@ -842,7 +840,7 @@ pub unsafe fn mode_tree_draw(mtd: &mut mode_tree_data) {
                 format_nul!(
                     " {} (sort: {}{})",
                     _s((*mti).name),
-                    _s(mtd.sort_list[mtd.sort_crit.field as usize]),
+                    mtd.sort_list[mtd.sort_crit.field as usize],
                     if mtd.sort_crit.reversed {
                         ", reversed"
                     } else {
@@ -1001,10 +999,9 @@ pub unsafe fn mode_tree_search_forward(mtd: *mut mode_tree_data) -> *mut mode_tr
 
 pub unsafe fn mode_tree_search_set(mtd: *mut mode_tree_data) {
     unsafe {
-        let mti = if (*mtd).search_dir == mode_tree_search_dir::MODE_TREE_SEARCH_FORWARD {
-            mode_tree_search_forward(mtd)
-        } else {
-            mode_tree_search_backward(mtd)
+        let mti = match (*mtd).search_dir {
+            mode_tree_search_dir::MODE_TREE_SEARCH_FORWARD => mode_tree_search_forward(mtd),
+            mode_tree_search_dir::MODE_TREE_SEARCH_BACKWARD => mode_tree_search_backward(mtd),
         };
         if mti.is_null() {
             return;

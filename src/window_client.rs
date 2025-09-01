@@ -52,12 +52,7 @@ pub enum window_client_sort_type {
     WINDOW_CLIENT_BY_CREATION_TIME,
     WINDOW_CLIENT_BY_ACTIVITY_TIME,
 }
-static mut WINDOW_CLIENT_SORT_LIST: [SyncCharPtr; 4] = [
-    SyncCharPtr::new(c"name"),
-    SyncCharPtr::new(c"size"),
-    SyncCharPtr::new(c"creation"),
-    SyncCharPtr::new(c"activity"),
-];
+static WINDOW_CLIENT_SORT_LIST: [&str; 4] = ["name", "size", "creation", "activity"];
 
 #[repr(C)]
 pub struct window_client_itemdata {
@@ -316,7 +311,7 @@ pub unsafe fn window_client_init(
             Some(window_client_get_key),
             data.cast(),
             WINDOW_CLIENT_MENU_ITEMS.as_slice(),
-            &raw mut WINDOW_CLIENT_SORT_LIST,
+            &WINDOW_CLIENT_SORT_LIST,
             &raw mut s,
         );
         mode_tree_zoom((*data).data, args);

@@ -65,11 +65,7 @@ enum window_buffer_sort_type {
     WINDOW_BUFFER_BY_SIZE,
 }
 
-static mut WINDOW_BUFFER_SORT_LIST: [SyncCharPtr; 3] = [
-    SyncCharPtr::new(c"time"),
-    SyncCharPtr::new(c"name"),
-    SyncCharPtr::new(c"size"),
-];
+static WINDOW_BUFFER_SORT_LIST: [&str; 3] = ["time", "name", "size"];
 
 pub struct window_buffer_itemdata {
     pub name: *mut u8,
@@ -383,7 +379,7 @@ pub unsafe fn window_buffer_init(
             Some(window_buffer_get_key),
             data as *mut window_buffer_modedata as *mut c_void,
             WINDOW_BUFFER_MENU_ITEMS.as_slice(),
-            &raw mut WINDOW_BUFFER_SORT_LIST,
+            &WINDOW_BUFFER_SORT_LIST,
             &raw mut s,
         );
         mode_tree_zoom(data.data, args);

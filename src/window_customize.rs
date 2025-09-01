@@ -1189,7 +1189,7 @@ pub unsafe fn window_customize_init(
             None,
             data.cast(),
             WINDOW_CUSTOMIZE_MENU_ITEMS.as_slice(),
-            &mut [],
+            &[],
             &raw mut s,
         );
         mode_tree_zoom((*data).data, args);

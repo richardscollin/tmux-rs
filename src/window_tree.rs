@@ -87,11 +87,7 @@ enum window_tree_sort_type {
     WINDOW_TREE_BY_TIME,
 }
 
-static mut WINDOW_TREE_SORT_LIST: [SyncCharPtr; 3] = [
-    SyncCharPtr::new(c"index"),
-    SyncCharPtr::new(c"name"),
-    SyncCharPtr::new(c"time"),
-];
+static WINDOW_TREE_SORT_LIST: [&str; 3] = ["index", "name", "time"];
 
 static mut WINDOW_TREE_SORT: *mut mode_tree_sort_criteria = null_mut();
 
@@ -1133,7 +1129,7 @@ unsafe fn window_tree_init(
             Some(window_tree_get_key),
             data.cast(),
             WINDOW_TREE_MENU_ITEMS.as_slice(),
-            &raw mut WINDOW_TREE_SORT_LIST,
+            &WINDOW_TREE_SORT_LIST,
             &raw mut s,
         );
         mode_tree_zoom((*data).data, args);

@@ -296,6 +296,10 @@ pub unsafe fn strcmp_(left: *const u8, right: &str) -> std::cmp::Ordering {
     }
 }
 
+pub unsafe fn streq_(left: *const u8, right: &'static str) -> bool {
+    unsafe { matches!(strcmp_(left, right), std::cmp::Ordering::Equal) }
+}
+
 pub unsafe fn strcasecmp(s1: *const u8, s2: *const u8) -> i32 {
     unsafe { ::libc::strcasecmp(s1.cast(), s2.cast()) }
 }
@@ -327,16 +331,12 @@ pub unsafe fn strcasecmp_(left: *const u8, right: &'static str) -> std::cmp::Ord
     }
 }
 
-pub unsafe fn strerror(n: c_int) -> *mut u8 {
-    unsafe { ::libc::strerror(n).cast() }
-}
-
-pub unsafe fn streq_(left: *const u8, right: &'static str) -> bool {
-    unsafe { matches!(strcmp_(left, right), std::cmp::Ordering::Equal) }
-}
-
 pub unsafe fn strcaseeq_(left: *const u8, right: &'static str) -> bool {
     unsafe { matches!(strcasecmp_(left, right), std::cmp::Ordering::Equal) }
+}
+
+pub unsafe fn strerror(n: c_int) -> *mut u8 {
+    unsafe { ::libc::strerror(n).cast() }
 }
 
 pub unsafe fn ttyname(fd: i32) -> *mut u8 {

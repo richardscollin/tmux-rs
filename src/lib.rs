@@ -23,7 +23,6 @@ use std::{
     ffi::{
         CStr, CString, c_int, c_long, c_longlong, c_short, c_uchar, c_uint, c_ulonglong, c_void,
     },
-    io::Write as _,
     mem::{MaybeUninit, size_of, zeroed},
     ptr::{NonNull, addr_of, addr_of_mut, null, null_mut},
     sync::{

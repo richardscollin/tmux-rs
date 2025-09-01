@@ -1002,7 +1002,11 @@ pub unsafe fn format_cb_pane_fg(ft: *mut format_tree) -> *mut c_void {
         }
 
         tty_default_colours(gc.as_mut_ptr(), wp);
-        xstrdup(colour_tostring((*gc.as_ptr()).fg)).as_ptr().cast()
+
+        colour_tostring((*gc.as_ptr()).fg)
+            .into_owned()
+            .into_raw()
+            .cast()
     }
 }
 
@@ -1017,7 +1021,11 @@ pub unsafe fn format_cb_pane_bg(ft: *mut format_tree) -> *mut c_void {
         }
 
         tty_default_colours(gc.as_mut_ptr(), wp);
-        xstrdup(colour_tostring((*gc.as_ptr()).bg)).as_ptr().cast()
+
+        colour_tostring((*gc.as_ptr()).bg)
+            .into_owned()
+            .into_raw()
+            .cast()
     }
 }
 
@@ -1859,7 +1867,7 @@ pub unsafe fn format_cb_mouse_y(ft: *mut format_tree) -> *mut c_void {
 /// Callback for next_session_id.
 pub unsafe fn format_cb_next_session_id(_ft: *mut format_tree) -> *mut c_void {
     unsafe {
-        let value = NEXT_SESSION_ID;
+        let value = NEXT_SESSION_ID.load(atomic::Ordering::Relaxed);
         format_printf!("${value}").cast()
     }
 }

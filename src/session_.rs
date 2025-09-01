@@ -24,7 +24,7 @@ RB_GENERATE!(
 
 pub static mut SESSIONS: sessions = unsafe { zeroed() };
 
-pub static mut NEXT_SESSION_ID: u32 = 0;
+pub static NEXT_SESSION_ID: AtomicU32 = AtomicU32::new(0);
 
 pub static mut SESSION_GROUPS: session_groups = rb_initializer();
 
@@ -102,12 +102,10 @@ impl session {
 
             if !name.is_null() {
                 s.name = xstrdup(name).as_ptr();
-                s.id = NEXT_SESSION_ID;
-                NEXT_SESSION_ID += 1;
+                s.id = NEXT_SESSION_ID.fetch_add(1, atomic::Ordering::Relaxed);
             } else {
                 loop {
-                    s.id = NEXT_SESSION_ID;
-                    NEXT_SESSION_ID += 1;
+                    s.id = NEXT_SESSION_ID.fetch_add(1, atomic::Ordering::Relaxed);
                     free_(s.name);
                     s.name = if !prefix.is_null() {
                         format_nul!("{}-{}", _s(prefix), s.id)

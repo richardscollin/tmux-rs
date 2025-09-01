@@ -1397,6 +1397,7 @@ pub unsafe fn window_customize_set_option(
             options_set_number(oo, name, (flag == 0) as i64);
         } else if !oe.is_null() && (*oe).type_ == options_table_type::OPTIONS_TABLE_CHOICE {
             let mut choice: u32 = options_get_number(oo, name) as u32;
+            #[expect(clippy::needless_borrow, reason = "false positive")]
             if choice as usize + 1 >= (&(*oe).choices).len() {
                 choice = 0;
             } else {

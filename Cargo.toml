@@ -11,9 +11,9 @@ repository   = "https://github.com/richardscollin/tmux-rs"
 rust-version = "1.88" # let chains
 description  = "A Rust port of tmux"
 
-# Note: none of these features are supported yet
+# Note: most of these features are not supported yet
 # they just exist to make matching upstream's
-# configuration options easier
+# configuration options easier. However, sixel support is implemented
 [features]
 default     = ["sixel"]
 cgroups     = []

@@ -12,6 +12,8 @@
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+use std::borrow::Cow;
+
 use crate::*;
 
 const COLOUR_FLAG_256: i32 = 0x01000000;
@@ -111,57 +113,44 @@ pub fn colour_force_rgb(c: i32) -> i32 {
 }
 
 /// Convert colour to a string.
-#[expect(
-    static_mut_refs,
-    reason = "TODO need to find a better way to make use of the write macro without invoking ub"
-)]
-pub unsafe fn colour_tostring(c: i32) -> *const u8 {
-    // TODO this function returns a static buffer
-    // this means it's not thread safe and multiple
-    // concurrent calls to this function would result in bugs
-    // consider fixing / reworking the interface
-    static mut BUF: [u8; 32] = [0; 32];
-
+pub fn colour_tostring(c: i32) -> Cow<'static, CStr> {
     if c == -1 {
-        return c!("none");
+        return Cow::Borrowed(c"none");
     }
 
     if c & COLOUR_FLAG_RGB != 0 {
         let (r, g, b) = colour_split_rgb(c);
-        write!(unsafe { BUF.as_mut_slice() }, "#{r:02x}{g:02x}{b:02x}\0").unwrap();
-        return &raw const BUF as _;
+        return Cow::Owned(CString::new(format!("#{r:02x}{g:02x}{b:02x}")).unwrap());
     }
 
     if c & COLOUR_FLAG_256 != 0 {
-        write!(unsafe { BUF.as_mut_slice() }, "colour{}\0", c & 0xff).unwrap();
-        return &raw const BUF as _;
+        return Cow::Owned(CString::new(format!("colour{}", c & 0xff)).unwrap());
     }
 
-    match c {
-        0 => c!("black"),
-        1 => c!("red"),
-        2 => c!("green"),
-        3 => c!("yellow"),
-        4 => c!("blue"),
-        5 => c!("magenta"),
-        6 => c!("cyan"),
-        7 => c!("white"),
-        8 => c!("default"),
-        9 => c!("terminal"),
-        90 => c!("brightblack"),
-        91 => c!("brightred"),
-        92 => c!("brightgreen"),
-        93 => c!("brightyellow"),
-        94 => c!("brightblue"),
-        95 => c!("brightmagenta"),
-        96 => c!("brightcyan"),
-        97 => c!("brightwhite"),
-        _ => c!("invalid"),
-    }
+    Cow::Borrowed(match c {
+        0 => c"black",
+        1 => c"red",
+        2 => c"green",
+        3 => c"yellow",
+        4 => c"blue",
+        5 => c"magenta",
+        6 => c"cyan",
+        7 => c"white",
+        8 => c"default",
+        9 => c"terminal",
+        90 => c"brightblack",
+        91 => c"brightred",
+        92 => c"brightgreen",
+        93 => c"brightyellow",
+        94 => c"brightblue",
+        95 => c"brightmagenta",
+        96 => c"brightcyan",
+        97 => c"brightwhite",
+        _ => c"invalid",
+    })
 }
 
 /// Convert colour from string.
-#[unsafe(no_mangle)]
 pub fn colour_fromstring_(s: &str) -> i32 {
     if s.chars().next().is_some_and(|c| c == '#') && s.len() == 7 {
         let cp = s.trim_start_matches(|c: char| c.is_ascii_hexdigit());
@@ -197,45 +186,52 @@ pub fn colour_fromstring_(s: &str) -> i32 {
         return n | COLOUR_FLAG_256;
     }
 
-    if s.eq_ignore_ascii_case("default") {
-        8
-    } else if s.eq_ignore_ascii_case("terminal") {
-        9
-    } else if s.eq_ignore_ascii_case("black") || s == "0" {
-        0
-    } else if s.eq_ignore_ascii_case("red") || s == "1" {
-        1
-    } else if s.eq_ignore_ascii_case("green") || s == "2" {
-        2
-    } else if s.eq_ignore_ascii_case("yellow") || s == "3" {
-        3
-    } else if s.eq_ignore_ascii_case("blue") || s == "4" {
-        4
-    } else if s.eq_ignore_ascii_case("magenta") || s == "5" {
-        5
-    } else if s.eq_ignore_ascii_case("cyan") || s == "6" {
-        6
-    } else if s.eq_ignore_ascii_case("white") || s == "7" {
-        7
-    } else if s.eq_ignore_ascii_case("brightblack") || s == "90" {
-        90
-    } else if s.eq_ignore_ascii_case("brightred") || s == "91" {
-        91
-    } else if s.eq_ignore_ascii_case("brightgreen") || s == "92" {
-        92
-    } else if s.eq_ignore_ascii_case("brightyellow") || s == "93" {
-        93
-    } else if s.eq_ignore_ascii_case("brightblue") || s == "94" {
-        94
-    } else if s.eq_ignore_ascii_case("brightmagenta") || s == "95" {
-        95
-    } else if s.eq_ignore_ascii_case("brightcyan") || s == "96" {
-        96
-    } else if s.eq_ignore_ascii_case("brightwhite") || s == "97" {
-        97
-    } else {
-        colour_byname(s)
+    match s {
+        "0" => return 0,
+        "1" => return 1,
+        "2" => return 2,
+        "3" => return 3,
+        "4" => return 4,
+        "5" => return 5,
+        "6" => return 6,
+        "7" => return 7,
+        "90" => return 90,
+        "91" => return 91,
+        "92" => return 92,
+        "93" => return 93,
+        "94" => return 94,
+        "95" => return 95,
+        "96" => return 96,
+        "97" => return 97,
+        _ => (),
     }
+
+    for (colour_name, colour_code) in [
+        ("default", 8),
+        ("terminal", 9),
+        ("black", 0),
+        ("red", 1),
+        ("green", 2),
+        ("yellow", 3),
+        ("blue", 4),
+        ("magenta", 5),
+        ("cyan", 6),
+        ("white", 7),
+        ("brightblack", 90),
+        ("brightred", 91),
+        ("brightgreen", 92),
+        ("brightyellow", 93),
+        ("brightblue", 94),
+        ("brightmagenta", 95),
+        ("brightcyan", 96),
+        ("brightwhite", 97),
+    ] {
+        if s.eq_ignore_ascii_case(colour_name) {
+            return colour_code;
+        }
+    }
+
+    colour_byname(s)
 }
 
 /// Convert colour from string.
@@ -1124,7 +1120,7 @@ pub unsafe fn colour_parse_x11(mut p: *const u8) -> i32 {
             "{}: {} = {}",
             "colour_parseX11",
             _s(p),
-            _s(colour_tostring(colour))
+            _s(colour_tostring(colour).as_ptr())
         );
         colour
     }

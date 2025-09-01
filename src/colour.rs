@@ -901,120 +901,112 @@ pub fn colour_byname(name: &str) -> i32 {
     -1
 }
 
-pub unsafe fn colour_palette_init(p: *mut colour_palette) {
-    unsafe {
-        *p = colour_palette {
-            fg: 8,
-            bg: 8,
-            palette: null_mut(),
-            default_palette: null_mut(),
-        };
+pub fn colour_palette_init() -> colour_palette {
+    colour_palette {
+        fg: 8,
+        bg: 8,
+        palette: None,
+        default_palette: None,
     }
 }
 
 /// Clear palette.
-pub unsafe fn colour_palette_clear(p: *mut colour_palette) {
-    unsafe {
-        if !p.is_null() {
-            (*p).fg = 8;
-            (*p).bg = 8;
-            free((*p).palette as _);
-            (*p).palette = null_mut();
-        }
+pub fn colour_palette_clear(p: Option<&mut colour_palette>) {
+    if let Some(p) = p {
+        p.fg = 8;
+        p.bg = 8;
+        p.palette.take();
     }
 }
 
 /// Free a palette
-pub unsafe fn colour_palette_free(p: *mut colour_palette) {
-    if let Some(p) = std::ptr::NonNull::new(p) {
-        let p = p.as_ptr();
-        unsafe {
-            free((*p).palette as _);
-            (*p).palette = null_mut();
-            free((*p).default_palette as _);
-            (*p).default_palette = null_mut();
-        }
+pub fn colour_palette_free(p: Option<&mut colour_palette>) {
+    if let Some(p) = p {
+        p.palette.take();
+        p.default_palette.take();
     }
 }
 
 /// Get a colour from a palette.
-pub unsafe fn colour_palette_get(p: *const colour_palette, mut c: i32) -> i32 {
-    unsafe {
-        if p.is_null() {
-            return -1;
-        } else if (90..=97).contains(&c) {
-            c = 8 + c - 90;
-        } else if c & COLOUR_FLAG_256 != 0 {
-            c &= !COLOUR_FLAG_256;
-        } else if c >= 8 {
-            return -1;
-        }
+pub fn colour_palette_get(p: Option<&colour_palette>, mut c: i32) -> i32 {
+    let Some(p) = p else {
+        return -1;
+    };
 
-        let c = c as usize;
+    if (90..=97).contains(&c) {
+        c = 8 + c - 90;
+    } else if c & COLOUR_FLAG_256 != 0 {
+        c &= !COLOUR_FLAG_256;
+    } else if c >= 8 {
+        return -1;
+    }
 
-        if !(*p).palette.is_null() && *(*p).palette.add(c) != -1 {
-            *(*p).palette.add(c)
-        } else if !(*p).default_palette.is_null() && *(*p).default_palette.add(c) != -1 {
-            *(*p).default_palette.add(c)
+    let c = c as usize;
+
+    if let Some(palette) = p.palette.as_ref()
+        && palette[c] != -1
+    {
+        palette[c]
+    } else if let Some(default_palette) = p.default_palette.as_ref()
+        && default_palette[c] != -1
+    {
+        default_palette[c]
+    } else {
+        -1
+    }
+}
+
+pub fn colour_palette_set(p: Option<&mut colour_palette>, n: i32, c: i32) -> i32 {
+    let Some(p) = p else {
+        return 0;
+    };
+    if n > 255 {
+        return 0;
+    }
+
+    if c == -1 && p.palette.is_none() {
+        return 0;
+    }
+
+    if c != -1 && p.palette.is_none() {
+        // TODO investigate, the upstream code looks a bit fishy here.
+        // it's possible this && should actually be ||
+        if p.palette.is_none() {
+            p.palette = Some(vec![-1; 256].into_boxed_slice());
         } else {
-            -1
+            p.palette.as_mut().unwrap().fill(-1);
         }
     }
+    (p.palette.as_mut().unwrap())[n as usize] = c;
+
+    1
 }
 
-pub unsafe fn colour_palette_set(p: *mut colour_palette, n: i32, c: i32) -> i32 {
+pub unsafe fn colour_palette_from_option(p: Option<&mut colour_palette>, oo: *mut options) {
     unsafe {
-        if p.is_null() || n > 255 {
-            return 0;
-        }
-
-        if c == -1 && (*p).palette.is_null() {
-            return 0;
-        }
-
-        if c != -1 && (*p).palette.is_null() {
-            if (*p).palette.is_null() {
-                (*p).palette = xcalloc_(256).as_ptr();
-            }
-            for i in 0..256 {
-                *(*p).palette.add(i) = -1;
-            }
-        }
-        *(*p).palette.add(n as usize) = c;
-
-        1
-    }
-}
-
-pub unsafe fn colour_palette_from_option(p: *mut colour_palette, oo: *mut options) {
-    unsafe {
-        if p.is_null() {
+        let Some(p) = p else {
             return;
-        }
+        };
 
-        let o = options_get(oo, c!("pane-colours"));
+        let o = options_get_(oo, "pane-colours");
 
         let mut a = options_array_first(o);
         if a.is_null() {
-            if !(*p).default_palette.is_null() {
-                free((*p).default_palette as _);
-                (*p).default_palette = null_mut();
-            }
+            p.default_palette.take();
             return;
         }
 
-        if (*p).default_palette.is_null() {
-            (*p).default_palette = xcalloc_::<i32>(256).as_ptr();
-        }
-        for i in 0..256 {
-            *(*p).default_palette.add(i) = -1;
+        if p.default_palette.is_none() {
+            p.default_palette = Some(vec![-1; 256].into_boxed_slice());
+        } else {
+            p.default_palette.as_mut().unwrap().fill(-1);
         }
 
         while !a.is_null() {
             let n = options_array_item_index(a);
             if n < 256 {
                 let c = (*options_array_item_value(a)).number as i32;
-                *(*p).default_palette.add(n as usize) = c;
+                (p.default_palette.as_mut().unwrap())[n as usize] = c;
             }
             a = options_array_next(a);
         }

@@ -64,6 +64,22 @@ const fn transmute_ptr<T>(value: Option<NonNull<T>>) -> *mut T {
     }
 }
 
+#[inline]
+const unsafe fn ptr_to_ref<'a, T>(value: *const T) -> Option<&'a T> {
+    unsafe { if value.is_null() { None } else { Some(&*value) } }
+}
+
+#[inline]
+const unsafe fn ptr_to_mut_ref<'a, T>(value: *mut T) -> Option<&'a mut T> {
+    unsafe {
+        if value.is_null() {
+            None
+        } else {
+            Some(&mut *value)
+        }
+    }
+}
+
 use compat::imsg::imsg; // TODO move
 
 // use crate::tmux_protocol_h::*;
@@ -649,13 +665,13 @@ fn COLOUR_DEFAULT(c: i32) -> bool {
 
 // Replacement palette.
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Clone)]
 struct colour_palette {
     fg: i32,
     bg: i32,
 
-    palette: *mut i32,
-    default_palette: *mut i32,
+    palette: Option<Box<[i32]>>,
+    default_palette: Option<Box<[i32]>>,
 }
 
 // Grid attributes. Anything above 0xff is stored in an extended cell.

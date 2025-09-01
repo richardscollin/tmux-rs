@@ -115,7 +115,7 @@ pub unsafe fn cmd_break_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
 
         layout_init(w, wp);
         (*wp).flags |= window_pane_flags::PANE_CHANGED;
-        colour_palette_from_option(&raw mut (*wp).palette, (*wp).options);
+        colour_palette_from_option(Some(&mut (*wp).palette), (*wp).options);
 
         if idx == -1 {
             idx = -1 - options_get_number_((*dst_s).options, "base-index") as i32;

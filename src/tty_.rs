@@ -3426,7 +3426,7 @@ pub unsafe fn tty_check_fg(tty: *const tty, palette: *const colour_palette, gc: 
             {
                 c += 90;
             }
-            c = colour_palette_get(palette, c);
+            c = colour_palette_get(ptr_to_ref(palette), c);
             if c != -1 {
                 (*gc).fg = c;
             }
@@ -3478,7 +3478,7 @@ pub unsafe fn tty_check_bg(tty: *const tty, palette: *const colour_palette, gc: 
 
         // Perform substitution if this pane has a palette.
         if !(*gc).flags.intersects(grid_flag::NOPALETTE) {
-            c = colour_palette_get(palette, (*gc).bg);
+            c = colour_palette_get(ptr_to_ref(palette), (*gc).bg);
             if c != -1 {
                 (*gc).bg = c;
             }
@@ -3531,7 +3531,7 @@ pub unsafe fn tty_check_us(tty: *const tty, palette: *const colour_palette, gc: 
 
         // Perform substitution if this pane has a palette.
         if !(*gc).flags.intersects(grid_flag::NOPALETTE) {
-            c = colour_palette_get(palette, (*gc).us);
+            c = colour_palette_get(ptr_to_ref(palette), (*gc).us);
             if c != -1 {
                 (*gc).us = c;
             }

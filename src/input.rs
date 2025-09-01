@@ -1442,7 +1442,7 @@ unsafe fn input_esc_dispatch(ictx: *mut input_ctx) -> i32 {
 
         match input_esc_type::try_from((INPUT_ESC_TABLE[entry]).type_) {
             Ok(input_esc_type::INPUT_ESC_RIS) => {
-                colour_palette_clear((*ictx).palette);
+                colour_palette_clear(NonNull::new((*ictx).palette).map(|e| &mut *e.as_ptr()));
                 input_reset_cell(ictx);
                 screen_write_reset(sctx);
                 screen_write_fullredraw(sctx);
@@ -2630,7 +2630,7 @@ unsafe fn input_osc_4(ictx: *mut input_ctx, p: *mut u8) {
 
             s = strsep(&raw mut next, c!(";"));
             if streq_(s, "?") {
-                c = colour_palette_get((*ictx).palette, idx as i32);
+                c = colour_palette_get(ptr_to_ref((*ictx).palette), idx as i32);
                 if c != -1 {
                     input_osc_colour_reply(ictx, 4, c);
                 }
@@ -2641,7 +2641,7 @@ unsafe fn input_osc_4(ictx: *mut input_ctx, p: *mut u8) {
                 s = next;
                 continue;
             }
-            if colour_palette_set((*ictx).palette, idx as i32, c) != 0 {
+            if colour_palette_set(ptr_to_mut_ref((*ictx).palette), idx as i32, c) != 0 {
                 redraw = true;
             }
             s = next;
@@ -3051,7 +3051,7 @@ unsafe fn input_osc_104(ictx: *mut input_ctx, p: *const u8) {
         let mut redraw = false;
 
         if *p == b'\0' {
-            colour_palette_clear((*ictx).palette);
+            colour_palette_clear(NonNull::new((*ictx).palette).map(|e| &mut *e.as_ptr()));
             screen_write_fullredraw(&raw mut (*ictx).ctx);
             return;
         }
@@ -3068,7 +3068,7 @@ unsafe fn input_osc_104(ictx: *mut input_ctx, p: *const u8) {
                 bad = true;
                 break;
             }
-            if colour_palette_set((*ictx).palette, idx as i32, -1) != 0 {
+            if colour_palette_set(ptr_to_mut_ref((*ictx).palette), idx as i32, -1) != 0 {
                 redraw = true;
             }
             if *s == b';' {

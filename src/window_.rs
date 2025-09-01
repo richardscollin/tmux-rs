@@ -571,11 +571,11 @@ pub unsafe fn window_set_active_pane(w: *mut window, wp: *mut window_pane, notif
     1
 }
 
-unsafe fn window_pane_get_palette(wp: *mut window_pane, c: i32) -> i32 {
-    if wp.is_null() {
-        -1
+fn window_pane_get_palette(wp: Option<&window_pane>, c: i32) -> i32 {
+    if let Some(wp) = wp {
+        colour_palette_get(Some(&wp.palette), c)
     } else {
-        unsafe { colour_palette_get(&raw mut (*wp).palette, c) }
+        -1
     }
 }
 
@@ -593,13 +593,13 @@ pub unsafe fn window_redraw_active_switch(w: *mut window, mut wp: *mut window_pa
             if grid_cells_look_equal(gc1, gc2) == 0 {
                 (*wp).flags |= window_pane_flags::PANE_REDRAW;
             } else {
-                let mut c1 = window_pane_get_palette(wp, (*gc1).fg);
-                let mut c2 = window_pane_get_palette(wp, (*gc2).fg);
+                let mut c1 = window_pane_get_palette(ptr_to_ref(wp), (*gc1).fg);
+                let mut c2 = window_pane_get_palette(ptr_to_ref(wp), (*gc2).fg);
                 if c1 != c2 {
                     (*wp).flags |= window_pane_flags::PANE_REDRAW;
                 } else {
-                    c1 = window_pane_get_palette(wp, (*gc1).bg);
-                    c2 = window_pane_get_palette(wp, (*gc2).bg);
+                    c1 = window_pane_get_palette(ptr_to_ref(wp), (*gc1).bg);
+                    c2 = window_pane_get_palette(ptr_to_ref(wp), (*gc2).bg);
                     if c1 != c2 {
                         (*wp).flags |= window_pane_flags::PANE_REDRAW;
                     }
@@ -1018,8 +1018,8 @@ pub unsafe fn window_pane_create(
         (*wp).control_bg = -1;
         (*wp).control_fg = -1;
 
-        colour_palette_init(&raw mut (*wp).palette);
-        colour_palette_from_option(&raw mut (*wp).palette, (*wp).options);
+        (*wp).palette = colour_palette_init();
+        colour_palette_from_option(Some(&mut (*wp).palette), (*wp).options);
 
         screen_init(&raw mut (*wp).base, sx, sy, hlimit);
         (*wp).screen = &raw mut (*wp).base;
@@ -1075,7 +1075,7 @@ unsafe fn window_pane_destroy(wp: *mut window_pane) {
         free((*wp).cwd as _);
         free((*wp).shell as _);
         cmd_free_argv((*wp).argc, (*wp).argv);
-        colour_palette_free(&raw mut (*wp).palette);
+        colour_palette_free(Some(&mut (*wp).palette));
         free(wp as _);
     }
 }

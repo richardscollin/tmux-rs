@@ -155,7 +155,7 @@ unsafe fn cmd_join_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retva
             tailq_insert_after::<_, discr_entry>(&raw mut (*dst_w).panes, dst_wp, src_wp);
         }
         layout_assign_pane(lc, src_wp, 0);
-        colour_palette_from_option(&raw mut (*src_wp).palette, (*src_wp).options);
+        colour_palette_from_option(Some(&mut (*src_wp).palette), (*src_wp).options);
 
         recalculate_sizes();
 

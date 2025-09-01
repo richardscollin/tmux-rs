@@ -343,7 +343,7 @@ pub fn popup_free_cb(c: *mut client, data: *mut c_void) {
         input_free((*pd).ictx);
 
         screen_free(&mut (*pd).s);
-        colour_palette_free(&mut (*pd).palette);
+        colour_palette_free(Some(&mut (*pd).palette));
 
         free_((*pd).title);
         free_(pd);
@@ -835,8 +835,8 @@ pub unsafe fn popup_display(
         (*pd).border_cell.attr = grid_attr::empty();
 
         screen_init(&raw mut (*pd).s, jx, jy, 0);
-        colour_palette_init(&raw mut (*pd).palette);
-        colour_palette_from_option(&raw mut (*pd).palette, GLOBAL_W_OPTIONS);
+        (*pd).palette = colour_palette_init();
+        colour_palette_from_option(Some(&mut (*pd).palette), GLOBAL_W_OPTIONS);
 
         memcpy__(&raw mut (*pd).defaults, &raw const GRID_DEFAULT_CELL);
         style_apply(

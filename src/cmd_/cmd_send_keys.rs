@@ -216,7 +216,7 @@ pub unsafe fn cmd_send_keys_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
         }
 
         if args_has(args, 'R') {
-            colour_palette_clear(&raw mut (*wp).palette);
+            colour_palette_clear(Some(&mut (*wp).palette));
             input_reset((*wp).ictx, 1);
             (*wp).flags |= window_pane_flags::PANE_STYLECHANGED | window_pane_flags::PANE_REDRAW;
         }

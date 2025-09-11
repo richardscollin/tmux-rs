@@ -30,8 +30,8 @@ pub(crate) use cmdq_get_callback;
 use crate::libc::{getpwuid, getuid};
 
 // Command queue flags.
-pub const CMDQ_FIRED: i32 = 0x1;
-pub const CMDQ_WAITING: i32 = 0x2;
+const CMDQ_FIRED: i32 = 0x1;
+const CMDQ_WAITING: i32 = 0x2;
 
 // Command queue item type.
 #[repr(i32)]
@@ -93,26 +93,21 @@ pub struct cmdq_list {
     pub list: cmdq_item_list,
 }
 
-pub unsafe fn cmdq_name(c: *const client) -> *const u8 {
-    static mut BUF: [u8; 256] = [0; 256];
-    let s = &raw mut BUF as *mut u8;
-
+unsafe fn cmdq_name(c: *const client) -> Cow<'static, str> {
     if c.is_null() {
-        return c!("<global>");
+        return Cow::Borrowed("<global>");
     }
 
     unsafe {
         if !(*c).name.is_null() {
-            _ = xsnprintf_!(s, 256, "<{}>", _s((*c).name));
+            Cow::Owned(format!("<{}>", _s((*c).name)))
         } else {
-            _ = xsnprintf_!(s, 256, "<{:p}>", c);
+            Cow::Owned(format!("<{:p}>", c))
         }
     }
-
-    s
 }
 
-pub unsafe fn cmdq_get(c: *mut client) -> *mut cmdq_list {
+unsafe fn cmdq_get(c: *mut client) -> *mut cmdq_list {
     static mut GLOBAL_QUEUE: *mut cmdq_list = null_mut();
 
     unsafe {
@@ -303,7 +298,7 @@ pub unsafe fn cmdq_append(c: *mut client, mut item: *mut cmdq_item) -> *mut cmdq
 
             (*item).queue = queue;
             tailq_insert_tail::<_, ()>(&raw mut (*queue).list, item);
-            log_debug!("{} {}: {}", __func__, _s(cmdq_name(c)), _s((*item).name));
+            log_debug!("{} {}: {}", __func__, cmdq_name(c), _s((*item).name));
 
             item = next;
             if item.is_null() {
@@ -313,8 +308,6 @@ pub unsafe fn cmdq_append(c: *mut client, mut item: *mut cmdq_item) -> *mut cmdq
         tailq_last(&raw mut (*queue).list)
     }
 }
-
-// TODO crashes with this one
 
 pub unsafe fn cmdq_insert_after(
     mut after: *mut cmdq_item,
@@ -339,7 +332,7 @@ pub unsafe fn cmdq_insert_after(
             log_debug!(
                 "{} {}: {} after {}",
                 "cmdq_insert_after",
-                _s(cmdq_name(c)),
+                cmdq_name(c),
                 _s((*item).name),
                 _s((*after).name),
             );
@@ -628,7 +621,7 @@ pub unsafe fn cmdq_fire_command(item: *mut cmdq_item) -> cmd_retval {
             }
             if log_get_level() > 1 {
                 let tmp = cmd_print(cmd);
-                log_debug!("{} {}: ({}) {}", __func__, _s(name), (*item).group, _s(tmp));
+                log_debug!("{} {}: ({}) {}", __func__, name, (*item).group, _s(tmp));
                 free_(tmp);
             }
 
@@ -757,7 +750,7 @@ pub unsafe fn cmdq_fire_callback(item: *mut cmdq_item) -> cmd_retval {
 
 pub unsafe fn cmdq_next(c: *mut client) -> u32 {
     let __func__ = "cmdq_next";
-    static mut NUMBER: u32 = 0;
+    static NUMBER: AtomicU32 = AtomicU32::new(0);
     let mut items = 0;
     let mut retval: cmd_retval;
 
@@ -767,15 +760,15 @@ pub unsafe fn cmdq_next(c: *mut client) -> u32 {
 
         'waiting: {
             if tailq_empty(&raw mut (*queue).list) {
-                // log_debug!("{} {}: empty", __func__, _s(name));
+                // log_debug!("{} {}: empty", __func__, name);
                 return 0;
             }
             if (*tailq_first(&raw mut (*queue).list)).flags & CMDQ_WAITING != 0 {
-                log_debug!("{} {}: waiting", __func__, _s(name));
+                log_debug!("{} {}: waiting", __func__, name);
                 return 0;
             }
 
-            log_debug!("{} {}: enter", __func__, _s(name));
+            log_debug!("{} {}: enter", __func__, name);
             loop {
                 (*queue).item = tailq_first(&raw mut (*queue).list);
                 let item = (*queue).item;
@@ -785,7 +778,7 @@ pub unsafe fn cmdq_next(c: *mut client) -> u32 {
                 log_debug!(
                     "{} {}: {} ({}), flags {}",
                     __func__,
-                    _s(name),
+                    name,
                     _s((*item).name),
                     (*item).type_ as i32,
                     (*item).flags
@@ -797,8 +790,7 @@ pub unsafe fn cmdq_next(c: *mut client) -> u32 {
 
                 if !(*item).flags & CMDQ_FIRED != 0 {
                     (*item).time = libc::time(null_mut());
-                    NUMBER += 1;
-                    (*item).number = NUMBER;
+                    (*item).number = NUMBER.fetch_add(1, atomic::Ordering::Relaxed);
 
                     match (*item).type_ {
                         cmdq_type::CMDQ_COMMAND => {
@@ -822,11 +814,11 @@ pub unsafe fn cmdq_next(c: *mut client) -> u32 {
             }
             (*queue).item = null_mut();
 
-            log_debug!("{} {}: exit (empty)", __func__, _s(name));
+            log_debug!("{} {}: exit (empty)", __func__, name);
             return items;
         } // 'waiting
         // waiting:
-        log_debug!("{} {}: exit (wait)", __func__, _s(name));
+        log_debug!("{} {}: exit (wait)", __func__, name);
         items
     }
 }

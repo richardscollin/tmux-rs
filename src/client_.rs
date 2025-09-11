@@ -16,23 +16,19 @@ use crate::compat::{
     imsg::{IMSG_HEADER_SIZE, MAX_IMSGSIZE, imsg},
 };
 use crate::libc::{
-    AF_UNIX, CREAD, CS8, EAGAIN, ECHILD, ECONNREFUSED, EINTR, ENAMETOOLONG, ENOENT, HUPCL, ICRNL,
-    IXANY, LOCK_EX, LOCK_NB, O_CREAT, O_WRONLY, ONLCR, OPOST, SA_RESTART, SIG_DFL, SIG_IGN,
-    SIGCHLD, SIGCONT, SIGHUP, SIGTERM, SIGTSTP, SIGWINCH, SOCK_STREAM, STDERR_FILENO, STDIN_FILENO,
-    STDOUT_FILENO, TCSAFLUSH, TCSANOW, VMIN, VTIME, WNOHANG, cfgetispeed, cfgetospeed, cfmakeraw,
-    cfsetispeed, cfsetospeed, close, connect, dup, execl, flock, getppid, isatty, kill, memcpy,
-    memset, open, printf, sigaction, sigemptyset, sockaddr, sockaddr_un, socket, strerror, strlen,
-    strsignal, system, tcgetattr, tcsetattr, unlink, waitpid,
+    AF_UNIX, CREAD, CS8, EAGAIN, EINTR, ENAMETOOLONG, ENOENT, HUPCL, ICRNL, IXANY, LOCK_EX,
+    LOCK_NB, O_CREAT, O_WRONLY, ONLCR, OPOST, SA_RESTART, SIG_DFL, SIG_IGN, SOCK_STREAM,
+    STDERR_FILENO, STDIN_FILENO, STDOUT_FILENO, TCSAFLUSH, TCSANOW, VMIN, VTIME, WNOHANG,
+    cfgetispeed, cfgetospeed, cfmakeraw, cfsetispeed, cfsetospeed, close, connect, execl, flock,
+    getppid, isatty, memcpy, memset, open, printf, sigaction, sigemptyset, sockaddr, sockaddr_un,
+    socket, strerror, strlen, strsignal, system, tcgetattr, tcsetattr,
 };
 use crate::*;
 
-pub static mut CLIENT_PROC: *mut tmuxproc = null_mut();
-
-pub static mut CLIENT_PEER: *mut tmuxpeer = null_mut();
-
-pub static mut CLIENT_FLAGS: client_flag = client_flag::empty();
-
-pub static mut CLIENT_SUSPENDED: i32 = 0;
+static mut CLIENT_PROC: *mut tmuxproc = null_mut();
+static mut CLIENT_PEER: *mut tmuxpeer = null_mut();
+static mut CLIENT_FLAGS: client_flag = client_flag::empty();
+static CLIENT_SUSPENDED: AtomicBool = AtomicBool::new(false);
 
 #[repr(i32)]
 #[derive(Copy, Clone, Eq, PartialEq)]
@@ -48,24 +44,15 @@ pub enum client_exitreason {
     CLIENT_EXIT_MESSAGE_PROVIDED,
 }
 
-pub static mut CLIENT_EXITREASON: client_exitreason = client_exitreason::CLIENT_EXIT_NONE;
-
-pub static mut CLIENT_EXITFLAG: i32 = 0;
-
-pub static mut CLIENT_EXITVAL: i32 = 0;
-
+static mut CLIENT_EXITREASON: client_exitreason = client_exitreason::CLIENT_EXIT_NONE;
+static CLIENT_EXITFLAG: AtomicI32 = AtomicI32::new(0);
+static CLIENT_EXITVAL: AtomicI32 = AtomicI32::new(0);
 static mut CLIENT_EXITTYPE: msgtype = msgtype::MSG_ZERO; // TODO
-
 static mut CLIENT_EXITSESSION: *mut u8 = null_mut();
-
 static mut CLIENT_EXITMESSAGE: *mut u8 = null_mut();
-
 static mut CLIENT_EXECSHELL: *mut u8 = null_mut();
-
 static mut CLIENT_EXECCMD: *mut u8 = null_mut();
-
 static mut CLIENT_ATTACHED: i32 = 0;
-
 static mut CLIENT_FILES: client_files = rb_initializer();
 
 pub unsafe fn client_get_lock(lockfile: *mut u8) -> i32 {
@@ -124,7 +111,7 @@ pub unsafe fn client_connect(base: *mut event_base, path: *const u8, flags: clie
                 ) == -1
                 {
                     log_debug!("connect failed: {}", _s(strerror(errno!())));
-                    if errno!() != ECONNREFUSED && errno!() != ENOENT {
+                    if errno!() != libc::ECONNREFUSED && errno!() != ENOENT {
                         break 'failed;
                     }
                     if flags.intersects(client_flag::NOSTARTSERVER) {
@@ -154,7 +141,7 @@ pub unsafe fn client_connect(base: *mut event_base, path: *const u8, flags: clie
                         continue 'retry;
                     }
 
-                    if lockfd >= 0 && unlink(path) != 0 && errno!() != ENOENT {
+                    if lockfd >= 0 && libc::unlink(path) != 0 && errno!() != ENOENT {
                         free_(lockfile);
                         close(lockfd);
                         return -1;
@@ -306,7 +293,7 @@ pub unsafe extern "C-unwind" fn client_main(
             fd = client_connect(base, SOCKET_PATH, CLIENT_FLAGS);
         }
         if fd == -1 {
-            if errno!() == ECONNREFUSED {
+            if errno!() == libc::ECONNREFUSED {
                 eprintln!("no server running on {}", _s(SOCKET_PATH));
             } else {
                 eprintln!(
@@ -438,7 +425,7 @@ pub unsafe extern "C-unwind" fn client_main(
 
             let ppid = getppid();
             if CLIENT_EXITTYPE == msgtype::MSG_DETACHKILL && ppid > 1 {
-                kill(ppid, SIGHUP);
+                libc::kill(ppid, SIGHUP);
             }
         } else if (*&raw const CLIENT_FLAGS).intersects(client_flag::CONTROL) {
             if CLIENT_EXITREASON != client_exitreason::CLIENT_EXIT_NONE {
@@ -469,7 +456,7 @@ pub unsafe extern "C-unwind" fn client_main(
             eprintln!("{}", _s(client_exit_message()));
         }
 
-        CLIENT_EXITVAL
+        CLIENT_EXITVAL.load(atomic::Ordering::Relaxed)
     }
 }
 
@@ -539,13 +526,13 @@ unsafe fn client_send_identify(
             );
         }
 
-        let fd = dup(STDIN_FILENO);
+        let fd = libc::dup(STDIN_FILENO);
         if fd == -1 {
             fatal("dup failed");
         }
         proc_send(CLIENT_PEER, msgtype::MSG_IDENTIFY_STDIN, fd, null_mut(), 0);
 
-        let fd = dup(STDOUT_FILENO);
+        let fd = libc::dup(STDOUT_FILENO);
         if fd == -1 {
             fatal("dup failed");
         }
@@ -618,14 +605,14 @@ unsafe fn client_signal(sig: i32) {
         let mut pid: pid_t;
 
         log_debug!("{}: {}", "client_signal", _s(strsignal(sig).cast::<u8>()));
-        if sig == SIGCHLD {
+        if sig == libc::SIGCHLD {
             loop {
-                pid = waitpid(WAIT_ANY, &raw mut status, WNOHANG);
+                pid = libc::waitpid(WAIT_ANY, &raw mut status, WNOHANG);
                 if pid == 0 {
                     break;
                 }
                 if pid == -1 {
-                    if errno!() == ECHILD {
+                    if errno!() == libc::ECHILD {
                         break;
                     }
                     log_debug!("waitpid failed: {}", _s(strerror(errno!())));
@@ -637,31 +624,31 @@ unsafe fn client_signal(sig: i32) {
             }
         } else {
             match sig {
-                SIGHUP => {
+                libc::SIGHUP => {
                     CLIENT_EXITREASON = client_exitreason::CLIENT_EXIT_LOST_TTY;
-                    CLIENT_EXITVAL = 1;
+                    CLIENT_EXITVAL.store(1, atomic::Ordering::Relaxed);
                     proc_send(CLIENT_PEER, msgtype::MSG_EXITING, -1, null_mut(), 0);
                 }
-                SIGTERM => {
-                    if CLIENT_SUSPENDED == 0 {
+                libc::SIGTERM => {
+                    if !CLIENT_SUSPENDED.load(atomic::Ordering::Relaxed) {
                         CLIENT_EXITREASON = client_exitreason::CLIENT_EXIT_TERMINATED;
                     }
-                    CLIENT_EXITVAL = 1;
+                    CLIENT_EXITVAL.store(1, atomic::Ordering::Relaxed);
                     proc_send(CLIENT_PEER, msgtype::MSG_EXITING, -1, null_mut(), 0);
                 }
-                SIGWINCH => {
+                libc::SIGWINCH => {
                     proc_send(CLIENT_PEER, msgtype::MSG_RESIZE, -1, null_mut(), 0);
                 }
-                SIGCONT => {
+                libc::SIGCONT => {
                     memset(&raw mut sigact as _, 0, size_of::<sigaction>());
                     sigemptyset(&raw mut sigact.sa_mask);
                     sigact.sa_flags = SA_RESTART;
                     sigact.sa_sigaction = SIG_IGN;
-                    if sigaction(SIGTSTP, &raw mut sigact, null_mut()) != 0 {
+                    if sigaction(libc::SIGTSTP, &raw mut sigact, null_mut()) != 0 {
                         fatal("sigaction failed");
                     }
                     proc_send(CLIENT_PEER, msgtype::MSG_WAKEUP, -1, null_mut(), 0);
-                    CLIENT_SUSPENDED = 0;
+                    CLIENT_SUSPENDED.store(false, atomic::Ordering::Relaxed);
                 }
                 _ => (),
             }
@@ -678,7 +665,7 @@ unsafe fn client_file_check_cb(
     _data: *mut c_void,
 ) {
     unsafe {
-        if CLIENT_EXITFLAG != 0 {
+        if CLIENT_EXITFLAG.load(atomic::Ordering::Relaxed) != 0 {
             client_exit();
         }
     }
@@ -687,9 +674,9 @@ unsafe fn client_file_check_cb(
 unsafe fn client_dispatch(imsg: *mut imsg, _arg: *mut c_void) {
     unsafe {
         if imsg.is_null() {
-            if CLIENT_EXITFLAG == 0 {
+            if CLIENT_EXITFLAG.load(atomic::Ordering::Relaxed) == 0 {
                 CLIENT_EXITREASON = client_exitreason::CLIENT_EXIT_LOST_SERVER;
-                CLIENT_EXITVAL = 1;
+                CLIENT_EXITVAL.store(1, atomic::Ordering::Relaxed);
             }
             proc_exit(CLIENT_PROC);
             return;
@@ -714,7 +701,7 @@ unsafe fn client_dispatch_exit_message(mut data: *const u8, mut datalen: usize) 
 
         if datalen >= SIZE_OF_RETVAL {
             memcpy(&raw mut retval as _, data as _, SIZE_OF_RETVAL);
-            CLIENT_EXITVAL = retval;
+            CLIENT_EXITVAL.store(retval, atomic::Ordering::Relaxed);
         }
 
         if datalen > SIZE_OF_RETVAL {
@@ -752,7 +739,7 @@ unsafe fn client_dispatch_wait(imsg: *mut imsg) {
         match msg_hdr_type {
             msgtype::MSG_EXIT | msgtype::MSG_SHUTDOWN => {
                 client_dispatch_exit_message(data, datalen);
-                CLIENT_EXITFLAG = 1;
+                CLIENT_EXITFLAG.store(1, atomic::Ordering::Relaxed);
                 client_exit();
             }
             msgtype::MSG_READY => {
@@ -773,7 +760,7 @@ unsafe fn client_dispatch_wait(imsg: *mut imsg) {
                     PROTOCOL_VERSION,
                     (*imsg).hdr.peerid & 0xff,
                 );
-                CLIENT_EXITVAL = 1;
+                CLIENT_EXITVAL.store(1, atomic::Ordering::Relaxed);
                 proc_exit(CLIENT_PROC);
             }
             msgtype::MSG_FLAGS => {
@@ -906,7 +893,7 @@ unsafe fn client_dispatch_attached(imsg: *mut imsg) {
 
                 proc_send(CLIENT_PEER, msgtype::MSG_EXITING, -1, null_mut(), 0);
                 CLIENT_EXITREASON = client_exitreason::CLIENT_EXIT_SERVER_EXITED;
-                CLIENT_EXITVAL = 1;
+                CLIENT_EXITVAL.store(1, atomic::Ordering::Relaxed);
             }
             msgtype::MSG_SUSPEND => {
                 if datalen != 0 {
@@ -917,11 +904,11 @@ unsafe fn client_dispatch_attached(imsg: *mut imsg) {
                 sigemptyset(&raw mut sigact.sa_mask);
                 sigact.sa_flags = SA_RESTART;
                 sigact.sa_sigaction = SIG_DFL;
-                if sigaction(SIGTSTP, &raw mut sigact, null_mut()) != 0 {
+                if sigaction(libc::SIGTSTP, &raw mut sigact, null_mut()) != 0 {
                     fatal("sigaction failed");
                 }
-                CLIENT_SUSPENDED = 1;
-                kill(std::process::id() as i32, SIGTSTP);
+                CLIENT_SUSPENDED.store(true, atomic::Ordering::Relaxed);
+                libc::kill(std::process::id() as i32, libc::SIGTSTP);
             }
             msgtype::MSG_LOCK => {
                 if datalen == 0 || *data.add(datalen - 1) != b'\0' {

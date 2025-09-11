@@ -16,12 +16,12 @@ use crate::compat::{
     imsg::{IMSG_HEADER_SIZE, MAX_IMSGSIZE, imsg},
 };
 use crate::libc::{
-    AF_UNIX, CREAD, CS8, EAGAIN, EINTR, ENAMETOOLONG, ENOENT, HUPCL, ICRNL, IXANY, LOCK_EX,
-    LOCK_NB, O_CREAT, O_WRONLY, ONLCR, OPOST, SA_RESTART, SIG_DFL, SIG_IGN, SOCK_STREAM,
-    STDERR_FILENO, STDIN_FILENO, STDOUT_FILENO, TCSAFLUSH, TCSANOW, VMIN, VTIME, WNOHANG,
-    cfgetispeed, cfgetospeed, cfmakeraw, cfsetispeed, cfsetospeed, close, connect, execl, flock,
-    getppid, isatty, memcpy, memset, open, printf, sigaction, sigemptyset, sockaddr, sockaddr_un,
-    socket, strerror, strlen, strsignal, system, tcgetattr, tcsetattr,
+    AF_UNIX, CREAD, CS8, EAGAIN, EINTR, ENOENT, HUPCL, ICRNL, IXANY, LOCK_EX, LOCK_NB, O_CREAT,
+    O_WRONLY, ONLCR, OPOST, SA_RESTART, SIG_DFL, SIG_IGN, SOCK_STREAM, STDERR_FILENO, STDIN_FILENO,
+    STDOUT_FILENO, TCSAFLUSH, TCSANOW, VMIN, VTIME, WNOHANG, cfgetispeed, cfgetospeed, cfmakeraw,
+    cfsetispeed, cfsetospeed, close, connect, execl, flock, getppid, isatty, memcpy, memset,
+    sigaction, sigemptyset, sockaddr, sockaddr_un, socket, strerror, strlen, strsignal, system,
+    tcgetattr, tcsetattr,
 };
 use crate::*;
 
@@ -32,7 +32,7 @@ static CLIENT_SUSPENDED: AtomicBool = AtomicBool::new(false);
 
 #[repr(i32)]
 #[derive(Copy, Clone, Eq, PartialEq)]
-pub enum client_exitreason {
+enum client_exitreason {
     CLIENT_EXIT_NONE,
     CLIENT_EXIT_DETACHED,
     CLIENT_EXIT_DETACHED_HUP,
@@ -52,14 +52,14 @@ static mut CLIENT_EXITSESSION: *mut u8 = null_mut();
 static mut CLIENT_EXITMESSAGE: *mut u8 = null_mut();
 static mut CLIENT_EXECSHELL: *mut u8 = null_mut();
 static mut CLIENT_EXECCMD: *mut u8 = null_mut();
-static mut CLIENT_ATTACHED: i32 = 0;
+static CLIENT_ATTACHED: AtomicBool = AtomicBool::new(false);
 static mut CLIENT_FILES: client_files = rb_initializer();
 
-pub unsafe fn client_get_lock(lockfile: *mut u8) -> i32 {
+unsafe fn client_get_lock(lockfile: *mut u8) -> i32 {
     unsafe {
         log_debug!("lock file is {}", _s(lockfile));
 
-        let lockfd = open(lockfile, O_WRONLY | O_CREAT, 0o600);
+        let lockfd = libc::open(lockfile, O_WRONLY | O_CREAT, 0o600);
         if lockfd == -1 {
             log_debug!("open failed: {}", _s(strerror(errno!())));
             return -1;
@@ -80,7 +80,7 @@ pub unsafe fn client_get_lock(lockfile: *mut u8) -> i32 {
     }
 }
 
-pub unsafe fn client_connect(base: *mut event_base, path: *const u8, flags: client_flag) -> i32 {
+unsafe fn client_connect(base: *mut event_base, path: *const u8, flags: client_flag) -> i32 {
     unsafe {
         let mut sa: sockaddr_un = zeroed();
         let mut fd;
@@ -91,7 +91,7 @@ pub unsafe fn client_connect(base: *mut event_base, path: *const u8, flags: clie
         sa.sun_family = AF_UNIX as libc::sa_family_t;
         let size = strlcpy(&raw mut sa.sun_path as _, path, size_of_val(&sa.sun_path));
         if size >= size_of_val(&sa.sun_path) {
-            errno!() = ENAMETOOLONG;
+            errno!() = libc::ENAMETOOLONG;
             return -1;
         }
         log_debug!("socket is {}", _s(path));
@@ -170,47 +170,39 @@ pub unsafe fn client_connect(base: *mut event_base, path: *const u8, flags: clie
     }
 }
 
-pub unsafe fn client_exit_message() -> *const u8 {
-    type msgbuf = [u8; 256];
-    static mut MSG: msgbuf = [0; 256];
-
-    match unsafe { CLIENT_EXITREASON } {
-        client_exitreason::CLIENT_EXIT_DETACHED => {
-            unsafe {
+unsafe fn client_exit_message() -> Cow<'static, str> {
+    unsafe {
+        match CLIENT_EXITREASON {
+            client_exitreason::CLIENT_EXIT_DETACHED => {
                 if !CLIENT_EXITSESSION.is_null() {
-                    _ = xsnprintf_!(
-                        &raw mut MSG as _,
-                        size_of::<msgbuf>(),
+                    return Cow::Owned(format!(
                         "detached (from session {})",
-                        _s(CLIENT_EXITSESSION),
-                    );
-                    return &raw mut MSG as _;
+                        _s(CLIENT_EXITSESSION)
+                    ));
                 }
+
+                Cow::Borrowed("detached")
             }
-            c!("detached")
-        }
-        client_exitreason::CLIENT_EXIT_DETACHED_HUP => {
-            unsafe {
+            client_exitreason::CLIENT_EXIT_DETACHED_HUP => {
                 if !CLIENT_EXITSESSION.is_null() {
                     let tmp = CLIENT_EXITSESSION;
-                    _ = xsnprintf_!(
-                        &raw mut MSG as _,
-                        size_of::<msgbuf>(),
-                        "detached and SIGHUP (from session {})",
-                        _s(tmp),
-                    );
-                    return &raw mut MSG as _;
+                    return Cow::Owned(format!("detached and SIGHUP (from session {})", _s(tmp),));
                 }
+                Cow::Borrowed("detached and SIGHUP")
             }
-            c!("detached and SIGHUP")
+            client_exitreason::CLIENT_EXIT_LOST_TTY => Cow::Borrowed("lost tty"),
+            client_exitreason::CLIENT_EXIT_TERMINATED => Cow::Borrowed("terminated"),
+            client_exitreason::CLIENT_EXIT_LOST_SERVER => {
+                Cow::Borrowed("server exited unexpectedly")
+            }
+            client_exitreason::CLIENT_EXIT_EXITED => Cow::Borrowed("exited"),
+            client_exitreason::CLIENT_EXIT_SERVER_EXITED => Cow::Borrowed("server exited"),
+            client_exitreason::CLIENT_EXIT_MESSAGE_PROVIDED => {
+                let tmp = CLIENT_EXITMESSAGE;
+                Cow::Owned(format!("{}", _s(tmp)))
+            }
+            client_exitreason::CLIENT_EXIT_NONE => Cow::Borrowed("unknown reason"),
         }
-        client_exitreason::CLIENT_EXIT_LOST_TTY => c!("lost tty"),
-        client_exitreason::CLIENT_EXIT_TERMINATED => c!("terminated"),
-        client_exitreason::CLIENT_EXIT_LOST_SERVER => c!("server exited unexpectedly"),
-        client_exitreason::CLIENT_EXIT_EXITED => c!("exited"),
-        client_exitreason::CLIENT_EXIT_SERVER_EXITED => c!("server exited"),
-        client_exitreason::CLIENT_EXIT_MESSAGE_PROVIDED => unsafe { CLIENT_EXITMESSAGE },
-        client_exitreason::CLIENT_EXIT_NONE => c!("unknown reason"),
     }
 }
 
@@ -418,9 +410,9 @@ pub unsafe extern "C-unwind" fn client_main(
 
         use std::io::Write;
 
-        if CLIENT_ATTACHED != 0 {
+        if CLIENT_ATTACHED.load(atomic::Ordering::Relaxed) {
             if CLIENT_EXITREASON != client_exitreason::CLIENT_EXIT_NONE {
-                printf(c"[%s]\n".as_ptr(), client_exit_message());
+                println!("[{}]", client_exit_message());
             }
 
             let ppid = getppid();
@@ -429,7 +421,7 @@ pub unsafe extern "C-unwind" fn client_main(
             }
         } else if (*&raw const CLIENT_FLAGS).intersects(client_flag::CONTROL) {
             if CLIENT_EXITREASON != client_exitreason::CLIENT_EXIT_NONE {
-                println!("%exit {}", _s(client_exit_message()));
+                println!("%exit {}", client_exit_message());
             } else {
                 println!("%exit");
             }
@@ -453,7 +445,7 @@ pub unsafe extern "C-unwind" fn client_main(
                 tcsetattr(STDOUT_FILENO, TCSAFLUSH, &raw mut saved_tio);
             }
         } else if CLIENT_EXITREASON != client_exitreason::CLIENT_EXIT_NONE {
-            eprintln!("{}", _s(client_exit_message()));
+            eprintln!("{}", client_exit_message());
         }
 
         CLIENT_EXITVAL.load(atomic::Ordering::Relaxed)
@@ -618,7 +610,7 @@ unsafe fn client_signal(sig: i32) {
                     log_debug!("waitpid failed: {}", _s(strerror(errno!())));
                 }
             }
-        } else if CLIENT_ATTACHED == 0 {
+        } else if !CLIENT_ATTACHED.load(atomic::Ordering::Relaxed) {
             if sig == SIGTERM || sig == SIGHUP {
                 proc_exit(CLIENT_PROC);
             }
@@ -682,7 +674,7 @@ unsafe fn client_dispatch(imsg: *mut imsg, _arg: *mut c_void) {
             return;
         }
 
-        if CLIENT_ATTACHED != 0 {
+        if CLIENT_ATTACHED.load(atomic::Ordering::Relaxed) {
             client_dispatch_attached(imsg);
         } else {
             client_dispatch_wait(imsg);
@@ -747,7 +739,7 @@ unsafe fn client_dispatch_wait(imsg: *mut imsg) {
                     fatalx("bad MSG_READY size");
                 }
 
-                CLIENT_ATTACHED = 1;
+                CLIENT_ATTACHED.store(true, atomic::Ordering::Relaxed);
                 proc_send(CLIENT_PEER, msgtype::MSG_RESIZE, -1, null_mut(), 0);
             }
             msgtype::MSG_VERSION => {

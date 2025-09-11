@@ -19,6 +19,7 @@
 )]
 
 use std::{
+    borrow::Cow,
     cmp,
     ffi::{
         CStr, CString, c_int, c_long, c_longlong, c_short, c_uchar, c_uint, c_ulonglong, c_void,

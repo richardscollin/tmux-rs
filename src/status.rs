@@ -668,7 +668,7 @@ pub unsafe fn status_prompt_set<T>(
     inputcb: unsafe fn(*mut client, NonNull<T>, *const u8, i32) -> i32,
     freecb: unsafe fn(NonNull<T>),
     data: *mut T,
-    flags: i32,
+    flags: prompt_flags,
     prompt_type: prompt_type,
 ) {
     unsafe {
@@ -683,7 +683,7 @@ pub unsafe fn status_prompt_set<T>(
         if input.is_null() {
             input = c!("");
         }
-        let tmp = if flags & PROMPT_NOFORMAT != 0 {
+        let tmp = if flags.intersects(prompt_flags::PROMPT_NOFORMAT) {
             xstrdup(input).as_ptr()
         } else {
             format_expand_time(ft, input)
@@ -695,7 +695,7 @@ pub unsafe fn status_prompt_set<T>(
 
         (*c).prompt_string = format_expand_time(ft, msg);
 
-        if (flags & PROMPT_INCREMENTAL) != 0 {
+        if flags.intersects(prompt_flags::PROMPT_INCREMENTAL) {
             (*c).prompt_last = xstrdup(tmp).as_ptr();
             (*c).prompt_buffer = utf8_fromcstr(c!(""));
         } else {
@@ -724,12 +724,12 @@ pub unsafe fn status_prompt_set<T>(
         (*c).prompt_type = prompt_type;
         (*c).prompt_mode = prompt_mode::PROMPT_ENTRY;
 
-        if (!flags & PROMPT_INCREMENTAL) != 0 {
+        if !flags.intersects(prompt_flags::PROMPT_INCREMENTAL) {
             (*c).tty.flags |= tty_flags::TTY_NOCURSOR | tty_flags::TTY_FREEZE;
         }
         (*c).flags |= client_flag::REDRAWSTATUS;
 
-        if (flags & PROMPT_INCREMENTAL) != 0 {
+        if flags.intersects(prompt_flags::PROMPT_INCREMENTAL) {
             (*c).prompt_inputcb.unwrap()(c, NonNull::new((*c).prompt_data).unwrap(), c!("="), 0);
         }
 
@@ -1425,7 +1425,7 @@ pub unsafe fn status_prompt_key(c: *mut client, mut key: key_code) -> i32 {
 
         let word_is_separators: i32;
 
-        if (*c).prompt_flags & PROMPT_KEY != 0 {
+        if (*c).prompt_flags.intersects(prompt_flags::PROMPT_KEY) {
             keystring = key_string_lookup_key(key, 0);
             (*c).prompt_inputcb.unwrap()(c, NonNull::new((*c).prompt_data).unwrap(), keystring, 1);
             status_prompt_clear(c);
@@ -1437,7 +1437,7 @@ pub unsafe fn status_prompt_key(c: *mut client, mut key: key_code) -> i32 {
         'changed: {
             'append_key: {
                 'process_key: {
-                    if (*c).prompt_flags & PROMPT_NUMERIC != 0 {
+                    if (*c).prompt_flags.intersects(prompt_flags::PROMPT_NUMERIC) {
                         if key >= b'0' as u64 && key <= b'9' as u64 {
                             break 'append_key;
                         }
@@ -1691,7 +1691,10 @@ pub unsafe fn status_prompt_key(c: *mut client, mut key: key_code) -> i32 {
                         }
                     }
                     code::R_CTRL => {
-                        if (!(*c).prompt_flags & PROMPT_INCREMENTAL) == 0 {
+                        if (*c)
+                            .prompt_flags
+                            .intersects(prompt_flags::PROMPT_INCREMENTAL)
+                        {
                             if (*(*c).prompt_buffer).size == 0 {
                                 prefix = b'=';
                                 free_((*c).prompt_buffer);
@@ -1704,7 +1707,10 @@ pub unsafe fn status_prompt_key(c: *mut client, mut key: key_code) -> i32 {
                         }
                     }
                     code::S_CTRL => {
-                        if !(*c).prompt_flags & PROMPT_INCREMENTAL == 0 {
+                        if (*c)
+                            .prompt_flags
+                            .intersects(prompt_flags::PROMPT_INCREMENTAL)
+                        {
                             if (*(*c).prompt_buffer).size == 0 {
                                 prefix = b'=';
                                 free_((*c).prompt_buffer);
@@ -1746,7 +1752,7 @@ pub unsafe fn status_prompt_key(c: *mut client, mut key: key_code) -> i32 {
                 (*c).prompt_index += 1;
             }
 
-            if (*c).prompt_flags & PROMPT_SINGLE != 0 {
+            if (*c).prompt_flags.intersects(prompt_flags::PROMPT_SINGLE) {
                 if utf8_strlen((*c).prompt_buffer) != 1 {
                     status_prompt_clear(c);
                 } else {
@@ -1765,7 +1771,10 @@ pub unsafe fn status_prompt_key(c: *mut client, mut key: key_code) -> i32 {
             }
         } // changed:
         (*c).flags |= client_flag::REDRAWSTATUS;
-        if (*c).prompt_flags & PROMPT_INCREMENTAL != 0 {
+        if (*c)
+            .prompt_flags
+            .intersects(prompt_flags::PROMPT_INCREMENTAL)
+        {
             s = utf8_tocstr((*c).prompt_buffer);
             cp = format_nul!("{}{}", prefix as char, _s(s));
             (*c).prompt_inputcb.unwrap()(c, NonNull::new((*c).prompt_data).unwrap(), cp, 0);

@@ -42,10 +42,6 @@ paste        = { version = "1.0.15" }
 [build-dependencies]
 lalrpop      = { version = "0.22.2", default-features = false }
 
-# https://doc.rust-lang.org/rustc/lints/index.html
-[lints.rust]
-unpredictable_function_pointer_comparisons = "allow" # FIXME
-
 # https://rust-lang.github.io/rust-clippy/master/index.html
 [lints.clippy]
 # disabled

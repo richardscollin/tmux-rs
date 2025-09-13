@@ -1437,7 +1437,7 @@ pub unsafe fn mode_tree_key(
                     mode_tree_search_callback,
                     mode_tree_search_free,
                     mtd,
-                    PROMPT_NOFORMAT,
+                    prompt_flags::PROMPT_NOFORMAT,
                     prompt_type::PROMPT_TYPE_SEARCH,
                 );
             }
@@ -1459,7 +1459,7 @@ pub unsafe fn mode_tree_key(
                     mode_tree_filter_callback,
                     mode_tree_filter_free,
                     mtd,
-                    PROMPT_NOFORMAT,
+                    prompt_flags::PROMPT_NOFORMAT,
                     prompt_type::PROMPT_TYPE_SEARCH,
                 );
             }

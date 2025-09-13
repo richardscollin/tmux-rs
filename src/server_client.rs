@@ -3237,22 +3237,20 @@ pub unsafe fn server_client_dispatch_shell(c: *mut client) {
 }
 
 /// Get client working directory.
-pub unsafe fn server_client_get_cwd(c: *mut client, mut s: *mut session) -> *const u8 {
+pub unsafe fn server_client_get_cwd(c: *const client, s: *const session) -> *const u8 {
     unsafe {
         if !CFG_FINISHED.load(atomic::Ordering::Acquire) && !CFG_CLIENT.is_null() {
             (*CFG_CLIENT).cwd
-        } else if (!c.is_null() && (*c).session.is_null() && !(*c).cwd.is_null())
-            || (!s.is_null() && !(*s).cwd.is_null())
-        {
+        } else if !c.is_null() && (*c).session.is_null() && !(*c).cwd.is_null() {
             (*c).cwd
-        } else if !c.is_null()
-            && ({
-                s = (*c).session;
-                !s.is_null()
-            })
-            && !(*s).cwd.is_null()
-        {
+        } else if !s.is_null() && !(*s).cwd.is_null() {
             (*s).cwd
+        } else if !c.is_null()
+            && let session = (*c).session
+            && !session.is_null()
+            && !(*session).cwd.is_null()
+        {
+            (*session).cwd
         } else if let Some(home) = find_home() {
             home.as_ptr().cast()
         } else {

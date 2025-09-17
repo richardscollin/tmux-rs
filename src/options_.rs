@@ -63,23 +63,23 @@ pub unsafe fn OPTIONS_IS_STRING(o: &options_entry) -> bool {
 
 #[expect(non_snake_case)]
 #[inline]
-pub fn OPTIONS_IS_NUMBER(o: *const options_entry) -> bool {
+pub fn OPTIONS_IS_NUMBER(o: &options_entry) -> bool {
     unsafe {
-        !(*o).tableentry.is_null()
-            && ((*(*o).tableentry).type_ == options_table_type::OPTIONS_TABLE_NUMBER
-                || (*(*o).tableentry).type_ == options_table_type::OPTIONS_TABLE_KEY
-                || (*(*o).tableentry).type_ == options_table_type::OPTIONS_TABLE_COLOUR
-                || (*(*o).tableentry).type_ == options_table_type::OPTIONS_TABLE_FLAG
-                || (*(*o).tableentry).type_ == options_table_type::OPTIONS_TABLE_CHOICE)
+        !o.tableentry.is_null()
+            && ((*o.tableentry).type_ == options_table_type::OPTIONS_TABLE_NUMBER
+                || (*o.tableentry).type_ == options_table_type::OPTIONS_TABLE_KEY
+                || (*o.tableentry).type_ == options_table_type::OPTIONS_TABLE_COLOUR
+                || (*o.tableentry).type_ == options_table_type::OPTIONS_TABLE_FLAG
+                || (*o.tableentry).type_ == options_table_type::OPTIONS_TABLE_CHOICE)
     }
 }
 
 #[expect(non_snake_case)]
 #[inline]
-pub unsafe fn OPTIONS_IS_COMMAND(o: *const options_entry) -> bool {
+pub unsafe fn OPTIONS_IS_COMMAND(o: &options_entry) -> bool {
     unsafe {
-        !(*o).tableentry.is_null()
-            && (*(*o).tableentry).type_ == options_table_type::OPTIONS_TABLE_COMMAND
+        !o.tableentry.is_null()
+            && (*o.tableentry).type_ == options_table_type::OPTIONS_TABLE_COMMAND
     }
 }
 
@@ -140,7 +140,7 @@ pub unsafe fn options_value_free(o: *const options_entry, ov: *mut options_value
         if OPTIONS_IS_STRING(&*o) {
             free_((*ov).string);
         }
-        if OPTIONS_IS_COMMAND(o) && !(*ov).cmdlist.is_null() {
+        if OPTIONS_IS_COMMAND(&*o) && !(*ov).cmdlist.is_null() {
             cmd_list_free((*ov).cmdlist);
         }
     }
@@ -152,11 +152,11 @@ pub unsafe fn options_value_to_string(
     numeric: i32,
 ) -> *mut u8 {
     unsafe {
-        if OPTIONS_IS_COMMAND(o) {
+        if OPTIONS_IS_COMMAND(&*o) {
             return cmd_list_print(&mut *(*ov).cmdlist, 0);
         }
 
-        if OPTIONS_IS_NUMBER(o) {
+        if OPTIONS_IS_NUMBER(&*o) {
             let s = match (*(*o).tableentry).type_ {
                 options_table_type::OPTIONS_TABLE_NUMBER => {
                     format_nul!("{}", (*ov).number)
@@ -411,14 +411,16 @@ pub unsafe fn options_default_to_string(oe: *const options_table_entry) -> NonNu
 
 unsafe fn options_add(oo: *mut options, name: *const u8) -> *mut options_entry {
     unsafe {
-        let mut o = options_get_only(oo, name);
+        let o = options_get_only(oo, name);
         if !o.is_null() {
             options_remove(o);
         }
 
-        o = xcalloc1::<options_entry>() as *mut options_entry;
-        (*o).owner = oo;
-        (*o).name = xstrdup(name).as_ptr();
+        let o = Box::leak(Box::new(options_entry {
+            owner: oo,
+            name: xstrdup(name).as_ptr(),
+            ..zeroed()
+        }));
 
         rb_insert(&raw mut (*oo).tree, o);
         o
@@ -526,7 +528,7 @@ pub unsafe fn options_array_set(
             return Ok(());
         };
 
-        if OPTIONS_IS_COMMAND(o) {
+        if OPTIONS_IS_COMMAND(&*o) {
             let cmdlist = match cmd_parse_from_string(value, None) {
                 Err(error) => {
                     return Err(CString::from_raw(error.cast()));
@@ -864,7 +866,7 @@ pub unsafe fn options_get_number(oo: *mut options, name: *const u8) -> i64 {
         if o.is_null() {
             fatalx_!("missing option {}", _s(name));
         }
-        if !OPTIONS_IS_NUMBER(o) {
+        if !OPTIONS_IS_NUMBER(&*o) {
             fatalx_!("option {} is not a number", _s(name));
         }
         (*o).value.number
@@ -877,7 +879,7 @@ pub unsafe fn options_get_number_(oo: *const options, name: &str) -> i64 {
         if o.is_null() {
             fatalx_!("missing option {name}");
         }
-        if !OPTIONS_IS_NUMBER(o) {
+        if !OPTIONS_IS_NUMBER(&*o) {
             fatalx_!("option {name} is not a number");
         }
         (*o).value.number
@@ -956,7 +958,7 @@ pub unsafe fn options_set_number(
             }
         }
 
-        if !OPTIONS_IS_NUMBER(o) {
+        if !OPTIONS_IS_NUMBER(&*o) {
             panic!("option {} is not a number", _s(name));
         }
         (*o).value.number = value;

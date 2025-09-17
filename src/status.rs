@@ -1939,7 +1939,7 @@ unsafe fn status_prompt_complete_list(size: *mut u32, s: *const u8, at_start: i3
         if at_start != 0 {
             return list;
         }
-        let mut oe = (&raw mut OPTIONS_TABLE) as *mut options_table_entry;
+        let mut oe = (&raw const OPTIONS_TABLE) as *const options_table_entry;
         while !(*oe).name.is_null() {
             if strncmp((*oe).name, s, slen) == 0 {
                 status_prompt_add_list(&raw mut list, size, (*oe).name);

@@ -206,7 +206,7 @@ macro_rules! options_table_window_hook {
     };
 }
 
-pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
+pub static OPTIONS_TABLE: [options_table_entry; 191] = [
     options_table_entry {
         name: c!("backspace"),
         type_: options_table_type::OPTIONS_TABLE_KEY,

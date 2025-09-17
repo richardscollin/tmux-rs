@@ -57,8 +57,7 @@ pub struct options {
 #[inline]
 pub unsafe fn OPTIONS_IS_STRING(o: &options_entry) -> bool {
     unsafe {
-        o.tableentry.is_null()
-            || (*o.tableentry).type_ == options_table_type::OPTIONS_TABLE_STRING
+        o.tableentry.is_null() || (*o.tableentry).type_ == options_table_type::OPTIONS_TABLE_STRING
     }
 }
 
@@ -87,9 +86,7 @@ pub unsafe fn OPTIONS_IS_COMMAND(o: *const options_entry) -> bool {
 #[expect(non_snake_case)]
 #[inline]
 pub unsafe fn OPTIONS_IS_ARRAY(o: &options_entry) -> bool {
-    unsafe {
-        !o.tableentry.is_null() && ((*o.tableentry).flags & OPTIONS_TABLE_IS_ARRAY) != 0
-    }
+    unsafe { !o.tableentry.is_null() && ((*o.tableentry).flags & OPTIONS_TABLE_IS_ARRAY) != 0 }
 }
 
 RB_GENERATE!(options_tree, options_entry, entry, discr_entry, options_cmp);

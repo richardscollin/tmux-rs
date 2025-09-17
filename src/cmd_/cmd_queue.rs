@@ -102,7 +102,7 @@ unsafe fn cmdq_name(c: *const client) -> Cow<'static, str> {
         if !(*c).name.is_null() {
             Cow::Owned(format!("<{}>", _s((*c).name)))
         } else {
-            Cow::Owned(format!("<{:p}>", c))
+            Cow::Owned(format!("<{c:p}>"))
         }
     }
 }

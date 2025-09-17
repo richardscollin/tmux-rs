@@ -156,7 +156,7 @@ pub unsafe fn cmd_set_option_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
                 parent = options_get(oo, name);
 
                 // Check that array options and indexes match up.
-                if idx != -1 && (*name == b'@' as _ || !options_is_array(&*parent) ) {
+                if idx != -1 && (*name == b'@' as _ || !options_is_array(&*parent)) {
                     cmdq_error!(item, "not an array: {}", _s(argument));
                     break 'fail;
                 }

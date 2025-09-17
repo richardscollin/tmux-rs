@@ -55,10 +55,10 @@ pub struct options {
 
 #[expect(non_snake_case)]
 #[inline]
-pub unsafe fn OPTIONS_IS_STRING(o: *const options_entry) -> bool {
+pub unsafe fn OPTIONS_IS_STRING(o: &options_entry) -> bool {
     unsafe {
-        (*o).tableentry.is_null()
-            || (*(*o).tableentry).type_ == options_table_type::OPTIONS_TABLE_STRING
+        o.tableentry.is_null()
+            || (*o.tableentry).type_ == options_table_type::OPTIONS_TABLE_STRING
     }
 }
 
@@ -86,9 +86,9 @@ pub unsafe fn OPTIONS_IS_COMMAND(o: *const options_entry) -> bool {
 
 #[expect(non_snake_case)]
 #[inline]
-pub unsafe fn OPTIONS_IS_ARRAY(o: *const options_entry) -> bool {
+pub unsafe fn OPTIONS_IS_ARRAY(o: &options_entry) -> bool {
     unsafe {
-        !(*o).tableentry.is_null() && ((*(*o).tableentry).flags & OPTIONS_TABLE_IS_ARRAY) != 0
+        !o.tableentry.is_null() && ((*o.tableentry).flags & OPTIONS_TABLE_IS_ARRAY) != 0
     }
 }
 
@@ -140,7 +140,7 @@ pub unsafe fn options_parent_table_entry(
 
 pub unsafe fn options_value_free(o: *const options_entry, ov: *mut options_value) {
     unsafe {
-        if OPTIONS_IS_STRING(o) {
+        if OPTIONS_IS_STRING(&*o) {
             free_((*ov).string);
         }
         if OPTIONS_IS_COMMAND(o) && !(*ov).cmdlist.is_null() {
@@ -193,7 +193,7 @@ pub unsafe fn options_value_to_string(
             return s;
         }
 
-        if OPTIONS_IS_STRING(o) {
+        if OPTIONS_IS_STRING(&*o) {
             return xstrdup((*ov).string).as_ptr();
         }
 
@@ -432,7 +432,7 @@ pub unsafe fn options_remove(o: *mut options_entry) {
     unsafe {
         let oo = (*o).owner;
 
-        if options_is_array(o) != 0 {
+        if options_is_array(&*o) {
             options_array_clear(o);
         } else {
             options_value_free(o, &mut (*o).value);
@@ -484,7 +484,7 @@ unsafe fn options_array_free(o: *mut options_entry, a: *mut options_array_item) 
 
 pub unsafe fn options_array_clear(o: *mut options_entry) {
     unsafe {
-        if options_is_array(o) == 0 {
+        if !options_is_array(&*o) {
             return;
         }
 
@@ -499,7 +499,7 @@ pub unsafe fn options_array_clear(o: *mut options_entry) {
 
 pub unsafe fn options_array_get(o: *mut options_entry, idx: u32) -> *mut options_value {
     unsafe {
-        if options_is_array(o) == 0 {
+        if !options_is_array(&*o) {
             return null_mut();
         }
         let a = options_array_item(o, idx);
@@ -517,7 +517,7 @@ pub unsafe fn options_array_set(
     append: bool,
 ) -> Result<(), CString> {
     unsafe {
-        if !OPTIONS_IS_ARRAY(o) {
+        if !OPTIONS_IS_ARRAY(&*o) {
             return Err(CString::new("not an array").unwrap());
         }
 
@@ -547,7 +547,7 @@ pub unsafe fn options_array_set(
             return Ok(());
         }
 
-        if OPTIONS_IS_STRING(o) {
+        if OPTIONS_IS_STRING(&*o) {
             let mut a = options_array_item(o, idx);
             let new = if !a.is_null() && append {
                 format_nul!("{}{}", _s((*a).value.string), value)
@@ -638,7 +638,7 @@ pub unsafe fn options_array_assign(o: *mut options_entry, s: &str) -> Result<(),
 
 pub unsafe fn options_array_first(o: *mut options_entry) -> *mut options_array_item {
     unsafe {
-        if !OPTIONS_IS_ARRAY(o) {
+        if !OPTIONS_IS_ARRAY(&*o) {
             return null_mut();
         }
         rb_min(&raw mut (*o).value.array)
@@ -657,17 +657,17 @@ pub unsafe fn options_array_item_value(a: *mut options_array_item) -> *mut optio
     unsafe { &raw mut (*a).value }
 }
 
-pub unsafe fn options_is_array(o: *mut options_entry) -> i32 {
-    unsafe { OPTIONS_IS_ARRAY(o) as i32 }
+pub unsafe fn options_is_array(o: &options_entry) -> bool {
+    unsafe { OPTIONS_IS_ARRAY(o) }
 }
 
-pub unsafe fn options_is_string(o: *mut options_entry) -> i32 {
-    unsafe { OPTIONS_IS_STRING(o) as i32 }
+pub unsafe fn options_is_string(o: &options_entry) -> bool {
+    unsafe { OPTIONS_IS_STRING(o) }
 }
 
 pub unsafe fn options_to_string(o: *mut options_entry, idx: i32, numeric: i32) -> *mut u8 {
     unsafe {
-        if OPTIONS_IS_ARRAY(o) {
+        if OPTIONS_IS_ARRAY(&*o) {
             if idx == -1 {
                 let mut result = null_mut();
                 let mut last: *mut u8 = null_mut();
@@ -841,7 +841,7 @@ pub unsafe fn options_get_string(oo: *mut options, name: *const u8) -> *const u8
         if o.is_null() {
             fatalx_!("missing option {}", _s(name));
         }
-        if !OPTIONS_IS_STRING(o) {
+        if !OPTIONS_IS_STRING(&*o) {
             fatalx_!("option {} is not a string", _s(name));
         }
         (*o).value.string
@@ -854,7 +854,7 @@ pub unsafe fn options_get_string_(oo: *const options, name: &str) -> *const u8 {
         if o.is_null() {
             fatalx_!("missing option {name}");
         }
-        if !OPTIONS_IS_STRING(o) {
+        if !OPTIONS_IS_STRING(&*o) {
             fatalx_!("option {name} is not a string");
         }
         (*o).value.string
@@ -909,7 +909,7 @@ pub unsafe fn options_set_string_(
         let s = s.leak().as_mut_ptr().cast();
 
         let mut o = options_get_only(oo, name);
-        if !o.is_null() && append && OPTIONS_IS_STRING(o) {
+        if !o.is_null() && append && OPTIONS_IS_STRING(&*o) {
             if *name != b'@' {
                 separator = (*(*o).tableentry).separator;
                 if separator.is_null() {
@@ -931,7 +931,7 @@ pub unsafe fn options_set_string_(
             }
         }
 
-        if !OPTIONS_IS_STRING(o) {
+        if !OPTIONS_IS_STRING(&*o) {
             panic!("option {} is not a string", _s(name));
         }
         free_((*o).value.string);
@@ -1133,7 +1133,7 @@ pub unsafe fn options_string_to_style(
     let __func__ = c!("options_string_to_style");
     unsafe {
         let o = options_get(oo, name);
-        if o.is_null() || !OPTIONS_IS_STRING(o) {
+        if o.is_null() || !OPTIONS_IS_STRING(&*o) {
             return null_mut();
         }
 

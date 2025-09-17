@@ -156,7 +156,7 @@ pub unsafe fn cmd_set_option_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
                 parent = options_get(oo, name);
 
                 // Check that array options and indexes match up.
-                if idx != -1 && (*name == b'@' as _ || options_is_array(parent) == 0) {
+                if idx != -1 && (*name == b'@' as _ || !options_is_array(&*parent) ) {
                     cmdq_error!(item, "not an array: {}", _s(argument));
                     break 'fail;
                 }
@@ -208,7 +208,7 @@ pub unsafe fn cmd_set_option_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
                         break 'fail;
                     }
                     options_set_string!(oo, name, append, "{}", _s(value));
-                } else if idx == -1 && options_is_array(parent) == 0 {
+                } else if idx == -1 && !options_is_array(&*parent) {
                     if let Err(cause) = options_from_string(
                         oo,
                         options_table_entry(parent),

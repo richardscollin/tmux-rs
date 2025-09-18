@@ -86,7 +86,7 @@ unsafe fn cmd_confirm_before_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
             cmd_confirm_before_callback,
             cmd_confirm_before_free,
             Box::into_raw(cdata),
-            PROMPT_SINGLE,
+            prompt_flags::PROMPT_SINGLE,
             prompt_type::PROMPT_TYPE_COMMAND,
         );
         free_(new_prompt);

@@ -2257,11 +2257,17 @@ const CLIENT_NOSIZEFLAGS: client_flag = client_flag::DEAD
     .union(client_flag::SUSPENDED)
     .union(client_flag::EXIT);
 
-const PROMPT_SINGLE: i32 = 0x1;
-const PROMPT_NUMERIC: i32 = 0x2;
-const PROMPT_INCREMENTAL: i32 = 0x4;
-const PROMPT_NOFORMAT: i32 = 0x8;
-const PROMPT_KEY: i32 = 0x8;
+bitflags::bitflags! {
+    #[repr(transparent)]
+    #[derive(Copy, Clone, Default, Eq, PartialEq)]
+    struct prompt_flags: u32 {
+        const PROMPT_SINGLE = 0x1;
+        const PROMPT_NUMERIC = 0x2;
+        const PROMPT_INCREMENTAL = 0x4;
+        const PROMPT_NOFORMAT = 0x8;
+        const PROMPT_KEY = 0x10;
+    }
+}
 
 impl_tailq_entry!(client, entry, tailq_entry<client>);
 #[repr(C)]
@@ -2339,7 +2345,7 @@ struct client {
     prompt_mode: prompt_mode,
     prompt_saved: *mut utf8_data,
 
-    prompt_flags: c_int,
+    prompt_flags: prompt_flags,
     prompt_type: prompt_type,
     prompt_cursor: c_int,
 

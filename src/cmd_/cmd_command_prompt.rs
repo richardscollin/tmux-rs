@@ -38,7 +38,7 @@ struct cmd_command_prompt_cdata<'a> {
     item: *mut cmdq_item,
     state: *mut args_command_state<'a>,
 
-    flags: i32,
+    flags: prompt_flags,
     prompt_type: prompt_type,
 
     prompts: *mut cmd_command_prompt_prompt,
@@ -153,13 +153,13 @@ unsafe fn cmd_command_prompt_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
         }
 
         if args_has(args, '1') {
-            cdata.flags |= PROMPT_SINGLE;
+            cdata.flags |= prompt_flags::PROMPT_SINGLE;
         } else if args_has(args, 'N') {
-            cdata.flags |= PROMPT_NUMERIC;
+            cdata.flags |= prompt_flags::PROMPT_NUMERIC;
         } else if args_has(args, 'i') {
-            cdata.flags |= PROMPT_INCREMENTAL;
+            cdata.flags |= prompt_flags::PROMPT_INCREMENTAL;
         } else if args_has(args, 'k') {
-            cdata.flags |= PROMPT_KEY;
+            cdata.flags |= prompt_flags::PROMPT_KEY;
         }
 
         let flags = cdata.flags;
@@ -200,7 +200,7 @@ unsafe fn cmd_command_prompt_callback(
             }
 
             if done != 0 {
-                if (*cdata).flags & PROMPT_INCREMENTAL != 0 {
+                if (*cdata).flags.intersects(prompt_flags::PROMPT_INCREMENTAL) {
                     break 'out;
                 }
                 cmd_append_argv(&raw mut (*cdata).argc, &raw mut (*cdata).argv, s);
@@ -237,19 +237,8 @@ unsafe fn cmd_command_prompt_callback(
             }
             cmd_free_argv(argc, argv);
 
-            // TODO is this function pointer comparison even valid in C?
-            // this may or may not do what we want, so we need to figure out a way to rework it.
-            if (*c).prompt_inputcb
-                != std::mem::transmute::<
-                    unsafe fn(
-                        _: *mut client,
-                        _: NonNull<cmd_command_prompt_cdata>,
-                        _: *const u8,
-                        _: i32,
-                    ) -> i32,
-                    prompt_input_cb,
-                >(cmd_command_prompt_callback)
-            {
+            // Check for intervening call to status_prompt_set()
+            if (*c).prompt_data != cdata.cast() {
                 return 1;
             }
 

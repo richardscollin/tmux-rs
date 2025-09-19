@@ -81,6 +81,7 @@ pub struct window_customize_itemdata {
     idx: i32,
 }
 
+#[expect(clippy::vec_box)]
 #[repr(C)]
 pub struct window_customize_modedata {
     wp: *mut window_pane,
@@ -91,8 +92,7 @@ pub struct window_customize_modedata {
     format: *mut u8,
     hide_global: bool,
 
-    item_list: *mut *mut window_customize_itemdata,
-    item_size: u32,
+    item_list: Vec<Box<window_customize_itemdata>>,
 
     fs: cmd_find_state,
     change: window_customize_change,
@@ -206,13 +206,9 @@ unsafe fn window_customize_add_item(
     data: *mut window_customize_modedata,
 ) -> *mut window_customize_itemdata {
     unsafe {
-        (*data).item_list =
-            xreallocarray_((*data).item_list, (*data).item_size as usize + 1).as_ptr();
-        let item = xcalloc1() as *mut window_customize_itemdata;
-        *(*data).item_list.add((*data).item_size as usize) = item;
-        (*data).item_size += 1;
+        (*data).item_list.push(Box::new(window_customize_itemdata { ..zeroed() }));
 
-        item
+        <Box<window_customize_itemdata> as std::ops::DerefMut>::deref_mut((*data).item_list.last_mut().as_mut().unwrap())
     }
 }
 
@@ -600,12 +596,10 @@ unsafe fn window_customize_build(
         let data = data.as_ptr();
         let mut fs: cmd_find_state = zeroed();
 
-        for i in 0..(*data).item_size {
-            window_customize_free_item(*(*data).item_list.add(i as usize));
+        for item in (*data).item_list.drain(..) {
+            window_customize_free_item(Box::leak(item));
         }
-        free_((*data).item_list);
-        (*data).item_list = null_mut();
-        (*data).item_size = 0;
+        (*data).item_list = Vec::new();
 
         if cmd_find_valid_state(&raw mut (*data).fs) {
             cmd_find_copy_state(&raw mut fs, &raw mut (*data).fs);
@@ -1205,10 +1199,10 @@ pub unsafe fn window_customize_destroy(data: *mut window_customize_modedata) {
             return;
         }
 
-        for i in 0..(*data).item_size {
-            window_customize_free_item(*(*data).item_list.add(i as usize));
+        for item in (*data).item_list.drain(..) {
+            window_customize_free_item(Box::leak(item));
         }
-        free_((*data).item_list);
+        (*data).item_list = Vec::new();
 
         free_((*data).format);
 

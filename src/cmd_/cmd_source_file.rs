@@ -137,6 +137,30 @@ unsafe fn cmd_source_file_add(cdata: *mut cmd_source_file_data, path: *const u8)
     }
 }
 
+unsafe fn cmd_source_file_quote_for_glob(path: *const u8) -> *mut u8 {
+    unsafe {
+        let quoted: *mut u8 = xmalloc(2 * strlen(path) + 1).as_ptr().cast();
+        let mut q = quoted;
+        let mut p = path;
+
+        let mut c;
+        while {
+            c = *p;
+            c != b'\0'
+        } {
+            if c < 128 && libc::isalnum(c.into()) == 0 && c != b'/' {
+                q.write(b'\\');
+                q = q.add(1);
+            }
+            q.write(c);
+            q = q.add(1);
+            p = p.add(1);
+        }
+        q.write(b'\0');
+        quoted
+    }
+}
+
 unsafe fn cmd_source_file_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retval {
     let __func__ = "cmd_source_file_exec";
 
@@ -144,7 +168,6 @@ unsafe fn cmd_source_file_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
         let args = cmd_get_args(self_);
         let c = cmdq_get_client(item);
         let mut retval = cmd_retval::CMD_RETURN_NORMAL;
-        let mut cwd = null_mut();
         let mut error: *mut u8;
         let mut g = MaybeUninit::<glob_t>::uninit();
         let mut result;
@@ -162,11 +185,7 @@ unsafe fn cmd_source_file_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
             (*cdata).flags |= cmd_parse_input_flags::CMD_PARSE_VERBOSE;
         }
 
-        utf8_stravis(
-            &raw mut cwd,
-            server_client_get_cwd(c, null_mut()),
-            vis_flags::VIS_GLOB,
-        );
+        let cwd = cmd_source_file_quote_for_glob(server_client_get_cwd(c, null_mut()));
 
         for i in 0..args_count(args) {
             let mut path = args_string_(args, i).unwrap();

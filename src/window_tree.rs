@@ -1584,7 +1584,7 @@ unsafe fn window_tree_key(
                         window_tree_kill_current_callback,
                         window_tree_command_free,
                         data,
-                        PROMPT_SINGLE | PROMPT_NOFORMAT,
+                        prompt_flags::PROMPT_SINGLE | prompt_flags::PROMPT_NOFORMAT,
                         prompt_type::PROMPT_TYPE_COMMAND,
                     );
                     free_(prompt);
@@ -1604,7 +1604,7 @@ unsafe fn window_tree_key(
                         window_tree_kill_tagged_callback,
                         window_tree_command_free,
                         data,
-                        PROMPT_SINGLE | PROMPT_NOFORMAT,
+                        prompt_flags::PROMPT_SINGLE | prompt_flags::PROMPT_NOFORMAT,
                         prompt_type::PROMPT_TYPE_COMMAND,
                     );
                     free_(prompt);
@@ -1625,7 +1625,7 @@ unsafe fn window_tree_key(
                         window_tree_command_callback,
                         window_tree_command_free,
                         data,
-                        PROMPT_NOFORMAT,
+                        prompt_flags::PROMPT_NOFORMAT,
                         prompt_type::PROMPT_TYPE_COMMAND,
                     );
                     free_(prompt);

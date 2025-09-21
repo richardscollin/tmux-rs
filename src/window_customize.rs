@@ -1441,7 +1441,7 @@ pub unsafe fn window_customize_set_option(
                 window_customize_set_option_callback,
                 window_customize_free_item_callback,
                 Box::into_raw(new_item),
-                PROMPT_NOFORMAT,
+                prompt_flags::PROMPT_NOFORMAT,
                 prompt_type::PROMPT_TYPE_COMMAND,
             );
 
@@ -1608,7 +1608,7 @@ pub unsafe fn window_customize_set_key(
                 window_customize_set_command_callback,
                 window_customize_free_item_callback,
                 Box::into_raw(new_item),
-                PROMPT_NOFORMAT,
+                prompt_flags::PROMPT_NOFORMAT,
                 prompt_type::PROMPT_TYPE_COMMAND,
             );
             free_(prompt);
@@ -1639,7 +1639,7 @@ pub unsafe fn window_customize_set_key(
                 window_customize_set_note_callback,
                 window_customize_free_item_callback,
                 Box::leak(new_item),
-                PROMPT_NOFORMAT,
+                prompt_flags::PROMPT_NOFORMAT,
                 prompt_type::PROMPT_TYPE_COMMAND,
             );
             free_(prompt);
@@ -1867,7 +1867,7 @@ pub unsafe fn window_customize_key(
                         window_customize_change_current_callback,
                         window_customize_free_callback,
                         data,
-                        PROMPT_SINGLE | PROMPT_NOFORMAT,
+                        prompt_flags::PROMPT_SINGLE | prompt_flags::PROMPT_NOFORMAT,
                         prompt_type::PROMPT_TYPE_COMMAND,
                     );
                     free_(prompt);
@@ -1887,7 +1887,7 @@ pub unsafe fn window_customize_key(
                         window_customize_change_tagged_callback,
                         window_customize_free_callback,
                         data,
-                        PROMPT_SINGLE | PROMPT_NOFORMAT,
+                        prompt_flags::PROMPT_SINGLE | prompt_flags::PROMPT_NOFORMAT,
                         prompt_type::PROMPT_TYPE_COMMAND,
                     );
                     free_(prompt);
@@ -1911,7 +1911,7 @@ pub unsafe fn window_customize_key(
                         window_customize_change_current_callback,
                         window_customize_free_callback,
                         data,
-                        PROMPT_SINGLE | PROMPT_NOFORMAT,
+                        prompt_flags::PROMPT_SINGLE | prompt_flags::PROMPT_NOFORMAT,
                         prompt_type::PROMPT_TYPE_COMMAND,
                     );
                     free_(prompt);
@@ -1931,7 +1931,7 @@ pub unsafe fn window_customize_key(
                         window_customize_change_tagged_callback,
                         window_customize_free_callback,
                         data,
-                        PROMPT_SINGLE | PROMPT_NOFORMAT,
+                        prompt_flags::PROMPT_SINGLE | prompt_flags::PROMPT_NOFORMAT,
                         prompt_type::PROMPT_TYPE_COMMAND,
                     );
                     free_(prompt);

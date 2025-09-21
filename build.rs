@@ -19,28 +19,28 @@ fn main() {
             PathBuf::from(path.trim()).join("lib")
         }
 
-        println!("cargo:rerun-if-env-changed=TMUX_RS_DISABLE_HOMEBREW_LIBS");
+        println!("cargo::rerun-if-env-changed=TMUX_RS_DISABLE_HOMEBREW_LIBS");
         if matches!(
             std::env::var("TMUX_RS_DISABLE_HOMEBREW_LIBS"),
             Err(std::env::VarError::NotPresent)
         ) {
             println!(
-                "cargo:rustc-link-search={}",
+                "cargo::rustc-link-search={}",
                 brew_link_prefix("libevent").display()
             );
             println!(
-                "cargo:rustc-link-search={}",
+                "cargo::rustc-link-search={}",
                 brew_link_prefix("ncurses").display()
             );
         }
     }
 
     if is_static_linking() {
-        println!("cargo:rustc-link-lib=static=ncurses");
-        println!("cargo:rustc-link-lib=static=event_core");
+        println!("cargo::rustc-link-lib=static=ncurses");
+        println!("cargo::rustc-link-lib=static=event_core");
     } else {
-        println!("cargo:rustc-link-lib=ncurses");
-        println!("cargo:rustc-link-lib=event_core");
+        println!("cargo::rustc-link-lib=ncurses");
+        println!("cargo::rustc-link-lib=event_core");
     }
 }
 

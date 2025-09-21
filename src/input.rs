@@ -289,6 +289,7 @@ pub struct input_transition {
     last: i32,
 
     handler: Option<unsafe fn(*mut input_ctx) -> i32>,
+    handler_is_input_print: bool,
     state: Option<&'static input_state>,
 }
 impl input_transition {
@@ -302,6 +303,17 @@ impl input_transition {
             first,
             last,
             handler,
+            handler_is_input_print: false,
+            state,
+        }
+    }
+
+    const fn new_input_print(first: i32, last: i32, state: Option<&'static input_state>) -> Self {
+        Self {
+            first,
+            last,
+            handler: Some(input_print),
+            handler_is_input_print: true,
             state,
         }
     }
@@ -480,7 +492,7 @@ static INPUT_STATE_GROUND_TABLE: [input_transition; 9] = concat_array(
         input_transition::new(0x00, 0x17, Some(input_c0_dispatch), None),
         input_transition::new(0x19, 0x19, Some(input_c0_dispatch), None),
         input_transition::new(0x1c, 0x1f, Some(input_c0_dispatch), None),
-        input_transition::new(0x20, 0x7e, Some(input_print), None),
+        input_transition::new_input_print(0x20, 0x7e, None),
         input_transition::new(0x7f, 0x7f, None, None),
         input_transition::new(0x80, 0xff, Some(input_top_bit_set), None),
     ],
@@ -1051,7 +1063,7 @@ fn input_parse(ictx: *mut input_ctx, buf: *mut u8, len: usize) {
             // changed for every character. It will stop unnecessarily for
             // sequences that don't make a terminal change, but they should
             // be the minority.
-            if itr.as_ref().unwrap().handler != Some(input_print) {
+            if !itr.as_ref().unwrap().handler_is_input_print {
                 screen_write_collect_end(sctx);
             }
 

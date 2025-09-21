@@ -88,9 +88,6 @@ pub unsafe fn cmd_set_option_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
         let parent: *mut options_entry;
         let mut o: *mut options_entry;
         let name: *mut u8;
-        let argument: *mut u8;
-        let mut expanded: *mut u8 = null_mut();
-        let mut value: *const u8;
         let mut idx: i32 = 0;
         let already: i32;
         let mut ambiguous: i32 = 0;
@@ -102,36 +99,39 @@ pub unsafe fn cmd_set_option_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
                     std::ptr::eq(cmd_get_entry(self_), &CMD_SET_WINDOW_OPTION_ENTRY) as i32;
 
                 // Expand argument.
-                argument = format_single_from_target(item, args_string(args, 0));
+                let argument = format_single_from_target(item, args_string(args, 0));
 
                 // If set-hook -R, fire the hook straight away.
                 if std::ptr::eq(cmd_get_entry(self_), &CMD_SET_HOOK_ENTRY) && args_has(args, 'R') {
                     notify_hook(item, argument);
-                    free_(argument);
                     return cmd_retval::CMD_RETURN_NORMAL;
                 }
 
                 // Parse option name and index.
-                name = options_match(argument, &raw mut idx, &raw mut ambiguous);
+                name = options_match(argument.as_ptr().cast(), &raw mut idx, &raw mut ambiguous);
                 if name.is_null() {
                     if args_has(args, 'q') {
                         break 'out;
                     }
                     if ambiguous != 0 {
-                        cmdq_error!(item, "ambiguous option: {}", _s(argument));
+                        cmdq_error!(item, "ambiguous option: {argument}");
                     } else {
-                        cmdq_error!(item, "invalid option: {}", _s(argument));
+                        cmdq_error!(item, "invalid option: {argument}");
                     }
                     break 'fail;
                 }
+                let mut value;
                 if args_count(args) < 2 {
-                    value = null_mut();
+                    value = None;
                 } else {
-                    value = args_string(args, 1);
+                    value = args_string_(args, 1);
                 }
-                if !value.is_null() && args_has(args, 'F') {
-                    expanded = format_single_from_target(item, value);
-                    value = expanded;
+                let expanded;
+                if let Some(v) = value
+                    && args_has(args, 'F')
+                {
+                    expanded = format_single_from_target(item, v.as_ptr().cast());
+                    value = Some(expanded.as_str());
                 }
 
                 let mut cause = null_mut();
@@ -157,7 +157,7 @@ pub unsafe fn cmd_set_option_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
 
                 // Check that array options and indexes match up.
                 if idx != -1 && (*name == b'@' as _ || !options_is_array(&*parent)) {
-                    cmdq_error!(item, "not an array: {}", _s(argument));
+                    cmdq_error!(item, "not an array: {argument}");
                     break 'fail;
                 }
 
@@ -174,7 +174,7 @@ pub unsafe fn cmd_set_option_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
                         if args_has(args, 'q') {
                             break 'out;
                         }
-                        cmdq_error!(item, "already set: {}", _s(argument));
+                        cmdq_error!(item, "already set: {argument}");
                         break 'fail;
                     }
                 }
@@ -203,24 +203,24 @@ pub unsafe fn cmd_set_option_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
                         break 'fail;
                     }
                 } else if *name == b'@' {
-                    if value.is_null() {
+                    if value.is_none() {
                         cmdq_error!(item, "empty value");
                         break 'fail;
                     }
-                    options_set_string!(oo, name, append, "{}", _s(value));
+                    options_set_string!(oo, name, append, "{}", value.unwrap_or("(null)"));
                 } else if idx == -1 && !options_is_array(&*parent) {
                     if let Err(cause) = options_from_string(
                         oo,
                         options_table_entry(parent),
                         (*options_table_entry(parent)).name,
-                        value,
+                        value.map(|e| e.as_ptr().cast()).unwrap_or_default(),
                         args_has(args, 'a'),
                     ) {
                         cmdq_error!(item, "{}", cause.to_str().unwrap());
                         break 'fail;
                     }
                 } else {
-                    if value.is_null() {
+                    if value.is_none() {
                         cmdq_error!(item, "empty value");
                         break 'fail;
                     }
@@ -231,13 +231,11 @@ pub unsafe fn cmd_set_option_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
                         if !append {
                             options_array_clear(o);
                         }
-                        if let Err(cause) = options_array_assign(o, cstr_to_str(value)) {
+                        if let Err(cause) = options_array_assign(o, value.unwrap()) {
                             cmdq_error!(item, "{}", cause.to_str().unwrap());
                             break 'fail;
                         }
-                    } else if let Err(cause) =
-                        options_array_set(o, idx as u32, Some(cstr_to_str(value)), append)
-                    {
+                    } else if let Err(cause) = options_array_set(o, idx as u32, value, append) {
                         cmdq_error!(item, "{}", cause.to_str().unwrap());
                         break 'fail;
                     }
@@ -246,14 +244,10 @@ pub unsafe fn cmd_set_option_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
                 options_push_changes(name);
             }
             // out:
-            free_(argument);
-            free_(expanded);
             free_(name);
             return cmd_retval::CMD_RETURN_NORMAL;
         }
         // fail:
-        free_(argument);
-        free_(expanded);
         free_(name);
         cmd_retval::CMD_RETURN_ERROR
     }

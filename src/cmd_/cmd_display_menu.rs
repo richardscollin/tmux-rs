@@ -355,13 +355,13 @@ unsafe fn cmd_display_menu_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
             }
         }
 
-        let title = if args_has(args, 'T') {
+        let mut title = if args_has(args, 'T') {
             format_single_from_target(item, args_get(args, b'T'))
         } else {
-            xstrdup_(c"").as_ptr()
+            String::new()
         };
-        let menu = menu_create(title);
-        free_(title);
+        nul_terminate(&mut title);
+        let menu = menu_create_(&title);
 
         let mut i: u32 = 0;
         while i != count {
@@ -533,9 +533,9 @@ unsafe fn cmd_display_popup_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
 
         value = args_get(args, b'd');
         let cwd = if !value.is_null() {
-            format_single_from_target(item, value)
+            CString::new(format_single_from_target(item, value)).unwrap()
         } else {
-            xstrdup(server_client_get_cwd(tc, s)).as_ptr()
+            xstrdup____(server_client_get_cwd(tc, s))
         };
         let mut shellcmd = null();
         if count == 0 {
@@ -566,11 +566,12 @@ unsafe fn cmd_display_popup_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
             }
         }
 
-        let title = if args_has(args, 'T') {
+        let mut title = if args_has(args, 'T') {
             format_single_from_target(item, args_get(args, b'T'))
         } else {
-            xstrdup_(c"").as_ptr()
+            String::new()
         };
+        nul_terminate(&mut title);
         let mut flags = 0;
         if args_has_count(args, b'E') > 1 {
             flags |= POPUP_CLOSEEXITZERO;
@@ -589,8 +590,8 @@ unsafe fn cmd_display_popup_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
             shellcmd,
             argc,
             argv,
-            cwd,
-            title,
+            cwd.as_ptr().cast(),
+            title.as_ptr(),
             tc,
             s,
             style,
@@ -603,15 +604,11 @@ unsafe fn cmd_display_popup_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
             if !env.is_null() {
                 environ_free(env);
             }
-            free_(cwd);
-            free_(title);
             return cmd_retval::CMD_RETURN_NORMAL;
         }
         if !env.is_null() {
             environ_free(env);
         }
-        free_(cwd);
-        free_(title);
         cmd_free_argv(argc, argv);
 
         cmd_retval::CMD_RETURN_WAIT

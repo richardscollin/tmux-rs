@@ -161,6 +161,15 @@ pub unsafe fn menu_create(title: *const u8) -> *mut menu {
         menu
     }
 }
+pub unsafe fn menu_create_(title: &str) -> *mut menu {
+    unsafe {
+        let menu = xcalloc1::<menu>() as *mut menu;
+        (*menu).title = xstrdup__(title);
+        (*menu).width = format_width_(title);
+
+        menu
+    }
+}
 
 pub unsafe fn menu_free(menu: *mut menu) {
     unsafe {

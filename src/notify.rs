@@ -14,8 +14,9 @@
 use crate::*;
 
 #[repr(C)]
+#[derive(Default)]
 pub struct notify_entry {
-    pub name: *mut u8,
+    pub name: String,
     pub fs: cmd_find_state,
     pub formats: *mut format_tree,
 
@@ -41,7 +42,7 @@ pub unsafe fn notify_insert_one_hook(
             log_debug!(
                 "{}: hook {}: {}",
                 "notify_insert_one_hook",
-                _s((*ne).name),
+                (*ne).name,
                 _s(s)
             );
             free_(s);
@@ -54,7 +55,7 @@ pub unsafe fn notify_insert_one_hook(
 pub unsafe fn notify_insert_hook(mut item: *mut cmdq_item, ne: *mut notify_entry) {
     let __func__ = "notify_insert_hook";
     unsafe {
-        log_debug!("{}: inserting hook {}", __func__, _s((*ne).name));
+        log_debug!("{}: inserting hook {}", __func__, (*ne).name);
 
         let mut fs: cmd_find_state = zeroed();
 
@@ -71,17 +72,17 @@ pub unsafe fn notify_insert_hook(mut item: *mut cmdq_item, ne: *mut notify_entry
         } else {
             (*fs.s).options
         };
-        let mut o = options_get(oo, (*ne).name);
+        let mut o = options_get_(oo, &(*ne).name);
         if o.is_null() && !fs.wp.is_null() {
             oo = (*fs.wp).options;
-            o = options_get(oo, (*ne).name);
+            o = options_get_(oo, &(*ne).name);
         }
         if o.is_null() && !fs.wl.is_null() {
             oo = (*(*fs.wl).window).options;
-            o = options_get(oo, (*ne).name);
+            o = options_get_(oo, &(*ne).name);
         }
         if o.is_null() {
-            log_debug!("{}: hook {} not found", __func__, _s((*ne).name));
+            log_debug!("{}: hook {} not found", __func__, (*ne).name);
             return;
         }
 
@@ -92,14 +93,14 @@ pub unsafe fn notify_insert_hook(mut item: *mut cmdq_item, ne: *mut notify_entry
         );
         cmdq_add_formats(state, (*ne).formats);
 
-        if *(*ne).name == b'@' {
-            let value = options_get_string(oo, (*ne).name);
+        if (*ne).name.starts_with('@') {
+            let value = options_get_string_(oo, &(*ne).name);
             match cmd_parse_from_string(cstr_to_str(value), None) {
                 Err(error) => {
                     log_debug!(
                         "{}: can't parse hook {}: {}",
                         __func__,
-                        _s((*ne).name),
+                        (*ne).name,
                         _s(error)
                     );
                     free_(error);
@@ -129,49 +130,24 @@ pub unsafe fn notify_callback(item: *mut cmdq_item, data: *mut c_void) -> cmd_re
     unsafe {
         let ne = data as *mut notify_entry;
 
-        log_debug!("{}: {}", _s(__func__), _s((*ne).name));
+        log_debug!("{}: {}", _s(__func__), (*ne).name);
 
-        if streq_((*ne).name, "pane-mode-changed") {
-            control_notify_pane_mode_changed((*ne).pane);
-        }
-        if streq_((*ne).name, "window-layout-changed") {
-            control_notify_window_layout_changed((*ne).window);
-        }
-        if streq_((*ne).name, "window-pane-changed") {
-            control_notify_window_pane_changed((*ne).window);
-        }
-        if streq_((*ne).name, "window-unlinked") {
-            control_notify_window_unlinked((*ne).session, (*ne).window);
-        }
-        if streq_((*ne).name, "window-linked") {
-            control_notify_window_linked((*ne).session, (*ne).window);
-        }
-        if streq_((*ne).name, "window-renamed") {
-            control_notify_window_renamed((*ne).window);
-        }
-        if streq_((*ne).name, "client-session-changed") {
-            control_notify_client_session_changed((*ne).client);
-        }
-        if streq_((*ne).name, "client-detached") {
-            control_notify_client_detached((*ne).client);
-        }
-        if streq_((*ne).name, "session-renamed") {
-            control_notify_session_renamed((*ne).session);
-        }
-        if streq_((*ne).name, "session-created") {
-            control_notify_session_created((*ne).session);
-        }
-        if streq_((*ne).name, "session-closed") {
-            control_notify_session_closed((*ne).session);
-        }
-        if streq_((*ne).name, "session-window-changed") {
-            control_notify_session_window_changed((*ne).session);
-        }
-        if streq_((*ne).name, "paste-buffer-changed") {
-            control_notify_paste_buffer_changed((*ne).pbname);
-        }
-        if streq_((*ne).name, "paste-buffer-deleted") {
-            control_notify_paste_buffer_deleted((*ne).pbname);
+        match (*ne).name.as_str() {
+            "pane-mode-changed" => control_notify_pane_mode_changed((*ne).pane),
+            "window-layout-changed" => control_notify_window_layout_changed((*ne).window),
+            "window-pane-changed" => control_notify_window_pane_changed((*ne).window),
+            "window-unlinked" => control_notify_window_unlinked((*ne).session, (*ne).window),
+            "window-linked" => control_notify_window_linked((*ne).session, (*ne).window),
+            "window-renamed" => control_notify_window_renamed((*ne).window),
+            "client-session-changed" => control_notify_client_session_changed((*ne).client),
+            "client-detached" => control_notify_client_detached((*ne).client),
+            "session-renamed" => control_notify_session_renamed((*ne).session),
+            "session-created" => control_notify_session_created((*ne).session),
+            "session-closed" => control_notify_session_closed((*ne).session),
+            "session-window-changed" => control_notify_session_window_changed((*ne).session),
+            "paste-buffer-changed" => control_notify_paste_buffer_changed((*ne).pbname),
+            "paste-buffer-deleted" => control_notify_paste_buffer_deleted((*ne).pbname),
+            _ => (),
         }
 
         notify_insert_hook(item, ne);
@@ -191,7 +167,7 @@ pub unsafe fn notify_callback(item: *mut cmdq_item, data: *mut c_void) -> cmd_re
         }
 
         format_free((*ne).formats);
-        free_((*ne).name);
+        (*ne).name = String::new();
         free_((*ne).pbname);
         free_(ne);
     }
@@ -200,7 +176,7 @@ pub unsafe fn notify_callback(item: *mut cmdq_item, data: *mut c_void) -> cmd_re
 }
 
 pub unsafe fn notify_add(
-    name: &'static CStr,
+    name: &str,
     fs: *mut cmd_find_state,
     c: *mut client,
     s: *mut session,
@@ -217,7 +193,7 @@ pub unsafe fn notify_add(
         }
 
         let ne = xcalloc1::<notify_entry>() as *mut notify_entry;
-        (*ne).name = xstrdup(name.as_ptr().cast()).as_ptr();
+        (*ne).name = name.to_string();
 
         (*ne).client = c;
         (*ne).session = s;
@@ -230,7 +206,7 @@ pub unsafe fn notify_add(
         };
 
         (*ne).formats = format_create(null_mut(), null_mut(), 0, format_flags::FORMAT_NOJOBS);
-        format_add!((*ne).formats, c!("hook"), "{}", _s(name.as_ptr()));
+        format_add!((*ne).formats, c!("hook"), "{name}");
         if !c.is_null() {
             format_add!((*ne).formats, c!("hook_client"), "{}", _s((*c).name),);
         }
@@ -269,13 +245,15 @@ pub unsafe fn notify_add(
     }
 }
 
-pub unsafe fn notify_hook(item: *mut cmdq_item, name: *mut u8) {
+pub unsafe fn notify_hook(item: *mut cmdq_item, name: String) {
     let __func__ = c!("notify_hook");
     unsafe {
         let target = cmdq_get_target(item);
-        let mut ne: notify_entry = zeroed();
+        let mut ne = notify_entry {
+            name,
+            ..notify_entry::default()
+        };
 
-        ne.name = name;
         cmd_find_copy_state(&raw mut ne.fs, target);
 
         ne.client = cmdq_get_client(item);
@@ -288,7 +266,7 @@ pub unsafe fn notify_hook(item: *mut cmdq_item, name: *mut u8) {
         };
 
         ne.formats = format_create(null_mut(), null_mut(), 0, format_flags::FORMAT_NOJOBS);
-        format_add!(ne.formats, c!("hook"), "{}", _s(name));
+        format_add!(ne.formats, c!("hook"), "{}", ne.name);
         format_log_debug(ne.formats, __func__);
 
         notify_insert_hook(item, &raw mut ne);
@@ -296,7 +274,7 @@ pub unsafe fn notify_hook(item: *mut cmdq_item, name: *mut u8) {
     }
 }
 
-pub unsafe fn notify_client(name: &'static CStr, c: *mut client) {
+pub unsafe fn notify_client(name: &str, c: *mut client) {
     unsafe {
         let mut fs: cmd_find_state = zeroed(); // TODO use uninit
 
@@ -313,7 +291,7 @@ pub unsafe fn notify_client(name: &'static CStr, c: *mut client) {
     }
 }
 
-pub unsafe fn notify_session(name: &'static CStr, s: *mut session) {
+pub unsafe fn notify_session(name: &str, s: *mut session) {
     unsafe {
         let mut fs = zeroed(); // TODO use uninit
 
@@ -334,7 +312,7 @@ pub unsafe fn notify_session(name: &'static CStr, s: *mut session) {
     }
 }
 
-pub unsafe fn notify_winlink(name: &'static CStr, wl: *mut winlink) {
+pub unsafe fn notify_winlink(name: &str, wl: *mut winlink) {
     unsafe {
         let mut fs: cmd_find_state = zeroed();
 
@@ -351,7 +329,7 @@ pub unsafe fn notify_winlink(name: &'static CStr, wl: *mut winlink) {
     }
 }
 
-pub unsafe fn notify_session_window(name: &'static CStr, s: *mut session, w: *mut window) {
+pub unsafe fn notify_session_window(name: &str, s: *mut session, w: *mut window) {
     unsafe {
         let mut fs: cmd_find_state = zeroed();
 
@@ -360,7 +338,7 @@ pub unsafe fn notify_session_window(name: &'static CStr, s: *mut session, w: *mu
     }
 }
 
-pub unsafe fn notify_window(name: &'static CStr, w: *mut window) {
+pub unsafe fn notify_window(name: &str, w: *mut window) {
     unsafe {
         let mut fs: cmd_find_state = zeroed();
 
@@ -377,7 +355,7 @@ pub unsafe fn notify_window(name: &'static CStr, w: *mut window) {
     }
 }
 
-pub unsafe fn notify_pane(name: &'static CStr, wp: *mut window_pane) {
+pub unsafe fn notify_pane(name: &str, wp: *mut window_pane) {
     unsafe {
         let mut fs: cmd_find_state = zeroed();
 
@@ -401,7 +379,7 @@ pub unsafe fn notify_paste_buffer(pbname: *const u8, deleted: i32) {
         cmd_find_clear_state(&raw mut fs, cmd_find_flags::empty());
         if deleted != 0 {
             notify_add(
-                c"paste-buffer-deleted",
+                "paste-buffer-deleted",
                 &raw mut fs,
                 null_mut(),
                 null_mut(),
@@ -411,7 +389,7 @@ pub unsafe fn notify_paste_buffer(pbname: *const u8, deleted: i32) {
             );
         } else {
             notify_add(
-                c"paste-buffer-changed",
+                "paste-buffer-changed",
                 &raw mut fs,
                 null_mut(),
                 null_mut(),

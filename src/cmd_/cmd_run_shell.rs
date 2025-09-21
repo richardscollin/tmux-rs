@@ -130,7 +130,9 @@ pub unsafe fn cmd_run_shell_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
         if !args_has(args, 'C') {
             let cmd = args_string(args, 0);
             if !cmd.is_null() {
-                (*cdata).cmd = format_single_from_target(item, cmd);
+                let mut tmp = format_single_from_target(item, cmd);
+                nul_terminate(&mut tmp);
+                (*cdata).cmd = tmp.leak().as_mut_ptr().cast();
             }
         } else {
             (*cdata).state = args_make_commands_prepare(self_, item, 0, null_mut(), wait, true);

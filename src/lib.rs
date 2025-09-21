@@ -1927,7 +1927,7 @@ enum cmd_find_type {
 }
 
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Default)]
 struct cmd_find_state {
     flags: cmd_find_flags,
     current: *mut cmd_find_state,
@@ -2635,18 +2635,10 @@ use crate::paste::{
 
 mod format;
 use crate::format::format_add;
-use crate::format::{
-    FORMAT_NONE, FORMAT_PANE, FORMAT_WINDOW, format_add_cb, format_add_tv, format_create,
-    format_create_defaults, format_create_from_state, format_create_from_target, format_defaults,
-    format_defaults_pane, format_defaults_paste_buffer, format_defaults_window, format_each,
-    format_expand, format_expand_time, format_flags, format_free, format_get_pane,
-    format_grid_hyperlink, format_grid_line, format_grid_word, format_job_tree, format_log_debug,
-    format_lost_client, format_merge, format_pretty_time, format_single, format_single_from_state,
-    format_single_from_target, format_skip, format_tidy_jobs, format_tree, format_true,
-};
+use crate::format::*;
 
 mod format_draw_;
-use crate::format_draw_::{format_draw, format_trim_left, format_trim_right, format_width};
+use crate::format_draw_::*;
 
 mod notify;
 use crate::notify::{
@@ -2656,18 +2648,7 @@ use crate::notify::{
 
 mod options_;
 use crate::options_::options_set_string;
-use crate::options_::{
-    options, options_array_assign, options_array_clear, options_array_first, options_array_get,
-    options_array_item, options_array_item_index, options_array_item_value, options_array_next,
-    options_array_set, options_create, options_default, options_default_to_string, options_empty,
-    options_entry, options_first, options_free, options_from_string, options_get, options_get_,
-    options_get_number, options_get_number_, options_get_only, options_get_parent,
-    options_get_string, options_get_string_, options_is_array, options_is_string, options_match,
-    options_name, options_next, options_owner, options_parse_get, options_push_changes,
-    options_remove_or_default, options_scope_from_flags, options_scope_from_name,
-    options_set_number, options_set_parent, options_string_to_style, options_table_entry,
-    options_to_string,
-};
+use crate::options_::*;
 
 mod options_table;
 use crate::options_table::{OPTIONS_OTHER_NAMES, OPTIONS_TABLE};
@@ -2747,8 +2728,8 @@ use crate::arguments::{
     args_get, args_has, args_has_count, args_make_commands, args_make_commands_free,
     args_make_commands_get_command, args_make_commands_now, args_make_commands_prepare, args_next,
     args_next_value, args_parse, args_percentage, args_percentage_and_expand, args_print, args_set,
-    args_string, args_string_percentage, args_strtonum, args_strtonum_and_expand, args_to_vector,
-    args_value, args_values,
+    args_string, args_string_, args_string_percentage, args_strtonum, args_strtonum_and_expand,
+    args_to_vector, args_value, args_values,
 };
 
 mod cmd_;
@@ -3078,10 +3059,7 @@ const MENU_TAB: menu_flags = menu_flags::MENU_TAB;
 const MENU_STAYOPEN: menu_flags = menu_flags::MENU_STAYOPEN;
 
 mod menu_;
-use crate::menu_::{
-    menu_add_item, menu_add_items, menu_check_cb, menu_create, menu_data, menu_display,
-    menu_draw_cb, menu_free, menu_free_cb, menu_key_cb, menu_mode_cb, menu_prepare,
-};
+use crate::menu_::*;
 
 const POPUP_CLOSEEXIT: i32 = 0x1;
 const POPUP_CLOSEEXITZERO: i32 = 0x2;
@@ -3112,10 +3090,7 @@ use crate::hyperlinks_::{
 };
 
 mod xmalloc;
-use crate::xmalloc::{
-    format_nul, xcalloc, xcalloc_, xcalloc1, xmalloc, xmalloc_, xrealloc, xrealloc_, xreallocarray,
-    xreallocarray_, xrecallocarray, xsnprintf_, xstrdup, xstrdup_, xstrdup__, xstrdup___, xstrndup,
-};
+use crate::xmalloc::*;
 
 mod tmux_protocol;
 use crate::tmux_protocol::{
@@ -3322,5 +3297,24 @@ trait Reverseable {
 impl Reverseable for cmp::Ordering {
     fn maybe_reverse(self, reversed: bool) -> Self {
         if reversed { self.reverse() } else { self }
+    }
+}
+
+/// Add a nul byte past the end of the string
+///
+/// Add an extra nul byte to the string but doesn't change the actual string's length
+/// This is useful when a Rust String needs to be compatible with a nul-terminated C *char
+///
+/// This is very unsafe and usage of this function should be removed when additional refactoring allows
+///
+/// Reallocations or other operations on the String may cause the extra nul byte to be modified
+#[deprecated]
+unsafe fn nul_terminate(s: &mut String) {
+    let len = s.len();
+
+    s.reserve(1);
+    unsafe {
+        let p = s.as_mut_ptr();
+        *p.add(len) = b'\0';
     }
 }

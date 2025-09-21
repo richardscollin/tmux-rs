@@ -396,7 +396,7 @@ pub unsafe fn server_client_set_session(c: *mut client, s: *mut session) {
             alerts_check_session(s);
             tty_update_client_offset(c);
             status_timer_start(NonNull::new_unchecked(c));
-            notify_client(c"client-session-changed", c);
+            notify_client("client-session-changed", c);
             server_redraw_client(c);
         }
 
@@ -428,7 +428,7 @@ pub unsafe fn server_client_lost(c: *mut client) {
 
         if (*c).flags.intersects(client_flag::ATTACHED) {
             server_client_attached_lost(c);
-            notify_client(c"client-detached", c);
+            notify_client("client-detached", c);
         }
 
         if (*c).flags.intersects(client_flag::CONTROL) {
@@ -1804,7 +1804,7 @@ pub unsafe fn server_client_update_latest(c: *mut client) {
             recalculate_size(w, 0);
         }
 
-        notify_client(c"client-active", c);
+        notify_client("client-active", c);
     }
 }
 
@@ -2901,7 +2901,7 @@ pub unsafe fn server_client_dispatch(imsg: *mut imsg, arg: *mut c_void) {
                     }
                     server_redraw_client(c);
                     if !(*c).session.is_null() {
-                        notify_client(c"client-resized", c);
+                        notify_client("client-resized", c);
                     }
                 }
             }

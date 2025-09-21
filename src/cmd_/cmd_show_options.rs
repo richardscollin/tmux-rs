@@ -74,7 +74,6 @@ unsafe fn cmd_show_options_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
         let args = cmd_get_args(self_);
         let target = cmdq_get_target(item);
         let mut oo: *mut options = null_mut();
-        let argument: *mut u8;
         let name: *mut u8;
         let mut cause: *mut u8 = null_mut();
 
@@ -100,17 +99,17 @@ unsafe fn cmd_show_options_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
                     }
                     return cmd_show_options_all(self_, item, scope, oo);
                 }
-                argument = format_single_from_target(item, args_string(args, 0));
+                let argument = format_single_from_target(item, args_string(args, 0));
 
-                name = options_match(argument, &raw mut idx, &raw mut ambiguous);
+                name = options_match_(&argument, &raw mut idx, &raw mut ambiguous);
                 if name.is_null() {
                     if args_has(args, 'q') {
                         break 'out;
                     }
                     if ambiguous != 0 {
-                        cmdq_error!(item, "ambiguous option: {}", _s(argument));
+                        cmdq_error!(item, "ambiguous option: {argument}");
                     } else {
-                        cmdq_error!(item, "invalid option: {}", _s(argument));
+                        cmdq_error!(item, "invalid option: {argument}");
                     }
                     break 'fail;
                 }
@@ -143,18 +142,16 @@ unsafe fn cmd_show_options_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
                     if args_has(args, 'q') {
                         break 'out;
                     }
-                    cmdq_error!(item, "invalid option: {}", _s(argument));
+                    cmdq_error!(item, "invalid option: {}", argument);
                     break 'fail;
                 }
             }
             // out:
             free_(name);
-            free_(argument);
             return cmd_retval::CMD_RETURN_NORMAL;
         }
         // fail:
         free_(name);
-        free_(argument);
         cmd_retval::CMD_RETURN_ERROR
     }
 }

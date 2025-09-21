@@ -741,6 +741,36 @@ pub unsafe fn options_parse(name: *const u8, idx: *mut i32) -> *mut u8 {
     }
 }
 
+pub unsafe fn options_parse_(name: &str, idx: *mut i32) -> Option<CString> {
+    unsafe {
+        if name.is_empty() {
+            return None;
+        }
+
+        let copy = xstrdup_____(name);
+        let cp = strchr(copy.as_ptr().cast(), b'[' as i32);
+
+        if cp.is_null() {
+            *idx = -1;
+            return Some(copy);
+        }
+
+        let end = strchr(cp.offset(1), b']' as i32);
+        if end.is_null() || *end.offset(1) != 0 || isdigit(*end.offset(-1) as i32) == 0 {
+            return None;
+        }
+
+        let mut parsed_idx = 0;
+        if sscanf(cp.cast(), c"[%d]".as_ptr(), &mut parsed_idx) != 1 || parsed_idx < 0 {
+            return None;
+        }
+
+        *idx = parsed_idx;
+        *cp = 0;
+        Some(copy)
+    }
+}
+
 pub unsafe fn options_parse_get(
     oo: *mut options,
     s: *const u8,
@@ -799,6 +829,47 @@ pub unsafe fn options_match(s: *const u8, idx: *mut i32, ambiguous: *mut i32) ->
         }
 
         free_(parsed);
+        if found.is_null() {
+            *ambiguous = 0;
+            return null_mut();
+        }
+
+        xstrdup((*found).name).as_ptr()
+    }
+}
+
+pub unsafe fn options_match_(s: &str, idx: *mut i32, ambiguous: *mut i32) -> *mut u8 {
+    unsafe {
+        let Some(parsed) = options_parse_(s, idx) else {
+            return null_mut();
+        };
+
+        if *parsed.as_ptr().cast::<u8>() == b'@' {
+            *ambiguous = 0;
+            return parsed.into_raw().cast();
+        }
+
+        let name = options_map_name(parsed.as_ptr().cast());
+        let namelen = strlen(name);
+
+        let mut found: *const options_table_entry = null();
+        let mut oe = &raw const OPTIONS_TABLE as *const options_table_entry;
+
+        while !(*oe).name.is_null() {
+            if strcmp((*oe).name, name) == 0 {
+                found = oe;
+                break;
+            }
+            if strncmp((*oe).name, name, namelen) == 0 {
+                if !found.is_null() {
+                    *ambiguous = 1;
+                    return null_mut();
+                }
+                found = oe;
+            }
+            oe = oe.add(1);
+        }
+
         if found.is_null() {
             *ambiguous = 0;
             return null_mut();

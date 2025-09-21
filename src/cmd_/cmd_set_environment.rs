@@ -37,77 +37,71 @@ unsafe fn cmd_set_environment_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd
         let target = cmdq_get_target(item);
         let env: *mut environ;
         let name = args_string(args, 0);
-        let mut value: *const u8;
         let tflag;
-        let mut expanded = null_mut();
-        let mut retval = cmd_retval::CMD_RETURN_NORMAL;
 
-        'out: {
-            if *name == b'\0' as _ {
-                cmdq_error!(item, "empty variable name");
-                return cmd_retval::CMD_RETURN_ERROR;
-            }
-            if !strchr_(name, '=').is_null() {
-                cmdq_error!(item, "variable name contains =");
-                return cmd_retval::CMD_RETURN_ERROR;
-            }
+        if *name == b'\0' as _ {
+            cmdq_error!(item, "empty variable name");
+            return cmd_retval::CMD_RETURN_ERROR;
+        }
+        if !strchr_(name, '=').is_null() {
+            cmdq_error!(item, "variable name contains =");
+            return cmd_retval::CMD_RETURN_ERROR;
+        }
 
-            if args_count(args) < 2 {
-                value = null_mut();
-            } else {
-                value = args_string(args, 1);
-            }
-            if !value.is_null() && args_has(args, 'F') {
-                expanded = format_single_from_target(item, value);
-                value = expanded;
-            }
-            if args_has(args, 'g') {
-                env = GLOBAL_ENVIRON;
-            } else {
-                if (*target).s.is_null() {
-                    tflag = args_get_(args, 't');
-                    if !tflag.is_null() {
-                        cmdq_error!(item, "no such session: {}", _s(tflag));
-                    } else {
-                        cmdq_error!(item, "no current session");
-                    }
-                    retval = cmd_retval::CMD_RETURN_ERROR;
-                    break 'out;
-                }
-                env = (*(*target).s).environ;
-            }
-
-            if args_has(args, 'u') {
-                if !value.is_null() {
-                    cmdq_error!(item, "can't specify a value with -u");
-                    retval = cmd_retval::CMD_RETURN_ERROR;
-                    break 'out;
-                }
-                environ_unset(env, name);
-            } else if args_has(args, 'r') {
-                if !value.is_null() {
-                    cmdq_error!(item, "can't specify a value with -r");
-                    retval = cmd_retval::CMD_RETURN_ERROR;
-                    break 'out;
-                }
-                environ_clear(env, name);
-            } else {
-                if value.is_null() {
-                    cmdq_error!(item, "no value specified");
-                    retval = cmd_retval::CMD_RETURN_ERROR;
-                    break 'out;
-                }
-
-                if args_has(args, 'h') {
-                    environ_set!(env, name, ENVIRON_HIDDEN, "{}", _s(value));
+        let mut value;
+        let expanded;
+        if args_count(args) < 2 {
+            value = None;
+        } else {
+            value = args_string_(args, 1);
+        }
+        if let Some(v) = value
+            && args_has(args, 'F')
+        {
+            // note args_string_ returned value is a backed by nul terminated str
+            expanded = format_single_from_target(item, v.as_ptr().cast());
+            value = Some(expanded.as_str());
+        }
+        if args_has(args, 'g') {
+            env = GLOBAL_ENVIRON;
+        } else {
+            if (*target).s.is_null() {
+                tflag = args_get_(args, 't');
+                if !tflag.is_null() {
+                    cmdq_error!(item, "no such session: {}", _s(tflag));
                 } else {
-                    environ_set!(env, name, environ_flags::empty(), "{}", _s(value));
+                    cmdq_error!(item, "no current session");
                 }
+                return cmd_retval::CMD_RETURN_ERROR;
+            }
+            env = (*(*target).s).environ;
+        }
+
+        if args_has(args, 'u') {
+            if value.is_some() {
+                cmdq_error!(item, "can't specify a value with -u");
+                return cmd_retval::CMD_RETURN_ERROR;
+            }
+            environ_unset(env, name);
+        } else if args_has(args, 'r') {
+            if value.is_some() {
+                cmdq_error!(item, "can't specify a value with -r");
+                return cmd_retval::CMD_RETURN_ERROR;
+            }
+            environ_clear(env, name);
+        } else {
+            let Some(value) = value else {
+                cmdq_error!(item, "no value specified");
+                return cmd_retval::CMD_RETURN_ERROR;
+            };
+
+            if args_has(args, 'h') {
+                environ_set!(env, name, ENVIRON_HIDDEN, "{value}");
+            } else {
+                environ_set!(env, name, environ_flags::empty(), "{value}");
             }
         }
 
-        // out:
-        free_(expanded);
-        retval
+        cmd_retval::CMD_RETURN_NORMAL
     }
 }

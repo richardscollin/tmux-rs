@@ -407,7 +407,7 @@ pub unsafe fn window_set_name(w: *mut window, new_name: *const u8) {
             new_name,
             vis_flags::VIS_OCTAL | vis_flags::VIS_CSTYLE | vis_flags::VIS_TAB | vis_flags::VIS_NL,
         );
-        notify_window(c"window-renamed", w);
+        notify_window("window-renamed", w);
     }
 }
 
@@ -518,14 +518,14 @@ pub unsafe fn window_pane_update_focus(wp: *mut window_pane) {
                 if (*wp).base.mode.intersects(mode_flag::MODE_FOCUSON) {
                     bufferevent_write((*wp).event, c!("\x1b[O") as _, 3);
                 }
-                notify_pane(c"pane-focus-out", wp);
+                notify_pane("pane-focus-out", wp);
                 (*wp).flags &= !window_pane_flags::PANE_FOCUSED;
             } else if focused && !(*wp).flags.intersects(window_pane_flags::PANE_FOCUSED) {
                 log_debug!("{}: %%{} focus in", "window_pane_update_focus", (*wp).id);
                 if (*wp).base.mode.intersects(mode_flag::MODE_FOCUSON) {
                     bufferevent_write((*wp).event, c!("\x1b[I") as _, 3);
                 }
-                notify_pane(c"pane-focus-in", wp);
+                notify_pane("pane-focus-in", wp);
                 (*wp).flags |= window_pane_flags::PANE_FOCUSED;
             } else {
                 log_debug!(
@@ -565,7 +565,7 @@ pub unsafe fn window_set_active_pane(w: *mut window, wp: *mut window_pane, notif
         tty_update_window_offset(w);
 
         if notify != 0 {
-            notify_window(c"window-pane-changed", w);
+            notify_window("window-pane-changed", w);
         }
     }
     1
@@ -699,7 +699,7 @@ pub unsafe fn window_zoom(wp: *mut window_pane) -> i32 {
         (*w).saved_layout_root = (*w).layout_root;
         layout_init(w, wp);
         (*w).flags |= window_flag::ZOOMED;
-        notify_window(c"window-layout-changed", w);
+        notify_window("window-layout-changed", w);
 
         0
     }
@@ -723,7 +723,7 @@ pub unsafe fn window_unzoom(w: *mut window, notify: i32) -> i32 {
         layout_fix_panes(w, null_mut());
 
         if notify != 0 {
-            notify_window(c"window-layout-changed", w);
+            notify_window("window-layout-changed", w);
         }
 
         0
@@ -820,7 +820,7 @@ pub unsafe fn window_lost_pane(w: *mut window, wp: *mut window_pane) {
             if !(*w).active.is_null() {
                 window_pane_stack_remove(&raw mut (*w).last_panes, (*w).active);
                 (*(*w).active).flags |= window_pane_flags::PANE_CHANGED;
-                notify_window(c"window-pane-changed", w);
+                notify_window("window-pane-changed", w);
                 window_update_focus(w);
             }
         }
@@ -1217,7 +1217,7 @@ pub unsafe fn window_pane_set_mode(
 
         server_redraw_window_borders((*wp).window);
         server_status_window((*wp).window);
-        notify_pane(c"pane-mode-changed", wp);
+        notify_pane("pane-mode-changed", wp);
 
         0
     }
@@ -1252,7 +1252,7 @@ pub unsafe fn window_pane_reset_mode(wp: *mut window_pane) {
 
         server_redraw_window_borders((*wp).window);
         server_status_window((*wp).window);
-        notify_pane(c"pane-mode-changed", wp);
+        notify_pane("pane-mode-changed", wp);
     }
 }
 

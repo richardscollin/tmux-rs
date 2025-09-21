@@ -54,8 +54,8 @@ pub unsafe fn resize_window(w: *mut window, mut sx: u32, mut sy: u32, xpixel: i3
 
         tty_update_window_offset(w);
         server_redraw_window(w);
-        notify_window(c"window-layout-changed", w);
-        notify_window(c"window-resized", w);
+        notify_window("window-layout-changed", w);
+        notify_window("window-resized", w);
         (*w).flags &= !window_flag::RESIZE;
     }
 }

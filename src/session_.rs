@@ -211,7 +211,7 @@ pub unsafe fn session_destroy(s: *mut session, notify: i32, from: *const u8) {
 
         rb_remove(&raw mut SESSIONS, s);
         if notify != 0 {
-            notify_session(c"session-closed", s);
+            notify_session("session-closed", s);
         }
 
         free_((*s).tio);
@@ -227,7 +227,7 @@ pub unsafe fn session_destroy(s: *mut session, notify: i32, from: *const u8) {
         }
         while !rb_empty(&raw mut (*s).windows) {
             let wl = rb_root(&raw mut (*s).windows);
-            notify_session_window(c"window-unlinked", s, (*wl).window);
+            notify_session_window("window-unlinked", s, (*wl).window);
             winlink_remove(&raw mut (*s).windows, wl);
         }
 
@@ -378,7 +378,7 @@ pub unsafe fn session_attach(
         }
         (*wl).session = s;
         winlink_set_window(wl, w);
-        notify_session_window(c"window-linked", s, w);
+        notify_session_window("window-linked", s, w);
 
         session_group_synchronize_from(s);
         wl
@@ -393,7 +393,7 @@ pub unsafe fn session_detach(s: *mut session, wl: *mut winlink) -> i32 {
         }
 
         (*wl).flags &= !WINLINK_ALERTFLAGS;
-        notify_session_window(c"window-unlinked", s, (*wl).window);
+        notify_session_window("window-unlinked", s, (*wl).window);
         winlink_stack_remove(&raw mut (*s).lastw, wl);
         winlink_remove(&raw mut (*s).windows, wl);
 
@@ -548,7 +548,7 @@ pub unsafe fn session_set_current(s: *mut session, wl: *mut winlink) -> i32 {
         winlink_clear_flags(wl);
         window_update_activity(NonNull::new_unchecked((*wl).window));
         tty_update_window_offset((*wl).window);
-        notify_session(c"session-window-changed", s);
+        notify_session("session-window-changed", s);
         0
     }
 }
@@ -705,7 +705,7 @@ pub unsafe fn session_group_synchronize1(target: *mut session, s: *mut session) 
             let wl2 = winlink_add(&raw mut (*s).windows, (*wl).idx);
             (*wl2).session = s;
             winlink_set_window(wl2, (*wl).window);
-            notify_session_window(c"window-linked", s, (*wl2).window);
+            notify_session_window("window-linked", s, (*wl2).window);
             (*wl2).flags |= (*wl).flags & WINLINK_ALERTFLAGS;
         }
 
@@ -733,7 +733,7 @@ pub unsafe fn session_group_synchronize1(target: *mut session, s: *mut session) 
             let wl = rb_root(old_windows.as_mut_ptr());
             let wl2 = winlink_find_by_window_id(&raw mut (*s).windows, (*(*wl).window).id);
             if wl2.is_null() {
-                notify_session_window(c"window-unlinked", s, (*wl).window);
+                notify_session_window("window-unlinked", s, (*wl).window);
             }
             winlink_remove(old_windows.as_mut_ptr(), wl);
         }

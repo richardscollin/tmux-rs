@@ -734,6 +734,18 @@ pub unsafe fn args_string(args: *mut args, idx: u32) -> *const u8 {
     }
 }
 
+/// Return argument as string.
+pub unsafe fn args_string_<'a>(args: *mut args, idx: u32) -> Option<&'a str> {
+    unsafe {
+        let out = args_string(args, idx);
+        if out.is_null() {
+            None
+        } else {
+            Some(cstr_to_str(out))
+        }
+    }
+}
+
 /// Make a command now.
 pub unsafe fn args_make_commands_now(
     self_: *mut cmd,
@@ -789,7 +801,9 @@ pub unsafe fn args_make_commands_prepare<'a>(
         };
 
         if expand {
-            (*state).cmd = format_single_from_target(item, cmd);
+            let mut tmp = format_single_from_target(item, cmd);
+            nul_terminate(&mut tmp);
+            (*state).cmd = tmp.leak().as_mut_ptr().cast();
         } else {
             (*state).cmd = xstrdup(cmd).as_ptr();
         }
@@ -977,8 +991,7 @@ pub unsafe fn args_strtonum_and_expand(
         }
 
         let formatted = format_single_from_target(item, (*value).union_.string);
-        let tmp = strtonum(formatted, minval, maxval);
-        free_(formatted);
+        let tmp = strtonum_(&formatted, minval, maxval);
         match tmp {
             Ok(ll) => {
                 *cause = null_mut();
@@ -1107,15 +1120,13 @@ pub unsafe fn args_string_percentage_and_expand(
     unsafe {
         let valuelen = strlen(value);
         let mut ll: i64;
-        let f: *mut u8;
 
         if *value.add(valuelen - 1) == b'%' as _ {
             let copy = xstrdup(value).as_ptr();
             *copy.add(valuelen - 1) = b'\0';
 
-            f = format_single_from_target(item, copy);
-            let tmp = strtonum(f, 0, 100);
-            free_(f);
+            let f = format_single_from_target(item, copy);
+            let tmp = strtonum_(&f, 0, 100);
             free_(copy);
             ll = match tmp {
                 Ok(n) => n,
@@ -1134,9 +1145,8 @@ pub unsafe fn args_string_percentage_and_expand(
                 return 0;
             }
         } else {
-            f = format_single_from_target(item, value);
-            let tmp = strtonum(f, minval, maxval);
-            free_(f);
+            let f = format_single_from_target(item, value);
+            let tmp = strtonum_(&f, minval, maxval);
             ll = match tmp {
                 Ok(n) => n,
                 Err(errstr) => {

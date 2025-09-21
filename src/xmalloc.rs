@@ -11,7 +11,7 @@
 // called by a name other than "ssh" or "Secure Shell".
 #![expect(clippy::panic)]
 use std::{
-    ffi::{CStr, c_void},
+    ffi::{CStr, CString, c_void},
     mem::MaybeUninit,
     ptr::NonNull,
 };
@@ -150,6 +150,18 @@ pub fn xstrdup___(str: Option<&str>) -> *mut u8 {
         return std::ptr::null_mut();
     };
     xstrdup__(str)
+}
+
+pub unsafe fn xstrdup____(s: *const u8) -> CString {
+    unsafe {
+        let len = crate::libc::strlen(s);
+        let bytes = std::slice::from_raw_parts(s, len);
+        CString::new(bytes).unwrap()
+    }
+}
+
+pub fn xstrdup_____(s: &str) -> CString {
+    CString::new(s.as_bytes()).unwrap()
 }
 
 pub unsafe fn xstrndup(str: *const u8, maxlen: usize) -> NonNull<u8> {

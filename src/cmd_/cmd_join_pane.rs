@@ -174,9 +174,9 @@ unsafe fn cmd_join_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retva
         if window_count_panes(src_w) == 0 {
             server_kill_window(src_w, 1);
         } else {
-            notify_window(c"window-layout-changed", src_w);
+            notify_window("window-layout-changed", src_w);
         }
-        notify_window(c"window-layout-changed", dst_w);
+        notify_window("window-layout-changed", dst_w);
 
         cmd_retval::CMD_RETURN_NORMAL
     }

@@ -1300,10 +1300,10 @@ pub unsafe fn tty_keys_next(tty: *mut tty) -> i32 {
                 if key == keyc::KEYC_FOCUS_OUT as u64 {
                     (*c).flags &= !client_flag::FOCUSED;
                     window_update_focus((*(*(*c).session).curw).window);
-                    notify_client(c"client-focus-out", c);
+                    notify_client("client-focus-out", c);
                 } else if key == keyc::KEYC_FOCUS_IN as u64 {
                     (*c).flags |= client_flag::FOCUSED;
-                    notify_client(c"client-focus-in", c);
+                    notify_client("client-focus-in", c);
                     window_update_focus((*(*(*c).session).curw).window);
                 }
 

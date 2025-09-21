@@ -5140,11 +5140,16 @@ pub unsafe fn format_single_from_state(
 }
 
 /// Expand a single string using target.
-pub unsafe fn format_single_from_target(item: *mut cmdq_item, fmt: *const u8) -> *mut u8 {
+#[expect(deprecated)]
+pub unsafe fn format_single_from_target(item: *mut cmdq_item, fmt: *const u8) -> String {
     unsafe {
         let tc = cmdq_get_target_client(item);
 
-        format_single_from_state(item, fmt, tc, cmdq_get_target(item))
+        let tmp = format_single_from_state(item, fmt, tc, cmdq_get_target(item));
+        // TODO this is bad and shouldn't use from_raw, it's UB
+        let mut s = CString::from_raw(tmp.cast()).try_into().unwrap();
+        nul_terminate(&mut s);
+        s
     }
 }
 

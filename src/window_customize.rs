@@ -206,9 +206,13 @@ unsafe fn window_customize_add_item(
     data: *mut window_customize_modedata,
 ) -> *mut window_customize_itemdata {
     unsafe {
-        (*data).item_list.push(Box::new(window_customize_itemdata { ..zeroed() }));
+        (*data)
+            .item_list
+            .push(Box::new(window_customize_itemdata { ..zeroed() }));
 
-        <Box<window_customize_itemdata> as std::ops::DerefMut>::deref_mut((*data).item_list.last_mut().as_mut().unwrap())
+        <Box<window_customize_itemdata> as std::ops::DerefMut>::deref_mut(
+            (*data).item_list.last_mut().as_mut().unwrap(),
+        )
     }
 }
 

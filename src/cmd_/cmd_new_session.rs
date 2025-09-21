@@ -334,7 +334,7 @@ unsafe fn cmd_new_session_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
                 session_group_synchronize_to(s);
                 session_select(s, (*rb_min::<winlink, _>(&raw mut (*s).windows)).idx);
             }
-            notify_session(c"session-created", s);
+            notify_session("session-created", s);
 
             // Set the client to the new session. If a command client exists, it is
             // taking this session and needs to get MSG_READY and stay around.

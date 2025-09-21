@@ -586,7 +586,7 @@ pub unsafe fn layout_resize_layout(
         // Fix cell offsets
         layout_fix_offsets(w);
         layout_fix_panes(w, null_mut());
-        notify_window(c"window-layout-changed", w);
+        notify_window("window-layout-changed", w);
     }
 }
 
@@ -1109,7 +1109,7 @@ pub unsafe fn layout_close_pane(wp: *mut window_pane) {
             layout_fix_offsets(w);
             layout_fix_panes(w, null_mut());
         }
-        notify_window(c"window-layout-changed", w);
+        notify_window("window-layout-changed", w);
     }
 }
 

@@ -5470,7 +5470,7 @@ pub unsafe fn window_copy_copy_buffer(
             screen_write_start_pane(&raw mut ctx, wp, null_mut());
             screen_write_setselection(&raw mut ctx, c!(""), buf.cast(), len as u32);
             screen_write_stop(&raw mut ctx);
-            notify_pane(c"pane-set-clipboard", wp);
+            notify_pane("pane-set-clipboard", wp);
         }
 
         paste_add(prefix, buf.cast(), len);
@@ -5558,7 +5558,7 @@ pub unsafe fn window_copy_append_selection(wme: *mut window_mode_entry) {
             screen_write_start_pane(&raw mut ctx, wp, null_mut());
             screen_write_setselection(&raw mut ctx, c!(""), buf.cast(), len as u32);
             screen_write_stop(&raw mut ctx);
-            notify_pane(c"pane-set-clipboard", wp);
+            notify_pane("pane-set-clipboard", wp);
         }
 
         let mut bufname: *const u8 = null();

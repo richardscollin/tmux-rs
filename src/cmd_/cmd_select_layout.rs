@@ -140,7 +140,7 @@ unsafe fn cmd_select_layout_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
             free_(oldlayout);
             recalculate_sizes();
             server_redraw_window(w);
-            notify_window(c"window-layout-changed", w);
+            notify_window("window-layout-changed", w);
             return cmd_retval::CMD_RETURN_NORMAL;
         }
 

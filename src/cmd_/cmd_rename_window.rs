@@ -37,13 +37,13 @@ unsafe fn cmd_rename_window_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
         let target = cmdq_get_target(item);
         let wl = (*target).wl;
 
-        let newname = format_single_from_target(item, args_string(args, 0));
-        window_set_name((*wl).window, newname);
+        let mut newname = format_single_from_target(item, args_string(args, 0));
+        nul_terminate(&mut newname);
+        window_set_name((*wl).window, newname.as_ptr().cast());
         options_set_number((*(*wl).window).options, c!("automatic-rename"), 0);
 
         server_redraw_window_borders((*wl).window);
         server_status_window((*wl).window);
-        free_(newname);
     }
 
     cmd_retval::CMD_RETURN_NORMAL

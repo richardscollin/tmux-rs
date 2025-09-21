@@ -39,14 +39,13 @@ unsafe fn cmd_rename_session_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
         let target = cmdq_get_target(item);
         let s = (*target).s;
 
-        let tmp = format_single_from_target(item, args_string(args, 0));
-        let newname = session_check_name(tmp);
+        let mut tmp = format_single_from_target(item, args_string(args, 0));
+        nul_terminate(&mut tmp);
+        let newname = session_check_name(tmp.as_ptr().cast());
         if newname.is_null() {
-            cmdq_error!(item, "invalid session: {}", _s(tmp));
-            free_(tmp);
+            cmdq_error!(item, "invalid session: {}", tmp);
             return cmd_retval::CMD_RETURN_ERROR;
         }
-        free_(tmp);
         if libc::strcmp(newname, (*s).name) == 0 {
             free_(newname);
             return cmd_retval::CMD_RETURN_NORMAL;
@@ -63,7 +62,7 @@ unsafe fn cmd_rename_session_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
         rb_insert(&raw mut SESSIONS, s);
 
         server_status_session(s);
-        notify_session(c"session-renamed", s);
+        notify_session("session-renamed", s);
     }
 
     cmd_retval::CMD_RETURN_NORMAL

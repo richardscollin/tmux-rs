@@ -161,7 +161,7 @@ pub unsafe fn cmd_attach_session(
             if !(*c).flags.intersects(client_flag::CONTROL) {
                 proc_send((*c).peer, msgtype::MSG_READY, -1, null_mut(), 0);
             }
-            notify_client(c"client-attached", c);
+            notify_client("client-attached", c);
             (*c).flags |= client_flag::ATTACHED;
 
             if CFG_FINISHED.load(atomic::Ordering::Acquire) {

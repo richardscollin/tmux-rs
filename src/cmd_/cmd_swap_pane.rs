@@ -138,9 +138,9 @@ unsafe fn cmd_swap_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retva
             }
             server_redraw_window(src_w);
             server_redraw_window(dst_w);
-            notify_window(c"window-layout-changed", src_w);
+            notify_window("window-layout-changed", src_w);
             if src_w != dst_w {
-                notify_window(c"window-layout-changed", dst_w);
+                notify_window("window-layout-changed", dst_w);
             }
         }
 

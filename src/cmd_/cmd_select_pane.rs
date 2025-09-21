@@ -205,13 +205,13 @@ pub unsafe fn cmd_select_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd
         }
 
         if args_has(args, 'T') {
-            let title = format_single_from_target(item, args_get_(args, 'T'));
-            if screen_set_title(&raw mut (*wp).base, title) != 0 {
-                notify_pane(c"pane-title-changed", wp);
+            let mut title = format_single_from_target(item, args_get_(args, 'T'));
+            nul_terminate(&mut title);
+            if screen_set_title(&raw mut (*wp).base, title.as_ptr().cast()) != 0 {
+                notify_pane("pane-title-changed", wp);
                 server_redraw_window_borders((*wp).window);
                 server_status_window((*wp).window);
             }
-            free_(title);
             return cmd_retval::CMD_RETURN_NORMAL;
         }
 

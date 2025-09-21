@@ -262,7 +262,7 @@ pub unsafe fn server_link_window(
             if killflag {
                 // Can't use session_detach as it will destroy session
                 // if this makes it empty.
-                notify_session_window(c"window-unlinked", dst, (*dstwl).window);
+                notify_session_window("window-unlinked", dst, (*dstwl).window);
                 (*dstwl).flags &= !WINLINK_ALERTFLAGS;
                 winlink_stack_remove(&raw mut (*dst).lastw, dstwl);
                 winlink_remove(&raw mut (*dst).windows, dstwl);
@@ -346,7 +346,7 @@ pub unsafe fn server_destroy_pane(wp: *mut window_pane, notify: i32) {
 
                     gettimeofday(&raw mut (*wp).dead_time, null_mut());
                     if notify != 0 {
-                        notify_pane(c"pane-died", wp);
+                        notify_pane("pane-died", wp);
                     }
 
                     let s = options_get_string_((*wp).options, "remain-on-exit-format");
@@ -374,7 +374,7 @@ pub unsafe fn server_destroy_pane(wp: *mut window_pane, notify: i32) {
         }
 
         if notify != 0 {
-            notify_pane(c"pane-exited", wp);
+            notify_pane("pane-exited", wp);
         }
 
         server_unzoom_window(w);

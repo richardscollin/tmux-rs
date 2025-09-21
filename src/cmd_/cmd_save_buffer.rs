@@ -67,7 +67,6 @@ unsafe fn cmd_save_buffer_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
         let args = cmd_get_args(self_);
         let c = cmdq_get_client(item);
         let bufname = args_get_(args, 'b');
-        let path;
         let evb;
 
         let pb = if bufname.is_null() {
@@ -86,6 +85,7 @@ unsafe fn cmd_save_buffer_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
         let mut bufsize: usize = 0;
         let bufdata = paste_buffer_data_(pb, &mut bufsize);
 
+        let mut path;
         if std::ptr::eq(cmd_get_entry(self_), &CMD_SHOW_BUFFER_ENTRY) {
             if !(*c).session.is_null() || (*c).flags.intersects(client_flag::CONTROL) {
                 evb = evbuffer_new();
@@ -97,10 +97,11 @@ unsafe fn cmd_save_buffer_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
                 evbuffer_free(evb);
                 return cmd_retval::CMD_RETURN_NORMAL;
             }
-            path = xstrdup_(c"-").as_ptr();
+            path = "-".to_string();
         } else {
             path = format_single_from_target(item, args_string(args, 0));
         }
+        nul_terminate(&mut path);
         let flags = if args_has(args, 'a') {
             O_APPEND
         } else {
@@ -108,14 +109,13 @@ unsafe fn cmd_save_buffer_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
         };
         file_write(
             cmdq_get_client(item),
-            path,
+            path.as_ptr(),
             flags,
             bufdata as _,
             bufsize,
             Some(cmd_save_buffer_done),
             item as _,
         );
-        free_(path);
 
         cmd_retval::CMD_RETURN_WAIT
     }

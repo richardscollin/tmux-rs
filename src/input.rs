@@ -2008,7 +2008,7 @@ unsafe fn input_csi_dispatch_winops(ictx: *mut input_ctx) {
                         0 | 2 => {
                             screen_pop_title(sctx.s);
                             if !wp.is_null() {
-                                notify_pane(c"pane-title-changed", wp);
+                                notify_pane("pane-title-changed", wp);
                                 server_redraw_window_borders(w);
                                 server_status_window(w);
                             }
@@ -2418,7 +2418,7 @@ unsafe fn input_exit_osc(ictx: *mut input_ctx) {
                     && options_get_number_((*wp).options, "allow-set-title") != 0
                     && screen_set_title((*sctx).s, p.cast()) != 0
                 {
-                    notify_pane(c"pane-title-changed", wp);
+                    notify_pane("pane-title-changed", wp);
                     server_redraw_window_borders((*wp).window);
                     server_status_window((*wp).window);
                 }
@@ -2471,7 +2471,7 @@ unsafe fn input_exit_apc(ictx: *mut input_ctx) {
         log_debug!("input_exit_apc: \"{}\"", _s((*ictx).input_buf.cast::<u8>()));
 
         if screen_set_title((*sctx).s, (*ictx).input_buf.cast()) != 0 && !wp.is_null() {
-            notify_pane(c"pane-title-changed", wp);
+            notify_pane("pane-title-changed", wp);
             server_redraw_window_borders((*wp).window);
             server_status_window((*wp).window);
         }
@@ -3038,7 +3038,7 @@ unsafe fn input_osc_52(ictx: *mut input_ctx, p: *const u8) {
             outlen as u32,
         );
         screen_write_stop(&raw mut ctx);
-        notify_pane(c"pane-set-clipboard", wp);
+        notify_pane("pane-set-clipboard", wp);
 
         paste_add(null(), out.cast(), outlen as usize);
     }

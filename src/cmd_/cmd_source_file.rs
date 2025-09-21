@@ -144,9 +144,7 @@ unsafe fn cmd_source_file_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
         let args = cmd_get_args(self_);
         let c = cmdq_get_client(item);
         let mut retval = cmd_retval::CMD_RETURN_NORMAL;
-        let mut pattern: *mut u8;
         let mut cwd = null_mut();
-        let mut expanded: *mut u8 = null_mut();
         let mut error: *mut u8;
         let mut g = MaybeUninit::<glob_t>::uninit();
         let mut result;
@@ -171,25 +169,27 @@ unsafe fn cmd_source_file_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
         );
 
         for i in 0..args_count(args) {
-            let mut path = args_string(args, i);
+            let mut path = args_string_(args, i).unwrap();
+            let expanded;
             if args_has(args, 'F') {
-                free_(expanded);
-                expanded = format_single_from_target(item, path);
-                path = expanded;
+                // TODO: note path is backed by nul terminated string
+                expanded = format_single_from_target(item, path.as_ptr().cast());
+                path = expanded.as_str();
             }
-            if streq_(path, "-") {
+            if path == "-" {
                 cmd_source_file_add(cdata, c!("-"));
                 continue;
             }
 
-            if *path == b'/' {
-                pattern = xstrdup(path).as_ptr();
+            let mut pattern = if path.starts_with('/') {
+                path.to_string()
             } else {
-                pattern = format_nul!("{}/{}", _s(cwd), _s(path));
-            }
-            log_debug!("{}: {}", __func__, _s(pattern));
+                format!("{}/{}", _s(cwd), path)
+            };
+            log_debug!("{}: {}", __func__, pattern);
 
-            result = glob(pattern, 0, None, g.as_mut_ptr());
+            nul_terminate(&mut pattern);
+            result = glob(pattern.as_ptr(), 0, None, g.as_mut_ptr());
             if result != 0 {
                 if result != GLOB_NOMATCH
                     || !(*cdata)
@@ -203,21 +203,18 @@ unsafe fn cmd_source_file_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
                     } else {
                         error = strerror(EINVAL);
                     }
-                    cmdq_error!(item, "{}: {}", _s(path), _s(error));
+                    cmdq_error!(item, "{}: {}", path, _s(error));
                     retval = cmd_retval::CMD_RETURN_ERROR;
                 }
                 globfree(g.as_mut_ptr());
-                free_(pattern);
                 continue;
             }
-            free_(pattern);
 
             for j in 0..(*g.as_ptr()).gl_pathc {
                 cmd_source_file_add(cdata, *(*g.as_ptr()).gl_pathv.add(j).cast());
             }
             globfree(g.as_mut_ptr());
         }
-        free_(expanded);
 
         (*cdata).after = item;
         (*cdata).retval = retval;

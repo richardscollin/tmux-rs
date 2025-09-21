@@ -1413,6 +1413,12 @@ pub unsafe fn format_width(expanded: *const u8) -> u32 {
     }
 }
 
+/// Get width, taking #[] into account.
+pub unsafe fn format_width_(expanded: &str) -> u32 {
+    // I ensured the one call to this function str was nul terminated
+    unsafe { format_width(expanded.as_ptr()) }
+}
+
 /// Trim on the left, taking #[] into account.
 ///
 /// Note, we copy the whole set of unescaped #s, but only add their escaped size to width.

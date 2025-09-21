@@ -59,17 +59,16 @@ unsafe fn cmd_if_shell_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retval
         let count = args_count(args);
         let wait = !args_has(args, 'b');
 
-        let shellcmd = format_single_from_target(item, args_string(args, 0));
+        let mut shellcmd = format_single_from_target(item, args_string(args, 0));
+        nul_terminate(&mut shellcmd);
         if args_has(args, 'F') {
-            let cmdlist = if *shellcmd != b'0' as _ && *shellcmd != b'\0' as _ {
+            let cmdlist = if !shellcmd.starts_with('0') && !shellcmd.is_empty() {
                 args_make_commands_now(self_, item, 1, false)
             } else if count == 3 {
                 args_make_commands_now(self_, item, 2, false)
             } else {
-                free_(shellcmd);
                 return cmd_retval::CMD_RETURN_NORMAL;
             };
-            free_(shellcmd);
             if cmdlist.is_null() {
                 return cmd_retval::CMD_RETURN_ERROR;
             }
@@ -96,7 +95,7 @@ unsafe fn cmd_if_shell_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retval
         }
 
         if job_run(
-            shellcmd,
+            shellcmd.as_ptr(),
             0,
             null_mut(),
             null_mut(),
@@ -112,12 +111,10 @@ unsafe fn cmd_if_shell_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retval
         )
         .is_null()
         {
-            cmdq_error!(item, "failed to run command: {}", _s(shellcmd));
-            free_(shellcmd);
+            cmdq_error!(item, "failed to run command: {shellcmd}");
             free_(cdata);
             return cmd_retval::CMD_RETURN_ERROR;
         }
-        free_(shellcmd);
 
         if !wait {
             return cmd_retval::CMD_RETURN_NORMAL;

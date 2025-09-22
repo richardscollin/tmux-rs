@@ -405,7 +405,8 @@ pub unsafe fn window_set_name(w: *mut window, new_name: *const u8) {
         utf8_stravis(
             &raw mut (*w).name,
             new_name,
-            vis_flags::VIS_OCTAL | vis_flags::VIS_CSTYLE | vis_flags::VIS_TAB | vis_flags::VIS_NL,
+            VisMode::CombinedCStyleOctal,
+            vis_flags::VIS_TAB | vis_flags::VIS_NL,
         );
         notify_window("window-renamed", w);
     }

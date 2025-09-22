@@ -1012,10 +1012,8 @@ pub unsafe fn tty_term_describe(term: *mut tty_term, code: tty_code_code) -> *co
                     &raw mut out as *mut u8,
                     (*(*term).codes.add(code as usize)).value.string,
                     sizeof_out,
-                    vis_flags::VIS_OCTAL
-                        | vis_flags::VIS_CSTYLE
-                        | vis_flags::VIS_TAB
-                        | vis_flags::VIS_NL,
+                    VisMode::CombinedCStyleOctal,
+                    vis_flags::VIS_TAB | vis_flags::VIS_NL,
                 );
                 _ = xsnprintf_!(
                     &raw mut S as _,

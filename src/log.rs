@@ -128,7 +128,8 @@ fn log_vwrite_rs(args: std::fmt::Arguments, prefix: &str) {
         if stravis(
             &mut out,
             msg.as_ptr().cast(),
-            vis_flags::VIS_OCTAL | vis_flags::VIS_CSTYLE | vis_flags::VIS_TAB | vis_flags::VIS_NL,
+            VisMode::CombinedCStyleOctal,
+            vis_flags::VIS_TAB | vis_flags::VIS_NL,
         ) == -1
         {
             return;

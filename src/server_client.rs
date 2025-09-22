@@ -3485,7 +3485,8 @@ pub unsafe fn server_client_print(c: *mut client, parse: i32, evb: *mut evbuffer
                     &raw mut msg,
                     data.cast(),
                     size,
-                    vis_flags::VIS_OCTAL | vis_flags::VIS_CSTYLE | vis_flags::VIS_NOSLASH,
+                    VisMode::CombinedCStyleOctal,
+                    vis_flags::VIS_NOSLASH,
                 );
                 // log_debug("%s: %s", __func__, msg);
             } else {

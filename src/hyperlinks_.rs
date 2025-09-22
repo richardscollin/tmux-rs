@@ -124,12 +124,14 @@ pub unsafe fn hyperlinks_put(
         utf8_stravis(
             &raw mut uri,
             uri_in,
-            vis_flags::VIS_OCTAL | vis_flags::VIS_CSTYLE,
+            VisMode::CombinedCStyleOctal,
+            vis_flags::empty(),
         );
         utf8_stravis(
             &raw mut internal_id,
             internal_id_in,
-            vis_flags::VIS_OCTAL | vis_flags::VIS_CSTYLE,
+            VisMode::CombinedCStyleOctal,
+            vis_flags::empty(),
         );
 
         if *internal_id_in != b'\0' as _ {

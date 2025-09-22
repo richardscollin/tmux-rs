@@ -26,32 +26,34 @@
 // SUCH DAMAGE.
 use core::ffi::c_int;
 
+// it's a bit silly to have a single variant enum, but
+// it calls attention that our implementation of vis
+// is slightly different than the standard and that the
+// VIS_OCTAL and VIS_CSTYLE flags are set unconditionally
+#[derive(Copy, Clone)]
+pub enum VisMode {
+    CombinedCStyleOctal,
+}
+
+// Use C-style backslash sequences to represent standard non-printable characters.
+// The following sequences are used to represent the indicated characters:
+// \a - BEL (007)
+// \b - BS  (010)
+// \t - HT  (011)
+// \n - NL  (012)
+// \v - VT  (013)
+// \f - NP  (014)
+// \r - CR  (015)
+// \s - SP  (040)
+// \0 - NUL (000)
+
 // documentation from vis(3bsd)
 bitflags::bitflags! {
     #[repr(transparent)]
     #[derive(Copy, Clone, Debug, Eq, PartialEq)]
     pub(crate) struct vis_flags: i32 {
-        /// Use a three digit octal sequence. The form is '\ddd' where each 'd' represents an octal
-        /// digit.
-        ///
-        /// NOTE:
-        ///
-        /// tmux-rs assumes this flag to be set unconditionally. The upstream uses keyboard style
-        /// encoding if this flag is not set (e.g. ^C and M-C), tmux-rs doesn't support that.
-        const VIS_OCTAL   = 0x0001;
-
-        /// Use C-style backslash sequences to represent standard non-printable characters.
-        /// The following sequences are used to represent the indicated characters:
-        /// \a - BEL (007)
-        /// \b - BS  (010)
-        /// \t - HT  (011)
-        /// \n - NL  (012)
-        /// \v - VT  (013)
-        /// \f - NP  (014)
-        /// \r - CR  (015)
-        /// \s - SP  (040)
-        /// \0 - NUL (000)
-        const VIS_CSTYLE  = 0x0002;
+        // tmux-rs assumes both VIS_OCTAL and VIS_CSTYLE are set unconditionally.
+        // these hex values should match against system libbsd for tests (not required for functionality)
 
         /// encode tab
         const VIS_TAB     = 0x0008;
@@ -65,37 +67,32 @@ bitflags::bitflags! {
         const VIS_NOSLASH = 0x0040;
 
         /// encode double quote
-        const VIS_DQ      = 0x0200;
+        const VIS_DQ      = 0x8000;
     }
 }
 
 /// copies into dst a string which represents the character c. If c needs no encoding, it is copied in unaltered.
 /// The string is null terminated, and a pointer to the end of the string is returned.
-pub unsafe fn vis_(dst: *mut u8, c: c_int, flag: vis_flags, nextc: c_int) -> *mut u8 {
+pub unsafe fn vis_(
+    dst: *mut u8,
+    c: c_int,
+    _mode: VisMode,
+    flag: vis_flags,
+    nextc: c_int,
+) -> *mut u8 {
     unsafe {
-        if (c as u8 == b'"' && flag.intersects(vis_flags::VIS_DQ))
-            || (c as u8 == b'\\' && !flag.intersects(vis_flags::VIS_NOSLASH))
-        {
-            encode_cstyle(dst, c as u8)
-        } else if flag.intersects(vis_flags::VIS_CSTYLE) {
-            match c as u8 {
-                b'\0' if !matches!(nextc as u8, b'0'..=b'7') => encode_cstyle(dst, b'0'),
-                b'\t' if flag.intersects(vis_flags::VIS_TAB) => encode_cstyle(dst, b't'),
-                b'\n' if flag.intersects(vis_flags::VIS_NL) => encode_cstyle(dst, b'n'),
-                7..9 | 11..14 => {
-                    const CSTYLE: [u8; 7] = [b'a', b'b', 0, 0, b'v', b'f', b'r'];
-                    encode_cstyle(dst, CSTYLE[c as usize - 7])
-                }
-                0..7 | 14..32 | 127.. => encode_octal(dst, c),
-                _ => encode_passthrough(dst, c),
+        match c as u8 {
+            b'\0' if !matches!(nextc as u8, b'0'..=b'7') => encode_cstyle(dst, b'0'),
+            b'\t' if flag.intersects(vis_flags::VIS_TAB) => encode_cstyle(dst, b't'),
+            b'\n' if flag.intersects(vis_flags::VIS_NL) => encode_cstyle(dst, b'n'),
+            b'"' if flag.intersects(vis_flags::VIS_DQ) => encode_cstyle(dst, b'"'),
+            b'\\' if !flag.intersects(vis_flags::VIS_NOSLASH) => encode_cstyle(dst, b'\\'),
+            7..9 | 11..14 => {
+                const CSTYLE: [u8; 7] = [b'a', b'b', 0, 0, b'v', b'f', b'r'];
+                encode_cstyle(dst, CSTYLE[c as usize - 7])
             }
-        } else {
-            match c as u8 {
-                b'\t' if flag.intersects(vis_flags::VIS_TAB) => encode_octal(dst, c),
-                b'\n' if flag.intersects(vis_flags::VIS_NL) => encode_octal(dst, c),
-                0..9 | 11..32 | 127.. => encode_octal(dst, c),
-                _ => encode_passthrough(dst, c),
-            }
+            0..7 | 14..32 | 127.. => encode_octal(dst, c),
+            _ => encode_passthrough(dst, c),
         }
     }
 }
@@ -135,12 +132,12 @@ unsafe fn encode_octal(dst: *mut u8, c: i32) -> *mut u8 {
     }
 }
 
-pub unsafe fn strvis(mut dst: *mut u8, mut src: *const u8, flag: vis_flags) -> i32 {
+pub unsafe fn strvis(mut dst: *mut u8, mut src: *const u8, mode: VisMode, flag: vis_flags) -> i32 {
     unsafe {
         let start = dst;
 
         while *src != 0 {
-            dst = vis_(dst, *src as i32, flag, *src.add(1) as i32);
+            dst = vis_(dst, *src as i32, mode, flag, *src.add(1) as i32);
             src = src.add(1);
         }
         *dst = 0;
@@ -149,12 +146,18 @@ pub unsafe fn strvis(mut dst: *mut u8, mut src: *const u8, flag: vis_flags) -> i
     }
 }
 
-pub unsafe fn strnvis(mut dst: *mut u8, mut src: *const u8, dlen: usize, flag: vis_flags) -> i32 {
+pub unsafe fn strnvis(
+    mut dst: *mut u8,
+    mut src: *const u8,
+    dlen: usize,
+    mode: VisMode,
+    flag: vis_flags,
+) -> i32 {
     unsafe {
         let mut i = 0;
 
         while *src != 0 && i < dlen {
-            let tmp = vis_(dst, *src as i32, flag, *src.add(1) as i32);
+            let tmp = vis_(dst, *src as i32, mode, flag, *src.add(1) as i32);
             i += dst.offset_from_unsigned(dst);
             dst = tmp;
             src = src.add(1);
@@ -165,13 +168,13 @@ pub unsafe fn strnvis(mut dst: *mut u8, mut src: *const u8, dlen: usize, flag: v
     }
 }
 
-pub unsafe fn stravis(outp: *mut *mut u8, src: *const u8, flag: vis_flags) -> i32 {
+pub unsafe fn stravis(outp: *mut *mut u8, src: *const u8, mode: VisMode, flag: vis_flags) -> i32 {
     unsafe {
         let buf: *mut u8 = libc::calloc(4, crate::libc::strlen(src) + 1).cast();
         if buf.is_null() {
             return -1;
         }
-        let len = strvis(buf, src, flag);
+        let len = strvis(buf, src, mode, flag);
         let serrno = crate::errno!();
         *outp = libc::realloc(buf.cast(), len as usize + 1).cast();
         if (*outp).is_null() {
@@ -183,23 +186,24 @@ pub unsafe fn stravis(outp: *mut *mut u8, src: *const u8, flag: vis_flags) -> i3
     }
 }
 
-pub unsafe fn vis(dst: *mut u8, c: c_int, flag: vis_flags, nextc: c_int) -> *mut u8 {
-    unsafe { vis_(dst, c, flag, nextc) }
-}
-
-#[cfg(test)]
-pub unsafe fn vis_c(dst: *mut u8, c: c_int, flag: vis_flags, nextc: c_int) -> *mut u8 {
-    #[link(name = "bsd")]
-    unsafe extern "C" {
-        pub unsafe fn vis(dst: *mut u8, c: c_int, flag: vis_flags, nextc: c_int) -> *mut u8;
-    }
-
-    unsafe { vis(dst, c, flag, nextc) }
-}
-
 #[cfg(test)]
 mod test {
     use super::*;
+
+    pub unsafe fn vis_rs(dst: *mut u8, c: c_int, flag: vis_flags, nextc: c_int) -> *mut u8 {
+        unsafe { vis_(dst, c, VisMode::CombinedCStyleOctal, flag, nextc) }
+    }
+
+    pub unsafe fn vis_c(dst: *mut u8, c: c_int, flag: vis_flags, nextc: c_int) -> *mut u8 {
+        #[link(name = "bsd")]
+        unsafe extern "C" {
+            pub unsafe fn vis(dst: *mut u8, c: c_int, flag: i32, nextc: c_int) -> *mut u8;
+        }
+
+        const VIS_OCTAL: i32 = 0x0001;
+        const VIS_CSTYLE: i32 = 0x0002;
+        unsafe { vis(dst, c, flag.bits() | VIS_OCTAL | VIS_CSTYLE, nextc) }
+    }
 
     #[test]
     fn test_vis() {
@@ -210,54 +214,34 @@ mod test {
         let rs_dst = &raw mut rs_dst_arr as *mut u8;
 
         unsafe {
-            for f1 in [
-                vis_flags::VIS_OCTAL,
-                vis_flags::VIS_CSTYLE,
-                vis_flags::VIS_OCTAL | vis_flags::VIS_CSTYLE,
+            for flag in [
+                vis_flags::VIS_TAB | vis_flags::VIS_NL,
+                vis_flags::VIS_TAB,
+                vis_flags::VIS_NL,
+                vis_flags::VIS_DQ,
+                vis_flags::VIS_NOSLASH,
             ] {
-                for f2 in [
-                    vis_flags::VIS_TAB | vis_flags::VIS_NL,
-                    vis_flags::VIS_TAB,
-                    vis_flags::VIS_NL,
-                    vis_flags::VIS_DQ,
-                    vis_flags::VIS_NOSLASH,
-                ] {
-                    for ch in 0..=u8::MAX {
-                        for nextc in [b'\0' as i32, b'0' as i32] {
-                            let flag = f1 | f2;
+                for ch in 0..=u8::MAX {
+                    for nextc in [b'\0' as i32, b'0' as i32] {
+                        let c_out = vis_c(c_dst, ch as i32, flag, nextc);
+                        let rs_out = vis_rs(rs_dst, ch as i32, flag, nextc);
 
-                            let c_out = vis_c(c_dst, ch as i32, flag, nextc);
-                            let rs_out = vis_(rs_dst, ch as i32, flag, nextc);
+                        assert_eq!(
+                            c_dst_arr,
+                            rs_dst_arr,
+                            "mismatch when encoding vis(_, {ch}, {:?}, {nextc}) => {} != {}",
+                            flag,
+                            crate::_s(c_dst),
+                            crate::_s(rs_dst)
+                        );
 
-                            assert_eq!(
-                                c_dst_arr,
-                                rs_dst_arr,
-                                "mismatch when encoding vis(_, {ch}, {:?}, {nextc}) => {} != {}",
-                                flag,
-                                crate::_s(c_dst),
-                                crate::_s(rs_dst)
-                            );
+                        assert_eq!(rs_out.offset_from(rs_dst), c_out.offset_from(c_dst));
 
-                            assert_eq!(rs_out.offset_from(rs_dst), c_out.offset_from(c_dst));
-
-                            c_dst_arr.fill(0);
-                            rs_dst_arr.fill(0);
-                        }
+                        c_dst_arr.fill(0);
+                        rs_dst_arr.fill(0);
                     }
                 }
             }
         }
-    }
-
-    #[test]
-    fn test_encode_slash_octal() {
-        let mut dst: [u8; 5] = [0; 5];
-        unsafe {
-            vis(&raw mut dst as *mut _, 92, vis_flags::VIS_OCTAL, 0);
-        }
-        assert_eq!(
-            dst,
-            [92, 49, 51, 52, 0]
-        );
     }
 }

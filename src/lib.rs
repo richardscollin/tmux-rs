@@ -33,7 +33,7 @@ use std::{
 };
 
 mod compat;
-use compat::{queue::*, strlcat, strlcpy, strtonum, strtonum_, tree::*, vis_flags};
+use compat::{VisMode, queue::*, strlcat, strlcpy, strtonum, strtonum_, tree::*, vis_, vis_flags};
 
 mod ncurses_;
 use ncurses_::*;

@@ -250,7 +250,8 @@ pub unsafe fn window_buffer_draw(
                 buf,
                 start,
                 end.offset_from(start) as usize,
-                vis_flags::VIS_OCTAL | vis_flags::VIS_CSTYLE | vis_flags::VIS_TAB,
+                VisMode::CombinedCStyleOctal,
+                vis_flags::VIS_TAB,
             );
             if *buf != b'\0' {
                 screen_write_cursormove(ctx, cx as i32, (cy + i) as i32, 0);

@@ -323,7 +323,8 @@ pub unsafe fn paste_make_sample(pb: *mut paste_buffer) -> *mut u8 {
             buf,
             (*pb).data,
             len,
-            vis_flags::VIS_OCTAL | vis_flags::VIS_CSTYLE | vis_flags::VIS_TAB | vis_flags::VIS_NL,
+            VisMode::CombinedCStyleOctal,
+            vis_flags::VIS_TAB | vis_flags::VIS_NL,
         );
         if (*pb).size > width || used > width as i32 {
             strlcpy(buf.add(width), c!("..."), 4);

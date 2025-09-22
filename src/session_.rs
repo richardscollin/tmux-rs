@@ -255,7 +255,8 @@ pub unsafe fn session_check_name(name: *const u8) -> *mut u8 {
         utf8_stravis(
             &raw mut new_name,
             copy,
-            vis_flags::VIS_OCTAL | vis_flags::VIS_CSTYLE | vis_flags::VIS_TAB | vis_flags::VIS_NL,
+            VisMode::CombinedCStyleOctal,
+            vis_flags::VIS_TAB | vis_flags::VIS_NL,
         );
         free_(copy);
         new_name

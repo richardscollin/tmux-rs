@@ -16,7 +16,6 @@ use std::collections::BTreeMap;
 use std::fmt::{self, Display};
 use std::slice;
 
-use crate::compat::vis;
 use crate::libc::{memcpy, memset};
 use crate::*;
 
@@ -430,6 +429,7 @@ pub unsafe fn utf8_strvis(
     mut dst: *mut u8,
     mut src: *const u8,
     len: usize,
+    mode: VisMode,
     flag: vis_flags,
 ) -> i32 {
     unsafe {
@@ -465,9 +465,9 @@ pub unsafe fn utf8_strvis(
                 *dst = b'$';
                 dst = dst.add(1);
             } else if src < end.sub(1) {
-                dst = vis(dst, *src as i32, flag, *src.add(1) as i32);
+                dst = vis_(dst, *src as i32, mode, flag, *src.add(1) as i32);
             } else if src < end {
-                dst = vis(dst, *src as i32, flag, b'\0' as i32);
+                dst = vis_(dst, *src as i32, mode, flag, b'\0' as i32);
             }
             src = src.add(1);
         }
@@ -476,10 +476,15 @@ pub unsafe fn utf8_strvis(
     }
 }
 
-pub unsafe fn utf8_stravis(dst: *mut *mut u8, src: *const u8, flag: vis_flags) -> i32 {
+pub unsafe fn utf8_stravis(
+    dst: *mut *mut u8,
+    src: *const u8,
+    mode: VisMode,
+    flag: vis_flags,
+) -> i32 {
     unsafe {
         let buf = xreallocarray(null_mut(), 4, strlen(src) + 1);
-        let len = utf8_strvis(buf.as_ptr().cast(), src, strlen(src), flag);
+        let len = utf8_strvis(buf.as_ptr().cast(), src, strlen(src), mode, flag);
 
         *dst = xrealloc(buf.as_ptr(), len as usize + 1).as_ptr().cast();
         len
@@ -490,11 +495,12 @@ pub unsafe fn utf8_stravisx(
     dst: *mut *mut u8,
     src: *const u8,
     srclen: usize,
+    mode: VisMode,
     flag: vis_flags,
 ) -> i32 {
     unsafe {
         let buf = xreallocarray(null_mut(), 4, srclen + 1);
-        let len = utf8_strvis(buf.as_ptr().cast(), src, srclen, flag);
+        let len = utf8_strvis(buf.as_ptr().cast(), src, srclen, mode, flag);
 
         *dst = xrealloc(buf.as_ptr(), len as usize + 1).as_ptr().cast();
         len

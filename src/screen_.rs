@@ -243,7 +243,8 @@ pub unsafe fn screen_set_path(s: *mut screen, path: *const u8) {
         utf8_stravis(
             &mut (*s).path,
             path,
-            vis_flags::VIS_OCTAL | vis_flags::VIS_CSTYLE | vis_flags::VIS_TAB | vis_flags::VIS_NL,
+            VisMode::CombinedCStyleOctal,
+            vis_flags::VIS_TAB | vis_flags::VIS_NL,
         );
     }
 }

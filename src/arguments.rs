@@ -596,12 +596,12 @@ pub unsafe fn args_escape(s: *const u8) -> *mut u8 {
             return escaped;
         }
 
-        let mut flags =
-            vis_flags::VIS_OCTAL | vis_flags::VIS_CSTYLE | vis_flags::VIS_TAB | vis_flags::VIS_NL;
+        let mut flags = vis_flags::VIS_TAB | vis_flags::VIS_NL;
         if quotes == Some('"') {
             flags |= vis_flags::VIS_DQ;
         }
-        utf8_stravis(&raw mut escaped, s, flags);
+
+        utf8_stravis(&raw mut escaped, s, VisMode::CombinedCStyleOctal, flags);
 
         let result = if quotes == Some('\'') {
             format_nul!("'{}'", _s(escaped))

@@ -12,7 +12,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install system dependencies (ubuntu)
-        run: |
+        run: &ubuntu-install-cmd |
           sudo apt-get update
           sudo apt-get install -y libncurses-dev libevent-dev
       - uses: dtolnay/rust-toolchain@nightly
@@ -28,10 +28,9 @@ jobs:
     steps:
       - name: Install system dependencies (ubuntu)
         if: startsWith(matrix.os, 'ubuntu')
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libncurses-dev libevent-dev
-      - name: Install system dependencies (macOS)
+        run: *ubuntu-install-cmd
+      - &mac-deps
+        name: Install system dependencies (macOS)
         if: matrix.os == 'macos-latest'
         run: |
           brew update
@@ -47,9 +46,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install system dependencies (ubuntu)
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libncurses-dev libevent-dev
+        run: *ubuntu-install-cmd
       - uses: dtolnay/rust-toolchain@nightly
         with:
           components: clippy, rustfmt
@@ -66,14 +63,8 @@ jobs:
     steps:
       - name: Install system dependencies (ubuntu)
         if: startsWith(matrix.os, 'ubuntu')
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libncurses-dev libevent-dev
-      - name: Install system dependencies (macOS)
-        if: matrix.os == 'macos-latest'
-        run: |
-          brew update
-          brew install ncurses libevent
+        run: *ubuntu-install-cmd
+      - *mac-deps
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - run: cargo build

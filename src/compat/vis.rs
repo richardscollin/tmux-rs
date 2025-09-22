@@ -248,4 +248,16 @@ mod test {
             }
         }
     }
+
+    #[test]
+    fn test_encode_slash_octal() {
+        let mut dst: [u8; 5] = [0; 5];
+        unsafe {
+            vis(&raw mut dst as *mut _, 92, vis_flags::VIS_OCTAL, 0);
+        }
+        assert_eq!(
+            dst,
+            [92, 49, 51, 52, 0]
+        );
+    }
 }

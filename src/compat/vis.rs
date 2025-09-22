@@ -29,7 +29,7 @@ use core::ffi::c_int;
 // documentation from vis(3bsd)
 bitflags::bitflags! {
     #[repr(transparent)]
-    #[derive(Copy, Clone, Eq, PartialEq)]
+    #[derive(Copy, Clone, Debug, Eq, PartialEq)]
     pub(crate) struct vis_flags: i32 {
         /// Use a three digit octal sequence. The form is '\ddd' where each 'd' represents an octal
         /// digit.
@@ -188,6 +188,16 @@ pub unsafe fn vis(dst: *mut u8, c: c_int, flag: vis_flags, nextc: c_int) -> *mut
 }
 
 #[cfg(test)]
+pub unsafe fn vis_c(dst: *mut u8, c: c_int, flag: vis_flags, nextc: c_int) -> *mut u8 {
+    #[link(name = "bsd")]
+    unsafe extern "C" {
+        pub unsafe fn vis(dst: *mut u8, c: c_int, flag: vis_flags, nextc: c_int) -> *mut u8;
+    }
+
+    unsafe { vis(dst, c, flag, nextc) }
+}
+
+#[cfg(test)]
 mod test {
     use super::*;
 
@@ -215,13 +225,15 @@ mod test {
                     for ch in 0..=u8::MAX {
                         for nextc in [b'\0' as i32, b'0' as i32] {
                             let flag = f1 | f2;
+
+                            let c_out = vis_c(c_dst, ch as i32, flag, nextc);
                             let rs_out = vis_(rs_dst, ch as i32, flag, nextc);
-                            let c_out = vis(c_dst, ch as i32, flag, nextc);
 
                             assert_eq!(
                                 c_dst_arr,
                                 rs_dst_arr,
-                                "mismatch when encoding vis(_, _, _, {ch}) => {} != {}",
+                                "mismatch when encoding vis(_, {ch}, {:?}, {nextc}) => {} != {}",
+                                flag,
                                 crate::_s(c_dst),
                                 crate::_s(rs_dst)
                             );

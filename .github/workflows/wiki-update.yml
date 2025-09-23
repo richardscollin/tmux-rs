@@ -1,0 +1,52 @@
+---
+name: Update Wiki with Safety Report
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '**/*.rs'
+      - '**/*.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update-wiki:
+    runs-on: ubuntu-latest
+    name: Update Wiki with Safety Analysis
+
+    steps:
+      - name: Install crate-report
+        run: |
+          mkdir -p ~/.local/bin
+          curl -L --proto '=https' --tlsv1.2 -sSf \
+            https://github.com/richardscollin/crate-report/releases/download/v0.9.0/crate-report \
+            -o ~/.local/bin/crate-report
+          chmod +x ~/.local/bin/crate-report
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      - uses: actions/checkout@v5
+
+      - name: Checkout wiki repository
+        uses: actions/checkout@v5
+        with:
+          repository: ${{ github.repository }}.wiki
+          path: wiki
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Update wiki with safety report
+        run: |
+          crate-report --output wiki/Safety-Analysis.md
+          ls
+          ls wiki
+          cat wiki/Safety-Analysis.md
+
+          cd wiki
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+
+          git add Safety-Analysis.md
+          git commit -m "Update safety analysis from commit ${{ github.sha }}"
+          git push

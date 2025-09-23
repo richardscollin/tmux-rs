@@ -200,6 +200,11 @@ pub unsafe fn tailq_init<T>(head: *mut tailq_head<T>) {
     }
 }
 
+pub fn tailq_init_<T>(head: &mut tailq_head<T>) {
+    head.tqh_first = core::ptr::null_mut();
+    head.tqh_last = &raw mut head.tqh_first;
+}
+
 pub unsafe fn tailq_first<T>(head: *mut tailq_head<T>) -> *mut T {
     unsafe { (*head).tqh_first }
 }

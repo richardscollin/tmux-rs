@@ -13,7 +13,7 @@
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 use crate::compat::{
     queue::{
-        tailq_concat, tailq_first, tailq_foreach, tailq_init, tailq_insert_tail, tailq_next,
+        tailq_concat, tailq_first, tailq_foreach, tailq_init_, tailq_insert_tail, tailq_next,
         tailq_remove,
     },
     strlcat, strlcpy,
@@ -640,19 +640,20 @@ pub unsafe fn cmd_print(cmd: *mut cmd) -> *mut u8 {
     }
 }
 
-pub unsafe fn cmd_list_new<'a>() -> &'a mut cmd_list {
-    unsafe {
-        let group = CMD_LIST_NEXT_GROUP.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+pub fn cmd_list_new<'a>() -> &'a mut cmd_list {
+    let group = CMD_LIST_NEXT_GROUP.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
 
-        let cmdlist = Box::leak(Box::new(cmd_list {
-            references: 1,
-            group,
-            list: Box::leak(Box::new(zeroed())),
-        }));
+    let list = Box::leak(Box::new(tailq_head {
+        tqh_first: null_mut(),
+        tqh_last: null_mut(),
+    }));
+    tailq_init_(list);
 
-        tailq_init(cmdlist.list);
-        cmdlist
-    }
+    Box::leak(Box::new(cmd_list {
+        references: 1,
+        group,
+        list: list as _,
+    }))
 }
 
 pub unsafe fn cmd_list_append(cmdlist: *mut cmd_list, cmd: *mut cmd) {

@@ -13,8 +13,8 @@
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 use crate::cfg_::cfg_add_cause;
 use crate::compat::queue::{
-    tailq_empty, tailq_first, tailq_init, tailq_insert_after, tailq_insert_tail, tailq_last,
-    tailq_next, tailq_remove,
+    tailq_empty, tailq_first, tailq_insert_after, tailq_insert_tail, tailq_last, tailq_next,
+    tailq_remove,
 };
 use crate::xmalloc::xcalloc1;
 use crate::*;
@@ -127,12 +127,16 @@ pub unsafe fn cmdq_get(c: *mut client) -> *mut cmdq_list {
     }
 }
 
-pub unsafe fn cmdq_new() -> NonNull<cmdq_list> {
-    unsafe {
-        let queue = NonNull::from(xcalloc1::<cmdq_list>());
-        tailq_init(&raw mut (*queue.as_ptr()).list);
-        queue
-    }
+pub fn cmdq_new() -> NonNull<cmdq_list> {
+    let mut queue = Box::new(cmdq_list {
+        item: null_mut(),
+        list: tailq_head {
+            tqh_first: null_mut(),
+            tqh_last: null_mut(),
+        },
+    });
+    tailq_init_(&mut queue.list);
+    NonNull::new(Box::leak(queue)).unwrap()
 }
 
 pub unsafe fn cmdq_free(queue: *mut cmdq_list) {

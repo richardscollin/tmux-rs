@@ -190,7 +190,7 @@ pub unsafe fn proc_send(
     }
 }
 
-pub unsafe fn proc_start(name: &CStr) -> *mut tmuxproc {
+pub fn proc_start(name: &CStr) -> *mut tmuxproc {
     unsafe {
         log_open(name);
         let name: *const u8 = name.as_ptr().cast();

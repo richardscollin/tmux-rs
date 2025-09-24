@@ -407,10 +407,10 @@ pub unsafe fn session_detach(s: *mut session, wl: *mut winlink) -> i32 {
 }
 
 /// Return if session has window.
-pub unsafe fn session_has(s: *mut session, w: *mut window) -> i32 {
+pub unsafe fn session_has(s: *mut session, w: *mut window) -> bool {
     unsafe {
         tailq_foreach::<_, discr_wentry>(&raw mut (*w).winlinks)
-            .any(|wl| (*wl.as_ptr()).session == s) as i32
+            .any(|wl| (*wl.as_ptr()).session == s)
     }
 }
 

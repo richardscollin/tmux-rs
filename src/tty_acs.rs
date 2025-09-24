@@ -190,22 +190,22 @@ pub unsafe fn tty_acs_reverse_cmp(
 }
 
 /// Should this terminal use ACS instead of UTF-8 line drawing?
-pub unsafe fn tty_acs_needed(tty: *const tty) -> i32 {
+pub unsafe fn tty_acs_needed(tty: *const tty) -> bool {
     unsafe {
         if tty.is_null() {
-            return 0;
+            return false;
         }
 
         if tty_term_has((*tty).term, tty_code_code::TTYC_U8)
             && tty_term_number((*tty).term, tty_code_code::TTYC_U8) == 0
         {
-            return 1;
+            return true;
         }
 
         if (*(*tty).client).flags.intersects(client_flag::UTF8) {
-            return 0;
+            return false;
         }
-        1
+        true
     }
 }
 
@@ -213,7 +213,7 @@ pub unsafe fn tty_acs_needed(tty: *const tty) -> i32 {
 pub unsafe fn tty_acs_get(tty: *mut tty, ch: u8) -> *const u8 {
     unsafe {
         // Use the ACS set instead of UTF-8 if needed.
-        if tty_acs_needed(tty) != 0 {
+        if tty_acs_needed(tty) {
             if (*(*tty).term).acs[ch as usize][0] == b'\0' as _ {
                 return null();
             }

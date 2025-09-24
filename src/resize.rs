@@ -97,7 +97,7 @@ pub unsafe fn clients_with_window(w: *mut window) -> u32 {
     let mut n = 0u32;
     unsafe {
         for loop_ in tailq_foreach(&raw mut CLIENTS).map(NonNull::as_ptr) {
-            if ignore_client_size(loop_) != 0 || session_has((*loop_).session, w) == 0 {
+            if ignore_client_size(loop_) != 0 || !session_has((*loop_).session, w) {
                 continue;
             }
             n += 1;
@@ -112,18 +112,18 @@ pub unsafe fn clients_with_window(w: *mut window) -> u32 {
 #[expect(clippy::type_complexity)]
 pub unsafe fn clients_calculate_size(
     type_: window_size_option,
-    current: i32,
+    current: bool,
     c: *mut client,
     s: *mut session,
     w: *mut window,
     skip_client: Option<
-        unsafe fn(*mut client, window_size_option, i32, *mut session, *mut window) -> i32,
+        unsafe fn(*mut client, window_size_option, bool, *mut session, *mut window) -> bool,
     >,
     sx: *mut u32,
     sy: *mut u32,
     xpixel: *mut u32,
     ypixel: *mut u32,
-) -> i32 {
+) -> bool {
     let mut cx;
     let mut cy;
     let mut cw;
@@ -165,7 +165,7 @@ pub unsafe fn clients_calculate_size(
                     log_debug!("{}: ignoring {} (1)", __func__, _s((*loop_).name));
                     continue;
                 }
-                if loop_ != c && skip_client.unwrap()(loop_, type_, current, s, w) != 0 {
+                if loop_ != c && skip_client.unwrap()(loop_, type_, current, s, w) {
                     log_debug!("{}: skipping {} (1)", __func__, _s((*loop_).name));
                     continue;
                 }
@@ -243,7 +243,7 @@ pub unsafe fn clients_calculate_size(
                 if loop_ != c && ignore_client_size(loop_) != 0 {
                     continue;
                 }
-                if loop_ != c && skip_client.unwrap()(loop_, type_, current, s, w) != 0 {
+                if loop_ != c && skip_client.unwrap()(loop_, type_, current, s, w) {
                     continue;
                 }
 
@@ -282,43 +282,43 @@ pub unsafe fn clients_calculate_size(
         // Return whether a suitable size was found.
         if type_ == window_size_option::WINDOW_SIZE_MANUAL {
             log_debug!("{}: type_ is manual", __func__);
-            return 1;
+            return true;
         }
         if type_ == window_size_option::WINDOW_SIZE_LARGEST {
             log_debug!("{}: type_ is largest", __func__);
-            return (*sx != 0 && *sy != 0) as i32;
+            return *sx != 0 && *sy != 0;
         }
         if type_ == window_size_option::WINDOW_SIZE_LATEST {
             log_debug!("{}: type_ is latest", __func__);
         } else {
             log_debug!("{}: type_ is smallest", __func__);
         }
-        (*sx != u32::MAX && *sy != u32::MAX) as i32
+        *sx != u32::MAX && *sy != u32::MAX
     }
 }
 
 pub unsafe fn default_window_size_skip_client(
     loop_: *mut client,
     type_: window_size_option,
-    _current: i32,
+    _current: bool,
     s: *mut session,
     w: *mut window,
-) -> i32 {
+) -> bool {
     unsafe {
         // Latest checks separately, so do not check here. Otherwise only
         // include clients where the session contains the window or where the
         // session is the given session.
         if type_ == window_size_option::WINDOW_SIZE_LATEST {
-            return 0;
+            return false;
         }
-        if !w.is_null() && session_has((*loop_).session, w) == 0 {
-            return 1;
+        if !w.is_null() && !session_has((*loop_).session, w) {
+            return true;
         }
         if w.is_null() && (*loop_).session != s {
-            return 1;
+            return true;
         }
     }
-    0
+    false
 }
 
 #[expect(clippy::too_many_arguments)]
@@ -367,9 +367,9 @@ pub unsafe fn default_window_size(
 
             // Look for a client to base the size on. If none exists (or the type_
             // is manual), use the default-size option.
-            if clients_calculate_size(
+            if !clients_calculate_size(
                 type_,
-                0,
+                false,
                 c,
                 s,
                 w,
@@ -378,8 +378,7 @@ pub unsafe fn default_window_size(
                 sy,
                 xpixel,
                 ypixel,
-            ) == 0
-            {
+            ) {
                 let value = options_get_string_((*s).options, "default-size");
                 if sscanf(value.cast(), c"%ux%u".as_ptr(), sx, sy) != 2 {
                     *sx = 80;
@@ -399,22 +398,22 @@ pub unsafe fn default_window_size(
 pub unsafe fn recalculate_size_skip_client(
     loop_: *mut client,
     _type_: window_size_option,
-    current: i32,
+    current: bool,
     _s: *mut session,
     w: *mut window,
-) -> i32 {
+) -> bool {
     unsafe {
         // If the current flag is set, then skip any client where this window
         // is not the current window - this is used for aggressive-resize.
         // Otherwise skip any session that doesn't contain the window.
         if (*(*loop_).session).curw.is_null() {
-            return 1;
+            return true;
         }
-        if current != 0 {
-            return ((*(*(*loop_).session).curw).window != w) as i32;
+        if current {
+            return (*(*(*loop_).session).curw).window != w;
         }
 
-        (session_has((*loop_).session, w) == 0) as i32
+        !session_has((*loop_).session, w)
     }
 }
 
@@ -442,7 +441,7 @@ pub unsafe fn recalculate_size(w: *mut window, now: i32) {
         let type_ =
             window_size_option::try_from(options_get_number_((*w).options, "window-size") as i32)
                 .unwrap();
-        let current = options_get_number_((*w).options, "aggressive-resize") as i32;
+        let current = options_get_number_((*w).options, "aggressive-resize") != 0;
 
         // Look for a suitable client and get the new size.
         let mut changed = clients_calculate_size(
@@ -461,16 +460,16 @@ pub unsafe fn recalculate_size(w: *mut window, now: i32) {
         // Make sure the size has actually changed. If the window has already
         // got a resize scheduled, then use the new size; otherwise the old.
         if (*w).flags.intersects(window_flag::RESIZE) {
-            if now == 0 && changed != 0 && (*w).new_sx == sx && (*w).new_sy == sy {
-                changed = 0;
+            if now == 0 && changed && (*w).new_sx == sx && (*w).new_sy == sy {
+                changed = false;
             }
-        } else if now == 0 && changed != 0 && (*w).sx == sx && (*w).sy == sy {
-            changed = 0;
+        } else if now == 0 && changed && (*w).sx == sx && (*w).sy == sy {
+            changed = false;
         }
 
         // If the size hasn't changed, update the window offset but not the
         // size.
-        if changed == 0 {
+        if !changed {
             log_debug!("{}: @{} no size change", __func__, (*w).id);
             tty_update_window_offset(w);
             return;

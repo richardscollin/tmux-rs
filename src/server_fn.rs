@@ -100,7 +100,7 @@ pub unsafe fn server_status_window(w: *mut window) {
         // current window.
 
         for s in rb_foreach(&raw mut SESSIONS).map(NonNull::as_ptr) {
-            if session_has(s, w) != 0 {
+            if session_has(s, w) {
                 server_status_session(s);
             }
         }
@@ -187,7 +187,7 @@ pub unsafe fn server_kill_pane(wp: *mut window_pane) {
 pub unsafe fn server_kill_window(w: *mut window, renumber: i32) {
     unsafe {
         for s in rb_foreach(&raw mut SESSIONS).map(NonNull::as_ptr) {
-            if session_has(s, w) == 0 {
+            if !session_has(s, w) {
                 continue;
             }
 

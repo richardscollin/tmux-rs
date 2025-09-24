@@ -370,7 +370,7 @@ pub unsafe fn tty_start_tty(tty: *mut tty) {
         tty_putcode(tty, tty_code_code::TTYC_SMKX);
         tty_putcode(tty, tty_code_code::TTYC_CLEAR);
 
-        if tty_acs_needed(tty) != 0 {
+        if tty_acs_needed(tty) {
             // log_debug("%s: using capabilities for ACS", (*c).name);
             tty_putcode(tty, tty_code_code::TTYC_ENACS);
         } else {
@@ -489,7 +489,7 @@ pub unsafe fn tty_stop_tty(tty: *mut tty) {
                 ws.ws_row as i32 - 1,
             ),
         );
-        if tty_acs_needed(tty) != 0 {
+        if tty_acs_needed(tty) {
             tty_raw(tty, tty_term_string((*tty).term, tty_code_code::TTYC_RMACS));
         }
         tty_raw(tty, tty_term_string((*tty).term, tty_code_code::TTYC_SGR0));
@@ -2890,7 +2890,7 @@ pub unsafe fn tty_reset(tty: *mut tty) {
             if (*gc).link != 0 {
                 tty_putcode_ss(tty, tty_code_code::TTYC_HLS, c!(""), c!(""));
             }
-            if (*gc).attr.intersects(grid_attr::GRID_ATTR_CHARSET) && tty_acs_needed(tty) != 0 {
+            if (*gc).attr.intersects(grid_attr::GRID_ATTR_CHARSET) && tty_acs_needed(tty) {
                 tty_putcode(tty, tty_code_code::TTYC_RMACS);
             }
             tty_putcode(tty, tty_code_code::TTYC_SGR0);
@@ -3347,7 +3347,7 @@ pub unsafe fn tty_attributes(
         if changed.intersects(grid_attr::GRID_ATTR_OVERLINE) {
             tty_putcode(tty, tty_code_code::TTYC_SMOL);
         }
-        if changed.intersects(grid_attr::GRID_ATTR_CHARSET) && tty_acs_needed(tty) != 0 {
+        if changed.intersects(grid_attr::GRID_ATTR_CHARSET) && tty_acs_needed(tty) {
             tty_putcode(tty, tty_code_code::TTYC_SMACS);
         }
 

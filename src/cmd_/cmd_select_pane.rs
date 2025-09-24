@@ -61,7 +61,7 @@ pub unsafe fn cmd_select_pane_redraw(w: *mut window) {
                 if (*(*(*c).session).curw).window == w {
                     (*c).flags |= client_flag::REDRAWBORDERS;
                 }
-                if session_has((*c).session, w) != 0 {
+                if session_has((*c).session, w) {
                     (*c).flags |= client_flag::REDRAWSTATUS;
                 }
             }

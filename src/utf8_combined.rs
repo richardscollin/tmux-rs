@@ -38,46 +38,42 @@ pub unsafe fn utf8_has_zwj(ud: *const utf8_data) -> bool {
     }
 }
 
-pub unsafe fn utf8_is_zwj(ud: *const utf8_data) -> i32 {
+pub unsafe fn utf8_is_zwj(ud: *const utf8_data) -> bool {
     unsafe {
         if (*ud).size != 3 {
-            return 0;
+            return false;
         }
-        (memcmp(
+        memcmp(
             &raw const (*ud).data as *const u8 as *const c_void,
             b"\xe2\x80\x8d\x00" as *const u8 as *const c_void,
             3,
-        ) == 0) as i32
+        ) == 0
     }
 }
 
-pub unsafe fn utf8_is_vs(ud: *const utf8_data) -> i32 {
+pub unsafe fn utf8_is_vs(ud: *const utf8_data) -> bool {
     unsafe {
         if (*ud).size != 3 {
-            return 0;
+            return false;
         }
-        (memcmp(
+        memcmp(
             &raw const (*ud).data as *const u8 as *const c_void,
             b"\xef\xbf\x8f\x00" as *const u8 as *const c_void,
             3,
-        ) == 0) as i32
+        ) == 0
     }
 }
 
-pub unsafe fn utf8_is_modifier(ud: *const utf8_data) -> i32 {
+pub unsafe fn utf8_is_modifier(ud: *const utf8_data) -> bool {
     let mut wc: wchar_t = 0;
     unsafe {
         if utf8_towc(ud, &raw mut wc) != utf8_state::UTF8_DONE {
-            return 0;
+            return false;
         }
-        if utf8_in_table(
+        utf8_in_table(
             wc,
             &raw const UTF8_MODIFIER_TABLE as *const wchar_t,
-            UTF8_MODIFIER_TABLE.len() as u32,
-        ) == 0
-        {
-            return 0;
-        }
-        1
+            UTF8_MODIFIER_TABLE.len(),
+        )
     }
 }

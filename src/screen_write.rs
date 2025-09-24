@@ -131,7 +131,7 @@ unsafe fn screen_write_set_client_cb(ttyctx: *mut tty_ctx, c: *mut client) -> i3
         let wp: *mut window_pane = (*ttyctx).arg.cast();
 
         if (*ttyctx).allow_invisible_panes != 0 {
-            if session_has((*c).session, (*wp).window) != 0 {
+            if session_has((*c).session, (*wp).window) {
                 return 1;
             }
             return 0;
@@ -2298,9 +2298,9 @@ pub unsafe fn screen_write_combine(ctx: *mut screen_write_ctx, gc: *const grid_c
         // Is this character which makes no sense without being combined? If
         // this is true then flag it here and discard the character (return 1)
         // if we cannot combine it.
-        if utf8_is_zwj(ud) != 0 {
+        if utf8_is_zwj(ud) {
             zero_width = 1;
-        } else if utf8_is_vs(ud) != 0 {
+        } else if utf8_is_vs(ud) {
             zero_width = 1;
             force_wide = 1;
         } else if (*ud).width == 0 {
@@ -2328,7 +2328,7 @@ pub unsafe fn screen_write_combine(ctx: *mut screen_write_ctx, gc: *const grid_c
         // (set above), a modifier character (with an existing Unicode
         // character) or a previous ZWJ.
         if zero_width == 0 {
-            if utf8_is_modifier(ud) != 0 {
+            if utf8_is_modifier(ud) {
                 if last.data.size < 2 {
                     return 0;
                 }

@@ -239,8 +239,8 @@ pub unsafe fn server_client_get_key_table(c: *mut client) -> *const u8 {
 }
 
 /// Is this table the default key table?
-pub unsafe fn server_client_is_default_key_table(c: *mut client, table: *mut key_table) -> i32 {
-    unsafe { (libc::strcmp((*table).name, server_client_get_key_table(c)) == 0) as i32 }
+pub unsafe fn server_client_is_default_key_table(c: *mut client, table: *mut key_table) -> bool {
+    unsafe { libc::strcmp((*table).name, server_client_get_key_table(c)) == 0 }
 }
 
 /// Create a new client.
@@ -1733,21 +1733,21 @@ pub unsafe fn server_client_check_mouse(c: *mut client, event: *mut key_event) -
 }
 
 /// Is this a bracket paste key?
-pub unsafe fn server_client_is_bracket_pasting(c: *mut client, key: key_code) -> i32 {
+pub unsafe fn server_client_is_bracket_pasting(c: *mut client, key: key_code) -> bool {
     unsafe {
         if key == keyc::KEYC_PASTE_START as u64 {
             (*c).flags |= client_flag::BRACKETPASTING;
             log_debug!("{}: bracket paste on", _s((*c).name));
-            return 1;
+            return true;
         }
 
         if key == keyc::KEYC_PASTE_END as u64 {
             (*c).flags &= !client_flag::BRACKETPASTING;
             log_debug!("{}: bracket paste off", _s((*c).name));
-            return 1;
+            return true;
         }
 
-        (*c).flags.intersects(client_flag::BRACKETPASTING) as i32
+        (*c).flags.intersects(client_flag::BRACKETPASTING)
     }
 }
 
@@ -1884,7 +1884,7 @@ pub unsafe fn server_client_key_callback(item: *mut cmdq_item, data: *mut c_void
                 }
 
                 // Forward if bracket pasting.
-                if server_client_is_bracket_pasting(c, key) != 0 {
+                if server_client_is_bracket_pasting(c, key) {
                     break 'forward_key;
                 }
 
@@ -1898,7 +1898,7 @@ pub unsafe fn server_client_key_callback(item: *mut cmdq_item, data: *mut c_void
 
                 // Work out the current key table. If the pane is in a mode, use
                 // the mode table instead of the default key table.
-                table = if server_client_is_default_key_table(c, (*c).keytable) != 0
+                table = if server_client_is_default_key_table(c, (*c).keytable)
                     && !wp.is_null()
                     && ({
                         wme = tailq_first(&raw mut (*wp).modes);
@@ -2049,7 +2049,7 @@ pub unsafe fn server_client_key_callback(item: *mut cmdq_item, data: *mut c_void
                          * switch the client back to the root table and try again.
                          */
                         log_debug!("not found in key table {}", _s((*table).name));
-                        if server_client_is_default_key_table(c, table) == 0
+                        if !server_client_is_default_key_table(c, table)
                             || (*c).flags.intersects(client_flag::REPEAT)
                         {
                             log_debug!("trying in root table");

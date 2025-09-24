@@ -174,10 +174,10 @@ pub unsafe extern "C" fn utf8_table_cmp(vp1: *const c_void, vp2: *const c_void) 
     unsafe { wchar_t::cmp(&*wc1, &*wc2) as i8 as i32 }
 }
 
-pub unsafe fn utf8_in_table(find: wchar_t, table: *const wchar_t, count: u32) -> i32 {
+pub unsafe fn utf8_in_table(find: wchar_t, table: *const wchar_t, count: usize) -> bool {
     unsafe {
-        let found = bsearch__(&raw const find, table, count as usize, utf8_table_cmp);
-        !found.is_null() as i32
+        let found = bsearch__(&raw const find, table, count, utf8_table_cmp);
+        !found.is_null()
     }
 }
 
@@ -295,7 +295,7 @@ pub unsafe fn utf8_width(ud: *mut utf8_data, width: *mut i32) -> utf8_state {
         if utf8_towc(ud, &raw mut wc) != utf8_state::UTF8_DONE {
             return utf8_state::UTF8_ERROR;
         }
-        if utf8_in_table(wc, UTF8_FORCE_WIDE.as_ptr(), UTF8_FORCE_WIDE.len() as u32) != 0 {
+        if utf8_in_table(wc, UTF8_FORCE_WIDE.as_ptr(), UTF8_FORCE_WIDE.len()) {
             *width = 2;
             return utf8_state::UTF8_DONE;
         }

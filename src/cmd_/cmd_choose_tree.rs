@@ -85,7 +85,7 @@ unsafe fn cmd_choose_tree_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
         let wp = (*target).wp;
 
         let mode = if std::ptr::eq(cmd_get_entry(self_), &CMD_CHOOSE_BUFFER_ENTRY) {
-            if paste_is_empty() != 0 {
+            if paste_is_empty() {
                 return cmd_retval::CMD_RETURN_NORMAL;
             }
             &raw const WINDOW_BUFFER_MODE

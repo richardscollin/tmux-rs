@@ -432,7 +432,7 @@ pub unsafe fn options_remove(o: *mut options_entry) {
     unsafe {
         let oo = (*o).owner;
 
-        if options_is_array(o) != 0 {
+        if options_is_array(o) {
             options_array_clear(o);
         } else {
             options_value_free(o, &mut (*o).value);
@@ -484,7 +484,7 @@ unsafe fn options_array_free(o: *mut options_entry, a: *mut options_array_item) 
 
 pub unsafe fn options_array_clear(o: *mut options_entry) {
     unsafe {
-        if options_is_array(o) == 0 {
+        if !options_is_array(o) {
             return;
         }
 
@@ -499,7 +499,7 @@ pub unsafe fn options_array_clear(o: *mut options_entry) {
 
 pub unsafe fn options_array_get(o: *mut options_entry, idx: u32) -> *mut options_value {
     unsafe {
-        if options_is_array(o) == 0 {
+        if !options_is_array(o) {
             return null_mut();
         }
         let a = options_array_item(o, idx);
@@ -657,12 +657,12 @@ pub unsafe fn options_array_item_value(a: *mut options_array_item) -> *mut optio
     unsafe { &raw mut (*a).value }
 }
 
-pub unsafe fn options_is_array(o: *mut options_entry) -> i32 {
-    unsafe { OPTIONS_IS_ARRAY(o) as i32 }
+pub unsafe fn options_is_array(o: *mut options_entry) -> bool {
+    unsafe { OPTIONS_IS_ARRAY(o) }
 }
 
-pub unsafe fn options_is_string(o: *mut options_entry) -> i32 {
-    unsafe { OPTIONS_IS_STRING(o) as i32 }
+pub unsafe fn options_is_string(o: *mut options_entry) -> bool {
+    unsafe { OPTIONS_IS_STRING(o) }
 }
 
 pub unsafe fn options_to_string(o: *mut options_entry, idx: i32, numeric: i32) -> *mut u8 {

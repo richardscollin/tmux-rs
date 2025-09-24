@@ -101,8 +101,8 @@ pub unsafe fn paste_walk(pb: *mut paste_buffer) -> *mut paste_buffer {
     }
 }
 
-pub unsafe fn paste_is_empty() -> i32 {
-    unsafe { rb_root(&raw mut PASTE_BY_TIME).is_null() as i32 }
+pub unsafe fn paste_is_empty() -> bool {
+    unsafe { PASTE_BY_TIME.rbh_root.is_null() }
 }
 
 pub unsafe fn paste_get_top(name: *mut *const u8) -> *mut paste_buffer {

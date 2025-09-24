@@ -568,7 +568,7 @@ pub unsafe fn window_buffer_key(
         let mut finished;
 
         'out: {
-            if paste_is_empty() != 0 {
+            if paste_is_empty() {
                 finished = true;
                 break 'out;
             }
@@ -601,7 +601,7 @@ pub unsafe fn window_buffer_key(
             }
         }
         // out:
-        if finished || paste_is_empty() != 0 {
+        if finished || paste_is_empty() {
             window_pane_reset_mode(wp);
         } else {
             mode_tree_draw(&mut *mtd);

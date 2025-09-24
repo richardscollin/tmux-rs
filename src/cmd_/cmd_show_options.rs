@@ -177,7 +177,7 @@ pub unsafe fn cmd_show_options_print(
         if idx != -1 {
             tmp = format_nul!("{}[{}]", _s(name), idx);
             name = tmp;
-        } else if options_is_array(o) != 0 {
+        } else if options_is_array(o) {
             a = options_array_first(o);
             if a.is_null() {
                 if !args_has(args, 'v') {
@@ -196,7 +196,7 @@ pub unsafe fn cmd_show_options_print(
         let value = options_to_string(o, idx, 0);
         if args_has(args, 'v') {
             cmdq_print!(item, "{}", _s(value));
-        } else if options_is_string(o) != 0 {
+        } else if options_is_string(o) {
             escaped = args_escape(value);
             if parent != 0 {
                 cmdq_print!(item, "{}* {}", _s(name), _s(escaped));
@@ -268,7 +268,7 @@ pub unsafe fn cmd_show_options_all(
                 parent = 0;
             }
 
-            if options_is_array(o) == 0 {
+            if !options_is_array(o) {
                 cmd_show_options_print(self_, item, o, -1, parent);
             } else if let Some(a) = NonNull::new(options_array_first(o)) {
                 let mut a = a.as_ptr();

@@ -624,28 +624,6 @@ where
     null_mut()
 }
 
-#[expect(dead_code)]
-unsafe fn rb_nfind<T, D>(head: *mut rb_head<T>, elm: *const T) -> *mut T
-where
-    T: GetEntry<T, D>,
-{
-    unsafe {
-        let mut tmp = rb_root(head);
-        let mut res = null_mut();
-        while !tmp.is_null() {
-            tmp = match T::cmp(&*elm, &*tmp) {
-                Ordering::Less => {
-                    res = tmp;
-                    rb_left(tmp)
-                }
-                Ordering::Greater => rb_right(tmp),
-                Ordering::Equal => return tmp,
-            };
-        }
-        res
-    }
-}
-
 pub unsafe fn rb_min<T, D>(head: *mut rb_head<T>) -> *mut T
 where
     T: GetEntry<T, D>,
@@ -738,7 +716,6 @@ where
     }
 }
 
-#[expect(clippy::collapsible_else_if)]
 pub unsafe fn rb_next<T, D>(mut elm: *mut T) -> *mut T
 where
     T: GetEntry<T, D>,
@@ -749,22 +726,20 @@ where
             while !rb_left(elm).is_null() {
                 elm = rb_left(elm);
             }
+        } else if !rb_parent(elm).is_null() && is_left_sibling(elm) {
+            elm = rb_parent(elm);
         } else {
-            if !rb_parent(elm).is_null() && is_left_sibling(elm) {
-                elm = rb_parent(elm);
-            } else {
-                while !rb_parent(elm).is_null() && is_right_sibling(elm) {
-                    elm = rb_parent(elm);
-                }
+            while !rb_parent(elm).is_null() && is_right_sibling(elm) {
                 elm = rb_parent(elm);
             }
+            elm = rb_parent(elm);
         }
+        
 
         elm
     }
 }
 
-#[expect(clippy::collapsible_else_if)]
 pub unsafe fn rb_prev<T, D>(mut elm: *mut T) -> *mut T
 where
     T: GetEntry<T, D>,
@@ -775,16 +750,15 @@ where
             while !rb_right(elm).is_null() {
                 elm = rb_right(elm);
             }
+        } else if !rb_parent(elm).is_null() && is_right_sibling(elm) {
+            elm = rb_parent(elm);
         } else {
-            if !rb_parent(elm).is_null() && is_right_sibling(elm) {
-                elm = rb_parent(elm);
-            } else {
-                while !rb_parent(elm).is_null() && is_left_sibling(elm) {
-                    elm = rb_parent(elm);
-                }
+            while !rb_parent(elm).is_null() && is_left_sibling(elm) {
                 elm = rb_parent(elm);
             }
+            elm = rb_parent(elm);
         }
+        
 
         elm
     }

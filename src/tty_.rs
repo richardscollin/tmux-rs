@@ -2022,28 +2022,28 @@ pub unsafe fn tty_sync_end(tty: *mut tty) {
     }
 }
 
-pub unsafe fn tty_client_ready(ctx: *const tty_ctx, c: *mut client) -> i32 {
+pub unsafe fn tty_client_ready(ctx: *const tty_ctx, c: *mut client) -> bool {
     unsafe {
         if (*c).session.is_null() || (*c).tty.term.is_null() {
-            return 0;
+            return false;
         }
         if (*c).flags.intersects(client_flag::SUSPENDED) {
-            return 0;
+            return false;
         }
 
         // If invisible panes are allowed (used for passthrough), don't care if
         // redrawing or frozen.
         if (*ctx).allow_invisible_panes != 0 {
-            return 1;
+            return true;
         }
 
         if (*c).flags.intersects(client_flag::REDRAWWINDOW) {
-            return 0;
+            return false;
         }
         if (*c).tty.flags.intersects(tty_flags::TTY_FREEZE) {
-            return 0;
+            return false;
         }
-        1
+        true
     }
 }
 
@@ -2054,7 +2054,7 @@ pub unsafe fn tty_write(cmdfn: unsafe fn(*mut tty, *const tty_ctx), ctx: *mut tt
         };
 
         for c in tailq_foreach(&raw mut CLIENTS).map(NonNull::as_ptr) {
-            if tty_client_ready(ctx, c) != 0 {
+            if tty_client_ready(ctx, c) {
                 let state = set_client_cb(ctx, c);
                 if state == -1 {
                     break;

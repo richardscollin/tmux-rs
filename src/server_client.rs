@@ -178,19 +178,19 @@ pub unsafe fn server_client_overlay_range(
 }
 
 /// Check if this client is inside this server.
-pub unsafe fn server_client_check_nested(c: *mut client) -> i32 {
+pub unsafe fn server_client_check_nested(c: *mut client) -> bool {
     unsafe {
         let envent = environ_find((*c).environ, c!("TMUX"));
         if envent.is_null() || *transmute_ptr((*envent).value) == b'\0' {
-            return 0;
+            return false;
         }
 
         for wp in rb_foreach(&raw mut ALL_WINDOW_PANES) {
             if libc::strcmp((&raw const (*wp.as_ptr()).tty) as _, (*c).ttyname) == 0 {
-                return 1;
+                return true;
             }
         }
-        0
+        false
     }
 }
 
@@ -1752,13 +1752,13 @@ pub unsafe fn server_client_is_bracket_pasting(c: *mut client, key: key_code) ->
 }
 
 /// Is this fast enough to probably be a paste?
-pub unsafe fn server_client_assume_paste(s: *mut session) -> i32 {
+pub unsafe fn server_client_assume_paste(s: *mut session) -> bool {
     unsafe {
         let mut tv: timeval = zeroed();
         let t: i32 = options_get_number_((*s).options, "assume-paste-time") as i32;
 
         if t == 0 {
-            return 0;
+            return false;
         }
 
         timersub(
@@ -1773,15 +1773,15 @@ pub unsafe fn server_client_assume_paste(s: *mut session) -> i32 {
                 ((*s).flags & SESSION_PASTING != 0) as i32
             );
             if (*s).flags & SESSION_PASTING != 0 {
-                return 1;
+                return true;
             }
             (*s).flags |= SESSION_PASTING;
-            return 0;
+            return false;
         }
         log_debug!("session {} not pasting", _s((*s).name));
         (*s).flags &= !SESSION_PASTING;
 
-        0
+        false
     }
 }
 
@@ -1889,10 +1889,7 @@ pub unsafe fn server_client_key_callback(item: *mut cmdq_item, data: *mut c_void
                 }
 
                 // Treat everything as a regular key when pasting is detected.
-                if !KEYC_IS_MOUSE(key)
-                    && (!key & KEYC_SENT) != 0
-                    && server_client_assume_paste(s) != 0
-                {
+                if !KEYC_IS_MOUSE(key) && (!key & KEYC_SENT) != 0 && server_client_assume_paste(s) {
                     break 'forward_key;
                 }
 

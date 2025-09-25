@@ -402,15 +402,11 @@ pub unsafe fn screen_redraw_check_is(
     px: u32,
     py: u32,
     wp: *mut window_pane,
-) -> i32 {
+) -> bool {
     unsafe {
         let border = screen_redraw_pane_border(ctx, wp, px, py);
-        if border != screen_redraw_border_type::SCREEN_REDRAW_INSIDE
+        border != screen_redraw_border_type::SCREEN_REDRAW_INSIDE
             && border != screen_redraw_border_type::SCREEN_REDRAW_OUTSIDE
-        {
-            return 1;
-        }
-        0
     }
 }
 
@@ -763,7 +759,7 @@ pub unsafe fn screen_redraw_draw_borders_style(
         (*wp).border_gc_set = 1;
 
         let ft = format_create_defaults(null_mut(), c, s, (*s).curw, wp);
-        if screen_redraw_check_is(ctx, x, y, active) != 0 {
+        if screen_redraw_check_is(ctx, x, y, active) {
             style_apply(
                 &raw mut (*wp).border_gc,
                 oo,
@@ -825,7 +821,7 @@ pub unsafe fn screen_redraw_draw_borders_cell(ctx: *mut screen_redraw_ctx, i: u3
             memcpy__(&raw mut gc, tmp);
 
             if server_is_marked(s, (*s).curw, MARKED_PANE.wp)
-                && screen_redraw_check_is(ctx, x, y, MARKED_PANE.wp) != 0
+                && screen_redraw_check_is(ctx, x, y, MARKED_PANE.wp)
             {
                 gc.attr ^= grid_attr::GRID_ATTR_REVERSE;
             }
@@ -867,7 +863,7 @@ pub unsafe fn screen_redraw_draw_borders_cell(ctx: *mut screen_redraw_ctx, i: u3
                             && border == screen_redraw_border_type::SCREEN_REDRAW_BORDER_RIGHT)
                         || (cell_type == CELL_RIGHTJOIN
                             && border == screen_redraw_border_type::SCREEN_REDRAW_BORDER_LEFT))))
-                && screen_redraw_check_is(ctx, x, y, active) != 0
+                && screen_redraw_check_is(ctx, x, y, active)
             {
                 gc.attr |= grid_attr::GRID_ATTR_CHARSET;
                 utf8_set(&raw mut gc.data, BORDER_MARKERS[border as usize]);

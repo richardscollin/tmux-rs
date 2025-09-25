@@ -349,24 +349,24 @@ unsafe fn window_destroy(w: *mut window) {
     }
 }
 
-pub unsafe fn window_pane_destroy_ready(wp: *mut window_pane) -> i32 {
+pub unsafe fn window_pane_destroy_ready(wp: *mut window_pane) -> bool {
     let mut n = 0;
     unsafe {
         if (*wp).pipe_fd != -1 {
             if EVBUFFER_LENGTH((*(*wp).pipe_event).output) != 0 {
-                return 0;
+                return false;
             }
             if ioctl((*wp).fd, FIONREAD, &raw mut n) != -1 && n > 0 {
-                return 0;
+                return false;
             }
         }
 
         if !(*wp).flags.intersects(window_pane_flags::PANE_EXITED) {
-            return 0;
+            return false;
         }
     }
 
-    1
+    true
 }
 
 pub unsafe fn window_add_ref(w: *mut window, from: *const u8) {
@@ -1117,7 +1117,7 @@ unsafe extern "C-unwind" fn window_pane_error_callback(
         log_debug!("%%{} error", (*wp).id);
         (*wp).flags |= window_pane_flags::PANE_EXITED;
 
-        if window_pane_destroy_ready(wp) != 0 {
+        if window_pane_destroy_ready(wp) {
             server_destroy_pane(wp, 1);
         }
     }

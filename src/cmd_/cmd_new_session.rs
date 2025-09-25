@@ -192,7 +192,7 @@ unsafe fn cmd_new_session_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
                 && (*c).fd != -1
                 && !(*c).flags.intersects(client_flag::CONTROL)
             {
-                if server_client_check_nested(cmdq_get_client(item)) != 0 {
+                if server_client_check_nested(cmdq_get_client(item)) {
                     cmdq_error!(
                         item,
                         "sessions should be nested with care, unset $TMUX to force"

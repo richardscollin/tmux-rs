@@ -541,7 +541,7 @@ unsafe fn server_child_exited(pid: pid_t, status: i32) {
                     log_debug!("%%{} exited", (*wp).id);
                     (*wp).flags |= window_pane_flags::PANE_EXITED;
 
-                    if window_pane_destroy_ready(wp) != 0 {
+                    if window_pane_destroy_ready(wp) {
                         server_destroy_pane(wp, 1);
                     }
                     break;

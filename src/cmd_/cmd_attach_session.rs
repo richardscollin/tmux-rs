@@ -57,7 +57,7 @@ pub unsafe fn cmd_attach_session(
             return cmd_retval::CMD_RETURN_NORMAL;
         }
 
-        if server_client_check_nested(c) != 0 {
+        if server_client_check_nested(c) {
             cmdq_error!(
                 item,
                 "sessions should be nested with care, unset $TMUX to force",

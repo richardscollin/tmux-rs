@@ -60,7 +60,7 @@ pub unsafe fn cmd_pipe_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
             close((*wp).pipe_fd);
             (*wp).pipe_fd = -1;
 
-            if window_pane_destroy_ready(wp) != 0 {
+            if window_pane_destroy_ready(wp) {
                 server_destroy_pane(wp, 1);
                 return cmd_retval::CMD_RETURN_NORMAL;
             }
@@ -206,7 +206,7 @@ pub unsafe extern "C-unwind" fn cmd_pipe_pane_read_callback(
         bufferevent_write((*wp).event, EVBUFFER_DATA(evb).cast(), available);
         evbuffer_drain(evb, available);
 
-        if window_pane_destroy_ready(wp) != 0 {
+        if window_pane_destroy_ready(wp) {
             server_destroy_pane(wp, 1);
         }
     }
@@ -221,7 +221,7 @@ pub unsafe extern "C-unwind" fn cmd_pipe_pane_write_callback(
 
         log_debug!("%%{} pipe empty", (*wp).id);
 
-        if window_pane_destroy_ready(wp) != 0 {
+        if window_pane_destroy_ready(wp) {
             server_destroy_pane(wp, 1);
         }
     }
@@ -241,7 +241,7 @@ pub unsafe extern "C-unwind" fn cmd_pipe_pane_error_callback(
         close((*wp).pipe_fd);
         (*wp).pipe_fd = -1;
 
-        if window_pane_destroy_ready(wp) != 0 {
+        if window_pane_destroy_ready(wp) {
             server_destroy_pane(wp, 1);
         }
     }

@@ -3752,7 +3752,7 @@ pub unsafe fn window_copy_search_rl_regex(
             len += (*gd).sx;
         }
 
-        if window_copy_last_regex(gd, py, first, last, len, ppx, psx, buf, reg, eflags) != 0 {
+        if window_copy_last_regex(gd, py, first, last, len, ppx, psx, buf, reg, eflags) {
             free_(buf);
             return true;
         }
@@ -3818,7 +3818,7 @@ pub unsafe fn window_copy_last_regex(
     buf: *const u8,
     preg: *const libc::regex_t,
     eflags: i32,
-) -> i32 {
+) -> bool {
     unsafe {
         let mut px = 0;
         let mut savepx = 0;
@@ -3859,7 +3859,7 @@ pub unsafe fn window_copy_last_regex(
                     foundy -= 1;
                 }
                 *psx -= *ppx;
-                return 1;
+                return true;
             } else {
                 savesx = foundx - savepx;
                 len -= savesx;
@@ -3871,11 +3871,11 @@ pub unsafe fn window_copy_last_regex(
         if savesx > 0 {
             *ppx = savepx;
             *psx = savesx;
-            1
+            true
         } else {
             *ppx = 0;
             *psx = 0;
-            0
+            false
         }
     }
 }

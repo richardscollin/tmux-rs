@@ -82,18 +82,18 @@ unsafe fn sixel_get_pixel(si: *mut sixel_image, x: u32, y: u32) -> u32 {
     }
 }
 
-unsafe fn sixel_set_pixel(si: *mut sixel_image, x: u32, y: u32, c: u32) -> i32 {
+unsafe fn sixel_set_pixel(si: *mut sixel_image, x: u32, y: u32, c: u32) -> bool {
     unsafe {
         if sixel_parse_expand_lines(si, y + 1) != 0 {
-            return 1;
+            return true;
         }
         let sl = (*si).lines.add(y as usize);
         if sixel_parse_expand_line(si, sl, x + 1) != 0 {
-            return 1;
+            return true;
         }
         *(*sl).data.add(x as usize) = c as u16;
 
-        0
+        false
     }
 }
 

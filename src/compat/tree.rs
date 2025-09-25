@@ -73,7 +73,7 @@ impl<T> Clone for rb_entry<T> {
 
 pub trait GetEntry<T, D = ()> {
     unsafe fn entry_mut(this: *mut Self) -> *mut rb_entry<T>;
-    unsafe fn entry(this: *const Self) -> *const rb_entry<T>;
+    unsafe fn entry_const(this: *const Self) -> *const rb_entry<T>;
     fn cmp(this: &Self, other: &Self) -> std::cmp::Ordering;
 }
 
@@ -89,63 +89,68 @@ pub const fn rb_initializer<T>() -> rb_head<T> {
     }
 }
 
-macro_rules! rb_left {
-    ($elm:expr) => {
-        (*GetEntry::entry_mut($elm)).rbe_left
-    };
-}
 pub unsafe fn rb_left<T, D>(this: *mut T) -> *mut T
 where
     T: GetEntry<T, D>,
 {
     unsafe { (*T::entry_mut(this)).rbe_left }
 }
+
 pub unsafe fn rb_left_const<T, D>(this: *const T) -> *const T
 where
     T: GetEntry<T, D>,
 {
-    unsafe { (*T::entry(this)).rbe_left }
+    unsafe { (*T::entry_const(this)).rbe_left }
 }
 
-#[inline]
-pub unsafe fn is_left_sibling<T, D>(this: *mut T) -> bool
+pub unsafe fn rb_set_left<T, D>(this: *mut T, value: *mut T)
 where
     T: GetEntry<T, D>,
 {
-    unsafe { this == rb_left(rb_parent(this)) }
+    unsafe {
+        (*T::entry_mut(this)).rbe_left = value;
+    }
 }
 
 #[inline]
-pub unsafe fn is_right_sibling<T, D>(this: *mut T) -> bool
+pub unsafe fn is_left_sibling<T, D>(this: *const T) -> bool
 where
     T: GetEntry<T, D>,
 {
-    unsafe { this == rb_right(rb_parent(this)) }
+    unsafe { this == rb_left_const(rb_parent_const(this)) }
 }
 
-macro_rules! rb_right {
-    ($elm:expr) => {
-        (*GetEntry::entry_mut($elm)).rbe_right
-    };
+#[inline]
+pub unsafe fn is_right_sibling<T, D>(this: *const T) -> bool
+where
+    T: GetEntry<T, D>,
+{
+    unsafe { this == rb_right_const(rb_parent_const(this)) }
 }
+
 pub unsafe fn rb_right<T, D>(this: *mut T) -> *mut T
 where
     T: GetEntry<T, D>,
 {
     unsafe { (*T::entry_mut(this)).rbe_right }
 }
+
+pub unsafe fn rb_set_right<T, D>(this: *mut T, value: *mut T)
+where
+    T: GetEntry<T, D>,
+{
+    unsafe {
+        (*T::entry_mut(this)).rbe_right = value;
+    }
+}
+
 pub unsafe fn rb_right_const<T, D>(this: *const T) -> *const T
 where
     T: GetEntry<T, D>,
 {
-    unsafe { (*T::entry(this)).rbe_right }
+    unsafe { (*T::entry_const(this)).rbe_right }
 }
 
-macro_rules! rb_parent {
-    ($elm:expr) => {
-        (*GetEntry::entry_mut($elm)).rbe_parent
-    };
-}
 pub unsafe fn rb_parent<T, D>(this: *mut T) -> *mut T
 where
     T: GetEntry<T, D>,
@@ -153,26 +158,44 @@ where
     unsafe { (*T::entry_mut(this)).rbe_parent }
 }
 
-macro_rules! rb_color {
-    ($elm:expr) => {
-        (*GetEntry::entry_mut($elm)).rbe_color
-    };
+pub unsafe fn rb_set_parent<T, D>(this: *mut T, value: *mut T)
+where
+    T: GetEntry<T, D>,
+{
+    unsafe {
+        (*T::entry_mut(this)).rbe_parent = value;
+    }
 }
-pub unsafe fn rb_color<T, D>(elm: *mut T) -> rb_color
+
+pub unsafe fn rb_parent_const<T, D>(this: *const T) -> *const T
+where
+    T: GetEntry<T, D>,
+{
+    unsafe { (*T::entry_const(this)).rbe_parent }
+}
+
+unsafe fn rb_color<T, D>(elm: *mut T) -> rb_color
 where
     T: GetEntry<T, D>,
 {
     unsafe { (*T::entry_mut(elm)).rbe_color }
 }
 
-macro_rules! rb_root {
-    ($head:expr) => {
-        (*$head).rbh_root
-    };
+unsafe fn rb_set_color<T, D>(elm: *mut T, color: rb_color)
+where
+    T: GetEntry<T, D>,
+{
+    unsafe { (*T::entry_mut(elm)).rbe_color = color }
 }
+
 pub unsafe fn rb_root<T>(head: *mut rb_head<T>) -> *mut T {
     unsafe { (*head).rbh_root }
 }
+
+pub unsafe fn rb_set_root<T>(head: *mut rb_head<T>, value: *mut T) {
+    unsafe { (*head).rbh_root = value }
+}
+
 pub unsafe fn rb_empty<T>(head: *const rb_head<T>) -> bool {
     unsafe { (*head).rbh_root.is_null() }
 }
@@ -205,23 +228,23 @@ where
 {
     unsafe {
         let tmp = rb_right(elm);
-        rb_right!(elm) = rb_left(tmp);
-        if !rb_right!(elm).is_null() {
-            rb_parent!(rb_left(tmp)) = elm;
+        rb_set_right(elm, rb_left(tmp));
+        if !rb_right(elm).is_null() {
+            rb_set_parent(rb_left(tmp), elm);
         }
-        rb_parent!(tmp) = rb_parent(elm);
+        rb_set_parent(tmp, rb_parent(elm));
         if !rb_parent(tmp).is_null() {
             if is_left_sibling(elm) {
-                rb_left!(rb_parent(elm)) = tmp;
+                rb_set_left(rb_parent(elm), tmp);
             } else {
-                rb_right!(rb_parent(elm)) = tmp;
+                rb_set_right(rb_parent(elm), tmp);
             }
         } else {
             (*head).rbh_root = tmp;
         }
 
-        rb_left!(tmp) = elm;
-        rb_parent!(elm) = tmp;
+        rb_set_left(tmp, elm);
+        rb_set_parent(elm, tmp);
     }
 }
 
@@ -231,22 +254,22 @@ where
 {
     unsafe {
         let tmp = rb_left(elm);
-        rb_left!(elm) = rb_right(tmp);
+        rb_set_left(elm, rb_right(tmp));
         if !rb_left(elm).is_null() {
-            rb_parent!(rb_right(tmp)) = elm;
+            rb_set_parent(rb_right(tmp), elm);
         }
-        rb_parent!(tmp) = rb_parent(elm);
+        rb_set_parent(tmp, rb_parent(elm));
         if !rb_parent(tmp).is_null() {
             if is_left_sibling(elm) {
-                rb_left!(rb_parent(elm)) = tmp;
+                rb_set_left(rb_parent(elm), tmp);
             } else {
-                rb_right!(rb_parent(elm)) = tmp;
+                rb_set_right(rb_parent(elm), tmp);
             }
         } else {
             (*head).rbh_root = tmp;
         }
-        rb_right!(tmp) = elm;
-        rb_parent!(elm) = tmp;
+        rb_set_right(tmp, elm);
+        rb_set_parent(elm, tmp);
     }
 }
 
@@ -254,7 +277,7 @@ where
 macro_rules! RB_GENERATE {
     ($head_ty:ty, $ty:ty, $entry_field:ident, $entry_field_discr:ty, $cmp_fn:ident) => {
         impl $crate::compat::tree::GetEntry<$ty, $entry_field_discr> for $ty {
-            unsafe fn entry(this: *const Self) -> *const rb_entry<$ty> {
+            unsafe fn entry_const(this: *const Self) -> *const rb_entry<$ty> {
                 unsafe { &raw const (*this).$entry_field }
             }
             unsafe fn entry_mut(this: *mut Self) -> *mut rb_entry<$ty> {
@@ -324,7 +347,7 @@ where
             if parent == rb_left(gparent) {
                 let mut tmp = rb_right(gparent);
                 if !tmp.is_null() && rb_color(tmp) == rb_color::RB_RED {
-                    rb_color!(tmp) = rb_color::RB_BLACK;
+                    rb_set_color(tmp, rb_color::RB_BLACK);
                     rb_set_blackred(parent, gparent);
                     elm = gparent;
                     continue;
@@ -340,7 +363,7 @@ where
             } else {
                 let mut tmp = rb_left(gparent);
                 if !tmp.is_null() && rb_color(tmp) == rb_color::RB_RED {
-                    rb_color!(tmp) = rb_color::RB_BLACK;
+                    rb_set_color(tmp, rb_color::RB_BLACK);
                     rb_set_blackred(parent, gparent);
                     elm = gparent;
                     continue;
@@ -377,23 +400,23 @@ where
                 if (rb_left(tmp).is_null() || rb_color(rb_left(tmp)) == rb_color::RB_BLACK)
                     && (rb_right(tmp).is_null() || rb_color(rb_right(tmp)) == rb_color::RB_BLACK)
                 {
-                    rb_color!(tmp) = rb_color::RB_RED;
+                    rb_set_color(tmp, rb_color::RB_RED);
                     elm = parent;
                     parent = rb_parent(elm);
                 } else {
                     if rb_right(tmp).is_null() || rb_color(rb_right(tmp)) == rb_color::RB_BLACK {
                         let oleft = rb_left(tmp);
                         if !oleft.is_null() {
-                            rb_color!(oleft) = rb_color::RB_BLACK;
+                            rb_set_color(oleft, rb_color::RB_BLACK);
                         }
-                        rb_color!(tmp) = rb_color::RB_RED;
+                        rb_set_color(tmp, rb_color::RB_RED);
                         rb_rotate_right(head, tmp);
                         tmp = rb_right(parent);
                     }
-                    rb_color!(tmp) = rb_color(parent);
-                    rb_color!(parent) = rb_color::RB_BLACK;
+                    rb_set_color(tmp, rb_color(parent));
+                    rb_set_color(parent, rb_color::RB_BLACK);
                     if !rb_right(tmp).is_null() {
-                        rb_color!(rb_right!(tmp)) = rb_color::RB_BLACK;
+                        rb_set_color(rb_right(tmp), rb_color::RB_BLACK);
                     }
                     rb_rotate_left(head, parent);
                     elm = rb_root(head);
@@ -409,23 +432,23 @@ where
                 if (rb_left(tmp).is_null() || rb_color(rb_left(tmp)) == rb_color::RB_BLACK)
                     && (rb_right(tmp).is_null() || rb_color(rb_right(tmp)) == rb_color::RB_BLACK)
                 {
-                    rb_color!(tmp) = rb_color::RB_RED;
+                    rb_set_color(tmp, rb_color::RB_RED);
                     elm = parent;
                     parent = rb_parent(elm);
                 } else {
                     if rb_left(tmp).is_null() || rb_color(rb_left(tmp)) == rb_color::RB_BLACK {
                         let oright = rb_right(tmp);
                         if !oright.is_null() {
-                            rb_color!(oright) = rb_color::RB_BLACK;
+                            rb_set_color(oright, rb_color::RB_BLACK);
                         }
-                        rb_color!(tmp) = rb_color::RB_RED;
+                        rb_set_color(tmp, rb_color::RB_RED);
                         rb_rotate_left(head, oright);
                         tmp = rb_left(parent);
                     }
-                    rb_color!(tmp) = rb_color(parent);
-                    rb_color!(parent) = rb_color::RB_BLACK;
+                    rb_set_color(tmp, rb_color(parent));
+                    rb_set_color(parent, rb_color::RB_BLACK);
                     if !rb_left(tmp).is_null() {
-                        rb_color!(rb_left(tmp)) = rb_color::RB_BLACK;
+                        rb_set_color(rb_left(tmp), rb_color::RB_BLACK);
                     }
                     rb_rotate_right(head, parent);
                     elm = rb_root(head);
@@ -435,7 +458,7 @@ where
         }
 
         if !elm.is_null() {
-            rb_color!(elm) = rb_color::RB_BLACK;
+            rb_set_color(elm, rb_color::RB_BLACK);
         }
     }
 }
@@ -468,16 +491,16 @@ where
                 parent = rb_parent(elm);
                 color = rb_color(elm);
                 if !child.is_null() {
-                    rb_parent!(child) = parent;
+                    rb_set_parent(child, parent);
                 }
                 if !parent.is_null() {
                     if rb_left(parent) == elm {
-                        rb_left!(parent) = child;
+                        rb_set_left(parent, child);
                     } else {
-                        rb_right!(parent) = child;
+                        rb_set_right(parent, child);
                     }
                 } else {
-                    rb_root!(head) = child;
+                    rb_set_root(head, child);
                 }
                 if rb_parent(elm) == old {
                     parent = elm;
@@ -485,16 +508,16 @@ where
                 *GetEntry::entry_mut(elm) = *GetEntry::entry_mut(old);
                 if !rb_parent(old).is_null() {
                     if is_left_sibling(old) {
-                        rb_left!(rb_parent(old)) = elm;
+                        rb_set_left(rb_parent(old), elm);
                     } else {
-                        rb_right!(rb_parent(old)) = elm;
+                        rb_set_right(rb_parent(old), elm);
                     }
                 } else {
-                    rb_root!(head) = elm;
+                    rb_set_root(head, elm);
                 }
-                rb_parent!(rb_left(old)) = elm;
+                rb_set_parent(rb_left(old), elm);
                 if !rb_right(old).is_null() {
-                    rb_parent!(rb_right(old)) = elm;
+                    rb_set_parent(rb_right(old), elm);
                 }
                 if !parent.is_null() {
                     left = parent;
@@ -510,16 +533,16 @@ where
             parent = rb_parent(elm);
             color = rb_color(elm);
             if !child.is_null() {
-                rb_parent!(child) = parent;
+                rb_set_parent(child, parent);
             }
             if !parent.is_null() {
                 if rb_left(parent) == elm {
-                    rb_left!(parent) = child;
+                    rb_set_left(parent, child);
                 } else {
-                    rb_right!(parent) = child;
+                    rb_set_right(parent, child);
                 }
             } else {
-                rb_root!(head) = child;
+                rb_set_root(head, child);
             }
         }
         // color:
@@ -552,12 +575,12 @@ where
         rb_set(elm, parent);
         if !parent.is_null() {
             if matches!(comp, Ordering::Less) {
-                rb_left!(parent) = elm;
+                rb_set_left(parent, elm);
             } else {
-                rb_right!(parent) = elm;
+                rb_set_right(parent, elm);
             }
         } else {
-            rb_root!(head) = elm;
+            rb_set_root(head, elm);
         }
         rb_insert_color(head, elm);
     }
@@ -734,7 +757,6 @@ where
             }
             elm = rb_parent(elm);
         }
-        
 
         elm
     }
@@ -758,7 +780,6 @@ where
             }
             elm = rb_parent(elm);
         }
-        
 
         elm
     }

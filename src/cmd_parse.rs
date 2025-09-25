@@ -267,30 +267,30 @@ pub unsafe fn cmd_parse_expand_alias<'a>(
     cmd: *mut cmd_parse_command,
     pi: &'a cmd_parse_input<'a>,
     pr: &mut cmd_parse_result,
-) -> i32 {
+) -> bool {
     let __func__ = c!("cmd_parse_expand_alias");
     unsafe {
         if pi
             .flags
             .intersects(cmd_parse_input_flags::CMD_PARSE_NOALIAS)
         {
-            return 0;
+            return false;
         }
         *pr = Err(null_mut());
 
         let first = tailq_first(&raw mut (*cmd).arguments);
         if first.is_null() {
             *pr = Ok(cmd_list_new());
-            return 1;
+            return true;
         }
         let cmd_parse_argument_type::String(name) = (*first).type_ else {
             *pr = Ok(cmd_list_new());
-            return 1;
+            return true;
         };
 
         let alias = cmd_get_alias(name);
         if alias.is_null() {
-            return 0;
+            return false;
         }
         log_debug!(
             "{}: {} alias {} = {}",
@@ -309,14 +309,14 @@ pub unsafe fn cmd_parse_expand_alias<'a>(
             Ok(cmds) => cmds,
             Err(cause) => {
                 *pr = Err(cause);
-                return 1;
+                return true;
             }
         };
 
         let last = tailq_last(cmds);
         if last.is_null() {
             *pr = Ok(cmd_list_new());
-            return 1;
+            return true;
         }
 
         tailq_remove(&raw mut (*cmd).arguments, first);
@@ -331,7 +331,7 @@ pub unsafe fn cmd_parse_expand_alias<'a>(
         (&pi.flags).bitor_assign(cmd_parse_input_flags::CMD_PARSE_NOALIAS);
         cmd_parse_build_commands(cmds, pi, pr);
         (&pi.flags).bitand_assign(!cmd_parse_input_flags::CMD_PARSE_NOALIAS);
-        1
+        true
     }
 }
 
@@ -345,7 +345,7 @@ pub unsafe fn cmd_parse_build_command(
         let mut count: u32 = 0;
         *pr = cmd_parse_result::Err(null_mut());
 
-        if cmd_parse_expand_alias(cmd, pi, pr) != 0 {
+        if cmd_parse_expand_alias(cmd, pi, pr) {
             return;
         }
 

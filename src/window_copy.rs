@@ -2678,7 +2678,7 @@ pub unsafe fn window_copy_cmd_search_backward_incremental(
                 (*data).searchregex = 0;
                 free_((*data).searchstr);
                 (*data).searchstr = xstrdup(arg1).as_ptr();
-                if window_copy_search_up(wme, 0) == 0 {
+                if !window_copy_search_up(wme, 0) {
                     window_copy_clear_marks(wme);
                     return window_copy_cmd_action::WINDOW_COPY_CMD_REDRAW;
                 }
@@ -2688,7 +2688,7 @@ pub unsafe fn window_copy_cmd_search_backward_incremental(
                 (*data).searchregex = 0;
                 free_((*data).searchstr);
                 (*data).searchstr = xstrdup(arg1).as_ptr();
-                if window_copy_search_down(wme, 0) == 0 {
+                if !window_copy_search_down(wme, 0) {
                     window_copy_clear_marks(wme);
                     return window_copy_cmd_action::WINDOW_COPY_CMD_REDRAW;
                 }
@@ -2735,7 +2735,7 @@ pub unsafe fn window_copy_cmd_search_forward_incremental(
                 (*data).searchregex = 0;
                 free_((*data).searchstr);
                 (*data).searchstr = xstrdup(arg1).as_ptr();
-                if window_copy_search_down(wme, 0) == 0 {
+                if !window_copy_search_down(wme, 0) {
                     window_copy_clear_marks(wme);
                     return window_copy_cmd_action::WINDOW_COPY_CMD_REDRAW;
                 }
@@ -2745,7 +2745,7 @@ pub unsafe fn window_copy_cmd_search_forward_incremental(
                 (*data).searchregex = 0;
                 free_((*data).searchstr);
                 (*data).searchstr = xstrdup(arg1).as_ptr();
-                if window_copy_search_up(wme, 0) == 0 {
+                if !window_copy_search_up(wme, 0) {
                     window_copy_clear_marks(wme);
                     return window_copy_cmd_action::WINDOW_COPY_CMD_REDRAW;
                 }
@@ -3545,7 +3545,7 @@ pub unsafe fn window_copy_search_lr(
     first: u32,
     last: u32,
     cis: i32,
-) -> i32 {
+) -> bool {
     unsafe {
         let mut gl: *mut grid_line;
 
@@ -3576,10 +3576,10 @@ pub unsafe fn window_copy_search_lr(
             }
             if bx == (*sgd).sx {
                 *ppx = ax;
-                return 1;
+                return true;
             }
         }
-        0
+        false
     }
 }
 
@@ -3591,7 +3591,7 @@ pub unsafe fn window_copy_search_rl(
     first: u32,
     last: u32,
     cis: i32,
-) -> i32 {
+) -> bool {
     unsafe {
         let mut gl: *mut grid_line;
         let endline = (*gd).hsize + (*gd).sy - 1;
@@ -3623,11 +3623,11 @@ pub unsafe fn window_copy_search_rl(
             }
             if bx == (*sgd).sx {
                 *ppx = ax - 1;
-                return 1;
+                return true;
             }
             ax -= 1;
         }
-        0
+        false
     }
 }
 
@@ -3639,7 +3639,7 @@ pub unsafe fn window_copy_search_lr_regex(
     first: u32,
     last: u32,
     reg: *mut libc::regex_t,
-) -> i32 {
+) -> bool {
     unsafe {
         let mut eflags = 0;
         let mut size: u32 = 1;
@@ -3652,7 +3652,7 @@ pub unsafe fn window_copy_search_lr_regex(
         // This can happen during search if the last match was the last
         // character on a line.
         if first >= last {
-            return 0;
+            return false;
         }
 
         // Set flags for regex search.
@@ -3706,14 +3706,14 @@ pub unsafe fn window_copy_search_lr_regex(
                 }
                 *psx -= *ppx;
                 free_(buf);
-                return 1;
+                return true;
             }
         }
 
         free_(buf);
         *ppx = 0;
         *psx = 0;
-        0
+        false
     }
 }
 
@@ -3725,13 +3725,10 @@ pub unsafe fn window_copy_search_rl_regex(
     first: u32,
     last: u32,
     reg: *mut libc::regex_t,
-) -> i32 {
+) -> bool {
     unsafe {
         let mut eflags = 0;
         let mut size: u32 = 1;
-        // u_int endline, len, pywrap, size = 1;
-        // char *buf;
-        // struct grid_line *gl;
 
         // Set flags for regex search.
         if first != 0 {
@@ -3757,13 +3754,13 @@ pub unsafe fn window_copy_search_rl_regex(
 
         if window_copy_last_regex(gd, py, first, last, len, ppx, psx, buf, reg, eflags) != 0 {
             free_(buf);
-            return 1;
+            return true;
         }
 
         free_(buf);
         *ppx = 0;
         *psx = 0;
-        0
+        false
     }
 }
 
@@ -4127,7 +4124,7 @@ pub unsafe fn window_copy_search_back_overlap(
                 0,
                 (*gd).sx,
                 preg,
-            ) != 0;
+            );
             if found {
                 endx = px + sx;
                 endy = py - 1;
@@ -4159,12 +4156,12 @@ pub unsafe fn window_copy_search_jump(
     wrap: i32,
     direction: i32,
     regex: i32,
-) -> i32 {
+) -> bool {
     unsafe {
         let mut px = 0;
         let mut sx = 0;
         let mut ssize: u32 = 1;
-        let mut found = 0;
+        let mut found = false;
         let mut cflags = libc::REG_EXTENDED;
         let mut reg: libc::regex_t = zeroed();
 
@@ -4177,7 +4174,7 @@ pub unsafe fn window_copy_search_jump(
             }
             if libc::regcomp(&raw mut reg, sbuf, cflags) != 0 {
                 free_(sbuf);
-                return 0;
+                return false;
             }
             free_(sbuf);
         }
@@ -4200,7 +4197,7 @@ pub unsafe fn window_copy_search_jump(
                 } else {
                     found = window_copy_search_lr(gd, sgd, &raw mut px, i, fx, (*gd).sx, cis);
                 }
-                if found != 0 {
+                if found {
                     break;
                 }
                 fx = 0;
@@ -4218,7 +4215,7 @@ pub unsafe fn window_copy_search_jump(
                         fx + 1,
                         &raw mut reg,
                     );
-                    if found != 0 {
+                    if found {
                         window_copy_search_back_overlap(
                             gd,
                             &raw mut reg,
@@ -4231,7 +4228,7 @@ pub unsafe fn window_copy_search_jump(
                 } else {
                     found = window_copy_search_rl(gd, sgd, &raw mut px, i - 1, 0, fx + 1, cis);
                 }
-                if found != 0 {
+                if found {
                     i -= 1;
                     break;
                 }
@@ -4243,9 +4240,9 @@ pub unsafe fn window_copy_search_jump(
             libc::regfree(&raw mut reg);
         }
 
-        if found != 0 {
+        if found {
             window_copy_scroll_to(wme, px, i, true);
-            return 1;
+            return true;
         }
         if wrap != 0 {
             return window_copy_search_jump(
@@ -4265,7 +4262,7 @@ pub unsafe fn window_copy_search_jump(
                 regex,
             );
         }
-        0
+        false
     }
 }
 
@@ -4306,7 +4303,7 @@ pub unsafe fn window_copy_search(
     wme: *mut window_mode_entry,
     direction: i32,
     mut regex: i32,
-) -> i32 {
+) -> bool {
     unsafe {
         let wp: *mut window_pane = (*wme).wp;
         let data: *mut window_copy_mode_data = (*wme).data.cast();
@@ -4324,7 +4321,7 @@ pub unsafe fn window_copy_search(
         (*data).searchdirection = direction;
 
         if (*data).timeout != 0 {
-            return 0;
+            return false;
         }
 
         if (*data).searchall != 0 || (*wp).searchstr.is_null() || (*wp).searchregex != regex {
@@ -4390,7 +4387,7 @@ pub unsafe fn window_copy_search(
         let found = window_copy_search_jump(
             wme, gd, ss.grid, fx, fy, endline, cis, wrapflag, direction, regex,
         );
-        if found != 0 {
+        if found {
             window_copy_search_marks(wme, &raw mut ss, regex, visible_only);
             fx = (*data).cx;
             fy = screen_hsize((*data).backing) - (*data).oy + (*data).cy;
@@ -4490,14 +4487,14 @@ pub unsafe fn window_copy_search_marks(
     mut ssp: *mut screen,
     regex: i32,
     visible_only: i32,
-) -> i32 {
+) -> bool {
     unsafe {
         let data: *mut window_copy_mode_data = (*wme).data.cast();
         let s: *mut screen = (*data).backing;
         let mut ss: screen = zeroed();
         let mut ctx: screen_write_ctx = zeroed();
         let gd: *mut grid = (*s).grid;
-        let mut found: i32;
+        let mut found: bool;
         let mut stopped: i32 = 0;
 
         let mut cflags = libc::REG_EXTENDED;
@@ -4547,7 +4544,7 @@ pub unsafe fn window_copy_search_marks(
                 }
                 if libc::regcomp(&raw mut reg, sbuf, cflags) != 0 {
                     free_(sbuf);
-                    return 0;
+                    return false;
                 }
                 free_(sbuf);
             }
@@ -4581,7 +4578,7 @@ pub unsafe fn window_copy_search_marks(
                                 (*gd).sx,
                                 &raw mut reg,
                             );
-                            if found == 0 {
+                            if !found {
                                 break;
                             }
                         } else {
@@ -4594,7 +4591,7 @@ pub unsafe fn window_copy_search_marks(
                                 (*gd).sx,
                                 cis,
                             );
-                            if found == 0 {
+                            if !found {
                                 break;
                             }
                         }
@@ -4668,7 +4665,7 @@ pub unsafe fn window_copy_search_marks(
         if regex != 0 {
             libc::regfree(&raw mut reg);
         }
-        1
+        true
     }
 }
 
@@ -4681,11 +4678,11 @@ pub unsafe fn window_copy_clear_marks(wme: *mut window_mode_entry) {
     }
 }
 
-pub unsafe fn window_copy_search_up(wme: *mut window_mode_entry, regex: i32) -> i32 {
+pub unsafe fn window_copy_search_up(wme: *mut window_mode_entry, regex: i32) -> bool {
     unsafe { window_copy_search(wme, 0, regex) }
 }
 
-pub unsafe fn window_copy_search_down(wme: *mut window_mode_entry, regex: i32) -> i32 {
+pub unsafe fn window_copy_search_down(wme: *mut window_mode_entry, regex: i32) -> bool {
     unsafe { window_copy_search(wme, 1, regex) }
 }
 

@@ -1536,7 +1536,7 @@ unsafe fn window_tree_key(
                 b'H' => {
                     mode_tree_expand((*data).data, (*fsp).s as u64);
                     mode_tree_expand((*data).data, (*fsp).wl as u64);
-                    if mode_tree_set_current((*data).data, (*wme.as_ptr()).wp as u64) == 0 {
+                    if !mode_tree_set_current((*data).data, (*wme.as_ptr()).wp as u64) {
                         mode_tree_set_current((*data).data, (*fsp).wl as u64);
                     }
                 }

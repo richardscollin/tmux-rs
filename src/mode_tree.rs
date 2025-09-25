@@ -334,7 +334,7 @@ pub unsafe fn mode_tree_expand(mtd: *mut mode_tree_data, tag: u64) {
     }
 }
 
-pub unsafe fn mode_tree_set_current(mtd: *mut mode_tree_data, tag: u64) -> i32 {
+pub unsafe fn mode_tree_set_current(mtd: *mut mode_tree_data, tag: u64) -> bool {
     unsafe {
         if let Some(found) = mode_tree_get_tag(&*mtd, tag) {
             (*mtd).current = found as u32;
@@ -344,11 +344,11 @@ pub unsafe fn mode_tree_set_current(mtd: *mut mode_tree_data, tag: u64) -> i32 {
             } else {
                 (*mtd).offset = 0;
             }
-            return 1;
+            return true;
         }
         (*mtd).current = 0;
         (*mtd).offset = 0;
-        0
+        false
     }
 }
 

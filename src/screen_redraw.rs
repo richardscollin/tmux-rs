@@ -80,24 +80,24 @@ pub unsafe fn screen_redraw_border_set(
 }
 
 /// Return if window has only two panes.
-pub unsafe fn screen_redraw_two_panes(w: *mut window, direction: i32) -> i32 {
+pub unsafe fn screen_redraw_two_panes(w: *mut window, direction: i32) -> bool {
     unsafe {
         let wp: *mut window_pane =
             tailq_next::<_, _, discr_entry>(tailq_first(&raw mut (*w).panes));
         if wp.is_null() {
-            return 0; /* one pane */
+            return false; /* one pane */
         }
         if !tailq_next::<_, _, discr_entry>(wp).is_null() {
-            return 0; /* more than two panes */
+            return false; /* more than two panes */
         }
         if direction == 0 && (*wp).xoff == 0 {
-            return 0;
+            return false;
         }
         if direction == 1 && (*wp).yoff == 0 {
-            return 0;
+            return false;
         }
     }
-    1
+    true
 }
 
 /// Check if cell is on the border of a pane.
@@ -132,7 +132,7 @@ pub unsafe fn screen_redraw_pane_border(
 
         // Left/right borders
         if pane_status == pane_status::PANE_STATUS_OFF {
-            if screen_redraw_two_panes((*wp).window, 0) != 0 && split != 0 {
+            if screen_redraw_two_panes((*wp).window, 0) && split != 0 {
                 if (*wp).xoff == 0 && px == (*wp).sx && py <= (*wp).sy / 2 {
                     return screen_redraw_border_type::SCREEN_REDRAW_BORDER_RIGHT;
                 }
@@ -158,7 +158,7 @@ pub unsafe fn screen_redraw_pane_border(
 
         // Top/bottom borders
         if pane_status == pane_status::PANE_STATUS_OFF {
-            if screen_redraw_two_panes((*wp).window, 1) != 0 && split != 0 {
+            if screen_redraw_two_panes((*wp).window, 1) && split != 0 {
                 if (*wp).yoff == 0 && py == (*wp).sy && px <= (*wp).sx / 2 {
                     return screen_redraw_border_type::SCREEN_REDRAW_BORDER_BOTTOM;
                 }

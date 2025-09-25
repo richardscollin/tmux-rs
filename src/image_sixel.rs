@@ -38,34 +38,34 @@ pub struct sixel_image {
     lines: *mut sixel_line,
 }
 
-unsafe fn sixel_parse_expand_lines(si: *mut sixel_image, y: u32) -> i32 {
+unsafe fn sixel_parse_expand_lines(si: *mut sixel_image, y: u32) -> bool {
     unsafe {
         if y <= (*si).y {
-            return 0;
+            return false;
         }
         if y > SIXEL_HEIGHT_LIMIT {
-            return 1;
+            return true;
         }
         (*si).lines = xrecallocarray__((*si).lines, (*si).y as usize, y as usize).as_ptr();
         (*si).y = y;
-        0
+        false
     }
 }
 
-unsafe fn sixel_parse_expand_line(si: *mut sixel_image, sl: *mut sixel_line, x: u32) -> i32 {
+unsafe fn sixel_parse_expand_line(si: *mut sixel_image, sl: *mut sixel_line, x: u32) -> bool {
     unsafe {
         if x <= (*sl).x {
-            return 0;
+            return false;
         }
         if x > SIXEL_WIDTH_LIMIT {
-            return 1;
+            return true;
         }
         if x > (*si).x {
             (*si).x = x;
         }
         (*sl).data = xrecallocarray__((*sl).data, (*sl).x as usize, (*si).x as usize).as_ptr();
         (*sl).x = (*si).x;
-        0
+        false
     }
 }
 
@@ -84,11 +84,11 @@ unsafe fn sixel_get_pixel(si: *mut sixel_image, x: u32, y: u32) -> u32 {
 
 unsafe fn sixel_set_pixel(si: *mut sixel_image, x: u32, y: u32, c: u32) -> bool {
     unsafe {
-        if sixel_parse_expand_lines(si, y + 1) != 0 {
+        if sixel_parse_expand_lines(si, y + 1) {
             return true;
         }
         let sl = (*si).lines.add(y as usize);
-        if sixel_parse_expand_line(si, sl, x + 1) != 0 {
+        if sixel_parse_expand_line(si, sl, x + 1) {
             return true;
         }
         *(*sl).data.add(x as usize) = c as u16;
@@ -97,23 +97,23 @@ unsafe fn sixel_set_pixel(si: *mut sixel_image, x: u32, y: u32, c: u32) -> bool 
     }
 }
 
-unsafe fn sixel_parse_write(si: *mut sixel_image, ch: u32) -> i32 {
+unsafe fn sixel_parse_write(si: *mut sixel_image, ch: u32) -> bool {
     unsafe {
-        if sixel_parse_expand_lines(si, (*si).dy + 6) != 0 {
-            return 1;
+        if sixel_parse_expand_lines(si, (*si).dy + 6) {
+            return true;
         }
         let mut sl = (*si).lines.add((*si).dy as usize);
 
         for i in 0..6 {
-            if sixel_parse_expand_line(si, sl, (*si).dx + 1) != 0 {
-                return 1;
+            if sixel_parse_expand_line(si, sl, (*si).dx + 1) {
+                return true;
             }
             if ch & (1 << i) != 0 {
                 *(*sl).data.add((*si).dx as usize) = (*si).dc as u16;
             }
             sl = sl.add(1);
         }
-        0
+        false
     }
 }
 
@@ -257,7 +257,7 @@ unsafe fn sixel_parse_repeat(si: *mut sixel_image, cp: *const u8, end: *const u8
         let ch = (*last) - 0x3f;
         last = last.add(1);
         for _ in 0..n {
-            if sixel_parse_write(si, ch as u32) != 0 {
+            if sixel_parse_write(si, ch as u32) {
                 log_debug!("sixel_parse_repeat: width limit reached");
                 return null_mut();
             }
@@ -322,7 +322,7 @@ pub unsafe fn sixel_parse(
                             if !(0x3f..=0x7e).contains(&ch) {
                                 break 'bad;
                             }
-                            if sixel_parse_write(si, (ch - 0x3f) as u32) != 0 {
+                            if sixel_parse_write(si, (ch - 0x3f) as u32) {
                                 // log_debug("%s: width limit reached", __func__);
                                 break 'bad;
                             }

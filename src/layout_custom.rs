@@ -121,7 +121,7 @@ pub unsafe fn layout_append(lc: *mut layout_cell, buf: *mut u8, len: usize) -> i
 }
 
 /// Check layout sizes fit.
-pub unsafe fn layout_check(lc: *mut layout_cell) -> i32 {
+pub unsafe fn layout_check(lc: *mut layout_cell) -> bool {
     unsafe {
         let mut n = 0u32;
 
@@ -130,34 +130,34 @@ pub unsafe fn layout_check(lc: *mut layout_cell) -> i32 {
             layout_type::LAYOUT_LEFTRIGHT => {
                 for lcchild in tailq_foreach(&raw mut (*lc).cells).map(NonNull::as_ptr) {
                     if (*lcchild).sy != (*lc).sy {
-                        return 0;
+                        return false;
                     }
-                    if layout_check(lcchild) == 0 {
-                        return 0;
+                    if !layout_check(lcchild) {
+                        return false;
                     }
                     n += (*lcchild).sx + 1;
                 }
                 if n - 1 != (*lc).sx {
-                    return 0;
+                    return false;
                 }
             }
             layout_type::LAYOUT_TOPBOTTOM => {
                 for lcchild in tailq_foreach(&raw mut (*lc).cells).map(NonNull::as_ptr) {
                     if (*lcchild).sx != (*lc).sx {
-                        return 0;
+                        return false;
                     }
-                    if layout_check(lcchild) == 0 {
-                        return 0;
+                    if !layout_check(lcchild) {
+                        return false;
                     }
                     n += (*lcchild).sy + 1;
                 }
                 if n - 1 != (*lc).sy {
-                    return 0;
+                    return false;
                 }
             }
         }
     }
-    1
+    true
 }
 
 pub unsafe fn layout_parse(w: *mut window, mut layout: *const u8, cause: *mut *mut u8) -> i32 {
@@ -236,7 +236,7 @@ pub unsafe fn layout_parse(w: *mut window, mut layout: *const u8, cause: *mut *m
             }
 
             // Check the new layout.
-            if layout_check(lc) == 0 {
+            if !layout_check(lc) {
                 *cause = xstrdup_(c"size mismatch after applying layout").as_ptr();
                 break 'fail;
             }

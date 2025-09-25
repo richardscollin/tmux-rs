@@ -442,7 +442,7 @@ pub unsafe fn window_buffer_do_delete(
         let item: NonNull<window_buffer_itemdata> = itemdata.cast();
 
         if item == mode_tree_get_current((*data.as_ptr()).data).cast()
-            && mode_tree_down((*data.as_ptr()).data, 0) == 0
+            && !mode_tree_down((*data.as_ptr()).data, 0)
         {
             // If we were unable to select the item further down we are at
             // the end of the list. Move one element up instead, to make

@@ -901,14 +901,14 @@ pub unsafe fn window_copy_key_table(wme: *mut window_mode_entry) -> *const u8 {
     }
 }
 
-pub unsafe fn window_copy_expand_search_string(cs: *mut window_copy_cmd_state) -> i32 {
+pub unsafe fn window_copy_expand_search_string(cs: *mut window_copy_cmd_state) -> bool {
     unsafe {
         let wme: *mut window_mode_entry = (*cs).wme;
         let data: *mut window_copy_mode_data = (*wme).data.cast();
         let ss = args_string((*cs).args, 1);
 
         if ss.is_null() || *ss == b'\0' {
-            return 0;
+            return false;
         }
 
         if args_has((*cs).args, 'F') {
@@ -922,7 +922,7 @@ pub unsafe fn window_copy_expand_search_string(cs: *mut window_copy_cmd_state) -
             );
             if *expanded == b'\0' {
                 free_(expanded);
-                return 0;
+                return false;
             }
             free_((*data).searchstr);
             (*data).searchstr = expanded;
@@ -930,7 +930,7 @@ pub unsafe fn window_copy_expand_search_string(cs: *mut window_copy_cmd_state) -
             free_((*data).searchstr);
             (*data).searchstr = xstrdup(ss).as_ptr();
         }
-        1
+        true
     }
 }
 
@@ -2550,7 +2550,7 @@ pub unsafe fn window_copy_cmd_search_backward(
         let data: *mut window_copy_mode_data = (*wme).data.cast();
         let mut np = (*wme).prefix;
 
-        if window_copy_expand_search_string(cs) == 0 {
+        if !window_copy_expand_search_string(cs) {
             return window_copy_cmd_action::WINDOW_COPY_CMD_NOTHING;
         }
 
@@ -2575,7 +2575,7 @@ pub unsafe fn window_copy_cmd_search_backward_text(
         let data: *mut window_copy_mode_data = (*wme).data.cast();
         let mut np = (*wme).prefix;
 
-        if window_copy_expand_search_string(cs) == 0 {
+        if !window_copy_expand_search_string(cs) {
             return window_copy_cmd_action::WINDOW_COPY_CMD_NOTHING;
         }
 
@@ -2600,7 +2600,7 @@ pub unsafe fn window_copy_cmd_search_forward(
         let data: *mut window_copy_mode_data = (*wme).data.cast();
         let mut np = (*wme).prefix;
 
-        if window_copy_expand_search_string(cs) == 0 {
+        if !window_copy_expand_search_string(cs) {
             return window_copy_cmd_action::WINDOW_COPY_CMD_NOTHING;
         }
 
@@ -2625,7 +2625,7 @@ pub unsafe fn window_copy_cmd_search_forward_text(
         let data: *mut window_copy_mode_data = (*wme).data.cast();
         let mut np = (*wme).prefix;
 
-        if window_copy_expand_search_string(cs) == 0 {
+        if !window_copy_expand_search_string(cs) {
             return window_copy_cmd_action::WINDOW_COPY_CMD_NOTHING;
         }
 

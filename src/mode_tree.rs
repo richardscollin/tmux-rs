@@ -267,14 +267,14 @@ pub unsafe fn mode_tree_up(mtd: *mut mode_tree_data, wrap: i32) {
     }
 }
 
-pub unsafe fn mode_tree_down(mtd: *mut mode_tree_data, wrap: i32) -> i32 {
+pub unsafe fn mode_tree_down(mtd: *mut mode_tree_data, wrap: i32) -> bool {
     unsafe {
         if (*mtd).current == (*mtd).line_list.len() as u32 - 1 {
             if wrap != 0 {
                 (*mtd).current = 0;
                 (*mtd).offset = 0;
             } else {
-                return 0;
+                return false;
             }
         } else {
             (*mtd).current += 1;
@@ -283,7 +283,7 @@ pub unsafe fn mode_tree_down(mtd: *mut mode_tree_data, wrap: i32) -> i32 {
             }
         }
 
-        1
+        true
     }
 }
 

@@ -89,21 +89,21 @@ pub const fn rb_initializer<T>() -> rb_head<T> {
     }
 }
 
-pub unsafe fn rb_left<T, D>(this: *mut T) -> *mut T
+unsafe fn rb_left<T, D>(this: *mut T) -> *mut T
 where
     T: GetEntry<T, D>,
 {
     unsafe { (*T::entry_mut(this)).rbe_left }
 }
 
-pub unsafe fn rb_left_const<T, D>(this: *const T) -> *const T
+unsafe fn rb_left_const<T, D>(this: *const T) -> *const T
 where
     T: GetEntry<T, D>,
 {
     unsafe { (*T::entry_const(this)).rbe_left }
 }
 
-pub unsafe fn rb_set_left<T, D>(this: *mut T, value: *mut T)
+unsafe fn rb_set_left<T, D>(this: *mut T, value: *mut T)
 where
     T: GetEntry<T, D>,
 {
@@ -113,7 +113,7 @@ where
 }
 
 #[inline]
-pub unsafe fn is_left_sibling<T, D>(this: *const T) -> bool
+unsafe fn is_left_sibling<T, D>(this: *const T) -> bool
 where
     T: GetEntry<T, D>,
 {
@@ -121,21 +121,21 @@ where
 }
 
 #[inline]
-pub unsafe fn is_right_sibling<T, D>(this: *const T) -> bool
+unsafe fn is_right_sibling<T, D>(this: *const T) -> bool
 where
     T: GetEntry<T, D>,
 {
     unsafe { this == rb_right_const(rb_parent_const(this)) }
 }
 
-pub unsafe fn rb_right<T, D>(this: *mut T) -> *mut T
+unsafe fn rb_right<T, D>(this: *mut T) -> *mut T
 where
     T: GetEntry<T, D>,
 {
     unsafe { (*T::entry_mut(this)).rbe_right }
 }
 
-pub unsafe fn rb_set_right<T, D>(this: *mut T, value: *mut T)
+unsafe fn rb_set_right<T, D>(this: *mut T, value: *mut T)
 where
     T: GetEntry<T, D>,
 {
@@ -144,21 +144,21 @@ where
     }
 }
 
-pub unsafe fn rb_right_const<T, D>(this: *const T) -> *const T
+unsafe fn rb_right_const<T, D>(this: *const T) -> *const T
 where
     T: GetEntry<T, D>,
 {
     unsafe { (*T::entry_const(this)).rbe_right }
 }
 
-pub unsafe fn rb_parent<T, D>(this: *mut T) -> *mut T
+unsafe fn rb_parent<T, D>(this: *mut T) -> *mut T
 where
     T: GetEntry<T, D>,
 {
     unsafe { (*T::entry_mut(this)).rbe_parent }
 }
 
-pub unsafe fn rb_set_parent<T, D>(this: *mut T, value: *mut T)
+unsafe fn rb_set_parent<T, D>(this: *mut T, value: *mut T)
 where
     T: GetEntry<T, D>,
 {
@@ -167,7 +167,7 @@ where
     }
 }
 
-pub unsafe fn rb_parent_const<T, D>(this: *const T) -> *const T
+unsafe fn rb_parent_const<T, D>(this: *const T) -> *const T
 where
     T: GetEntry<T, D>,
 {
@@ -192,14 +192,14 @@ pub unsafe fn rb_root<T>(head: *mut rb_head<T>) -> *mut T {
     unsafe { (*head).rbh_root }
 }
 
-pub unsafe fn rb_set_root<T>(head: *mut rb_head<T>, value: *mut T) {
+unsafe fn rb_set_root<T>(head: *mut rb_head<T>, value: *mut T) {
     unsafe { (*head).rbh_root = value }
 }
 
 pub unsafe fn rb_empty<T>(head: *const rb_head<T>) -> bool {
     unsafe { (*head).rbh_root.is_null() }
 }
-pub unsafe fn rb_set<T, D>(elm: *mut T, parent: *mut T)
+unsafe fn rb_set<T, D>(elm: *mut T, parent: *mut T)
 where
     T: GetEntry<T, D>,
 {
@@ -212,7 +212,7 @@ where
     }
 }
 
-pub unsafe fn rb_set_blackred<T, D>(black: *mut T, red: *mut T)
+unsafe fn rb_set_blackred<T, D>(black: *mut T, red: *mut T)
 where
     T: GetEntry<T, D>,
 {
@@ -222,7 +222,7 @@ where
     }
 }
 
-pub unsafe fn rb_rotate_left<T, D>(head: *mut rb_head<T>, elm: *mut T)
+unsafe fn rb_rotate_left<T, D>(head: *mut rb_head<T>, elm: *mut T)
 where
     T: GetEntry<T, D>,
 {
@@ -248,7 +248,7 @@ where
     }
 }
 
-pub unsafe fn rb_rotate_right<T, D>(head: *mut rb_head<T>, elm: *mut T)
+unsafe fn rb_rotate_right<T, D>(head: *mut rb_head<T>, elm: *mut T)
 where
     T: GetEntry<T, D>,
 {
@@ -291,7 +291,7 @@ macro_rules! RB_GENERATE {
 }
 pub(crate) use RB_GENERATE;
 
-pub unsafe fn rb_minmax_const<T, D>(head: *const rb_head<T>, val: i32) -> *const T
+unsafe fn rb_minmax_const<T, D>(head: *const rb_head<T>, val: i32) -> *const T
 where
     T: GetEntry<T, D>,
 {
@@ -312,7 +312,7 @@ where
     }
 }
 
-pub unsafe fn rb_minmax<T, D>(head: *mut rb_head<T>, val: i32) -> *mut T
+unsafe fn rb_minmax<T, D>(head: *mut rb_head<T>, val: i32) -> *mut T
 where
     T: GetEntry<T, D>,
 {
@@ -382,7 +382,7 @@ where
     }
 }
 
-pub unsafe fn rb_remove_color<T, D>(head: *mut rb_head<T>, mut parent: *mut T, mut elm: *mut T)
+unsafe fn rb_remove_color<T, D>(head: *mut rb_head<T>, mut parent: *mut T, mut elm: *mut T)
 where
     T: GetEntry<T, D>,
 {

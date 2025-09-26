@@ -161,7 +161,7 @@ unsafe fn window_customize_get_key(
     bdp: *mut *mut key_binding,
 ) -> i32 {
     unsafe {
-        let Some(kt) = NonNull::new(key_bindings_get_table((*item).table, 0)) else {
+        let Some(kt) = NonNull::new(key_bindings_get_table((*item).table, false)) else {
             return 0;
         };
 

@@ -50,7 +50,7 @@ unsafe fn cmd_unbind_key_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retv
                     tablename = c!("prefix");
                 }
             }
-            if key_bindings_get_table(tablename, 0).is_null() {
+            if key_bindings_get_table(tablename, false).is_null() {
                 if !quiet {
                     cmdq_error!(item, "table {} doesn't exist", _s(tablename));
                 }
@@ -78,7 +78,7 @@ unsafe fn cmd_unbind_key_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retv
 
         if args_has(args, 'T') {
             tablename = args_get(args, b'T');
-            if key_bindings_get_table(tablename, 0).is_null() {
+            if key_bindings_get_table(tablename, false).is_null() {
                 if !quiet {
                     cmdq_error!(item, "table {} doesn't exist", _s(tablename));
                 }

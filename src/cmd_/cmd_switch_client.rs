@@ -61,7 +61,7 @@ unsafe fn cmd_switch_client_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
 
         let tablename = args_get_(args, 'T');
         if !tablename.is_null() {
-            let table = key_bindings_get_table(tablename, 0);
+            let table = key_bindings_get_table(tablename, false);
             if table.is_null() {
                 cmdq_error!(item, "table {} doesn't exist", _s(tablename));
                 return cmd_retval::CMD_RETURN_ERROR;

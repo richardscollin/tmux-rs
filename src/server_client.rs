@@ -202,7 +202,7 @@ pub unsafe fn server_client_set_key_table(c: *mut client, mut name: *const u8) {
         }
 
         key_bindings_unref_table((*c).keytable);
-        (*c).keytable = key_bindings_get_table(name, 1);
+        (*c).keytable = key_bindings_get_table(name, true);
         (*(*c).keytable).references += 1;
         if libc::gettimeofday(&raw mut (*(*c).keytable).activity_time, null_mut()) != 0 {
             fatal("gettimeofday failed");
@@ -272,7 +272,7 @@ pub unsafe fn server_client_create(fd: i32) -> *mut client {
         status_init(c);
         (*c).flags |= client_flag::FOCUSED;
 
-        (*c).keytable = key_bindings_get_table(c!("root"), 1);
+        (*c).keytable = key_bindings_get_table(c!("root"), true);
         (*(*c).keytable).references += 1;
 
         evtimer_set(
@@ -1903,7 +1903,7 @@ pub unsafe fn server_client_key_callback(item: *mut cmdq_item, data: *mut c_void
                     })
                     && (*(*wme).mode).key_table.is_some()
                 {
-                    key_bindings_get_table((*(*wme).mode).key_table.unwrap()(wme), 1)
+                    key_bindings_get_table((*(*wme).mode).key_table.unwrap()(wme), true)
                 } else {
                     (*c).keytable
                 };

@@ -45,7 +45,7 @@ unsafe fn cmd_list_keys_get_width(tablename: *const u8, only: key_code) -> u32 {
     unsafe {
         let mut keywidth = 0u32;
 
-        let table = key_bindings_get_table(tablename, 0);
+        let table = key_bindings_get_table(tablename, false);
         if table.is_null() {
             return 0;
         }
@@ -82,7 +82,7 @@ unsafe fn cmd_list_keys_print_notes(
         let tc = cmdq_get_target_client(item);
         let mut found = 0;
 
-        let table = key_bindings_get_table(tablename, 0);
+        let table = key_bindings_get_table(tablename, false);
         if table.is_null() {
             return 0;
         }
@@ -165,7 +165,7 @@ unsafe fn cmd_list_keys_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retva
             }
 
             let tablename = args_get(args, b'T');
-            if !tablename.is_null() && key_bindings_get_table(tablename, 0).is_null() {
+            if !tablename.is_null() && key_bindings_get_table(tablename, false).is_null() {
                 cmdq_error!(item, "table {} doesn't exist", _s(tablename));
                 return cmd_retval::CMD_RETURN_ERROR;
             }

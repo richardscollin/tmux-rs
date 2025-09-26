@@ -101,15 +101,14 @@ pub unsafe fn key_bindings_free(bd: *mut key_binding) {
     }
 }
 
-pub unsafe fn key_bindings_get_table(name: *const u8, create: i32) -> *mut key_table {
+pub unsafe fn key_bindings_get_table(name: *const u8, create: bool) -> *mut key_table {
     unsafe {
         let mut table_find = MaybeUninit::<key_table>::uninit();
         let table_find = table_find.as_mut_ptr();
-        // struct key_table	table_find, *table;
 
         (*table_find).name = name.cast_mut();
         let table = rb_find(&raw mut KEY_TABLES, table_find);
-        if !table.is_null() || create == 0 {
+        if !table.is_null() || !create {
             return table;
         }
 
@@ -190,7 +189,7 @@ pub unsafe fn key_bindings_add(
     cmdlist: *mut cmd_list,
 ) {
     unsafe {
-        let table = key_bindings_get_table(name, 1);
+        let table = key_bindings_get_table(name, true);
 
         let mut bd = key_bindings_get(NonNull::new(table).unwrap(), key & !KEYC_MASK_FLAGS);
         if cmdlist.is_null() {
@@ -235,7 +234,7 @@ pub unsafe fn key_bindings_add(
 
 pub unsafe fn key_bindings_remove(name: *const u8, key: key_code) {
     unsafe {
-        let Some(table) = NonNull::new(key_bindings_get_table(name, 0)) else {
+        let Some(table) = NonNull::new(key_bindings_get_table(name, false)) else {
             return;
         };
 
@@ -265,7 +264,7 @@ pub unsafe fn key_bindings_remove(name: *const u8, key: key_code) {
 
 pub unsafe fn key_bindings_reset(name: *const u8, key: key_code) {
     unsafe {
-        let Some(table) = NonNull::new(key_bindings_get_table(name, 0)) else {
+        let Some(table) = NonNull::new(key_bindings_get_table(name, false)) else {
             return;
         };
 
@@ -296,7 +295,7 @@ pub unsafe fn key_bindings_reset(name: *const u8, key: key_code) {
 
 pub unsafe fn key_bindings_remove_table(name: *const u8) {
     unsafe {
-        let table = key_bindings_get_table(name, 0);
+        let table = key_bindings_get_table(name, false);
         if !table.is_null() {
             rb_remove(&raw mut KEY_TABLES, table);
             key_bindings_unref_table(table);
@@ -312,7 +311,7 @@ pub unsafe fn key_bindings_remove_table(name: *const u8) {
 #[expect(dead_code)]
 unsafe fn key_bindings_reset_table(name: *const u8) {
     unsafe {
-        let table = key_bindings_get_table(name, 0);
+        let table = key_bindings_get_table(name, false);
         if table.is_null() {
             return;
         }
@@ -326,7 +325,7 @@ unsafe fn key_bindings_reset_table(name: *const u8) {
     }
 }
 
-pub unsafe fn key_bindings_init_done(_item: *mut cmdq_item, _data: *mut c_void) -> cmd_retval {
+unsafe fn key_bindings_init_done(_item: *mut cmdq_item, _data: *mut c_void) -> cmd_retval {
     unsafe {
         for table in rb_foreach(&raw mut KEY_TABLES).map(NonNull::as_ptr) {
             for bd in rb_foreach(&raw mut (*table).key_bindings).map(NonNull::as_ptr) {

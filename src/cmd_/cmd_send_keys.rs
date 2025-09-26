@@ -83,7 +83,7 @@ pub unsafe fn cmd_send_keys_inject_key(
             return item;
         }
 
-        let table = key_bindings_get_table((*(*wme).mode).key_table.unwrap()(wme), 1);
+        let table = key_bindings_get_table((*(*wme).mode).key_table.unwrap()(wme), true);
 
         let bd = key_bindings_get(NonNull::new(table).unwrap(), key & !KEYC_MASK_FLAGS);
         if !bd.is_null() {

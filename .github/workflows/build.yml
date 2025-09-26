@@ -49,8 +49,10 @@ jobs:
         run: *ubuntu-install-cmd
       - uses: dtolnay/rust-toolchain@nightly
         with:
-          components: clippy, rustfmt
+          components: rustfmt
       - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
       # should format cleanly on nightly and stable
       - run: cargo +stable fmt --check # this will warn about unstable features, but that's fine
       - run: cargo +nightly fmt --check

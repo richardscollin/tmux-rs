@@ -109,16 +109,19 @@ pub unsafe fn clients_with_window(w: *mut window) -> u32 {
     n
 }
 
-#[expect(clippy::type_complexity)]
 pub unsafe fn clients_calculate_size(
     type_: window_size_option,
     current: bool,
     c: *mut client,
     s: *mut session,
     w: *mut window,
-    skip_client: Option<
-        unsafe fn(*mut client, window_size_option, bool, *mut session, *mut window) -> bool,
-    >,
+    skip_client: unsafe fn(
+        *mut client,
+        window_size_option,
+        bool,
+        *mut session,
+        *mut window,
+    ) -> bool,
     sx: *mut u32,
     sy: *mut u32,
     xpixel: *mut u32,
@@ -165,7 +168,7 @@ pub unsafe fn clients_calculate_size(
                     log_debug!("{}: ignoring {} (1)", __func__, _s((*loop_).name));
                     continue;
                 }
-                if loop_ != c && skip_client.unwrap()(loop_, type_, current, s, w) {
+                if loop_ != c && skip_client(loop_, type_, current, s, w) {
                     log_debug!("{}: skipping {} (1)", __func__, _s((*loop_).name));
                     continue;
                 }
@@ -243,7 +246,7 @@ pub unsafe fn clients_calculate_size(
                 if loop_ != c && ignore_client_size(loop_) != 0 {
                     continue;
                 }
-                if loop_ != c && skip_client.unwrap()(loop_, type_, current, s, w) {
+                if loop_ != c && skip_client(loop_, type_, current, s, w) {
                     continue;
                 }
 
@@ -373,7 +376,7 @@ pub unsafe fn default_window_size(
                 c,
                 s,
                 w,
-                Some(default_window_size_skip_client),
+                default_window_size_skip_client,
                 sx,
                 sy,
                 xpixel,
@@ -450,7 +453,7 @@ pub unsafe fn recalculate_size(w: *mut window, now: i32) {
             null_mut(),
             null_mut(),
             w,
-            Some(recalculate_size_skip_client),
+            recalculate_size_skip_client,
             &raw mut sx,
             &raw mut sy,
             &raw mut xpixel,

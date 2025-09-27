@@ -27,7 +27,7 @@ use std::{
     ptr::{NonNull, addr_of, addr_of_mut, null, null_mut},
     sync::{
         Mutex,
-        atomic::{self, AtomicBool, AtomicU32},
+        atomic::{self, AtomicBool, AtomicU32, AtomicU64},
     },
 };
 

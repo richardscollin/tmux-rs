@@ -16,8 +16,8 @@ use crate::*;
 
 const MAX_HYPERLINKS: u32 = 5000;
 
-static mut HYPERLINKS_NEXT_EXTERNAL_ID: c_longlong = 1;
-static mut GLOBAL_HYPERLINKS_COUNT: u32 = 0;
+static HYPERLINKS_NEXT_EXTERNAL_ID: AtomicU64 = AtomicU64::new(1);
+static GLOBAL_HYPERLINKS_COUNT: AtomicU32 = AtomicU32::new(0);
 
 impl_tailq_entry!(hyperlinks_uri, list_entry, tailq_entry<hyperlinks_uri>);
 #[repr(C)]
@@ -93,7 +93,7 @@ unsafe fn hyperlinks_remove(hlu: *mut hyperlinks_uri) {
         let hl = (*hlu).tree;
 
         tailq_remove::<_, _>(&raw mut GLOBAL_HYPERLINKS, hlu);
-        GLOBAL_HYPERLINKS_COUNT -= 1;
+        GLOBAL_HYPERLINKS_COUNT.fetch_sub(1, atomic::Ordering::Relaxed);
 
         rb_remove::<_, discr_by_inner_entry>(&raw mut (*hl).by_inner, hlu);
         rb_remove::<_, discr_by_uri_entry>(&raw mut (*hl).by_uri, hlu);
@@ -146,9 +146,8 @@ pub unsafe fn hyperlinks_put(
             }
         }
 
-        let id = HYPERLINKS_NEXT_EXTERNAL_ID;
+        let id = HYPERLINKS_NEXT_EXTERNAL_ID.fetch_add(1, atomic::Ordering::Relaxed);
         let external_id: *mut u8 = format_nul!("tmux{:X}", id);
-        HYPERLINKS_NEXT_EXTERNAL_ID += 1;
 
         let hlu = xcalloc1::<hyperlinks_uri>() as *mut hyperlinks_uri;
         (*hlu).inner = (*hl).next_inner;
@@ -161,8 +160,7 @@ pub unsafe fn hyperlinks_put(
         rb_insert::<_, discr_by_inner_entry>(&raw mut (*hl).by_inner, hlu);
 
         tailq_insert_tail(&raw mut GLOBAL_HYPERLINKS, hlu);
-        GLOBAL_HYPERLINKS_COUNT += 1;
-        if GLOBAL_HYPERLINKS_COUNT == MAX_HYPERLINKS {
+        if GLOBAL_HYPERLINKS_COUNT.fetch_add(1, atomic::Ordering::Relaxed) + 1 == MAX_HYPERLINKS {
             hyperlinks_remove(tailq_first(&raw mut GLOBAL_HYPERLINKS));
         }
 

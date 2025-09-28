@@ -269,8 +269,7 @@ pub unsafe fn layout_parse(w: *mut window, mut layout: *const u8, cause: *mut *m
     }
 }
 
-// Assign panes into cells.
-
+/// Assign panes into cells.
 unsafe fn layout_assign(wp: *mut *mut window_pane, lc: *mut layout_cell) {
     unsafe {
         match (*lc).type_ {

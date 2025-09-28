@@ -527,8 +527,7 @@ unsafe fn format_draw_centre(
     }
 }
 
-// Draw format with list on the right.
-
+/// Draw format with list on the right.
 unsafe fn format_draw_right(
     octx: *mut screen_write_ctx,
     available: u32,

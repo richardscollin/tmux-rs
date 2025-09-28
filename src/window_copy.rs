@@ -3880,8 +3880,7 @@ pub unsafe fn window_copy_last_regex(
     }
 }
 
-// Stringify line and append to input buffer. Caller frees.
-
+/// Stringify line and append to input buffer. Caller frees.
 pub unsafe fn window_copy_stringify(
     gd: *mut grid,
     py: u32,
@@ -6630,8 +6629,7 @@ pub unsafe fn window_copy_acquire_cursor_up(
     }
 }
 
-// Scroll down if the cursor went off the visible screen.
-
+/// Scroll down if the cursor went off the visible screen.
 unsafe fn window_copy_acquire_cursor_down(
     wme: *mut window_mode_entry,
     hsize: u32,

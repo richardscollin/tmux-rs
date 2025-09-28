@@ -2763,9 +2763,8 @@ unsafe fn input_get_bg_client(wp: *mut window_pane) -> i32 {
     }
 }
 
-// If any control mode client exists that has provided a bg color, return it.
-// Otherwise, return -1.
-
+/// If any control mode client exists that has provided a bg color, return it.
+/// Otherwise, return -1.
 unsafe fn input_get_bg_control_client(wp: *mut window_pane) -> i32 {
     unsafe {
         if (*wp).control_bg == -1 {
@@ -2782,9 +2781,8 @@ unsafe fn input_get_bg_control_client(wp: *mut window_pane) -> i32 {
     -1
 }
 
-// If any control mode client exists that has provided a fg color, return it.
-// Otherwise, return -1.
-
+/// If any control mode client exists that has provided a fg color, return it.
+/// Otherwise, return -1.
 unsafe fn input_get_fg_control_client(wp: *mut window_pane) -> i32 {
     unsafe {
         if (*wp).control_fg == -1 {
@@ -2800,8 +2798,7 @@ unsafe fn input_get_fg_control_client(wp: *mut window_pane) -> i32 {
     -1
 }
 
-// Handle the OSC 10 sequence for setting and querying foreground colour.
-
+/// Handle the OSC 10 sequence for setting and querying foreground colour.
 unsafe fn input_osc_10(ictx: *mut input_ctx, p: *mut u8) {
     unsafe {
         let wp = (*ictx).wp;
@@ -2840,8 +2837,7 @@ unsafe fn input_osc_10(ictx: *mut input_ctx, p: *mut u8) {
     }
 }
 
-// Handle the OSC 110 sequence for resetting foreground colour.
-
+/// Handle the OSC 110 sequence for resetting foreground colour.
 unsafe fn input_osc_110(ictx: *mut input_ctx, p: *const u8) {
     unsafe {
         let wp = (*ictx).wp;

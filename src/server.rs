@@ -470,8 +470,7 @@ pub unsafe fn server_add_accept(timeout: c_int) {
     }
 }
 
-// Signal handler.
-
+/// Signal handler.
 unsafe fn server_signal(sig: i32) {
     unsafe {
         log_debug!("{}: {}", "server_signal", _s(strsignal(sig).cast::<u8>()));

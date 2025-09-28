@@ -31,6 +31,15 @@ mod ncurses_;
 use crate::ncurses_::*;
 
 mod compat;
+mod hyperlinks_;
+mod popup;
+mod regsub;
+mod server_acl;
+mod spawn;
+mod style_;
+mod tmux_protocol;
+mod xmalloc;
+
 
 use std::{
     cell::RefCell,
@@ -47,7 +56,7 @@ use std::{
     },
 };
 
-use crate::compat::{queue::*, strlcat, strlcpy, strtonum, strtonum_, tree::*, vis_flags};
+use crate::{compat::{queue::*, strlcat, strlcpy, strtonum, strtonum_, tree::*, vis_flags}, hyperlinks_::*, popup::*, regsub::regsub, server_acl::*, spawn::*, style_::*, tmux_protocol::*, xmalloc::*};
 
 #[cfg(feature = "sixel")]
 mod image_;
@@ -2814,33 +2823,6 @@ const MENU_STAYOPEN: menu_flags = menu_flags::MENU_STAYOPEN;
 
 mod menu_;
 use crate::menu_::*;
-
-const POPUP_CLOSEEXIT: i32 = 0x1;
-const POPUP_CLOSEEXITZERO: i32 = 0x2;
-const POPUP_INTERNAL: i32 = 0x4;
-mod popup;
-use crate::popup::*;
-
-mod style_;
-use crate::style_::*;
-
-mod spawn;
-use crate::spawn::*;
-
-mod regsub;
-use crate::regsub::regsub;
-
-mod server_acl;
-use crate::server_acl::*;
-
-mod hyperlinks_;
-use crate::hyperlinks_::*;
-
-mod xmalloc;
-use crate::xmalloc::*;
-
-mod tmux_protocol;
-use crate::tmux_protocol::*;
 
 unsafe impl Sync for SyncCharPtr {}
 #[repr(transparent)]

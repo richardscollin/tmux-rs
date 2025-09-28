@@ -571,11 +571,11 @@ unsafe fn cmd_display_popup_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
         } else {
             xstrdup_(c"").as_ptr()
         };
-        let mut flags = 0;
+        let mut flags = popup_flag::empty();
         if args_has_count(args, b'E') > 1 {
-            flags |= POPUP_CLOSEEXITZERO;
+            flags |= popup_flag::POPUP_CLOSEEXITZERO;
         } else if args_has(args, 'E') {
-            flags |= POPUP_CLOSEEXIT;
+            flags |= popup_flag::POPUP_CLOSEEXIT;
         }
         if popup_display(
             flags,

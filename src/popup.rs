@@ -13,6 +13,16 @@
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 use crate::*;
 
+bitflags::bitflags! {
+    #[repr(transparent)]
+    #[derive(Copy, Clone, Eq, PartialEq)]
+    pub struct popup_flag : i32 {
+        const POPUP_CLOSEEXIT = 0x1;
+        const POPUP_CLOSEEXITZERO = 0x2;
+        const POPUP_INTERNAL = 0x4;
+    }
+}
+
 pub type popup_close_cb = Option<unsafe fn(_: i32, _: *mut c_void)>;
 pub type popup_finish_edit_cb = Option<unsafe fn(_: *mut u8, _: usize, _: *mut c_void)>;
 
@@ -28,7 +38,7 @@ pub enum dragging_state {
 pub struct popup_data {
     pub c: *mut client,
     pub item: *mut cmdq_item,
-    pub flags: i32,
+    pub flags: popup_flag,
     pub title: *mut u8,
 
     pub border_cell: grid_cell,
@@ -620,7 +630,7 @@ pub unsafe fn popup_key_cb(c: *mut client, data: *mut c_void, event: *mut key_ev
                         break 'out;
                     }
                 }
-                if ((((*pd).flags & (POPUP_CLOSEEXIT | POPUP_CLOSEEXITZERO)) == 0)
+                if ((!(*pd).flags.intersects(popup_flag::POPUP_CLOSEEXIT | popup_flag::POPUP_CLOSEEXITZERO))
                     || (*pd).job.is_null())
                     && ((*event).key == b'\x1b' as u64 || (*event).key == (b'c' as u64 | KEYC_CTRL))
                 {
@@ -654,7 +664,7 @@ pub unsafe fn popup_key_cb(c: *mut client, data: *mut c_void, event: *mut key_ev
             }
             // menu:
             (*pd).menu = menu_create(c!(""));
-            if (*pd).flags & POPUP_INTERNAL != 0 {
+            if (*pd).flags.intersects(popup_flag::POPUP_INTERNAL) {
                 menu_add_items(
                     (*pd).menu,
                     POPUP_INTERNAL_MENU_ITEMS.as_slice(),
@@ -741,8 +751,8 @@ pub unsafe fn popup_job_complete_cb(job: *mut job) {
         }
         (*pd).job = null_mut();
 
-        if ((*pd).flags & POPUP_CLOSEEXIT) != 0
-            || (((*pd).flags & POPUP_CLOSEEXITZERO) != 0 && (*pd).status == 0)
+        if (*pd).flags.intersects(popup_flag::POPUP_CLOSEEXIT)
+            || ((*pd).flags.intersects(popup_flag::POPUP_CLOSEEXITZERO) && (*pd).status == 0)
         {
             server_client_clear_overlay((*pd).c);
         }
@@ -750,7 +760,7 @@ pub unsafe fn popup_job_complete_cb(job: *mut job) {
 }
 
 pub unsafe fn popup_display(
-    flags: c_int,
+    flags: popup_flag,
     mut lines: box_lines,
     item: *mut cmdq_item,
     px: c_uint,
@@ -990,7 +1000,7 @@ pub unsafe fn popup_editor(
 
         let cmd = format_nul!("{} {}", _s(editor), _s(path.as_ptr()));
         if popup_display(
-            POPUP_INTERNAL | POPUP_CLOSEEXIT,
+            popup_flag::POPUP_INTERNAL | popup_flag::POPUP_CLOSEEXIT,
             box_lines::BOX_LINES_DEFAULT,
             null_mut(),
             px,

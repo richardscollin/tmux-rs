@@ -19,7 +19,9 @@
 )]
 
 use std::{
+    cell::RefCell,
     cmp,
+    collections::LinkedList,
     ffi::{
         CStr, CString, c_int, c_long, c_longlong, c_short, c_uchar, c_uint, c_ulonglong, c_void,
     },
@@ -127,7 +129,6 @@ unsafe fn bit_test(bits: *const u8, i: u32) -> bool {
 const TTY_NAME_MAX: usize = 32;
 
 // discriminant structs
-struct discr_alerts_entry;
 struct discr_all_entry;
 struct discr_by_uri_entry;
 struct discr_by_inner_entry;
@@ -1407,7 +1408,6 @@ struct window {
     flags: window_flag,
 
     alerts_queued: i32,
-    alerts_entry: tailq_entry<window>,
 
     options: *mut options,
 
@@ -1416,13 +1416,6 @@ struct window {
     entry: rb_entry<window>,
 }
 type windows = rb_head<window>;
-// crate::compat::impl_rb_tree_protos!(windows, window);
-
-impl crate::compat::queue::Entry<window, discr_alerts_entry> for window {
-    unsafe fn entry(this: *mut Self) -> *mut tailq_entry<window> {
-        unsafe { &raw mut (*this).alerts_entry }
-    }
-}
 
 bitflags::bitflags! {
     #[repr(transparent)]
@@ -2657,19 +2650,7 @@ use crate::notify::{
 };
 
 mod options_;
-use crate::options_::options_set_string;
-use crate::options_::{
-    options, options_array_assign, options_array_clear, options_array_first, options_array_get,
-    options_array_item, options_array_item_index, options_array_item_value, options_array_next,
-    options_array_set, options_create, options_default, options_default_to_string, options_empty,
-    options_entry, options_first, options_free, options_from_string, options_get, options_get_,
-    options_get_number, options_get_number_, options_get_only, options_get_parent,
-    options_get_string, options_get_string_, options_is_array, options_is_string, options_match,
-    options_name, options_next, options_owner, options_parse_get, options_push_changes,
-    options_remove_or_default, options_scope_from_flags, options_scope_from_name,
-    options_set_number, options_set_parent, options_string_to_style, options_table_entry,
-    options_to_string,
-};
+use crate::options_::*;
 
 mod options_table;
 use crate::options_table::{OPTIONS_OTHER_NAMES, OPTIONS_TABLE};

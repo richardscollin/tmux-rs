@@ -330,7 +330,6 @@ where
     }
 }
 
-#[expect(dead_code)]
 pub unsafe fn tailq_foreach_const<T, D>(
     head: *const tailq_head<T>,
 ) -> ConstTailqForwardIterator<T, D>

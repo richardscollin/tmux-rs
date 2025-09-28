@@ -15,7 +15,9 @@ use crate::*;
 
 static ALERTS_FIRED: atomic::AtomicI32 = atomic::AtomicI32::new(0);
 
-static mut ALERTS_LIST: tailq_head<window> = TAILQ_HEAD_INITIALIZER!(ALERTS_LIST);
+thread_local! {
+    static ALERTS_LIST: RefCell<LinkedList<NonNull<window>>> = const { RefCell::new(LinkedList::new()) };
+}
 
 unsafe extern "C-unwind" fn alerts_timer(_fd: i32, _events: i16, w: NonNull<window>) {
     unsafe {
@@ -26,59 +28,60 @@ unsafe extern "C-unwind" fn alerts_timer(_fd: i32, _events: i16, w: NonNull<wind
 
 unsafe extern "C-unwind" fn alerts_callback(_fd: c_int, _events: c_short, _arg: *mut c_void) {
     unsafe {
-        for w in tailq_foreach::<_, crate::discr_alerts_entry>(&raw mut ALERTS_LIST) {
-            let alerts = alerts_check_all(w);
+        ALERTS_LIST.with_borrow_mut(|alerts_list| {
+            while let Some(w) = alerts_list.pop_front() {
+                let alerts = alerts_check_all(&*w.as_ptr());
 
-            let w = w.as_ptr();
-            log_debug!("@{} alerts check, alerts {:#x}", (*w).id, alerts);
+                let w = w.as_ptr();
+                log_debug!("@{} alerts check, alerts {:#x}", (*w).id, alerts);
 
-            (*w).alerts_queued = 0;
-            tailq_remove::<_, crate::discr_alerts_entry>(&raw mut ALERTS_LIST, w);
+                (*w).alerts_queued = 0;
 
-            (*w).flags &= !WINDOW_ALERTFLAGS;
-            window_remove_ref(w, c!("alerts_callback"));
-        }
+                (*w).flags &= !WINDOW_ALERTFLAGS;
+                window_remove_ref(w, c!("alerts_callback"));
+            }
+        });
         ALERTS_FIRED.store(0, atomic::Ordering::Release);
     }
 }
 
-unsafe fn alerts_action_applies(wl: *mut winlink, name: &str) -> c_int {
+fn alerts_action_applies(wl: &winlink, name: &str) -> bool {
     unsafe {
-        match alert_option::try_from(options_get_number_((*(*wl).session).options, name) as i32) {
-            Ok(alert_option::ALERT_ANY) => 1,
-            Ok(alert_option::ALERT_CURRENT) => (wl == (*(*wl).session).curw) as i32,
-            Ok(alert_option::ALERT_OTHER) => (wl != (*(*wl).session).curw) as i32,
-            _ => 0,
+        match alert_option::try_from(options_get_number_((*wl.session).options, name) as i32) {
+            Ok(alert_option::ALERT_ANY) => true,
+            Ok(alert_option::ALERT_CURRENT) => std::ptr::eq(wl, (*wl.session).curw),
+            Ok(alert_option::ALERT_OTHER) => !std::ptr::eq(wl, (*wl.session).curw),
+            _ => false,
         }
     }
 }
 
-unsafe fn alerts_check_all(w: NonNull<window>) -> window_flag {
-    unsafe { alerts_check_bell(w) | alerts_check_activity(w) | alerts_check_silence(w) }
+fn alerts_check_all(w: &window) -> window_flag {
+    alerts_check_bell(w) | alerts_check_activity(w) | alerts_check_silence(w)
 }
 
-pub(crate) unsafe fn alerts_check_session(s: *mut session) {
+pub(crate) fn alerts_check_session(s: &session) {
     unsafe {
-        for wl in rb_foreach(&raw mut (*s).windows).map(NonNull::as_ptr) {
-            alerts_check_all(NonNull::new_unchecked((*wl).window));
+        for wl in rb_foreach_const(&raw const s.windows).map(NonNull::as_ptr) {
+            alerts_check_all(&*(*wl).window);
         }
     }
 }
 
-unsafe fn alerts_enabled(w: *mut window, flags: window_flag) -> bool {
+fn alerts_enabled(w: &window, flags: window_flag) -> bool {
     unsafe {
         if flags.intersects(window_flag::BELL)
-            && options_get_number_((*w).options, "monitor-bell") != 0
+            && options_get_number_(w.options, "monitor-bell") != 0
         {
             return true;
         }
         if flags.intersects(window_flag::ACTIVITY)
-            && options_get_number_((*w).options, "monitor-activity") != 0
+            && options_get_number_(w.options, "monitor-activity") != 0
         {
             return true;
         }
         if flags.intersects(window_flag::SILENCE)
-            && options_get_number_((*w).options, "monitor-silence") != 0
+            && options_get_number_(w.options, "monitor-silence") != 0
         {
             return true;
         }
@@ -127,10 +130,12 @@ pub(crate) unsafe fn alerts_queue(w: NonNull<window>, flags: window_flag) {
             log_debug!("@{} alerts flags added {:#x}", (*w).id, flags);
         }
 
-        if alerts_enabled(w, flags) {
+        if alerts_enabled(&*w, flags) {
             if (*w).alerts_queued == 0 {
                 (*w).alerts_queued = 1;
-                tailq_insert_tail::<_, discr_alerts_entry>(&raw mut ALERTS_LIST, w);
+                ALERTS_LIST.with_borrow_mut(|alerts_list| {
+                    alerts_list.push_back(NonNull::new_unchecked(w));
+                });
                 window_add_ref(w, c!("alerts_queue"));
             }
 
@@ -149,22 +154,21 @@ pub(crate) unsafe fn alerts_queue(w: NonNull<window>, flags: window_flag) {
     }
 }
 
-unsafe fn alerts_check_bell(w: NonNull<window>) -> window_flag {
+fn alerts_check_bell(w: &window) -> window_flag {
     unsafe {
-        let w = w.as_ptr();
-        if !(*w).flags.intersects(window_flag::BELL) {
+        if !w.flags.intersects(window_flag::BELL) {
             return window_flag::empty();
         }
-        if options_get_number_((*w).options, "monitor-bell") == 0 {
+        if options_get_number_(w.options, "monitor-bell") == 0 {
             return window_flag::empty();
         }
 
-        for wl in tailq_foreach::<_, crate::discr_wentry>(&raw mut (*w).winlinks) {
+        for wl in tailq_foreach_const::<_, crate::discr_wentry>(&raw const w.winlinks) {
             (*(*wl.as_ptr()).session).flags &= !SESSION_ALERTED;
         }
 
-        for wl in
-            tailq_foreach::<_, crate::discr_wentry>(&raw mut (*w).winlinks).map(NonNull::as_ptr)
+        for wl in tailq_foreach_const::<_, crate::discr_wentry>(&raw const w.winlinks)
+            .map(NonNull::as_ptr)
         {
             // Bells are allowed even if there is an existing bell (so do
             // not check WINLINK_BELL).
@@ -173,7 +177,7 @@ unsafe fn alerts_check_bell(w: NonNull<window>) -> window_flag {
                 (*wl).flags |= winlink_flags::WINLINK_BELL;
                 server_status_session(s);
             }
-            if alerts_action_applies(wl, "bell-action") == 0 {
+            if !alerts_action_applies(&*wl, "bell-action") {
                 continue;
             }
             notify_winlink(c"alert-bell", wl);
@@ -183,37 +187,36 @@ unsafe fn alerts_check_bell(w: NonNull<window>) -> window_flag {
             }
             (*s).flags |= SESSION_ALERTED;
 
-            alerts_set_message(wl, "Bell", "visual-bell");
+            alerts_set_message(&*wl, "Bell", "visual-bell");
         }
     }
     window_flag::BELL
 }
 
-unsafe fn alerts_check_activity(w: NonNull<window>) -> window_flag {
+fn alerts_check_activity(w: &window) -> window_flag {
     unsafe {
-        let w = w.as_ptr();
-        if !(*w).flags.intersects(window_flag::ACTIVITY) {
+        if !w.flags.intersects(window_flag::ACTIVITY) {
             return window_flag::empty();
         }
-        if options_get_number_((*w).options, "monitor-activity") == 0 {
+        if options_get_number_(w.options, "monitor-activity") == 0 {
             return window_flag::empty();
         }
 
-        for wl in
-            tailq_foreach::<_, crate::discr_wentry>(&raw mut (*w).winlinks).map(NonNull::as_ptr)
+        for wl in tailq_foreach_const::<_, crate::discr_wentry>(&raw const w.winlinks)
+            .map(NonNull::as_ptr)
         {
             (*(*wl).session).flags &= !SESSION_ALERTED;
         }
 
-        for wl in
-            tailq_foreach::<_, crate::discr_wentry>(&raw mut (*w).winlinks).map(NonNull::as_ptr)
+        for wl in tailq_foreach_const::<_, crate::discr_wentry>(&raw const w.winlinks)
+            .map(NonNull::as_ptr)
         {
             let s = (*wl).session;
             if (*s).curw != wl || (*s).attached == 0 {
                 (*wl).flags |= winlink_flags::WINLINK_ACTIVITY;
                 server_status_session(s);
             }
-            if alerts_action_applies(wl, "activity-action") == 0 {
+            if !alerts_action_applies(&*wl, "activity-action") {
                 continue;
             }
             notify_winlink(c"alert-activity", wl);
@@ -223,30 +226,29 @@ unsafe fn alerts_check_activity(w: NonNull<window>) -> window_flag {
             }
             (*s).flags |= SESSION_ALERTED;
 
-            alerts_set_message(wl, "Activity", "visual-activity");
+            alerts_set_message(&*wl, "Activity", "visual-activity");
         }
     }
     window_flag::ACTIVITY
 }
 
-unsafe fn alerts_check_silence(w: NonNull<window>) -> window_flag {
+fn alerts_check_silence(w: &window) -> window_flag {
     unsafe {
-        let w = w.as_ptr();
-        if !(*w).flags.intersects(window_flag::SILENCE) {
+        if !w.flags.intersects(window_flag::SILENCE) {
             return window_flag::empty();
         }
-        if options_get_number_((*w).options, "monitor-silence") == 0 {
+        if options_get_number_(w.options, "monitor-silence") == 0 {
             return window_flag::empty();
         }
 
-        for wl in
-            tailq_foreach::<_, crate::discr_wentry>(&raw mut (*w).winlinks).map(NonNull::as_ptr)
+        for wl in tailq_foreach_const::<_, crate::discr_wentry>(&raw const w.winlinks)
+            .map(NonNull::as_ptr)
         {
             (*(*wl).session).flags &= !SESSION_ALERTED;
         }
 
-        for wl in
-            tailq_foreach::<_, crate::discr_wentry>(&raw mut (*w).winlinks).map(NonNull::as_ptr)
+        for wl in tailq_foreach_const::<_, crate::discr_wentry>(&raw const w.winlinks)
+            .map(NonNull::as_ptr)
         {
             if (*wl).flags.intersects(winlink_flags::WINLINK_SILENCE) {
                 continue;
@@ -256,7 +258,7 @@ unsafe fn alerts_check_silence(w: NonNull<window>) -> window_flag {
                 (*wl).flags |= winlink_flags::WINLINK_SILENCE;
                 server_status_session(s);
             }
-            if alerts_action_applies(wl, "silence-action") == 0 {
+            if !alerts_action_applies(&*wl, "silence-action") {
                 continue;
             }
             notify_winlink(c"alert-silence", wl);
@@ -266,34 +268,36 @@ unsafe fn alerts_check_silence(w: NonNull<window>) -> window_flag {
             }
             (*s).flags |= SESSION_ALERTED;
 
-            alerts_set_message(wl, "Silence", "visual-silence");
+            alerts_set_message(&*wl, "Silence", "visual-silence");
         }
     }
 
     window_flag::SILENCE
 }
 
-unsafe fn alerts_set_message(wl: *mut winlink, type_: &str, option: &str) {
+fn alerts_set_message(wl: &winlink, type_: &str, option: &str) {
     unsafe {
         let visual =
-            visual_option::try_from(options_get_number_((*(*wl).session).options, option) as i32)
-                .unwrap();
+            visual_option::try_from(options_get_number__(&*(*wl.session).options, option) as i32);
 
         for c in tailq_foreach(&raw mut CLIENTS).map(NonNull::as_ptr) {
-            if (*c).session != (*wl).session || (*c).flags.intersects(client_flag::CONTROL) {
+            if (*c).session != wl.session || (*c).flags.intersects(client_flag::CONTROL) {
                 continue;
             }
 
-            if visual == visual_option::VISUAL_OFF || visual == visual_option::VISUAL_BOTH {
+            if matches!(
+                visual,
+                Ok(visual_option::VISUAL_OFF) | Ok(visual_option::VISUAL_BOTH)
+            ) {
                 tty_putcode(&raw mut (*c).tty, tty_code_code::TTYC_BEL);
             }
-            if visual == visual_option::VISUAL_OFF {
+            if matches!(visual, Ok(visual_option::VISUAL_OFF)) {
                 continue;
             }
-            if (*(*c).session).curw == wl {
+            if std::ptr::eq((*(*c).session).curw, wl) {
                 status_message_set!(c, -1, 1, false, "{type_} in current window",);
             } else {
-                status_message_set!(c, -1, 1, false, "{type_} in window {}", (*wl).idx);
+                status_message_set!(c, -1, 1, false, "{type_} in window {}", wl.idx);
             }
         }
     }

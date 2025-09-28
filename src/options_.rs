@@ -887,6 +887,19 @@ pub unsafe fn options_get_number_(oo: *const options, name: &str) -> i64 {
     }
 }
 
+pub fn options_get_number__(oo: &options, name: &str) -> i64 {
+    unsafe {
+        let o = options_get_const(oo, name);
+        if o.is_null() {
+            fatalx_!("missing option {name}");
+        }
+        if !OPTIONS_IS_NUMBER(o) {
+            fatalx_!("option {name} is not a number");
+        }
+        (*o).value.number
+    }
+}
+
 macro_rules! options_set_string {
    ($oo:expr, $name:expr, $append:expr, $fmt:literal $(, $args:expr)* $(,)?) => {
         crate::options_::options_set_string_($oo, $name, $append, format_args!($fmt $(, $args)*))

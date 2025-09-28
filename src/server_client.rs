@@ -393,7 +393,7 @@ pub unsafe fn server_client_set_session(c: *mut client, s: *mut session) {
             libc::gettimeofday(&raw mut (*s).last_attached_time, null_mut());
             (*(*s).curw).flags &= !WINLINK_ALERTFLAGS;
             (*(*(*s).curw).window).latest = c.cast();
-            alerts_check_session(s);
+            alerts_check_session(&*s);
             tty_update_client_offset(c);
             status_timer_start(NonNull::new_unchecked(c));
             notify_client(c"client-session-changed", c);

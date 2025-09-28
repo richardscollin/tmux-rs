@@ -40,16 +40,19 @@ pub unsafe fn screen_redraw_border_set(
     unsafe {
         let mut idx: u32 = 0;
 
-        if cell_type == CELL_OUTSIDE && !(*w).fill_character.is_null() {
+        if cell_type == cell_type::CELL_OUTSIDE && !(*w).fill_character.is_null() {
             utf8_copy(&mut (*gc).data, (*w).fill_character);
             return;
         }
 
         match pane_lines {
             pane_lines::PANE_LINES_NUMBER => {
-                if cell_type == CELL_OUTSIDE {
+                if cell_type == cell_type::CELL_OUTSIDE {
                     (*gc).attr |= grid_attr::GRID_ATTR_CHARSET;
-                    utf8_set(&mut (*gc).data, CELL_BORDERS[CELL_OUTSIDE as usize]);
+                    utf8_set(
+                        &mut (*gc).data,
+                        CELL_BORDERS[cell_type::CELL_OUTSIDE as usize],
+                    );
                     return;
                 }
                 (*gc).attr &= !grid_attr::GRID_ATTR_CHARSET;
@@ -246,7 +249,7 @@ pub unsafe fn screen_redraw_type_of_cell(
 
         // Is this outside the window?
         if px > sx || py > sy {
-            return CELL_OUTSIDE;
+            return cell_type::CELL_OUTSIDE;
         }
 
         // Construct a bitmask of whether the cells to the left (bit 4), right,
@@ -288,18 +291,18 @@ pub unsafe fn screen_redraw_type_of_cell(
         // doesn't make sense (can't have a border cell with no others
         // connected).
         match borders {
-            15 => CELL_JOIN,        // 1111, left right top bottom
-            14 => CELL_BOTTOMJOIN,  // 1110, left right top
-            13 => CELL_TOPJOIN,     // 1101, left right bottom
-            12 => CELL_LEFTRIGHT,   // 1100, left right
-            11 => CELL_RIGHTJOIN,   // 1011, left top bottom
-            10 => CELL_BOTTOMRIGHT, // 1010, left top
-            9 => CELL_TOPRIGHT,     // 1001, left bottom
-            7 => CELL_LEFTJOIN,     // 0111, right top bottom
-            6 => CELL_BOTTOMLEFT,   // 0110, right top
-            5 => CELL_TOPLEFT,      // 0101, right bottom
-            3 => CELL_TOPBOTTOM,    // 0011, top bottom
-            _ => CELL_OUTSIDE,
+            15 => cell_type::CELL_JOIN,        // 1111, left right top bottom
+            14 => cell_type::CELL_BOTTOMJOIN,  // 1110, left right top
+            13 => cell_type::CELL_TOPJOIN,     // 1101, left right bottom
+            12 => cell_type::CELL_LEFTRIGHT,   // 1100, left right
+            11 => cell_type::CELL_RIGHTJOIN,   // 1011, left top bottom
+            10 => cell_type::CELL_BOTTOMRIGHT, // 1010, left top
+            9 => cell_type::CELL_TOPRIGHT,     // 1001, left bottom
+            7 => cell_type::CELL_LEFTJOIN,     // 0111, right top bottom
+            6 => cell_type::CELL_BOTTOMLEFT,   // 0110, right top
+            5 => cell_type::CELL_TOPLEFT,      // 0101, right bottom
+            3 => cell_type::CELL_TOPBOTTOM,    // 0011, top bottom
+            _ => cell_type::CELL_OUTSIDE,
         }
     }
 }
@@ -324,7 +327,7 @@ pub unsafe fn screen_redraw_check_cell(
         *wpp = null_mut();
 
         if px > (*w).sx || py > (*w).sy {
-            return CELL_OUTSIDE;
+            return cell_type::CELL_OUTSIDE;
         }
         if px == (*w).sx || py == (*w).sy {
             // window border
@@ -348,7 +351,7 @@ pub unsafe fn screen_redraw_check_cell(
                     right = (*wp).xoff + 2 + (*wp).status_size as u32 - 1;
 
                     if py == line && px >= (*wp).xoff + 2 && px <= right {
-                        return CELL_INSIDE;
+                        return cell_type::CELL_INSIDE;
                     }
                 }
                 // next1
@@ -375,7 +378,7 @@ pub unsafe fn screen_redraw_check_cell(
                 // Otherwise work out the cell.
                 border = screen_redraw_pane_border(ctx, wp, px, py) as i32;
                 if border == screen_redraw_border_type::SCREEN_REDRAW_INSIDE as i32 {
-                    return CELL_INSIDE;
+                    return cell_type::CELL_INSIDE;
                 }
                 if border == screen_redraw_border_type::SCREEN_REDRAW_OUTSIDE as i32 {
                     break 'next2;
@@ -392,7 +395,7 @@ pub unsafe fn screen_redraw_check_cell(
             }
         }
 
-        CELL_OUTSIDE
+        cell_type::CELL_OUTSIDE
     }
 }
 
@@ -800,7 +803,7 @@ pub unsafe fn screen_redraw_draw_borders_cell(ctx: *mut screen_redraw_ctx, i: u3
 
         let mut wp = null_mut();
         let cell_type = screen_redraw_check_cell(ctx, x, y, &raw mut wp);
-        if cell_type == CELL_INSIDE {
+        if cell_type == cell_type::CELL_INSIDE {
             return;
         }
 
@@ -828,7 +831,7 @@ pub unsafe fn screen_redraw_draw_borders_cell(ctx: *mut screen_redraw_ctx, i: u3
         }
         screen_redraw_border_set(w, wp, (*ctx).pane_lines, cell_type, &raw mut gc);
 
-        let isolates = cell_type == CELL_TOPBOTTOM
+        let isolates = cell_type == cell_type::CELL_TOPBOTTOM
             && (*c).flags.intersects(client_flag::UTF8)
             && tty_term_has((*tty).term, tty_code_code::TTYC_BIDI);
 
@@ -852,16 +855,16 @@ pub unsafe fn screen_redraw_draw_borders_cell(ctx: *mut screen_redraw_ctx, i: u3
         if !wp.is_null() && arrows != 0 {
             border = screen_redraw_pane_border(ctx, active, x, y);
             if ((i == (*wp).xoff + 1
-                && (cell_type == CELL_LEFTRIGHT
-                    || (cell_type == CELL_TOPJOIN
+                && (cell_type == cell_type::CELL_LEFTRIGHT
+                    || (cell_type == cell_type::CELL_TOPJOIN
                         && border == screen_redraw_border_type::SCREEN_REDRAW_BORDER_BOTTOM)
-                    || (cell_type == CELL_BOTTOMJOIN
+                    || (cell_type == cell_type::CELL_BOTTOMJOIN
                         && border == screen_redraw_border_type::SCREEN_REDRAW_BORDER_TOP)))
                 || (j == (*wp).yoff + 1
-                    && (cell_type == CELL_TOPBOTTOM
-                        || (cell_type == CELL_LEFTJOIN
+                    && (cell_type == cell_type::CELL_TOPBOTTOM
+                        || (cell_type == cell_type::CELL_LEFTJOIN
                             && border == screen_redraw_border_type::SCREEN_REDRAW_BORDER_RIGHT)
-                        || (cell_type == CELL_RIGHTJOIN
+                        || (cell_type == cell_type::CELL_RIGHTJOIN
                             && border == screen_redraw_border_type::SCREEN_REDRAW_BORDER_LEFT))))
                 && screen_redraw_check_is(ctx, x, y, active)
             {

@@ -705,21 +705,21 @@ pub unsafe fn screen_write_hline(
         gc.attr |= grid_attr::GRID_ATTR_CHARSET;
 
         if left != 0 {
-            screen_write_box_border_set(lines, CELL_LEFTJOIN, &raw mut gc);
+            screen_write_box_border_set(lines, cell_type::CELL_LEFTJOIN, &raw mut gc);
         } else {
-            screen_write_box_border_set(lines, CELL_LEFTRIGHT, &raw mut gc);
+            screen_write_box_border_set(lines, cell_type::CELL_LEFTRIGHT, &raw mut gc);
         }
         screen_write_cell(ctx, &gc);
 
-        screen_write_box_border_set(lines, CELL_LEFTRIGHT, &raw mut gc);
+        screen_write_box_border_set(lines, cell_type::CELL_LEFTRIGHT, &raw mut gc);
         for _ in 1..(nx - 1) {
             screen_write_cell(ctx, &raw mut gc);
         }
 
         if right != 0 {
-            screen_write_box_border_set(lines, CELL_RIGHTJOIN, &raw mut gc);
+            screen_write_box_border_set(lines, cell_type::CELL_RIGHTJOIN, &raw mut gc);
         } else {
-            screen_write_box_border_set(lines, CELL_LEFTRIGHT, &raw mut gc);
+            screen_write_box_border_set(lines, cell_type::CELL_LEFTRIGHT, &raw mut gc);
         }
         screen_write_cell(ctx, &raw const gc);
 
@@ -843,28 +843,28 @@ pub unsafe fn screen_write_box(
         gc.flags |= grid_flag::NOPALETTE;
 
         // Draw top border
-        screen_write_box_border_set(lines, CELL_TOPLEFT, &raw mut gc);
+        screen_write_box_border_set(lines, cell_type::CELL_TOPLEFT, &raw mut gc);
         screen_write_cell(ctx, &raw const gc);
-        screen_write_box_border_set(lines, CELL_LEFTRIGHT, &raw mut gc);
+        screen_write_box_border_set(lines, cell_type::CELL_LEFTRIGHT, &raw mut gc);
         for _ in 1..(nx - 1) {
             screen_write_cell(ctx, &raw const gc);
         }
-        screen_write_box_border_set(lines, CELL_TOPRIGHT, &raw mut gc);
+        screen_write_box_border_set(lines, cell_type::CELL_TOPRIGHT, &raw mut gc);
         screen_write_cell(ctx, &raw const gc);
 
         // Draw bottom border
         screen_write_set_cursor(ctx, cx as i32, (cy + ny - 1) as i32);
-        screen_write_box_border_set(lines, CELL_BOTTOMLEFT, &raw mut gc);
+        screen_write_box_border_set(lines, cell_type::CELL_BOTTOMLEFT, &raw mut gc);
         screen_write_cell(ctx, &gc);
-        screen_write_box_border_set(lines, CELL_LEFTRIGHT, &raw mut gc);
+        screen_write_box_border_set(lines, cell_type::CELL_LEFTRIGHT, &raw mut gc);
         for _ in 1..(nx - 1) {
             screen_write_cell(ctx, &raw const gc);
         }
-        screen_write_box_border_set(lines, CELL_BOTTOMRIGHT, &raw mut gc);
+        screen_write_box_border_set(lines, cell_type::CELL_BOTTOMRIGHT, &raw mut gc);
         screen_write_cell(ctx, &raw const gc);
 
         // Draw sides
-        screen_write_box_border_set(lines, CELL_TOPBOTTOM, &raw mut gc);
+        screen_write_box_border_set(lines, cell_type::CELL_TOPBOTTOM, &raw mut gc);
         for i in 1..(ny - 1) {
             // left side
             screen_write_set_cursor(ctx, cx as i32, (cy + i) as i32);

@@ -630,7 +630,9 @@ pub unsafe fn popup_key_cb(c: *mut client, data: *mut c_void, event: *mut key_ev
                         break 'out;
                     }
                 }
-                if ((!(*pd).flags.intersects(popup_flag::POPUP_CLOSEEXIT | popup_flag::POPUP_CLOSEEXITZERO))
+                if ((!(*pd)
+                    .flags
+                    .intersects(popup_flag::POPUP_CLOSEEXIT | popup_flag::POPUP_CLOSEEXITZERO))
                     || (*pd).job.is_null())
                     && ((*event).key == b'\x1b' as u64 || (*event).key == (b'c' as u64 | KEYC_CTRL))
                 {

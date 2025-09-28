@@ -13,6 +13,19 @@
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 use crate::*;
 
+bitflags::bitflags! {
+    #[repr(transparent)]
+    #[derive(Copy, Clone, Eq, PartialEq)]
+    pub struct menu_flags: i32 {
+        const MENU_NOMOUSE = 0x1;
+        const MENU_TAB = 0x2;
+        const MENU_STAYOPEN = 0x4;
+    }
+}
+pub const MENU_NOMOUSE: menu_flags = menu_flags::MENU_NOMOUSE;
+pub const MENU_TAB: menu_flags = menu_flags::MENU_TAB;
+pub const MENU_STAYOPEN: menu_flags = menu_flags::MENU_STAYOPEN;
+
 #[repr(C)]
 pub struct menu_data {
     pub item: *mut cmdq_item,

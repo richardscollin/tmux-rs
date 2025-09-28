@@ -30,17 +30,76 @@ use crate::event_::*;
 mod ncurses_;
 use crate::ncurses_::*;
 
+mod alerts;
+mod arguments;
+mod attributes;
+mod cfg_;
+mod client_;
+mod cmd_;
+mod cmd_parse;
+mod colour;
 mod compat;
+mod control;
+mod control_notify;
+mod environ_;
+mod file;
+mod format;
+mod format_draw_;
+mod grid_;
+mod grid_reader_;
+mod grid_view;
 mod hyperlinks_;
+mod input;
+mod input_keys;
+mod job_;
+mod key_bindings_;
+mod key_string;
+mod layout;
+mod layout_custom;
+mod layout_set;
+mod menu_;
+mod mode_tree;
+mod names;
+mod notify;
+mod options_;
+mod options_table;
+mod osdep;
+mod paste;
 mod popup;
+mod proc;
 mod regsub;
+mod resize;
+mod screen_;
+mod screen_redraw;
+mod screen_write;
+mod server;
 mod server_acl;
+mod server_client;
+mod server_fn;
+mod session_;
 mod spawn;
+mod status;
 mod style_;
+mod tmux;
 mod tmux_protocol;
+mod tty_;
+mod tty_acs;
+mod tty_features;
+mod tty_keys;
+mod tty_term_;
+mod utf8;
+mod utf8_combined;
+mod window_;
+mod window_buffer;
+mod window_client;
+mod window_clock;
+mod window_copy;
+mod window_customize;
+mod window_tree;
 mod xmalloc;
 
-
+#[macro_use] // log_debug
+mod log;
 use std::{
     cell::RefCell,
     cmp,
@@ -56,7 +115,80 @@ use std::{
     },
 };
 
-use crate::{compat::{queue::*, strlcat, strlcpy, strtonum, strtonum_, tree::*, vis_flags}, hyperlinks_::*, popup::*, regsub::regsub, server_acl::*, spawn::*, style_::*, tmux_protocol::*, xmalloc::*};
+use crate::log::*;
+pub use crate::tmux::tmux_main;
+use crate::{
+    alerts::*,
+    arguments::*,
+    attributes::*,
+    cfg_::*,
+    client_::*,
+    cmd_::{
+        cmd_attach_session::cmd_attach_session, cmd_find::*, cmd_log_argv, cmd_queue::*,
+        cmd_wait_for::cmd_wait_for_flush, *,
+    },
+    cmd_parse::*,
+    colour::*,
+    compat::{imsg::imsg, queue::*, tree::*, *},
+    control::{control_write, *},
+    control_notify::*,
+    environ_::*,
+    file::*,
+    format::*,
+    format_draw_::*,
+    grid_::*,
+    grid_reader_::*,
+    grid_view::*,
+    hyperlinks_::*,
+    input::*,
+    input_keys::*,
+    job_::*,
+    key_bindings_::*,
+    key_string::*,
+    layout::*,
+    layout_custom::*,
+    layout_set::*,
+    menu_::*,
+    mode_tree::*,
+    names::*,
+    notify::*,
+    options_::*,
+    options_table::*,
+    osdep::*,
+    paste::*,
+    popup::*,
+    proc::*,
+    regsub::regsub,
+    resize::*,
+    screen_::*,
+    screen_redraw::*,
+    screen_write::*,
+    server::*,
+    server_acl::*,
+    server_client::*,
+    server_fn::*,
+    session_::*,
+    spawn::*,
+    status::*,
+    style_::*,
+    tmux::*,
+    tmux_protocol::*,
+    tty_::*,
+    tty_acs::*,
+    tty_features::*,
+    tty_keys::*,
+    tty_term_::*,
+    utf8::*,
+    utf8_combined::*,
+    window_::*,
+    window_buffer::WINDOW_BUFFER_MODE,
+    window_client::WINDOW_CLIENT_MODE,
+    window_clock::{WINDOW_CLOCK_MODE, WINDOW_CLOCK_TABLE},
+    window_copy::{window_copy_add, *},
+    window_customize::WINDOW_CUSTOMIZE_MODE,
+    window_tree::WINDOW_TREE_MODE,
+    xmalloc::*,
+};
 
 #[cfg(feature = "sixel")]
 mod image_;
@@ -91,8 +223,6 @@ const unsafe fn ptr_to_mut_ref<'a, T>(value: *mut T) -> Option<&'a mut T> {
         }
     }
 }
-
-use compat::imsg::imsg; // TODO move
 
 type bitstr_t = u8;
 
@@ -772,9 +902,8 @@ enum cell_type {
     CELL_JOIN = 11,
     CELL_OUTSIDE = 12,
 }
-use cell_type::*; // TODO remove
 
-// Cell borders.
+/// Cell borders.
 const CELL_BORDERS: [u8; 13] = [
     b' ', b'x', b'q', b'l', b'k', b'm', b'j', b'w', b'v', b't', b'u', b'n', b'~',
 ];
@@ -2525,12 +2654,6 @@ impl options_name_map {
 // Common command usages.
 const CMD_TARGET_PANE_USAGE: &CStr = c"[-t target-pane]";
 const CMD_TARGET_WINDOW_USAGE: &CStr = c"[-t target-window]";
-// const CMD_TARGET_SESSION_USAGE: &CStr = c"[-t target-session]";
-// const CMD_TARGET_CLIENT_USAGE: &CStr = c"[-t target-client]";
-// const CMD_SRCDST_PANE_USAGE: &CStr = c"[-s src-pane] [-t dst-pane]";
-// const CMD_SRCDST_WINDOW_USAGE: &CStr = c"[-s src-window] [-t dst-window]";
-// const CMD_SRCDST_SESSION_USAGE: &CStr = c"[-s src-session] [-t dst-session]";
-// const CMD_SRCDST_CLIENT_USAGE: &CStr = c"[-s src-client] [-t dst-client]";
 const CMD_BUFFER_USAGE: &CStr = c"[-b buffer-name]";
 
 bitflags::bitflags! {
@@ -2607,35 +2730,6 @@ enum prompt_mode {
     PROMPT_COMMAND,
 }
 
-mod tmux;
-
-pub use crate::tmux::tmux_main;
-use crate::tmux::*;
-
-mod proc;
-use crate::proc::*;
-
-mod cfg_;
-use crate::cfg_::*;
-
-mod paste;
-use crate::paste::*;
-
-mod format;
-use crate::format::*;
-
-mod format_draw_;
-use crate::format_draw_::*;
-
-mod notify;
-use crate::notify::*;
-
-mod options_;
-use crate::options_::*;
-
-mod options_table;
-use crate::options_table::*;
-
 bitflags::bitflags! {
     #[repr(transparent)]
     #[derive(Copy, Clone, Eq, PartialEq)]
@@ -2646,183 +2740,12 @@ bitflags::bitflags! {
         const JOB_DEFAULTSHELL = 8;
     }
 }
-mod job_;
-use crate::job_::*;
-
-mod environ_;
-use crate::environ_::*;
-
-mod tty_;
-use crate::tty_::*;
-
-mod tty_term_;
-use crate::tty_term_::*;
-
-mod tty_features;
-use crate::tty_features::*;
-
-mod tty_acs;
-use crate::tty_acs::*;
-
-mod tty_keys;
-use crate::tty_keys::*;
-
-mod arguments;
 
 // unsafe fn args_get(_: *mut args, _: c_uchar) -> *const c_char;
 unsafe fn args_get_(args: *mut args, flag: char) -> *const u8 {
     debug_assert!(flag.is_ascii());
     unsafe { args_get(args, flag as u8) }
 }
-
-use crate::arguments::*;
-
-mod cmd_;
-use crate::cmd_::cmd_attach_session::cmd_attach_session;
-use crate::cmd_::cmd_find::*;
-use crate::cmd_::cmd_log_argv;
-use crate::cmd_::*;
-
-mod cmd_parse;
-use crate::cmd_::cmd_queue::*;
-use crate::cmd_::cmd_wait_for::cmd_wait_for_flush;
-use crate::cmd_parse::*;
-
-mod client_;
-use crate::client_::client_main;
-
-mod key_bindings_;
-use crate::key_bindings_::*;
-
-mod key_string;
-use crate::key_string::{key_string_lookup_key, key_string_lookup_string};
-
-mod alerts;
-use crate::alerts::{alerts_check_session, alerts_queue, alerts_reset_all};
-
-mod file;
-use crate::file::*;
-
-mod server;
-use crate::server::*;
-
-mod server_client;
-use crate::server_client::*;
-
-mod server_fn;
-use crate::server_fn::*;
-
-mod status;
-use crate::status::*;
-
-mod resize;
-use crate::resize::*;
-
-mod input;
-use crate::input::*;
-
-mod input_keys;
-use crate::input_keys::*;
-
-mod colour;
-use crate::colour::*;
-
-mod attributes;
-use crate::attributes::*;
-
-mod grid_;
-use crate::grid_::*;
-
-mod grid_reader_;
-use crate::grid_reader_::*;
-
-mod grid_view;
-use crate::grid_view::*;
-
-mod screen_write;
-use crate::screen_write::*;
-
-mod screen_redraw;
-use crate::screen_redraw::*;
-
-mod screen_;
-use crate::screen_::*;
-
-mod window_;
-use crate::window_::*;
-
-mod layout;
-use crate::layout::*;
-
-mod layout_custom;
-use crate::layout_custom::*;
-
-mod layout_set;
-use crate::layout_set::*;
-
-mod mode_tree;
-use crate::mode_tree::*;
-
-mod window_buffer;
-use crate::window_buffer::WINDOW_BUFFER_MODE;
-
-mod window_tree;
-use crate::window_tree::WINDOW_TREE_MODE;
-
-mod window_clock;
-use crate::window_clock::{WINDOW_CLOCK_MODE, WINDOW_CLOCK_TABLE};
-
-mod window_client;
-use crate::window_client::WINDOW_CLIENT_MODE;
-
-mod window_copy;
-use crate::window_copy::window_copy_add;
-use crate::window_copy::*;
-
-mod window_customize;
-use crate::window_customize::WINDOW_CUSTOMIZE_MODE;
-
-mod names;
-use crate::names::*;
-
-mod control;
-use crate::control::control_write;
-use crate::control::*;
-
-mod control_notify;
-use crate::control_notify::*;
-
-mod session_;
-use crate::session_::*;
-
-mod utf8;
-use crate::utf8::*;
-
-mod osdep;
-use crate::osdep::*;
-
-mod utf8_combined;
-use crate::utf8_combined::*;
-
-#[macro_use] // log_debug
-mod log;
-use crate::log::*;
-
-bitflags::bitflags! {
-    #[repr(transparent)]
-    #[derive(Copy, Clone, Eq, PartialEq)]
-    struct menu_flags: i32 {
-        const MENU_NOMOUSE = 0x1;
-        const MENU_TAB = 0x2;
-        const MENU_STAYOPEN = 0x4;
-    }
-}
-const MENU_NOMOUSE: menu_flags = menu_flags::MENU_NOMOUSE;
-const MENU_TAB: menu_flags = menu_flags::MENU_TAB;
-const MENU_STAYOPEN: menu_flags = menu_flags::MENU_STAYOPEN;
-
-mod menu_;
-use crate::menu_::*;
 
 unsafe impl Sync for SyncCharPtr {}
 #[repr(transparent)]

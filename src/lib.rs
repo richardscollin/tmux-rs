@@ -18,6 +18,20 @@
     reason = "this lint is here instead of in Cargo.toml because of a bug in rust analyzer"
 )]
 
+mod libc;
+pub(crate) use crate::libc::errno;
+pub(crate) use crate::libc::*;
+pub(crate) use crate::libc::{free_, memcpy_, memcpy__, streq_};
+
+// libevent2
+mod event_;
+use crate::event_::*;
+
+mod ncurses_;
+use crate::ncurses_::*;
+
+mod compat;
+
 use std::{
     cell::RefCell,
     cmp,
@@ -33,16 +47,7 @@ use std::{
     },
 };
 
-mod compat;
-use compat::{queue::*, strlcat, strlcpy, strtonum, strtonum_, tree::*, vis_flags};
-
-mod ncurses_;
-use ncurses_::*;
-
-pub(crate) mod libc;
-pub(crate) use libc::errno;
-pub(crate) use libc::*;
-pub(crate) use libc::{free_, memcpy_, memcpy__, streq_};
+use crate::compat::{queue::*, strlcat, strlcpy, strtonum, strtonum_, tree::*, vis_flags};
 
 #[cfg(feature = "sixel")]
 mod image_;
@@ -53,10 +58,6 @@ use image_sixel::sixel_image;
 
 #[cfg(feature = "utempter")]
 mod utempter;
-
-// libevent2
-mod event_;
-use event_::*;
 
 #[inline]
 const fn transmute_ptr<T>(value: Option<NonNull<T>>) -> *mut T {
@@ -83,8 +84,6 @@ const unsafe fn ptr_to_mut_ref<'a, T>(value: *mut T) -> Option<&'a mut T> {
 }
 
 use compat::imsg::imsg; // TODO move
-
-// use crate::tmux_protocol_h::*;
 
 type bitstr_t = u8;
 
@@ -2602,58 +2601,31 @@ enum prompt_mode {
 mod tmux;
 
 pub use crate::tmux::tmux_main;
-use crate::tmux::{
-    GLOBAL_ENVIRON, GLOBAL_OPTIONS, GLOBAL_S_OPTIONS, GLOBAL_W_OPTIONS, PTM_FD, SHELL_COMMAND,
-    SOCKET_PATH, START_TIME, checkshell_, find_cwd, find_home, get_timer, getversion, setblocking,
-    shell_argv0,
-};
+use crate::tmux::*;
 
 mod proc;
-use crate::proc::{
-    proc_add_peer, proc_clear_signals, proc_exit, proc_flush_peer, proc_fork_and_daemon,
-    proc_get_peer_uid, proc_kill_peer, proc_loop, proc_remove_peer, proc_send, proc_set_signals,
-    proc_start, proc_toggle_log, tmuxpeer, tmuxproc,
-};
+use crate::proc::*;
 
 mod cfg_;
-use crate::cfg_::{
-    CFG_CLIENT, CFG_FILES, CFG_FINISHED, CFG_QUIET, cfg_print_causes, cfg_show_causes,
-    load_cfg_from_buffer, start_cfg,
-};
+use crate::cfg_::*;
 
 mod paste;
-use crate::paste::{
-    paste_add, paste_buffer, paste_buffer_created, paste_buffer_data, paste_buffer_data_,
-    paste_buffer_name, paste_buffer_order, paste_free, paste_get_name, paste_get_top,
-    paste_is_empty, paste_make_sample, paste_rename, paste_replace, paste_set, paste_walk,
-};
+use crate::paste::*;
 
 mod format;
-use crate::format::format_add;
-use crate::format::{
-    FORMAT_NONE, FORMAT_PANE, FORMAT_WINDOW, format_add_cb, format_add_tv, format_create,
-    format_create_defaults, format_create_from_state, format_create_from_target, format_defaults,
-    format_defaults_pane, format_defaults_paste_buffer, format_defaults_window, format_each,
-    format_expand, format_expand_time, format_flags, format_free, format_get_pane,
-    format_grid_hyperlink, format_grid_line, format_grid_word, format_job_tree, format_log_debug,
-    format_lost_client, format_merge, format_pretty_time, format_single, format_single_from_state,
-    format_single_from_target, format_skip, format_tidy_jobs, format_tree, format_true,
-};
+use crate::format::*;
 
 mod format_draw_;
-use crate::format_draw_::{format_draw, format_trim_left, format_trim_right, format_width};
+use crate::format_draw_::*;
 
 mod notify;
-use crate::notify::{
-    notify_client, notify_hook, notify_pane, notify_paste_buffer, notify_session,
-    notify_session_window, notify_window, notify_winlink,
-};
+use crate::notify::*;
 
 mod options_;
 use crate::options_::*;
 
 mod options_table;
-use crate::options_table::{OPTIONS_OTHER_NAMES, OPTIONS_TABLE};
+use crate::options_table::*;
 
 bitflags::bitflags! {
     #[repr(transparent)]
@@ -2666,55 +2638,25 @@ bitflags::bitflags! {
     }
 }
 mod job_;
-use crate::job_::{
-    job, job_check_died, job_free, job_get_data, job_get_event, job_get_status, job_kill_all,
-    job_print_summary, job_resize, job_run, job_still_running, job_transfer,
-};
+use crate::job_::*;
 
 mod environ_;
-use crate::environ_::{
-    environ, environ_clear, environ_copy, environ_create, environ_find, environ_first,
-    environ_for_session, environ_free, environ_next, environ_push, environ_put, environ_unset,
-    environ_update,
-};
-use crate::environ_::{environ_log, environ_set};
+use crate::environ_::*;
 
 mod tty_;
-use crate::tty_::{
-    tty_attributes, tty_cell, tty_clipboard_query, tty_close, tty_cmd_alignmenttest, tty_cmd_cell,
-    tty_cmd_cells, tty_cmd_clearcharacter, tty_cmd_clearendofscreen, tty_cmd_clearscreen,
-    tty_cmd_clearstartofscreen, tty_cmd_deletecharacter, tty_cmd_deleteline,
-    tty_cmd_insertcharacter, tty_cmd_insertline, tty_cmd_rawstring, tty_cmd_reverseindex,
-    tty_cmd_scrolldown, tty_cmd_scrollup, tty_cmd_setselection, tty_cmd_syncstart, tty_create_log,
-    tty_cursor, tty_default_colours, tty_draw_line, tty_free, tty_init, tty_margin_off, tty_open,
-    tty_putc, tty_putcode, tty_putn, tty_puts, tty_raw, tty_region_off, tty_repeat_requests,
-    tty_reset, tty_resize, tty_send_requests, tty_set_path, tty_set_selection, tty_set_size,
-    tty_set_title, tty_start_tty, tty_stop_tty, tty_sync_end, tty_sync_start,
-    tty_update_client_offset, tty_update_features, tty_update_mode, tty_update_window_offset,
-    tty_window_bigger, tty_window_offset, tty_write,
-};
+use crate::tty_::*;
 
 mod tty_term_;
-use crate::tty_term_::{
-    TTY_TERMS, tty_code, tty_term_apply, tty_term_apply_overrides, tty_term_create,
-    tty_term_describe, tty_term_flag, tty_term_free, tty_term_free_list, tty_term_has,
-    tty_term_ncodes, tty_term_number, tty_term_read_list, tty_term_string, tty_term_string_i,
-    tty_term_string_ii, tty_term_string_iii, tty_term_string_s, tty_term_string_ss,
-};
+use crate::tty_term_::*;
 
 mod tty_features;
-use crate::tty_features::{
-    tty_add_features, tty_apply_features, tty_default_features, tty_get_features,
-};
+use crate::tty_features::*;
 
 mod tty_acs;
-use crate::tty_acs::{
-    tty_acs_double_borders, tty_acs_get, tty_acs_heavy_borders, tty_acs_needed,
-    tty_acs_reverse_get, tty_acs_rounded_borders,
-};
+use crate::tty_acs::*;
 
 mod tty_keys;
-use crate::tty_keys::{tty_key, tty_keys_build, tty_keys_colours, tty_keys_free, tty_keys_next};
+use crate::tty_keys::*;
 
 mod arguments;
 
@@ -2724,59 +2666,24 @@ unsafe fn args_get_(args: *mut args, flag: char) -> *const u8 {
     unsafe { args_get(args, flag as u8) }
 }
 
-use crate::arguments::{
-    args, args_command_state, args_copy, args_count, args_create, args_entry, args_escape,
-    args_first, args_first_value, args_free, args_free_value, args_free_values, args_from_vector,
-    args_get, args_has, args_has_count, args_make_commands, args_make_commands_free,
-    args_make_commands_get_command, args_make_commands_now, args_make_commands_prepare, args_next,
-    args_next_value, args_parse, args_percentage, args_percentage_and_expand, args_print, args_set,
-    args_string, args_string_percentage, args_strtonum, args_strtonum_and_expand, args_to_vector,
-    args_value, args_values,
-};
+use crate::arguments::*;
 
 mod cmd_;
 use crate::cmd_::cmd_attach_session::cmd_attach_session;
-use crate::cmd_::cmd_find::{
-    cmd_find_best_client, cmd_find_clear_state, cmd_find_client, cmd_find_copy_state,
-    cmd_find_empty_state, cmd_find_from_client, cmd_find_from_mouse, cmd_find_from_nothing,
-    cmd_find_from_pane, cmd_find_from_session, cmd_find_from_session_window, cmd_find_from_window,
-    cmd_find_from_winlink, cmd_find_from_winlink_pane, cmd_find_target, cmd_find_valid_state,
-};
+use crate::cmd_::cmd_find::*;
 use crate::cmd_::cmd_log_argv;
-use crate::cmd_::{
-    CMD_TABLE, cmd, cmd_append_argv, cmd_copy_argv, cmd_free_argv, cmd_get_alias, cmd_get_args,
-    cmd_get_entry, cmd_get_group, cmd_get_source, cmd_list_all_have, cmd_list_any_have,
-    cmd_list_append, cmd_list_append_all, cmd_list_copy, cmd_list_first, cmd_list_free,
-    cmd_list_move, cmd_list_new, cmd_list_next, cmd_list_print, cmd_mouse_at, cmd_mouse_pane,
-    cmd_mouse_window, cmd_pack_argv, cmd_parse, cmd_print, cmd_stringify_argv,
-    cmd_template_replace, cmd_unpack_argv, cmds,
-};
+use crate::cmd_::*;
 
 mod cmd_parse;
-use crate::cmd_::cmd_queue::{
-    cmdq_add_format, cmdq_add_formats, cmdq_append, cmdq_continue, cmdq_copy_state, cmdq_error,
-    cmdq_free, cmdq_free_state, cmdq_get_callback, cmdq_get_client, cmdq_get_command,
-    cmdq_get_current, cmdq_get_error, cmdq_get_event, cmdq_get_flags, cmdq_get_name,
-    cmdq_get_source, cmdq_get_state, cmdq_get_target, cmdq_get_target_client, cmdq_guard,
-    cmdq_insert_after, cmdq_insert_hook, cmdq_item, cmdq_list, cmdq_merge_formats, cmdq_new,
-    cmdq_new_state, cmdq_next, cmdq_print, cmdq_print_data, cmdq_running, cmdq_state,
-};
+use crate::cmd_::cmd_queue::*;
 use crate::cmd_::cmd_wait_for::cmd_wait_for_flush;
-use crate::cmd_parse::{
-    cmd_parse_and_append, cmd_parse_from_arguments, cmd_parse_from_buffer, cmd_parse_from_file,
-    cmd_parse_from_string, cmd_parse_state, *,
-};
+use crate::cmd_parse::*;
 
 mod client_;
 use crate::client_::client_main;
 
 mod key_bindings_;
-use crate::key_bindings_::{
-    key_bindings_add, key_bindings_dispatch, key_bindings_first, key_bindings_first_table,
-    key_bindings_get, key_bindings_get_default, key_bindings_get_table, key_bindings_init,
-    key_bindings_next, key_bindings_next_table, key_bindings_remove, key_bindings_remove_table,
-    key_bindings_reset, key_bindings_unref_table,
-};
+use crate::key_bindings_::*;
 
 mod key_string;
 use crate::key_string::{key_string_lookup_key, key_string_lookup_string};
@@ -2785,191 +2692,67 @@ mod alerts;
 use crate::alerts::{alerts_check_session, alerts_queue, alerts_reset_all};
 
 mod file;
-use crate::file::{
-    file_can_print, file_cancel, file_cmp, file_error, file_fire_done, file_print,
-    file_print_buffer, file_read, file_read_cancel, file_read_data, file_read_done, file_read_open,
-    file_write, file_write_close, file_write_data, file_write_left, file_write_open,
-    file_write_ready,
-};
+use crate::file::*;
 
 mod server;
-use crate::server::{
-    CLIENTS, CURRENT_TIME, MARKED_PANE, SERVER_PROC, server_add_accept, server_add_message,
-    server_check_marked, server_clear_marked, server_is_marked, server_set_marked, server_start,
-    server_update_socket,
-};
+use crate::server::*;
 
 mod server_client;
-use crate::server_client::{
-    server_client_add_client_window, server_client_check_nested, server_client_clear_overlay,
-    server_client_create, server_client_detach, server_client_exec,
-    server_client_get_client_window, server_client_get_cwd, server_client_get_flags,
-    server_client_get_key_table, server_client_get_pane, server_client_handle_key,
-    server_client_how_many, server_client_loop, server_client_lost, server_client_open,
-    server_client_overlay_range, server_client_print, server_client_remove_pane,
-    server_client_set_flags, server_client_set_key_table, server_client_set_overlay,
-    server_client_set_pane, server_client_set_session, server_client_suspend, server_client_unref,
-    server_client_window_cmp,
-};
+use crate::server_client::*;
 
 mod server_fn;
-use crate::server_fn::{
-    server_check_unattached, server_destroy_pane, server_destroy_session, server_kill_pane,
-    server_kill_window, server_link_window, server_lock, server_lock_client, server_lock_session,
-    server_redraw_client, server_redraw_session, server_redraw_session_group, server_redraw_window,
-    server_redraw_window_borders, server_renumber_all, server_status_client, server_status_session,
-    server_status_session_group, server_status_window, server_unlink_window, server_unzoom_window,
-};
+use crate::server_fn::*;
 
 mod status;
-use crate::status::{
-    STATUS_PROMPT_HLIST, STATUS_PROMPT_HSIZE, status_at_line, status_free, status_get_range,
-    status_init, status_line_size, status_message_clear, status_message_redraw, status_message_set,
-    status_prompt_clear, status_prompt_key, status_prompt_load_history, status_prompt_redraw,
-    status_prompt_save_history, status_prompt_set, status_prompt_type, status_prompt_type_string,
-    status_prompt_update, status_redraw, status_timer_start, status_timer_start_all,
-    status_update_cache,
-};
+use crate::status::*;
 
 mod resize;
-use crate::resize::{
-    default_window_size, recalculate_size, recalculate_sizes, recalculate_sizes_now, resize_window,
-};
+use crate::resize::*;
 
 mod input;
-use crate::input::{
-    input_ctx, input_free, input_init, input_parse_buffer, input_parse_pane, input_parse_screen,
-    input_pending, input_reply_clipboard, input_reset,
-};
+use crate::input::*;
 
 mod input_keys;
-use crate::input_keys::{input_key, input_key_build, input_key_get_mouse, input_key_pane};
+use crate::input_keys::*;
 
 mod colour;
-use crate::colour::{
-    colour_256to16, colour_find_rgb, colour_force_rgb, colour_fromstring, colour_fromstring_,
-    colour_join_rgb, colour_palette_clear, colour_palette_free, colour_palette_from_option,
-    colour_palette_get, colour_palette_init, colour_palette_set, colour_parse_x11,
-    colour_split_rgb, colour_tostring,
-};
+use crate::colour::*;
 
 mod attributes;
-use crate::attributes::{attributes_fromstring, attributes_tostring};
+use crate::attributes::*;
 
 mod grid_;
-use crate::grid_::{
-    GRID_DEFAULT_CELL, grid_adjust_lines, grid_cells_equal, grid_cells_look_equal, grid_clear,
-    grid_clear_history, grid_clear_lines, grid_collect_history, grid_compare, grid_create,
-    grid_destroy, grid_duplicate_lines, grid_empty_line, grid_get_cell, grid_get_line,
-    grid_line_length, grid_move_cells, grid_move_lines, grid_peek_line, grid_reflow,
-    grid_remove_history, grid_scroll_history, grid_scroll_history_region, grid_set_cell,
-    grid_set_cells, grid_set_padding, grid_string_cells, grid_unwrap_position, grid_wrap_position,
-};
+use crate::grid_::*;
 
 mod grid_reader_;
-use crate::grid_reader_::{
-    grid_reader_cursor_back_to_indentation, grid_reader_cursor_end_of_line,
-    grid_reader_cursor_jump, grid_reader_cursor_jump_back, grid_reader_cursor_left,
-    grid_reader_cursor_next_word, grid_reader_cursor_next_word_end,
-    grid_reader_cursor_previous_word, grid_reader_cursor_right, grid_reader_cursor_start_of_line,
-    grid_reader_get_cursor, grid_reader_in_set, grid_reader_start,
-};
+use crate::grid_reader_::*;
 
 mod grid_view;
-use crate::grid_view::{
-    grid_view_clear, grid_view_clear_history, grid_view_delete_cells, grid_view_delete_lines,
-    grid_view_delete_lines_region, grid_view_get_cell, grid_view_insert_cells,
-    grid_view_insert_lines, grid_view_insert_lines_region, grid_view_scroll_region_down,
-    grid_view_scroll_region_up, grid_view_set_cell, grid_view_set_cells, grid_view_set_padding,
-    grid_view_string_cells,
-};
+use crate::grid_view::*;
 
 mod screen_write;
-use crate::screen_write::{
-    screen_write_alignmenttest, screen_write_alternateoff, screen_write_alternateon,
-    screen_write_backspace, screen_write_box, screen_write_carriagereturn, screen_write_cell,
-    screen_write_citem, screen_write_clearcharacter, screen_write_clearendofline,
-    screen_write_clearendofscreen, screen_write_clearhistory, screen_write_clearline,
-    screen_write_clearscreen, screen_write_clearstartofline, screen_write_clearstartofscreen,
-    screen_write_cline, screen_write_collect_add, screen_write_collect_end,
-    screen_write_cursordown, screen_write_cursorleft, screen_write_cursormove,
-    screen_write_cursorright, screen_write_cursorup, screen_write_deletecharacter,
-    screen_write_deleteline, screen_write_fast_copy, screen_write_free_list,
-    screen_write_fullredraw, screen_write_hline, screen_write_insertcharacter,
-    screen_write_insertline, screen_write_linefeed, screen_write_make_list, screen_write_menu,
-    screen_write_mode_clear, screen_write_mode_set, screen_write_preview, screen_write_putc,
-    screen_write_rawstring, screen_write_reset, screen_write_reverseindex, screen_write_scrolldown,
-    screen_write_scrollregion, screen_write_scrollup, screen_write_setselection,
-    screen_write_start, screen_write_start_callback, screen_write_start_pane, screen_write_stop,
-    screen_write_vline,
-};
-use crate::screen_write::{
-    screen_write_nputs, screen_write_puts, screen_write_strlen, screen_write_text,
-    screen_write_vnputs, screen_write_vnputs_,
-};
+use crate::screen_write::*;
 
 mod screen_redraw;
-use crate::screen_redraw::{screen_redraw_pane, screen_redraw_screen};
+use crate::screen_redraw::*;
 
 mod screen_;
-use crate::screen_::{
-    screen_alternate_off, screen_alternate_on, screen_check_selection, screen_clear_selection,
-    screen_free, screen_hide_selection, screen_init, screen_mode_to_string, screen_pop_title,
-    screen_push_title, screen_reinit, screen_reset_hyperlinks, screen_reset_tabs, screen_resize,
-    screen_resize_cursor, screen_sel, screen_select_cell, screen_set_cursor_colour,
-    screen_set_cursor_style, screen_set_path, screen_set_selection, screen_set_title,
-    screen_titles,
-};
+use crate::screen_::*;
 
 mod window_;
-use crate::window_::{
-    ALL_WINDOW_PANES, WINDOWS, window_add_pane, window_add_ref, window_count_panes, window_create,
-    window_destroy_panes, window_find_by_id, window_find_by_id_str, window_find_string,
-    window_get_active_at, window_has_pane, window_lost_pane, window_pane_at_index,
-    window_pane_default_cursor, window_pane_destroy_ready, window_pane_exited,
-    window_pane_find_by_id, window_pane_find_by_id_str, window_pane_find_down,
-    window_pane_find_left, window_pane_find_right, window_pane_find_up, window_pane_get_new_data,
-    window_pane_index, window_pane_key, window_pane_mode, window_pane_next_by_number,
-    window_pane_previous_by_number, window_pane_reset_mode, window_pane_reset_mode_all,
-    window_pane_resize, window_pane_search, window_pane_send_resize, window_pane_set_event,
-    window_pane_set_mode, window_pane_stack_remove, window_pane_start_input,
-    window_pane_update_used_data, window_pane_visible, window_pop_zoom, window_printable_flags,
-    window_push_zoom, window_redraw_active_switch, window_remove_pane, window_remove_ref,
-    window_resize, window_set_active_pane, window_set_fill_character, window_set_name,
-    window_unzoom, window_update_activity, window_update_focus, window_zoom, winlink_add,
-    winlink_clear_flags, winlink_count, winlink_find_by_index, winlink_find_by_window,
-    winlink_find_by_window_id, winlink_next, winlink_next_by_number, winlink_previous,
-    winlink_previous_by_number, winlink_remove, winlink_set_window, winlink_shuffle_up,
-    winlink_stack_push, winlink_stack_remove,
-};
+use crate::window_::*;
 
 mod layout;
-use crate::layout::{
-    layout_assign_pane, layout_close_pane, layout_count_cells, layout_create_cell,
-    layout_destroy_cell, layout_fix_offsets, layout_fix_panes, layout_free, layout_free_cell,
-    layout_init, layout_make_leaf, layout_make_node, layout_print_cell, layout_resize,
-    layout_resize_adjust, layout_resize_layout, layout_resize_pane, layout_resize_pane_to,
-    layout_search_by_border, layout_set_size, layout_split_pane, layout_spread_cell,
-    layout_spread_out,
-};
+use crate::layout::*;
 
 mod layout_custom;
-use crate::layout_custom::{layout_dump, layout_parse};
+use crate::layout_custom::*;
 
 mod layout_set;
-use crate::layout_set::{
-    layout_set_lookup, layout_set_next, layout_set_previous, layout_set_select,
-};
+use crate::layout_set::*;
 
 mod mode_tree;
-use crate::mode_tree::{
-    mode_tree_add, mode_tree_build, mode_tree_collapse_current, mode_tree_count_tagged,
-    mode_tree_data, mode_tree_down, mode_tree_draw, mode_tree_draw_as_parent,
-    mode_tree_each_tagged, mode_tree_expand, mode_tree_expand_current, mode_tree_free,
-    mode_tree_get_current, mode_tree_get_current_name, mode_tree_item, mode_tree_key,
-    mode_tree_no_tag, mode_tree_remove, mode_tree_resize, mode_tree_run_command,
-    mode_tree_set_current, mode_tree_start, mode_tree_up, mode_tree_zoom,
-};
+use crate::mode_tree::*;
 
 mod window_buffer;
 use crate::window_buffer::WINDOW_BUFFER_MODE;
@@ -2985,67 +2768,36 @@ use crate::window_client::WINDOW_CLIENT_MODE;
 
 mod window_copy;
 use crate::window_copy::window_copy_add;
-use crate::window_copy::{
-    WINDOW_COPY_MODE, WINDOW_VIEW_MODE, window_copy_get_line, window_copy_get_word,
-    window_copy_pagedown, window_copy_pageup, window_copy_start_drag,
-};
+use crate::window_copy::*;
 
 mod window_customize;
 use crate::window_customize::WINDOW_CUSTOMIZE_MODE;
 
 mod names;
-use crate::names::{check_window_name, default_window_name, parse_window_name};
+use crate::names::*;
 
 mod control;
 use crate::control::control_write;
-use crate::control::{
-    control_add_sub, control_all_done, control_continue_pane, control_discard, control_pane_offset,
-    control_pause_pane, control_ready, control_remove_sub, control_reset_offsets,
-    control_set_pane_off, control_set_pane_on, control_start, control_state, control_stop,
-    control_write_output,
-};
+use crate::control::*;
 
 mod control_notify;
-use crate::control_notify::{
-    control_notify_client_detached, control_notify_client_session_changed,
-    control_notify_pane_mode_changed, control_notify_paste_buffer_changed,
-    control_notify_paste_buffer_deleted, control_notify_session_closed,
-    control_notify_session_created, control_notify_session_renamed,
-    control_notify_session_window_changed, control_notify_window_layout_changed,
-    control_notify_window_linked, control_notify_window_pane_changed,
-    control_notify_window_renamed, control_notify_window_unlinked,
-};
+use crate::control_notify::*;
 
 mod session_;
-use crate::session_::{
-    NEXT_SESSION_ID, SESSIONS, session_add_ref, session_alive, session_attach, session_check_name,
-    session_create, session_destroy, session_detach, session_find, session_find_by_id,
-    session_find_by_id_str, session_group_add, session_group_attached_count,
-    session_group_contains, session_group_count, session_group_find, session_group_new,
-    session_group_synchronize_from, session_group_synchronize_to, session_has, session_is_linked,
-    session_last, session_next, session_next_session, session_previous, session_previous_session,
-    session_remove_ref, session_renumber_windows, session_select, session_set_current,
-    session_update_activity,
-};
+use crate::session_::*;
 
 mod utf8;
-use crate::utf8::{
-    utf8_append, utf8_build_one, utf8_copy, utf8_cstrhas, utf8_cstrwidth, utf8_from_data,
-    utf8_fromcstr, utf8_fromwc, utf8_in_table, utf8_isvalid, utf8_open, utf8_padcstr,
-    utf8_rpadcstr, utf8_sanitize, utf8_set, utf8_stravis, utf8_stravisx, utf8_strlen, utf8_strvis,
-    utf8_strwidth, utf8_to_data, utf8_tocstr, utf8_towc,
-};
+use crate::utf8::*;
 
 mod osdep;
-use crate::osdep::{osdep_event_init, osdep_get_cwd, osdep_get_name};
+use crate::osdep::*;
 
 mod utf8_combined;
-use crate::utf8_combined::{utf8_has_zwj, utf8_is_modifier, utf8_is_vs, utf8_is_zwj};
+use crate::utf8_combined::*;
 
 #[macro_use] // log_debug
 mod log;
-use crate::log::{fatal, fatalx, log_add_level, log_close, log_get_level, log_open, log_toggle};
-use crate::log::{fatalx_, log_debug};
+use crate::log::*;
 
 bitflags::bitflags! {
     #[repr(transparent)]
@@ -3061,50 +2813,34 @@ const MENU_TAB: menu_flags = menu_flags::MENU_TAB;
 const MENU_STAYOPEN: menu_flags = menu_flags::MENU_STAYOPEN;
 
 mod menu_;
-use crate::menu_::{
-    menu_add_item, menu_add_items, menu_check_cb, menu_create, menu_data, menu_display,
-    menu_draw_cb, menu_free, menu_free_cb, menu_key_cb, menu_mode_cb, menu_prepare,
-};
+use crate::menu_::*;
 
 const POPUP_CLOSEEXIT: i32 = 0x1;
 const POPUP_CLOSEEXITZERO: i32 = 0x2;
 const POPUP_INTERNAL: i32 = 0x4;
 mod popup;
-use crate::popup::{popup_display, popup_editor};
+use crate::popup::*;
 
 mod style_;
-use crate::style_::{style_add, style_apply, style_copy, style_parse, style_set, style_tostring};
+use crate::style_::*;
 
 mod spawn;
-use crate::spawn::{spawn_pane, spawn_window};
+use crate::spawn::*;
 
 mod regsub;
 use crate::regsub::regsub;
 
 mod server_acl;
-use crate::server_acl::{
-    server_acl_display, server_acl_get_uid, server_acl_init, server_acl_join,
-    server_acl_user_allow, server_acl_user_allow_write, server_acl_user_deny,
-    server_acl_user_deny_write, server_acl_user_find,
-};
+use crate::server_acl::*;
 
 mod hyperlinks_;
-use crate::hyperlinks_::{
-    hyperlinks, hyperlinks_copy, hyperlinks_free, hyperlinks_get, hyperlinks_init, hyperlinks_put,
-    hyperlinks_reset,
-};
+use crate::hyperlinks_::*;
 
 mod xmalloc;
-use crate::xmalloc::{
-    format_nul, xcalloc, xcalloc_, xcalloc1, xmalloc, xmalloc_, xrealloc, xrealloc_, xreallocarray,
-    xreallocarray_, xrecallocarray, xsnprintf_, xstrdup, xstrdup_, xstrdup__, xstrdup___, xstrndup,
-};
+use crate::xmalloc::*;
 
 mod tmux_protocol;
-use crate::tmux_protocol::{
-    PROTOCOL_VERSION, msg_command, msg_read_cancel, msg_read_data, msg_read_done, msg_read_open,
-    msg_write_close, msg_write_data, msg_write_open, msg_write_ready, msgtype,
-};
+use crate::tmux_protocol::*;
 
 unsafe impl Sync for SyncCharPtr {}
 #[repr(transparent)]

@@ -1046,7 +1046,7 @@ pub unsafe fn colour_parse_x11(mut p: *const u8) -> i32 {
                 ) == 3
             || sscanf(
                 p.cast(),
-                c"%d,%d,%d.as_ptr()".as_ptr(),
+                c"%d,%d,%d".as_ptr(),
                 &raw mut r,
                 &raw mut g,
                 &raw mut b,

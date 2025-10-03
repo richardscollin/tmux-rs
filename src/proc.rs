@@ -474,7 +474,7 @@ pub unsafe fn proc_fork_and_daemon(fd: *mut i32) -> pid_t {
             0 => {
                 close(pair[0]);
                 *fd = pair[1];
-                if libc::daemon(1, 0) != 0 {
+                if ::libc::daemon(1, 0) != 0 {
                     fatal("daemon failed");
                 }
                 0

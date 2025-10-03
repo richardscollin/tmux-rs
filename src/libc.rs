@@ -1,7 +1,36 @@
 #![allow(clippy::disallowed_types)]
 
 // reexport everything in libc from this module, then override things we want to change the interface for
-pub use ::libc::*;
+pub use ::libc::{
+    _POSIX_VDISABLE, _exit, AF_UNIX, BUFSIZ, CLOCK_MONOTONIC, CLOCK_REALTIME, CODESET, CREAD, CS8,
+    E2BIG, EAGAIN, EBADF, ECHILD, ECHO, ECHOCTL, ECHOE, ECHOKE, ECHONL, ECHOPRT, ECONNABORTED,
+    ECONNREFUSED, EEXIST, EINTR, EINVAL, EIO, EMFILE, ENAMETOOLONG, ENFILE, ENOENT, ENOMEM, EOF,
+    F_GETFL, F_SETFD, F_SETFL, FD_CLOEXEC, FILE, FIONREAD, FNM_CASEFOLD, GLOB_NOMATCH,
+    GLOB_NOSPACE, HUPCL, ICANON, ICRNL, IEXTEN, IGNBRK, IGNCR, IMAXBEL, INLCR, ISIG, ISTRIP, IXANY,
+    IXOFF, IXON, LC_CTYPE, LC_TIME, LOCK_EX, LOCK_NB, O_APPEND, O_CREAT, O_NONBLOCK, O_RDONLY,
+    O_RDWR, O_TRUNC, O_WRONLY, OCRNL, ONLCR, ONLRET, OPOST, PATH_MAX, PF_UNSPEC, REG_EXTENDED,
+    REG_ICASE, REG_NOSUB, REG_NOTBOL, S_IRGRP, S_IROTH, S_IRUSR, S_IRWXG, S_IRWXO, S_IRWXU,
+    S_IXGRP, S_IXOTH, S_IXUSR, SA_RESTART, SEEK_END, SEEK_SET, SHUT_WR, SIG_BLOCK, SIG_DFL,
+    SIG_IGN, SIG_SETMASK, SIGCHLD, SIGCONT, SIGHUP, SIGINT, SIGPIPE, SIGQUIT, SIGTERM, SIGTSTP,
+    SIGTTIN, SIGTTOU, SIGUSR1, SIGUSR2, SIGWINCH, SOCK_STREAM, STDERR_FILENO, STDIN_FILENO,
+    STDOUT_FILENO, TCOFLUSH, TCSAFLUSH, TCSANOW, TIOCGWINSZ, TIOCSWINSZ, VERASE, VMIN, VTIME,
+    WEXITSTATUS, WIFEXITED, WIFSIGNALED, WIFSTOPPED, WNOHANG, WSTOPSIG, WTERMSIG, WUNTRACED, X_OK,
+    accept, access, bind, c_char, c_int, c_short, c_void, calloc, cc_t, cfgetispeed, cfgetospeed,
+    cfmakeraw, cfsetispeed, cfsetospeed, chmod, clock_gettime, close, connect, ctime_r, dirname,
+    dup, dup2, execl, execvp, exit, fclose, fcntl, fdopen, ferror, flock, fork, fread, free,
+    fseeko, ftello, fwrite, getpid, getppid, getpwnam, getpwuid, gettimeofday, getuid, gid_t,
+    glob_t, globfree, gmtime_r, ioctl, isalnum, isatty, isdigit, ispunct, isspace, kill, killpg,
+    listen, localtime, localtime_r, lstat, malloc, memchr, memcmp, memcpy, memmem, memmove, memset,
+    mkdir, mkstemp, nl_langinfo, off_t, passwd, pid_t, printf, qsort, regex_t, regfree, regmatch_t,
+    sa_family_t, shutdown, sigaction, sigemptyset, sigfillset, sigprocmask, sigset_t, size_t,
+    snprintf, sockaddr, sockaddr_storage, sockaddr_un, socket, socketpair, socklen_t, sscanf, stat,
+    strsignal, suseconds_t, system, tcflush, tcgetattr, tcgetpgrp, tcsetattr, termios, time_t,
+    timespec, timeval, tm, uid_t, umask, uname, usleep, utsname, waitpid, winsize, write,
+};
+#[cfg(target_os = "linux")]
+pub use ::libc::{_SC_MB_LEN_MAX, PR_SET_NAME, TIOCGSID, fgetc, malloc_trim, prctl, readlink};
+#[cfg(target_os = "macos")]
+pub use ::libc::{PROC_PIDVNODEPATHINFO, proc_pidinfo, proc_vnodepathinfo};
 
 pub type wchar_t = core::ffi::c_int;
 

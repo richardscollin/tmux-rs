@@ -64,7 +64,17 @@ pub unsafe fn strdup(cs: *const u8) -> *mut u8 {
 }
 
 pub unsafe fn strndup(cs: *const u8, n: usize) -> *mut u8 {
-    unsafe { ::libc::strndup(cs.cast(), n).cast() }
+    unsafe {
+        let duplen = strnlen(cs, n);
+        let out = malloc(duplen + 1) as *mut u8;
+
+        for i in 0..duplen {
+            *out.add(i) = *cs.add(i);
+        }
+        *out.add(duplen) = 0;
+
+        out
+    }
 }
 
 pub unsafe fn strlen(cs: *const u8) -> usize {

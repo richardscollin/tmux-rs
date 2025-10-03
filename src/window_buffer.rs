@@ -530,11 +530,6 @@ pub unsafe fn window_buffer_start_edit(
     c: *mut client,
 ) {
     unsafe {
-        // struct paste_buffer *pb;
-        // const char *buf;
-        // size_t len;
-        // struct window_buffer_editdata *ed;
-
         let Some(pb) = NonNull::new(paste_get_name((*item).name)) else {
             return;
         };
@@ -547,7 +542,8 @@ pub unsafe fn window_buffer_start_edit(
         ed.pb = pb.as_ptr();
         let ed = ed as *mut window_buffer_editdata;
 
-        if popup_editor(c, buf, len, Some(window_buffer_edit_close_cb), ed.cast()) != 0 {
+        let buf = std::slice::from_raw_parts(buf, len);
+        if popup_editor(c, buf, Some(window_buffer_edit_close_cb), ed.cast()) != 0 {
             window_buffer_finish_edit(ed);
         }
     }

@@ -958,40 +958,39 @@ pub unsafe fn popup_editor_close_cb(status: i32, arg: *mut c_void) {
     }
 }
 
+fn create_temp_file() -> std::path::PathBuf {
+    // TODO consider implementing in a way which doesn't require rand
+    use rand::prelude::*;
+    let mut rng = rand::rng();
+    let mut filename = String::from("tmux.");
+    for _ in 0..8 {
+        filename.push(rng.random_range('a'..='z'));
+    }
+    std::env::temp_dir().join(filename)
+}
+
 pub unsafe fn popup_editor(
     c: *mut client,
-    buf: *const u8,
-    len: usize,
+    buf: &[u8],
     cb: popup_finish_edit_cb,
     arg: *mut c_void,
 ) -> c_int {
     unsafe {
-        let mut path = [0u8; 256];
-        strcpy(path.as_mut_ptr(), c!("/tmp/tmux.XXXXXXXX").cast());
-
         let editor = options_get_string_(GLOBAL_OPTIONS, "editor");
         if *editor == b'\0' {
             return -1;
         }
 
-        let fd = mkstemp(path.as_mut_ptr().cast());
-        if fd == -1 {
+        let path = create_temp_file();
+        if std::fs::write(&path, buf).is_err() {
             return -1;
         }
-
-        let f = fdopen(fd, c!("w").cast());
-        if f.is_null() {
-            return -1;
-        }
-
-        if fwrite(buf.cast(), len, 1, f) != 1 {
-            fclose(f);
-            return -1;
-        }
-        fclose(f);
 
         let pe = xcalloc1::<popup_editor>();
-        pe.path = xstrdup(path.as_ptr()).as_ptr();
+        pe.path = xstrdup__(
+            path.to_str()
+                .expect("fixme: temporary path SHOULD be valid string; or should store path buf"),
+        );
         pe.cb = cb;
         pe.arg = arg;
 
@@ -1000,7 +999,7 @@ pub unsafe fn popup_editor(
         let px = ((*c).tty.sx / 2).wrapping_sub(sx / 2);
         let py = ((*c).tty.sy / 2).wrapping_sub(sy / 2);
 
-        let cmd = format_nul!("{} {}", _s(editor), _s(path.as_ptr()));
+        let cmd = format_nul!("{} {}", _s(editor), path.display());
         if popup_display(
             popup_flag::POPUP_INTERNAL | popup_flag::POPUP_CLOSEEXIT,
             box_lines::BOX_LINES_DEFAULT,

@@ -14,7 +14,7 @@
 use crate::compat::HOST_NAME_MAX;
 use crate::libc::{
     FIONREAD, FNM_CASEFOLD, TIOCSWINSZ, close, fnmatch, free, gethostname, gettimeofday, ioctl,
-    isspace, memset, regcomp, regex_t, regexec, regfree, strcasecmp, strlen, winsize,
+    isspace, memset, regcomp, regex_t, regexec, regfree, strlen, winsize,
 };
 #[cfg(feature = "utempter")]
 use crate::utempter::utempter_remove_record;
@@ -647,24 +647,24 @@ pub unsafe fn window_find_string(w: *mut window, s: *const u8) -> *mut window_pa
             _ => (),
         }
 
-        if strcasecmp(s, c!("top")) == 0 {
+        if strcaseeq_(s, "top") {
             y = top;
-        } else if strcasecmp(s, c!("bottom")) == 0 {
+        } else if strcaseeq_(s, "bottom") {
             y = bottom;
-        } else if strcasecmp(s, c!("left")) == 0 {
+        } else if strcaseeq_(s, "left") {
             x = 0;
-        } else if strcasecmp(s, c!("right")) == 0 {
+        } else if strcaseeq_(s, "right") {
             x = (*w).sx - 1;
-        } else if strcasecmp(s, c!("top-left")) == 0 {
+        } else if strcaseeq_(s, "top-left") {
             x = 0;
             y = top;
-        } else if strcasecmp(s, c!("top-right")) == 0 {
+        } else if strcaseeq_(s, "top-right") {
             x = (*w).sx - 1;
             y = top;
-        } else if strcasecmp(s, c!("bottom-left")) == 0 {
+        } else if strcaseeq_(s, "bottom-left") {
             x = 0;
             y = bottom;
-        } else if strcasecmp(s, c!("bottom-right")) == 0 {
+        } else if strcaseeq_(s, "bottom-right") {
             x = (*w).sx - 1;
             y = bottom;
         } else {

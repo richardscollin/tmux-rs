@@ -20,8 +20,7 @@ use crate::compat::{S_ISDIR, fdforkpty::getptmfd, getprogname::getprogname};
 use crate::libc::{
     CLOCK_MONOTONIC, CLOCK_REALTIME, CODESET, EEXIST, F_GETFL, F_SETFL, LC_CTYPE, LC_TIME,
     O_NONBLOCK, S_IRWXO, S_IRWXU, X_OK, access, clock_gettime, fcntl, getpwuid, getuid, lstat,
-    mkdir, nl_langinfo, setlocale, stat, strcasecmp, strchr, strcspn, strerror, strncmp, strrchr,
-    timespec,
+    mkdir, nl_langinfo, setlocale, stat, strchr, strcspn, strerror, strncmp, strrchr, timespec,
 };
 use crate::*;
 
@@ -383,7 +382,7 @@ pub unsafe fn tmux_main(mut argc: i32, mut argv: *mut *mut u8, _env: *mut *mut u
                 std::process::exit(1);
             }
             let s: *mut u8 = nl_langinfo(CODESET).cast();
-            if strcasecmp(s, c!("UTF-8")) != 0 && strcasecmp(s, c!("UTF8")) != 0 {
+            if !strcaseeq_(s, "UTF-8") && !strcaseeq_(s, "UTF8") {
                 eprintln!("need UTF-8 locale (LC_CTYPE) but have {}", _s(s));
                 std::process::exit(1);
             }

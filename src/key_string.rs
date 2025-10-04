@@ -292,10 +292,10 @@ pub unsafe fn key_string_lookup_string(mut string: *const u8) -> key_code {
         let mut m = [MaybeUninit::<u8>::uninit(); MB_LEN_MAX + 1];
 
         // Is this no key or any key?
-        if strcasecmp(string, c!("None")) == 0 {
+        if strcaseeq_(string, "None") {
             return KEYC_NONE;
         }
-        if strcasecmp(string, c!("Any")) == 0 {
+        if strcaseeq_(string, "Any") {
             return keyc::KEYC_ANY as key_code;
         }
 

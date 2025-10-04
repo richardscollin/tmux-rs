@@ -12,7 +12,7 @@
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-use crate::libc::{snprintf, strcasecmp, strchr, strcspn, strncasecmp, strspn};
+use crate::libc::{snprintf, strchr, strcspn, strncasecmp, strspn};
 use crate::*;
 
 // #define STYLE_ATTR_MASK (~0)
@@ -83,35 +83,35 @@ pub unsafe fn style_parse(sy: *mut style, base: *const grid_cell, mut in_: *cons
                 *tmp.add(end) = b'\0' as _;
 
                 log_debug!("{}: {}", "style_parse", _s(tmp));
-                if strcasecmp(tmp, c!("default")) == 0 {
+                if strcaseeq_(tmp, "default") {
                     (*sy).gc.fg = (*base).fg;
                     (*sy).gc.bg = (*base).bg;
                     (*sy).gc.us = (*base).us;
                     (*sy).gc.attr = (*base).attr;
                     (*sy).gc.flags = (*base).flags;
-                } else if strcasecmp(tmp, c!("ignore")) == 0 {
+                } else if strcaseeq_(tmp, "ignore") {
                     (*sy).ignore = 1;
-                } else if strcasecmp(tmp, c!("noignore")) == 0 {
+                } else if strcaseeq_(tmp, "noignore") {
                     (*sy).ignore = 0;
-                } else if strcasecmp(tmp, c!("push-default")) == 0 {
+                } else if strcaseeq_(tmp, "push-default") {
                     (*sy).default_type = style_default_type::STYLE_DEFAULT_PUSH;
-                } else if strcasecmp(tmp, c!("pop-default")) == 0 {
+                } else if strcaseeq_(tmp, "pop-default") {
                     (*sy).default_type = style_default_type::STYLE_DEFAULT_POP;
-                } else if strcasecmp(tmp, c!("nolist")) == 0 {
+                } else if strcaseeq_(tmp, "nolist") {
                     (*sy).list = style_list::STYLE_LIST_OFF;
                 } else if strncasecmp(tmp, c!("list="), 5) == 0 {
-                    if strcasecmp(tmp.add(5), c!("on")) == 0 {
+                    if strcaseeq_(tmp.add(5), "on") {
                         (*sy).list = style_list::STYLE_LIST_ON;
-                    } else if strcasecmp(tmp.add(5), c!("focus")) == 0 {
+                    } else if strcaseeq_(tmp.add(5), "focus") {
                         (*sy).list = style_list::STYLE_LIST_FOCUS;
-                    } else if strcasecmp(tmp.add(5), c!("left-marker")) == 0 {
+                    } else if strcaseeq_(tmp.add(5), "left-marker") {
                         (*sy).list = style_list::STYLE_LIST_LEFT_MARKER;
-                    } else if strcasecmp(tmp.add(5), c!("right-marker")) == 0 {
+                    } else if strcaseeq_(tmp.add(5), "right-marker") {
                         (*sy).list = style_list::STYLE_LIST_RIGHT_MARKER;
                     } else {
                         break 'error;
                     }
-                } else if strcasecmp(tmp, c!("norange")) == 0 {
+                } else if strcaseeq_(tmp, "norange") {
                     (*sy).range_type = STYLE_DEFAULT.range_type;
                     (*sy).range_argument = STYLE_DEFAULT.range_type as u32;
                     strlcpy(
@@ -128,21 +128,21 @@ pub unsafe fn style_parse(sy: *mut style, base: *const grid_cell, mut in_: *cons
                             break 'error;
                         }
                     }
-                    if strcasecmp(tmp.add(6), c!("left")) == 0 {
+                    if strcaseeq_(tmp.add(6), "left") {
                         if !found.is_null() {
                             break 'error;
                         }
                         (*sy).range_type = style_range_type::STYLE_RANGE_LEFT;
                         (*sy).range_argument = 0;
                         style_set_range_string(sy, c!(""));
-                    } else if strcasecmp(tmp.add(6), c!("right")) == 0 {
+                    } else if strcaseeq_(tmp.add(6), "right") {
                         if !found.is_null() {
                             break 'error;
                         }
                         (*sy).range_type = style_range_type::STYLE_RANGE_RIGHT;
                         (*sy).range_argument = 0;
                         style_set_range_string(sy, c!(""));
-                    } else if strcasecmp(tmp.add(6), c!("pane")) == 0 {
+                    } else if strcaseeq_(tmp.add(6), "pane") {
                         if found.is_null() {
                             break 'error;
                         }
@@ -155,7 +155,7 @@ pub unsafe fn style_parse(sy: *mut style, base: *const grid_cell, mut in_: *cons
                         (*sy).range_type = style_range_type::STYLE_RANGE_PANE;
                         (*sy).range_argument = n;
                         style_set_range_string(sy, c!(""));
-                    } else if strcasecmp(tmp.add(6), c!("window")) == 0 {
+                    } else if strcaseeq_(tmp.add(6), "window") {
                         if found.is_null() {
                             break 'error;
                         }
@@ -165,7 +165,7 @@ pub unsafe fn style_parse(sy: *mut style, base: *const grid_cell, mut in_: *cons
                         (*sy).range_type = style_range_type::STYLE_RANGE_WINDOW;
                         (*sy).range_argument = n;
                         style_set_range_string(sy, c!(""));
-                    } else if strcasecmp(tmp.add(6), c!("session")) == 0 {
+                    } else if strcaseeq_(tmp.add(6), "session") {
                         if found.is_null() {
                             break 'error;
                         }
@@ -178,7 +178,7 @@ pub unsafe fn style_parse(sy: *mut style, base: *const grid_cell, mut in_: *cons
                         (*sy).range_type = style_range_type::STYLE_RANGE_SESSION;
                         (*sy).range_argument = n;
                         style_set_range_string(sy, c!(""));
-                    } else if strcasecmp(tmp.add(6), c!("user")) == 0 {
+                    } else if strcaseeq_(tmp.add(6), "user") {
                         if found.is_null() {
                             break 'error;
                         }
@@ -186,16 +186,16 @@ pub unsafe fn style_parse(sy: *mut style, base: *const grid_cell, mut in_: *cons
                         (*sy).range_argument = 0;
                         style_set_range_string(sy, found);
                     }
-                } else if strcasecmp(tmp, c!("noalign")) == 0 {
+                } else if strcaseeq_(tmp, "noalign") {
                     (*sy).align = STYLE_DEFAULT.align;
                 } else if end > 6 && strncasecmp(tmp, c!("align="), 6) == 0 {
-                    if strcasecmp(tmp.add(6), c!("left")) == 0 {
+                    if strcaseeq_(tmp.add(6), "left") {
                         (*sy).align = style_align::STYLE_ALIGN_LEFT;
-                    } else if strcasecmp(tmp.add(6), c!("centre")) == 0 {
+                    } else if strcaseeq_(tmp.add(6), "centre") {
                         (*sy).align = style_align::STYLE_ALIGN_CENTRE;
-                    } else if strcasecmp(tmp.add(6), c!("right")) == 0 {
+                    } else if strcaseeq_(tmp.add(6), "right") {
                         (*sy).align = style_align::STYLE_ALIGN_RIGHT;
-                    } else if strcasecmp(tmp.add(6), c!("absolute-centre")) == 0 {
+                    } else if strcaseeq_(tmp.add(6), "absolute-centre") {
                         (*sy).align = style_align::STYLE_ALIGN_ABSOLUTE_CENTRE;
                     } else {
                         break 'error;
@@ -236,7 +236,7 @@ pub unsafe fn style_parse(sy: *mut style, base: *const grid_cell, mut in_: *cons
                     } else {
                         (*sy).gc.us = (*base).us;
                     }
-                } else if strcasecmp(tmp, c!("none")) == 0 {
+                } else if strcaseeq_(tmp, "none") {
                     (*sy).gc.attr = grid_attr::empty();
                 } else if end > 2 && strncasecmp(tmp, c!("no"), 2) == 0 {
                     let Ok(value) = attributes_fromstring(cstr_to_str(tmp.add(2))) else {

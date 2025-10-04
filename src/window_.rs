@@ -1236,11 +1236,7 @@ pub unsafe fn window_pane_reset_mode(wp: *mut window_pane) {
         free(wme as _);
 
         if let Some(next) = NonNull::new(tailq_first(&raw mut (*wp).modes)) {
-            log_debug!(
-                "{}: next mode is {}",
-                func,
-                _s((*(*next.as_ptr()).mode).name.as_ptr())
-            );
+            log_debug!("{}: next mode is {}", func, (*(*next.as_ptr()).mode).name);
             (*wp).screen = (*next.as_ptr()).screen;
             ((*(*next.as_ptr()).mode).resize)(next, (*wp).sx, (*wp).sy);
         } else {

@@ -14,13 +14,13 @@
 use crate::*;
 
 pub static WINDOW_CLOCK_MODE: window_mode = window_mode {
-    name: SyncCharPtr::new(c"clock-mode"),
+    name: "clock-mode",
 
     init: window_clock_init,
     free: window_clock_free,
     resize: window_clock_resize,
     key: Some(window_clock_key),
-    default_format: SyncCharPtr::null(),
+    default_format: None,
     update: None,
     key_table: None,
     command: None,

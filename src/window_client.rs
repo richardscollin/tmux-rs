@@ -14,10 +14,10 @@
 use crate::libc::strcmp;
 use crate::*;
 
-static WINDOW_CLIENT_DEFAULT_COMMAND: &CStr = c"detach-client -t '%%'";
-static WINDOW_CLIENT_DEFAULT_FORMAT: &CStr = c"#{t/p:client_activity}: session #{session_name}";
-static WINDOW_CLIENT_DEFAULT_KEY_FORMAT: &CStr =
-    c"#{?#{e|<:#{line},10},#{line},#{?#{e|<:#{line},36},M-#{a:#{e|+:97,#{e|-:#{line},10}}},}}";
+static WINDOW_CLIENT_DEFAULT_COMMAND: &str = "detach-client -t '%%'";
+static WINDOW_CLIENT_DEFAULT_FORMAT: &str = "#{t/p:client_activity}: session #{session_name}";
+static WINDOW_CLIENT_DEFAULT_KEY_FORMAT: &str =
+    "#{?#{e|<:#{line},10},#{line},#{?#{e|<:#{line},36},M-#{a:#{e|+:97,#{e|-:#{line},10}}},}}";
 
 static WINDOW_CLIENT_MENU_ITEMS: [menu_item; 8] = [
     menu_item::new(c"Detach", b'd' as _, null()),
@@ -31,8 +31,8 @@ static WINDOW_CLIENT_MENU_ITEMS: [menu_item; 8] = [
 ];
 
 pub static WINDOW_CLIENT_MODE: window_mode = window_mode {
-    name: SyncCharPtr::new(c"client-mode"),
-    default_format: SyncCharPtr::new(WINDOW_CLIENT_DEFAULT_FORMAT),
+    name: "client-mode",
+    default_format: Some(WINDOW_CLIENT_DEFAULT_FORMAT),
 
     init: window_client_init,
     free: window_client_free,
@@ -285,17 +285,17 @@ pub unsafe fn window_client_init(
         (*data).wp = wp;
 
         if args.is_null() || !args_has(args, 'F') {
-            (*data).format = xstrdup_(WINDOW_CLIENT_DEFAULT_FORMAT).as_ptr();
+            (*data).format = xstrdup__(WINDOW_CLIENT_DEFAULT_FORMAT);
         } else {
             (*data).format = xstrdup(args_get_(args, 'F')).as_ptr();
         }
         if args.is_null() || !args_has(args, 'K') {
-            (*data).key_format = xstrdup_(WINDOW_CLIENT_DEFAULT_KEY_FORMAT).as_ptr();
+            (*data).key_format = xstrdup__(WINDOW_CLIENT_DEFAULT_KEY_FORMAT);
         } else {
             (*data).key_format = xstrdup(args_get_(args, 'K')).as_ptr();
         }
         if args.is_null() || args_count(args) == 0 {
-            (*data).command = xstrdup_(WINDOW_CLIENT_DEFAULT_COMMAND).as_ptr();
+            (*data).command = xstrdup__(WINDOW_CLIENT_DEFAULT_COMMAND);
         } else {
             (*data).command = xstrdup(args_string(args, 0)).as_ptr();
         }

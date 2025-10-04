@@ -15,7 +15,7 @@ use crate::*;
 use crate::{cmd_::cmd_queue::cmdq_get_callback1, options_::options_get_number_};
 
 const WINDOW_TREE_DEFAULT_COMMAND: &str = "switch-client -Zt '%%'";
-const WINDOW_TREE_DEFAULT_FORMAT: &CStr = cstring_concat!(
+const WINDOW_TREE_DEFAULT_FORMAT: &str = concat!(
     "#{?pane_format,",
     "#{?pane_marked,#[reverse],}",
     "#{pane_current_command}#{?pane_active,*,}#{?pane_marked,M,}",
@@ -66,8 +66,8 @@ static WINDOW_TREE_MENU_ITEMS: [menu_item; 12] = [
 ];
 
 pub static WINDOW_TREE_MODE: window_mode = window_mode {
-    name: SyncCharPtr::new(c"tree-mode"),
-    default_format: SyncCharPtr::from_ptr(WINDOW_TREE_DEFAULT_FORMAT.as_ptr().cast()),
+    name: "tree-mode",
+    default_format: Some(WINDOW_TREE_DEFAULT_FORMAT),
 
     init: window_tree_init,
     free: window_tree_free,
@@ -1102,7 +1102,7 @@ unsafe fn window_tree_init(
         memcpy__(&raw mut (*data).fs, fs);
 
         if args.is_null() || !args_has(args, 'F') {
-            (*data).format = xstrdup_(WINDOW_TREE_DEFAULT_FORMAT).as_ptr();
+            (*data).format = xstrdup__(WINDOW_TREE_DEFAULT_FORMAT);
         } else {
             (*data).format = xstrdup(args_get_(args, 'F')).as_ptr();
         }

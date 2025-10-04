@@ -14,27 +14,27 @@
 use crate::*;
 
 pub static WINDOW_COPY_MODE: window_mode = window_mode {
-    name: SyncCharPtr::new(c"copy-mode"),
+    name: "copy-mode",
     init: window_copy_init,
     free: window_copy_free,
     resize: window_copy_resize,
     key_table: Some(window_copy_key_table),
     command: Some(window_copy_command),
     formats: Some(window_copy_formats),
-    default_format: SyncCharPtr::null(),
+    default_format: None,
     update: None,
     key: None,
 };
 
 pub static WINDOW_VIEW_MODE: window_mode = window_mode {
-    name: SyncCharPtr::new(c"view-mode"),
+    name: "view-mode",
     init: window_copy_view_init,
     free: window_copy_free,
     resize: window_copy_resize,
     key_table: Some(window_copy_key_table),
     command: Some(window_copy_command),
     formats: Some(window_copy_formats),
-    default_format: SyncCharPtr::null(),
+    default_format: None,
     update: None,
     key: None,
 };

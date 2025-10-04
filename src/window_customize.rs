@@ -13,7 +13,7 @@
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 use crate::*;
 
-static WINDOW_CUSTOMIZE_DEFAULT_FORMAT: &CStr = cstring_concat!(
+static WINDOW_CUSTOMIZE_DEFAULT_FORMAT: &str = concat!(
     "#{?is_option,",
     "#{?option_is_global,,#[reverse](#{option_scope})#[default] }",
     "#[ignore]",
@@ -35,8 +35,8 @@ static WINDOW_CUSTOMIZE_MENU_ITEMS: [menu_item; 8] = [
 ];
 
 pub static WINDOW_CUSTOMIZE_MODE: window_mode = window_mode {
-    name: SyncCharPtr::new(c"options-mode"),
-    default_format: SyncCharPtr::new(WINDOW_CUSTOMIZE_DEFAULT_FORMAT),
+    name: "options-mode",
+    default_format: Some(WINDOW_CUSTOMIZE_DEFAULT_FORMAT),
 
     init: window_customize_init,
     free: window_customize_free,
@@ -1170,7 +1170,7 @@ pub unsafe fn window_customize_init(
         memcpy__(&raw mut (*data).fs, fs);
 
         if args.is_null() || !args_has(args, 'F') {
-            (*data).format = xstrdup_(WINDOW_CUSTOMIZE_DEFAULT_FORMAT).as_ptr();
+            (*data).format = xstrdup__(WINDOW_CUSTOMIZE_DEFAULT_FORMAT);
         } else {
             (*data).format = xstrdup(args_get_(args, 'F')).as_ptr();
         }

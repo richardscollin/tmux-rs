@@ -1312,8 +1312,8 @@ type menu_choice_cb = Option<unsafe fn(*mut menu, u32, key_code, *mut c_void)>;
 /// right function to handle input and output.
 #[repr(C)]
 struct window_mode {
-    name: SyncCharPtr,
-    default_format: SyncCharPtr,
+    name: &'static str,
+    default_format: Option<&'static str>,
 
     init: unsafe fn(NonNull<window_mode_entry>, *mut cmd_find_state, *mut args) -> *mut screen,
     free: unsafe fn(NonNull<window_mode_entry>),

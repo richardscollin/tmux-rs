@@ -14,10 +14,10 @@
 use crate::libc::{memmem, strcmp, strstr};
 use crate::*;
 
-const WINDOW_BUFFER_DEFAULT_COMMAND: *const u8 = c!("paste-buffer -p -b '%%'");
-const WINDOW_BUFFER_DEFAULT_FORMAT: *const u8 = c!("#{t/p:buffer_created}: #{buffer_sample}");
+const WINDOW_BUFFER_DEFAULT_COMMAND: &str = "paste-buffer -p -b '%%'";
+const WINDOW_BUFFER_DEFAULT_FORMAT: &str = "#{t/p:buffer_created}: #{buffer_sample}";
 
-const WINDOW_BUFFER_DEFAULT_KEY_FORMAT: &CStr = cstring_concat!(
+const WINDOW_BUFFER_DEFAULT_KEY_FORMAT: &str = concat!(
     "#{?#{e|<:#{line},10},", //
     "#{line}",
     ",",
@@ -44,8 +44,8 @@ static WINDOW_BUFFER_MENU_ITEMS: [menu_item; 11] = [
 ];
 
 pub static WINDOW_BUFFER_MODE: window_mode = window_mode {
-    name: SyncCharPtr::new(c"buffer-mode"),
-    default_format: SyncCharPtr::from_ptr(WINDOW_BUFFER_DEFAULT_FORMAT),
+    name: "buffer-mode",
+    default_format: Some(WINDOW_BUFFER_DEFAULT_FORMAT),
 
     init: window_buffer_init,
     free: window_buffer_free,
@@ -353,17 +353,17 @@ pub unsafe fn window_buffer_init(
         cmd_find_copy_state(&raw mut data.fs, fs);
 
         if args.is_null() || !args_has(args, 'F') {
-            data.format = xstrdup(WINDOW_BUFFER_DEFAULT_FORMAT).as_ptr();
+            data.format = xstrdup__(WINDOW_BUFFER_DEFAULT_FORMAT);
         } else {
             data.format = xstrdup(args_get_(args, 'F')).as_ptr();
         }
         if args.is_null() || !args_has(args, 'K') {
-            data.key_format = xstrdup_(WINDOW_BUFFER_DEFAULT_KEY_FORMAT).as_ptr();
+            data.key_format = xstrdup__(WINDOW_BUFFER_DEFAULT_KEY_FORMAT);
         } else {
             data.key_format = xstrdup(args_get_(args, 'K')).as_ptr();
         }
         if args.is_null() || args_count(args) == 0 {
-            data.command = xstrdup(WINDOW_BUFFER_DEFAULT_COMMAND).as_ptr();
+            data.command = xstrdup__(WINDOW_BUFFER_DEFAULT_COMMAND);
         } else {
             data.command = xstrdup(args_string(args, 0)).as_ptr();
         }

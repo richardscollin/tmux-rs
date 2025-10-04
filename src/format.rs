@@ -2137,7 +2137,7 @@ pub unsafe fn format_cb_pane_mode(ft: *mut format_tree) -> *mut c_void {
         if !(*ft).wp.is_null() {
             let wme = tailq_first(&raw mut (*(*ft).wp).modes);
             if !wme.is_null() {
-                return xstrdup((*(*wme).mode).name.as_ptr()).as_ptr().cast();
+                return xstrdup__((*(*wme).mode).name).cast();
             }
             return null_mut();
         }
@@ -2867,18 +2867,18 @@ pub unsafe fn format_cb_window_activity(ft: *mut format_tree) -> *mut c_void {
 }
 
 /// Callback for buffer_mode_format.
-pub unsafe fn format_cb_buffer_mode_format(_ft: *mut format_tree) -> *mut c_void {
-    unsafe { xstrdup(WINDOW_BUFFER_MODE.default_format.0).as_ptr().cast() }
+pub fn format_cb_buffer_mode_format(_ft: *mut format_tree) -> *mut c_void {
+    xstrdup__(WINDOW_BUFFER_MODE.default_format.unwrap()).cast()
 }
 
 /// Callback for client_mode_format.
-pub unsafe fn format_cb_client_mode_format(_ft: *mut format_tree) -> *mut c_void {
-    unsafe { xstrdup(WINDOW_CLIENT_MODE.default_format.0).as_ptr().cast() }
+pub fn format_cb_client_mode_format(_ft: *mut format_tree) -> *mut c_void {
+    xstrdup__(WINDOW_CLIENT_MODE.default_format.unwrap()).cast()
 }
 
 /// Callback for tree_mode_format.
-pub unsafe fn format_cb_tree_mode_format(_ft: *mut format_tree) -> *mut c_void {
-    unsafe { xstrdup(WINDOW_TREE_MODE.default_format.0).as_ptr().cast() }
+pub fn format_cb_tree_mode_format(_ft: *mut format_tree) -> *mut c_void {
+    xstrdup__(WINDOW_TREE_MODE.default_format.unwrap()).cast()
 }
 
 /// Callback for uid.

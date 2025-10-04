@@ -20,7 +20,7 @@ pub static CMD_RENAME_SESSION_ENTRY: cmd_entry = cmd_entry {
     alias: Some("rename"),
 
     args: args_parse::new(c"t:", 1, 1, None),
-    usage: SyncCharPtr::new(c"[-t target-session] new-name"),
+    usage: "[-t target-session] new-name",
 
     target: cmd_entry_flag::new(
         b't',

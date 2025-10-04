@@ -19,7 +19,7 @@ pub static CMD_LIST_PANES_ENTRY: cmd_entry = cmd_entry {
     alias: Some("lsp"),
 
     args: args_parse::new(c"asF:f:t:", 0, 0, None),
-    usage: SyncCharPtr::new(c"[-as] [-F format] [-f filter] [-t target-window]"),
+    usage: "[-as] [-F format] [-f filter] [-t target-window]",
 
     target: cmd_entry_flag::new(
         b't',

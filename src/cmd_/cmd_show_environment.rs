@@ -19,7 +19,7 @@ pub static CMD_SHOW_ENVIRONMENT_ENTRY: cmd_entry = cmd_entry {
     alias: Some("showenv"),
 
     args: args_parse::new(c"hgst:", 0, 1, None),
-    usage: SyncCharPtr::new(c"[-hgs] [-t target-session] [name]"),
+    usage: "[-hgs] [-t target-session] [name]",
 
     target: cmd_entry_flag::new(
         b't',

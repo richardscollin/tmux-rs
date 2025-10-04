@@ -20,7 +20,7 @@ pub static CMD_SWAP_WINDOW_ENTRY: cmd_entry = cmd_entry {
     alias: Some("swapw"),
 
     args: args_parse::new(c"ds:t:", 0, 0, None),
-    usage: SyncCharPtr::new(c"[-d] [-s src-window] [-t dst-window]"),
+    usage: "[-d] [-s src-window] [-t dst-window]",
 
     source: cmd_entry_flag::new(
         b's',

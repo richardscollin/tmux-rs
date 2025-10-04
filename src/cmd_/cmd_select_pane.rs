@@ -19,7 +19,7 @@ pub static CMD_SELECT_PANE_ENTRY: cmd_entry = cmd_entry {
     alias: Some("selectp"),
 
     args: args_parse::new(c"DdegLlMmP:RT:t:UZ", 0, 0, None), // -P and -g deprecated
-    usage: SyncCharPtr::new(c"[-DdeLlMmRUZ] [-T title] [-t target-pane]"),
+    usage: "[-DdeLlMmRUZ] [-T title] [-t target-pane]",
 
     target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_PANE, cmd_find_flags::empty()),
 
@@ -33,7 +33,7 @@ pub static CMD_LAST_PANE_ENTRY: cmd_entry = cmd_entry {
     alias: Some("lastp"),
 
     args: args_parse::new(c"det:Z", 0, 0, None),
-    usage: SyncCharPtr::new(c"[-deZ] [-t target-window]"),
+    usage: "[-deZ] [-t target-window]",
 
     target: cmd_entry_flag::new(
         b't',

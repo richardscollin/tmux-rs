@@ -18,7 +18,7 @@ pub static CMD_MOVE_WINDOW_ENTRY: cmd_entry = cmd_entry {
     alias: Some("movew"),
 
     args: args_parse::new(c"abdkrs:t:", 0, 0, None),
-    usage: SyncCharPtr::new(c"[-abdkr] [-s src-window] [-t dst-window]"),
+    usage: "[-abdkr] [-s src-window] [-t dst-window]",
 
     source: cmd_entry_flag::new(
         b's',
@@ -36,7 +36,7 @@ pub static CMD_LINK_WINDOW_ENTRY: cmd_entry = cmd_entry {
     alias: Some("linkw"),
 
     args: args_parse::new(c"abdks:t:", 0, 0, None),
-    usage: SyncCharPtr::new(c"[-abdk] [-s src-window] [-t dst-window]"),
+    usage: "[-abdk] [-s src-window] [-t dst-window]",
 
     source: cmd_entry_flag::new(
         b's',

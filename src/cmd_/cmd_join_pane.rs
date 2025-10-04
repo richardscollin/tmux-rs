@@ -21,7 +21,7 @@ pub static CMD_JOIN_PANE_ENTRY: cmd_entry = cmd_entry {
     alias: Some("joinp"),
 
     args: args_parse::new(c"bdfhvp:l:s:t:", 0, 0, None),
-    usage: SyncCharPtr::new(c"[-bdfhv] [-l size] [-s src-pane] [-t dst-pane]"),
+    usage: "[-bdfhv] [-l size] [-s src-pane] [-t dst-pane]",
 
     source: cmd_entry_flag::new(
         b's',
@@ -39,7 +39,7 @@ pub static CMD_MOVE_PANE_ENTRY: cmd_entry = cmd_entry {
     alias: Some("movep"),
 
     args: args_parse::new(c"bdfhvp:l:s:t:", 0, 0, None),
-    usage: SyncCharPtr::new(c"[-bdfhv] [-l size] [-s src-pane] [-t dst-pane]"),
+    usage: "[-bdfhv] [-l size] [-s src-pane] [-t dst-pane]",
 
     source: cmd_entry_flag::new(
         b's',

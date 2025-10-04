@@ -18,7 +18,7 @@ pub static CMD_RENAME_WINDOW_ENTRY: cmd_entry = cmd_entry {
     alias: Some("renamew"),
 
     args: args_parse::new(c"t:", 1, 1, None),
-    usage: SyncCharPtr::new(c"[-t target-window] new-name"),
+    usage: "[-t target-window] new-name",
 
     target: cmd_entry_flag::new(
         b't',

@@ -22,9 +22,13 @@ pub static CMD_NEW_SESSION_ENTRY: cmd_entry = cmd_entry {
     alias: Some("new"),
 
     args: args_parse::new(c"Ac:dDe:EF:f:n:Ps:t:x:Xy:", 0, -1, None),
-    usage: SyncCharPtr::new(c"[-AdDEPX] [-c start-directory] [-e environment] [-F format] [-f flags] [-n window-name] [-s session-name] [-t target-session] [-x width] [-y height] [shell-command]"),
+    usage: "[-AdDEPX] [-c start-directory] [-e environment] [-F format] [-f flags] [-n window-name] [-s session-name] [-t target-session] [-x width] [-y height] [shell-command]",
 
-    target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_SESSION, cmd_find_flags::CMD_FIND_CANFAIL),
+    target: cmd_entry_flag::new(
+        b't',
+        cmd_find_type::CMD_FIND_SESSION,
+        cmd_find_flags::CMD_FIND_CANFAIL,
+    ),
 
     flags: cmd_flag::CMD_STARTSERVER,
     exec: cmd_new_session_exec,
@@ -36,7 +40,7 @@ pub static CMD_HAS_SESSION_ENTRY: cmd_entry = cmd_entry {
     alias: Some("has"),
 
     args: args_parse::new(c"t:", 0, 0, None),
-    usage: SyncCharPtr::new(c"[-t target-session]"),
+    usage: "[-t target-session]",
 
     target: cmd_entry_flag::new(
         b't',

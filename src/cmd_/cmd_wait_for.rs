@@ -25,7 +25,7 @@ pub static CMD_WAIT_FOR_ENTRY: cmd_entry = cmd_entry {
     alias: Some("wait"),
 
     args: args_parse::new(c"LSU", 1, 1, None),
-    usage: SyncCharPtr::new(c"[-L|-S|-U] channel"),
+    usage: "[-L|-S|-U] channel",
 
     flags: cmd_flag::empty(),
     exec: cmd_wait_for_exec,

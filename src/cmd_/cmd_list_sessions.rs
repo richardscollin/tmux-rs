@@ -19,7 +19,7 @@ pub static CMD_LIST_SESSIONS_ENTRY: cmd_entry = cmd_entry {
     alias: Some("ls"),
 
     args: args_parse::new(c"F:f:", 0, 0, None),
-    usage: SyncCharPtr::new(c"[-F format] [-f filter]"),
+    usage: "[-F format] [-f filter]",
 
     flags: cmd_flag::CMD_AFTERHOOK,
     exec: cmd_list_sessions_exec,

@@ -19,7 +19,7 @@ pub static CMD_SAVE_BUFFER_ENTRY: cmd_entry = cmd_entry {
     alias: Some("saveb"),
 
     args: args_parse::new(c"ab:", 1, 1, None),
-    usage: SyncCharPtr::new(c"[-a] [-b buffer-name] path"),
+    usage: "[-a] [-b buffer-name] path",
 
     flags: cmd_flag::CMD_AFTERHOOK,
     exec: cmd_save_buffer_exec,
@@ -32,7 +32,7 @@ pub static CMD_SHOW_BUFFER_ENTRY: cmd_entry = cmd_entry {
     alias: Some("showb"),
 
     args: args_parse::new(c"b:", 0, 0, None),
-    usage: SyncCharPtr::new(c"[-b buffer-name]"),
+    usage: "[-b buffer-name]",
 
     flags: cmd_flag::CMD_AFTERHOOK,
     exec: cmd_save_buffer_exec,

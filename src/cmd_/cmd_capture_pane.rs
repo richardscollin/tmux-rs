@@ -20,9 +20,7 @@ pub static CMD_CAPTURE_PANE_ENTRY: cmd_entry = cmd_entry {
     alias: Some("capturep"),
 
     args: args_parse::new(c"ab:CeE:JNpPqS:Tt:", 0, 0, None),
-    usage: SyncCharPtr::new(
-        c"[-aCeJNpPqT] [-b buffer-name] [-E end-line] [-S start-line] [-t target-pane]",
-    ),
+    usage: "[-aCeJNpPqT] [-b buffer-name] [-E end-line] [-S start-line] [-t target-pane]",
 
     source: cmd_entry_flag::zeroed(),
     target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_PANE, cmd_find_flags::empty()),
@@ -36,7 +34,7 @@ pub static CMD_CLEAR_HISTORY_ENTRY: cmd_entry = cmd_entry {
     alias: Some("clearhist"),
 
     args: args_parse::new(c"Ht:", 0, 0, None),
-    usage: SyncCharPtr::new(c"[-H] [-t target-pane]"),
+    usage: "[-H] [-t target-pane]",
 
     source: cmd_entry_flag::zeroed(),
     target: cmd_entry_flag {

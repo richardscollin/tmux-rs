@@ -18,7 +18,7 @@ pub static CMD_SHOW_OPTIONS_ENTRY: cmd_entry = cmd_entry {
     alias: Some("show"),
 
     args: args_parse::new(c"AgHpqst:vw", 0, 1, None),
-    usage: SyncCharPtr::new(c"[-AgHpqsvw] [-t target-pane] [option]"),
+    usage: "[-AgHpqsvw] [-t target-pane] [option]",
 
     target: cmd_entry_flag::new(
         b't',
@@ -36,7 +36,7 @@ pub static CMD_SHOW_WINDOW_OPTIONS_ENTRY: cmd_entry = cmd_entry {
     alias: Some("showw"),
 
     args: args_parse::new(c"gvt:", 0, 1, None),
-    usage: SyncCharPtr::new(c"[-gv] [-t target-window] [option]"),
+    usage: "[-gv] [-t target-window] [option]",
 
     target: cmd_entry_flag::new(
         b't',
@@ -55,7 +55,7 @@ pub static CMD_SHOW_HOOKS_ENTRY: cmd_entry = cmd_entry {
     alias: None,
 
     args: args_parse::new(c"gpt:w", 0, 1, None),
-    usage: SyncCharPtr::new(c"[-gpw] [-t target-pane]"),
+    usage: "[-gpw] [-t target-pane]",
 
     target: cmd_entry_flag::new(
         b't',

@@ -19,7 +19,7 @@ pub static CMD_DISPLAY_PANES_ENTRY: cmd_entry = cmd_entry {
     alias: Some("displayp"),
 
     args: args_parse::new(c"bd:Nt:", 0, 1, Some(cmd_display_panes_args_parse)),
-    usage: SyncCharPtr::new(c"[-bN] [-d duration] [-t target-client] [template]"),
+    usage: "[-bN] [-d duration] [-t target-client] [template]",
 
     flags: cmd_flag::CMD_AFTERHOOK.union(cmd_flag::CMD_CLIENT_TFLAG),
     exec: cmd_display_panes_exec,

@@ -19,9 +19,7 @@ pub static CMD_RESPAWN_PANE_ENTRY: cmd_entry = cmd_entry {
     alias: Some("respawnp"),
 
     args: args_parse::new(c"c:e:kt:", 0, -1, None),
-    usage: SyncCharPtr::new(
-        c"[-k] [-c start-directory] [-e environment] [-t target-pane] [shell-command]",
-    ),
+    usage: "[-k] [-c start-directory] [-e environment] [-t target-pane] [shell-command]",
 
     target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_PANE, cmd_find_flags::empty()),
 

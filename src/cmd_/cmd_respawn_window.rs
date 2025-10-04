@@ -18,9 +18,7 @@ pub static CMD_RESPAWN_WINDOW_ENTRY: cmd_entry = cmd_entry {
     alias: Some("respawnw"),
 
     args: args_parse::new(c"c:e:kt:", 0, -1, None),
-    usage: SyncCharPtr::new(
-        c"[-k] [-c start-directory] [-e environment] [-t target-window] [shell-command]",
-    ),
+    usage: "[-k] [-c start-directory] [-e environment] [-t target-window] [shell-command]",
 
     target: cmd_entry_flag::new(
         b't',

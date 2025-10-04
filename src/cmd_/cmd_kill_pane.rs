@@ -19,7 +19,7 @@ pub static CMD_KILL_PANE_ENTRY: cmd_entry = cmd_entry {
     alias: Some("killp"),
 
     args: args_parse::new(c"at:", 0, 0, None),
-    usage: SyncCharPtr::new(c"[-a] [-t target-client]"),
+    usage: "[-a] [-t target-client]",
 
     target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_PANE, cmd_find_flags::empty()),
 

@@ -26,7 +26,7 @@ pub static CMD_LIST_WINDOWS_ENTRY: cmd_entry = cmd_entry {
     alias: Some("lsw"),
 
     args: args_parse::new(c"F:f:at:", 0, 0, None),
-    usage: SyncCharPtr::new(c"[-a] [-F format] [-f filter] [-t target-session]"),
+    usage: "[-a] [-F format] [-f filter] [-t target-session]",
 
     target: cmd_entry_flag::new(
         b't',

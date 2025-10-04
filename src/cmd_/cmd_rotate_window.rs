@@ -22,7 +22,7 @@ pub static CMD_ROTATE_WINDOW_ENTRY: cmd_entry = cmd_entry {
     alias: Some("rotatew"),
 
     args: args_parse::new(c"Dt:UZ", 0, 0, None),
-    usage: SyncCharPtr::new(c"[-DUZ] [-t target-window]"),
+    usage: "[-DUZ] [-t target-window]",
 
     target: cmd_entry_flag::new(
         b't',

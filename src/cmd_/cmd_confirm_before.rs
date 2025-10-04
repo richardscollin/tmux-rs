@@ -18,7 +18,7 @@ pub static CMD_CONFIRM_BEFORE_ENTRY: cmd_entry = cmd_entry {
     alias: Some("confirm"),
 
     args: args_parse::new(c"bc:p:t:y", 1, 1, Some(cmd_confirm_before_args_parse)),
-    usage: SyncCharPtr::new(c"[-by] [-c confirm_key] [-p prompt] [-t target-pane] command"),
+    usage: "[-by] [-c confirm_key] [-p prompt] [-t target-pane] command",
 
     flags: cmd_flag::CMD_CLIENT_TFLAG,
     exec: cmd_confirm_before_exec,

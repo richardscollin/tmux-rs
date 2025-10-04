@@ -20,7 +20,7 @@ pub static CMD_KILL_SERVER_ENTRY: cmd_entry = cmd_entry {
     alias: None,
 
     args: args_parse::new(c"", 0, 0, None),
-    usage: SyncCharPtr::new(c""),
+    usage: "",
 
     flags: cmd_flag::empty(),
     exec: cmd_kill_server_exec,
@@ -32,7 +32,7 @@ pub static CMD_START_SERVER_ENTRY: cmd_entry = cmd_entry {
     name: "start-server",
     alias: Some("start"),
     args: args_parse::new(c"", 0, 0, None),
-    usage: SyncCharPtr::new(c""),
+    usage: "",
     flags: cmd_flag::CMD_STARTSERVER,
     exec: cmd_kill_server_exec,
     source: cmd_entry_flag::zeroed(),

@@ -2785,7 +2785,7 @@ pub unsafe fn window_copy_cmd_refresh_from_pane(
 
 #[repr(C)]
 struct window_copy_cmd_table_entry {
-    command: SyncCharPtr,
+    command: &'static str,
     minargs: u32,
     maxargs: u32,
     clear: window_copy_cmd_clear,

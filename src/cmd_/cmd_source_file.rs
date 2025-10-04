@@ -19,7 +19,7 @@ pub static CMD_SOURCE_FILE_ENTRY: cmd_entry = cmd_entry {
     alias: Some("source"),
 
     args: args_parse::new(c"t:Fnqv", 1, -1, None),
-    usage: SyncCharPtr::new(c"[-Fnqv] [-t target-pane] path ..."),
+    usage: "[-Fnqv] [-t target-pane] path ...",
 
     target: cmd_entry_flag::new(
         b't',

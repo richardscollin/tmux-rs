@@ -19,7 +19,7 @@ pub static CMD_SELECT_WINDOW_ENTRY: cmd_entry = cmd_entry {
     alias: Some("selectw"),
 
     args: args_parse::new(c"lnpTt:", 0, 0, None),
-    usage: SyncCharPtr::new(c"[-lnpT] [-t target-window]"),
+    usage: "[-lnpT] [-t target-window]",
 
     target: cmd_entry_flag::new(
         b't',
@@ -37,7 +37,7 @@ pub static CMD_NEXT_WINDOW_ENTRY: cmd_entry = cmd_entry {
     alias: Some("next"),
 
     args: args_parse::new(c"at:", 0, 0, None),
-    usage: SyncCharPtr::new(c"[-a] [-t target-session]"),
+    usage: "[-a] [-t target-session]",
 
     target: cmd_entry_flag::new(
         b't',
@@ -55,7 +55,7 @@ pub static CMD_PREVIOUS_WINDOW_ENTRY: cmd_entry = cmd_entry {
     alias: Some("prev"),
 
     args: args_parse::new(c"at:", 0, 0, None),
-    usage: SyncCharPtr::new(c"[-a] [-t target-session]"),
+    usage: "[-a] [-t target-session]",
 
     target: cmd_entry_flag::new(
         b't',
@@ -73,7 +73,7 @@ pub static CMD_LAST_WINDOW_ENTRY: cmd_entry = cmd_entry {
     alias: Some("last"),
 
     args: args_parse::new(c"t:", 0, 0, None),
-    usage: SyncCharPtr::new(c"[-t target-session]"),
+    usage: "[-t target-session]",
 
     target: cmd_entry_flag::new(
         b't',

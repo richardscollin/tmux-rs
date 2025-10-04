@@ -19,7 +19,7 @@ pub static CMD_BIND_KEY_ENTRY: cmd_entry = cmd_entry {
     alias: Some("bind"),
 
     args: args_parse::new(c"nrN:T:", 1, -1, Some(cmd_bind_key_args_parse)),
-    usage: SyncCharPtr::new(c"[-nr] [-T key-table] [-N note] key [command [arguments]]"),
+    usage: "[-nr] [-T key-table] [-N note] key [command [arguments]]",
 
     flags: cmd_flag::CMD_AFTERHOOK,
     exec: cmd_bind_key_exec,

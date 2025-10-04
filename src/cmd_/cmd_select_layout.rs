@@ -18,7 +18,7 @@ pub static CMD_SELECT_LAYOUT_ENTRY: cmd_entry = cmd_entry {
     alias: Some("selectl"),
 
     args: args_parse::new(c"Enopt:", 0, 1, None),
-    usage: SyncCharPtr::new(c"[-Enop] [-t target-pane] [layout-name]"),
+    usage: "[-Enop] [-t target-pane] [layout-name]",
 
     target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_PANE, cmd_find_flags::empty()),
 
@@ -32,7 +32,7 @@ pub static CMD_NEXT_LAYOUT_ENTRY: cmd_entry = cmd_entry {
     alias: Some("nextl"),
 
     args: args_parse::new(c"t:", 0, 0, None),
-    usage: SyncCharPtr::new(CMD_TARGET_WINDOW_USAGE),
+    usage: "[-t target-window]",
 
     target: cmd_entry_flag::new(
         b't',
@@ -50,7 +50,7 @@ pub static CMD_PREVIOUS_LAYOUT_ENTRY: cmd_entry = cmd_entry {
     alias: Some("prevl"),
 
     args: args_parse::new(c"t:", 0, 0, None),
-    usage: SyncCharPtr::new(CMD_TARGET_WINDOW_USAGE),
+    usage: "[-t target-window]",
 
     target: cmd_entry_flag::new(
         b't',

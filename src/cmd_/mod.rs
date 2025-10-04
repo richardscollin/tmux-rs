@@ -556,7 +556,7 @@ pub unsafe fn cmd_parse(
 
         let args = args_parse(&entry.args, values, count, &raw mut error);
         if args.is_null() && error.is_null() {
-            let cause = format_nul!("usage: {} {}", entry.name, _s(entry.usage.as_ptr()));
+            let cause = format_nul!("usage: {} {}", entry.name, entry.usage);
             return Err(cause);
         }
         if args.is_null() {

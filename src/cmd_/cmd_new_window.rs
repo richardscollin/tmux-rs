@@ -21,9 +21,13 @@ pub static CMD_NEW_WINDOW_ENTRY: cmd_entry = cmd_entry {
     alias: Some("neww"),
 
     args: args_parse::new(c"abc:de:F:kn:PSt:", 0, -1, None),
-    usage: SyncCharPtr::new(c"[-abdkPS] [-c start-directory] [-e environment] [-F format] [-n window-name] [-t target-window] [shell-command]"),
+    usage: "[-abdkPS] [-c start-directory] [-e environment] [-F format] [-n window-name] [-t target-window] [shell-command]",
 
-    target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_WINDOW, cmd_find_flags::CMD_FIND_WINDOW_INDEX),
+    target: cmd_entry_flag::new(
+        b't',
+        cmd_find_type::CMD_FIND_WINDOW,
+        cmd_find_flags::CMD_FIND_WINDOW_INDEX,
+    ),
 
     flags: cmd_flag::empty(),
     exec: cmd_new_window_exec,

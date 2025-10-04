@@ -19,7 +19,7 @@ pub static CMD_COPY_MODE_ENTRY: cmd_entry = cmd_entry {
     alias: None,
 
     args: args_parse::new(c"deHMs:t:uq", 0, 0, None),
-    usage: SyncCharPtr::new(c"[-deHMuq] [-s src-pane] [-t target-pane]"),
+    usage: "[-deHMuq] [-s src-pane] [-t target-pane]",
 
     source: cmd_entry_flag::new(b's', cmd_find_type::CMD_FIND_PANE, cmd_find_flags::empty()),
     target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_PANE, cmd_find_flags::empty()),
@@ -33,7 +33,7 @@ pub static CMD_CLOCK_MODE_ENTRY: cmd_entry = cmd_entry {
     alias: None,
 
     args: args_parse::new(c"t:", 0, 0, None),
-    usage: SyncCharPtr::new(CMD_TARGET_PANE_USAGE),
+    usage: "[-t target-pane]",
 
     target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_PANE, cmd_find_flags::empty()),
     source: cmd_entry_flag::zeroed(),

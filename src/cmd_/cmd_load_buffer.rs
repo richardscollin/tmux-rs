@@ -18,7 +18,7 @@ pub static CMD_LOAD_BUFFER_ENTRY: cmd_entry = cmd_entry {
     alias: Some("loadb"),
 
     args: args_parse::new(c"b:t:w", 1, 1, None),
-    usage: SyncCharPtr::new(c"[-b buffer-name] [-t target-client] path"),
+    usage: "[-b buffer-name] [-t target-client] path",
 
     flags: cmd_flag::CMD_AFTERHOOK
         .union(cmd_flag::CMD_CLIENT_TFLAG)

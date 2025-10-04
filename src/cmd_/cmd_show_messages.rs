@@ -21,7 +21,7 @@ pub static CMD_SHOW_MESSAGES_ENTRY: cmd_entry = cmd_entry {
     alias: Some("showmsgs"),
 
     args: args_parse::new(c"JTt:", 0, 0, None),
-    usage: SyncCharPtr::new(c"[-JT] [-t target-client]"),
+    usage: "[-JT] [-t target-client]",
 
     flags: cmd_flag::CMD_AFTERHOOK.union(cmd_flag::CMD_CLIENT_TFLAG),
     exec: cmd_show_messages_exec,

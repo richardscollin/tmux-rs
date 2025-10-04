@@ -20,7 +20,7 @@ pub static CMD_LIST_KEYS_ENTRY: cmd_entry = cmd_entry {
     alias: Some("lsk"),
 
     args: args_parse::new(c"1aNP:T:", 0, 1, None),
-    usage: SyncCharPtr::new(c"[-1aN] [-P prefix-string] [-T key-table] [key]"),
+    usage: "[-1aN] [-P prefix-string] [-T key-table] [key]",
 
     flags: cmd_flag::CMD_STARTSERVER.union(cmd_flag::CMD_AFTERHOOK),
     exec: cmd_list_keys_exec,
@@ -33,7 +33,7 @@ pub static CMD_LIST_COMMANDS_ENTRY: cmd_entry = cmd_entry {
     alias: Some("lscm"),
 
     args: args_parse::new(c"F:", 0, 1, None),
-    usage: SyncCharPtr::new(c"[-F format] [command]"),
+    usage: "[-F format] [command]",
 
     flags: cmd_flag::CMD_STARTSERVER.union(cmd_flag::CMD_AFTERHOOK),
     exec: cmd_list_keys_exec,
@@ -385,12 +385,7 @@ unsafe fn cmd_list_keys_commands(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
                 "{}",
                 entry.alias.unwrap_or_default()
             );
-            let s = if !entry.usage.is_null() {
-                entry.usage.as_ptr()
-            } else {
-                c!("")
-            };
-            format_add!(ft, c!("command_list_usage"), "{}", _s(s));
+            format_add!(ft, c!("command_list_usage"), "{}", entry.usage);
 
             let line = format_expand(ft, template);
             if *line != b'\0' as _ {

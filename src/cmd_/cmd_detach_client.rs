@@ -19,7 +19,7 @@ pub static CMD_DETACH_CLIENT_ENTRY: cmd_entry = cmd_entry {
     alias: Some("detach"),
 
     args: args_parse::new(c"aE:s:t:P", 0, 0, None),
-    usage: SyncCharPtr::new(c"[-aP] [-E shell-command] [-s target-session] [-t target-client]"),
+    usage: "[-aP] [-E shell-command] [-s target-session] [-t target-client]",
 
     source: cmd_entry_flag::new(
         b's',
@@ -37,7 +37,7 @@ pub static CMD_SUSPEND_CLIENT_ENTRY: cmd_entry = cmd_entry {
     alias: Some("suspendc"),
 
     args: args_parse::new(c"t:", 0, 0, None),
-    usage: SyncCharPtr::new(c"[-t target-client]"),
+    usage: "[-t target-client]",
 
     flags: cmd_flag::CMD_CLIENT_TFLAG,
     exec: cmd_detach_client_exec,

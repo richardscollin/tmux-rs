@@ -19,7 +19,7 @@ pub static CMD_KILL_SESSION_ENTRY: cmd_entry = cmd_entry {
     alias: None,
 
     args: args_parse::new(c"aCt:", 0, 0, None),
-    usage: SyncCharPtr::new(c"[-aC] [-t target-session]"),
+    usage: "[-aC] [-t target-session]",
 
     target: cmd_entry_flag::new(
         b't',

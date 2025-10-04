@@ -2222,7 +2222,7 @@ struct cmd_entry {
     alias: Option<&'static str>,
 
     args: args_parse,
-    usage: SyncCharPtr,
+    usage: &'static str,
 
     source: cmd_entry_flag,
     target: cmd_entry_flag,
@@ -2653,11 +2653,6 @@ impl options_name_map {
     }
 }
 
-// Common command usages.
-const CMD_TARGET_PANE_USAGE: &CStr = c"[-t target-pane]";
-const CMD_TARGET_WINDOW_USAGE: &CStr = c"[-t target-window]";
-const CMD_BUFFER_USAGE: &CStr = c"[-b buffer-name]";
-
 bitflags::bitflags! {
     #[repr(transparent)]
     #[derive(Copy, Clone, Eq, PartialEq)]
@@ -2765,9 +2760,6 @@ impl SyncCharPtr {
     }
     const fn as_ptr(&self) -> *const u8 {
         self.0
-    }
-    const fn is_null(&self) -> bool {
-        self.0.is_null()
     }
 }
 

@@ -23,7 +23,7 @@ pub static CMD_LIST_CLIENTS_ENTRY: cmd_entry = cmd_entry {
     alias: Some("lsc"),
 
     args: args_parse::new(c"F:f:t:", 0, 0, None),
-    usage: SyncCharPtr::new(c"[-F format] [-f filter] [-t target-session]"),
+    usage: "[-F format] [-f filter] [-t target-session]",
 
     target: cmd_entry_flag::new(
         b't',

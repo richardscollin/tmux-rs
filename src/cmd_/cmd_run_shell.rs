@@ -21,9 +21,7 @@ pub static CMD_RUN_SHELL_ENTRY: cmd_entry = cmd_entry {
     alias: Some("run"),
 
     args: args_parse::new(c"bd:Ct:c:", 0, 2, Some(cmd_run_shell_args_parse)),
-    usage: SyncCharPtr::new(
-        c"[-bC] [-c start-directory] [-d delay] [-t target-pane] [shell-command]",
-    ),
+    usage: "[-bC] [-c start-directory] [-d delay] [-t target-pane] [shell-command]",
 
     target: cmd_entry_flag::new(
         b't',

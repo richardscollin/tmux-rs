@@ -20,7 +20,7 @@ pub static CMD_IF_SHELL_ENTRY: cmd_entry = cmd_entry {
     alias: Some("if"),
 
     args: args_parse::new(c"bFt:", 2, 3, Some(cmd_if_shell_args_parse)),
-    usage: SyncCharPtr::new(c"[-bF] [-t target-pane] shell-command command [command]"),
+    usage: "[-bF] [-t target-pane] shell-command command [command]",
 
     target: cmd_entry_flag::new(
         b't',

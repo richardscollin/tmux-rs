@@ -18,7 +18,7 @@ pub static CMD_LOCK_SERVER_ENTRY: cmd_entry = cmd_entry {
     alias: Some("lock"),
 
     args: args_parse::new(c"", 0, 0, None),
-    usage: SyncCharPtr::new(c""),
+    usage: "",
 
     flags: cmd_flag::CMD_AFTERHOOK,
     exec: cmd_lock_server_exec,
@@ -31,7 +31,7 @@ pub static CMD_LOCK_SESSION_ENTRY: cmd_entry = cmd_entry {
     alias: Some("locks"),
 
     args: args_parse::new(c"t:", 0, 0, None),
-    usage: SyncCharPtr::new(c"[-t target-session]"),
+    usage: "[-t target-session]",
 
     target: cmd_entry_flag::new(
         b't',
@@ -49,7 +49,7 @@ pub static CMD_LOCK_CLIENT_ENTRY: cmd_entry = cmd_entry {
     alias: Some("lockc"),
 
     args: args_parse::new(c"t:", 0, 0, None),
-    usage: SyncCharPtr::new(c"[-t target-client]"),
+    usage: "[-t target-client]",
 
     flags: cmd_flag::CMD_AFTERHOOK.union(cmd_flag::CMD_CLIENT_TFLAG),
     exec: cmd_lock_server_exec,

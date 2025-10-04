@@ -15,8 +15,8 @@ use crate::libc::{O_APPEND, O_TRUNC};
 use crate::*;
 
 pub static CMD_SAVE_BUFFER_ENTRY: cmd_entry = cmd_entry {
-    name: SyncCharPtr::new(c"save-buffer"),
-    alias: SyncCharPtr::new(c"saveb"),
+    name: "save-buffer",
+    alias: Some("saveb"),
 
     args: args_parse::new(c"ab:", 1, 1, None),
     usage: SyncCharPtr::new(c"[-a] [-b buffer-name] path"),
@@ -28,8 +28,8 @@ pub static CMD_SAVE_BUFFER_ENTRY: cmd_entry = cmd_entry {
 };
 
 pub static CMD_SHOW_BUFFER_ENTRY: cmd_entry = cmd_entry {
-    name: SyncCharPtr::new(c"show-buffer"),
-    alias: SyncCharPtr::new(c"showb"),
+    name: "show-buffer",
+    alias: Some("showb"),
 
     args: args_parse::new(c"b:", 0, 0, None),
     usage: SyncCharPtr::new(c"[-b buffer-name]"),

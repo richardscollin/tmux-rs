@@ -17,8 +17,8 @@ use crate::libc::strtol;
 use crate::*;
 
 pub static CMD_SEND_KEYS_ENTRY: cmd_entry = cmd_entry {
-    name: SyncCharPtr::new(c"send-keys"),
-    alias: SyncCharPtr::new(c"send"),
+    name: "send-keys",
+    alias: Some("send"),
 
     args: args_parse::new(c"c:FHKlMN:Rt:X", 0, -1, None),
     usage: SyncCharPtr::new(
@@ -36,8 +36,8 @@ pub static CMD_SEND_KEYS_ENTRY: cmd_entry = cmd_entry {
 };
 
 pub static CMD_SEND_PREFIX_ENTRY: cmd_entry = cmd_entry {
-    name: SyncCharPtr::new(c"send-prefix"),
-    alias: SyncCharPtr::null(),
+    name: "send-prefix",
+    alias: None,
 
     args: args_parse::new(c"2t:", 0, 0, None),
     usage: SyncCharPtr::new(c"[-2] -t target-pane"),

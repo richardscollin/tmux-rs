@@ -15,8 +15,8 @@ use crate::compat::tree::rb_foreach;
 use crate::*;
 
 pub static CMD_LIST_SESSIONS_ENTRY: cmd_entry = cmd_entry {
-    name: SyncCharPtr::new(c"list-sessions"),
-    alias: SyncCharPtr::new(c"ls"),
+    name: "list-sessions",
+    alias: Some("ls"),
 
     args: args_parse::new(c"F:f:", 0, 0, None),
     usage: SyncCharPtr::new(c"[-F format] [-f filter]"),

@@ -14,8 +14,8 @@
 use crate::*;
 
 pub static CMD_SHOW_PROMPT_HISTORY_ENTRY: cmd_entry = cmd_entry {
-    name: SyncCharPtr::new(c"show-prompt-history"),
-    alias: SyncCharPtr::new(c"showphist"),
+    name: "show-prompt-history",
+    alias: Some("showphist"),
 
     args: args_parse::new(c"T:", 0, 0, None),
     usage: SyncCharPtr::new(c"[-T type]"),
@@ -27,8 +27,8 @@ pub static CMD_SHOW_PROMPT_HISTORY_ENTRY: cmd_entry = cmd_entry {
 };
 
 pub static CMD_CLEAR_PROMPT_HISTORY_ENTRY: cmd_entry = cmd_entry {
-    name: SyncCharPtr::new(c"clear-prompt-history"),
-    alias: SyncCharPtr::new(c"clearphist"),
+    name: "clear-prompt-history",
+    alias: Some("clearphist"),
 
     args: args_parse::new(c"T:", 0, 0, None),
     usage: SyncCharPtr::new(c"[-T type]"),

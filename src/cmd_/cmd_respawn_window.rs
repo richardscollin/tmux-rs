@@ -14,8 +14,8 @@
 use crate::*;
 
 pub static CMD_RESPAWN_WINDOW_ENTRY: cmd_entry = cmd_entry {
-    name: SyncCharPtr::new(c"respawn-window"),
-    alias: SyncCharPtr::new(c"respawnw"),
+    name: "respawn-window",
+    alias: Some("respawnw"),
 
     args: args_parse::new(c"c:e:kt:", 0, -1, None),
     usage: SyncCharPtr::new(

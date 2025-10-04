@@ -15,8 +15,8 @@ use crate::libc::{EINVAL, ENOENT, ENOMEM, GLOB_NOMATCH, GLOB_NOSPACE, glob, glob
 use crate::*;
 
 pub static CMD_SOURCE_FILE_ENTRY: cmd_entry = cmd_entry {
-    name: SyncCharPtr::new(c"source-file"),
-    alias: SyncCharPtr::new(c"source"),
+    name: "source-file",
+    alias: Some("source"),
 
     args: args_parse::new(c"t:Fnqv", 1, -1, None),
     usage: SyncCharPtr::new(c"[-Fnqv] [-t target-pane] path ..."),

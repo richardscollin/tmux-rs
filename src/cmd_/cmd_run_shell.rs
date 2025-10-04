@@ -17,8 +17,8 @@ use crate::libc::{WEXITSTATUS, WIFEXITED, WIFSIGNALED, WTERMSIG, memcpy, strtod}
 use crate::*;
 
 pub static CMD_RUN_SHELL_ENTRY: cmd_entry = cmd_entry {
-    name: SyncCharPtr::new(c"run-shell"),
-    alias: SyncCharPtr::new(c"run"),
+    name: "run-shell",
+    alias: Some("run"),
 
     args: args_parse::new(c"bd:Ct:c:", 0, 2, Some(cmd_run_shell_args_parse)),
     usage: SyncCharPtr::new(

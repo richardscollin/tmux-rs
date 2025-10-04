@@ -15,8 +15,8 @@ use crate::compat::queue::tailq_foreach;
 use crate::*;
 
 pub static CMD_DISPLAY_PANES_ENTRY: cmd_entry = cmd_entry {
-    name: SyncCharPtr::new(c"display-panes"),
-    alias: SyncCharPtr::new(c"displayp"),
+    name: "display-panes",
+    alias: Some("displayp"),
 
     args: args_parse::new(c"bd:Nt:", 0, 1, Some(cmd_display_panes_args_parse)),
     usage: SyncCharPtr::new(c"[-bN] [-d duration] [-t target-client] [template]"),

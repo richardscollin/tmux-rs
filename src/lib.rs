@@ -2056,7 +2056,7 @@ enum cmd_find_type {
 }
 
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Default)]
 struct cmd_find_state {
     flags: cmd_find_flags,
     current: *mut cmd_find_state,
@@ -2125,6 +2125,7 @@ bitflags::bitflags! {
 }
 
 #[repr(transparent)]
+#[derive(Default)]
 struct AtomicCmdParseInputFlags(std::sync::atomic::AtomicI32);
 impl From<cmd_parse_input_flags> for AtomicCmdParseInputFlags {
     fn from(value: cmd_parse_input_flags) -> Self {
@@ -2152,6 +2153,7 @@ impl std::ops::BitAndAssign<cmd_parse_input_flags> for &AtomicCmdParseInputFlags
 }
 
 #[repr(C)]
+#[derive(Default)]
 struct cmd_parse_input<'a> {
     flags: AtomicCmdParseInputFlags,
 
@@ -2216,8 +2218,8 @@ bitflags::bitflags! {
 // Command definition.
 #[repr(C)]
 struct cmd_entry {
-    name: SyncCharPtr,
-    alias: SyncCharPtr,
+    name: &'static str,
+    alias: Option<&'static str>,
 
     args: args_parse,
     usage: SyncCharPtr,

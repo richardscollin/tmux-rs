@@ -16,8 +16,8 @@ use crate::libc::strcmp;
 use crate::*;
 
 pub static CMD_LIST_KEYS_ENTRY: cmd_entry = cmd_entry {
-    name: SyncCharPtr::new(c"list-keys"),
-    alias: SyncCharPtr::new(c"lsk"),
+    name: "list-keys",
+    alias: Some("lsk"),
 
     args: args_parse::new(c"1aNP:T:", 0, 1, None),
     usage: SyncCharPtr::new(c"[-1aN] [-P prefix-string] [-T key-table] [key]"),
@@ -29,8 +29,8 @@ pub static CMD_LIST_KEYS_ENTRY: cmd_entry = cmd_entry {
 };
 
 pub static CMD_LIST_COMMANDS_ENTRY: cmd_entry = cmd_entry {
-    name: SyncCharPtr::new(c"list-commands"),
-    alias: SyncCharPtr::new(c"lscm"),
+    name: "list-commands",
+    alias: Some("lscm"),
 
     args: args_parse::new(c"F:", 0, 1, None),
     usage: SyncCharPtr::new(c"[-F format] [command]"),
@@ -372,19 +372,19 @@ unsafe fn cmd_list_keys_commands(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
 
         for entry in CMD_TABLE {
             if !command.is_null()
-                && (strcmp(entry.name.as_ptr(), command) != 0
-                    && (entry.alias.is_null() || strcmp(entry.alias.as_ptr(), command) != 0))
+                && (!streq_(command, entry.name)
+                    && entry.alias.is_none_or(|alias| !streq_(command, alias)))
             {
                 continue;
             }
 
-            format_add!(ft, c!("command_list_name"), "{}", _s(entry.name.as_ptr()),);
-            let s = if !entry.alias.is_null() {
-                entry.alias.as_ptr()
-            } else {
-                c!("")
-            };
-            format_add!(ft, c!("command_list_alias"), "{}", _s(s));
+            format_add!(ft, c!("command_list_name"), "{}", entry.name);
+            format_add!(
+                ft,
+                c!("command_list_alias"),
+                "{}",
+                entry.alias.unwrap_or_default()
+            );
             let s = if !entry.usage.is_null() {
                 entry.usage.as_ptr()
             } else {

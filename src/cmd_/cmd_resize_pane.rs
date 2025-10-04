@@ -15,8 +15,8 @@ use crate::compat::queue::tailq_empty;
 use crate::*;
 
 pub static CMD_RESIZE_PANE_ENTRY: cmd_entry = cmd_entry {
-    name: SyncCharPtr::new(c"resize-pane"),
-    alias: SyncCharPtr::new(c"resizep"),
+    name: "resize-pane",
+    alias: Some("resizep"),
 
     args: args_parse::new(c"DLMRTt:Ux:y:Z", 0, 1, None),
     usage: SyncCharPtr::new(c"[-DLMRTUZ] [-x width] [-y height] [-t target-pane] [adjustment]"),

@@ -14,8 +14,8 @@
 use crate::*;
 
 pub static CMD_SELECT_LAYOUT_ENTRY: cmd_entry = cmd_entry {
-    name: SyncCharPtr::new(c"select-layout"),
-    alias: SyncCharPtr::new(c"selectl"),
+    name: "select-layout",
+    alias: Some("selectl"),
 
     args: args_parse::new(c"Enopt:", 0, 1, None),
     usage: SyncCharPtr::new(c"[-Enop] [-t target-pane] [layout-name]"),
@@ -28,8 +28,8 @@ pub static CMD_SELECT_LAYOUT_ENTRY: cmd_entry = cmd_entry {
 };
 
 pub static CMD_NEXT_LAYOUT_ENTRY: cmd_entry = cmd_entry {
-    name: SyncCharPtr::new(c"next-layout"),
-    alias: SyncCharPtr::new(c"nextl"),
+    name: "next-layout",
+    alias: Some("nextl"),
 
     args: args_parse::new(c"t:", 0, 0, None),
     usage: SyncCharPtr::new(CMD_TARGET_WINDOW_USAGE),
@@ -46,8 +46,8 @@ pub static CMD_NEXT_LAYOUT_ENTRY: cmd_entry = cmd_entry {
 };
 
 pub static CMD_PREVIOUS_LAYOUT_ENTRY: cmd_entry = cmd_entry {
-    name: SyncCharPtr::new(c"previous-layout"),
-    alias: SyncCharPtr::new(c"prevl"),
+    name: "previous-layout",
+    alias: Some("prevl"),
 
     args: args_parse::new(c"t:", 0, 0, None),
     usage: SyncCharPtr::new(CMD_TARGET_WINDOW_USAGE),

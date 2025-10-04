@@ -18,7 +18,7 @@ use crate::compat::{
     },
     strlcat, strlcpy,
 };
-use crate::libc::{strchr, strcmp, strlen, strncmp};
+use crate::libc::{strchr, strlen, strncmp};
 use crate::xmalloc::{xrealloc_, xreallocarray_};
 use crate::*;
 
@@ -479,7 +479,7 @@ pub unsafe fn cmd_get_alias(name: *const u8) -> *mut u8 {
     }
 }
 
-pub unsafe fn cmd_find(name: *const u8) -> Result<&'static cmd_entry, *mut u8> {
+pub unsafe fn cmd_find(name: &str) -> Result<&'static cmd_entry, *mut u8> {
     let mut found = None;
 
     let mut ambiguous: i32 = 0;
@@ -489,13 +489,13 @@ pub unsafe fn cmd_find(name: *const u8) -> Result<&'static cmd_entry, *mut u8> {
     unsafe {
         'ambiguous: {
             for entry in CMD_TABLE {
-                if !entry.alias.is_null() && strcmp(entry.alias.as_ptr(), name) == 0 {
+                if entry.alias.is_some_and(|alias| alias == name) {
                     ambiguous = 0;
                     found = Some(entry);
                     break;
                 }
 
-                if strncmp(entry.name.as_ptr(), name, strlen(name)) != 0 {
+                if !entry.name.starts_with(name) {
                     continue;
                 }
                 if found.is_some() {
@@ -503,7 +503,7 @@ pub unsafe fn cmd_find(name: *const u8) -> Result<&'static cmd_entry, *mut u8> {
                 }
                 found = Some(entry);
 
-                if strcmp(entry.name.as_ptr(), name) == 0 {
+                if entry.name == name {
                     break;
                 }
             }
@@ -513,19 +513,17 @@ pub unsafe fn cmd_find(name: *const u8) -> Result<&'static cmd_entry, *mut u8> {
 
             return match found {
                 Some(value) => Ok(value),
-                None => Err(format_nul!("unknown command: {}", _s(name))),
+                None => Err(format_nul!("unknown command: {}", name)),
             };
         }
 
         // ambiguous:
         s[0] = b'\0';
         for entry in CMD_TABLE {
-            if strncmp(entry.name.as_ptr(), name, strlen(name)) != 0 {
+            if !entry.name.starts_with(name) {
                 continue;
             }
-            if strlcat(&raw mut s as _, entry.name.as_ptr(), size_of::<s_buf>())
-                >= size_of::<s_buf>()
-            {
+            if strlcat_(&raw mut s as _, entry.name, size_of::<s_buf>()) >= size_of::<s_buf>() {
                 break;
             }
             if strlcat(&raw mut s as _, c!(", "), size_of::<s_buf>()) >= size_of::<s_buf>() {
@@ -536,7 +534,7 @@ pub unsafe fn cmd_find(name: *const u8) -> Result<&'static cmd_entry, *mut u8> {
 
         Err(format_nul!(
             "ambiguous command: {}, could be: {}",
-            _s(name),
+            name,
             _s((&raw const s).cast::<u8>()),
         ))
     }
@@ -554,19 +552,15 @@ pub unsafe fn cmd_parse(
         if count == 0 || (*values).type_ != args_type::ARGS_STRING {
             return Err(format_nul!("no command"));
         }
-        let entry = cmd_find((*values).union_.string)?;
+        let entry = cmd_find(cstr_to_str((*values).union_.string))?;
 
         let args = args_parse(&entry.args, values, count, &raw mut error);
         if args.is_null() && error.is_null() {
-            let cause = format_nul!(
-                "usage: {} {}",
-                _s(entry.name.as_ptr()),
-                _s(entry.usage.as_ptr())
-            );
+            let cause = format_nul!("usage: {} {}", entry.name, _s(entry.usage.as_ptr()));
             return Err(cause);
         }
         if args.is_null() {
-            let cause = format_nul!("command {}: {}", _s(entry.name.as_ptr()), _s(error));
+            let cause = format_nul!("command {}: {}", entry.name, _s(error));
             free(error as _);
             return Err(cause);
         }
@@ -630,9 +624,9 @@ pub unsafe fn cmd_print(cmd: *mut cmd) -> *mut u8 {
     unsafe {
         let s = args_print((*cmd).args);
         let out = if *s != b'\0' {
-            format_nul!("{} {}", _s((*cmd).entry.name.as_ptr()), _s(s))
+            format_nul!("{} {}", (*cmd).entry.name, _s(s))
         } else {
-            xstrdup((*cmd).entry.name.as_ptr()).as_ptr()
+            xstrdup__((*cmd).entry.name)
         };
         free(s as _);
 

@@ -14,8 +14,8 @@
 use crate::*;
 
 pub static CMD_MOVE_WINDOW_ENTRY: cmd_entry = cmd_entry {
-    name: SyncCharPtr::new(c"move-window"),
-    alias: SyncCharPtr::new(c"movew"),
+    name: "move-window",
+    alias: Some("movew"),
 
     args: args_parse::new(c"abdkrs:t:", 0, 0, None),
     usage: SyncCharPtr::new(c"[-abdkr] [-s src-window] [-t dst-window]"),
@@ -32,8 +32,8 @@ pub static CMD_MOVE_WINDOW_ENTRY: cmd_entry = cmd_entry {
 };
 
 pub static CMD_LINK_WINDOW_ENTRY: cmd_entry = cmd_entry {
-    name: SyncCharPtr::new(c"link-window"),
-    alias: SyncCharPtr::new(c"linkw"),
+    name: "link-window",
+    alias: Some("linkw"),
 
     args: args_parse::new(c"abdks:t:", 0, 0, None),
     usage: SyncCharPtr::new(c"[-abdk] [-s src-window] [-t dst-window]"),

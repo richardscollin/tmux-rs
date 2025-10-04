@@ -497,7 +497,7 @@ pub unsafe fn cmd_parse_from_file<'a>(
 
 pub unsafe fn cmd_parse_from_string(s: &str, pi: Option<&cmd_parse_input>) -> cmd_parse_result {
     unsafe {
-        let input: cmd_parse_input = zeroed();
+        let input: cmd_parse_input = cmd_parse_input::default();
         let pi = pi.unwrap_or(&input);
 
         (&pi.flags).bitor_assign(cmd_parse_input_flags::CMD_PARSE_ONEGROUP);

@@ -15,8 +15,8 @@
 use crate::*;
 
 pub static CMD_UNBIND_KEY_ENTRY: cmd_entry = cmd_entry {
-    name: SyncCharPtr::new(c"unbind-key"),
-    alias: SyncCharPtr::new(c"unbind"),
+    name: "unbind-key",
+    alias: Some("unbind"),
 
     args: args_parse::new(c"anqT:", 0, 1, None),
     usage: SyncCharPtr::new(c"[-anq] [-T key-table] key"),

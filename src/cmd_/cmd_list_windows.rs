@@ -22,8 +22,8 @@ const LIST_WINDOWS_WITH_SESSION_TEMPLATE: *const u8 = c!(
 );
 
 pub static CMD_LIST_WINDOWS_ENTRY: cmd_entry = cmd_entry {
-    name: SyncCharPtr::new(c"list-windows"),
-    alias: SyncCharPtr::new(c"lsw"),
+    name: "list-windows",
+    alias: Some("lsw"),
 
     args: args_parse::new(c"F:f:at:", 0, 0, None),
     usage: SyncCharPtr::new(c"[-a] [-F format] [-f filter] [-t target-session]"),

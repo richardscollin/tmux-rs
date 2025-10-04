@@ -14,8 +14,8 @@
 use crate::*;
 
 pub static CMD_PASTE_BUFFER_ENTRY: cmd_entry = cmd_entry {
-    name: SyncCharPtr::new(c"paste-buffer"),
-    alias: SyncCharPtr::new(c"pasteb"),
+    name: "paste-buffer",
+    alias: Some("pasteb"),
 
     args: args_parse::new(c"db:prs:t:", 0, 0, None),
     usage: SyncCharPtr::new(c"[-dpr] [-s separator] [-b buffer-name] [-t target-pane]"),

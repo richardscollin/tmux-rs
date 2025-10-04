@@ -19,8 +19,8 @@ const DISPLAY_MESSAGE_TEMPLATE: *const u8 = c!(
 );
 
 pub static CMD_DISPLAY_MESSAGE_ENTRY: cmd_entry = cmd_entry {
-    name: SyncCharPtr::new(c"display-message"),
-    alias: SyncCharPtr::new(c"display"),
+    name: "display-message",
+    alias: Some("display"),
 
     args: args_parse::new(c"ac:d:lINpt:F:v", 0, 1, None),
     usage: SyncCharPtr::new(

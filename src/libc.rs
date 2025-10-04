@@ -292,7 +292,7 @@ pub unsafe fn strcmp_(left: *const u8, right: &str) -> std::cmp::Ordering {
     }
 }
 
-pub unsafe fn streq_(left: *const u8, right: &'static str) -> bool {
+pub unsafe fn streq_(left: *const u8, right: &str) -> bool {
     unsafe { matches!(strcmp_(left, right), std::cmp::Ordering::Equal) }
 }
 

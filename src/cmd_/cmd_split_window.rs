@@ -16,8 +16,8 @@ use crate::*;
 const SPLIT_WINDOW_TEMPLATE: *const u8 = c!("#{session_name}:#{window_index}.#{pane_index}");
 
 pub static CMD_SPLIT_WINDOW_ENTRY: cmd_entry = cmd_entry {
-    name: SyncCharPtr::new(c"split-window"),
-    alias: SyncCharPtr::new(c"splitw"),
+    name: "split-window",
+    alias: Some("splitw"),
 
     args: args_parse::new(c"bc:de:fF:hIl:p:Pt:vZ", 0, -1, None),
     usage: SyncCharPtr::new(c"[-bdefhIPvZ] [-c start-directory] [-e environment] [-F format] [-l size] [-t target-pane][shell-command]"),

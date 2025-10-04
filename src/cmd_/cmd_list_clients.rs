@@ -19,8 +19,8 @@ const LIST_CLIENTS_TEMPLATE: *const u8 = c!(
 );
 
 pub static CMD_LIST_CLIENTS_ENTRY: cmd_entry = cmd_entry {
-    name: SyncCharPtr::new(c"list-clients"),
-    alias: SyncCharPtr::new(c"lsc"),
+    name: "list-clients",
+    alias: Some("lsc"),
 
     args: args_parse::new(c"F:f:t:", 0, 0, None),
     usage: SyncCharPtr::new(c"[-F format] [-f filter] [-t target-session]"),

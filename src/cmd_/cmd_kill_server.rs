@@ -16,8 +16,8 @@ use crate::*;
 use crate::{args_parse, cmd, cmd_entry, cmd_flag, cmd_get_entry, cmd_retval, cmdq_item};
 
 pub static CMD_KILL_SERVER_ENTRY: cmd_entry = cmd_entry {
-    name: SyncCharPtr::new(c"kill-server"),
-    alias: SyncCharPtr::null(),
+    name: "kill-server",
+    alias: None,
 
     args: args_parse::new(c"", 0, 0, None),
     usage: SyncCharPtr::new(c""),
@@ -29,8 +29,8 @@ pub static CMD_KILL_SERVER_ENTRY: cmd_entry = cmd_entry {
 };
 
 pub static CMD_START_SERVER_ENTRY: cmd_entry = cmd_entry {
-    name: SyncCharPtr::new(c"start-server"),
-    alias: SyncCharPtr::new(c"start"),
+    name: "start-server",
+    alias: Some("start"),
     args: args_parse::new(c"", 0, 0, None),
     usage: SyncCharPtr::new(c""),
     flags: cmd_flag::CMD_STARTSERVER,

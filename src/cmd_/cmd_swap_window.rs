@@ -16,8 +16,8 @@ use crate::compat::queue::{tailq_insert_tail, tailq_remove};
 use crate::*;
 
 pub static CMD_SWAP_WINDOW_ENTRY: cmd_entry = cmd_entry {
-    name: SyncCharPtr::new(c"swap-window"),
-    alias: SyncCharPtr::new(c"swapw"),
+    name: "swap-window",
+    alias: Some("swapw"),
 
     args: args_parse::new(c"ds:t:", 0, 0, None),
     usage: SyncCharPtr::new(c"[-d] [-s src-window] [-t dst-window]"),

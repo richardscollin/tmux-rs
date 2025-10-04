@@ -14,8 +14,8 @@
 use crate::*;
 
 pub static CMD_CONFIRM_BEFORE_ENTRY: cmd_entry = cmd_entry {
-    name: SyncCharPtr::new(c"confirm-before"),
-    alias: SyncCharPtr::new(c"confirm"),
+    name: "confirm-before",
+    alias: Some("confirm"),
 
     args: args_parse::new(c"bc:p:t:y", 1, 1, Some(cmd_confirm_before_args_parse)),
     usage: SyncCharPtr::new(c"[-by] [-c confirm_key] [-p prompt] [-t target-pane] command"),
@@ -74,8 +74,8 @@ unsafe fn cmd_confirm_before_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
         let new_prompt = if !prompt.is_null() {
             format_nul!("{} ", _s(prompt))
         } else {
-            let cmd = cmd_get_entry(cmd_list_first(cdata.cmdlist)).name.as_ptr();
-            format_nul!("Confirm '{}'? ({}/n) ", _s(cmd), cdata.confirm_key as char)
+            let cmd = cmd_get_entry(cmd_list_first(cdata.cmdlist)).name;
+            format_nul!("Confirm '{}'? ({}/n) ", cmd, cdata.confirm_key as char)
         };
 
         status_prompt_set(

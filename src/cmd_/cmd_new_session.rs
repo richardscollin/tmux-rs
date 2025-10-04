@@ -18,8 +18,8 @@ use crate::*;
 const NEW_SESSION_TEMPLATE: *const u8 = c!("#{session_name}:");
 
 pub static CMD_NEW_SESSION_ENTRY: cmd_entry = cmd_entry {
-    name: SyncCharPtr::new(c"new-session"),
-    alias: SyncCharPtr::new(c"new"),
+    name: "new-session",
+    alias: Some("new"),
 
     args: args_parse::new(c"Ac:dDe:EF:f:n:Ps:t:x:Xy:", 0, -1, None),
     usage: SyncCharPtr::new(c"[-AdDEPX] [-c start-directory] [-e environment] [-F format] [-f flags] [-n window-name] [-s session-name] [-t target-session] [-x width] [-y height] [shell-command]"),
@@ -32,8 +32,8 @@ pub static CMD_NEW_SESSION_ENTRY: cmd_entry = cmd_entry {
 };
 
 pub static CMD_HAS_SESSION_ENTRY: cmd_entry = cmd_entry {
-    name: SyncCharPtr::new(c"has-session"),
-    alias: SyncCharPtr::new(c"has"),
+    name: "has-session",
+    alias: Some("has"),
 
     args: args_parse::new(c"t:", 0, 0, None),
     usage: SyncCharPtr::new(c"[-t target-session]"),

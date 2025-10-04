@@ -19,8 +19,8 @@ use crate::compat::queue::{
 use crate::*;
 
 pub static CMD_SWAP_PANE_ENTRY: cmd_entry = cmd_entry {
-    name: SyncCharPtr::new(c"swap-pane"),
-    alias: SyncCharPtr::new(c"swapp"),
+    name: "swap-pane",
+    alias: Some("swapp"),
 
     args: args_parse::new(c"dDs:t:UZ", 0, 0, None),
     usage: SyncCharPtr::new(c"[-dDUZ] [-s src-window] [-t dst-window]"),

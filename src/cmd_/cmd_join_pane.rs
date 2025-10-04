@@ -17,8 +17,8 @@ use crate::compat::queue::{tailq_insert_after, tailq_insert_before, tailq_remove
 use crate::*;
 
 pub static CMD_JOIN_PANE_ENTRY: cmd_entry = cmd_entry {
-    name: SyncCharPtr::new(c"join-pane"),
-    alias: SyncCharPtr::new(c"joinp"),
+    name: "join-pane",
+    alias: Some("joinp"),
 
     args: args_parse::new(c"bdfhvp:l:s:t:", 0, 0, None),
     usage: SyncCharPtr::new(c"[-bdfhv] [-l size] [-s src-pane] [-t dst-pane]"),
@@ -35,8 +35,8 @@ pub static CMD_JOIN_PANE_ENTRY: cmd_entry = cmd_entry {
 };
 
 pub static CMD_MOVE_PANE_ENTRY: cmd_entry = cmd_entry {
-    name: SyncCharPtr::new(c"move-pane"),
-    alias: SyncCharPtr::new(c"movep"),
+    name: "move-pane",
+    alias: Some("movep"),
 
     args: args_parse::new(c"bdfhvp:l:s:t:", 0, 0, None),
     usage: SyncCharPtr::new(c"[-bdfhv] [-l size] [-s src-pane] [-t dst-pane]"),

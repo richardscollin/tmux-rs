@@ -18,8 +18,8 @@ use crate::compat::queue::{
 use crate::*;
 
 pub static CMD_ROTATE_WINDOW_ENTRY: cmd_entry = cmd_entry {
-    name: SyncCharPtr::new(c"rotate-window"),
-    alias: SyncCharPtr::new(c"rotatew"),
+    name: "rotate-window",
+    alias: Some("rotatew"),
 
     args: args_parse::new(c"Dt:UZ", 0, 0, None),
     usage: SyncCharPtr::new(c"[-DUZ] [-t target-window]"),

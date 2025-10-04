@@ -15,8 +15,8 @@ use crate::compat::queue::tailq_foreach;
 use crate::*;
 
 pub static CMD_SET_OPTION_ENTRY: cmd_entry = cmd_entry {
-    name: SyncCharPtr::new(c"set-option"),
-    alias: SyncCharPtr::new(c"set"),
+    name: "set-option",
+    alias: Some("set"),
 
     args: args_parse::new(c"aFgopqst:uUw", 1, 2, Some(cmd_set_option_args_parse)),
     usage: SyncCharPtr::new(c"[-aFgopqsuUw] [-t target-pane] option [value]"),
@@ -33,8 +33,8 @@ pub static CMD_SET_OPTION_ENTRY: cmd_entry = cmd_entry {
 };
 
 pub static CMD_SET_WINDOW_OPTION_ENTRY: cmd_entry = cmd_entry {
-    name: SyncCharPtr::new(c"set-window-option"),
-    alias: SyncCharPtr::new(c"setw"),
+    name: "set-window-option",
+    alias: Some("setw"),
 
     args: args_parse::new(c"aFgoqt:u", 1, 2, Some(cmd_set_option_args_parse)),
     usage: SyncCharPtr::new(c"[-aFgoqu] [-t target-window] option [value]"),
@@ -51,8 +51,8 @@ pub static CMD_SET_WINDOW_OPTION_ENTRY: cmd_entry = cmd_entry {
 };
 
 pub static CMD_SET_HOOK_ENTRY: cmd_entry = cmd_entry {
-    name: SyncCharPtr::new(c"set-hook"),
-    alias: SyncCharPtr::null(),
+    name: "set-hook",
+    alias: None,
 
     args: args_parse::new(c"agpRt:uw", 1, 2, Some(cmd_set_option_args_parse)),
     usage: SyncCharPtr::new(c"[-agpRuw] [-t target-pane] hook [command]"),

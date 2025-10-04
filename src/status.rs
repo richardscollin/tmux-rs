@@ -1882,15 +1882,15 @@ unsafe fn status_prompt_add_history(line: *const u8, type_: u32) {
 }
 
 /// Add to completion list.
-unsafe fn status_prompt_add_list(list: *mut *mut *mut u8, size: *mut u32, s: *const u8) {
+unsafe fn status_prompt_add_list(list: *mut *mut *mut u8, size: *mut u32, s: &str) {
     unsafe {
         for i in 0..*size {
-            if libc::strcmp(*(*list).add(i as usize), s) == 0 {
+            if libc::streq_(*(*list).add(i as usize), s) {
                 return;
             }
         }
         *list = xreallocarray_(*list, *size as usize + 1).as_ptr();
-        *(*list).add(*size as usize) = xstrdup(s).as_ptr();
+        *(*list).add(*size as usize) = xstrdup__(s);
         (*size) += 1;
     }
 }
@@ -1898,28 +1898,28 @@ unsafe fn status_prompt_add_list(list: *mut *mut *mut u8, size: *mut u32, s: *co
 /// Build completion list.
 unsafe fn status_prompt_complete_list(size: *mut u32, s: *const u8, at_start: i32) -> *mut *mut u8 {
     unsafe {
-        let mut tmp: *mut u8;
         let mut list: *mut *mut u8 = null_mut();
-        let slen = strlen(s);
+        let s = cstr_to_str(s);
 
-        let layouts: [*const u8; 8] = [
-            c!("even-horizontal"),
-            c!("even-vertical"),
-            c!("main-horizontal"),
-            c!("main-horizontal-mirrored"),
-            c!("main-vertical"),
-            c!("main-vertical-mirrored"),
-            c!("tiled"),
-            null_mut(),
+        let layouts: [&str; 7] = [
+            "even-horizontal",
+            "even-vertical",
+            "main-horizontal",
+            "main-horizontal-mirrored",
+            "main-vertical",
+            "main-vertical-mirrored",
+            "tiled",
         ];
 
         *size = 0;
         for cmdent in CMD_TABLE {
-            if strncmp(cmdent.name.as_ptr(), s, slen) == 0 {
-                status_prompt_add_list(&raw mut list, size, cmdent.name.as_ptr());
+            if cmdent.name == s {
+                status_prompt_add_list(&raw mut list, size, cmdent.name);
             }
-            if !cmdent.alias.is_null() && strncmp(cmdent.alias.as_ptr(), s, slen) == 0 {
-                status_prompt_add_list(&raw mut list, size, cmdent.alias.as_ptr());
+            if let Some(alias) = cmdent.alias
+                && alias == s
+            {
+                status_prompt_add_list(&raw mut list, size, alias);
             }
         }
         let o = options_get_only(GLOBAL_OPTIONS, c!("command-alias"));
@@ -1934,13 +1934,12 @@ unsafe fn status_prompt_complete_list(size: *mut u32, s: *const u8, at_start: i3
                         break 'next;
                     }
                     let valuelen = cp.offset_from_unsigned(value);
-                    if slen > valuelen || strncmp(value, s, slen) != 0 {
+                    if s.len() > valuelen || !streq_(value, s) {
                         break 'next;
                     }
 
-                    tmp = format_nul!("{:.*}", valuelen, _s(value));
-                    status_prompt_add_list(&raw mut list, size, tmp);
-                    free_(tmp);
+                    let tmp = format!("{:.*}", valuelen, _s(value));
+                    status_prompt_add_list(&raw mut list, size, &tmp);
                 } // next:
                 a = options_array_next(a);
             }
@@ -1950,17 +1949,15 @@ unsafe fn status_prompt_complete_list(size: *mut u32, s: *const u8, at_start: i3
         }
         let mut oe = (&raw mut OPTIONS_TABLE) as *mut options_table_entry;
         while !(*oe).name.is_null() {
-            if strncmp((*oe).name, s, slen) == 0 {
-                status_prompt_add_list(&raw mut list, size, (*oe).name);
+            if streq_((*oe).name, s) {
+                status_prompt_add_list(&raw mut list, size, cstr_to_str((*oe).name));
             }
             oe = oe.add(1);
         }
-        let mut layout = (&raw const layouts) as *const *const u8;
-        while !(*layout).is_null() {
-            if strncmp(*layout, s, slen) == 0 {
-                status_prompt_add_list(&raw mut list, size, *layout);
+        for layout in layouts {
+            if layout == s {
+                status_prompt_add_list(&raw mut list, size, layout);
             }
-            layout = layout.add(1);
         }
         list
     }

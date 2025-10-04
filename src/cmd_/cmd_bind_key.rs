@@ -15,8 +15,8 @@
 use crate::*;
 
 pub static CMD_BIND_KEY_ENTRY: cmd_entry = cmd_entry {
-    name: SyncCharPtr::new(c"bind-key"),
-    alias: SyncCharPtr::new(c"bind"),
+    name: "bind-key",
+    alias: Some("bind"),
 
     args: args_parse::new(c"nrN:T:", 1, -1, Some(cmd_bind_key_args_parse)),
     usage: SyncCharPtr::new(c"[-nr] [-T key-table] [-N note] key [command [arguments]]"),

@@ -16,8 +16,8 @@ use std::io::Write;
 use crate::*;
 
 pub static CMD_CAPTURE_PANE_ENTRY: cmd_entry = cmd_entry {
-    name: SyncCharPtr::new(c"capture-pane"),
-    alias: SyncCharPtr::new(c"capturep"),
+    name: "capture-pane",
+    alias: Some("capturep"),
 
     args: args_parse::new(c"ab:CeE:JNpPqS:Tt:", 0, 0, None),
     usage: SyncCharPtr::new(
@@ -32,8 +32,8 @@ pub static CMD_CAPTURE_PANE_ENTRY: cmd_entry = cmd_entry {
 };
 
 pub static CMD_CLEAR_HISTORY_ENTRY: cmd_entry = cmd_entry {
-    name: SyncCharPtr::new(c"clear-history"),
-    alias: SyncCharPtr::new(c"clearhist"),
+    name: "clear-history",
+    alias: Some("clearhist"),
 
     args: args_parse::new(c"Ht:", 0, 0, None),
     usage: SyncCharPtr::new(c"[-H] [-t target-pane]"),

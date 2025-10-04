@@ -14,8 +14,8 @@
 use crate::*;
 
 pub static CMD_BREAK_PANE_ENTRY: cmd_entry = cmd_entry {
-    name: SyncCharPtr::new(c"break-pane"),
-    alias: SyncCharPtr::new(c"breakp"),
+    name: "break-pane",
+    alias: Some("breakp"),
 
     args: args_parse::new(c"abdPF:n:s:t:", 0, 0, None),
     usage: SyncCharPtr::new(c"[-abdP] [-F format] [-n window-name] [-s src-pane] [-t dst-window]"),

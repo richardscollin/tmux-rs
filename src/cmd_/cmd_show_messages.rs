@@ -17,8 +17,8 @@ use crate::*;
 const SHOW_MESSAGES_TEMPLATE: *const u8 = c!("#{t/p:message_time}: #{message_text}");
 
 pub static CMD_SHOW_MESSAGES_ENTRY: cmd_entry = cmd_entry {
-    name: SyncCharPtr::new(c"show-messages"),
-    alias: SyncCharPtr::new(c"showmsgs"),
+    name: "show-messages",
+    alias: Some("showmsgs"),
 
     args: args_parse::new(c"JTt:", 0, 0, None),
     usage: SyncCharPtr::new(c"[-JT] [-t target-client]"),

@@ -16,8 +16,8 @@ use crate::libc::{WEXITSTATUS, WIFEXITED};
 use crate::*;
 
 pub static CMD_IF_SHELL_ENTRY: cmd_entry = cmd_entry {
-    name: SyncCharPtr::new(c"if-shell"),
-    alias: SyncCharPtr::new(c"if"),
+    name: "if-shell",
+    alias: Some("if"),
 
     args: args_parse::new(c"bFt:", 2, 3, Some(cmd_if_shell_args_parse)),
     usage: SyncCharPtr::new(c"[-bF] [-t target-pane] shell-command command [command]"),

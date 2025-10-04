@@ -14,8 +14,8 @@
 use crate::*;
 
 pub static CMD_LOCK_SERVER_ENTRY: cmd_entry = cmd_entry {
-    name: SyncCharPtr::new(c"lock-server"),
-    alias: SyncCharPtr::new(c"lock"),
+    name: "lock-server",
+    alias: Some("lock"),
 
     args: args_parse::new(c"", 0, 0, None),
     usage: SyncCharPtr::new(c""),
@@ -27,8 +27,8 @@ pub static CMD_LOCK_SERVER_ENTRY: cmd_entry = cmd_entry {
 };
 
 pub static CMD_LOCK_SESSION_ENTRY: cmd_entry = cmd_entry {
-    name: SyncCharPtr::new(c"lock-session"),
-    alias: SyncCharPtr::new(c"locks"),
+    name: "lock-session",
+    alias: Some("locks"),
 
     args: args_parse::new(c"t:", 0, 0, None),
     usage: SyncCharPtr::new(c"[-t target-session]"),
@@ -45,8 +45,8 @@ pub static CMD_LOCK_SESSION_ENTRY: cmd_entry = cmd_entry {
 };
 
 pub static CMD_LOCK_CLIENT_ENTRY: cmd_entry = cmd_entry {
-    name: SyncCharPtr::new(c"lock-client"),
-    alias: SyncCharPtr::new(c"lockc"),
+    name: "lock-client",
+    alias: Some("lockc"),
 
     args: args_parse::new(c"t:", 0, 0, None),
     usage: SyncCharPtr::new(c"[-t target-client]"),

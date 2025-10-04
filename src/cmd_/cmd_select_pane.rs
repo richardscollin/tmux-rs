@@ -15,8 +15,8 @@ use crate::compat::queue::{tailq_first, tailq_foreach, tailq_next, tailq_prev};
 use crate::*;
 
 pub static CMD_SELECT_PANE_ENTRY: cmd_entry = cmd_entry {
-    name: SyncCharPtr::new(c"select-pane"),
-    alias: SyncCharPtr::new(c"selectp"),
+    name: "select-pane",
+    alias: Some("selectp"),
 
     args: args_parse::new(c"DdegLlMmP:RT:t:UZ", 0, 0, None), // -P and -g deprecated
     usage: SyncCharPtr::new(c"[-DdeLlMmRUZ] [-T title] [-t target-pane]"),
@@ -29,8 +29,8 @@ pub static CMD_SELECT_PANE_ENTRY: cmd_entry = cmd_entry {
 };
 
 pub static CMD_LAST_PANE_ENTRY: cmd_entry = cmd_entry {
-    name: SyncCharPtr::new(c"last-pane"),
-    alias: SyncCharPtr::new(c"lastp"),
+    name: "last-pane",
+    alias: Some("lastp"),
 
     args: args_parse::new(c"det:Z", 0, 0, None),
     usage: SyncCharPtr::new(c"[-deZ] [-t target-window]"),

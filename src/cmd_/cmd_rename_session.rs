@@ -16,8 +16,8 @@ use crate::compat::tree::{rb_insert, rb_remove};
 use crate::*;
 
 pub static CMD_RENAME_SESSION_ENTRY: cmd_entry = cmd_entry {
-    name: SyncCharPtr::new(c"rename-session"),
-    alias: SyncCharPtr::new(c"rename"),
+    name: "rename-session",
+    alias: Some("rename"),
 
     args: args_parse::new(c"t:", 1, 1, None),
     usage: SyncCharPtr::new(c"[-t target-session] new-name"),

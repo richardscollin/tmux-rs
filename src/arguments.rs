@@ -893,7 +893,7 @@ pub unsafe fn args_make_commands_get_command(state: *mut args_command_state) -> 
             if first.is_null() {
                 return xstrdup_(c"").as_ptr();
             }
-            return xstrdup(cmd_get_entry(first).name.as_ptr()).as_ptr();
+            return xstrdup__(cmd_get_entry(first).name);
         }
         let n = libc::strcspn((*state).cmd, c!(" ,"));
         format_nul!("{1:0$}", n, _s((*state).cmd))

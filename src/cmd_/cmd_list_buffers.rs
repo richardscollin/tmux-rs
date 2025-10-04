@@ -15,8 +15,8 @@
 use crate::*;
 
 pub static CMD_LIST_BUFFERS_ENTRY: cmd_entry = cmd_entry {
-    name: SyncCharPtr::new(c"list-buffers"),
-    alias: SyncCharPtr::new(c"lsb"),
+    name: "list-buffers",
+    alias: Some("lsb"),
 
     args: args_parse::new(c"F:f:", 0, 0, None),
     usage: SyncCharPtr::new(c"[-F format] [-f filter]"),

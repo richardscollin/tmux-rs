@@ -280,7 +280,7 @@ pub unsafe fn cmdq_merge_formats(item: *mut cmdq_item, ft: *mut format_tree) {
     unsafe {
         if !(*item).cmd.is_null() {
             let entry = cmd_get_entry((*item).cmd);
-            format_add!(ft, c!("command"), "{}", _s(entry.name.as_ptr()));
+            format_add!(ft, c!("command"), "{}", entry.name);
         }
 
         if !(*(*item).state).formats.is_null() {
@@ -525,7 +525,7 @@ pub unsafe fn cmdq_get_command(
             let entry = cmd_get_entry(cmd);
 
             let item = xcalloc1::<cmdq_item>() as *mut cmdq_item;
-            (*item).name = format_nul!("[{}/{:p}]", _s(entry.name.as_ptr()), item,);
+            (*item).name = format_nul!("[{}/{:p}]", entry.name, item,);
             (*item).type_ = cmdq_type::CMDQ_COMMAND;
 
             (*item).group = cmd_get_group(cmd);
@@ -693,7 +693,7 @@ pub unsafe fn cmdq_fire_command(item: *mut cmdq_item) -> cmd_retval {
                 } else {
                     break 'out;
                 };
-                cmdq_insert_hook!((*fsp).s, item, fsp, "after-{}", _s(entry.name.as_ptr()));
+                cmdq_insert_hook!((*fsp).s, item, fsp, "after-{}", entry.name);
             }
         }
 

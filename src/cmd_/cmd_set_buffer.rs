@@ -14,8 +14,8 @@
 use crate::*;
 
 pub static CMD_SET_BUFFER_ENTRY: cmd_entry = cmd_entry {
-    name: SyncCharPtr::new(c"set-buffer"),
-    alias: SyncCharPtr::new(c"setb"),
+    name: "set-buffer",
+    alias: Some("setb"),
 
     args: args_parse::new(c"ab:t:n:w", 0, 1, None),
     usage: SyncCharPtr::new(c"[-aw] [-b buffer-name] [-n new-buffer-name] [-t target-client] data"),
@@ -29,8 +29,8 @@ pub static CMD_SET_BUFFER_ENTRY: cmd_entry = cmd_entry {
 };
 
 pub static CMD_DELETE_BUFFER_ENTRY: cmd_entry = cmd_entry {
-    name: SyncCharPtr::new(c"delete-buffer"),
-    alias: SyncCharPtr::new(c"deleteb"),
+    name: "delete-buffer",
+    alias: Some("deleteb"),
 
     args: args_parse::new(c"b:", 0, 0, None),
     usage: SyncCharPtr::new(CMD_BUFFER_USAGE),

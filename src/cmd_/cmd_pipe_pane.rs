@@ -19,8 +19,8 @@ use crate::libc::{
 use crate::*;
 
 pub static CMD_PIPE_PANE_ENTRY: cmd_entry = cmd_entry {
-    name: SyncCharPtr::new(c"pipe-pane"),
-    alias: SyncCharPtr::new(c"pipep"),
+    name: "pipe-pane",
+    alias: Some("pipep"),
 
     args: args_parse::new(c"IOot:", 0, 1, None),
     usage: SyncCharPtr::new(c"[-IOo] [-t target-pane] [shell-command]"),

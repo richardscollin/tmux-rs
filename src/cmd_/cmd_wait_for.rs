@@ -21,8 +21,8 @@ use crate::compat::{
 use crate::*;
 
 pub static CMD_WAIT_FOR_ENTRY: cmd_entry = cmd_entry {
-    name: SyncCharPtr::new(c"wait-for"),
-    alias: SyncCharPtr::new(c"wait"),
+    name: "wait-for",
+    alias: Some("wait"),
 
     args: args_parse::new(c"LSU", 1, 1, None),
     usage: SyncCharPtr::new(c"[-L|-S|-U] channel"),

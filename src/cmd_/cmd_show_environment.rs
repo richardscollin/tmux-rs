@@ -15,8 +15,8 @@
 use crate::*;
 
 pub static CMD_SHOW_ENVIRONMENT_ENTRY: cmd_entry = cmd_entry {
-    name: SyncCharPtr::new(c"show-environment"),
-    alias: SyncCharPtr::new(c"showenv"),
+    name: "show-environment",
+    alias: Some("showenv"),
 
     args: args_parse::new(c"hgst:", 0, 1, None),
     usage: SyncCharPtr::new(c"[-hgs] [-t target-session] [name]"),

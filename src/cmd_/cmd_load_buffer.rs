@@ -14,8 +14,8 @@
 use crate::*;
 
 pub static CMD_LOAD_BUFFER_ENTRY: cmd_entry = cmd_entry {
-    name: SyncCharPtr::new(c"load-buffer"),
-    alias: SyncCharPtr::new(c"loadb"),
+    name: "load-buffer",
+    alias: Some("loadb"),
 
     args: args_parse::new(c"b:t:w", 1, 1, None),
     usage: SyncCharPtr::new(c"[-b buffer-name] [-t target-client] path"),

@@ -16,8 +16,8 @@ use crate::libc::{getpwnam, getuid};
 use crate::*;
 
 pub static CMD_SERVER_ACCESS_ENTRY: cmd_entry = cmd_entry {
-    name: SyncCharPtr::new(c"server-access"),
-    alias: SyncCharPtr::null(),
+    name: "server-access",
+    alias: None,
 
     args: args_parse::new(c"adlrw", 0, 1, None),
     usage: SyncCharPtr::new(c"[-adlrw] [-t target-pane] [user]"),

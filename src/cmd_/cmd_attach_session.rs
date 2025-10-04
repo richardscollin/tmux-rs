@@ -16,8 +16,8 @@ use crate::compat::queue::tailq_foreach;
 use crate::compat::tree::rb_empty;
 
 pub static CMD_ATTACH_SESSION_ENTRY: cmd_entry = cmd_entry {
-    name: SyncCharPtr::new(c"attach-session"),
-    alias: SyncCharPtr::new(c"attach"),
+    name: "attach-session",
+    alias: Some("attach"),
 
     args: args_parse::new(c"c:dEf:rt:x", 0, 0, None),
     usage: SyncCharPtr::new(c"[-dErx] [-c working-directory] [-f flags] [-t target-session]"),

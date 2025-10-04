@@ -14,8 +14,8 @@
 use crate::*;
 
 pub static CMD_COMMAND_PROMPT_ENTRY: cmd_entry = cmd_entry {
-    name: SyncCharPtr::new(c"command-prompt"),
-    alias: SyncCharPtr::null(),
+    name: "command-prompt",
+    alias: None,
 
     args: args_parse::new(c"1bFkiI:Np:t:T:", 0, 1, Some(cmd_command_prompt_args_parse)),
     usage: SyncCharPtr::new(

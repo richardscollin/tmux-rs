@@ -15,8 +15,8 @@
 use crate::*;
 
 pub static CMD_FIND_WINDOW_ENTRY: cmd_entry = cmd_entry {
-    name: SyncCharPtr::new(c"find-window"),
-    alias: SyncCharPtr::new(c"findw"),
+    name: "find-window",
+    alias: Some("findw"),
 
     args: args_parse::new(c"CiNrt:TZ", 1, 1, None),
     usage: SyncCharPtr::new(c"[-CiNrTZ] [-t target-pane] match-string"),

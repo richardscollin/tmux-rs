@@ -15,8 +15,8 @@
 use crate::*;
 
 pub static CMD_SELECT_WINDOW_ENTRY: cmd_entry = cmd_entry {
-    name: SyncCharPtr::new(c"select-window"),
-    alias: SyncCharPtr::new(c"selectw"),
+    name: "select-window",
+    alias: Some("selectw"),
 
     args: args_parse::new(c"lnpTt:", 0, 0, None),
     usage: SyncCharPtr::new(c"[-lnpT] [-t target-window]"),
@@ -33,8 +33,8 @@ pub static CMD_SELECT_WINDOW_ENTRY: cmd_entry = cmd_entry {
 };
 
 pub static CMD_NEXT_WINDOW_ENTRY: cmd_entry = cmd_entry {
-    name: SyncCharPtr::new(c"next-window"),
-    alias: SyncCharPtr::new(c"next"),
+    name: "next-window",
+    alias: Some("next"),
 
     args: args_parse::new(c"at:", 0, 0, None),
     usage: SyncCharPtr::new(c"[-a] [-t target-session]"),
@@ -51,8 +51,8 @@ pub static CMD_NEXT_WINDOW_ENTRY: cmd_entry = cmd_entry {
 };
 
 pub static CMD_PREVIOUS_WINDOW_ENTRY: cmd_entry = cmd_entry {
-    name: SyncCharPtr::new(c"previous-window"),
-    alias: SyncCharPtr::new(c"prev"),
+    name: "previous-window",
+    alias: Some("prev"),
 
     args: args_parse::new(c"at:", 0, 0, None),
     usage: SyncCharPtr::new(c"[-a] [-t target-session]"),
@@ -69,8 +69,8 @@ pub static CMD_PREVIOUS_WINDOW_ENTRY: cmd_entry = cmd_entry {
 };
 
 pub static CMD_LAST_WINDOW_ENTRY: cmd_entry = cmd_entry {
-    name: SyncCharPtr::new(c"last-window"),
-    alias: SyncCharPtr::new(c"last"),
+    name: "last-window",
+    alias: Some("last"),
 
     args: args_parse::new(c"t:", 0, 0, None),
     usage: SyncCharPtr::new(c"[-t target-session]"),

@@ -14,8 +14,8 @@
 use crate::*;
 
 pub static CMD_SET_ENVIRONMENT_ENTRY: cmd_entry = cmd_entry {
-    name: SyncCharPtr::new(c"set-environment"),
-    alias: SyncCharPtr::new(c"setenv"),
+    name: "set-environment",
+    alias: Some("setenv"),
 
     args: args_parse::new(c"Fhgrt:u", 1, 2, None),
     usage: SyncCharPtr::new(c"[-Fhgru] [-t target-session] name [value]"),

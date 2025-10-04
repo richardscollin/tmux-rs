@@ -16,8 +16,8 @@ use crate::compat::tree::{rb_foreach, rb_next, rb_prev};
 use crate::*;
 
 pub static CMD_KILL_WINDOW_ENTRY: cmd_entry = cmd_entry {
-    name: SyncCharPtr::new(c"kill-window"),
-    alias: SyncCharPtr::new(c"killw"),
+    name: "kill-window",
+    alias: Some("killw"),
 
     args: args_parse::new(c"at:", 0, 0, None),
     usage: SyncCharPtr::new(c"[-a] [-t target-window]"),
@@ -34,8 +34,8 @@ pub static CMD_KILL_WINDOW_ENTRY: cmd_entry = cmd_entry {
 };
 
 pub static CMD_UNLINK_WINDOW_ENTRY: cmd_entry = cmd_entry {
-    name: SyncCharPtr::new(c"unlink-window"),
-    alias: SyncCharPtr::new(c"unlinkw"),
+    name: "unlink-window",
+    alias: Some("unlinkw"),
 
     args: args_parse::new(c"kt:", 0, 0, None),
     usage: SyncCharPtr::new(c"[-k] [-t target-window]"),

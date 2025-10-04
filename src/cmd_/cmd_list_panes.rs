@@ -15,8 +15,8 @@ use crate::compat::{queue::tailq_foreach, tree::rb_foreach};
 use crate::*;
 
 pub static CMD_LIST_PANES_ENTRY: cmd_entry = cmd_entry {
-    name: SyncCharPtr::new(c"list-panes"),
-    alias: SyncCharPtr::new(c"lsp"),
+    name: "list-panes",
+    alias: Some("lsp"),
 
     args: args_parse::new(c"asF:f:t:", 0, 0, None),
     usage: SyncCharPtr::new(c"[-as] [-F format] [-f filter] [-t target-window]"),

@@ -17,8 +17,8 @@ use crate::*;
 const NEW_WINDOW_TEMPLATE: *const u8 = c!("#{session_name}:#{window_index}.#{pane_index}");
 
 pub static CMD_NEW_WINDOW_ENTRY: cmd_entry = cmd_entry {
-    name: SyncCharPtr::new(c"new-window"),
-    alias: SyncCharPtr::new(c"neww"),
+    name: "new-window",
+    alias: Some("neww"),
 
     args: args_parse::new(c"abc:de:F:kn:PSt:", 0, -1, None),
     usage: SyncCharPtr::new(c"[-abdkPS] [-c start-directory] [-e environment] [-F format] [-n window-name] [-t target-window] [shell-command]"),

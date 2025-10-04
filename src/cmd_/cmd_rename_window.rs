@@ -14,8 +14,8 @@
 use crate::*;
 
 pub static CMD_RENAME_WINDOW_ENTRY: cmd_entry = cmd_entry {
-    name: SyncCharPtr::new(c"rename-window"),
-    alias: SyncCharPtr::new(c"renamew"),
+    name: "rename-window",
+    alias: Some("renamew"),
 
     args: args_parse::new(c"t:", 1, 1, None),
     usage: SyncCharPtr::new(c"[-t target-window] new-name"),

@@ -15,8 +15,8 @@
 use crate::*;
 
 pub static CMD_RESPAWN_PANE_ENTRY: cmd_entry = cmd_entry {
-    name: SyncCharPtr::new(c"respawn-pane"),
-    alias: SyncCharPtr::new(c"respawnp"),
+    name: "respawn-pane",
+    alias: Some("respawnp"),
 
     args: args_parse::new(c"c:e:kt:", 0, -1, None),
     usage: SyncCharPtr::new(

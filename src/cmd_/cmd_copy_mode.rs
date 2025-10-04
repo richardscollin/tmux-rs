@@ -15,8 +15,8 @@
 use super::*;
 
 pub static CMD_COPY_MODE_ENTRY: cmd_entry = cmd_entry {
-    name: SyncCharPtr::new(c"copy-mode"),
-    alias: SyncCharPtr::null(),
+    name: "copy-mode",
+    alias: None,
 
     args: args_parse::new(c"deHMs:t:uq", 0, 0, None),
     usage: SyncCharPtr::new(c"[-deHMuq] [-s src-pane] [-t target-pane]"),
@@ -29,8 +29,8 @@ pub static CMD_COPY_MODE_ENTRY: cmd_entry = cmd_entry {
 };
 
 pub static CMD_CLOCK_MODE_ENTRY: cmd_entry = cmd_entry {
-    name: SyncCharPtr::new(c"clock-mode"),
-    alias: SyncCharPtr::null(),
+    name: "clock-mode",
+    alias: None,
 
     args: args_parse::new(c"t:", 0, 0, None),
     usage: SyncCharPtr::new(CMD_TARGET_PANE_USAGE),

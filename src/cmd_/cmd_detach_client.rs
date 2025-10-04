@@ -15,8 +15,8 @@ use crate::compat::queue::tailq_foreach;
 use crate::*;
 
 pub static CMD_DETACH_CLIENT_ENTRY: cmd_entry = cmd_entry {
-    name: SyncCharPtr::new(c"detach-client"),
-    alias: SyncCharPtr::new(c"detach"),
+    name: "detach-client",
+    alias: Some("detach"),
 
     args: args_parse::new(c"aE:s:t:P", 0, 0, None),
     usage: SyncCharPtr::new(c"[-aP] [-E shell-command] [-s target-session] [-t target-client]"),
@@ -33,8 +33,8 @@ pub static CMD_DETACH_CLIENT_ENTRY: cmd_entry = cmd_entry {
 };
 
 pub static CMD_SUSPEND_CLIENT_ENTRY: cmd_entry = cmd_entry {
-    name: SyncCharPtr::new(c"suspend-client"),
-    alias: SyncCharPtr::new(c"suspendc"),
+    name: "suspend-client",
+    alias: Some("suspendc"),
 
     args: args_parse::new(c"t:", 0, 0, None),
     usage: SyncCharPtr::new(c"[-t target-client]"),

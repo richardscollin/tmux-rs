@@ -14,8 +14,8 @@
 use crate::*;
 
 pub static CMD_SHOW_OPTIONS_ENTRY: cmd_entry = cmd_entry {
-    name: SyncCharPtr::new(c"show-options"),
-    alias: SyncCharPtr::new(c"show"),
+    name: "show-options",
+    alias: Some("show"),
 
     args: args_parse::new(c"AgHpqst:vw", 0, 1, None),
     usage: SyncCharPtr::new(c"[-AgHpqsvw] [-t target-pane] [option]"),
@@ -32,8 +32,8 @@ pub static CMD_SHOW_OPTIONS_ENTRY: cmd_entry = cmd_entry {
 };
 
 pub static CMD_SHOW_WINDOW_OPTIONS_ENTRY: cmd_entry = cmd_entry {
-    name: SyncCharPtr::new(c"show-window-options"),
-    alias: SyncCharPtr::new(c"showw"),
+    name: "show-window-options",
+    alias: Some("showw"),
 
     args: args_parse::new(c"gvt:", 0, 1, None),
     usage: SyncCharPtr::new(c"[-gv] [-t target-window] [option]"),
@@ -51,8 +51,8 @@ pub static CMD_SHOW_WINDOW_OPTIONS_ENTRY: cmd_entry = cmd_entry {
 };
 
 pub static CMD_SHOW_HOOKS_ENTRY: cmd_entry = cmd_entry {
-    name: SyncCharPtr::new(c"show-hooks"),
-    alias: SyncCharPtr::null(),
+    name: "show-hooks",
+    alias: None,
 
     args: args_parse::new(c"gpt:w", 0, 1, None),
     usage: SyncCharPtr::new(c"[-gpw] [-t target-pane]"),

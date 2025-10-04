@@ -17,51 +17,42 @@ unsafe impl Sync for tty_feature {}
 #[repr(C)]
 struct tty_feature {
     name: &'static str,
-    capabilities: *const SyncCharPtr,
+    capabilities: &'static [&'static str],
     flags: term_flags,
 }
 impl tty_feature {
     const fn new(
         name: &'static str,
-        capabilities: &'static [SyncCharPtr],
+        capabilities: &'static [&'static str],
         flags: term_flags,
     ) -> Self {
         Self {
             name,
-            capabilities: capabilities.as_ptr(),
+            capabilities,
             flags,
         }
     }
 }
 
-static TTY_FEATURE_TITLE_CAPABILITIES: &[SyncCharPtr] = &[
-    SyncCharPtr::new(c"tsl=\\E]0;"), // should be using TS really
-    SyncCharPtr::new(c"fsl=\\a"),
-    SyncCharPtr::null(),
+static TTY_FEATURE_TITLE_CAPABILITIES: &[&str] = &[
+    "tsl=\\E]0;", // should be using TS really
+    "fsl=\\a",
 ];
 static TTY_FEATURE_TITLE: tty_feature =
     tty_feature::new("title", TTY_FEATURE_TITLE_CAPABILITIES, term_flags::empty());
 
 /// Terminal has OSC 7 working directory.
-static TTY_FEATURE_OSC7_CAPABILITIES: &[SyncCharPtr] = &[
-    SyncCharPtr::new(c"Swd=\\E]7;"),
-    SyncCharPtr::new(c"fsl=\\a"),
-    SyncCharPtr::null(),
-];
+static TTY_FEATURE_OSC7_CAPABILITIES: &[&str] = &["Swd=\\E]7;", "fsl=\\a"];
 static TTY_FEATURE_OSC7: tty_feature =
     tty_feature::new("osc7", TTY_FEATURE_OSC7_CAPABILITIES, term_flags::empty());
 
 /// Terminal has mouse support.
-static TTY_FEATURE_MOUSE_CAPABILITIES: &[SyncCharPtr] =
-    &[SyncCharPtr::new(c"kmous=\\E[M"), SyncCharPtr::null()];
+static TTY_FEATURE_MOUSE_CAPABILITIES: &[&str] = &["kmous=\\E[M"];
 static TTY_FEATURE_MOUSE: tty_feature =
     tty_feature::new("mouse", TTY_FEATURE_MOUSE_CAPABILITIES, term_flags::empty());
 
 /// Terminal can set the clipboard with OSC 52.
-static TTY_FEATURE_CLIPBOARD_CAPABILITIES: &[SyncCharPtr] = &[
-    SyncCharPtr::new(c"Ms=\\E]52;%p1%s;%p2%s\\a"),
-    SyncCharPtr::null(),
-];
+static TTY_FEATURE_CLIPBOARD_CAPABILITIES: &[&str] = &["Ms=\\E]52;%p1%s;%p2%s\\a"];
 static TTY_FEATURE_CLIPBOARD: tty_feature = tty_feature::new(
     "clipboard",
     TTY_FEATURE_CLIPBOARD_CAPABILITIES,
@@ -72,12 +63,10 @@ static TTY_FEATURE_CLIPBOARD: tty_feature = tty_feature::new(
 
 /// Terminal supports OSC 8 hyperlinks.
 #[cfg(feature = "hyperlinks")]
-static TTY_FEATURE_HYPERLINKS_CAPABILITIES: &[SyncCharPtr] = &[
-    SyncCharPtr::new(c"*:Hls=\\E]8;%?%p1%l%tid=%p1%s%;;%p2%s\\E\\\\"),
-    SyncCharPtr::null(),
-];
+static TTY_FEATURE_HYPERLINKS_CAPABILITIES: &[&str] =
+    &["*:Hls=\\E]8;%?%p1%l%tid=%p1%s%;;%p2%s\\E\\\\"];
 #[cfg(not(feature = "hyperlinks"))]
-static TTY_FEATURE_HYPERLINKS_CAPABILITIES: &[SyncCharPtr] = &[SyncCharPtr::null()];
+static TTY_FEATURE_HYPERLINKS_CAPABILITIES: &[&str] = &[];
 static TTY_FEATURE_HYPERLINKS: tty_feature = tty_feature::new(
     "hyperlinks",
     TTY_FEATURE_HYPERLINKS_CAPABILITIES,
@@ -87,13 +76,12 @@ static TTY_FEATURE_HYPERLINKS: tty_feature = tty_feature::new(
 /// Terminal supports RGB colour. This replaces setab and setaf also since
 /// terminals with RGB have versions that do not allow setting colours from the
 /// 256 palette.
-static TTY_FEATURE_RGB_CAPABILITIES: &[SyncCharPtr] = &[
-    SyncCharPtr::new(c"AX"),
-    SyncCharPtr::new(c"setrgbf=\\E[38;2;%p1%d;%p2%d;%p3%dm"),
-    SyncCharPtr::new(c"setrgbb=\\E[48;2;%p1%d;%p2%d;%p3%dm"),
-    SyncCharPtr::new(c"setab=\\E[%?%p1%{8}%<%t4%p1%d%e%p1%{16}%<%t10%p1%{8}%-%d%e48;5;%p1%d%;m"),
-    SyncCharPtr::new(c"setaf=\\E[%?%p1%{8}%<%t3%p1%d%e%p1%{16}%<%t9%p1%{8}%-%d%e38;5;%p1%d%;m"),
-    SyncCharPtr::null(),
+static TTY_FEATURE_RGB_CAPABILITIES: &[&str] = &[
+    "AX",
+    "setrgbf=\\E[38;2;%p1%d;%p2%d;%p3%dm",
+    "setrgbb=\\E[48;2;%p1%d;%p2%d;%p3%dm",
+    "setab=\\E[%?%p1%{8}%<%t4%p1%d%e%p1%{16}%<%t10%p1%{8}%-%d%e48;5;%p1%d%;m",
+    "setaf=\\E[%?%p1%{8}%<%t3%p1%d%e%p1%{16}%<%t9%p1%{8}%-%d%e38;5;%p1%d%;m",
 ];
 static TTY_FEATURE_RGB: tty_feature = tty_feature::new(
     "RGB",
@@ -102,11 +90,10 @@ static TTY_FEATURE_RGB: tty_feature = tty_feature::new(
 );
 
 /// Terminal supports 256 colours.
-static TTY_FEATURE_256_CAPABILITIES: &[SyncCharPtr] = &[
-    SyncCharPtr::new(c"AX"),
-    SyncCharPtr::new(c"setab=\\E[%?%p1%{8}%<%t4%p1%d%e%p1%{16}%<%t10%p1%{8}%-%d%e48;5;%p1%d%;m"),
-    SyncCharPtr::new(c"setaf=\\E[%?%p1%{8}%<%t3%p1%d%e%p1%{16}%<%t9%p1%{8}%-%d%e38;5;%p1%d%;m"),
-    SyncCharPtr::null(),
+static TTY_FEATURE_256_CAPABILITIES: &[&str] = &[
+    "AX",
+    "setab=\\E[%?%p1%{8}%<%t4%p1%d%e%p1%{16}%<%t10%p1%{8}%-%d%e48;5;%p1%d%;m",
+    "setaf=\\E[%?%p1%{8}%<%t3%p1%d%e%p1%{16}%<%t9%p1%{8}%-%d%e38;5;%p1%d%;m",
 ];
 static TTY_FEATURE_256: tty_feature = tty_feature::new(
     "256",
@@ -115,8 +102,7 @@ static TTY_FEATURE_256: tty_feature = tty_feature::new(
 );
 
 /// Terminal supports overline.
-static TTY_FEATURE_OVERLINE_CAPABILITIES: &[SyncCharPtr] =
-    &[SyncCharPtr::new(c"Smol=\\E[53m"), SyncCharPtr::null()];
+static TTY_FEATURE_OVERLINE_CAPABILITIES: &[&str] = &["Smol=\\E[53m"];
 static TTY_FEATURE_OVERLINE: tty_feature = tty_feature::new(
     "overline",
     TTY_FEATURE_OVERLINE_CAPABILITIES,
@@ -124,12 +110,11 @@ static TTY_FEATURE_OVERLINE: tty_feature = tty_feature::new(
 );
 
 /// Terminal supports underscore styles.
-static TTY_FEATURE_USSTYLE_CAPABILITIES: &[SyncCharPtr] = &[
-    SyncCharPtr::new(c"Smulx=\\E[4::%p1%dm"),
-    SyncCharPtr::new(c"Setulc=\\E[58::2::%p1%{65536}%/%d::%p1%{256}%/%{255}%&%d::%p1%{255}%&%d%;m"),
-    SyncCharPtr::new(c"Setulc1=\\E[58::5::%p1%dm"),
-    SyncCharPtr::new(c"ol=\\E[59m"),
-    SyncCharPtr::null(),
+static TTY_FEATURE_USSTYLE_CAPABILITIES: &[&str] = &[
+    "Smulx=\\E[4::%p1%dm",
+    "Setulc=\\E[58::2::%p1%{65536}%/%d::%p1%{256}%/%{255}%&%d::%p1%{255}%&%d%;m",
+    "Setulc1=\\E[58::5::%p1%dm",
+    "ol=\\E[59m",
 ];
 static TTY_FEATURE_USSTYLE: tty_feature = tty_feature::new(
     "usstyle",
@@ -138,11 +123,7 @@ static TTY_FEATURE_USSTYLE: tty_feature = tty_feature::new(
 );
 
 /// Terminal supports bracketed paste.
-static TTY_FEATURE_BPASTE_CAPABILITIES: &[SyncCharPtr] = &[
-    SyncCharPtr::new(c"Enbp=\\E[?2004h"),
-    SyncCharPtr::new(c"Dsbp=\\E[?2004l"),
-    SyncCharPtr::null(),
-];
+static TTY_FEATURE_BPASTE_CAPABILITIES: &[&str] = &["Enbp=\\E[?2004h", "Dsbp=\\E[?2004l"];
 static TTY_FEATURE_BPASTE: tty_feature = tty_feature::new(
     "bpaste",
     TTY_FEATURE_BPASTE_CAPABILITIES,
@@ -150,20 +131,12 @@ static TTY_FEATURE_BPASTE: tty_feature = tty_feature::new(
 );
 
 /// Terminal supports focus reporting.
-static TTY_FEATURE_FOCUS_CAPABILITIES: &[SyncCharPtr] = &[
-    SyncCharPtr::new(c"Enfcs=\\E[?1004h"),
-    SyncCharPtr::new(c"Dsfcs=\\E[?1004l"),
-    SyncCharPtr::null(),
-];
+static TTY_FEATURE_FOCUS_CAPABILITIES: &[&str] = &["Enfcs=\\E[?1004h", "Dsfcs=\\E[?1004l"];
 static TTY_FEATURE_FOCUS: tty_feature =
     tty_feature::new("focus", TTY_FEATURE_FOCUS_CAPABILITIES, term_flags::empty());
 
 /// Terminal supports cursor styles.
-static TTY_FEATURE_CSTYLE_CAPABILITIES: &[SyncCharPtr] = &[
-    SyncCharPtr::new(c"Ss=\\E[%p1%d q"),
-    SyncCharPtr::new(c"Se=\\E[2 q"),
-    SyncCharPtr::null(),
-];
+static TTY_FEATURE_CSTYLE_CAPABILITIES: &[&str] = &["Ss=\\E[%p1%d q", "Se=\\E[2 q"];
 static TTY_FEATURE_CSTYLE: tty_feature = tty_feature::new(
     "cstyle",
     TTY_FEATURE_CSTYLE_CAPABILITIES,
@@ -171,11 +144,7 @@ static TTY_FEATURE_CSTYLE: tty_feature = tty_feature::new(
 );
 
 /// Terminal supports cursor colours.
-static TTY_FEATURE_CCOLOUR_CAPABILITIES: &[SyncCharPtr] = &[
-    SyncCharPtr::new(c"Cs=\\E]12;%p1%s\\a"),
-    SyncCharPtr::new(c"Cr=\\E]112\\a"),
-    SyncCharPtr::null(),
-];
+static TTY_FEATURE_CCOLOUR_CAPABILITIES: &[&str] = &["Cs=\\E]12;%p1%s\\a", "Cr=\\E]112\\a"];
 static TTY_FEATURE_CCOLOUR: tty_feature = tty_feature::new(
     "ccolour",
     TTY_FEATURE_CCOLOUR_CAPABILITIES,
@@ -183,8 +152,7 @@ static TTY_FEATURE_CCOLOUR: tty_feature = tty_feature::new(
 );
 
 /// Terminal supports strikethrough.
-static TTY_FEATURE_STRIKETHROUGH_CAPABILITIES: &[SyncCharPtr] =
-    &[SyncCharPtr::new(c"smxx=\\E[9m"), SyncCharPtr::null()];
+static TTY_FEATURE_STRIKETHROUGH_CAPABILITIES: &[&str] = &["smxx=\\E[9m"];
 static TTY_FEATURE_STRIKETHROUGH: tty_feature = tty_feature::new(
     "strikethrough",
     TTY_FEATURE_STRIKETHROUGH_CAPABILITIES,
@@ -192,19 +160,12 @@ static TTY_FEATURE_STRIKETHROUGH: tty_feature = tty_feature::new(
 );
 
 /// Terminal supports synchronized updates.
-static TTY_FEATURE_SYNC_CAPABILITIES: &[SyncCharPtr] = &[
-    SyncCharPtr::new(c"Sync=\\E[?2026%?%p1%{1}%-%tl%eh%;"),
-    SyncCharPtr::null(),
-];
+static TTY_FEATURE_SYNC_CAPABILITIES: &[&str] = &["Sync=\\E[?2026%?%p1%{1}%-%tl%eh%;"];
 static TTY_FEATURE_SYNC: tty_feature =
     tty_feature::new("sync", TTY_FEATURE_SYNC_CAPABILITIES, term_flags::empty());
 
 /// Terminal supports extended keys.
-static TTY_FEATURE_EXTKEYS_CAPABILITIES: &[SyncCharPtr] = &[
-    SyncCharPtr::new(c"Eneks=\\E[>4;2m"),
-    SyncCharPtr::new(c"Dseks=\\E[>4m"),
-    SyncCharPtr::null(),
-];
+static TTY_FEATURE_EXTKEYS_CAPABILITIES: &[&str] = &["Eneks=\\E[>4;2m", "Dseks=\\E[>4m"];
 static TTY_FEATURE_EXTKEYS: tty_feature = tty_feature::new(
     "extkeys",
     TTY_FEATURE_EXTKEYS_CAPABILITIES,
@@ -212,12 +173,11 @@ static TTY_FEATURE_EXTKEYS: tty_feature = tty_feature::new(
 );
 
 /// Terminal supports DECSLRM margins.
-static TTY_FEATURE_MARGINS_CAPABILITIES: &[SyncCharPtr] = &[
-    SyncCharPtr::new(c"Enmg=\\E[?69h"),
-    SyncCharPtr::new(c"Dsmg=\\E[?69l"),
-    SyncCharPtr::new(c"Clmg=\\E[s"),
-    SyncCharPtr::new(c"Cmg=\\E[%i%p1%d;%p2%ds"),
-    SyncCharPtr::null(),
+static TTY_FEATURE_MARGINS_CAPABILITIES: &[&str] = &[
+    "Enmg=\\E[?69h",
+    "Dsmg=\\E[?69l",
+    "Clmg=\\E[s",
+    "Cmg=\\E[%i%p1%d;%p2%ds",
 ];
 static TTY_FEATURE_MARGINS: tty_feature = tty_feature::new(
     "margins",
@@ -226,8 +186,7 @@ static TTY_FEATURE_MARGINS: tty_feature = tty_feature::new(
 );
 
 /// Terminal supports DECFRA rectangle fill.
-static TTY_FEATURE_RECTFILL_CAPABILITIES: &[SyncCharPtr] =
-    &[SyncCharPtr::new(c"Rect"), SyncCharPtr::null()];
+static TTY_FEATURE_RECTFILL_CAPABILITIES: &[&str] = &["Rect"];
 static TTY_FEATURE_RECTFILL: tty_feature = tty_feature::new(
     "rectfill",
     TTY_FEATURE_RECTFILL_CAPABILITIES,
@@ -235,72 +194,14 @@ static TTY_FEATURE_RECTFILL: tty_feature = tty_feature::new(
 );
 
 /// Use builtin function keys only.
-static TTY_FEATURE_IGNOREFKEYS_CAPABILITIES: &[SyncCharPtr] = &[
-    SyncCharPtr::new(c"kf0@"),
-    SyncCharPtr::new(c"kf1@"),
-    SyncCharPtr::new(c"kf2@"),
-    SyncCharPtr::new(c"kf3@"),
-    SyncCharPtr::new(c"kf4@"),
-    SyncCharPtr::new(c"kf5@"),
-    SyncCharPtr::new(c"kf6@"),
-    SyncCharPtr::new(c"kf7@"),
-    SyncCharPtr::new(c"kf8@"),
-    SyncCharPtr::new(c"kf9@"),
-    SyncCharPtr::new(c"kf10@"),
-    SyncCharPtr::new(c"kf11@"),
-    SyncCharPtr::new(c"kf12@"),
-    SyncCharPtr::new(c"kf13@"),
-    SyncCharPtr::new(c"kf14@"),
-    SyncCharPtr::new(c"kf15@"),
-    SyncCharPtr::new(c"kf16@"),
-    SyncCharPtr::new(c"kf17@"),
-    SyncCharPtr::new(c"kf18@"),
-    SyncCharPtr::new(c"kf19@"),
-    SyncCharPtr::new(c"kf20@"),
-    SyncCharPtr::new(c"kf21@"),
-    SyncCharPtr::new(c"kf22@"),
-    SyncCharPtr::new(c"kf23@"),
-    SyncCharPtr::new(c"kf24@"),
-    SyncCharPtr::new(c"kf25@"),
-    SyncCharPtr::new(c"kf26@"),
-    SyncCharPtr::new(c"kf27@"),
-    SyncCharPtr::new(c"kf28@"),
-    SyncCharPtr::new(c"kf29@"),
-    SyncCharPtr::new(c"kf30@"),
-    SyncCharPtr::new(c"kf31@"),
-    SyncCharPtr::new(c"kf32@"),
-    SyncCharPtr::new(c"kf33@"),
-    SyncCharPtr::new(c"kf34@"),
-    SyncCharPtr::new(c"kf35@"),
-    SyncCharPtr::new(c"kf36@"),
-    SyncCharPtr::new(c"kf37@"),
-    SyncCharPtr::new(c"kf38@"),
-    SyncCharPtr::new(c"kf39@"),
-    SyncCharPtr::new(c"kf40@"),
-    SyncCharPtr::new(c"kf41@"),
-    SyncCharPtr::new(c"kf42@"),
-    SyncCharPtr::new(c"kf43@"),
-    SyncCharPtr::new(c"kf44@"),
-    SyncCharPtr::new(c"kf45@"),
-    SyncCharPtr::new(c"kf46@"),
-    SyncCharPtr::new(c"kf47@"),
-    SyncCharPtr::new(c"kf48@"),
-    SyncCharPtr::new(c"kf49@"),
-    SyncCharPtr::new(c"kf50@"),
-    SyncCharPtr::new(c"kf51@"),
-    SyncCharPtr::new(c"kf52@"),
-    SyncCharPtr::new(c"kf53@"),
-    SyncCharPtr::new(c"kf54@"),
-    SyncCharPtr::new(c"kf55@"),
-    SyncCharPtr::new(c"kf56@"),
-    SyncCharPtr::new(c"kf57@"),
-    SyncCharPtr::new(c"kf58@"),
-    SyncCharPtr::new(c"kf59@"),
-    SyncCharPtr::new(c"kf60@"),
-    SyncCharPtr::new(c"kf61@"),
-    SyncCharPtr::new(c"kf62@"),
-    SyncCharPtr::new(c"kf63@"),
-    SyncCharPtr::null(),
+static TTY_FEATURE_IGNOREFKEYS_CAPABILITIES: &[&str] = &[
+    "kf0@", "kf1@", "kf2@", "kf3@", "kf4@", "kf5@", "kf6@", "kf7@", "kf8@", "kf9@", "kf10@",
+    "kf11@", "kf12@", "kf13@", "kf14@", "kf15@", "kf16@", "kf17@", "kf18@", "kf19@", "kf20@",
+    "kf21@", "kf22@", "kf23@", "kf24@", "kf25@", "kf26@", "kf27@", "kf28@", "kf29@", "kf30@",
+    "kf31@", "kf32@", "kf33@", "kf34@", "kf35@", "kf36@", "kf37@", "kf38@", "kf39@", "kf40@",
+    "kf41@", "kf42@", "kf43@", "kf44@", "kf45@", "kf46@", "kf47@", "kf48@", "kf49@", "kf50@",
+    "kf51@", "kf52@", "kf53@", "kf54@", "kf55@", "kf56@", "kf57@", "kf58@", "kf59@", "kf60@",
+    "kf61@", "kf62@", "kf63@",
 ];
 
 static TTY_FEATURE_IGNOREFKEYS: tty_feature = tty_feature::new(
@@ -310,8 +211,7 @@ static TTY_FEATURE_IGNOREFKEYS: tty_feature = tty_feature::new(
 );
 
 /// Terminal has sixel capability.
-static TTY_FEATURE_SIXEL_CAPABILITIES: &[SyncCharPtr] =
-    &[SyncCharPtr::new(c"Sxl"), SyncCharPtr::null()];
+static TTY_FEATURE_SIXEL_CAPABILITIES: &[&str] = &["Sxl"];
 static TTY_FEATURE_SIXEL: tty_feature = tty_feature::new(
     "sixel",
     TTY_FEATURE_SIXEL_CAPABILITIES,
@@ -409,13 +309,9 @@ pub unsafe fn tty_apply_features(term: *mut tty_term, feat: i32) -> bool {
             }
 
             log_debug!("applying terminal feature: {}", tf.name);
-            if !tf.capabilities.is_null() {
-                let mut capability = tf.capabilities;
-                while !(*capability).as_ptr().is_null() {
-                    log_debug!("adding capability: {}", _s((*capability).as_ptr()));
-                    tty_term_apply(term, (*capability).as_ptr(), 1);
-                    capability = capability.add(1);
-                }
+            for capability in tf.capabilities {
+                log_debug!("adding capability: {}", capability);
+                tty_term_apply(term, capability, 1);
             }
             (*term).flags |= tf.flags;
         }

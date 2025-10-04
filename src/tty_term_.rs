@@ -340,47 +340,46 @@ pub unsafe fn tty_term_strip(s: *const u8) -> *mut u8 {
     }
 }
 
-pub unsafe fn tty_term_override_next(s: *const u8, offset: *mut usize) -> *mut u8 {
-    let sizeof_value = 8192;
+pub unsafe fn tty_term_override_next(s: &str, offset: *mut usize) -> *mut u8 {
+    const SIZEOF_VALUE: usize = 8192;
     static mut VALUE: [u8; 8192] = [0; 8192];
-    unsafe {
-        let mut n = 0;
-        let mut at = *offset;
 
-        if *s.add(at) == b'\0' {
+    unsafe {
+        let remaining = s.as_bytes().get(*offset..).unwrap_or(&[]);
+
+        if remaining.is_empty() {
             return null_mut();
         }
 
-        while *s.add(at) != b'\0' {
-            if *s.add(at) == b':' {
-                if *s.add(at + 1) == b':' {
-                    VALUE[n] = b':';
-                    n += 1;
-                    at += 2;
-                } else {
-                    break;
-                }
-            } else {
-                VALUE[n] = *s.add(at);
+        let mut n = 0;
+        let mut i = 0;
+
+        while i < remaining.len() && n < SIZEOF_VALUE - 1 {
+            if remaining[i] == b':' && remaining.get(i + 1) == Some(&b':') {
+                VALUE[n] = b':';
                 n += 1;
-                at += 1;
-            }
-            if n == (sizeof_value) - 1 {
-                return null_mut();
+                i += 2;
+            } else if remaining[i] == b':' {
+                break;
+            } else {
+                VALUE[n] = remaining[i];
+                n += 1;
+                i += 1;
             }
         }
-        if *s.add(at) != b'\0' {
-            *offset = at + 1;
-        } else {
-            *offset = at;
+
+        if n >= SIZEOF_VALUE - 1 {
+            return null_mut();
         }
+
+        *offset += if i < remaining.len() { i + 1 } else { i };
         VALUE[n] = b'\0';
 
         &raw mut VALUE as *mut u8
     }
 }
 
-pub unsafe fn tty_term_apply(term: *mut tty_term, capabilities: *const u8, quiet: i32) {
+pub unsafe fn tty_term_apply(term: *mut tty_term, capabilities: &str, quiet: i32) {
     unsafe {
         let mut code: *mut tty_code;
         let mut offset = 0usize;
@@ -481,9 +480,9 @@ pub unsafe fn tty_term_apply_overrides(term: *mut tty_term) {
             s = (*ov).string;
 
             offset = 0;
-            first = tty_term_override_next(s, &raw mut offset);
+            first = tty_term_override_next(cstr_to_str(s), &raw mut offset);
             if !first.is_null() && fnmatch(first, (*term).name, 0) == 0 {
-                tty_term_apply(term, s.add(offset), 0);
+                tty_term_apply(term, cstr_to_str(s.add(offset)), 0);
             }
             a = options_array_next(a);
         }
@@ -643,7 +642,7 @@ pub unsafe fn tty_term_create(
                 let s = (*ov).string;
 
                 let mut offset = 0;
-                let first = tty_term_override_next(s, &raw mut offset);
+                let first = tty_term_override_next(cstr_to_str(s), &raw mut offset);
                 if !first.is_null() && fnmatch(first, (*term).name, 0) == 0 {
                     tty_add_features(feat, cstr_to_str(s.add(offset)), c!(":"));
                 }

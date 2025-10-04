@@ -44,20 +44,21 @@ unsafe fn TTY_BLOCK_STOP(tty: *const tty) -> u32 {
 
 pub unsafe fn tty_create_log() {
     unsafe {
-        let mut name: [u8; 64] = [0; 64];
+        use std::os::fd::IntoRawFd;
+        use std::os::unix::fs::OpenOptionsExt;
 
-        _ = xsnprintf_!(
-            (&raw mut name).cast(),
-            64,
-            "tmux-out-{}.log",
-            libc::getpid()
-        );
+        if let Ok(file) = std::fs::File::options()
+            .write(true)
+            .create(true)
+            .truncate(true)
+            .mode(0o644)
+            .open(format!("tmux-out-{}.log", std::process::id()))
+        {
+            TTY_LOG_FD = file.into_raw_fd();
+        } else {
+            TTY_LOG_FD = -1;
+        }
 
-        TTY_LOG_FD = libc::open(
-            (&raw const name).cast(),
-            libc::O_WRONLY | libc::O_CREAT | libc::O_TRUNC,
-            0o644,
-        );
         if TTY_LOG_FD != -1 && libc::fcntl(TTY_LOG_FD, libc::F_SETFD, libc::FD_CLOEXEC) == -1 {
             fatal("fcntl failed");
         }

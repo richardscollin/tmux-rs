@@ -94,7 +94,7 @@ unsafe fn cmd_source_file_done(
         }
 
         if error != 0 {
-            cmdq_error!(item, "{}: {}", _s(path), _s(strerror(error)));
+            cmdq_error!(item, "{}: {}", _s(path), strerror(error));
         } else if bsize != 0 {
             if load_cfg_from_buffer(
                 std::slice::from_raw_parts(bdata, bsize),
@@ -170,7 +170,6 @@ unsafe fn cmd_source_file_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
         let mut retval = cmd_retval::CMD_RETURN_NORMAL;
         let mut pattern: *mut u8;
         let mut expanded: *mut u8 = null_mut();
-        let mut error: *mut u8;
         let mut g = MaybeUninit::<glob_t>::uninit();
         let mut result;
 
@@ -215,14 +214,14 @@ unsafe fn cmd_source_file_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
                         .flags
                         .intersects(cmd_parse_input_flags::CMD_PARSE_QUIET)
                 {
-                    if result == GLOB_NOMATCH {
-                        error = strerror(ENOENT);
+                    let error = if result == GLOB_NOMATCH {
+                        strerror(ENOENT)
                     } else if result == GLOB_NOSPACE {
-                        error = strerror(ENOMEM);
+                        strerror(ENOMEM)
                     } else {
-                        error = strerror(EINVAL);
-                    }
-                    cmdq_error!(item, "{}: {}", _s(path), _s(error));
+                        strerror(EINVAL)
+                    };
+                    cmdq_error!(item, "{}: {}", _s(path), error);
                     retval = cmd_retval::CMD_RETURN_ERROR;
                 }
                 globfree(g.as_mut_ptr());

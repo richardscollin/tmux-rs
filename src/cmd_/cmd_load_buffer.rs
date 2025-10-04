@@ -55,7 +55,7 @@ unsafe fn cmd_load_buffer_done(
         }
 
         if error != 0 {
-            cmdq_error!(item, "{}: {}", _s(path), _s(strerror(error)));
+            cmdq_error!(item, "{}: {}", _s(path), strerror(error));
         } else if bsize != 0 {
             let copy = xmalloc(bsize).as_ptr();
             memcpy_(copy, bdata as _, bsize);

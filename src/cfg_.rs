@@ -118,7 +118,7 @@ pub unsafe fn load_cfg(
                 if code == ENOENT && flags.intersects(cmd_parse_input_flags::CMD_PARSE_QUIET) {
                     return 0;
                 }
-                cfg_add_cause!("{}: {}", path, _s(strerror(code)));
+                cfg_add_cause!("{}: {}", path, strerror(code));
                 return -1;
             }
         };

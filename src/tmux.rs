@@ -186,7 +186,7 @@ unsafe fn expand_paths(s: &str, paths: &mut Vec<CString>, ignore_errors: i32) {
                     log_debug!(
                         "{func}: realpath(\"{}\") failed: {}",
                         expanded.to_string_lossy(),
-                        _s(strerror(errno!())),
+                        strerror(errno!()),
                     );
                     if ignore_errors != 0 {
                         // free_(expanded);
@@ -235,7 +235,7 @@ unsafe fn make_label(mut label: *const u8, cause: *mut *mut u8) -> *const u8 {
                 *cause = format_nul!(
                     "couldn't create directory {} ({})",
                     _s(base),
-                    _s(strerror(errno!()))
+                    strerror(errno!())
                 );
                 break 'fail;
             }
@@ -243,7 +243,7 @@ unsafe fn make_label(mut label: *const u8, cause: *mut *mut u8) -> *const u8 {
                 *cause = format_nul!(
                     "couldn't read directory {} ({})",
                     _s(base),
-                    _s(strerror(errno!())),
+                    strerror(errno!()),
                 );
                 break 'fail;
             }

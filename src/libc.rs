@@ -327,8 +327,8 @@ pub unsafe fn strcaseeq_(left: *const u8, right: &'static str) -> bool {
     unsafe { matches!(strcasecmp_(left, right), std::cmp::Ordering::Equal) }
 }
 
-pub unsafe fn strerror(n: c_int) -> *mut u8 {
-    unsafe { ::libc::strerror(n).cast() }
+pub unsafe fn strerror<'a>(n: c_int) -> &'a str {
+    unsafe { crate::cstr_to_str(::libc::strerror(n).cast()) }
 }
 
 pub unsafe fn ttyname(fd: i32) -> *mut u8 {

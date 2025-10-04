@@ -74,12 +74,12 @@ pub unsafe fn client_get_lock(lockfile: *mut u8) -> i32 {
 
         let lockfd = open(lockfile, O_WRONLY | O_CREAT, 0o600);
         if lockfd == -1 {
-            log_debug!("open failed: {}", _s(strerror(errno!())));
+            log_debug!("open failed: {}", strerror(errno!()));
             return -1;
         }
 
         if flock(lockfd, LOCK_EX | LOCK_NB) == -1 {
-            log_debug!("flock failed: {}", _s(strerror(errno!())));
+            log_debug!("flock failed: {}", strerror(errno!()));
             if errno!() != EAGAIN {
                 return lockfd;
             }
@@ -123,7 +123,7 @@ pub unsafe fn client_connect(base: *mut event_base, path: *const u8, flags: clie
                     size_of::<sockaddr_un>() as u32,
                 ) == -1
                 {
-                    log_debug!("connect failed: {}", _s(strerror(errno!())));
+                    log_debug!("connect failed: {}", strerror(errno!()));
                     if errno!() != ECONNREFUSED && errno!() != ENOENT {
                         break 'failed;
                     }
@@ -312,7 +312,7 @@ pub unsafe extern "C-unwind" fn client_main(
                 eprintln!(
                     "error connecting to {} ({})",
                     _s(SOCKET_PATH),
-                    _s(strerror(errno!()))
+                    strerror(errno!())
                 );
             }
             return 1;
@@ -364,7 +364,7 @@ pub unsafe extern "C-unwind" fn client_main(
 
         if (*&raw const CLIENT_FLAGS).intersects(client_flag::CONTROLCONTROL) {
             if tcgetattr(STDIN_FILENO, &raw mut saved_tio) != 0 {
-                eprintln!("tcgetattr failed: {}", _s(strerror(errno!())));
+                eprintln!("tcgetattr failed: {}", strerror(errno!()));
                 return 1;
             }
             cfmakeraw(&raw mut tio);
@@ -628,7 +628,7 @@ unsafe fn client_signal(sig: i32) {
                     if errno!() == ECHILD {
                         break;
                     }
-                    log_debug!("waitpid failed: {}", _s(strerror(errno!())));
+                    log_debug!("waitpid failed: {}", strerror(errno!()));
                 }
             }
         } else if CLIENT_ATTACHED == 0 {

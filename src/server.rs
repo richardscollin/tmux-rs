@@ -121,7 +121,7 @@ pub unsafe fn server_create_socket(flags: client_flag, cause: *mut *mut u8) -> c
             *cause = format_nul!(
                 "error creating {} ({})",
                 _s(SOCKET_PATH),
-                _s(strerror(errno!()))
+                strerror(errno!())
             );
         }
         -1

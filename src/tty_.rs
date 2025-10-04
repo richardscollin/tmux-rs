@@ -143,7 +143,7 @@ pub unsafe extern "C-unwind" fn tty_read_callback(_fd: i32, _events: i16, data: 
             if nread == 0 {
                 log_debug!("{}: read closed", _s(name));
             } else {
-                log_debug!("{}: read error: {}", _s(name), _s(strerror(errno!())));
+                log_debug!("{}: read error: {}", _s(name), strerror(errno!()));
             }
             event_del(&raw mut (*tty).event_in);
             server_client_lost((*tty).client);

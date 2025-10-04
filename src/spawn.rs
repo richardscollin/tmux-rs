@@ -429,7 +429,7 @@ pub unsafe fn spawn_pane(sc: *mut spawn_context, cause: *mut *mut u8) -> *mut wi
                 &raw mut ws,
             );
             if (*new_wp).pid == -1 {
-                *cause = format_nul!("fork failed: {}", _s(strerror(errno!())));
+                *cause = format_nul!("fork failed: {}", strerror(errno!()));
                 (*new_wp).fd = -1;
                 if !(*sc).flags.intersects(SPAWN_RESPAWN) {
                     server_client_remove_pane(new_wp);

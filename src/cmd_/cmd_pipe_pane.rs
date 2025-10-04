@@ -90,7 +90,7 @@ pub unsafe fn cmd_pipe_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
 
         // Open the new pipe.
         if socketpair(AF_UNIX, libc::SOCK_STREAM, PF_UNSPEC, pipe_fd.as_mut_ptr()) != 0 {
-            cmdq_error!(item, "socketpair error: {}", _s(strerror(errno!())));
+            cmdq_error!(item, "socketpair error: {}", strerror(errno!()));
             return cmd_retval::CMD_RETURN_ERROR;
         }
 
@@ -111,7 +111,7 @@ pub unsafe fn cmd_pipe_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
         match libc::fork() {
             -1 => {
                 sigprocmask(SIG_SETMASK, &raw const oldset, null_mut());
-                cmdq_error!(item, "fork error: {}", _s(strerror(errno!())));
+                cmdq_error!(item, "fork error: {}", strerror(errno!()));
 
                 free_(cmd);
                 cmd_retval::CMD_RETURN_ERROR

@@ -106,7 +106,6 @@ macro_rules! KEYC_MOUSE_STRING11 {
     };
 }
 
-#[expect(clippy::disallowed_methods)]
 static KEY_STRING_TABLE: [key_string_table_entry; 469] = const {
     let mut out_i: usize = 0;
     let mut out: [key_string_table_entry; 469] =

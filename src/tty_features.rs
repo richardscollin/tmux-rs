@@ -16,13 +16,13 @@ use crate::*;
 unsafe impl Sync for tty_feature {}
 #[repr(C)]
 struct tty_feature {
-    name: SyncCharPtr,
+    name: &'static str,
     capabilities: *const SyncCharPtr,
     flags: term_flags,
 }
 impl tty_feature {
     const fn new(
-        name: SyncCharPtr,
+        name: &'static str,
         capabilities: &'static [SyncCharPtr],
         flags: term_flags,
     ) -> Self {
@@ -40,7 +40,7 @@ static TTY_FEATURE_TITLE_CAPABILITIES: &[SyncCharPtr] = &[
     SyncCharPtr::null(),
 ];
 static TTY_FEATURE_TITLE: tty_feature = tty_feature::new(
-    SyncCharPtr::new(c"title"),
+    "title",
     TTY_FEATURE_TITLE_CAPABILITIES,
     term_flags::empty(),
 );
@@ -52,7 +52,7 @@ static TTY_FEATURE_OSC7_CAPABILITIES: &[SyncCharPtr] = &[
     SyncCharPtr::null(),
 ];
 static TTY_FEATURE_OSC7: tty_feature = tty_feature::new(
-    SyncCharPtr::new(c"osc7"),
+    "osc7",
     TTY_FEATURE_OSC7_CAPABILITIES,
     term_flags::empty(),
 );
@@ -61,7 +61,7 @@ static TTY_FEATURE_OSC7: tty_feature = tty_feature::new(
 static TTY_FEATURE_MOUSE_CAPABILITIES: &[SyncCharPtr] =
     &[SyncCharPtr::new(c"kmous=\\E[M"), SyncCharPtr::null()];
 static TTY_FEATURE_MOUSE: tty_feature = tty_feature::new(
-    SyncCharPtr::new(c"mouse"),
+    "mouse",
     TTY_FEATURE_MOUSE_CAPABILITIES,
     term_flags::empty(),
 );
@@ -72,7 +72,7 @@ static TTY_FEATURE_CLIPBOARD_CAPABILITIES: &[SyncCharPtr] = &[
     SyncCharPtr::null(),
 ];
 static TTY_FEATURE_CLIPBOARD: tty_feature = tty_feature::new(
-    SyncCharPtr::new(c"clipboard"),
+    "clipboard",
     TTY_FEATURE_CLIPBOARD_CAPABILITIES,
     term_flags::empty(),
 );
@@ -88,7 +88,7 @@ static TTY_FEATURE_HYPERLINKS_CAPABILITIES: &[SyncCharPtr] = &[
 #[cfg(not(feature = "hyperlinks"))]
 static TTY_FEATURE_HYPERLINKS_CAPABILITIES: &[SyncCharPtr] = &[SyncCharPtr::null()];
 static TTY_FEATURE_HYPERLINKS: tty_feature = tty_feature::new(
-    SyncCharPtr::new(c"hyperlinks"),
+    "hyperlinks",
     TTY_FEATURE_HYPERLINKS_CAPABILITIES,
     term_flags::empty(),
 );
@@ -105,7 +105,7 @@ static TTY_FEATURE_RGB_CAPABILITIES: &[SyncCharPtr] = &[
     SyncCharPtr::null(),
 ];
 static TTY_FEATURE_RGB: tty_feature = tty_feature::new(
-    SyncCharPtr::new(c"RGB"),
+    "RGB",
     TTY_FEATURE_RGB_CAPABILITIES,
     term_flags::TERM_256COLOURS.union(term_flags::TERM_RGBCOLOURS),
 );
@@ -118,7 +118,7 @@ static TTY_FEATURE_256_CAPABILITIES: &[SyncCharPtr] = &[
     SyncCharPtr::null(),
 ];
 static TTY_FEATURE_256: tty_feature = tty_feature::new(
-    SyncCharPtr::new(c"256"),
+    "256",
     TTY_FEATURE_256_CAPABILITIES,
     term_flags::TERM_256COLOURS,
 );
@@ -127,7 +127,7 @@ static TTY_FEATURE_256: tty_feature = tty_feature::new(
 static TTY_FEATURE_OVERLINE_CAPABILITIES: &[SyncCharPtr] =
     &[SyncCharPtr::new(c"Smol=\\E[53m"), SyncCharPtr::null()];
 static TTY_FEATURE_OVERLINE: tty_feature = tty_feature::new(
-    SyncCharPtr::new(c"overline"),
+    "overline",
     TTY_FEATURE_OVERLINE_CAPABILITIES,
     term_flags::empty(),
 );
@@ -141,7 +141,7 @@ static TTY_FEATURE_USSTYLE_CAPABILITIES: &[SyncCharPtr] = &[
     SyncCharPtr::null(),
 ];
 static TTY_FEATURE_USSTYLE: tty_feature = tty_feature::new(
-    SyncCharPtr::new(c"usstyle"),
+    "usstyle",
     TTY_FEATURE_USSTYLE_CAPABILITIES,
     term_flags::empty(),
 );
@@ -153,7 +153,7 @@ static TTY_FEATURE_BPASTE_CAPABILITIES: &[SyncCharPtr] = &[
     SyncCharPtr::null(),
 ];
 static TTY_FEATURE_BPASTE: tty_feature = tty_feature::new(
-    SyncCharPtr::new(c"bpaste"),
+    "bpaste",
     TTY_FEATURE_BPASTE_CAPABILITIES,
     term_flags::empty(),
 );
@@ -165,7 +165,7 @@ static TTY_FEATURE_FOCUS_CAPABILITIES: &[SyncCharPtr] = &[
     SyncCharPtr::null(),
 ];
 static TTY_FEATURE_FOCUS: tty_feature = tty_feature::new(
-    SyncCharPtr::new(c"focus"),
+    "focus",
     TTY_FEATURE_FOCUS_CAPABILITIES,
     term_flags::empty(),
 );
@@ -177,7 +177,7 @@ static TTY_FEATURE_CSTYLE_CAPABILITIES: &[SyncCharPtr] = &[
     SyncCharPtr::null(),
 ];
 static TTY_FEATURE_CSTYLE: tty_feature = tty_feature::new(
-    SyncCharPtr::new(c"cstyle"),
+    "cstyle",
     TTY_FEATURE_CSTYLE_CAPABILITIES,
     term_flags::empty(),
 );
@@ -189,7 +189,7 @@ static TTY_FEATURE_CCOLOUR_CAPABILITIES: &[SyncCharPtr] = &[
     SyncCharPtr::null(),
 ];
 static TTY_FEATURE_CCOLOUR: tty_feature = tty_feature::new(
-    SyncCharPtr::new(c"ccolour"),
+    "ccolour",
     TTY_FEATURE_CCOLOUR_CAPABILITIES,
     term_flags::empty(),
 );
@@ -198,7 +198,7 @@ static TTY_FEATURE_CCOLOUR: tty_feature = tty_feature::new(
 static TTY_FEATURE_STRIKETHROUGH_CAPABILITIES: &[SyncCharPtr] =
     &[SyncCharPtr::new(c"smxx=\\E[9m"), SyncCharPtr::null()];
 static TTY_FEATURE_STRIKETHROUGH: tty_feature = tty_feature::new(
-    SyncCharPtr::new(c"strikethrough"),
+    "strikethrough",
     TTY_FEATURE_STRIKETHROUGH_CAPABILITIES,
     term_flags::empty(),
 );
@@ -209,7 +209,7 @@ static TTY_FEATURE_SYNC_CAPABILITIES: &[SyncCharPtr] = &[
     SyncCharPtr::null(),
 ];
 static TTY_FEATURE_SYNC: tty_feature = tty_feature::new(
-    SyncCharPtr::new(c"sync"),
+    "sync",
     TTY_FEATURE_SYNC_CAPABILITIES,
     term_flags::empty(),
 );
@@ -221,7 +221,7 @@ static TTY_FEATURE_EXTKEYS_CAPABILITIES: &[SyncCharPtr] = &[
     SyncCharPtr::null(),
 ];
 static TTY_FEATURE_EXTKEYS: tty_feature = tty_feature::new(
-    SyncCharPtr::new(c"extkeys"),
+    "extkeys",
     TTY_FEATURE_EXTKEYS_CAPABILITIES,
     term_flags::empty(),
 );
@@ -235,7 +235,7 @@ static TTY_FEATURE_MARGINS_CAPABILITIES: &[SyncCharPtr] = &[
     SyncCharPtr::null(),
 ];
 static TTY_FEATURE_MARGINS: tty_feature = tty_feature::new(
-    SyncCharPtr::new(c"margins"),
+    "margins",
     TTY_FEATURE_MARGINS_CAPABILITIES,
     term_flags::TERM_DECSLRM,
 );
@@ -244,7 +244,7 @@ static TTY_FEATURE_MARGINS: tty_feature = tty_feature::new(
 static TTY_FEATURE_RECTFILL_CAPABILITIES: &[SyncCharPtr] =
     &[SyncCharPtr::new(c"Rect"), SyncCharPtr::null()];
 static TTY_FEATURE_RECTFILL: tty_feature = tty_feature::new(
-    SyncCharPtr::new(c"rectfill"),
+    "rectfill",
     TTY_FEATURE_RECTFILL_CAPABILITIES,
     term_flags::TERM_DECFRA,
 );
@@ -319,7 +319,7 @@ static TTY_FEATURE_IGNOREFKEYS_CAPABILITIES: &[SyncCharPtr] = &[
 ];
 
 static TTY_FEATURE_IGNOREFKEYS: tty_feature = tty_feature::new(
-    SyncCharPtr::new(c"ignorefkeys"),
+    "ignorefkeys",
     TTY_FEATURE_IGNOREFKEYS_CAPABILITIES,
     term_flags::empty(),
 );
@@ -328,7 +328,7 @@ static TTY_FEATURE_IGNOREFKEYS: tty_feature = tty_feature::new(
 static TTY_FEATURE_SIXEL_CAPABILITIES: &[SyncCharPtr] =
     &[SyncCharPtr::new(c"Sxl"), SyncCharPtr::null()];
 static TTY_FEATURE_SIXEL: tty_feature = tty_feature::new(
-    SyncCharPtr::new(c"sixel"),
+    "sixel",
     TTY_FEATURE_SIXEL_CAPABILITIES,
     term_flags::TERM_SIXEL,
 );
@@ -371,7 +371,7 @@ pub unsafe fn tty_add_features(feat: *mut i32, s: &str, separators: *const u8) {
         } {
             let Some(i) = TTY_FEATURES
                 .iter()
-                .position(|tf| libc::strcasecmp(tf.name.as_ptr(), next) == 0)
+                .position(|tf| libc::strcaseeq_(next, tf.name))
             else {
                 log_debug!("unknown terminal feature: {}", _s(next));
                 break;
@@ -379,7 +379,7 @@ pub unsafe fn tty_add_features(feat: *mut i32, s: &str, separators: *const u8) {
 
             let tf = TTY_FEATURES[i];
             if !(*feat) & (1 << i) != 0 {
-                log_debug!("adding terminal feature: {}", _s(tf.name.as_ptr()));
+                log_debug!("adding terminal feature: {}", tf.name);
                 (*feat) |= 1 << i;
             }
         }
@@ -399,8 +399,8 @@ pub unsafe fn tty_get_features(feat: i32) -> *const u8 {
                 continue;
             }
 
-            strlcat(s, tf.name.as_ptr(), 512);
-            strlcat(s, c!(","), 512);
+            strlcat_(s, tf.name, 512);
+            strlcat_(s, ",", 512);
         }
         if *s != b'\0' {
             *s.add(strlen(s) - 1) = b'\0';
@@ -423,7 +423,7 @@ pub unsafe fn tty_apply_features(term: *mut tty_term, feat: i32) -> bool {
                 continue;
             }
 
-            log_debug!("applying terminal feature: {}", _s(tf.name.as_ptr()));
+            log_debug!("applying terminal feature: {}", tf.name);
             if !tf.capabilities.is_null() {
                 let mut capability = tf.capabilities;
                 while !(*capability).as_ptr().is_null() {

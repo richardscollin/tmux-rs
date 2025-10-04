@@ -55,11 +55,6 @@ pub unsafe fn strftime(s: *mut u8, max: usize, format: *const u8, tm: *const tm)
     unsafe { ::libc::strftime(s.cast(), max, format.cast(), tm.cast()) }
 }
 
-#[expect(dead_code)]
-pub unsafe fn strcpy(dst: *mut u8, src: *const u8) -> *mut u8 {
-    unsafe { ::libc::strcpy(dst.cast(), src.cast()).cast() }
-}
-
 pub unsafe fn strdup(cs: *const u8) -> *mut u8 {
     unsafe { ::libc::strdup(cs.cast()).cast() }
 }
@@ -309,10 +304,6 @@ pub unsafe fn strcmp_(left: *const u8, right: &str) -> std::cmp::Ordering {
 
 pub unsafe fn streq_(left: *const u8, right: &'static str) -> bool {
     unsafe { matches!(strcmp_(left, right), std::cmp::Ordering::Equal) }
-}
-
-pub unsafe fn strcasecmp(s1: *const u8, s2: *const u8) -> i32 {
-    unsafe { ::libc::strcasecmp(s1.cast(), s2.cast()) }
 }
 
 pub unsafe fn strncasecmp(s1: *const u8, s2: *const u8, n: usize) -> i32 {

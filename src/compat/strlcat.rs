@@ -14,6 +14,7 @@ pub unsafe fn strlcat(dst: *mut u8, src: *const u8, size: usize) -> usize {
     }
 }
 
+#[expect(clippy::disallowed_methods)]
 pub unsafe fn strlcat_(dst: *mut u8, src: &str, size: usize) -> usize {
     unsafe {
         let dst_strlen = libc::strnlen(dst, size);

@@ -70,10 +70,6 @@ pub unsafe fn utf8_is_modifier(ud: *const utf8_data) -> bool {
         if utf8_towc(ud, &raw mut wc) != utf8_state::UTF8_DONE {
             return false;
         }
-        utf8_in_table(
-            wc,
-            &raw const UTF8_MODIFIER_TABLE as *const wchar_t,
-            UTF8_MODIFIER_TABLE.len(),
-        )
     }
+    utf8_in_table(wc, &UTF8_MODIFIER_TABLE)
 }

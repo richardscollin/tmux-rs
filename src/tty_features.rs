@@ -39,11 +39,8 @@ static TTY_FEATURE_TITLE_CAPABILITIES: &[SyncCharPtr] = &[
     SyncCharPtr::new(c"fsl=\\a"),
     SyncCharPtr::null(),
 ];
-static TTY_FEATURE_TITLE: tty_feature = tty_feature::new(
-    "title",
-    TTY_FEATURE_TITLE_CAPABILITIES,
-    term_flags::empty(),
-);
+static TTY_FEATURE_TITLE: tty_feature =
+    tty_feature::new("title", TTY_FEATURE_TITLE_CAPABILITIES, term_flags::empty());
 
 /// Terminal has OSC 7 working directory.
 static TTY_FEATURE_OSC7_CAPABILITIES: &[SyncCharPtr] = &[
@@ -51,20 +48,14 @@ static TTY_FEATURE_OSC7_CAPABILITIES: &[SyncCharPtr] = &[
     SyncCharPtr::new(c"fsl=\\a"),
     SyncCharPtr::null(),
 ];
-static TTY_FEATURE_OSC7: tty_feature = tty_feature::new(
-    "osc7",
-    TTY_FEATURE_OSC7_CAPABILITIES,
-    term_flags::empty(),
-);
+static TTY_FEATURE_OSC7: tty_feature =
+    tty_feature::new("osc7", TTY_FEATURE_OSC7_CAPABILITIES, term_flags::empty());
 
 /// Terminal has mouse support.
 static TTY_FEATURE_MOUSE_CAPABILITIES: &[SyncCharPtr] =
     &[SyncCharPtr::new(c"kmous=\\E[M"), SyncCharPtr::null()];
-static TTY_FEATURE_MOUSE: tty_feature = tty_feature::new(
-    "mouse",
-    TTY_FEATURE_MOUSE_CAPABILITIES,
-    term_flags::empty(),
-);
+static TTY_FEATURE_MOUSE: tty_feature =
+    tty_feature::new("mouse", TTY_FEATURE_MOUSE_CAPABILITIES, term_flags::empty());
 
 /// Terminal can set the clipboard with OSC 52.
 static TTY_FEATURE_CLIPBOARD_CAPABILITIES: &[SyncCharPtr] = &[
@@ -164,11 +155,8 @@ static TTY_FEATURE_FOCUS_CAPABILITIES: &[SyncCharPtr] = &[
     SyncCharPtr::new(c"Dsfcs=\\E[?1004l"),
     SyncCharPtr::null(),
 ];
-static TTY_FEATURE_FOCUS: tty_feature = tty_feature::new(
-    "focus",
-    TTY_FEATURE_FOCUS_CAPABILITIES,
-    term_flags::empty(),
-);
+static TTY_FEATURE_FOCUS: tty_feature =
+    tty_feature::new("focus", TTY_FEATURE_FOCUS_CAPABILITIES, term_flags::empty());
 
 /// Terminal supports cursor styles.
 static TTY_FEATURE_CSTYLE_CAPABILITIES: &[SyncCharPtr] = &[
@@ -208,11 +196,8 @@ static TTY_FEATURE_SYNC_CAPABILITIES: &[SyncCharPtr] = &[
     SyncCharPtr::new(c"Sync=\\E[?2026%?%p1%{1}%-%tl%eh%;"),
     SyncCharPtr::null(),
 ];
-static TTY_FEATURE_SYNC: tty_feature = tty_feature::new(
-    "sync",
-    TTY_FEATURE_SYNC_CAPABILITIES,
-    term_flags::empty(),
-);
+static TTY_FEATURE_SYNC: tty_feature =
+    tty_feature::new("sync", TTY_FEATURE_SYNC_CAPABILITIES, term_flags::empty());
 
 /// Terminal supports extended keys.
 static TTY_FEATURE_EXTKEYS_CAPABILITIES: &[SyncCharPtr] = &[

@@ -168,17 +168,8 @@ pub unsafe fn utf8_put_item(data: *const [u8; UTF8_SIZE], size: usize, index: *m
     }
 }
 
-pub unsafe extern "C" fn utf8_table_cmp(vp1: *const c_void, vp2: *const c_void) -> i32 {
-    let wc1 = vp1 as *const wchar_t;
-    let wc2 = vp2 as *const wchar_t;
-    unsafe { wchar_t::cmp(&*wc1, &*wc2) as i8 as i32 }
-}
-
-pub unsafe fn utf8_in_table(find: wchar_t, table: *const wchar_t, count: usize) -> bool {
-    unsafe {
-        let found = bsearch__(&raw const find, table, count, utf8_table_cmp);
-        !found.is_null()
-    }
+pub fn utf8_in_table(find: wchar_t, table: &[wchar_t]) -> bool {
+    table.binary_search(&find).is_ok()
 }
 
 pub unsafe fn utf8_from_data(ud: *const utf8_data, uc: *mut utf8_char) -> utf8_state {
@@ -295,7 +286,7 @@ pub unsafe fn utf8_width(ud: *mut utf8_data, width: *mut i32) -> utf8_state {
         if utf8_towc(ud, &raw mut wc) != utf8_state::UTF8_DONE {
             return utf8_state::UTF8_ERROR;
         }
-        if utf8_in_table(wc, UTF8_FORCE_WIDE.as_ptr(), UTF8_FORCE_WIDE.len()) {
+        if utf8_in_table(wc, &UTF8_FORCE_WIDE) {
             *width = 2;
             return utf8_state::UTF8_DONE;
         }

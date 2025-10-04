@@ -129,7 +129,7 @@ use crate::{
     },
     cmd_parse::*,
     colour::*,
-    compat::{imsg::imsg, queue::*, strtonum, tree::*, *}, // strtonum need to disambiguate from libc on macos
+    compat::{imsg::imsg, queue::*, strtonum, tree::*, *}, /* strtonum need to disambiguate from libc on macos */
     control::{control_write, *},
     control_notify::*,
     environ_::*,

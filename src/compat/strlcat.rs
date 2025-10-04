@@ -13,3 +13,17 @@ pub unsafe fn strlcat(dst: *mut u8, src: *const u8, size: usize) -> usize {
         dst_strlen + src_strlen
     }
 }
+
+pub unsafe fn strlcat_(dst: *mut u8, src: &str, size: usize) -> usize {
+    unsafe {
+        let dst_strlen = libc::strnlen(dst, size);
+        let src_strlen = src
+            .len()
+            .min(size.saturating_sub(dst_strlen).saturating_sub(1));
+
+        core::ptr::copy_nonoverlapping(src.as_ptr(), dst.add(dst_strlen), src_strlen);
+        *dst.add(dst_strlen + src_strlen) = b'\0';
+
+        dst_strlen + src_strlen
+    }
+}

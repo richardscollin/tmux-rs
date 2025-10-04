@@ -11,23 +11,20 @@
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-use crate::libc::{memcpy, snprintf, sscanf, strcasecmp};
+use crate::libc::{memcpy, snprintf, sscanf};
 use crate::*;
 
 unsafe impl Sync for key_string_table_entry {}
 #[repr(C)]
 #[derive(Copy, Clone)]
 struct key_string_table_entry {
-    string: *const u8,
+    string: &'static str,
     key: key_code,
 }
 
 impl key_string_table_entry {
-    const fn new(string: &'static CStr, key: key_code) -> Self {
-        Self {
-            string: string.as_ptr().cast(),
-            key,
-        }
+    const fn new(string: &'static str, key: key_code) -> Self {
+        Self { string, key }
     }
 }
 
@@ -49,12 +46,12 @@ macro_rules! KEYC_MOUSE_STRING {
     ($name:ident, $s:literal) => {
         ::paste::paste! {
             [
-                key_string_table_entry{string: concat!($s, "Pane\0").as_ptr().cast(), key: keyc::[<KEYC_ $name _PANE>] as u64},
-                key_string_table_entry{string: concat!($s, "Status\0").as_ptr().cast(), key: keyc::[<KEYC_ $name _STATUS>] as u64 },
-                key_string_table_entry{string: concat!($s, "StatusLeft\0").as_ptr().cast(), key: keyc::[<KEYC_ $name _STATUS_LEFT>] as u64},
-                key_string_table_entry{string: concat!($s, "StatusRight\0").as_ptr().cast(), key: keyc::[<KEYC_ $name _STATUS_RIGHT>] as u64},
-                key_string_table_entry{string: concat!($s, "StatusDefault\0").as_ptr().cast(), key: keyc::[<KEYC_ $name _STATUS_DEFAULT>] as u64 },
-                key_string_table_entry{string: concat!($s, "Border\0").as_ptr().cast(), key: keyc::[<KEYC_ $name _BORDER>] as u64},
+                key_string_table_entry{string: concat!($s, "Pane"), key: keyc::[<KEYC_ $name _PANE>] as u64},
+                key_string_table_entry{string: concat!($s, "Status"), key: keyc::[<KEYC_ $name _STATUS>] as u64 },
+                key_string_table_entry{string: concat!($s, "StatusLeft"), key: keyc::[<KEYC_ $name _STATUS_LEFT>] as u64},
+                key_string_table_entry{string: concat!($s, "StatusRight"), key: keyc::[<KEYC_ $name _STATUS_RIGHT>] as u64},
+                key_string_table_entry{string: concat!($s, "StatusDefault"), key: keyc::[<KEYC_ $name _STATUS_DEFAULT>] as u64 },
+                key_string_table_entry{string: concat!($s, "Border"), key: keyc::[<KEYC_ $name _BORDER>] as u64},
             ]
         }
     };
@@ -83,12 +80,12 @@ macro_rules! KEYC_MOUSE_STRING_I {
     ($name:ident, $s:literal, $i:literal) => {
         ::paste::paste! {
             [
-                key_string_table_entry{string: concat!($s, $i, "Pane\0").as_ptr().cast(), key: keyc::[<KEYC_ $name $i _PANE>] as u64},
-                key_string_table_entry{string: concat!($s, $i, "Status\0").as_ptr().cast(), key: keyc::[<KEYC_ $name $i _STATUS>] as u64 },
-                key_string_table_entry{string: concat!($s, $i, "StatusLeft\0").as_ptr().cast(), key: keyc::[<KEYC_ $name $i _STATUS_LEFT>] as u64},
-                key_string_table_entry{string: concat!($s, $i, "StatusRight\0").as_ptr().cast(), key: keyc::[<KEYC_ $name $i _STATUS_RIGHT>] as u64},
-                key_string_table_entry{string: concat!($s, $i, "StatusDefault\0").as_ptr().cast(), key: keyc::[<KEYC_ $name $i _STATUS_DEFAULT>] as u64 },
-                key_string_table_entry{string: concat!($s, $i, "Border\0").as_ptr().cast(), key: keyc::[<KEYC_ $name $i _BORDER>] as u64},
+                key_string_table_entry{string: concat!($s, $i, "Pane"), key: keyc::[<KEYC_ $name $i _PANE>] as u64},
+                key_string_table_entry{string: concat!($s, $i, "Status"), key: keyc::[<KEYC_ $name $i _STATUS>] as u64 },
+                key_string_table_entry{string: concat!($s, $i, "StatusLeft"), key: keyc::[<KEYC_ $name $i _STATUS_LEFT>] as u64},
+                key_string_table_entry{string: concat!($s, $i, "StatusRight"), key: keyc::[<KEYC_ $name $i _STATUS_RIGHT>] as u64},
+                key_string_table_entry{string: concat!($s, $i, "StatusDefault"), key: keyc::[<KEYC_ $name $i _STATUS_DEFAULT>] as u64 },
+                key_string_table_entry{string: concat!($s, $i, "Border"), key: keyc::[<KEYC_ $name $i _BORDER>] as u64},
             ]
         }
     };
@@ -112,105 +109,103 @@ macro_rules! KEYC_MOUSE_STRING11 {
 #[expect(clippy::disallowed_methods)]
 static KEY_STRING_TABLE: [key_string_table_entry; 469] = const {
     let mut out_i: usize = 0;
-    let mut out: [key_string_table_entry; 469] = unsafe { zeroed() };
+    let mut out: [key_string_table_entry; 469] =
+        [key_string_table_entry { string: "", key: 0 }; 469];
 
     let function_keys = [
-        key_string_table_entry::new(c"F1", keyc::KEYC_F1 as u64 | KEYC_IMPLIED_META),
-        key_string_table_entry::new(c"F2", keyc::KEYC_F2 as u64 | KEYC_IMPLIED_META),
-        key_string_table_entry::new(c"F3", keyc::KEYC_F3 as u64 | KEYC_IMPLIED_META),
-        key_string_table_entry::new(c"F4", keyc::KEYC_F4 as u64 | KEYC_IMPLIED_META),
-        key_string_table_entry::new(c"F5", keyc::KEYC_F5 as u64 | KEYC_IMPLIED_META),
-        key_string_table_entry::new(c"F6", keyc::KEYC_F6 as u64 | KEYC_IMPLIED_META),
-        key_string_table_entry::new(c"F7", keyc::KEYC_F7 as u64 | KEYC_IMPLIED_META),
-        key_string_table_entry::new(c"F8", keyc::KEYC_F8 as u64 | KEYC_IMPLIED_META),
-        key_string_table_entry::new(c"F9", keyc::KEYC_F9 as u64 | KEYC_IMPLIED_META),
-        key_string_table_entry::new(c"F10", keyc::KEYC_F10 as u64 | KEYC_IMPLIED_META),
-        key_string_table_entry::new(c"F11", keyc::KEYC_F11 as u64 | KEYC_IMPLIED_META),
-        key_string_table_entry::new(c"F12", keyc::KEYC_F12 as u64 | KEYC_IMPLIED_META),
-        key_string_table_entry::new(c"IC", keyc::KEYC_IC as u64 | KEYC_IMPLIED_META),
-        key_string_table_entry::new(c"Insert", keyc::KEYC_IC as u64 | KEYC_IMPLIED_META),
-        key_string_table_entry::new(c"DC", keyc::KEYC_DC as u64 | KEYC_IMPLIED_META),
-        key_string_table_entry::new(c"Delete", keyc::KEYC_DC as u64 | KEYC_IMPLIED_META),
-        key_string_table_entry::new(c"Home", keyc::KEYC_HOME as u64 | KEYC_IMPLIED_META),
-        key_string_table_entry::new(c"End", keyc::KEYC_END as u64 | KEYC_IMPLIED_META),
-        key_string_table_entry::new(c"NPage", keyc::KEYC_NPAGE as u64 | KEYC_IMPLIED_META),
-        key_string_table_entry::new(c"PageDown", keyc::KEYC_NPAGE as u64 | KEYC_IMPLIED_META),
-        key_string_table_entry::new(c"PgDn", keyc::KEYC_NPAGE as u64 | KEYC_IMPLIED_META),
-        key_string_table_entry::new(c"PPage", keyc::KEYC_PPAGE as u64 | KEYC_IMPLIED_META),
-        key_string_table_entry::new(c"PageUp", keyc::KEYC_PPAGE as u64 | KEYC_IMPLIED_META),
-        key_string_table_entry::new(c"PgUp", keyc::KEYC_PPAGE as u64 | KEYC_IMPLIED_META),
-        key_string_table_entry::new(c"BTab", keyc::KEYC_BTAB as u64),
-        key_string_table_entry::new(c"Space", ' ' as key_code),
-        key_string_table_entry::new(c"BSpace", keyc::KEYC_BSPACE as u64),
+        key_string_table_entry::new("F1", keyc::KEYC_F1 as u64 | KEYC_IMPLIED_META),
+        key_string_table_entry::new("F2", keyc::KEYC_F2 as u64 | KEYC_IMPLIED_META),
+        key_string_table_entry::new("F3", keyc::KEYC_F3 as u64 | KEYC_IMPLIED_META),
+        key_string_table_entry::new("F4", keyc::KEYC_F4 as u64 | KEYC_IMPLIED_META),
+        key_string_table_entry::new("F5", keyc::KEYC_F5 as u64 | KEYC_IMPLIED_META),
+        key_string_table_entry::new("F6", keyc::KEYC_F6 as u64 | KEYC_IMPLIED_META),
+        key_string_table_entry::new("F7", keyc::KEYC_F7 as u64 | KEYC_IMPLIED_META),
+        key_string_table_entry::new("F8", keyc::KEYC_F8 as u64 | KEYC_IMPLIED_META),
+        key_string_table_entry::new("F9", keyc::KEYC_F9 as u64 | KEYC_IMPLIED_META),
+        key_string_table_entry::new("F10", keyc::KEYC_F10 as u64 | KEYC_IMPLIED_META),
+        key_string_table_entry::new("F11", keyc::KEYC_F11 as u64 | KEYC_IMPLIED_META),
+        key_string_table_entry::new("F12", keyc::KEYC_F12 as u64 | KEYC_IMPLIED_META),
+        key_string_table_entry::new("IC", keyc::KEYC_IC as u64 | KEYC_IMPLIED_META),
+        key_string_table_entry::new("Insert", keyc::KEYC_IC as u64 | KEYC_IMPLIED_META),
+        key_string_table_entry::new("DC", keyc::KEYC_DC as u64 | KEYC_IMPLIED_META),
+        key_string_table_entry::new("Delete", keyc::KEYC_DC as u64 | KEYC_IMPLIED_META),
+        key_string_table_entry::new("Home", keyc::KEYC_HOME as u64 | KEYC_IMPLIED_META),
+        key_string_table_entry::new("End", keyc::KEYC_END as u64 | KEYC_IMPLIED_META),
+        key_string_table_entry::new("NPage", keyc::KEYC_NPAGE as u64 | KEYC_IMPLIED_META),
+        key_string_table_entry::new("PageDown", keyc::KEYC_NPAGE as u64 | KEYC_IMPLIED_META),
+        key_string_table_entry::new("PgDn", keyc::KEYC_NPAGE as u64 | KEYC_IMPLIED_META),
+        key_string_table_entry::new("PPage", keyc::KEYC_PPAGE as u64 | KEYC_IMPLIED_META),
+        key_string_table_entry::new("PageUp", keyc::KEYC_PPAGE as u64 | KEYC_IMPLIED_META),
+        key_string_table_entry::new("PgUp", keyc::KEYC_PPAGE as u64 | KEYC_IMPLIED_META),
+        key_string_table_entry::new("BTab", keyc::KEYC_BTAB as u64),
+        key_string_table_entry::new("Space", ' ' as key_code),
+        key_string_table_entry::new("BSpace", keyc::KEYC_BSPACE as u64),
         // C0 control characters, with the exception of Tab, Enter,
         // and Esc, should never appear as keys. We still render them,
         // so to be able to spot them in logs in case of an abnormality.
-        key_string_table_entry::new(c"[NUL]", c0::C0_NUL as u64),
-        key_string_table_entry::new(c"[SOH]", c0::C0_SOH as u64),
-        key_string_table_entry::new(c"[STX]", c0::C0_STX as u64),
-        key_string_table_entry::new(c"[ETX]", c0::C0_ETX as u64),
-        key_string_table_entry::new(c"[EOT]", c0::C0_EOT as u64),
-        key_string_table_entry::new(c"[ENQ]", c0::C0_ENQ as u64),
-        key_string_table_entry::new(c"[ASC]", c0::C0_ASC as u64),
-        key_string_table_entry::new(c"[BEL]", c0::C0_BEL as u64),
-        key_string_table_entry::new(c"[BS]", c0::C0_BS as u64),
-        key_string_table_entry::new(c"Tab", c0::C0_HT as u64),
-        key_string_table_entry::new(c"[LF]", c0::C0_LF as u64),
-        key_string_table_entry::new(c"[VT]", c0::C0_VT as u64),
-        key_string_table_entry::new(c"[FF]", c0::C0_FF as u64),
-        key_string_table_entry::new(c"Enter", c0::C0_CR as u64),
-        key_string_table_entry::new(c"[SO]", c0::C0_SO as u64),
-        key_string_table_entry::new(c"[SI]", c0::C0_SI as u64),
-        key_string_table_entry::new(c"[DLE]", c0::C0_DLE as u64),
-        key_string_table_entry::new(c"[DC1]", c0::C0_DC1 as u64),
-        key_string_table_entry::new(c"[DC2]", c0::C0_DC2 as u64),
-        key_string_table_entry::new(c"[DC3]", c0::C0_DC3 as u64),
-        key_string_table_entry::new(c"[DC4]", c0::C0_DC4 as u64),
-        key_string_table_entry::new(c"[NAK]", c0::C0_NAK as u64),
-        key_string_table_entry::new(c"[SYN]", c0::C0_SYN as u64),
-        key_string_table_entry::new(c"[ETB]", c0::C0_ETB as u64),
-        key_string_table_entry::new(c"[CAN]", c0::C0_CAN as u64),
-        key_string_table_entry::new(c"[EM]", c0::C0_EM as u64),
-        key_string_table_entry::new(c"[SUB]", c0::C0_SUB as u64),
-        key_string_table_entry::new(c"Escape", c0::C0_ESC as u64),
-        key_string_table_entry::new(c"[FS]", c0::C0_FS as u64),
-        key_string_table_entry::new(c"[GS]", c0::C0_GS as u64),
-        key_string_table_entry::new(c"[RS]", c0::C0_RS as u64),
-        key_string_table_entry::new(c"[US]", c0::C0_US as u64),
+        key_string_table_entry::new("[NUL]", c0::C0_NUL as u64),
+        key_string_table_entry::new("[SOH]", c0::C0_SOH as u64),
+        key_string_table_entry::new("[STX]", c0::C0_STX as u64),
+        key_string_table_entry::new("[ETX]", c0::C0_ETX as u64),
+        key_string_table_entry::new("[EOT]", c0::C0_EOT as u64),
+        key_string_table_entry::new("[ENQ]", c0::C0_ENQ as u64),
+        key_string_table_entry::new("[ASC]", c0::C0_ASC as u64),
+        key_string_table_entry::new("[BEL]", c0::C0_BEL as u64),
+        key_string_table_entry::new("[BS]", c0::C0_BS as u64),
+        key_string_table_entry::new("Tab", c0::C0_HT as u64),
+        key_string_table_entry::new("[LF]", c0::C0_LF as u64),
+        key_string_table_entry::new("[VT]", c0::C0_VT as u64),
+        key_string_table_entry::new("[FF]", c0::C0_FF as u64),
+        key_string_table_entry::new("Enter", c0::C0_CR as u64),
+        key_string_table_entry::new("[SO]", c0::C0_SO as u64),
+        key_string_table_entry::new("[SI]", c0::C0_SI as u64),
+        key_string_table_entry::new("[DLE]", c0::C0_DLE as u64),
+        key_string_table_entry::new("[DC1]", c0::C0_DC1 as u64),
+        key_string_table_entry::new("[DC2]", c0::C0_DC2 as u64),
+        key_string_table_entry::new("[DC3]", c0::C0_DC3 as u64),
+        key_string_table_entry::new("[DC4]", c0::C0_DC4 as u64),
+        key_string_table_entry::new("[NAK]", c0::C0_NAK as u64),
+        key_string_table_entry::new("[SYN]", c0::C0_SYN as u64),
+        key_string_table_entry::new("[ETB]", c0::C0_ETB as u64),
+        key_string_table_entry::new("[CAN]", c0::C0_CAN as u64),
+        key_string_table_entry::new("[EM]", c0::C0_EM as u64),
+        key_string_table_entry::new("[SUB]", c0::C0_SUB as u64),
+        key_string_table_entry::new("Escape", c0::C0_ESC as u64),
+        key_string_table_entry::new("[FS]", c0::C0_FS as u64),
+        key_string_table_entry::new("[GS]", c0::C0_GS as u64),
+        key_string_table_entry::new("[RS]", c0::C0_RS as u64),
+        key_string_table_entry::new("[US]", c0::C0_US as u64),
         // Arrow keys.
+        key_string_table_entry::new("Up", keyc::KEYC_UP as u64 | KEYC_CURSOR | KEYC_IMPLIED_META),
         key_string_table_entry::new(
-            c"Up",
-            keyc::KEYC_UP as u64 | KEYC_CURSOR | KEYC_IMPLIED_META,
-        ),
-        key_string_table_entry::new(
-            c"Down",
+            "Down",
             keyc::KEYC_DOWN as u64 | KEYC_CURSOR | KEYC_IMPLIED_META,
         ),
         key_string_table_entry::new(
-            c"Left",
+            "Left",
             keyc::KEYC_LEFT as u64 | KEYC_CURSOR | KEYC_IMPLIED_META,
         ),
         key_string_table_entry::new(
-            c"Right",
+            "Right",
             keyc::KEYC_RIGHT as u64 | KEYC_CURSOR | KEYC_IMPLIED_META,
         ),
         // Numeric keypad.
-        key_string_table_entry::new(c"KP/", keyc::KEYC_KP_SLASH as u64 | KEYC_KEYPAD),
-        key_string_table_entry::new(c"KP*", keyc::KEYC_KP_STAR as u64 | KEYC_KEYPAD),
-        key_string_table_entry::new(c"KP-", keyc::KEYC_KP_MINUS as u64 | KEYC_KEYPAD),
-        key_string_table_entry::new(c"KP7", keyc::KEYC_KP_SEVEN as u64 | KEYC_KEYPAD),
-        key_string_table_entry::new(c"KP8", keyc::KEYC_KP_EIGHT as u64 | KEYC_KEYPAD),
-        key_string_table_entry::new(c"KP9", keyc::KEYC_KP_NINE as u64 | KEYC_KEYPAD),
-        key_string_table_entry::new(c"KP+", keyc::KEYC_KP_PLUS as u64 | KEYC_KEYPAD),
-        key_string_table_entry::new(c"KP4", keyc::KEYC_KP_FOUR as u64 | KEYC_KEYPAD),
-        key_string_table_entry::new(c"KP5", keyc::KEYC_KP_FIVE as u64 | KEYC_KEYPAD),
-        key_string_table_entry::new(c"KP6", keyc::KEYC_KP_SIX as u64 | KEYC_KEYPAD),
-        key_string_table_entry::new(c"KP1", keyc::KEYC_KP_ONE as u64 | KEYC_KEYPAD),
-        key_string_table_entry::new(c"KP2", keyc::KEYC_KP_TWO as u64 | KEYC_KEYPAD),
-        key_string_table_entry::new(c"KP3", keyc::KEYC_KP_THREE as u64 | KEYC_KEYPAD),
-        key_string_table_entry::new(c"KPEnter", keyc::KEYC_KP_ENTER as u64 | KEYC_KEYPAD),
-        key_string_table_entry::new(c"KP0", keyc::KEYC_KP_ZERO as u64 | KEYC_KEYPAD),
-        key_string_table_entry::new(c"KP.", keyc::KEYC_KP_PERIOD as u64 | KEYC_KEYPAD),
+        key_string_table_entry::new("KP/", keyc::KEYC_KP_SLASH as u64 | KEYC_KEYPAD),
+        key_string_table_entry::new("KP*", keyc::KEYC_KP_STAR as u64 | KEYC_KEYPAD),
+        key_string_table_entry::new("KP-", keyc::KEYC_KP_MINUS as u64 | KEYC_KEYPAD),
+        key_string_table_entry::new("KP7", keyc::KEYC_KP_SEVEN as u64 | KEYC_KEYPAD),
+        key_string_table_entry::new("KP8", keyc::KEYC_KP_EIGHT as u64 | KEYC_KEYPAD),
+        key_string_table_entry::new("KP9", keyc::KEYC_KP_NINE as u64 | KEYC_KEYPAD),
+        key_string_table_entry::new("KP+", keyc::KEYC_KP_PLUS as u64 | KEYC_KEYPAD),
+        key_string_table_entry::new("KP4", keyc::KEYC_KP_FOUR as u64 | KEYC_KEYPAD),
+        key_string_table_entry::new("KP5", keyc::KEYC_KP_FIVE as u64 | KEYC_KEYPAD),
+        key_string_table_entry::new("KP6", keyc::KEYC_KP_SIX as u64 | KEYC_KEYPAD),
+        key_string_table_entry::new("KP1", keyc::KEYC_KP_ONE as u64 | KEYC_KEYPAD),
+        key_string_table_entry::new("KP2", keyc::KEYC_KP_TWO as u64 | KEYC_KEYPAD),
+        key_string_table_entry::new("KP3", keyc::KEYC_KP_THREE as u64 | KEYC_KEYPAD),
+        key_string_table_entry::new("KPEnter", keyc::KEYC_KP_ENTER as u64 | KEYC_KEYPAD),
+        key_string_table_entry::new("KP0", keyc::KEYC_KP_ZERO as u64 | KEYC_KEYPAD),
+        key_string_table_entry::new("KP.", keyc::KEYC_KP_PERIOD as u64 | KEYC_KEYPAD),
     ];
 
     concat_array!(out, out_i, function_keys);
@@ -233,7 +228,7 @@ static KEY_STRING_TABLE: [key_string_table_entry; 469] = const {
 pub unsafe fn key_string_search_table(string: *const u8) -> key_code {
     unsafe {
         for key_string in &KEY_STRING_TABLE {
-            if strcasecmp(string, key_string.string) == 0 {
+            if strcaseeq_(string, key_string.string) {
                 return key_string.key;
             }
         }
@@ -279,8 +274,7 @@ pub unsafe fn key_string_get_modifiers(string: *mut *const u8) -> key_code {
 // TODO
 const MB_LEN_MAX: usize = 16;
 
-// Lookup a string and convert to a key value.
-
+/// Lookup a string and convert to a key value.
 pub unsafe fn key_string_lookup_string(mut string: *const u8) -> key_code {
     unsafe {
         let mut key: key_code;
@@ -496,7 +490,7 @@ pub unsafe fn key_string_lookup_key(mut key: key_code, with_flags: i32) -> *cons
                     .iter()
                     .position(|e| key == e.key & KEYC_MASK_KEY)
                 {
-                    strlcat(
+                    strlcat_(
                         &raw mut OUT as *mut u8,
                         KEY_STRING_TABLE[i].string,
                         sizeof_out,

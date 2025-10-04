@@ -25,7 +25,7 @@ pub use closefrom::closefrom;
 pub use freezero::freezero;
 pub use getpeereid::getpeereid;
 pub use setproctitle::setproctitle_;
-pub use strlcat::strlcat;
+pub use strlcat::{strlcat, strlcat_};
 pub use strlcpy::strlcpy;
 pub use strtonum::{strtonum, strtonum_};
 pub use unvis::strunvis;

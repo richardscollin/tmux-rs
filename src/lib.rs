@@ -189,7 +189,7 @@ use crate::{
     window_tree::WINDOW_TREE_MODE,
     xmalloc::*,
 };
-
+ 
 #[cfg(feature = "sixel")]
 mod image_;
 #[cfg(feature = "sixel")]

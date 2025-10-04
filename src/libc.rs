@@ -55,6 +55,7 @@ pub unsafe fn strftime(s: *mut u8, max: usize, format: *const u8, tm: *const tm)
     unsafe { ::libc::strftime(s.cast(), max, format.cast(), tm.cast()) }
 }
 
+#[expect(dead_code)]
 pub unsafe fn strcpy(dst: *mut u8, src: *const u8) -> *mut u8 {
     unsafe { ::libc::strcpy(dst.cast(), src.cast()).cast() }
 }

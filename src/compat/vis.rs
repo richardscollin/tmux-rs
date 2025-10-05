@@ -88,6 +88,22 @@ pub unsafe fn vis_(dst: *mut u8, c: c_int, flag: vis_flags, nextc: c_int) -> *mu
     }
 }
 
+pub fn vis__(dst: &mut Vec<u8>, c: c_int, flag: vis_flags, nextc: c_int) {
+    match c as u8 {
+        b'\0' if !matches!(nextc as u8, b'0'..=b'7') => encode_cstyle_(dst, b'0'),
+        b'\t' if flag.intersects(vis_flags::VIS_TAB) => encode_cstyle_(dst, b't'),
+        b'\n' if flag.intersects(vis_flags::VIS_NL) => encode_cstyle_(dst, b'n'),
+        b'\\' if !flag.intersects(vis_flags::VIS_NOSLASH) => encode_cstyle_(dst, b'\\'),
+        b'"' if flag.intersects(vis_flags::VIS_DQ) => encode_cstyle_(dst, b'"'),
+        7..9 | 11..14 => {
+            const CSTYLE: [u8; 7] = [b'a', b'b', 0, 0, b'v', b'f', b'r'];
+            encode_cstyle_(dst, CSTYLE[c as usize - 7]);
+        }
+        0..7 | 14..32 | 127.. => encode_octal_(dst, c),
+        _ => encode_passthrough_(dst, c),
+    }
+}
+
 #[inline]
 unsafe fn encode_passthrough(dst: *mut u8, ch: i32) -> *mut u8 {
     unsafe {
@@ -98,6 +114,11 @@ unsafe fn encode_passthrough(dst: *mut u8, ch: i32) -> *mut u8 {
 }
 
 #[inline]
+fn encode_passthrough_(dst: &mut Vec<u8>, ch: i32) {
+    dst.push(ch as u8);
+}
+
+#[inline]
 unsafe fn encode_cstyle(dst: *mut u8, ch: u8) -> *mut u8 {
     unsafe {
         *dst = b'\\';
@@ -105,6 +126,12 @@ unsafe fn encode_cstyle(dst: *mut u8, ch: u8) -> *mut u8 {
         *dst.add(2) = b'\0';
         dst.add(2)
     }
+}
+
+#[inline]
+fn encode_cstyle_(dst: &mut Vec<u8>, ch: u8) {
+    dst.push(b'\\');
+    dst.push(ch);
 }
 
 #[inline]
@@ -121,6 +148,17 @@ unsafe fn encode_octal(dst: *mut u8, c: i32) -> *mut u8 {
         *dst.add(4) = b'\0';
         dst.add(4)
     }
+}
+
+fn encode_octal_(dst: &mut Vec<u8>, c: i32) {
+    let c = c as u8;
+    let ones_place = c % 8;
+    let eights_place = (c / 8) % 8;
+    let sixty_four_place = c / 64;
+    dst.push(b'\\');
+    dst.push(sixty_four_place + b'0');
+    dst.push(eights_place + b'0');
+    dst.push(ones_place + b'0');
 }
 
 pub unsafe fn strvis(mut dst: *mut u8, mut src: *const u8, flag: vis_flags) -> i32 {

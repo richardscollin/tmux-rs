@@ -107,20 +107,19 @@ pub unsafe fn check_window_name(w: *mut window) {
     }
 }
 
-pub unsafe fn default_window_name(w: *mut window) -> *mut u8 {
+pub unsafe fn default_window_name(w: *mut window) -> String {
     unsafe {
         if (*w).active.is_null() {
-            return xstrdup(c!("")).cast().as_ptr();
+            return String::new();
         }
 
-        let cmd = cmd_stringify_argv((*(*w).active).argc, (*(*w).active).argv);
-        let s = if !cmd.is_null() && *cmd != b'\0' as _ {
-            parse_window_name(cmd)
+        let cmd =
+            CString::new(cmd_stringify_argv((*(*w).active).argc, (*(*w).active).argv)).unwrap();
+        if !cmd.is_empty() {
+            parse_window_name(cmd.as_ptr().cast())
         } else {
             parse_window_name((*(*w).active).shell)
-        };
-        free(cmd as _);
-        s
+        }
     }
 }
 
@@ -143,7 +142,7 @@ unsafe fn format_window_name(w: *mut window) -> *const u8 {
     }
 }
 
-pub unsafe fn parse_window_name(in_: *const u8) -> *mut u8 {
+pub unsafe fn parse_window_name(in_: *const u8) -> String {
     unsafe {
         let sizeof_exec: usize = 6; // sizeof "exec "
         let copy: *mut u8 = xstrdup(in_).cast().as_ptr();
@@ -177,12 +176,12 @@ pub unsafe fn parse_window_name(in_: *const u8) -> *mut u8 {
             }
         }
 
-        if *name == b'/' {
-            name = xstrdup__(basename(cstr_to_str(name)));
+        let tmp = if *name == b'/' {
+            basename(cstr_to_str(name)).to_string()
         } else {
-            name = xstrdup(name).cast().as_ptr();
-        }
+            cstr_to_str(name).to_string()
+        };
         free(copy as _);
-        name
+        tmp
     }
 }

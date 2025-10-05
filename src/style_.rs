@@ -390,7 +390,7 @@ pub unsafe fn style_tostring(sy: *const style) -> *const u8 {
                 size_of::<s_type>() - off as usize,
                 "{}fill={}",
                 _s(comma),
-                _s(colour_tostring((*sy).fill).as_ptr()),
+                colour_tostring((*sy).fill),
             )
             .unwrap() as i32;
             comma = c!(",");
@@ -401,7 +401,7 @@ pub unsafe fn style_tostring(sy: *const style) -> *const u8 {
                 size_of::<s_type>() - off as usize,
                 "{}fg={}",
                 _s(comma),
-                _s(colour_tostring((*gc).fg).as_ptr()),
+                colour_tostring((*gc).fg),
             )
             .unwrap() as i32;
             comma = c!(",");
@@ -412,7 +412,7 @@ pub unsafe fn style_tostring(sy: *const style) -> *const u8 {
                 size_of::<s_type>() - off as usize,
                 "{}bg={}",
                 _s(comma),
-                _s(colour_tostring((*gc).bg).as_ptr()),
+                colour_tostring((*gc).bg),
             )
             .unwrap() as i32;
             comma = c!(",");
@@ -423,7 +423,7 @@ pub unsafe fn style_tostring(sy: *const style) -> *const u8 {
                 size_of::<s_type>() - off as usize,
                 "{}us={}",
                 _s(comma),
-                _s(colour_tostring((*gc).us).as_ptr()),
+                colour_tostring((*gc).us),
             )
             .unwrap() as i32;
             comma = c!(",");

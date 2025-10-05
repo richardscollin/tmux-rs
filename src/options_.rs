@@ -167,10 +167,12 @@ pub unsafe fn options_value_to_string(
                 options_table_type::OPTIONS_TABLE_KEY => {
                     xstrdup(key_string_lookup_key((*ov).number as u64, 0)).as_ptr()
                 }
-                options_table_type::OPTIONS_TABLE_COLOUR => colour_tostring((*ov).number as i32)
-                    .into_owned()
-                    .into_raw()
-                    .cast(),
+                options_table_type::OPTIONS_TABLE_COLOUR => {
+                    CString::new(colour_tostring((*ov).number as i32).into_owned())
+                        .unwrap()
+                        .into_raw()
+                        .cast()
+                }
                 options_table_type::OPTIONS_TABLE_FLAG => {
                     if numeric != 0 {
                         format_nul!("{}", (*ov).number)
@@ -394,8 +396,8 @@ pub unsafe fn options_default_to_string(oe: *const options_table_entry) -> NonNu
                 xstrdup(key_string_lookup_key((*oe).default_num as u64, 0))
             }
             options_table_type::OPTIONS_TABLE_COLOUR => NonNull::new(
-                colour_tostring((*oe).default_num as i32)
-                    .into_owned()
+                CString::new(colour_tostring((*oe).default_num as i32).into_owned())
+                    .unwrap()
                     .into_raw()
                     .cast(),
             )

@@ -205,7 +205,10 @@ pub unsafe fn spawn_window(sc: *mut spawn_context, cause: *mut *mut u8) -> *mut 
                 (*w).name = format_single(item, (*sc).name, c, s, null_mut(), null_mut());
                 options_set_number((*w).options, c!("automatic-rename"), 0);
             } else {
-                (*w).name = default_window_name(w);
+                (*w).name = CString::new(default_window_name(w))
+                    .unwrap()
+                    .into_raw()
+                    .cast();
             }
         }
 
@@ -235,7 +238,6 @@ pub unsafe fn spawn_pane(sc: *mut spawn_context, cause: *mut *mut u8) -> *mut wi
         let child: *mut environ;
         let ee: *mut environ_entry;
         let argv: *mut *mut u8;
-        let mut cp: *mut u8;
         let argvp: *mut *mut u8;
         let argv0: *mut u8;
         let mut cwd: *mut u8;
@@ -393,9 +395,8 @@ pub unsafe fn spawn_pane(sc: *mut spawn_context, cause: *mut *mut u8) -> *mut wi
             // Log the arguments we are going to use.
             log_debug!("spawn_pane: shell={}", _s((*new_wp).shell));
             if (*new_wp).argc != 0 {
-                cp = cmd_stringify_argv((*new_wp).argc, (*new_wp).argv);
-                log_debug!("spawn_pane: cmd={}", _s(cp));
-                free_(cp);
+                let cp = cmd_stringify_argv((*new_wp).argc, (*new_wp).argv);
+                log_debug!("spawn_pane: cmd={}", cp);
             }
             log_debug!("spawn_pane: cwd={}", _s((*new_wp).cwd));
             cmd_log_argv!((*new_wp).argc, (*new_wp).argv, "spawn_pan");
@@ -524,7 +525,7 @@ pub unsafe fn spawn_pane(sc: *mut spawn_context, cause: *mut *mut u8) -> *mut wi
 
             // If one argument, pass it to $SHELL -c. Otherwise create a login
             // shell.
-            cp = strrchr((*new_wp).shell, b'/' as i32);
+            let cp = strrchr((*new_wp).shell, b'/' as i32);
             if (*new_wp).argc == 1 {
                 let tmp = *(*new_wp).argv;
                 argv0 = if !cp.is_null() && *cp.add(1) != b'\0' {
@@ -554,7 +555,7 @@ pub unsafe fn spawn_pane(sc: *mut spawn_context, cause: *mut *mut u8) -> *mut wi
         #[cfg(feature = "utempter")]
         {
             if !(*new_wp).flags.intersects(window_pane_flags::PANE_EMPTY) {
-                cp = format_nul!("tmux({}).%{}", std::process::id() as c_long, (*new_wp).id);
+                let cp = format_nul!("tmux({}).%{}", std::process::id() as c_long, (*new_wp).id);
                 utempter_add_record((*new_wp).fd, cp);
                 kill(std::process::id() as i32, SIGCHLD);
                 free_(cp);

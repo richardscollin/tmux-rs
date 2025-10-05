@@ -37,17 +37,17 @@ pub unsafe fn layout_checksum(mut layout: *const u8) -> u16 {
 }
 
 /// Dump layout as a string.
-pub unsafe fn layout_dump(root: *mut layout_cell) -> *mut u8 {
+pub unsafe fn layout_dump(root: *mut layout_cell) -> Option<String> {
     unsafe {
         let mut layout: MaybeUninit<[u8; 8192]> = MaybeUninit::<[u8; 8192]>::uninit();
         let layout = layout.as_mut_ptr() as *mut u8;
 
         *layout = b'\0' as _;
         if layout_append(root, layout, 8192) != 0 {
-            return null_mut();
+            return None;
         }
 
-        format_nul!("{:04x},{}", layout_checksum(layout), _s(layout),)
+        Some(format!("{:04x},{}", layout_checksum(layout), _s(layout)))
     }
 }
 

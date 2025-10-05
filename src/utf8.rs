@@ -467,6 +467,43 @@ pub unsafe fn utf8_strvis(
     }
 }
 
+pub unsafe fn utf8_strvis_(dst: &mut Vec<u8>, mut src: *const u8, len: usize, flag: vis_flags) {
+    unsafe {
+        let mut ud: utf8_data = zeroed();
+        let end = src.add(len);
+        let mut more: utf8_state;
+
+        while src < end {
+            more = utf8_open(&raw mut ud, *src);
+            if more == utf8_state::UTF8_MORE {
+                src = src.add(1);
+                while src < end && more == utf8_state::UTF8_MORE {
+                    more = utf8_append(&raw mut ud, *src);
+                }
+                if more == utf8_state::UTF8_DONE {
+                    // UTF-8 character finished.
+                    dst.extend(ud.initialized_slice());
+                    continue;
+                }
+                // Not a complete, valid UTF-8 character.
+                src = src.sub(ud.have as usize);
+            }
+            if flag.intersects(vis_flags::VIS_DQ) && *src == b'$' && src < end.sub(1) {
+                if (*src.add(1)).is_ascii_alphabetic() || *src.add(1) == b'_' || *src.add(1) == b'{'
+                {
+                    dst.push(b'\\');
+                }
+                dst.push(b'$');
+            } else if src < end.sub(1) {
+                vis__(dst, *src as i32, flag, *src.add(1) as i32);
+            } else if src < end {
+                vis__(dst, *src as i32, flag, b'\0' as i32);
+            }
+            src = src.add(1);
+        }
+    }
+}
+
 pub unsafe fn utf8_stravis(dst: *mut *mut u8, src: *const u8, flag: vis_flags) -> i32 {
     unsafe {
         let buf = xreallocarray(null_mut(), 4, strlen(src) + 1);
@@ -623,7 +660,7 @@ pub unsafe fn utf8_fromcstr(mut src: *const u8) -> *mut utf8_data {
     }
 }
 
-pub unsafe fn utf8_tocstr(mut src: *mut utf8_data) -> *mut u8 {
+pub unsafe fn utf8_tocstr(mut src: *const utf8_data) -> *mut u8 {
     unsafe {
         let mut dst = null_mut::<u8>();
         let mut n: usize = 0;
@@ -642,6 +679,26 @@ pub unsafe fn utf8_tocstr(mut src: *mut utf8_data) -> *mut u8 {
         *dst.add(n) = b'\0';
         dst
     }
+}
+
+// unlike utf8_tocstr, this can handle the empty vec case
+// but perhaps an explicit check may speed up this common case
+pub fn utf8_to_string(src: &[utf8_data]) -> String {
+    let mut dst: Vec<u8> = Vec::new();
+
+    for src in src {
+        if src.size == 0 {
+            // TODO evaluate if this is actually needed
+            // before refactoring size == 0 is used as a sentinal value
+            // after refactoring we keep length information with the slice
+            // but some code may still set size to 0 in some place to truncate
+            // or for other reasons
+            break;
+        }
+        dst.extend(src.initialized_slice());
+    }
+
+    String::from_utf8(dst).unwrap()
 }
 
 pub unsafe fn utf8_cstrwidth(mut s: *const u8) -> u32 {

@@ -236,7 +236,10 @@ pub unsafe fn job_run(
             if !cmd.is_null() {
                 (*job).cmd = xstrdup(cmd).as_ptr();
             } else {
-                (*job).cmd = cmd_stringify_argv(argc, argv);
+                (*job).cmd = CString::new(cmd_stringify_argv(argc, argv))
+                    .unwrap()
+                    .into_raw()
+                    .cast();
             }
             (*job).pid = pid;
             strlcpy((*job).tty.as_mut_ptr(), tty.as_ptr().cast(), TTY_NAME_MAX);

@@ -113,40 +113,40 @@ pub fn colour_force_rgb(c: i32) -> i32 {
 }
 
 /// Convert colour to a string.
-pub fn colour_tostring(c: i32) -> Cow<'static, CStr> {
+pub fn colour_tostring(c: i32) -> Cow<'static, str> {
     if c == -1 {
-        return Cow::Borrowed(c"none");
+        return Cow::Borrowed("none");
     }
 
     if c & COLOUR_FLAG_RGB != 0 {
         let (r, g, b) = colour_split_rgb(c);
-        return Cow::Owned(CString::new(format!("#{r:02x}{g:02x}{b:02x}")).unwrap());
+        return Cow::Owned(format!("#{r:02x}{g:02x}{b:02x}"));
     }
 
     if c & COLOUR_FLAG_256 != 0 {
-        return Cow::Owned(CString::new(format!("colour{}", c & 0xff)).unwrap());
+        return Cow::Owned(format!("colour{}", c & 0xff));
     }
 
     Cow::Borrowed(match c {
-        0 => c"black",
-        1 => c"red",
-        2 => c"green",
-        3 => c"yellow",
-        4 => c"blue",
-        5 => c"magenta",
-        6 => c"cyan",
-        7 => c"white",
-        8 => c"default",
-        9 => c"terminal",
-        90 => c"brightblack",
-        91 => c"brightred",
-        92 => c"brightgreen",
-        93 => c"brightyellow",
-        94 => c"brightblue",
-        95 => c"brightmagenta",
-        96 => c"brightcyan",
-        97 => c"brightwhite",
-        _ => c"invalid",
+        0 => "black",
+        1 => "red",
+        2 => "green",
+        3 => "yellow",
+        4 => "blue",
+        5 => "magenta",
+        6 => "cyan",
+        7 => "white",
+        8 => "default",
+        9 => "terminal",
+        90 => "brightblack",
+        91 => "brightred",
+        92 => "brightgreen",
+        93 => "brightyellow",
+        94 => "brightblue",
+        95 => "brightmagenta",
+        96 => "brightcyan",
+        97 => "brightwhite",
+        _ => "invalid",
     })
 }
 
@@ -1112,7 +1112,7 @@ pub unsafe fn colour_parse_x11(mut p: *const u8) -> i32 {
             "{}: {} = {}",
             "colour_parseX11",
             _s(p),
-            _s(colour_tostring(colour).as_ptr())
+            colour_tostring(colour)
         );
         colour
     }

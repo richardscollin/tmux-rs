@@ -105,7 +105,10 @@ pub unsafe fn cmd_break_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
         (*w).latest = tc as *mut c_void;
 
         if !args_has(args, 'n') {
-            name = default_window_name(w);
+            name = CString::new(default_window_name(w))
+                .unwrap()
+                .into_raw()
+                .cast();
             window_set_name(w, name);
             free_(name);
         } else {

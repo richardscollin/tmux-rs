@@ -309,7 +309,7 @@ pub unsafe fn paste_replace(pb: NonNull<paste_buffer>, data: *mut u8, size: usiz
     }
 }
 
-pub unsafe fn paste_make_sample(pb: *mut paste_buffer) -> *mut u8 {
+pub unsafe fn paste_make_sample(pb: *mut paste_buffer) -> String {
     unsafe {
         let width = 200;
 
@@ -317,17 +317,17 @@ pub unsafe fn paste_make_sample(pb: *mut paste_buffer) -> *mut u8 {
         if len > width {
             len = width;
         }
-        let buf: *mut u8 = xreallocarray(null_mut(), len, 4 + 4).cast().as_ptr();
+        let mut buf: Vec<u8> = Vec::with_capacity(len * (4 + 4));
 
-        let used = utf8_strvis(
-            buf,
+        utf8_strvis_(
+            &mut buf,
             (*pb).data,
             len,
             vis_flags::VIS_OCTAL | vis_flags::VIS_CSTYLE | vis_flags::VIS_TAB | vis_flags::VIS_NL,
         );
-        if (*pb).size > width || used > width as i32 {
-            strlcpy(buf.add(width), c!("..."), 4);
+        if (*pb).size > width || buf.len() > width {
+            buf.extend(b"...");
         }
-        buf
+        String::from_utf8(buf).unwrap()
     }
 }

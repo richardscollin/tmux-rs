@@ -707,7 +707,7 @@ pub unsafe fn window_copy_next_paragraph(wme: *mut window_mode_entry) {
     }
 }
 
-pub unsafe fn window_copy_get_word(wp: *mut window_pane, x: u32, y: u32) -> *mut u8 {
+pub unsafe fn window_copy_get_word(wp: *mut window_pane, x: u32, y: u32) -> String {
     unsafe {
         let wme: *mut window_mode_entry = tailq_first(&raw mut (*wp).modes);
         let data: *mut window_copy_mode_data = (*wme).data.cast();
@@ -717,7 +717,7 @@ pub unsafe fn window_copy_get_word(wp: *mut window_pane, x: u32, y: u32) -> *mut
     }
 }
 
-pub unsafe fn window_copy_get_line(wp: *mut window_pane, y: u32) -> *mut u8 {
+pub unsafe fn window_copy_get_line(wp: *mut window_pane, y: u32) -> String {
     unsafe {
         let wme: *mut window_mode_entry = tailq_first(&raw mut (*wp).modes);
         let data: *mut window_copy_mode_data = (*wme).data.cast();
@@ -727,7 +727,7 @@ pub unsafe fn window_copy_get_line(wp: *mut window_pane, y: u32) -> *mut u8 {
     }
 }
 
-pub unsafe fn window_copy_cursor_hyperlink_cb(ft: *mut format_tree) -> *mut c_void {
+pub unsafe fn window_copy_cursor_hyperlink_cb(ft: *mut format_tree) -> format_table_type {
     unsafe {
         let wp = format_get_pane(ft);
         let wme = tailq_first(&raw mut (*wp).modes);
@@ -740,37 +740,40 @@ pub unsafe fn window_copy_cursor_hyperlink_cb(ft: *mut format_tree) -> *mut c_vo
             (*gd).hsize + (*data).cy,
             &raw mut (*data).screen,
         )
-        .cast()
+        .map(Into::into)
+        .unwrap_or(format_table_type::None)
     }
 }
 
-pub unsafe fn window_copy_cursor_word_cb(ft: *mut format_tree) -> *mut c_void {
+pub unsafe fn window_copy_cursor_word_cb(ft: *mut format_tree) -> format_table_type {
     unsafe {
         let wp: *mut window_pane = format_get_pane(ft);
         let wme: *mut window_mode_entry = tailq_first(&raw mut (*wp).modes);
         let data: *mut window_copy_mode_data = (*wme).data.cast();
 
-        window_copy_get_word(wp, (*data).cx, (*data).cy).cast()
+        window_copy_get_word(wp, (*data).cx, (*data).cy).into()
     }
 }
 
-pub unsafe fn window_copy_cursor_line_cb(ft: *mut format_tree) -> *mut c_void {
+pub unsafe fn window_copy_cursor_line_cb(ft: *mut format_tree) -> format_table_type {
     unsafe {
         let wp: *mut window_pane = format_get_pane(ft);
         let wme: *mut window_mode_entry = tailq_first(&raw mut (*wp).modes);
         let data: *mut window_copy_mode_data = (*wme).data.cast();
 
-        window_copy_get_line(wp, (*data).cy).cast()
+        window_copy_get_line(wp, (*data).cy).into()
     }
 }
 
-pub unsafe fn window_copy_search_match_cb(ft: *mut format_tree) -> *mut c_void {
+pub unsafe fn window_copy_search_match_cb(ft: *mut format_tree) -> format_table_type {
     unsafe {
         let wp: *mut window_pane = format_get_pane(ft);
         let wme: *mut window_mode_entry = tailq_first(&raw mut (*wp).modes);
         let data: *mut window_copy_mode_data = (*wme).data.cast();
 
-        window_copy_match_at_cursor(data).cast()
+        window_copy_match_at_cursor(data)
+            .map(Into::into)
+            .unwrap_or(format_table_type::None)
     }
 }
 
@@ -815,14 +818,14 @@ pub unsafe fn window_copy_formats(wme: *mut window_mode_entry, ft: *mut format_t
             format_add!(ft, c!("search_count"), "{}", (*data).searchcount,);
             format_add!(ft, c!("search_count_partial"), "{}", (*data).searchmore,);
         }
-        format_add_cb(ft, c!("search_match"), Some(window_copy_search_match_cb));
+        format_add_cb(ft, c!("search_match"), window_copy_search_match_cb);
 
-        format_add_cb(ft, c!("copy_cursor_word"), Some(window_copy_cursor_word_cb));
-        format_add_cb(ft, c!("copy_cursor_line"), Some(window_copy_cursor_line_cb));
+        format_add_cb(ft, c!("copy_cursor_word"), window_copy_cursor_word_cb);
+        format_add_cb(ft, c!("copy_cursor_line"), window_copy_cursor_line_cb);
         format_add_cb(
             ft,
             c!("copy_cursor_hyperlink"),
-            Some(window_copy_cursor_hyperlink_cb),
+            window_copy_cursor_hyperlink_cb,
         );
     }
 }
@@ -4730,24 +4733,22 @@ pub unsafe fn window_copy_match_start_end(
     }
 }
 
-pub unsafe fn window_copy_match_at_cursor(data: *mut window_copy_mode_data) -> *mut u8 {
+pub unsafe fn window_copy_match_at_cursor(data: *mut window_copy_mode_data) -> Option<String> {
     unsafe {
         let gd: *mut grid = (*(*data).backing).grid;
         let mut gc: grid_cell = zeroed();
         let mut start: u32 = 0;
         let mut end: u32 = 0;
         let sx = screen_size_x((*data).backing);
-        let mut buf: *mut u8 = null_mut();
-        let mut len: usize = 0;
 
         if (*data).searchmark.is_null() {
-            return null_mut();
+            return None;
         }
 
         let cy = screen_hsize((*data).backing) - (*data).oy + (*data).cy;
 
         let Ok(mut at) = window_copy_search_mark_at(data, (*data).cx, cy) else {
-            return null_mut();
+            return None;
         };
 
         if *(*data).searchmark.add(at as usize) == 0
@@ -4757,10 +4758,11 @@ pub unsafe fn window_copy_match_at_cursor(data: *mut window_copy_mode_data) -> *
                     *(*data).searchmark.add(at as usize) == 0
                 }))
         {
-            return null_mut();
+            return None;
         } /* Allow one position after the match. */
         window_copy_match_start_end(data, at, &raw mut start, &raw mut end);
 
+        let mut buf: Vec<u8> = Vec::new();
         // Cells will not be set in the marked array unless they are valid text
         // and wrapping will be taken care of, so we can just copy.
         for at in start..=end {
@@ -4768,20 +4770,9 @@ pub unsafe fn window_copy_match_at_cursor(data: *mut window_copy_mode_data) -> *
             let px = at - (py * sx);
 
             grid_get_cell(gd, px, (*gd).hsize + py - (*data).oy, &raw mut gc);
-            buf = xrealloc(buf.cast(), len + gc.data.size as usize + 1)
-                .cast()
-                .as_ptr();
-            libc::memcpy(
-                buf.add(len).cast(),
-                (&raw const gc.data.data).cast(),
-                gc.data.size as usize,
-            );
-            len += gc.data.size as usize;
+            buf.extend(gc.data.initialized_slice());
         }
-        if len != 0 {
-            *buf.add(len) = b'\0';
-        }
-        buf
+        Some(String::from_utf8(buf).unwrap())
     }
 }
 
@@ -5338,7 +5329,9 @@ pub unsafe fn window_copy_get_selection(wme: *mut window_mode_entry, len: *mut u
         let restsx;
 
         if (*data).screen.sel.is_null() && (*data).lineflag == line_sel::LINE_SEL_NONE {
-            buf = window_copy_match_at_cursor(data);
+            buf = window_copy_match_at_cursor(data)
+                .map(|s| String::leak(s).as_mut_ptr())
+                .unwrap_or_default();
             if !buf.is_null() {
                 *len = strlen(buf);
             } else {

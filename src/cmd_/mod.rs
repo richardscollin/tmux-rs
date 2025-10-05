@@ -397,15 +397,13 @@ pub unsafe fn cmd_free_argv(argc: c_int, argv: *mut *mut u8) {
     }
 }
 
-pub unsafe fn cmd_stringify_argv(argc: c_int, argv: *mut *mut u8) -> *mut u8 {
+pub unsafe fn cmd_stringify_argv(argc: c_int, argv: *mut *mut u8) -> String {
     unsafe {
-        let mut buf: *mut u8 = null_mut();
-        let mut len: usize = 0;
-
         if argc == 0 {
-            return xstrdup(c!("")).as_ptr();
+            return String::new();
         }
 
+        let mut buf = String::new();
         for i in 0..argc {
             let s = args_escape(*argv.add(i as usize));
             log_debug!(
@@ -416,15 +414,10 @@ pub unsafe fn cmd_stringify_argv(argc: c_int, argv: *mut *mut u8) -> *mut u8 {
                 _s(s)
             );
 
-            len += strlen(s) + 1;
-            buf = xrealloc_(buf, len).as_ptr();
-
-            if i == 0 {
-                *buf = b'\0';
-            } else {
-                strlcat(buf, c!(" "), len);
+            if i != 0 {
+                buf.push(' ');
             }
-            strlcat(buf, s, len);
+            buf.push_str(cstr_to_str(s));
 
             free(s as _);
         }

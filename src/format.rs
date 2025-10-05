@@ -492,7 +492,7 @@ macro_rules! format_printf {
         crate::format::format_printf_(format_args!($fmt $(, $args)*))
     };
 }
-pub(crate) use format_printf;
+
 pub unsafe fn format_printf_(args: std::fmt::Arguments) -> *mut u8 {
     let mut s = args.to_string();
     s.push('\0');

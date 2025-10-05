@@ -475,7 +475,7 @@ macro_rules! args_print_add {
         crate::arguments::args_print_add_($buf, $len, format_args!($fmt $(, $args)*))
     };
 }
-pub(crate) use args_print_add;
+
 pub unsafe fn args_print_add_(buf: *mut *mut u8, len: *mut usize, fmt: std::fmt::Arguments) {
     unsafe {
         let s = CString::new(fmt.to_string()).unwrap();

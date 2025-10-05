@@ -17,7 +17,7 @@ use crate::compat::{closefrom, fdforkpty::fdforkpty};
 use crate::libc::{
     AF_UNIX, O_RDWR, PF_UNSPEC, SHUT_WR, SIG_BLOCK, SIG_SETMASK, SIGCONT, SIGTERM, SIGTTIN,
     SIGTTOU, SOCK_STREAM, STDERR_FILENO, STDIN_FILENO, STDOUT_FILENO, TIOCSWINSZ, WIFSTOPPED,
-    WSTOPSIG, chdir, close, dup2, execl, execvp, fork, ioctl, kill, killpg, memset, open, shutdown,
+    WSTOPSIG, close, dup2, execl, execvp, fork, ioctl, kill, killpg, memset, open, shutdown,
     sigfillset, sigprocmask, sigset_t, socketpair, winsize,
 };
 use crate::*;
@@ -169,8 +169,10 @@ pub unsafe fn job_run(
                     proc_clear_signals(SERVER_PROC, 1);
                     sigprocmask(SIG_SETMASK, oldset.as_mut_ptr(), null_mut());
 
-                    if (cwd.is_null() || chdir(cwd) != 0)
-                        && find_home().is_none_or(|home| chdir(home.as_ptr().cast()) != 0)
+                    if (cwd.is_null() || std::env::set_current_dir(cstr_to_str(cwd)).is_err())
+                        && find_home().is_none_or(|home| {
+                            std::env::set_current_dir(home.to_str().expect("TODO")).is_err()
+                        })
                         && std::env::set_current_dir(Path::new("/")).is_err()
                     {
                         fatal("chdir failed");

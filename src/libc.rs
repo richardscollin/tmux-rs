@@ -10,10 +10,6 @@ unsafe extern "C" {
     pub fn strsep(_: *mut *mut u8, _delim: *const u8) -> *mut u8;
 }
 
-pub unsafe fn chdir(dir: *const u8) -> i32 {
-    unsafe { ::libc::chdir(dir.cast()) }
-}
-
 pub unsafe fn free_<T>(p: *mut T) {
     unsafe { ::libc::free(p as *mut c_void) }
 }

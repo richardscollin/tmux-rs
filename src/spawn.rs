@@ -15,8 +15,8 @@ use std::path::Path;
 
 use crate::compat::{closefrom, fdforkpty::fdforkpty};
 use crate::libc::{
-    _exit, SIG_BLOCK, SIG_SETMASK, STDERR_FILENO, STDIN_FILENO, TCSANOW, VERASE, chdir, close,
-    execl, execvp, sigfillset, sigprocmask, strrchr, tcgetattr, tcsetattr,
+    _exit, SIG_BLOCK, SIG_SETMASK, STDERR_FILENO, STDIN_FILENO, TCSANOW, VERASE, close, execl,
+    execvp, sigfillset, sigprocmask, strrchr, tcgetattr, tcsetattr,
 };
 #[cfg(feature = "utempter")]
 use crate::utempter::utempter_add_record;
@@ -461,7 +461,7 @@ pub unsafe fn spawn_pane(sc: *mut spawn_context, cause: *mut *mut u8) -> *mut wi
 
             // Child process. Change to the working directory or home if that
             // fails.
-            if chdir((*new_wp).cwd) == 0 {
+            if std::env::set_current_dir(cstr_to_str((*new_wp).cwd)).is_ok() {
                 environ_set!(
                     child,
                     c!("PWD"),
@@ -470,7 +470,7 @@ pub unsafe fn spawn_pane(sc: *mut spawn_context, cause: *mut *mut u8) -> *mut wi
                     _s((*new_wp).cwd)
                 );
             } else if let Some(tmp) = find_home()
-                && chdir(tmp.as_ptr().cast()) == 0
+                && std::env::set_current_dir(tmp.to_str().expect("TODO")).is_ok()
             {
                 environ_set!(
                     child,

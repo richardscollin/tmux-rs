@@ -569,7 +569,7 @@ pub unsafe fn options_array_set(
         if !(*o).tableentry.is_null()
             && (*(*o).tableentry).type_ == options_table_type::OPTIONS_TABLE_COLOUR
         {
-            let number = colour_fromstring_(value);
+            let number = colour_fromstring(value);
             if number == -1 {
                 return Err(CString::new(format!("bad colour: {value}")).unwrap());
             }
@@ -1323,7 +1323,7 @@ pub unsafe fn options_from_string(
             }
 
             options_table_type::OPTIONS_TABLE_COLOUR => {
-                let number = colour_fromstring(value) as i64;
+                let number = colour_fromstring(cstr_to_str(value)) as i64;
                 if number == -1 {
                     return Err(CString::new(format!("bad colour: {}", _s(value))).unwrap());
                 }

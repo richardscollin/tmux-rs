@@ -201,13 +201,13 @@ pub unsafe fn style_parse(sy: *mut style, base: *const grid_cell, mut in_: *cons
                         break 'error;
                     }
                 } else if end > 5 && strncasecmp(tmp, c!("fill="), 5) == 0 {
-                    let value = colour_fromstring(tmp.add(5));
+                    let value = colour_fromstring(cstr_to_str(tmp.add(5)));
                     if value == -1 {
                         break 'error;
                     }
                     (*sy).fill = value;
                 } else if end > 3 && strncasecmp(tmp.add(1), c!("g="), 2) == 0 {
-                    let value = colour_fromstring(tmp.add(3));
+                    let value = colour_fromstring(cstr_to_str(tmp.add(3)));
                     if value == -1 {
                         break 'error;
                     }
@@ -227,7 +227,7 @@ pub unsafe fn style_parse(sy: *mut style, base: *const grid_cell, mut in_: *cons
                         break 'error;
                     }
                 } else if end > 3 && strncasecmp(tmp, c!("us="), 3) == 0 {
-                    let value = colour_fromstring(tmp.add(3));
+                    let value = colour_fromstring(cstr_to_str(tmp.add(3)));
                     if value == -1 {
                         break 'error;
                     }

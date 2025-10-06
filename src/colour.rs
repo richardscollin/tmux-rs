@@ -151,7 +151,7 @@ pub fn colour_tostring(c: i32) -> Cow<'static, str> {
 }
 
 /// Convert colour from string.
-pub fn colour_fromstring_(s: &str) -> i32 {
+pub fn colour_fromstring(s: &str) -> i32 {
     if s.chars().next().is_some_and(|c| c == '#') && s.len() == 7 {
         let cp = s.trim_start_matches(|c: char| c.is_ascii_hexdigit());
         if cp.is_empty() {
@@ -232,11 +232,6 @@ pub fn colour_fromstring_(s: &str) -> i32 {
     }
 
     colour_byname(s)
-}
-
-/// Convert colour from string.
-pub unsafe fn colour_fromstring(s: *const u8) -> i32 {
-    unsafe { colour_fromstring_(cstr_to_str(s)) }
 }
 
 /// Convert 256 colour to RGB colour.

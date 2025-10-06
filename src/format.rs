@@ -4519,7 +4519,7 @@ pub unsafe fn format_replace(
                 // Is this a colour?
                 if modifiers.intersects(format_modifiers::FORMAT_COLOUR) {
                     new = format_expand1(es, copy);
-                    c = colour_fromstring(new);
+                    c = colour_fromstring(cstr_to_str(new));
                     value = if c == -1
                         || ({
                             c = colour_force_rgb(c);

@@ -21,7 +21,7 @@ use crate::libc::{
     SIGCHLD, SIGCONT, SIGHUP, SIGTERM, SIGTSTP, SIGWINCH, SOCK_STREAM, STDERR_FILENO, STDIN_FILENO,
     STDOUT_FILENO, TCSAFLUSH, TCSANOW, VMIN, VTIME, WNOHANG, cfgetispeed, cfgetospeed, cfmakeraw,
     cfsetispeed, cfsetospeed, close, connect, dup, execl, flock, getppid, isatty, kill, memcpy,
-    memset, open, printf, sigaction, sigemptyset, sockaddr, sockaddr_un, socket, strerror, strlen,
+    memset, open, sigaction, sigemptyset, sockaddr, sockaddr_un, socket, strerror, strlen,
     strsignal, system, tcgetattr, tcsetattr, unlink, waitpid,
 };
 use crate::*;
@@ -183,47 +183,34 @@ pub unsafe fn client_connect(base: *mut event_base, path: *const u8, flags: clie
     }
 }
 
-pub unsafe fn client_exit_message() -> *const u8 {
-    type msgbuf = [u8; 256];
-    static mut MSG: msgbuf = [0; 256];
-
+pub unsafe fn client_exit_message() -> Cow<'static, str> {
     match unsafe { CLIENT_EXITREASON } {
         client_exitreason::CLIENT_EXIT_DETACHED => {
             unsafe {
                 if !CLIENT_EXITSESSION.is_null() {
-                    _ = xsnprintf_!(
-                        &raw mut MSG as _,
-                        size_of::<msgbuf>(),
-                        "detached (from session {})",
-                        _s(CLIENT_EXITSESSION),
-                    );
-                    return &raw mut MSG as _;
+                    return format!("detached (from session {})", _s(CLIENT_EXITSESSION),).into();
                 }
             }
-            c!("detached")
+            "detached".into()
         }
         client_exitreason::CLIENT_EXIT_DETACHED_HUP => {
             unsafe {
                 if !CLIENT_EXITSESSION.is_null() {
                     let tmp = CLIENT_EXITSESSION;
-                    _ = xsnprintf_!(
-                        &raw mut MSG as _,
-                        size_of::<msgbuf>(),
-                        "detached and SIGHUP (from session {})",
-                        _s(tmp),
-                    );
-                    return &raw mut MSG as _;
+                    return format!("detached and SIGHUP (from session {})", _s(tmp),).into();
                 }
             }
-            c!("detached and SIGHUP")
+            "detached and SIGHUP".into()
         }
-        client_exitreason::CLIENT_EXIT_LOST_TTY => c!("lost tty"),
-        client_exitreason::CLIENT_EXIT_TERMINATED => c!("terminated"),
-        client_exitreason::CLIENT_EXIT_LOST_SERVER => c!("server exited unexpectedly"),
-        client_exitreason::CLIENT_EXIT_EXITED => c!("exited"),
-        client_exitreason::CLIENT_EXIT_SERVER_EXITED => c!("server exited"),
-        client_exitreason::CLIENT_EXIT_MESSAGE_PROVIDED => unsafe { CLIENT_EXITMESSAGE },
-        client_exitreason::CLIENT_EXIT_NONE => c!("unknown reason"),
+        client_exitreason::CLIENT_EXIT_LOST_TTY => "lost tty".into(),
+        client_exitreason::CLIENT_EXIT_TERMINATED => "terminated".into(),
+        client_exitreason::CLIENT_EXIT_LOST_SERVER => "server exited unexpectedly".into(),
+        client_exitreason::CLIENT_EXIT_EXITED => "exited".into(),
+        client_exitreason::CLIENT_EXIT_SERVER_EXITED => "server exited".into(),
+        client_exitreason::CLIENT_EXIT_MESSAGE_PROVIDED => unsafe {
+            cstr_to_str(CLIENT_EXITMESSAGE).to_string().into()
+        },
+        client_exitreason::CLIENT_EXIT_NONE => "unknown reason".into(),
     }
 }
 
@@ -433,7 +420,7 @@ pub unsafe extern "C-unwind" fn client_main(
 
         if CLIENT_ATTACHED != 0 {
             if CLIENT_EXITREASON != client_exitreason::CLIENT_EXIT_NONE {
-                printf(c"[%s]\n".as_ptr(), client_exit_message());
+                println!("[{}]", client_exit_message());
             }
 
             let ppid = getppid();
@@ -442,7 +429,7 @@ pub unsafe extern "C-unwind" fn client_main(
             }
         } else if (*&raw const CLIENT_FLAGS).intersects(client_flag::CONTROL) {
             if CLIENT_EXITREASON != client_exitreason::CLIENT_EXIT_NONE {
-                println!("%exit {}", _s(client_exit_message()));
+                println!("%exit {}", client_exit_message());
             } else {
                 println!("%exit");
             }
@@ -466,7 +453,7 @@ pub unsafe extern "C-unwind" fn client_main(
                 tcsetattr(STDOUT_FILENO, TCSAFLUSH, &raw mut saved_tio);
             }
         } else if CLIENT_EXITREASON != client_exitreason::CLIENT_EXIT_NONE {
-            eprintln!("{}", _s(client_exit_message()));
+            eprintln!("{}", client_exit_message());
         }
 
         CLIENT_EXITVAL

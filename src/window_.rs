@@ -1322,12 +1322,12 @@ pub unsafe fn window_pane_key(
     0
 }
 
-pub unsafe fn window_pane_visible(wp: *mut window_pane) -> bool {
+pub unsafe fn window_pane_visible(wp: *const window_pane) -> bool {
     unsafe {
         if !(*(*wp).window).flags.intersects(window_flag::ZOOMED) {
             return true;
         }
-        wp == (*(*wp).window).active
+        std::ptr::eq(wp, (*(*wp).window).active)
     }
 }
 

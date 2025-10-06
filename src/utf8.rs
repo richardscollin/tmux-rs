@@ -11,10 +11,12 @@
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-use std::cell::RefCell;
-use std::collections::BTreeMap;
-use std::fmt::{self, Display};
-use std::slice;
+use std::{
+    cell::RefCell,
+    collections::BTreeMap,
+    fmt::{self, Display},
+    slice,
+};
 
 use crate::compat::vis;
 use crate::libc::{memcpy, memset};

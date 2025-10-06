@@ -102,6 +102,7 @@ mod xmalloc;
 #[macro_use] // log_debug
 mod log;
 use std::{
+    borrow::Cow,
     cell::RefCell,
     cmp,
     collections::LinkedList,

@@ -242,22 +242,18 @@ pub unsafe fn format_log1_(
             return;
         }
 
-        let mut s = args.to_string();
-        s.push('\0');
-        let s: *mut u8 = s.leak().as_mut_ptr();
+        let s = args.to_string();
 
-        log_debug!("{}: {}", _s(from), _s(s));
+        log_debug!("{}: {}", _s(from), s);
         if !(*ft).item.is_null() && (*ft).flags.intersects(format_flags::FORMAT_VERBOSE) {
             cmdq_print!(
                 (*ft).item,
                 "#{1:0$}{2}",
                 (*es).loop_ as usize,
                 _s(spaces.as_ptr()),
-                _s(s)
+                s
             );
         }
-
-        free(s as *mut c_void);
     }
 }
 
@@ -281,7 +277,6 @@ pub unsafe fn format_job_update(job: *mut job) {
     unsafe {
         let fj = job_get_data(job) as *mut format_job;
         let evb: *mut evbuffer = (*job_get_event(job)).input;
-        // char *line = NULL, *next;
         let mut line: *mut u8 = null_mut();
 
         while let Some(next) = NonNull::new(evbuffer_readline(evb)) {

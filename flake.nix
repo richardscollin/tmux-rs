@@ -72,6 +72,7 @@
         devShells.default = craneLib.devShell {
           checks = self.checks.${system};
           packages = [
+            pkgs.bashInteractive # full-featured bash with readline
             pkgs.rust-analyzer
             pkgs.clippy
             pkgs.rustfmt

@@ -27,6 +27,59 @@ unsafe extern "C" {
     fn utf8proc_wctomb(_: *mut char, _: wchar_t) -> i32;
 }
 
+// A single UTF-8 character.
+pub(crate) type utf8_char = c_uint;
+
+// An expanded UTF-8 character. UTF8_SIZE must be big enough to hold combining
+// characters as well. It can't be more than 32 bytes without changes to how
+// characters are stored.
+pub(crate) const UTF8_SIZE: usize = 21;
+
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub(crate) struct utf8_data {
+    pub(crate) data: [u8; UTF8_SIZE], // TODO if we make this private we can only expose the initialized part
+
+    pub(crate) have: u8,
+    pub(crate) size: u8, /* TODO check the codebase for things checking if size == 0, which is the sentinal value */
+    /// 0xff if invalid
+    pub(crate) width: u8,
+}
+
+impl utf8_data {
+    pub(crate) const fn new<const N: usize>(data: [u8; N], have: u8, size: u8, width: u8) -> Self {
+        if N >= UTF8_SIZE {
+            panic!("invalid size");
+        }
+
+        let mut padded_data = [0u8; UTF8_SIZE];
+        let mut i = 0usize;
+        while i < N {
+            padded_data[i] = data[i];
+            i += 1;
+        }
+
+        Self {
+            data: padded_data,
+            have,
+            size,
+            width,
+        }
+    }
+
+    pub(crate) fn initialized_slice(&self) -> &[u8] {
+        &self.data[..self.size as usize]
+    }
+}
+
+#[repr(i32)]
+#[derive(Copy, Clone, Eq, PartialEq)]
+pub(crate) enum utf8_state {
+    UTF8_MORE,
+    UTF8_DONE,
+    UTF8_ERROR,
+}
+
 static UTF8_FORCE_WIDE: [wchar_t; 162] = [
     0x0261D, 0x026F9, 0x0270A, 0x0270B, 0x0270C, 0x0270D, 0x1F1E6, 0x1F1E7, 0x1F1E8, 0x1F1E9,
     0x1F1EA, 0x1F1EB, 0x1F1EC, 0x1F1ED, 0x1F1EE, 0x1F1EF, 0x1F1F0, 0x1F1F1, 0x1F1F2, 0x1F1F3,

@@ -901,6 +901,17 @@ pub fn colour_byname(name: &str) -> i32 {
     -1
 }
 
+// Replacement palette.
+#[repr(C)]
+#[derive(Clone)]
+pub(crate) struct colour_palette {
+    pub(crate) fg: i32,
+    pub(crate) bg: i32,
+
+    pub(crate) palette: Option<Box<[i32]>>,
+    pub(crate) default_palette: Option<Box<[i32]>>,
+}
+
 pub fn colour_palette_init() -> colour_palette {
     colour_palette {
         fg: 8,

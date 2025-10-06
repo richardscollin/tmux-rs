@@ -13,6 +13,16 @@
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 use crate::*;
 
+/// Alert option values
+#[repr(i32)]
+#[derive(Copy, Clone, num_enum::TryFromPrimitive)]
+pub(crate) enum alert_option {
+    ALERT_NONE,
+    ALERT_ANY,
+    ALERT_CURRENT,
+    ALERT_OTHER,
+}
+
 static ALERTS_FIRED: atomic::AtomicI32 = atomic::AtomicI32::new(0);
 
 thread_local! {

@@ -33,6 +33,7 @@ use crate::ncurses_::*;
 mod alerts;
 mod arguments;
 mod attributes;
+mod bitstr;
 mod cfg_;
 mod client_;
 mod cmd_;
@@ -121,6 +122,7 @@ use crate::{
     alerts::*,
     arguments::*,
     attributes::*,
+    bitstr::*,
     cfg_::*,
     client_::*,
     cmd_::{
@@ -200,6 +202,34 @@ use image_sixel::sixel_image;
 #[cfg(feature = "utempter")]
 mod utempter;
 
+macro_rules! env_or {
+    ($key:literal, $default:expr) => {
+        match std::option_env!($key) {
+            Some(value) => value,
+            None => $default,
+        }
+    };
+}
+const TMUX_VERSION: &str = env_or!("TMUX_VERSION", env!("CARGO_PKG_VERSION"));
+const TMUX_CONF: &str = env_or!(
+    "TMUX_CONF",
+    "/etc/tmux.conf:~/.tmux.conf:$XDG_CONFIG_HOME/tmux/tmux.conf:~/.config/tmux/tmux.conf"
+);
+const TMUX_SOCK: &str = env_or!("TMUX_SOCK", "$TMUX_TMPDIR:/tmp/");
+const TMUX_TERM: &str = env_or!("TMUX_TERM", "screen");
+const TMUX_LOCK_CMD: &str = env_or!("TMUX_LOCK_CMD", "lock -np");
+
+// /usr/include/paths.h
+const _PATH_TTY: *const u8 = c!("/dev/tty");
+const _PATH_BSHELL: *const u8 = c!("/bin/sh");
+const _PATH_BSHELL_STR: &str = "/bin/sh";
+const _PATH_DEFPATH: *const u8 = c!("/usr/bin:/bin");
+const _PATH_DEV: *const u8 = c!("/dev/");
+const _PATH_DEVNULL: *const u8 = c!("/dev/null");
+const _PATH_VI: &str = "/usr/bin/vi";
+const SIZEOF_PATH_DEV: usize = 6;
+const TTY_NAME_MAX: usize = 32;
+
 #[inline]
 const fn transmute_ptr<T>(value: Option<NonNull<T>>) -> *mut T {
     match value {
@@ -224,48 +254,6 @@ const unsafe fn ptr_to_mut_ref<'a, T>(value: *mut T) -> Option<&'a mut T> {
     }
 }
 
-type bitstr_t = u8;
-
-unsafe fn bit_alloc(nbits: u32) -> *mut u8 {
-    unsafe { libc::calloc(nbits.div_ceil(8) as usize, 1).cast() }
-}
-unsafe fn bit_set(bits: *mut u8, i: u32) {
-    unsafe {
-        let byte_index = i / 8;
-        let bit_index = i % 8;
-        *bits.add(byte_index as usize) |= 1 << bit_index;
-    }
-}
-
-#[inline]
-unsafe fn bit_clear(bits: *mut u8, i: u32) {
-    unsafe {
-        let byte_index = i / 8;
-        let bit_index = i % 8;
-        *bits.add(byte_index as usize) &= !(1 << bit_index);
-    }
-}
-
-/// clear bits start..=stop in bitstring
-unsafe fn bit_nclear(bits: *mut u8, start: u32, stop: u32) {
-    unsafe {
-        // TODO this is written inefficiently, assuming the compiler will optimize it. if it doesn't rewrite it
-        for i in start..=stop {
-            bit_clear(bits, i);
-        }
-    }
-}
-
-unsafe fn bit_test(bits: *const u8, i: u32) -> bool {
-    unsafe {
-        let byte_index = i / 8;
-        let bit_index = i % 8;
-        (*bits.add(byte_index as usize) & (1 << bit_index)) != 0
-    }
-}
-
-const TTY_NAME_MAX: usize = 32;
-
 // discriminant structs
 struct discr_all_entry;
 struct discr_by_uri_entry;
@@ -278,56 +266,11 @@ struct discr_time_entry;
 struct discr_tree_entry;
 struct discr_wentry;
 
-// /usr/include/paths.h
-const _PATH_TTY: *const u8 = c!("/dev/tty");
-
-const _PATH_BSHELL: *const u8 = c!("/bin/sh");
-const _PATH_BSHELL_STR: &str = "/bin/sh";
-
-const _PATH_DEFPATH: *const u8 = c!("/usr/bin:/bin");
-const _PATH_DEV: *const u8 = c!("/dev/");
-const _PATH_DEVNULL: *const u8 = c!("/dev/null");
-const _PATH_VI: &str = "/usr/bin/vi";
-
-const SIZEOF_PATH_DEV: usize = 6;
-
-macro_rules! env_or {
-    ($key:literal, $default:expr) => {
-        match std::option_env!($key) {
-            Some(value) => value,
-            None => $default,
-        }
-    };
-}
-
-const TMUX_VERSION: &str = env_or!("TMUX_VERSION", env!("CARGO_PKG_VERSION"));
-const TMUX_CONF: &str = env_or!(
-    "TMUX_CONF",
-    "/etc/tmux.conf:~/.tmux.conf:$XDG_CONFIG_HOME/tmux/tmux.conf:~/.config/tmux/tmux.conf"
-);
-const TMUX_SOCK: &str = env_or!("TMUX_SOCK", "$TMUX_TMPDIR:/tmp/");
-const TMUX_TERM: &str = env_or!("TMUX_TERM", "screen");
-const TMUX_LOCK_CMD: &str = env_or!("TMUX_LOCK_CMD", "lock -np");
-
 /// Minimum layout cell size, NOT including border lines.
 const PANE_MINIMUM: u32 = 1;
 
 /// Automatic name refresh interval, in microseconds. Must be < 1 second.
 const NAME_INTERVAL: libc::suseconds_t = 500000;
-
-/// Default pixel cell sizes.
-const DEFAULT_XPIXEL: u32 = 16;
-const DEFAULT_YPIXEL: u32 = 32;
-
-/// Alert option values
-#[repr(i32)]
-#[derive(Copy, Clone, num_enum::TryFromPrimitive)]
-enum alert_option {
-    ALERT_NONE,
-    ALERT_ANY,
-    ALERT_CURRENT,
-    ALERT_OTHER,
-}
 
 /// Visual option values
 #[repr(i32)]
@@ -738,59 +681,6 @@ const MOUSE_PARAM_UTF8_MAX: u32 = 0x7ff;
 const MOUSE_PARAM_BTN_OFF: u32 = 0x20;
 const MOUSE_PARAM_POS_OFF: u32 = 0x21;
 
-// A single UTF-8 character.
-type utf8_char = c_uint;
-
-// An expanded UTF-8 character. UTF8_SIZE must be big enough to hold combining
-// characters as well. It can't be more than 32 bytes without changes to how
-// characters are stored.
-const UTF8_SIZE: usize = 21;
-
-#[repr(C)]
-#[derive(Copy, Clone)]
-struct utf8_data {
-    data: [u8; UTF8_SIZE],
-
-    have: u8,
-    size: u8, /* TODO check the codebase for things checking if size == 0, which is the sentinal value */
-    /// 0xff if invalid
-    width: u8,
-}
-
-impl utf8_data {
-    const fn new<const N: usize>(data: [u8; N], have: u8, size: u8, width: u8) -> Self {
-        if N >= UTF8_SIZE {
-            panic!("invalid size");
-        }
-
-        let mut padded_data = [0u8; UTF8_SIZE];
-        let mut i = 0usize;
-        while i < N {
-            padded_data[i] = data[i];
-            i += 1;
-        }
-
-        Self {
-            data: padded_data,
-            have,
-            size,
-            width,
-        }
-    }
-
-    fn initialized_slice(&self) -> &[u8] {
-        &self.data[..self.size as usize]
-    }
-}
-
-#[repr(i32)]
-#[derive(Copy, Clone, Eq, PartialEq)]
-enum utf8_state {
-    UTF8_MORE,
-    UTF8_DONE,
-    UTF8_ERROR,
-}
-
 // Colour flags.
 const COLOUR_FLAG_256: i32 = 0x01000000;
 const COLOUR_FLAG_RGB: i32 = 0x02000000;
@@ -800,17 +690,6 @@ const COLOUR_FLAG_RGB: i32 = 0x02000000;
 #[inline]
 fn COLOUR_DEFAULT(c: i32) -> bool {
     c == 8 || c == 9
-}
-
-// Replacement palette.
-#[repr(C)]
-#[derive(Clone)]
-struct colour_palette {
-    fg: i32,
-    bg: i32,
-
-    palette: Option<Box<[i32]>>,
-    default_palette: Option<Box<[i32]>>,
 }
 
 // Grid attributes. Anything above 0xff is stored in an extended cell.

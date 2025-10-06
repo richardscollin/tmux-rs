@@ -20,6 +20,10 @@ use crate::libc::{
 use crate::utempter::utempter_remove_record;
 use crate::*;
 
+/// Default pixel cell sizes.
+pub const DEFAULT_XPIXEL: u32 = 16;
+pub const DEFAULT_YPIXEL: u32 = 32;
+
 pub static mut WINDOWS: windows = unsafe { std::mem::zeroed() };
 
 pub static mut ALL_WINDOW_PANES: window_pane_tree = unsafe { std::mem::zeroed() };

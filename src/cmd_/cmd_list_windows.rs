@@ -92,7 +92,7 @@ unsafe fn cmd_list_windows_session(
                 FORMAT_NONE,
                 format_flags::empty(),
             );
-            format_add!(ft, c!("line"), "{n}");
+            format_add!(ft, "line", "{n}");
             format_defaults(ft, null_mut(), Some(s), Some(wl), None);
 
             let flag;

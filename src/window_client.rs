@@ -260,7 +260,7 @@ pub unsafe fn window_client_get_key(
 
         let ft = format_create(null_mut(), null_mut(), FORMAT_NONE, format_flags::empty());
         format_defaults(ft, (*item.as_ptr()).c, None, None, None);
-        format_add!(ft, c!("line"), "{line}");
+        format_add!(ft, "line", "{line}");
 
         let expanded = format_expand(ft, (*data.as_ptr()).key_format);
         let key = key_string_lookup_string(expanded);

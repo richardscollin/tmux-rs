@@ -3140,7 +3140,7 @@ pub unsafe fn format_merge(ft: *mut format_tree, from: *mut format_tree) {
     unsafe {
         for fe in rb_foreach(&raw mut (*from).tree).map(NonNull::as_ptr) {
             if !(*fe).value.is_null() {
-                format_add!(ft, (*fe).key, "{}", _s((*fe).value));
+                format_add!(ft, cstr_to_str((*fe).key), "{}", _s((*fe).value));
             }
         }
     }
@@ -3260,11 +3260,11 @@ macro_rules! format_add {
 pub(crate) use format_add;
 
 /// Add a key-value pair.
-pub unsafe fn format_add_(ft: *mut format_tree, key: *const u8, args: std::fmt::Arguments) {
+pub unsafe fn format_add_(ft: *mut format_tree, key: &str, args: std::fmt::Arguments) {
     unsafe {
         let mut fe = xmalloc_::<format_entry>().as_ptr();
 
-        (*fe).key = xstrdup(key).as_ptr();
+        (*fe).key = xstrdup__(key);
 
         let fe_now = rb_insert(&raw mut (*ft).tree, fe);
         if !fe_now.is_null() {

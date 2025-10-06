@@ -38,4 +38,3 @@ pub unsafe fn bit_test(bits: *const u8, i: u32) -> bool {
         (*bits.add(byte_index as usize) & (1 << bit_index)) != 0
     }
 }
-

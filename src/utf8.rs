@@ -38,7 +38,7 @@ pub(crate) const UTF8_SIZE: usize = 21;
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub(crate) struct utf8_data {
-    pub(crate) data: [u8; UTF8_SIZE], // TODO if we make this private we can only expose the initialized part
+    pub(crate) data: [u8; UTF8_SIZE], /* TODO if we make this private we can only expose the initialized part */
 
     pub(crate) have: u8,
     pub(crate) size: u8, /* TODO check the codebase for things checking if size == 0, which is the sentinal value */

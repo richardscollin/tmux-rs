@@ -781,42 +781,42 @@ pub unsafe fn window_copy_formats(wme: *mut window_mode_entry, ft: *mut format_t
     unsafe {
         let data: *mut window_copy_mode_data = (*wme).data.cast();
 
-        format_add!(ft, c!("scroll_position"), "{}", (*data).oy);
-        format_add!(ft, c!("rectangle_toggle"), "{}", (*data).rectflag as i32);
+        format_add!(ft, "scroll_position", "{}", (*data).oy);
+        format_add!(ft, "rectangle_toggle", "{}", (*data).rectflag as i32);
 
-        format_add!(ft, c!("copy_cursor_x"), "{}", (*data).cx);
-        format_add!(ft, c!("copy_cursor_y"), "{}", (*data).cy);
+        format_add!(ft, "copy_cursor_x", "{}", (*data).cx);
+        format_add!(ft, "copy_cursor_y", "{}", (*data).cy);
 
         if !(*data).screen.sel.is_null() {
-            format_add!(ft, c!("selection_start_x"), "{}", (*data).selx,);
-            format_add!(ft, c!("selection_start_y"), "{}", (*data).sely,);
-            format_add!(ft, c!("selection_end_x"), "{}", (*data).endselx,);
-            format_add!(ft, c!("selection_end_y"), "{}", (*data).endsely,);
+            format_add!(ft, "selection_start_x", "{}", (*data).selx,);
+            format_add!(ft, "selection_start_y", "{}", (*data).sely,);
+            format_add!(ft, "selection_end_x", "{}", (*data).endselx,);
+            format_add!(ft, "selection_end_y", "{}", (*data).endsely,);
 
             if (*data).cursordrag != cursordrag::CURSORDRAG_NONE {
-                format_add!(ft, c!("selection_active"), "1");
+                format_add!(ft, "selection_active", "1");
             } else {
-                format_add!(ft, c!("selection_active"), "0");
+                format_add!(ft, "selection_active", "0");
             }
             if (*data).endselx != (*data).selx || (*data).endsely != (*data).sely {
-                format_add!(ft, c!("selection_present"), "1");
+                format_add!(ft, "selection_present", "1");
             } else {
-                format_add!(ft, c!("selection_present"), "0");
+                format_add!(ft, "selection_present", "0");
             }
         } else {
-            format_add!(ft, c!("selection_active"), "0");
-            format_add!(ft, c!("selection_present"), "0");
+            format_add!(ft, "selection_active", "0");
+            format_add!(ft, "selection_present", "0");
         }
 
         format_add!(
             ft,
-            c!("search_present"),
+            "search_present",
             "{}",
             !(*data).searchmark.is_null() as i32,
         );
         if (*data).searchcount != -1 {
-            format_add!(ft, c!("search_count"), "{}", (*data).searchcount,);
-            format_add!(ft, c!("search_count_partial"), "{}", (*data).searchmore,);
+            format_add!(ft, "search_count", "{}", (*data).searchcount,);
+            format_add!(ft, "search_count_partial", "{}", (*data).searchmore,);
         }
         format_add_cb(ft, c!("search_match"), window_copy_search_match_cb);
 

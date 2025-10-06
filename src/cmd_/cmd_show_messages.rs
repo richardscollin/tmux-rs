@@ -89,8 +89,8 @@ unsafe fn cmd_show_messages_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
         let ft = format_create_from_target(item);
 
         for msg in tailq_foreach_reverse(&raw mut crate::server::MESSAGE_LOG).map(NonNull::as_ptr) {
-            format_add!(ft, c!("message_text"), "{}", _s((*msg).msg));
-            format_add!(ft, c!("message_number"), "{}", (*msg).msg_num,);
+            format_add!(ft, "message_text", "{}", _s((*msg).msg));
+            format_add!(ft, "message_number", "{}", (*msg).msg_num,);
             format_add_tv(ft, c!("message_time"), &raw mut (*msg).msg_time);
 
             let s = format_expand(ft, SHOW_MESSAGES_TEMPLATE);

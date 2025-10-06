@@ -378,14 +378,14 @@ unsafe fn cmd_list_keys_commands(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
                 continue;
             }
 
-            format_add!(ft, c!("command_list_name"), "{}", entry.name);
+            format_add!(ft, "command_list_name", "{}", entry.name);
             format_add!(
                 ft,
-                c!("command_list_alias"),
+                "command_list_alias",
                 "{}",
                 entry.alias.unwrap_or_default()
             );
-            format_add!(ft, c!("command_list_usage"), "{}", entry.usage);
+            format_add!(ft, "command_list_usage", "{}", entry.usage);
 
             let line = format_expand(ft, template);
             if *line != b'\0' as _ {

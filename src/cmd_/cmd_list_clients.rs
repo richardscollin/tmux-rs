@@ -65,7 +65,7 @@ unsafe fn cmd_list_clients_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
                 FORMAT_NONE,
                 format_flags::empty(),
             );
-            format_add!(ft, c!("line"), "{idx}");
+            format_add!(ft, "line", "{idx}");
             format_defaults(ft, c, None, None, None);
 
             let flag;

@@ -118,8 +118,8 @@ unsafe fn cmd_display_menu_get_position(
         // Create format with mouse position if any.
         let ft = format_create_from_target(item);
         if (*event).m.valid {
-            format_add!(ft, c!("popup_mouse_x"), "{}", (*event).m.x);
-            format_add!(ft, c!("popup_mouse_y"), "{}", (*event).m.y);
+            format_add!(ft, "popup_mouse_x", "{}", (*event).m.x);
+            format_add!(ft, "popup_mouse_y", "{}", (*event).m.y);
         }
 
         // If there are any status lines, add this window position and the
@@ -153,13 +153,13 @@ unsafe fn cmd_display_menu_get_position(
             }
 
             if !sr.is_null() {
-                format_add!(ft, c!("popup_window_status_line_x"), "{}", (*sr).start,);
+                format_add!(ft, "popup_window_status_line_x", "{}", (*sr).start,);
                 if position == 0 {
-                    format_add!(ft, c!("popup_window_status_line_y"), "{}", line + 1 + h,);
+                    format_add!(ft, "popup_window_status_line_y", "{}", line + 1 + h,);
                 } else {
                     format_add!(
                         ft,
-                        c!("popup_window_status_line_y"),
+                        "popup_window_status_line_y",
                         "{}",
                         (*tty).sy - lines + line,
                     );
@@ -167,57 +167,57 @@ unsafe fn cmd_display_menu_get_position(
             }
 
             if position == 0 {
-                format_add!(ft, c!("popup_status_line_y"), "{}", lines + h,);
+                format_add!(ft, "popup_status_line_y", "{}", lines + h,);
             } else {
-                format_add!(ft, c!("popup_status_line_y"), "{}", (*tty).sy - lines,);
+                format_add!(ft, "popup_status_line_y", "{}", (*tty).sy - lines,);
             }
         } else {
             top = 0;
         }
 
         // Popup width and height.
-        format_add!(ft, c!("popup_width"), "{w}");
-        format_add!(ft, c!("popup_height"), "{h}");
+        format_add!(ft, "popup_width", "{w}");
+        format_add!(ft, "popup_height", "{h}");
 
         // Position so popup is in the centre.
         let mut n: c_long = ((*tty).sx - 1) as c_long / 2 - w as c_long / 2;
         if n < 0 {
-            format_add!(ft, c!("popup_centre_x"), "0");
+            format_add!(ft, "popup_centre_x", "0");
         } else {
-            format_add!(ft, c!("popup_centre_x"), "{n}");
+            format_add!(ft, "popup_centre_x", "{n}");
         }
         n = (((*tty).sy - 1) / 2 + h / 2) as i64;
         if n >= (*tty).sy as i64 {
-            format_add!(ft, c!("popup_centre_y"), "{}", (*tty).sy - h,);
+            format_add!(ft, "popup_centre_y", "{}", (*tty).sy - h,);
         } else {
-            format_add!(ft, c!("popup_centre_y"), "{n}");
+            format_add!(ft, "popup_centre_y", "{n}");
         }
 
         // Position of popup relative to mouse.
         if (*event).m.valid {
             n = (*event).m.x as c_long - w as c_long / 2;
             if n < 0 {
-                format_add!(ft, c!("popup_mouse_centre_x"), "0");
+                format_add!(ft, "popup_mouse_centre_x", "0");
             } else {
-                format_add!(ft, c!("popup_mouse_centre_x"), "{n}");
+                format_add!(ft, "popup_mouse_centre_x", "{n}");
             }
             n = ((*event).m.y - h / 2) as i64;
             if n + h as c_long >= (*tty).sy as i64 {
-                format_add!(ft, c!("popup_mouse_centre_y"), "{}", (*tty).sy - h,);
+                format_add!(ft, "popup_mouse_centre_y", "{}", (*tty).sy - h,);
             } else {
-                format_add!(ft, c!("popup_mouse_centre_y"), "{n}");
+                format_add!(ft, "popup_mouse_centre_y", "{n}");
             }
             n = (*event).m.y as c_long + h as c_long;
             if n >= (*tty).sy as c_long {
-                format_add!(ft, c!("popup_mouse_top"), "{}", (*tty).sy - 1,);
+                format_add!(ft, "popup_mouse_top", "{}", (*tty).sy - 1,);
             } else {
-                format_add!(ft, c!("popup_mouse_top"), "{n}");
+                format_add!(ft, "popup_mouse_top", "{n}");
             }
             n = ((*event).m.y - h) as c_long;
             if n < 0 {
-                format_add!(ft, c!("popup_mouse_bottom"), "0");
+                format_add!(ft, "popup_mouse_bottom", "0");
             } else {
-                format_add!(ft, c!("popup_mouse_bottom"), "{n}");
+                format_add!(ft, "popup_mouse_bottom", "{n}");
             }
         }
 
@@ -231,22 +231,22 @@ unsafe fn cmd_display_menu_get_position(
         );
         n = top as i64 + (*wp).yoff as i64 - oy as i64 + h as i64;
         if n >= (*tty).sy as i64 {
-            format_add!(ft, c!("popup_pane_top"), "{}", (*tty).sy - h,);
+            format_add!(ft, "popup_pane_top", "{}", (*tty).sy - h,);
         } else {
-            format_add!(ft, c!("popup_pane_top"), "{n}");
+            format_add!(ft, "popup_pane_top", "{n}");
         }
         format_add!(
             ft,
-            c!("popup_pane_bottom"),
+            "popup_pane_bottom",
             "{}",
             top + (*wp).yoff as i32 + (*wp).sy as i32 - oy as i32,
         );
-        format_add!(ft, c!("popup_pane_left"), "{}", (*wp).xoff - ox,);
+        format_add!(ft, "popup_pane_left", "{}", (*wp).xoff - ox,);
         n = (*wp).xoff as c_long + (*wp).sx as i64 - ox as i64 - w as i64;
         if n < 0 {
-            format_add!(ft, c!("popup_pane_right"), "0");
+            format_add!(ft, "popup_pane_right", "0");
         } else {
-            format_add!(ft, c!("popup_pane_right"), "{n}");
+            format_add!(ft, "popup_pane_right", "{n}");
         }
 
         // Expand horizontal position.

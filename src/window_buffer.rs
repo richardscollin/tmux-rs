@@ -329,7 +329,7 @@ pub unsafe fn window_buffer_get_key(
         format_defaults(ft, null_mut(), None, None, None);
         format_defaults(ft, null_mut(), s, wl, wp);
         format_defaults_paste_buffer(ft, pb.as_ptr());
-        format_add!(ft, c!("line"), "{line}");
+        format_add!(ft, "line", "{line}");
 
         let expanded = format_expand(ft, (*data.as_ptr()).key_format);
         let key = key_string_lookup_string(expanded);

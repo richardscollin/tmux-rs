@@ -130,7 +130,7 @@ fn cmd_list_panes_window(
                 FORMAT_NONE,
                 format_flags::empty(),
             );
-            format_add!(ft, c!("line"), "{n}");
+            format_add!(ft, "line", "{n}");
             format_defaults(ft, null_mut(), NonNull::new(s), NonNull::new(wl), Some(wp));
 
             let flag;

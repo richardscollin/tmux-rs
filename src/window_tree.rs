@@ -1066,7 +1066,7 @@ unsafe fn window_tree_get_key(
         } else {
             format_defaults(ft, null_mut(), s, wl, wp);
         }
-        format_add!(ft, c!("line"), "{line}");
+        format_add!(ft, "line", "{line}");
 
         let expanded = format_expand(ft, (*data.as_ptr()).key_format);
         let key = key_string_lookup_string(expanded);

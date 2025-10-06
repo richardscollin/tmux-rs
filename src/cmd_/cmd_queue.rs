@@ -262,7 +262,7 @@ pub unsafe fn cmdq_add_format_(state: *mut cmdq_state, key: *const u8, args: std
             (*state).formats =
                 format_create(null_mut(), null_mut(), FORMAT_NONE, format_flags::empty());
         }
-        format_add!((*state).formats, key, "{}", value);
+        format_add!((*state).formats, cstr_to_str(key), "{}", value);
     }
 }
 
@@ -280,7 +280,7 @@ pub unsafe fn cmdq_merge_formats(item: *mut cmdq_item, ft: *mut format_tree) {
     unsafe {
         if !(*item).cmd.is_null() {
             let entry = cmd_get_entry((*item).cmd);
-            format_add!(ft, c!("command"), "{}", entry.name);
+            format_add!(ft, "command", "{}", entry.name);
         }
 
         if !(*(*item).state).formats.is_null() {

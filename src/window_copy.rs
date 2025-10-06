@@ -6634,7 +6634,7 @@ unsafe fn window_copy_acquire_cursor_down(
     no_reset: i32,
 ) {
     unsafe {
-        let cy = py - hsize + oy;
+        let cy = oy + py - hsize;
         let yy = sy - 1;
         let mut ny;
         let nd;

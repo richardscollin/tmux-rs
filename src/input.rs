@@ -1070,10 +1070,10 @@ fn input_parse(ictx: *mut input_ctx, buf: *mut u8, len: usize) {
 
             // Execute the handler, if any. Don't switch state if it
             // returns non-zero.
-            if let Some(handler) = itr.as_ref().unwrap().handler
-                && handler(ictx) != 0
-            {
-                continue;
+            if let Some(handler) = itr.as_ref().unwrap().handler {
+                if handler(ictx) != 0 {
+                    continue;
+                }
             }
 
             // And switch state, if necessary.
@@ -2349,10 +2349,10 @@ unsafe fn input_dcs_dispatch(ictx: *mut input_ctx) -> i32 {
             use crate::screen_write::screen_write_sixelimage;
 
             let w = (*wp).window;
-            if *buf == b'q'
-                && let Some(si) = NonNull::new(sixel_parse(buf, len, (*w).xpixel, (*w).ypixel))
-            {
-                screen_write_sixelimage(sctx, si.as_ptr(), (*ictx).cell.cell.bg as _);
+            if *buf == b'q' {
+                if let Some(si) = NonNull::new(sixel_parse(buf, len, (*w).xpixel, (*w).ypixel)) {
+                    screen_write_sixelimage(sctx, si.as_ptr(), (*ictx).cell.cell.bg as _);
+                }
             }
         }
 

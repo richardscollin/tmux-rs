@@ -100,27 +100,27 @@ impl<T> UnwrapOrDefault for Option<*const T> {
 }
 
 pub trait IsMultipleOf {
-    fn is_multiple_of(self, rhs: u32) -> bool
+    fn is_multiple_of_(self, rhs: u32) -> bool
     where
         Self: Sized;
 }
 
 impl IsMultipleOf for u32 {
-    fn is_multiple_of(self, rhs: u32) -> bool {
+    fn is_multiple_of_(self, rhs: u32) -> bool {
         if rhs == 0 { false } else { self % rhs == 0 }
     }
 }
 
 pub trait OffsetFromUnsigned {
     type OffsetFrom;
-    unsafe fn offset_from_unsigned(self, rhs: Self::OffsetFrom) -> usize
+    unsafe fn offset_from_unsigned_(self, rhs: Self::OffsetFrom) -> usize
     where
         Self: Sized;
 }
 
 impl<T> OffsetFromUnsigned for NonNull<T> {
     type OffsetFrom = NonNull<T>;
-    unsafe fn offset_from_unsigned(self, rhs: Self::OffsetFrom) -> usize
+    unsafe fn offset_from_unsigned_(self, rhs: Self::OffsetFrom) -> usize
     where
         Self: Sized,
     {
@@ -130,7 +130,7 @@ impl<T> OffsetFromUnsigned for NonNull<T> {
 
 impl<T> OffsetFromUnsigned for *mut T {
     type OffsetFrom = *const T;
-    unsafe fn offset_from_unsigned(self, rhs: Self::OffsetFrom) -> usize
+    unsafe fn offset_from_unsigned_(self, rhs: Self::OffsetFrom) -> usize
     where
         Self: Sized,
     {
@@ -140,7 +140,7 @@ impl<T> OffsetFromUnsigned for *mut T {
 
 impl<T> OffsetFromUnsigned for *const T {
     type OffsetFrom = *const T;
-    unsafe fn offset_from_unsigned(self, rhs: Self::OffsetFrom) -> usize
+    unsafe fn offset_from_unsigned_(self, rhs: Self::OffsetFrom) -> usize
     where
         Self: Sized,
     {

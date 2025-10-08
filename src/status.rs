@@ -1909,10 +1909,10 @@ unsafe fn status_prompt_complete_list(s: *const u8, at_start: i32) -> Vec<String
             if cmdent.name.starts_with(s) {
                 status_prompt_add_list(&mut list, cmdent.name);
             }
-            if let Some(alias) = cmdent.alias
-                && alias.starts_with(s)
-            {
-                status_prompt_add_list(&mut list, alias);
+            if let Some(alias) = cmdent.alias {
+                if alias.starts_with(s) {
+                    status_prompt_add_list(&mut list, alias);
+                }
             }
         }
         let o = options_get_only(GLOBAL_OPTIONS, "command-alias");

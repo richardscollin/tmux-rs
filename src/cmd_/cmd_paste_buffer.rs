@@ -55,9 +55,8 @@ unsafe fn cmd_paste_buffer_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
             pb = paste_get_top(null_mut());
         }
 
-        if let Some(pb) = NonNull::new(pb)
-            && !(*wp).flags.intersects(window_pane_flags::PANE_INPUTOFF)
-        {
+        if !pb.is_null() && !(*wp).flags.intersects(window_pane_flags::PANE_INPUTOFF) {
+            let pb = NonNull::new(pb).unwrap();
             let mut sepstr = args_get(args, b's');
             if sepstr.is_null() {
                 if args_has(args, 'r') {
@@ -105,10 +104,8 @@ unsafe fn cmd_paste_buffer_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
             }
         }
 
-        if let Some(non_null_pb) = NonNull::new(pb)
-            && args_has(args, 'd')
-        {
-            paste_free(non_null_pb);
+        if !pb.is_null() && args_has(args, 'd') {
+            paste_free(NonNull::new_unchecked(pb));
         }
 
         cmd_retval::CMD_RETURN_NORMAL

@@ -851,8 +851,8 @@ pub unsafe fn server_client_check_mouse(c: *mut client, event: *mut key_event) -
                 let mut wp = null_mut();
 
                 // Try the pane borders if not zoomed.
-                if !(*(*(*s).curw).window).flags.intersects(window_flag::ZOOMED)
-                    && let Some(wp_) = tailq_foreach::<_, discr_entry>(
+                if !(*(*(*s).curw).window).flags.intersects(window_flag::ZOOMED) {
+                    if let Some(wp_) = tailq_foreach::<_, discr_entry>(
                         &raw mut (*(*(*s).curw).window).panes,
                     )
                     .find(|wp| {
@@ -863,10 +863,10 @@ pub unsafe fn server_client_check_mouse(c: *mut client, event: *mut key_event) -
                             || ((*wp).yoff + (*wp).sy == py
                                 && (*wp).xoff <= 1 + px
                                 && (*wp).xoff + (*wp).sx >= px)
-                    })
-                {
-                    wp = wp_.as_ptr();
-                    where_ = where_::Border;
+                    }) {
+                        wp = wp_.as_ptr();
+                        where_ = where_::Border;
+                    }
                 }
 
                 // Otherwise try inside the pane.
@@ -2656,10 +2656,10 @@ pub unsafe fn server_client_check_modes(c: *mut client) {
             return;
         }
         for wp in tailq_foreach::<_, discr_entry>(&raw mut (*w).panes).map(NonNull::as_ptr) {
-            if let Some(wme) = NonNull::new(tailq_first(&raw mut (*wp).modes))
-                && let Some(update) = (*(*wme.as_ptr()).mode).update
-            {
-                update(wme);
+            if let Some(wme) = NonNull::new(tailq_first(&raw mut (*wp).modes)) {
+                if let Some(update) = (*(*wme.as_ptr()).mode).update {
+                    update(wme);
+                }
             }
         }
     }
@@ -3237,6 +3237,7 @@ pub unsafe fn server_client_dispatch_shell(c: *mut client) {
 /// Get client working directory.
 pub unsafe fn server_client_get_cwd(c: *const client, s: *const session) -> *const u8 {
     unsafe {
+        let session;
         if !CFG_FINISHED.load(atomic::Ordering::Acquire) && !CFG_CLIENT.is_null() {
             (*CFG_CLIENT).cwd
         } else if !c.is_null() && (*c).session.is_null() && !(*c).cwd.is_null() {
@@ -3244,9 +3245,10 @@ pub unsafe fn server_client_get_cwd(c: *const client, s: *const session) -> *con
         } else if !s.is_null() && !(*s).cwd.is_null() {
             (*s).cwd
         } else if !c.is_null()
-            && let session = (*c).session
-            && !session.is_null()
-            && !(*session).cwd.is_null()
+            && ({
+                session = (*c).session;
+                !session.is_null() && !(*session).cwd.is_null()
+            })
         {
             (*session).cwd
         } else if let Some(home) = find_home() {

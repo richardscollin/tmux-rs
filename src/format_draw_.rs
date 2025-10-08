@@ -812,7 +812,7 @@ unsafe fn format_leading_hashes(cp: *const u8, n: *mut u32, width: *mut u32) -> 
             return cp;
         }
         if *cp.add(*n as usize) != b'[' {
-            if (*n).is_multiple_of(2) {
+            if (*n).is_multiple_of_(2) {
                 *width = *n / 2;
             } else {
                 *width = *n / 2 + 1;
@@ -820,7 +820,7 @@ unsafe fn format_leading_hashes(cp: *const u8, n: *mut u32, width: *mut u32) -> 
             return cp.add(*n as usize);
         }
         *width = *n / 2;
-        if (*n).is_multiple_of(2) {
+        if (*n).is_multiple_of_(2) {
             // An even number of #s means that all #s are escaped, so not a
             // style. The caller should not skip this. Return pointing to
             // the [.
@@ -940,7 +940,7 @@ pub unsafe fn format_draw(
                     while *cp.add(n as usize) == b'#' {
                         n += 1;
                     }
-                    let even = n.is_multiple_of(2);
+                    let even = n.is_multiple_of_(2);
                     if *cp.add(n as usize) != b'[' {
                         cp = cp.add(n as usize);
                         n = n.div_ceil(2);
@@ -1374,6 +1374,7 @@ pub unsafe fn format_width(expanded: *const u8) -> u32 {
 
         let mut ud: utf8_data = zeroed();
 
+        let mut more;
         while *cp != b'\0' {
             if *cp == b'#' {
                 let mut end = format_leading_hashes(cp, &raw mut n, &raw mut leading_width);
@@ -1386,9 +1387,10 @@ pub unsafe fn format_width(expanded: *const u8) -> u32 {
                     }
                     cp = end.add(1);
                 }
-            } else if let mut more = utf8_open(&raw mut ud, *cp)
-                && more == utf8_state::UTF8_MORE
-            {
+            } else if {
+                more = utf8_open(&raw mut ud, *cp);
+                more == utf8_state::UTF8_MORE
+            } {
                 while ({
                     cp = cp.add(1);
                     *cp != b'\0'
@@ -1429,6 +1431,7 @@ pub unsafe fn format_trim_left(expanded: *const u8, limit: u32) -> *mut u8 {
         let mut out: *mut u8 = xcalloc(2, strlen(expanded) + 1).as_ptr().cast();
         let copy = out;
 
+        let mut more;
         while *cp != b'\0' {
             if width >= limit {
                 break;
@@ -1458,9 +1461,10 @@ pub unsafe fn format_trim_left(expanded: *const u8, limit: u32) -> *mut u8 {
                     out = out.offset(end.add(1).offset_from(cp));
                     cp = end.add(1);
                 }
-            } else if let mut more = utf8_open(&raw mut ud, *cp)
-                && more == utf8_state::UTF8_MORE
-            {
+            } else if {
+                more = utf8_open(&raw mut ud, *cp);
+                more == utf8_state::UTF8_MORE
+            } {
                 while ({
                     cp = cp.add(1);
                     *cp != b'\0'
@@ -1512,6 +1516,7 @@ pub unsafe fn format_trim_right(expanded: *const u8, limit: u32) -> *mut u8 {
         }
         let skip: u32 = total_width - limit;
 
+        let mut more;
         let mut out: *mut u8 = xcalloc(2, strlen(expanded) + 1).as_ptr().cast();
         let copy: *mut u8 = out;
         while *cp != b'\0' {
@@ -1546,9 +1551,10 @@ pub unsafe fn format_trim_right(expanded: *const u8, limit: u32) -> *mut u8 {
                     out = out.offset(end.add(1).offset_from(cp));
                     cp = end.add(1);
                 }
-            } else if let mut more = utf8_open(&raw mut ud, *cp)
-                && more == utf8_state::UTF8_MORE
-            {
+            } else if {
+                more = utf8_open(&raw mut ud, *cp);
+                more == utf8_state::UTF8_MORE
+            } {
                 while ({
                     cp = cp.add(1);
                     *(cp) != b'\0'

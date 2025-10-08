@@ -104,12 +104,12 @@ unsafe fn cmd_set_buffer_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retv
         let mut bufsize = 0;
         let mut bufdata = null_mut();
 
-        if let Some(pb_non_null) = NonNull::new(pb)
-            && args_has(args, 'a')
-        {
-            olddata = paste_buffer_data_(pb_non_null, &mut bufsize);
-            bufdata = xmalloc(bufsize).as_ptr().cast();
-            memcpy_(bufdata, olddata, bufsize);
+        if let Some(pb_non_null) = NonNull::new(pb) {
+            if args_has(args, 'a') {
+                olddata = paste_buffer_data_(pb_non_null, &mut bufsize);
+                bufdata = xmalloc(bufsize).as_ptr().cast();
+                memcpy_(bufdata, olddata, bufsize);
+            }
         }
 
         bufdata = xrealloc_(bufdata, bufsize + newsize).as_ptr();

@@ -460,6 +460,7 @@ pub unsafe fn spawn_pane(sc: *mut spawn_context, cause: *mut *mut u8) -> *mut wi
                 break 'complete;
             }
 
+            let tmp;
             // Child process. Change to the working directory or home if that
             // fails.
             if std::env::set_current_dir(cstr_to_str((*new_wp).cwd)).is_ok() {
@@ -470,15 +471,17 @@ pub unsafe fn spawn_pane(sc: *mut spawn_context, cause: *mut *mut u8) -> *mut wi
                     "{}",
                     _s((*new_wp).cwd)
                 );
-            } else if let Some(tmp) = find_home()
-                && std::env::set_current_dir(tmp.to_str().expect("TODO")).is_ok()
-            {
+            } else if {
+                tmp = find_home();
+                tmp.is_some()
+                    && std::env::set_current_dir(tmp.unwrap().to_str().expect("TODO")).is_ok()
+            } {
                 environ_set!(
                     child,
                     c!("PWD"),
                     environ_flags::empty(),
                     "{}",
-                    tmp.to_str().unwrap()
+                    tmp.unwrap().to_str().unwrap()
                 );
             } else if std::env::set_current_dir(Path::new("/")).is_ok() {
                 environ_set!(child, c!("PWD"), environ_flags::empty(), "/");

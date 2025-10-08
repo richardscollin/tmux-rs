@@ -51,18 +51,21 @@ pub fn usage() -> ! {
 
 unsafe fn getshell() -> Cow<'static, CStr> {
     unsafe {
-        if let Ok(shell) = std::env::var("SHELL")
-            && let shell = CString::new(shell).unwrap()
-            && checkshell(Some(&shell))
-        {
-            return Cow::Owned(shell);
+        if let Ok(shell) = std::env::var("SHELL") {
+            let shell = CString::new(shell).unwrap();
+            if checkshell(Some(&shell)) {
+                return Cow::Owned(shell);
+            }
         }
 
-        if let Some(pw) = NonNull::new(getpwuid(getuid()))
-            && !(*pw.as_ptr()).pw_shell.is_null()
-            && checkshell(Some(CStr::from_ptr((*pw.as_ptr()).pw_shell)))
-        {
-            return Cow::Owned(CString::new(cstr_to_str((*pw.as_ptr()).pw_shell.cast())).unwrap());
+        if let Some(pw) = NonNull::new(getpwuid(getuid())) {
+            if !(*pw.as_ptr()).pw_shell.is_null()
+                && checkshell(Some(CStr::from_ptr((*pw.as_ptr()).pw_shell)))
+            {
+                return Cow::Owned(
+                    CString::new(cstr_to_str((*pw.as_ptr()).pw_shell.cast())).unwrap(),
+                );
+            }
         }
 
         Cow::Borrowed(CStr::from_ptr(_PATH_BSHELL.cast()))
@@ -546,15 +549,14 @@ pub unsafe fn tmux_main(mut argc: i32, mut argv: *mut *mut u8, _env: *mut *mut u
         // If socket is specified on the command-line with -S or -L, it is
         // used. Otherwise, $TMUX is checked and if that fails "default" is
         // used.
-        if path.is_null()
-            && label.is_null()
-            && let Ok(s) = std::env::var("TMUX")
-            && !s.is_empty()
-            && s.as_bytes()[0] != b','
-        {
-            let tmp: *mut u8 = xstrdup__(&s);
-            *tmp.add(strcspn(tmp, c!(","))) = b'\0';
-            path = tmp;
+        if path.is_null() && label.is_null() {
+            if let Ok(s) = std::env::var("TMUX") {
+                if !s.is_empty() && s.as_bytes()[0] != b',' {
+                    let tmp: *mut u8 = xstrdup__(&s);
+                    *tmp.add(strcspn(tmp, c!(","))) = b'\0';
+                    path = tmp;
+                }
+            }
         }
         if path.is_null() {
             path = make_label(label.cast(), &raw mut cause);

@@ -950,14 +950,14 @@ pub fn colour_palette_get(p: Option<&colour_palette>, mut c: i32) -> i32 {
 
     let c = c as usize;
 
-    if let Some(palette) = p.palette.as_ref()
-        && palette[c] != -1
+    if p.palette.as_ref().is_some_and(|palette| palette[c] != -1) {
+        p.palette.as_ref().unwrap()[c]
+    } else if p
+        .default_palette
+        .as_ref()
+        .is_some_and(|default_palette| default_palette[c] != -1)
     {
-        palette[c]
-    } else if let Some(default_palette) = p.default_palette.as_ref()
-        && default_palette[c] != -1
-    {
-        default_palette[c]
+        p.default_palette.as_ref().unwrap()[c]
     } else {
         -1
     }

@@ -26,24 +26,24 @@ pub static CMD_COMMAND_PROMPT_ENTRY: cmd_entry = cmd_entry {
     target: cmd_entry_flag::zeroed(),
 };
 
-struct cmd_command_prompt_prompt {
+pub(crate) struct cmd_command_prompt_prompt {
     input: *mut u8,
     prompt: *mut u8,
 }
 
-pub struct cmd_command_prompt_cdata<'a> {
-    item: *mut cmdq_item,
-    state: *mut args_command_state<'a>,
+pub(crate) struct cmd_command_prompt_cdata<'a> {
+    pub item: *mut cmdq_item,
+    pub state: *mut args_command_state<'a>,
 
-    flags: prompt_flags,
-    prompt_type: prompt_type,
+    pub flags: prompt_flags,
+    pub prompt_type: prompt_type,
 
-    prompts: *mut cmd_command_prompt_prompt,
-    count: u32,
-    current: u32,
+    pub prompts: *mut cmd_command_prompt_prompt,
+    pub count: u32,
+    pub current: u32,
 
-    argc: i32,
-    argv: *mut *mut u8,
+    pub argc: i32,
+    pub argv: *mut *mut u8,
 }
 
 fn cmd_command_prompt_args_parse(

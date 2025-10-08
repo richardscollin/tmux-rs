@@ -1566,10 +1566,10 @@ pub unsafe fn format_cb_client_user(ft: *mut format_tree) -> format_table_type {
     unsafe {
         if !(*ft).c.is_null() {
             let uid = proc_get_peer_uid((*(*ft).c).peer);
-            if uid != -1_i32 as uid_t
-                && let Some(pw) = NonNull::new(libc::getpwuid(uid))
-            {
-                return format!("{}", _s((*pw.as_ptr()).pw_name)).into();
+            if uid != -1_i32 as uid_t {
+                if let Some(pw) = NonNull::new(libc::getpwuid(uid)) {
+                    return format!("{}", _s((*pw.as_ptr()).pw_name)).into();
+                }
             }
         }
         format_table_type::None
@@ -1818,10 +1818,10 @@ pub unsafe fn format_cb_mouse_x(ft: *mut format_tree) -> format_table_type {
         let wp = cmd_mouse_pane(&raw mut (*ft).m, null_mut(), null_mut());
         let mut x: u32 = 0;
         let mut y: u32 = 0;
-        if let Some(wp) = wp
-            && cmd_mouse_at(wp.as_ptr(), &raw mut (*ft).m, &mut x, &mut y, 0) == 0
-        {
-            return format!("{x}").into();
+        if let Some(wp) = wp {
+            if cmd_mouse_at(wp.as_ptr(), &raw mut (*ft).m, &mut x, &mut y, 0) == 0 {
+                return format!("{x}").into();
+            }
         }
         if !(*ft).c.is_null() && (*(*ft).c).tty.flags.intersects(tty_flags::TTY_STARTED) {
             if (*ft).m.statusat == 0 && (*ft).m.y < (*ft).m.statuslines {
@@ -1844,10 +1844,10 @@ pub unsafe fn format_cb_mouse_y(ft: *mut format_tree) -> format_table_type {
         let wp = cmd_mouse_pane(&raw mut (*ft).m, null_mut(), null_mut());
         let mut x: u32 = 0;
         let mut y: u32 = 0;
-        if let Some(wp) = wp
-            && cmd_mouse_at(wp.as_ptr(), &raw mut (*ft).m, &mut x, &mut y, 0) == 0
-        {
-            return format!("{y}").into();
+        if let Some(wp) = wp {
+            if cmd_mouse_at(wp.as_ptr(), &raw mut (*ft).m, &mut x, &mut y, 0) == 0 {
+                return format!("{y}").into();
+            }
         }
         if !(*ft).c.is_null() && (*(*ft).c).tty.flags.intersects(tty_flags::TTY_STARTED) {
             if (*ft).m.statusat == 0 && (*ft).m.y < (*ft).m.statuslines {
@@ -3236,15 +3236,15 @@ pub unsafe fn format_each<T>(ft: *mut format_tree, cb: unsafe fn(&str, &str, *mu
                 let s = format!("{}", (*fe).time);
                 cb(cstr_to_str((*fe).key), &s, arg);
             } else {
-                if let Some(fe_cb) = (*fe).cb
-                    && (*fe).value.is_null()
-                {
-                    (*fe).value = match fe_cb(ft) {
-                        format_table_type::None => CString::default().into_raw().cast(),
-                        format_table_type::String(cow) => {
-                            CString::new(cow.into_owned()).unwrap().into_raw().cast()
+                if let Some(fe_cb) = (*fe).cb {
+                    if (*fe).value.is_null() {
+                        (*fe).value = match fe_cb(ft) {
+                            format_table_type::None => CString::default().into_raw().cast(),
+                            format_table_type::String(cow) => {
+                                CString::new(cow.into_owned()).unwrap().into_raw().cast()
+                            }
+                            format_table_type::Time(_timeval) => unreachable!("unreachable?"),
                         }
-                        format_table_type::Time(_timeval) => unreachable!("unreachable?"),
                     }
                 }
                 cb(cstr_to_str((*fe).key), cstr_to_str((*fe).value), arg);
@@ -3476,16 +3476,16 @@ fn format_find(
                     t = (*fe).time;
                     break 'found;
                 }
-                if let Some(cb) = (*fe).cb
-                    && (*fe).value.is_null()
-                {
-                    (*fe).value = match cb(ft) {
-                        format_table_type::None => CString::default().into_raw().cast(),
-                        format_table_type::String(cow) => {
-                            CString::new(cow.into_owned()).unwrap().into_raw().cast()
-                        }
-                        format_table_type::Time(_timeval) => unreachable!("unreachable?"),
-                    };
+                if let Some(cb) = (*fe).cb {
+                    if (*fe).value.is_null() {
+                        (*fe).value = match cb(ft) {
+                            format_table_type::None => CString::default().into_raw().cast(),
+                            format_table_type::String(cow) => {
+                                CString::new(cow.into_owned()).unwrap().into_raw().cast()
+                            }
+                            format_table_type::Time(_timeval) => unreachable!("unreachable?"),
+                        };
+                    }
                 }
                 found = xstrdup((*fe).value).as_ptr();
                 break 'found;
@@ -5328,10 +5328,10 @@ pub unsafe fn format_defaults_pane(ft: *mut format_tree, wp: *mut window_pane) {
         }
         (*ft).wp = wp;
 
-        if let Some(wme) = NonNull::new(tailq_first(&raw mut (*wp).modes))
-            && let Some(formats) = (*(*wme.as_ptr()).mode).formats
-        {
-            formats(wme.as_ptr(), ft);
+        if let Some(wme) = NonNull::new(tailq_first(&raw mut (*wp).modes)) {
+            if let Some(formats) = (*(*wme.as_ptr()).mode).formats {
+                formats(wme.as_ptr(), ft);
+            }
         }
     }
 }

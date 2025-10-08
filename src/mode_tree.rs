@@ -446,10 +446,10 @@ pub unsafe fn mode_tree_start(
         });
 
         let sort = args_get_(args, 'O');
-        if !sort.is_null()
-            && let Some(pos) = mtd.sort_list.iter().position(|e| strcaseeq_(sort, e))
-        {
-            mtd.sort_crit.field = pos as u32;
+        if !sort.is_null() {
+            if let Some(pos) = mtd.sort_list.iter().position(|e| strcaseeq_(sort, e)) {
+                mtd.sort_crit.field = pos as u32;
+            }
         }
         mtd.sort_crit.reversed = args_has(args, 'r');
 

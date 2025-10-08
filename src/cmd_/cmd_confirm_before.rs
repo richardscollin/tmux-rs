@@ -26,11 +26,11 @@ pub static CMD_CONFIRM_BEFORE_ENTRY: cmd_entry = cmd_entry {
     target: cmd_entry_flag::zeroed(),
 };
 
-pub struct cmd_confirm_before_data {
-    item: *mut cmdq_item,
-    cmdlist: *mut cmd_list,
-    confirm_key: u8,
-    default_yes: bool,
+pub(crate) struct cmd_confirm_before_data {
+    pub item: *mut cmdq_item,
+    pub cmdlist: *mut cmd_list,
+    pub confirm_key: u8,
+    pub default_yes: bool,
 }
 
 unsafe fn cmd_confirm_before_args_parse(_: *mut args, _: u32, _: *mut *mut u8) -> args_parse_type {

@@ -34,7 +34,7 @@ jobs:
         if: matrix.os == 'macos-latest'
         run: |
           brew update
-          brew install ncurses libevent
+          brew install ncurses # libevent is already installed in github runner
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
         with:

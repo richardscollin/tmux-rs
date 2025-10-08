@@ -1565,9 +1565,9 @@ unsafe fn window_tree_key(
                             }
                         }
                         window_tree_type::WINDOW_TREE_PANE => {
-                            if let Some(nwp) = nwp
-                                && window_pane_index(nwp.as_ptr(), &raw mut idx) == 0
-                            {
+                            if nwp.is_some_and(|nwp| {
+                                window_pane_index(nwp.as_ptr(), &raw mut idx) == 0
+                            }) {
                                 prompt = format_nul!("Kill pane {}? ", idx);
                             }
                         }

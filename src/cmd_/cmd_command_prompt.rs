@@ -31,8 +31,7 @@ struct cmd_command_prompt_prompt {
     prompt: *mut u8,
 }
 
-#[derive(Default)]
-struct cmd_command_prompt_cdata<'a> {
+pub struct cmd_command_prompt_cdata<'a> {
     item: *mut cmdq_item,
     state: *mut args_command_state<'a>,
 

@@ -435,7 +435,7 @@ pub unsafe fn mode_tree_start(
             offset: Default::default(),
             current: Default::default(),
             screen: zeroed(),
-            search: Default::default(),
+            search: null_mut(),
             filter: if args_has(args, 'f') {
                 xstrdup(args_get_(args, 'f')).as_ptr()
             } else {

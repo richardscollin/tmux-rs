@@ -877,7 +877,7 @@ pub unsafe fn args_make_commands_free(state: *mut args_command_state) {
                 .pi
                 .file
                 .map(str::as_ptr)
-                .unwrap_or_default()
+                .unwrap_or_default_()
                 .cast_mut(),
         ); // TODO casting away const
         free_((*state).cmd);

@@ -26,7 +26,6 @@ pub static CMD_CONFIRM_BEFORE_ENTRY: cmd_entry = cmd_entry {
     target: cmd_entry_flag::zeroed(),
 };
 
-#[derive(Default)]
 pub struct cmd_confirm_before_data {
     item: *mut cmdq_item,
     cmdlist: *mut cmd_list,

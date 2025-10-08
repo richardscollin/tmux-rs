@@ -1679,7 +1679,7 @@ pub unsafe fn window_copy_cmd_previous_matching_bracket(
                     np -= 1;
                     continue 'outer;
                 }
-                let start = open[cp.offset_from_unsigned((&raw const close).cast())];
+                let start = open[cp.offset_from_unsigned_((&raw const close).cast())];
 
                 // Walk backward until the matching bracket is reached.
                 let mut n: u32 = 1;
@@ -1827,7 +1827,7 @@ pub unsafe fn window_copy_cmd_next_matching_bracket(
                     }
                     continue 'retry;
                 }
-                let end = close[cp.offset_from_unsigned((&raw const open).cast())];
+                let end = close[cp.offset_from_unsigned_((&raw const open).cast())];
 
                 // Walk forward until the matching bracket is reached.
                 let mut n = 1;
@@ -5332,7 +5332,7 @@ pub unsafe fn window_copy_get_selection(wme: *mut window_mode_entry, len: *mut u
         if (*data).screen.sel.is_null() && (*data).lineflag == line_sel::LINE_SEL_NONE {
             buf = window_copy_match_at_cursor(data)
                 .map(|s| String::leak(s).as_mut_ptr())
-                .unwrap_or_default();
+                .unwrap_or_default_();
             if !buf.is_null() {
                 *len = strlen(buf);
             } else {

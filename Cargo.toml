@@ -8,7 +8,6 @@ include      = ["/src", "COPYING", "README.md", "build.rs"]
 keywords     = ["tmux"]
 license      = "ISC"
 repository   = "https://github.com/richardscollin/tmux-rs"
-rust-version = "1.88" # let chains
 description  = "A Rust port of tmux"
 
 # Note: most of these features are not supported yet

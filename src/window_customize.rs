@@ -106,7 +106,7 @@ unsafe fn window_customize_get_tag(
 ) -> u64 {
     unsafe {
         if let Some(oe) = NonNull::new(oe.cast_mut()) {
-            let offset = oe.offset_from_unsigned(
+            let offset = oe.offset_from_unsigned_(
                 NonNull::new((&raw const OPTIONS_TABLE) as *mut options_table_entry).unwrap(),
             ) as u64;
             (2u64 << 62) | (offset << 32) | ((idx as u64 + 1) << 1) | 1

@@ -1155,7 +1155,7 @@ unsafe fn status_prompt_paste(c: *mut client) -> i32 {
                 i += 1;
             }
             (*udp).size = 0;
-            n = udp.offset_from_unsigned(ud);
+            n = udp.offset_from_unsigned_(ud);
         }
         if n != 0 {
             (*c).prompt_buffer =
@@ -1252,7 +1252,7 @@ unsafe fn status_prompt_replace_complete(c: *mut client, s: Option<&str>) -> i32
             completion = status_prompt_complete(
                 c,
                 (&raw const word).cast(),
-                first.offset_from_unsigned((*c).prompt_buffer) as u32,
+                first.offset_from_unsigned_((*c).prompt_buffer) as u32,
             );
             if completion.is_none() {
                 return 0;
@@ -1261,13 +1261,13 @@ unsafe fn status_prompt_replace_complete(c: *mut client, s: Option<&str>) -> i32
         };
 
         // Trim out word.
-        let n: usize = size - last.offset_from_unsigned((*c).prompt_buffer) + 1; /* with \0 */
+        let n: usize = size - last.offset_from_unsigned_((*c).prompt_buffer) + 1; /* with \0 */
         libc::memmove(first.cast(), last.cast(), n * size_of::<utf8_data>());
-        size -= last.offset_from_unsigned(first);
+        size -= last.offset_from_unsigned_(first);
 
         // Insert the new word.
         size += s_str.len();
-        let off: usize = first.offset_from_unsigned((*c).prompt_buffer);
+        let off: usize = first.offset_from_unsigned_((*c).prompt_buffer);
         (*c).prompt_buffer = xreallocarray_::<utf8_data>((*c).prompt_buffer, size + 1).as_ptr();
         first = (*c).prompt_buffer.add(off);
         libc::memmove(
@@ -1278,7 +1278,7 @@ unsafe fn status_prompt_replace_complete(c: *mut client, s: Option<&str>) -> i32
         for (idx, &byte) in s_str.as_bytes().iter().enumerate() {
             utf8_set(first.add(idx), byte);
         }
-        (*c).prompt_index = first.offset_from_unsigned((*c).prompt_buffer) + s_str.len();
+        (*c).prompt_index = first.offset_from_unsigned_((*c).prompt_buffer) + s_str.len();
 
         1
     }
@@ -1926,7 +1926,7 @@ unsafe fn status_prompt_complete_list(s: *const u8, at_start: i32) -> Vec<String
                     if cp.is_null() {
                         break 'next;
                     }
-                    let valuelen = cp.offset_from_unsigned(value);
+                    let valuelen = cp.offset_from_unsigned_(value);
                     if s.len() > valuelen || !cstr_to_str(value).starts_with(s) {
                         break 'next;
                     }

@@ -66,7 +66,7 @@ pub Format: NonNull<u8> = {
 
 pub Expanded: NonNull<u8> = {
     <arg1:Format> => unsafe {
-      let pi = (*ps.as_ptr()).input.as_mut().map(|e|&raw mut *e).unwrap_or_default();
+      let pi = (*ps.as_ptr()).input.as_mut().map(|e|&raw mut *e).unwrap_or_default_();
       let c = (*pi).c;
       let flags = format_flags::FORMAT_NOJOBS;
 
@@ -130,7 +130,7 @@ pub IfElse: () = {
       let scope = xcalloc1::<cmd_parse_scope>();
       scope.flag = !(*ps.as_ptr()).scope.as_ref().unwrap().flag;
 
-      free_((*ps.as_ptr()).scope.take().map(|p|p as *mut cmd_parse_scope).unwrap_or_default());
+      free_((*ps.as_ptr()).scope.take().map(|p|p as *mut cmd_parse_scope).unwrap_or_default_());
       (*ps.as_ptr()).scope = Some(scope);
     }
 };
@@ -142,7 +142,7 @@ pub IfElif: bool = {
       scope.flag = value;
       free_(arg2.as_ptr());
 
-      free_((*ps.as_ptr()).scope.take().map(|p|p as *mut cmd_parse_scope).unwrap_or_default());
+      free_((*ps.as_ptr()).scope.take().map(|p|p as *mut cmd_parse_scope).unwrap_or_default_());
       (*ps.as_ptr()).scope = Some(scope);
 
       value
@@ -151,7 +151,7 @@ pub IfElif: bool = {
 
 pub IfClose: () = {
     "%endif" => unsafe {
-      free_((*ps.as_ptr()).scope.take().map(|p|p as *mut cmd_parse_scope).unwrap_or_default());
+      free_((*ps.as_ptr()).scope.take().map(|p|p as *mut cmd_parse_scope).unwrap_or_default_());
 
       // TODO this breaks aliasing rules
       let scope = tailq_first(&mut (*ps.as_ptr()).stack);

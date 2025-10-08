@@ -1019,7 +1019,7 @@ pub unsafe fn input_set_state(ictx: *mut input_ctx, itr: *const input_transition
             exit(ictx);
         }
 
-        (*ictx).state = (*itr).state.map(|e| &raw const *e).unwrap_or_default();
+        (*ictx).state = (*itr).state.map(|e| &raw const *e).unwrap_or_default_();
 
         if let Some(enter) = (*(*ictx).state).enter {
             enter(ictx);
@@ -1078,7 +1078,7 @@ fn input_parse(ictx: *mut input_ctx, buf: *mut u8, len: usize) {
 
             // And switch state, if necessary.
             if itr.as_ref().unwrap().state.is_some() {
-                input_set_state(ictx, itr.map(|e| &raw const *e).unwrap_or_default());
+                input_set_state(ictx, itr.map(|e| &raw const *e).unwrap_or_default_());
             }
 
             // If not in ground state, save input.
@@ -2683,11 +2683,12 @@ unsafe fn input_osc_8(ictx: *mut input_ctx, p: *mut u8) {
                 end = strpbrk(start, c!(":;"));
                 !end.is_null()
             } {
-                if end.offset_from_unsigned(start) >= 4 && libc::strncmp(start, c!("id="), 3) == 0 {
+                if end.offset_from_unsigned_(start) >= 4 && libc::strncmp(start, c!("id="), 3) == 0
+                {
                     if !id.is_null() {
                         break 'bad;
                     }
-                    id = xstrndup(start.add(3), end.offset_from_unsigned(start) - 3).as_ptr();
+                    id = xstrndup(start.add(3), end.offset_from_unsigned_(start) - 3).as_ptr();
                 }
 
                 // The first ; is the end of parameters and start of the URI.

@@ -207,7 +207,7 @@ pub unsafe fn cmd_refresh_client_clipboard(self_: *mut cmd, item: *mut cmdq_item
             if cmd_find_target(
                 &raw mut fs,
                 item,
-                p,
+                cstr_to_str_(p),
                 cmd_find_type::CMD_FIND_PANE,
                 cmd_find_flags::empty(),
             ) != 0

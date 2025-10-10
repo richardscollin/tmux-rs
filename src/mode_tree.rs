@@ -605,7 +605,7 @@ pub unsafe fn mode_tree_add(
     parent: *mut mode_tree_item,
     itemdata: *mut c_void,
     tag: u64,
-    name: *const u8,
+    name: &str,
     text: *const u8,
     expanded: Option<bool>,
 ) -> *mut mode_tree_item {
@@ -617,7 +617,7 @@ pub unsafe fn mode_tree_add(
         (*mti).itemdata = itemdata;
 
         (*mti).tag = tag;
-        (*mti).name = xstrdup(name).as_ptr();
+        (*mti).name = xstrdup__(name);
         if !text.is_null() {
             (*mti).text = xstrdup(text).as_ptr();
         }

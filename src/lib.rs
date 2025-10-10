@@ -1553,7 +1553,7 @@ struct environ_entry {
 /// Client session.
 #[repr(C)]
 struct session_group {
-    name: *const u8,
+    name: Cow<'static, str>,
     sessions: tailq_head<session>,
 
     entry: rb_entry<session_group>,
@@ -1566,7 +1566,7 @@ const SESSION_ALERTED: i32 = 0x2;
 #[repr(C)]
 struct session {
     id: u32,
-    name: *mut u8,
+    name: Cow<'static, str>,
     cwd: *mut u8,
 
     creation_time: timeval,
@@ -2752,12 +2752,19 @@ pub(crate) fn i32_to_ordering(value: i32) -> std::cmp::Ordering {
 }
 
 pub(crate) unsafe fn cstr_to_str<'a>(ptr: *const u8) -> &'a str {
+    unsafe { cstr_to_str_(ptr).unwrap() }
+}
+
+pub(crate) unsafe fn cstr_to_str_<'a>(ptr: *const u8) -> Option<&'a str> {
     unsafe {
+        if ptr.is_null() {
+            return None;
+        }
         let len = libc::strlen(ptr);
 
         let bytes = std::slice::from_raw_parts(ptr.cast::<u8>(), len);
 
-        std::str::from_utf8(bytes).expect("bad cstr_to_str")
+        Some(std::str::from_utf8(bytes).expect("bad cstr_to_str"))
     }
 }
 

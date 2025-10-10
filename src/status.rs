@@ -2159,13 +2159,8 @@ unsafe fn status_prompt_complete_window_menu(
                 *list.add(size) = format_nul!("{}", (*wl).idx);
                 size += 1;
             } else {
-                tmp = format_nul!(
-                    "{}:{} ({})",
-                    _s((*s).name),
-                    (*wl).idx,
-                    _s((*(*wl).window).name),
-                );
-                *list.add(size) = format_nul!("{}:{}", _s((*s).name), (*wl).idx);
+                tmp = format_nul!("{}:{} ({})", (*s).name, (*wl).idx, _s((*(*wl).window).name),);
+                *list.add(size) = format_nul!("{}:{}", (*s).name, (*wl).idx);
                 size += 1;
             }
             item.name = SyncCharPtr::from_ptr(tmp);
@@ -2261,9 +2256,18 @@ unsafe fn status_prompt_complete_session(
         let mut n: [u8; 11] = [0; 11];
 
         for loop_ in rb_foreach(&raw mut SESSIONS).map(NonNull::as_ptr) {
-            if *s == b'\0' || strncmp((*loop_).name, s, strlen(s)) == 0 {
+            if *s == b'\0'
+                || strncmp(
+                    CString::new((*loop_).name.to_string())
+                        .expect("TODO remove this allocation")
+                        .as_ptr()
+                        .cast(),
+                    s,
+                    strlen(s),
+                ) == 0
+            {
                 *list = xreallocarray_(*list, (*size) as usize + 2).as_ptr();
-                *(*list).add(*size as usize) = format_nul!("{}:", _s((*loop_).name));
+                *(*list).add(*size as usize) = format_nul!("{}:", (*loop_).name);
                 (*size) += 1;
             } else if *s == b'$' {
                 _ = xsnprintf_!((&raw mut n).cast(), n.len(), "{}", (*loop_).id);
@@ -2356,7 +2360,7 @@ unsafe fn status_prompt_complete(c: *mut client, word: *const u8, mut offset: u3
                 } else {
                     copy = xstrdup(s).as_ptr();
                     *libc::strchr(copy, b':' as i32) = b'\0';
-                    session = session_find(copy);
+                    session = session_find(cstr_to_str(copy));
                     free_(copy);
                     if session.is_null() {
                         break 'found;

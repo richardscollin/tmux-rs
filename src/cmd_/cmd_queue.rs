@@ -567,7 +567,7 @@ pub unsafe fn cmdq_find_flag(
         }
 
         let value = args_get(cmd_get_args((*item).cmd), (*flag).flag);
-        if cmd_find_target(fs, item, value, (*flag).type_, (*flag).flags) != 0 {
+        if cmd_find_target(fs, item, cstr_to_str_(value), (*flag).type_, (*flag).flags) != 0 {
             cmd_find_clear_state(fs, cmd_find_flags::empty());
             return cmd_retval::CMD_RETURN_ERROR;
         }
@@ -642,26 +642,26 @@ pub unsafe fn cmdq_fire_command(item: *mut cmdq_item) -> cmd_retval {
             cmdq_guard(item, c!("begin"), flags);
 
             if (*item).client.is_null() {
-                (*item).client = cmd_find_client(item, null_mut(), 1);
+                (*item).client = cmd_find_client(item, None, 1);
             }
 
             if entry.flags.intersects(cmd_flag::CMD_CLIENT_CANFAIL) {
                 quiet = 1;
             }
             if entry.flags.intersects(cmd_flag::CMD_CLIENT_CFLAG) {
-                tc = cmd_find_client(item, args_get_(args, 'c'), quiet);
+                tc = cmd_find_client(item, cstr_to_str_(args_get_(args, 'c')), quiet);
                 if tc.is_null() && quiet == 0 {
                     retval = cmd_retval::CMD_RETURN_ERROR;
                     break 'out;
                 }
             } else if entry.flags.intersects(cmd_flag::CMD_CLIENT_TFLAG) {
-                tc = cmd_find_client(item, args_get_(args, 't'), quiet);
+                tc = cmd_find_client(item, cstr_to_str_(args_get_(args, 't')), quiet);
                 if tc.is_null() && quiet == 0 {
                     retval = cmd_retval::CMD_RETURN_ERROR;
                     break 'out;
                 }
             } else {
-                tc = cmd_find_client(item, null_mut(), 1);
+                tc = cmd_find_client(item, None, 1);
             }
             (*item).target_client = tc;
 

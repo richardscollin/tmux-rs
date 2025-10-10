@@ -76,7 +76,6 @@ unsafe fn cmd_new_session_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
         let mut cause = null_mut();
         let mut cwd = null_mut();
         let cp;
-        let mut newname = null_mut();
         let name;
         let mut prefix = null_mut();
         let mut detached;
@@ -103,27 +102,27 @@ unsafe fn cmd_new_session_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
                 return cmd_retval::CMD_RETURN_ERROR;
             }
 
+            let mut newname = None;
             tmp = args_get_(args, 's');
             if !tmp.is_null() {
                 name = format_single(item, tmp, c, null_mut(), null_mut(), null_mut());
                 newname = session_check_name(name);
-                if newname.is_null() {
+                if newname.is_none() {
                     cmdq_error!(item, "invalid session: {}", _s(name));
                     free_(name);
                     return cmd_retval::CMD_RETURN_ERROR;
                 }
-                free_(name);
             }
             if args_has(args, 'A') {
-                as_ = if !newname.is_null() {
-                    session_find(newname)
+                as_ = if let Some(nn) = newname.as_deref() {
+                    session_find(nn)
                 } else {
                     (*target).s
                 };
                 if !as_.is_null() {
                     retval = cmd_attach_session(
                         item,
-                        (*as_).name,
+                        Some(&(*as_).name),
                         args_has(args, 'D'),
                         args_has(args, 'X'),
                         false,
@@ -131,12 +130,13 @@ unsafe fn cmd_new_session_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
                         args_has(args, 'E'),
                         args_get(args, b'f'),
                     );
-                    free_(newname);
                     return retval;
                 }
             }
-            if !newname.is_null() && !session_find(newname).is_null() {
-                cmdq_error!(item, "duplicate session: {}", _s(newname));
+            if let Some(newname) = newname.as_deref()
+                && !session_find(newname).is_null()
+            {
+                cmdq_error!(item, "duplicate session: {newname}");
                 break 'fail;
             }
 
@@ -145,16 +145,18 @@ unsafe fn cmd_new_session_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
             if !group.is_null() {
                 groupwith = (*target).s;
                 sg = if groupwith.is_null() {
-                    session_group_find(group)
+                    session_group_find(cstr_to_str(group))
                 } else {
                     session_group_contains(groupwith)
                 };
                 if !sg.is_null() {
-                    prefix = xstrdup((*sg).name).as_ptr();
+                    prefix = xstrdup__(&(*sg).name);
                 } else if !groupwith.is_null() {
-                    prefix = xstrdup((*groupwith).name).as_ptr();
+                    prefix = xstrdup__(&(*groupwith).name);
                 } else {
-                    prefix = session_check_name(group);
+                    prefix = session_check_name(group)
+                        .map(|s| CString::new(s).unwrap().into_raw().cast())
+                        .unwrap_or_default();
                     if prefix.is_null() {
                         cmdq_error!(item, "invalid session group: {}", _s(group));
                         break 'fail;
@@ -299,7 +301,7 @@ unsafe fn cmd_new_session_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
                 environ_put(env, (*av).union_.string, environ_flags::empty());
                 av = args_next_value(av);
             }
-            s = session_create(prefix, newname, cwd, env, oo, tiop);
+            s = session_create(prefix, newname.as_deref(), cwd, env, oo, tiop);
 
             // Spawn the initial window.
             sc.item = item;
@@ -328,10 +330,10 @@ unsafe fn cmd_new_session_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
             if !group.is_null() {
                 if sg.is_null() {
                     if !groupwith.is_null() {
-                        sg = session_group_new((*groupwith).name);
+                        sg = session_group_new(&(*groupwith).name);
                         session_group_add(sg, groupwith);
                     } else {
-                        sg = session_group_new(group);
+                        sg = session_group_new(cstr_to_str(group));
                     }
                 }
                 session_group_add(sg, s);
@@ -389,7 +391,7 @@ unsafe fn cmd_new_session_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
                 cmd_free_argv(sc.argc, sc.argv);
             }
             free_(cwd);
-            free_(newname);
+            drop(newname);
             free_(prefix);
             return cmd_retval::CMD_RETURN_NORMAL;
         }
@@ -400,7 +402,7 @@ unsafe fn cmd_new_session_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
         }
 
         free_(cwd);
-        free_(newname);
+        // newname = None;
         free_(prefix);
         cmd_retval::CMD_RETURN_ERROR
     }

@@ -105,8 +105,7 @@ pub unsafe fn spawn_window(sc: *mut spawn_context, cause: *mut *mut u8) -> *mut 
                     }
                 }
                 if !wp.is_null() {
-                    *cause =
-                        format_nul!("window {}:{} still active", _s((*s).name), (*(*sc).wl).idx,);
+                    *cause = format_nul!("window {}:{} still active", (*s).name, (*(*sc).wl).idx,);
                     return null_mut();
                 }
             }
@@ -277,7 +276,7 @@ pub unsafe fn spawn_pane(sc: *mut spawn_context, cause: *mut *mut u8) -> *mut wi
                     window_pane_index((*sc).wp0, &raw mut idx);
                     *cause = format_nul!(
                         "pane {}:{}.{} still active",
-                        _s((*s).name),
+                        (*s).name,
                         (*(*sc).wl).idx,
                         idx
                     );

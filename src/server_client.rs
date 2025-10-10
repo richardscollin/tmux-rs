@@ -547,7 +547,7 @@ pub unsafe fn server_client_detach(c: *mut client, msgtype: msgtype) {
 
         (*c).exit_type = exit_type::CLIENT_EXIT_DETACH;
         (*c).exit_msgtype = msgtype;
-        (*c).exit_session = xstrdup((*s).name).as_ptr();
+        (*c).exit_session = xstrdup__(&(*s).name);
     }
 }
 
@@ -1769,7 +1769,7 @@ pub unsafe fn server_client_assume_paste(s: *mut session) -> bool {
         if tv.tv_sec == 0 && tv.tv_usec < t as libc::suseconds_t * 1000 {
             log_debug!(
                 "session {} pasting (flag {})",
-                _s((*s).name),
+                (*s).name,
                 ((*s).flags & SESSION_PASTING != 0) as i32
             );
             if (*s).flags & SESSION_PASTING != 0 {
@@ -1778,7 +1778,7 @@ pub unsafe fn server_client_assume_paste(s: *mut session) -> bool {
             (*s).flags |= SESSION_PASTING;
             return false;
         }
-        log_debug!("session {} not pasting", _s((*s).name));
+        log_debug!("session {} not pasting", (*s).name);
         (*s).flags &= !SESSION_PASTING;
 
         false

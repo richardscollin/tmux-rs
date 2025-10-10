@@ -231,13 +231,13 @@ pub unsafe fn winlink_stack_remove(stack: *mut winlink_stack, wl: *mut winlink) 
     }
 }
 
-pub unsafe fn window_find_by_id_str(s: *const u8) -> *mut window {
+pub unsafe fn window_find_by_id_str(s: &str) -> *mut window {
     unsafe {
-        if *s != b'@' {
+        if !s.starts_with('@') {
             return null_mut();
         }
 
-        let Ok(id) = strtonum(s.wrapping_add(1), 0, u32::MAX) else {
+        let Ok(id) = strtonum_(&s[1..], 0, u32::MAX) else {
             return null_mut();
         };
 
@@ -635,7 +635,7 @@ pub unsafe fn window_get_active_at(w: *mut window, x: u32, y: u32) -> *mut windo
     }
 }
 
-pub unsafe fn window_find_string(w: *mut window, s: *const u8) -> *mut window_pane {
+pub unsafe fn window_find_string(w: *mut window, s: &str) -> *mut window_pane {
     unsafe {
         let mut top: u32 = 0;
         let mut bottom: u32 = (*w).sy - 1;
@@ -651,24 +651,24 @@ pub unsafe fn window_find_string(w: *mut window, s: *const u8) -> *mut window_pa
             _ => (),
         }
 
-        if strcaseeq_(s, "top") {
+        if s.eq_ignore_ascii_case("top") {
             y = top;
-        } else if strcaseeq_(s, "bottom") {
+        } else if s.eq_ignore_ascii_case("bottom") {
             y = bottom;
-        } else if strcaseeq_(s, "left") {
+        } else if s.eq_ignore_ascii_case("left") {
             x = 0;
-        } else if strcaseeq_(s, "right") {
+        } else if s.eq_ignore_ascii_case("right") {
             x = (*w).sx - 1;
-        } else if strcaseeq_(s, "top-left") {
+        } else if s.eq_ignore_ascii_case("top-left") {
             x = 0;
             y = top;
-        } else if strcaseeq_(s, "top-right") {
+        } else if s.eq_ignore_ascii_case("top-right") {
             x = (*w).sx - 1;
             y = top;
-        } else if strcaseeq_(s, "bottom-left") {
+        } else if s.eq_ignore_ascii_case("bottom-left") {
             x = 0;
             y = bottom;
-        } else if strcaseeq_(s, "bottom-right") {
+        } else if s.eq_ignore_ascii_case("bottom-right") {
             x = (*w).sx - 1;
             y = bottom;
         } else {
@@ -968,13 +968,13 @@ pub unsafe fn window_printable_flags(wl: *mut winlink, escape: i32) -> *const u8
     }
 }
 
-pub unsafe fn window_pane_find_by_id_str(s: *const u8) -> *mut window_pane {
+pub unsafe fn window_pane_find_by_id_str(s: &str) -> *mut window_pane {
     unsafe {
-        if *s != b'%' {
+        if !s.starts_with('%') {
             return null_mut();
         }
 
-        match strtonum(s.add(1), 0, u32::MAX) {
+        match strtonum_(&s[1..], 0, u32::MAX) {
             Ok(id) => window_pane_find_by_id(id),
             Err(_errstr) => null_mut(),
         }

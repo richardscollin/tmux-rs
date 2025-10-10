@@ -207,7 +207,7 @@ pub unsafe fn window_buffer_build(
                 null_mut(),
                 item.cast(),
                 (*item).order as u64,
-                (*item).name,
+                cstr_to_str((*item).name),
                 text,
                 None,
             );

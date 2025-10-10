@@ -19,34 +19,32 @@ use crate::compat::{
 use crate::libc::strcmp;
 use crate::*;
 
-static mut CMD_FIND_SESSION_TABLE: [[*const u8; 2]; 1] = [[null_mut(), null_mut()]];
+static CMD_FIND_SESSION_TABLE: [[&str; 2]; 0] = [];
 
-static mut CMD_FIND_WINDOW_TABLE: [[*const u8; 2]; 6] = [
-    [c!("{start}"), c!("^")],
-    [c!("{last}"), c!("!")],
-    [c!("{end}"), c!("$")],
-    [c!("{next}"), c!("+")],
-    [c!("{previous}"), c!("-")],
-    [null(), null()],
+static CMD_FIND_WINDOW_TABLE: [[&str; 2]; 5] = [
+    ["{start}", "^"],
+    ["{last}", "!"],
+    ["{end}", "$"],
+    ["{next}", "+"],
+    ["{previous}", "-"],
 ];
 
-static mut CMD_FIND_PANE_TABLE: [[*const u8; 2]; 16] = [
-    [c!("{last}"), c!("!")],
-    [c!("{next}"), c!("+")],
-    [c!("{previous}"), c!("-")],
-    [c!("{top}"), c!("top")],
-    [c!("{bottom}"), c!("bottom")],
-    [c!("{left}"), c!("left")],
-    [c!("{right}"), c!("right")],
-    [c!("{top-left}"), c!("top-left")],
-    [c!("{top-right}"), c!("top-right")],
-    [c!("{bottom-left}"), c!("bottom-left")],
-    [c!("{bottom-right}"), c!("bottom-right")],
-    [c!("{up-of}"), c!("{up-of}")],
-    [c!("{down-of}"), c!("{down-of}")],
-    [c!("{left-of}"), c!("{left-of}")],
-    [c!("{right-of}.as_ptr()"), c!("{right-of}")],
-    [null(), null()],
+static CMD_FIND_PANE_TABLE: [[&str; 2]; 15] = [
+    ["{last}", "!"],
+    ["{next}", "+"],
+    ["{previous}", "-"],
+    ["{top}", "top"],
+    ["{bottom}", "bottom"],
+    ["{left}", "left"],
+    ["{right}", "right"],
+    ["{top-left}", "top-left"],
+    ["{top-right}", "top-right"],
+    ["{bottom-left}", "bottom-left"],
+    ["{bottom-right}", "bottom-right"],
+    ["{up-of}", "{up-of}"],
+    ["{down-of}", "{down-of}"],
+    ["{left-of}", "{left-of}"],
+    ["{right-of}", "{right-of}"],
 ];
 
 pub unsafe fn cmd_find_inside_pane(c: *mut client) -> *mut window_pane {
@@ -67,7 +65,7 @@ pub unsafe fn cmd_find_inside_pane(c: *mut client) -> *mut window_pane {
         if wp.is_null() {
             let envent = environ_find((*c).environ, c!("TMUX_PANE"));
             if !envent.is_null() {
-                wp = window_pane_find_by_id_str(transmute_ptr((*envent).value));
+                wp = window_pane_find_by_id_str(cstr_to_str(transmute_ptr((*envent).value)));
             }
         }
         if !wp.is_null() {
@@ -223,25 +221,21 @@ pub unsafe fn cmd_find_best_winlink_with_window(fs: *mut cmd_find_state) -> i32 
     0
 }
 
-pub unsafe fn cmd_find_map_table(table: *const [*const u8; 2], s: *const u8) -> *const u8 {
-    unsafe {
-        let mut i = 0;
-        while !(*table.add(i))[0].is_null() {
-            if strcmp(s, (*table.add(i))[0]) == 0 {
-                return (*table.add(i))[1];
-            }
-            i += 1;
+pub fn cmd_find_map_table<'a>(table: &[[&'static str; 2]], s: &'a str) -> &'a str {
+    for entry in table {
+        if s == entry[0] {
+            return entry[1];
         }
-        s
     }
+    s
 }
 
-pub unsafe fn cmd_find_get_session(fs: *mut cmd_find_state, session: *const u8) -> i32 {
+pub unsafe fn cmd_find_get_session(fs: *mut cmd_find_state, session: &str) -> i32 {
     let __func__ = "cmd_find_get_session";
     unsafe {
-        log_debug!("{}: {}", __func__, _s(session));
+        log_debug!("{}: {}", __func__, session);
 
-        if *session == b'$' as _ {
+        if session.starts_with('$') {
             (*fs).s = session_find_by_id_str(session);
             if (*fs).s.is_null() {
                 return -1;
@@ -249,12 +243,12 @@ pub unsafe fn cmd_find_get_session(fs: *mut cmd_find_state, session: *const u8) 
             return 0;
         }
 
-        (*fs).s = session_find(session.cast_mut()); // TODO this is invalid casting away const
+        (*fs).s = session_find(session); // TODO this is invalid casting away const
         if !(*fs).s.is_null() {
             return 0;
         }
 
-        let c = cmd_find_client(null_mut(), session, 1);
+        let c = cmd_find_client(null_mut(), Some(session), 1);
         if !c.is_null() && !(*c).session.is_null() {
             (*fs).s = (*c).session;
             return 0;
@@ -267,9 +261,19 @@ pub unsafe fn cmd_find_get_session(fs: *mut cmd_find_state, session: *const u8) 
             return -1;
         }
 
+        let session_c = CString::new(session).unwrap();
+
         let mut s: *mut session = null_mut();
         for s_loop in rb_foreach(&raw mut SESSIONS).map(NonNull::as_ptr) {
-            if libc::strncmp(session, (*s_loop).name, strlen(session)) == 0 {
+            if libc::strncmp(
+                session_c.as_ptr().cast(),
+                CString::new((*s_loop).name.to_string())
+                    .unwrap()
+                    .as_ptr()
+                    .cast(),
+                session.len(),
+            ) == 0
+            {
                 if !s.is_null() {
                     return -1;
                 }
@@ -283,7 +287,15 @@ pub unsafe fn cmd_find_get_session(fs: *mut cmd_find_state, session: *const u8) 
 
         s = null_mut();
         for s_loop in rb_foreach(&raw mut SESSIONS).map(NonNull::as_ptr) {
-            if libc::fnmatch(session, (*s_loop).name, 0) == 0 {
+            if libc::fnmatch(
+                session_c.as_ptr().cast(),
+                CString::new((*s_loop).name.to_string())
+                    .unwrap()
+                    .as_ptr()
+                    .cast(),
+                0,
+            ) == 0
+            {
                 if !s.is_null() {
                     return -1;
                 }
@@ -298,12 +310,12 @@ pub unsafe fn cmd_find_get_session(fs: *mut cmd_find_state, session: *const u8) 
     -1
 }
 
-pub unsafe fn cmd_find_get_window(fs: *mut cmd_find_state, window: *const u8, only: i32) -> i32 {
+pub unsafe fn cmd_find_get_window(fs: *mut cmd_find_state, window: &str, only: bool) -> i32 {
     let __func__ = "cmd_find_get_window";
     unsafe {
-        log_debug!("{}: {}", __func__, _s(window));
+        log_debug!("{}: {}", __func__, window);
 
-        if *window == b'@' {
+        if window.starts_with('@') {
             (*fs).w = window_find_by_id_str(window);
             if (*fs).w.is_null() {
                 return -1;
@@ -317,7 +329,7 @@ pub unsafe fn cmd_find_get_window(fs: *mut cmd_find_state, window: *const u8, on
             return 0;
         }
 
-        if only == 0 && cmd_find_get_session(fs, window) == 0 {
+        if !only && cmd_find_get_session(fs, window) == 0 {
             (*fs).wl = (*(*fs).s).curw;
             (*fs).w = (*(*fs).wl).window;
             if !(*fs)
@@ -332,10 +344,10 @@ pub unsafe fn cmd_find_get_window(fs: *mut cmd_find_state, window: *const u8, on
     -1
 }
 
-pub unsafe fn cmd_find_get_window_with_session(fs: *mut cmd_find_state, window: *const u8) -> i32 {
+pub unsafe fn cmd_find_get_window_with_session(fs: *mut cmd_find_state, window: &str) -> i32 {
     let __func__ = "cmd_find_get_window_with_session";
     unsafe {
-        log_debug!("{}: {}", __func__, _s(window));
+        log_debug!("{}: {}", __func__, window);
 
         let exact = (*fs)
             .flags
@@ -344,7 +356,7 @@ pub unsafe fn cmd_find_get_window_with_session(fs: *mut cmd_find_state, window: 
         (*fs).wl = (*(*fs).s).curw;
         (*fs).w = (*(*fs).wl).window;
 
-        if *window == b'@' as _ {
+        if window.starts_with('@') {
             (*fs).w = window_find_by_id_str(window);
             if (*fs).w.is_null() || !session_has((*fs).s, (*fs).w) {
                 return -1;
@@ -352,9 +364,9 @@ pub unsafe fn cmd_find_get_window_with_session(fs: *mut cmd_find_state, window: 
             return cmd_find_best_winlink_with_window(fs);
         }
 
-        if !exact && (*window == b'+' as _ || *window == b'-' as _) {
-            let n = if *window.add(1) != b'\0' as _ {
-                strtonum(window.add(1), 1, i32::MAX).unwrap_or_default()
+        if !exact && (window.starts_with('+') || window.starts_with('-')) {
+            let n = if window.len() > 1 {
+                strtonum_(&window[1..], 1, i32::MAX).unwrap_or_default()
             } else {
                 1
             };
@@ -363,7 +375,7 @@ pub unsafe fn cmd_find_get_window_with_session(fs: *mut cmd_find_state, window: 
                 .flags
                 .intersects(cmd_find_flags::CMD_FIND_WINDOW_INDEX)
             {
-                if *window == b'+' as _ {
+                if window.starts_with('+') {
                     if i32::MAX - (*(*s).curw).idx < n {
                         return -1;
                     }
@@ -376,7 +388,7 @@ pub unsafe fn cmd_find_get_window_with_session(fs: *mut cmd_find_state, window: 
                 }
                 return 0;
             }
-            if *window == b'+' as _ {
+            if window.starts_with('+') {
                 (*fs).wl = winlink_next_by_number((*s).curw, s, n);
             } else {
                 (*fs).wl = winlink_previous_by_number((*s).curw, s, n);
@@ -389,30 +401,35 @@ pub unsafe fn cmd_find_get_window_with_session(fs: *mut cmd_find_state, window: 
         }
 
         if !exact {
-            if streq_(window, "!") {
-                (*fs).wl = tailq_first(&raw mut (*(*fs).s).lastw);
-                if (*fs).wl.is_null() {
-                    return -1;
+            match window {
+                "!" => {
+                    (*fs).wl = tailq_first(&raw mut (*(*fs).s).lastw);
+                    if (*fs).wl.is_null() {
+                        return -1;
+                    }
+                    (*fs).idx = (*(*fs).wl).idx;
+                    (*fs).w = (*(*fs).wl).window;
+                    return 0;
                 }
-                (*fs).idx = (*(*fs).wl).idx;
-                (*fs).w = (*(*fs).wl).window;
-                return 0;
-            } else if streq_(window, "^") {
-                (*fs).wl = rb_min(&raw mut (*(*fs).s).windows);
-                if (*fs).wl.is_null() {
-                    return -1;
+                "^" => {
+                    (*fs).wl = rb_min(&raw mut (*(*fs).s).windows);
+                    if (*fs).wl.is_null() {
+                        return -1;
+                    }
+                    (*fs).idx = (*(*fs).wl).idx;
+                    (*fs).w = (*(*fs).wl).window;
+                    return 0;
                 }
-                (*fs).idx = (*(*fs).wl).idx;
-                (*fs).w = (*(*fs).wl).window;
-                return 0;
-            } else if streq_(window, "$") {
-                (*fs).wl = rb_max(&raw mut (*(*fs).s).windows);
-                if (*fs).wl.is_null() {
-                    return -1;
+                "$" => {
+                    (*fs).wl = rb_max(&raw mut (*(*fs).s).windows);
+                    if (*fs).wl.is_null() {
+                        return -1;
+                    }
+                    (*fs).idx = (*(*fs).wl).idx;
+                    (*fs).w = (*(*fs).wl).window;
+                    return 0;
                 }
-                (*fs).idx = (*(*fs).wl).idx;
-                (*fs).w = (*(*fs).wl).window;
-                return 0;
+                _ => (),
             }
         }
 
@@ -421,8 +438,8 @@ pub unsafe fn cmd_find_get_window_with_session(fs: *mut cmd_find_state, window: 
             clippy::collapsible_if,
             reason = "collapsing doesn't work with if let; false positive"
         )]
-        if *window != b'+' as _ && *window != b'-' {
-            if let Ok(idx) = strtonum(window, 0, i32::MAX) {
+        if !window.starts_with('+') && !window.starts_with('-') {
+            if let Ok(idx) = strtonum_(window, 0, i32::MAX) {
                 (*fs).wl = winlink_find_by_index(&raw mut (*(*fs).s).windows, idx);
                 if !(*fs).wl.is_null() {
                     (*fs).idx = (*(*fs).wl).idx;
@@ -441,7 +458,7 @@ pub unsafe fn cmd_find_get_window_with_session(fs: *mut cmd_find_state, window: 
 
         (*fs).wl = null_mut();
         for wl in rb_foreach(&raw mut (*(*fs).s).windows).map(NonNull::as_ptr) {
-            if strcmp(window, (*(*wl).window).name) == 0 {
+            if streq_((*(*wl).window).name, window) {
                 if !(*fs).wl.is_null() {
                     return -1;
                 }
@@ -458,10 +475,12 @@ pub unsafe fn cmd_find_get_window_with_session(fs: *mut cmd_find_state, window: 
         if exact {
             return -1;
         }
+        let window_c = CString::new(window).unwrap();
 
         (*fs).wl = null_mut();
         for wl in rb_foreach(&raw mut (*(*fs).s).windows).map(NonNull::as_ptr) {
-            if libc::strncmp(window, (*(*wl).window).name, strlen(window)) == 0 {
+            #[expect(clippy::disallowed_methods)]
+            if libc::strncmp(window.as_ptr().cast(), (*(*wl).window).name, window.len()) == 0 {
                 if !(*fs).wl.is_null() {
                     return -1;
                 }
@@ -477,7 +496,7 @@ pub unsafe fn cmd_find_get_window_with_session(fs: *mut cmd_find_state, window: 
 
         (*fs).wl = null_mut();
         for wl in rb_foreach(&raw mut (*(*fs).s).windows).map(NonNull::as_ptr) {
-            if libc::fnmatch(window, (*(*wl).window).name, 0) == 0 {
+            if libc::fnmatch(window_c.as_ptr().cast(), (*(*wl).window).name, 0) == 0 {
                 if !(*fs).wl.is_null() {
                     return -1;
                 }
@@ -494,12 +513,12 @@ pub unsafe fn cmd_find_get_window_with_session(fs: *mut cmd_find_state, window: 
     -1
 }
 
-pub unsafe fn cmd_find_get_pane(fs: *mut cmd_find_state, pane: *const u8, only: i32) -> i32 {
+pub unsafe fn cmd_find_get_pane(fs: *mut cmd_find_state, pane: &str, only: bool) -> i32 {
     let __func__ = "cmd_find_get_pane";
     unsafe {
-        log_debug!("{}: {}", __func__, _s(pane));
+        log_debug!("{}: {}", __func__, pane);
 
-        if *pane == b'%' as _ {
+        if pane.starts_with('%') {
             (*fs).wp = window_pane_find_by_id_str(pane);
             if (*fs).wp.is_null() {
                 return -1;
@@ -517,7 +536,7 @@ pub unsafe fn cmd_find_get_pane(fs: *mut cmd_find_state, pane: *const u8, only: 
             return 0;
         }
 
-        if only == 0 && cmd_find_get_window(fs, pane, 0) == 0 {
+        if !only && cmd_find_get_window(fs, pane, false) == 0 {
             (*fs).wp = (*(*fs).w).active;
             return 0;
         }
@@ -525,12 +544,12 @@ pub unsafe fn cmd_find_get_pane(fs: *mut cmd_find_state, pane: *const u8, only: 
     -1
 }
 
-pub unsafe fn cmd_find_get_pane_with_session(fs: *mut cmd_find_state, pane: *const u8) -> i32 {
+pub unsafe fn cmd_find_get_pane_with_session(fs: *mut cmd_find_state, pane: &str) -> i32 {
     let __func__ = "cmd_find_get_pane_with_session";
     unsafe {
-        log_debug!("{}: {}", __func__, _s(pane));
+        log_debug!("{}: {}", __func__, pane);
 
-        if *pane == b'%' as _ {
+        if pane.starts_with('%') {
             (*fs).wp = window_pane_find_by_id_str(pane);
             if (*fs).wp.is_null() {
                 return -1;
@@ -547,12 +566,12 @@ pub unsafe fn cmd_find_get_pane_with_session(fs: *mut cmd_find_state, pane: *con
     }
 }
 
-pub unsafe fn cmd_find_get_pane_with_window(fs: *mut cmd_find_state, pane: *const u8) -> i32 {
+pub unsafe fn cmd_find_get_pane_with_window(fs: *mut cmd_find_state, pane: &str) -> i32 {
     let __func__ = "cmd_find_get_pane_with_window";
     unsafe {
-        log_debug!("{}: {}", __func__, _s(pane));
+        log_debug!("{}: {}", __func__, pane);
 
-        if *pane == b'%' as _ {
+        if pane.starts_with('%') {
             (*fs).wp = window_pane_find_by_id_str(pane);
             if (*fs).wp.is_null() {
                 return -1;
@@ -563,46 +582,53 @@ pub unsafe fn cmd_find_get_pane_with_window(fs: *mut cmd_find_state, pane: *cons
             return 0;
         }
 
-        if streq_(pane, "!") {
-            (*fs).wp = tailq_first(&raw mut (*(*fs).w).last_panes);
-            if (*fs).wp.is_null() {
-                return -1;
+        match pane {
+            "!" => {
+                (*fs).wp = tailq_first(&raw mut (*(*fs).w).last_panes);
+                if (*fs).wp.is_null() {
+                    return -1;
+                }
+                return 0;
             }
-            return 0;
-        } else if streq_(pane, "{up-of}") {
-            (*fs).wp = window_pane_find_up((*(*fs).w).active);
-            if (*fs).wp.is_null() {
-                return -1;
+            "{up-of}" => {
+                (*fs).wp = window_pane_find_up((*(*fs).w).active);
+                if (*fs).wp.is_null() {
+                    return -1;
+                }
+                return 0;
             }
-            return 0;
-        } else if streq_(pane, "{down-of}") {
-            (*fs).wp = window_pane_find_down((*(*fs).w).active);
-            if (*fs).wp.is_null() {
-                return -1;
+            "{down-of}" => {
+                (*fs).wp = window_pane_find_down((*(*fs).w).active);
+                if (*fs).wp.is_null() {
+                    return -1;
+                }
+                return 0;
             }
-            return 0;
-        } else if streq_(pane, "{left-of}") {
-            (*fs).wp = window_pane_find_left((*(*fs).w).active);
-            if (*fs).wp.is_null() {
-                return -1;
+            "{left-of}" => {
+                (*fs).wp = window_pane_find_left((*(*fs).w).active);
+                if (*fs).wp.is_null() {
+                    return -1;
+                }
+                return 0;
             }
-            return 0;
-        } else if streq_(pane, "{right-of}") {
-            (*fs).wp = window_pane_find_right((*(*fs).w).active);
-            if (*fs).wp.is_null() {
-                return -1;
+            "{right-of}" => {
+                (*fs).wp = window_pane_find_right((*(*fs).w).active);
+                if (*fs).wp.is_null() {
+                    return -1;
+                }
+                return 0;
             }
-            return 0;
+            _ => (),
         }
 
-        if *pane == b'+' as _ || *pane == b'-' as _ {
-            let n = if *pane.add(1) != b'\0' as _ {
-                strtonum(pane.add(1), 1, i32::MAX).unwrap_or_default() as u32
+        if pane.starts_with('+') || pane.starts_with('-') {
+            let n = if pane.len() > 1 {
+                strtonum_(&pane[1..], 1, i32::MAX).unwrap_or_default() as u32
             } else {
                 1
             };
             let wp = (*(*fs).w).active;
-            if *pane == b'+' as _ {
+            if pane.starts_with('+') {
                 (*fs).wp = window_pane_next_by_number((*fs).w, wp, n);
             } else {
                 (*fs).wp = window_pane_previous_by_number((*fs).w, wp, n);
@@ -612,7 +638,7 @@ pub unsafe fn cmd_find_get_pane_with_window(fs: *mut cmd_find_state, pane: *cons
             }
         }
 
-        if let Ok(idx) = strtonum(pane, 0, i32::MAX) {
+        if let Ok(idx) = strtonum_(pane, 0, i32::MAX) {
             (*fs).wp = window_pane_at_index((*fs).w, idx as u32);
             if !(*fs).wp.is_null() {
                 return 0;
@@ -680,12 +706,7 @@ pub unsafe fn cmd_find_copy_state(dst: *mut cmd_find_state, src: *mut cmd_find_s
 pub unsafe fn cmd_find_log_state(prefix: *const u8, fs: *const cmd_find_state) {
     unsafe {
         if !(*fs).s.is_null() {
-            log_debug!(
-                "{}: s=${} {}",
-                _s(prefix),
-                (*(*fs).s).id,
-                _s((*(*fs).s).name)
-            );
+            log_debug!("{}: s=${} {}", _s(prefix), (*(*fs).s).id, (*(*fs).s).name);
         } else {
             log_debug!("{}: s=none", _s(prefix));
         }
@@ -911,7 +932,7 @@ pub unsafe fn cmd_find_from_client(
             cmd_find_log_state(__func__, fs);
             return 0;
         }
-        // unknown_pane:
+        // unknown_pane
         cmd_find_from_nothing(fs, flags)
     }
 }
@@ -919,398 +940,375 @@ pub unsafe fn cmd_find_from_client(
 pub unsafe fn cmd_find_target(
     fs: *mut cmd_find_state,
     item: *mut cmdq_item,
-    target: *const u8,
+    target: Option<&str>,
     type_: cmd_find_type,
     mut flags: cmd_find_flags,
 ) -> i32 {
     let __func__ = "cmd_find_target";
+
+    macro_rules! current {
+        ($fs:expr, $flags:expr) => {
+            cmd_find_copy_state($fs, (*$fs).current);
+            if $flags.intersects(cmd_find_flags::CMD_FIND_WINDOW_INDEX) {
+                (*$fs).idx = -1;
+            }
+            found!($fs)
+        };
+    }
+
     unsafe {
         let m: *mut mouse_event;
         let mut current: cmd_find_state = zeroed();
 
-        let mut colon: *mut u8;
-        let mut period: *mut u8;
-        let mut copy: *mut u8 = null_mut();
         let sizeof_tmp = 256;
         let mut tmp: [u8; 256] = [0; 256];
 
-        let mut session: *const u8;
-        let mut window: *const u8;
-        let mut pane: *const u8;
-        let s: *const u8;
+        let mut window_only = false;
+        let mut pane_only = false;
 
-        let mut window_only = 0;
-        let mut pane_only = 0;
-
-        'error: {
-            'no_pane: {
-                'no_window: {
-                    'no_session: {
-                        'found: {
-                            'current: {
-                                if flags.intersects(cmd_find_flags::CMD_FIND_CANFAIL) {
-                                    flags |= cmd_find_flags::CMD_FIND_QUIET;
-                                }
-
-                                s = match type_ {
-                                    cmd_find_type::CMD_FIND_PANE => c!("pane"),
-                                    cmd_find_type::CMD_FIND_WINDOW => c!("window"),
-                                    cmd_find_type::CMD_FIND_SESSION => c!("session"),
-                                };
-
-                                tmp[0] = b'\0';
-                                if flags.intersects(cmd_find_flags::CMD_FIND_PREFER_UNATTACHED) {
-                                    strlcat(tmp.as_mut_ptr(), c!("PREFER_UNATTACHED,"), sizeof_tmp);
-                                }
-                                if flags.intersects(cmd_find_flags::CMD_FIND_QUIET) {
-                                    strlcat(tmp.as_mut_ptr(), c!("QUIET,"), sizeof_tmp);
-                                }
-                                if flags.intersects(cmd_find_flags::CMD_FIND_WINDOW_INDEX) {
-                                    strlcat(tmp.as_mut_ptr(), c!("WINDOW_INDEX,"), sizeof_tmp);
-                                }
-                                if flags.intersects(cmd_find_flags::CMD_FIND_DEFAULT_MARKED) {
-                                    strlcat(tmp.as_mut_ptr(), c!("DEFAULT_MARKED,"), sizeof_tmp);
-                                }
-                                if flags.intersects(cmd_find_flags::CMD_FIND_EXACT_SESSION) {
-                                    strlcat(tmp.as_mut_ptr(), c!("EXACT_SESSION,"), sizeof_tmp);
-                                }
-                                if flags.intersects(cmd_find_flags::CMD_FIND_EXACT_WINDOW) {
-                                    strlcat(tmp.as_mut_ptr(), c!("EXACT_WINDOW,"), sizeof_tmp);
-                                }
-                                if flags.intersects(cmd_find_flags::CMD_FIND_CANFAIL) {
-                                    strlcat(tmp.as_mut_ptr(), c!("CANFAIL,"), sizeof_tmp);
-                                }
-                                if tmp[0] != b'\0' {
-                                    tmp[strlen(tmp.as_mut_ptr()) - 1] = b'\0';
-                                } else {
-                                    strlcat(tmp.as_mut_ptr(), c!("NONE"), sizeof_tmp);
-                                }
-                                log_debug!(
-                                    "{}: target {}, type {}, item {:p}, flags {}",
-                                    __func__,
-                                    if target.is_null() {
-                                        _s(c!("none"))
-                                    } else {
-                                        _s(target)
-                                    },
-                                    _s(s),
-                                    item,
-                                    _s(tmp.as_ptr()),
-                                );
-
-                                cmd_find_clear_state(fs, flags);
-
-                                if server_check_marked()
-                                    && flags.intersects(cmd_find_flags::CMD_FIND_DEFAULT_MARKED)
-                                {
-                                    (*fs).current = &raw mut MARKED_PANE;
-                                    log_debug!("{}: current is marked pane", __func__);
-                                } else if cmd_find_valid_state(cmdq_get_current(item)) {
-                                    (*fs).current = cmdq_get_current(item);
-                                    log_debug!("{}: current is from queue", __func__);
-                                } else if cmd_find_from_client(
-                                    &raw mut current,
-                                    cmdq_get_client(item),
-                                    flags,
-                                ) == 0
-                                {
-                                    (*fs).current = &raw mut current;
-                                    log_debug!("{}: current is from client", __func__);
-                                } else {
-                                    if !flags.intersects(cmd_find_flags::CMD_FIND_QUIET) {
-                                        cmdq_error!(item, "no current target");
-                                    }
-                                    break 'error;
-                                }
-                                if !cmd_find_valid_state((*fs).current) {
-                                    fatalx("invalid current find state");
-                                }
-
-                                // An empty or NULL target is the current.
-                                if target.is_null() || *target == b'\0' as _ {
-                                    break 'current;
-                                }
-
-                                // Mouse target is a plain = or {mouse}.
-                                if streq_(target, "=") || streq_(target, "{mouse}") {
-                                    m = &raw mut (*cmdq_get_event(item)).m;
-                                    match type_ {
-                                        cmd_find_type::CMD_FIND_PANE => {
-                                            (*fs).wp = transmute_ptr(cmd_mouse_pane(
-                                                m,
-                                                &raw mut (*fs).s,
-                                                &raw mut (*fs).wl,
-                                            ));
-                                            if !(*fs).wp.is_null() {
-                                                (*fs).w = (*(*fs).wl).window;
-                                            } else {
-                                                // FALLTHROUGH; copied from below
-                                                (*fs).wl = transmute_ptr(cmd_mouse_window(
-                                                    m,
-                                                    &raw mut (*fs).s,
-                                                ));
-                                                if (*fs).wl.is_null() && !(*fs).s.is_null() {
-                                                    (*fs).wl = (*(*fs).s).curw;
-                                                }
-                                                if !(*fs).wl.is_null() {
-                                                    (*fs).w = (*(*fs).wl).window;
-                                                    (*fs).wp = (*(*fs).w).active;
-                                                }
-                                            }
-                                        }
-                                        cmd_find_type::CMD_FIND_WINDOW
-                                        | cmd_find_type::CMD_FIND_SESSION => {
-                                            (*fs).wl = transmute_ptr(cmd_mouse_window(
-                                                m,
-                                                &raw mut (*fs).s,
-                                            ));
-                                            if (*fs).wl.is_null() && !(*fs).s.is_null() {
-                                                (*fs).wl = (*(*fs).s).curw;
-                                            }
-                                            if !(*fs).wl.is_null() {
-                                                (*fs).w = (*(*fs).wl).window;
-                                                (*fs).wp = (*(*fs).w).active;
-                                            }
-                                        }
-                                    }
-                                    if (*fs).wp.is_null() {
-                                        if !flags.intersects(cmd_find_flags::CMD_FIND_QUIET) {
-                                            cmdq_error!(item, "no mouse target");
-                                        }
-                                        break 'error;
-                                    }
-                                    break 'found;
-                                }
-
-                                if streq_(target, "~") || streq_(target, "{marked}") {
-                                    if !server_check_marked() {
-                                        if !flags.intersects(cmd_find_flags::CMD_FIND_QUIET) {
-                                            cmdq_error!(item, "no marked target");
-                                        }
-                                        break 'error;
-                                    }
-                                    cmd_find_copy_state(fs, &raw mut MARKED_PANE);
-                                    break 'found;
-                                }
-
-                                copy = xstrdup(target).as_ptr();
-                                colon = libc::strchr(copy, b':' as _);
-                                if !colon.is_null() {
-                                    *colon = b'\0' as _;
-                                    colon = colon.add(1);
-                                }
-                                if colon.is_null() {
-                                    period = libc::strchr(copy, b'.' as _);
-                                } else {
-                                    period = libc::strchr(colon, b'.' as _);
-                                }
-                                if !period.is_null() {
-                                    *period = b'\0' as _;
-                                    period = period.add(1);
-                                }
-
-                                session = null_mut();
-                                window = null_mut();
-                                pane = null_mut();
-                                if !colon.is_null() && !period.is_null() {
-                                    session = copy;
-                                    window = colon;
-                                    window_only = 1;
-                                    pane = period;
-                                    pane_only = 1;
-                                } else if !colon.is_null() && period.is_null() {
-                                    session = copy;
-                                    window = colon;
-                                    window_only = 1;
-                                } else if colon.is_null() && !period.is_null() {
-                                    window = copy;
-                                    pane = period;
-                                    pane_only = 1;
-                                } else if *copy == b'$' as _ {
-                                    session = copy;
-                                } else if *copy == b'@' as _ {
-                                    window = copy;
-                                } else if *copy == b'%' as _ {
-                                    pane = copy;
-                                } else {
-                                    match type_ {
-                                        cmd_find_type::CMD_FIND_SESSION => session = copy,
-                                        cmd_find_type::CMD_FIND_WINDOW => window = copy,
-                                        cmd_find_type::CMD_FIND_PANE => pane = copy,
-                                    }
-                                }
-
-                                if !session.is_null() && *session == b'=' as _ {
-                                    session = session.add(1);
-                                    (*fs).flags |= cmd_find_flags::CMD_FIND_EXACT_SESSION;
-                                }
-                                if !window.is_null() && *window == b'=' as _ {
-                                    window = window.add(1);
-                                    (*fs).flags |= cmd_find_flags::CMD_FIND_EXACT_WINDOW;
-                                }
-
-                                if !session.is_null() && *session == b'\0' as _ {
-                                    session = null_mut();
-                                }
-                                if !window.is_null() && *window == b'\0' as _ {
-                                    window = null_mut();
-                                }
-                                if !pane.is_null() && *pane == b'\0' as _ {
-                                    pane = null_mut();
-                                }
-
-                                if !session.is_null() {
-                                    session = cmd_find_map_table(
-                                        &raw const CMD_FIND_SESSION_TABLE as *const _,
-                                        session,
-                                    );
-                                }
-                                if !window.is_null() {
-                                    window = cmd_find_map_table(
-                                        &raw const CMD_FIND_WINDOW_TABLE as *const _,
-                                        window,
-                                    );
-                                }
-                                if !pane.is_null() {
-                                    pane = cmd_find_map_table(
-                                        &raw const CMD_FIND_PANE_TABLE as *const _,
-                                        pane,
-                                    );
-                                }
-
-                                if !session.is_null() || !window.is_null() || !pane.is_null() {
-                                    log_debug!(
-                                        "{}: target {} is {}{}{}{}{}{}",
-                                        __func__,
-                                        _s(target),
-                                        if session.is_null() { "" } else { "session " },
-                                        _s(if session.is_null() { c!("") } else { session }),
-                                        if window.is_null() { "" } else { "window " },
-                                        _s(if window.is_null() { c!("") } else { window }),
-                                        if pane.is_null() { "" } else { "pane " },
-                                        _s(if pane.is_null() { c!("") } else { pane }),
-                                    );
-                                }
-
-                                if !pane.is_null()
-                                    && flags.intersects(cmd_find_flags::CMD_FIND_WINDOW_INDEX)
-                                {
-                                    if !flags.intersects(cmd_find_flags::CMD_FIND_QUIET) {
-                                        cmdq_error!(item, "can't specify pane here");
-                                    }
-                                    break 'error;
-                                }
-
-                                if !session.is_null() {
-                                    if cmd_find_get_session(fs, session) != 0 {
-                                        break 'no_session;
-                                    }
-
-                                    if window.is_null() && pane.is_null() {
-                                        (*fs).wl = (*(*fs).s).curw;
-                                        (*fs).idx = -1;
-                                        (*fs).w = (*(*fs).wl).window;
-                                        (*fs).wp = (*(*fs).w).active;
-                                        break 'found;
-                                    }
-
-                                    if !window.is_null() && pane.is_null() {
-                                        if cmd_find_get_window_with_session(fs, window) != 0 {
-                                            break 'no_window;
-                                        }
-                                        if !(*fs).wl.is_null() {
-                                            (*fs).wp = (*(*(*fs).wl).window).active;
-                                        }
-                                        break 'found;
-                                    }
-
-                                    if window.is_null() && !pane.is_null() {
-                                        if cmd_find_get_pane_with_session(fs, pane) != 0 {
-                                            break 'no_pane;
-                                        }
-                                        break 'found;
-                                    }
-
-                                    if cmd_find_get_window_with_session(fs, window) != 0 {
-                                        break 'no_window;
-                                    }
-                                    if cmd_find_get_pane_with_window(fs, pane) != 0 {
-                                        break 'no_pane;
-                                    }
-                                    break 'found;
-                                }
-
-                                if !window.is_null() && !pane.is_null() {
-                                    if cmd_find_get_window(fs, window, window_only) != 0 {
-                                        break 'no_window;
-                                    }
-                                    if cmd_find_get_pane_with_window(fs, pane) != 0 {
-                                        break 'no_pane;
-                                    }
-                                    break 'found;
-                                }
-
-                                if !window.is_null() && pane.is_null() {
-                                    if cmd_find_get_window(fs, window, window_only) != 0 {
-                                        break 'no_window;
-                                    }
-                                    if !(*fs).wl.is_null() {
-                                        (*fs).wp = (*(*(*fs).wl).window).active;
-                                    }
-                                    break 'found;
-                                }
-
-                                if window.is_null() && !pane.is_null() {
-                                    if cmd_find_get_pane(fs, pane, pane_only) != 0 {
-                                        break 'no_pane;
-                                    }
-                                    break 'found;
-                                }
-
-                                //
-                            }
-                            // current:
-                            cmd_find_copy_state(fs, (*fs).current);
-                            if flags.intersects(cmd_find_flags::CMD_FIND_WINDOW_INDEX) {
-                                (*fs).idx = -1;
-                            }
-                            break 'found;
-                        }
-                        // found:
-                        (*fs).current = null_mut();
-                        cmd_find_log_state(c!("cmd_find_target"), fs);
-
-                        free_(copy);
-                        return 0;
-                    }
-                    // no_session:
-                    if !flags.intersects(cmd_find_flags::CMD_FIND_QUIET) {
-                        cmdq_error!(item, "can't find session: {}", _s(session));
-                    }
-                    break 'error;
-                }
-                // no_window:
-                if !flags.intersects(cmd_find_flags::CMD_FIND_QUIET) {
-                    cmdq_error!(item, "can't find window: {}", _s(window));
-                }
-                break 'error;
-            }
-            // no_pane:
-            if !flags.intersects(cmd_find_flags::CMD_FIND_QUIET) {
-                cmdq_error!(item, "can't find pane: {}", _s(pane));
-            }
-            break 'error;
-        }
-
-        // error:
-        (*fs).current = null_mut();
-        log_debug!("{}: error", __func__);
-
-        free_(copy);
         if flags.intersects(cmd_find_flags::CMD_FIND_CANFAIL) {
-            return 0;
+            flags |= cmd_find_flags::CMD_FIND_QUIET;
         }
-        -1
+
+        let s = match type_ {
+            cmd_find_type::CMD_FIND_PANE => "pane",
+            cmd_find_type::CMD_FIND_WINDOW => "window",
+            cmd_find_type::CMD_FIND_SESSION => "session",
+        };
+
+        tmp[0] = b'\0';
+        if flags.intersects(cmd_find_flags::CMD_FIND_PREFER_UNATTACHED) {
+            strlcat(tmp.as_mut_ptr(), c!("PREFER_UNATTACHED,"), sizeof_tmp);
+        }
+        if flags.intersects(cmd_find_flags::CMD_FIND_QUIET) {
+            strlcat(tmp.as_mut_ptr(), c!("QUIET,"), sizeof_tmp);
+        }
+        if flags.intersects(cmd_find_flags::CMD_FIND_WINDOW_INDEX) {
+            strlcat(tmp.as_mut_ptr(), c!("WINDOW_INDEX,"), sizeof_tmp);
+        }
+        if flags.intersects(cmd_find_flags::CMD_FIND_DEFAULT_MARKED) {
+            strlcat(tmp.as_mut_ptr(), c!("DEFAULT_MARKED,"), sizeof_tmp);
+        }
+        if flags.intersects(cmd_find_flags::CMD_FIND_EXACT_SESSION) {
+            strlcat(tmp.as_mut_ptr(), c!("EXACT_SESSION,"), sizeof_tmp);
+        }
+        if flags.intersects(cmd_find_flags::CMD_FIND_EXACT_WINDOW) {
+            strlcat(tmp.as_mut_ptr(), c!("EXACT_WINDOW,"), sizeof_tmp);
+        }
+        if flags.intersects(cmd_find_flags::CMD_FIND_CANFAIL) {
+            strlcat(tmp.as_mut_ptr(), c!("CANFAIL,"), sizeof_tmp);
+        }
+        if tmp[0] != b'\0' {
+            tmp[strlen(tmp.as_mut_ptr()) - 1] = b'\0';
+        } else {
+            strlcat(tmp.as_mut_ptr(), c!("NONE"), sizeof_tmp);
+        }
+        log_debug!(
+            "{}: target {}, type {}, item {:p}, flags {}",
+            __func__,
+            target.unwrap_or("none"),
+            s,
+            item,
+            _s(tmp.as_ptr()),
+        );
+
+        cmd_find_clear_state(fs, flags);
+
+        if server_check_marked() && flags.intersects(cmd_find_flags::CMD_FIND_DEFAULT_MARKED) {
+            (*fs).current = &raw mut MARKED_PANE;
+            log_debug!("{}: current is marked pane", __func__);
+        } else if cmd_find_valid_state(cmdq_get_current(item)) {
+            (*fs).current = cmdq_get_current(item);
+            log_debug!("{}: current is from queue", __func__);
+        } else if cmd_find_from_client(&raw mut current, cmdq_get_client(item), flags) == 0 {
+            (*fs).current = &raw mut current;
+            log_debug!("{}: current is from client", __func__);
+        } else {
+            if !flags.intersects(cmd_find_flags::CMD_FIND_QUIET) {
+                cmdq_error!(item, "no current target");
+            }
+            return_error!(fs, flags);
+        }
+        if !cmd_find_valid_state((*fs).current) {
+            fatalx("invalid current find state");
+        }
+
+        // An empty or NULL target is the current.
+        let Some(target) = target else {
+            current!(fs, flags);
+        };
+        if target.is_empty() {
+            current!(fs, flags);
+        }
+
+        // Mouse target is a plain = or {mouse}.
+        if target == "=" || target == "{mouse}" {
+            m = &raw mut (*cmdq_get_event(item)).m;
+            match type_ {
+                cmd_find_type::CMD_FIND_PANE => {
+                    (*fs).wp =
+                        transmute_ptr(cmd_mouse_pane(m, &raw mut (*fs).s, &raw mut (*fs).wl));
+                    if !(*fs).wp.is_null() {
+                        (*fs).w = (*(*fs).wl).window;
+                    } else {
+                        // FALLTHROUGH; copied from below
+                        (*fs).wl = transmute_ptr(cmd_mouse_window(m, &raw mut (*fs).s));
+                        if (*fs).wl.is_null() && !(*fs).s.is_null() {
+                            (*fs).wl = (*(*fs).s).curw;
+                        }
+                        if !(*fs).wl.is_null() {
+                            (*fs).w = (*(*fs).wl).window;
+                            (*fs).wp = (*(*fs).w).active;
+                        }
+                    }
+                }
+                cmd_find_type::CMD_FIND_WINDOW | cmd_find_type::CMD_FIND_SESSION => {
+                    (*fs).wl = transmute_ptr(cmd_mouse_window(m, &raw mut (*fs).s));
+                    if (*fs).wl.is_null() && !(*fs).s.is_null() {
+                        (*fs).wl = (*(*fs).s).curw;
+                    }
+                    if !(*fs).wl.is_null() {
+                        (*fs).w = (*(*fs).wl).window;
+                        (*fs).wp = (*(*fs).w).active;
+                    }
+                }
+            }
+            if (*fs).wp.is_null() {
+                if !flags.intersects(cmd_find_flags::CMD_FIND_QUIET) {
+                    cmdq_error!(item, "no mouse target");
+                }
+                return_error!(fs, flags);
+            }
+            found!(fs);
+        }
+
+        if target == "~" || target == "{marked}" {
+            if !server_check_marked() {
+                if !flags.intersects(cmd_find_flags::CMD_FIND_QUIET) {
+                    cmdq_error!(item, "no marked target");
+                }
+                return_error!(fs, flags);
+            }
+            cmd_find_copy_state(fs, &raw mut MARKED_PANE);
+            found!(fs);
+        }
+
+        let copy = target; // No need to make copy due to rust slice
+        let colon = copy.find(':').map(|i| &copy[..i]);
+        let period = if let Some(colon) = colon {
+            colon.find('.').map(|i| &colon[..i])
+        } else {
+            copy.find('.').map(|i| &copy[..i])
+        };
+
+        let mut session: Option<&str> = None;
+        let mut window: Option<&str> = None;
+        let mut pane: Option<&str> = None;
+        match (colon, period) {
+            (Some(colon), Some(period)) => {
+                session = Some(copy);
+                window = Some(colon);
+                window_only = true;
+                pane = Some(period);
+                pane_only = true;
+            }
+            (Some(colon), None) => {
+                session = Some(copy);
+                window = Some(colon);
+                window_only = true;
+            }
+            (None, Some(period)) => {
+                window = Some(copy);
+                pane = Some(period);
+                pane_only = true;
+            }
+            (None, None) => match copy.chars().next() {
+                Some('$') => session = Some(copy),
+                Some('@') => window = Some(copy),
+                Some('%') => pane = Some(copy),
+                _ => match type_ {
+                    cmd_find_type::CMD_FIND_SESSION => session = Some(copy),
+                    cmd_find_type::CMD_FIND_WINDOW => window = Some(copy),
+                    cmd_find_type::CMD_FIND_PANE => pane = Some(copy),
+                },
+            },
+        }
+
+        if session.is_some_and(|s| s.starts_with('=')) {
+            session = session.map(|s| &s[1..]);
+            (*fs).flags |= cmd_find_flags::CMD_FIND_EXACT_SESSION;
+        }
+        if window.is_some_and(|w| w.starts_with('=')) {
+            window = window.map(|w| &w[1..]);
+            (*fs).flags |= cmd_find_flags::CMD_FIND_EXACT_WINDOW;
+        }
+
+        if session.is_some_and(|s| s.is_empty()) {
+            session = None;
+        }
+        if window.is_some_and(|w| w.is_empty()) {
+            window = None;
+        }
+        if pane.is_some_and(|p| p.is_empty()) {
+            pane = None;
+        }
+
+        if session.is_some() {
+            session = Some(cmd_find_map_table(
+                &CMD_FIND_SESSION_TABLE,
+                session.unwrap(),
+            ));
+        }
+        if window.is_some() {
+            window = Some(cmd_find_map_table(&CMD_FIND_WINDOW_TABLE, window.unwrap()));
+        }
+        if pane.is_some() {
+            pane = Some(cmd_find_map_table(&CMD_FIND_PANE_TABLE, pane.unwrap()));
+        }
+
+        if session.is_some() || window.is_some() || pane.is_some() {
+            log_debug!(
+                "{}: target {} is {}{}{}{}{}{}",
+                __func__,
+                target,
+                if session.is_none() { "" } else { "session " },
+                session.unwrap_or_default(),
+                if window.is_none() { "" } else { "window " },
+                window.unwrap_or_default(),
+                if pane.is_none() { "" } else { "pane " },
+                pane.unwrap_or_default(),
+            );
+        }
+
+        if pane.is_some() && flags.intersects(cmd_find_flags::CMD_FIND_WINDOW_INDEX) {
+            if !flags.intersects(cmd_find_flags::CMD_FIND_QUIET) {
+                cmdq_error!(item, "can't specify pane here");
+            }
+            return_error!(fs, flags);
+        }
+
+        if let Some(session) = session {
+            if cmd_find_get_session(fs, session) != 0 {
+                no_session!(item, session, fs, flags);
+            }
+
+            match (window, pane) {
+                (None, None) => {
+                    (*fs).wl = (*(*fs).s).curw;
+                    (*fs).idx = -1;
+                    (*fs).w = (*(*fs).wl).window;
+                    (*fs).wp = (*(*fs).w).active;
+                    found!(fs);
+                }
+                (Some(window), None) => {
+                    if cmd_find_get_window_with_session(fs, window) != 0 {
+                        no_window!(item, window, fs, flags);
+                    }
+                    if !(*fs).wl.is_null() {
+                        (*fs).wp = (*(*(*fs).wl).window).active;
+                    }
+                    found!(fs);
+                }
+                (None, Some(pane)) => {
+                    if cmd_find_get_pane_with_session(fs, pane) != 0 {
+                        no_pane!(item, pane, fs, flags);
+                    }
+                    found!(fs);
+                }
+                (Some(window), Some(pane)) => {
+                    if cmd_find_get_window_with_session(fs, window) != 0 {
+                        no_window!(item, window, fs, flags);
+                    }
+                    if cmd_find_get_pane_with_window(fs, pane) != 0 {
+                        no_pane!(item, pane, fs, flags);
+                    }
+                    found!(fs);
+                }
+            }
+        }
+
+        match (window, pane) {
+            (Some(window), Some(pane)) => {
+                if cmd_find_get_window(fs, window, window_only) != 0 {
+                    no_window!(item, window, fs, flags);
+                }
+                if cmd_find_get_pane_with_window(fs, pane) != 0 {
+                    no_pane!(item, pane, fs, flags);
+                }
+                found!(fs);
+            }
+            (Some(window), None) => {
+                if cmd_find_get_window(fs, window, window_only) != 0 {
+                    no_window!(item, window, fs, flags);
+                }
+                if !(*fs).wl.is_null() {
+                    (*fs).wp = (*(*(*fs).wl).window).active;
+                }
+                found!(fs);
+            }
+            (None, Some(pane)) => {
+                if cmd_find_get_pane(fs, pane, pane_only) != 0 {
+                    no_pane!(item, pane, fs, flags);
+                }
+                found!(fs);
+            }
+            (None, None) => {
+                current!(fs, flags);
+            }
+        }
+
+        macro_rules! found {
+            ($fs:expr) => {
+                (*$fs).current = null_mut();
+                cmd_find_log_state(c!("cmd_find_target"), $fs);
+                return 0;
+            };
+        }
+        use found;
+
+        macro_rules! no_pane {
+            ($item:expr, $pane:expr, $fs:expr, $flags:expr) => {
+                if !$flags.intersects(cmd_find_flags::CMD_FIND_QUIET) {
+                    cmdq_error!($item, "can't find pane: {}", $pane);
+                }
+                return_error!($fs, $flags);
+            };
+        }
+        use no_pane;
+
+        macro_rules! no_session {
+            ($item:expr, $session:expr, $fs:expr, $flags:expr) => {
+                if !$flags.intersects(cmd_find_flags::CMD_FIND_QUIET) {
+                    cmdq_error!($item, "can't find session: {}", $session);
+                }
+                return_error!($fs, $flags);
+            };
+        }
+        use no_session;
+
+        macro_rules! no_window {
+            ($item:expr, $window:expr, $fs:expr, $flags:expr) => {
+                if !$flags.intersects(cmd_find_flags::CMD_FIND_QUIET) {
+                    cmdq_error!($item, "can't find window: {}", $window);
+                }
+                return_error!($fs, $flags);
+            };
+        }
+        use no_window;
+
+        macro_rules! return_error {
+            ($fs:expr, $flags:expr) => {
+                (*$fs).current = null_mut();
+                log_debug!("cmd_find_target: error");
+
+                if $flags.intersects(cmd_find_flags::CMD_FIND_CANFAIL) {
+                    return 0;
+                } else {
+                    return -1;
+                }
+            };
+        }
+        use return_error;
     }
 }
 
@@ -1354,7 +1352,11 @@ pub unsafe fn cmd_find_current_client(item: *mut cmdq_item, quiet: i32) -> *mut 
     }
 }
 
-pub unsafe fn cmd_find_client(item: *mut cmdq_item, target: *const u8, quiet: i32) -> *mut client {
+pub unsafe fn cmd_find_client(
+    item: *mut cmdq_item,
+    target: Option<&str>,
+    quiet: i32,
+) -> *mut client {
     let __func__ = "cmd_find_client";
     unsafe {
         // struct client *c;
@@ -1362,16 +1364,12 @@ pub unsafe fn cmd_find_client(item: *mut cmdq_item, target: *const u8, quiet: i3
         // size_t size;
 
         // A NULL argument means the current client.
-        if target.is_null() {
+        let Some(target) = target else {
             return cmd_find_current_client(item, quiet);
-        }
-        let copy = xstrdup(target).as_ptr();
+        };
 
         // Trim a single trailing colon if any.
-        let size = strlen(copy);
-        if size != 0 && *copy.add(size - 1) == b':' as _ {
-            *copy.add(size - 1) = b'\0' as _;
-        }
+        let copy = target.strip_suffix(':').unwrap_or(target);
 
         let mut c = null_mut();
         // Check name and path of each client.
@@ -1380,20 +1378,20 @@ pub unsafe fn cmd_find_client(item: *mut cmdq_item, target: *const u8, quiet: i3
             if (*c).session.is_null() {
                 continue;
             }
-            if strcmp(copy, (*c).name) == 0 {
+            if streq_((*c).name, copy) {
                 break;
             }
 
             if *(*c).ttyname == b'\0' as _ {
                 continue;
             }
-            if strcmp(copy, (*c).ttyname) == 0 {
+            if streq_((*c).ttyname, copy) {
                 break;
             }
             if libc::strncmp((*c).ttyname, _PATH_DEV, SIZEOF_PATH_DEV - 1) != 0 {
                 continue;
             }
-            if strcmp(copy, (*c).ttyname.add(SIZEOF_PATH_DEV - 1)) == 0 {
+            if streq_((*c).ttyname.add(SIZEOF_PATH_DEV - 1), copy) {
                 break;
             }
 
@@ -1401,11 +1399,10 @@ pub unsafe fn cmd_find_client(item: *mut cmdq_item, target: *const u8, quiet: i3
         }
 
         if c.is_null() && quiet == 0 {
-            cmdq_error!(item, "can't find client: {}", _s(copy));
+            cmdq_error!(item, "can't find client: {}", copy);
         }
 
-        free_(copy);
-        log_debug!("{}: target {}, return {:p}", __func__, _s(target), c);
+        log_debug!("{}: target {}, return {:p}", __func__, target, c);
         c
     }
 }

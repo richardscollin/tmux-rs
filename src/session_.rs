@@ -29,11 +29,11 @@ pub static NEXT_SESSION_ID: AtomicU32 = AtomicU32::new(0);
 pub static mut SESSION_GROUPS: session_groups = rb_initializer();
 
 pub fn session_cmp(s1: &session, s2: &session) -> cmp::Ordering {
-    unsafe { i32_to_ordering(libc::strcmp(s1.name, s2.name)) }
+    s1.name.cmp(&s2.name)
 }
 
 pub fn session_group_cmp(s1: &session_group, s2: &session_group) -> cmp::Ordering {
-    unsafe { i32_to_ordering(libc::strcmp(s1.name, s2.name)) }
+    s1.name.cmp(&s2.name)
 }
 
 pub unsafe fn session_alive(s: *mut session) -> bool {
@@ -41,24 +41,24 @@ pub unsafe fn session_alive(s: *mut session) -> bool {
 }
 
 /// Find session by name.
-pub unsafe fn session_find(name: *mut u8) -> *mut session {
+pub unsafe fn session_find(name: &str) -> *mut session {
     let mut s = MaybeUninit::<session>::uninit();
     let s = s.as_mut_ptr();
 
     unsafe {
-        (*s).name = name;
+        (*s).name = Cow::Borrowed(std::mem::transmute::<&str, &'static str>(name));
         rb_find(&raw mut SESSIONS, s)
     }
 }
 
 /// Find session by id parsed from a string.
-pub unsafe fn session_find_by_id_str(s: *const u8) -> *mut session {
+pub unsafe fn session_find_by_id_str(s: &str) -> *mut session {
     unsafe {
-        if *s != b'$' {
+        if !s.starts_with('$') {
             return null_mut();
         }
 
-        let Ok(id) = strtonum(s.add(1), 0, u32::MAX) else {
+        let Ok(id) = strtonum_(&s[1..], 0, u32::MAX) else {
             return null_mut();
         };
         transmute_ptr(session_find_by_id(id))
@@ -73,7 +73,7 @@ pub unsafe fn session_find_by_id(id: u32) -> Option<NonNull<session>> {
 impl session {
     unsafe fn create(
         prefix: *const u8,
-        name: *const u8,
+        name: Option<&str>,
         cwd: *const u8,
         env: *mut environ,
         oo: *mut options,
@@ -100,17 +100,16 @@ impl session {
                 memcpy__(s.tio, tio);
             }
 
-            if !name.is_null() {
-                s.name = xstrdup(name).as_ptr();
+            if let Some(name) = name {
+                s.name = name.to_string().into();
                 s.id = NEXT_SESSION_ID.fetch_add(1, atomic::Ordering::Relaxed);
             } else {
                 loop {
                     s.id = NEXT_SESSION_ID.fetch_add(1, atomic::Ordering::Relaxed);
-                    free_(s.name);
                     s.name = if !prefix.is_null() {
-                        format_nul!("{}-{}", _s(prefix), s.id)
+                        format!("{}-{}", _s(prefix), s.id).into()
                     } else {
-                        format_nul!("{}", s.id)
+                        format!("{}", s.id).into()
                     };
 
                     if rb_find(&raw mut SESSIONS, s.as_mut()).is_null() {
@@ -120,7 +119,7 @@ impl session {
             }
             rb_insert(&raw mut SESSIONS, s.as_mut());
 
-            log_debug!("new session {} ${}", _s(s.name), s.id);
+            log_debug!("new session {} ${}", s.name, s.id);
 
             if libc::gettimeofday(&raw mut s.creation_time, null_mut()) != 0 {
                 fatal("gettimeofday failed");
@@ -135,7 +134,7 @@ impl session {
 /// Create a new session.
 pub unsafe fn session_create(
     prefix: *const u8,
-    name: *const u8,
+    name: Option<&str>,
     cwd: *const u8,
     env: *mut environ,
     oo: *mut options,
@@ -152,7 +151,7 @@ pub unsafe fn session_add_ref(s: *mut session, from: *const u8) {
         log_debug!(
             "{}: {} {}, now {}",
             __func__,
-            _s((*s).name),
+            (*s).name,
             _s(from),
             (*s).references
         );
@@ -167,7 +166,7 @@ pub unsafe fn session_remove_ref(s: *mut session, from: *const u8) {
         log_debug!(
             "{}: {} {}, now {}",
             __func__,
-            _s((*s).name),
+            (*s).name,
             _s(from),
             (*s).references
         );
@@ -185,14 +184,14 @@ pub unsafe extern "C-unwind" fn session_free(_fd: i32, _events: i16, arg: *mut c
 
         log_debug!(
             "session {} freed ({} references)",
-            _s((*s).name),
+            (*s).name,
             (*s).references
         );
 
         if (*s).references == 0 {
             environ_free((*s).environ);
             options_free((*s).options);
-            free_((*s).name);
+            (*s).name = Cow::Borrowed("");
             free_(s);
         }
     }
@@ -202,7 +201,7 @@ pub unsafe extern "C-unwind" fn session_free(_fd: i32, _events: i16, arg: *mut c
 pub unsafe fn session_destroy(s: *mut session, notify: i32, from: *const u8) {
     let __func__ = c!("session_destroy");
     unsafe {
-        log_debug!("session {} destroyed ({})", _s((*s).name), _s(from));
+        log_debug!("session {} destroyed ({})", (*s).name, _s(from));
 
         if (*s).curw.is_null() {
             return;
@@ -238,11 +237,10 @@ pub unsafe fn session_destroy(s: *mut session, notify: i32, from: *const u8) {
 }
 
 /// Sanitize session name.
-pub unsafe fn session_check_name(name: *const u8) -> *mut u8 {
+pub unsafe fn session_check_name(name: *const u8) -> Option<String> {
     unsafe {
-        let mut new_name = null_mut();
         if *name == b'\0' {
-            return null_mut();
+            return None;
         }
         let copy = xstrdup(name).as_ptr();
         let mut cp = copy;
@@ -252,13 +250,12 @@ pub unsafe fn session_check_name(name: *const u8) -> *mut u8 {
             }
             cp = cp.add(1);
         }
-        utf8_stravis(
-            &raw mut new_name,
+        let new_name = utf8_stravis_(
             copy,
             vis_flags::VIS_OCTAL | vis_flags::VIS_CSTYLE | vis_flags::VIS_TAB | vis_flags::VIS_NL,
         );
         free_(copy);
-        new_name
+        Some(String::from_utf8(new_name).unwrap())
     }
 }
 
@@ -271,7 +268,7 @@ pub unsafe extern "C-unwind" fn session_lock_timer(_fd: i32, _events: i16, s: No
 
         log_debug!(
             "session {} locked, activity time {}",
-            _s((*s.as_ptr()).name),
+            (*s.as_ptr()).name,
             (*s.as_ptr()).activity_time.tv_sec,
         );
 
@@ -295,7 +292,7 @@ pub unsafe fn session_update_activity(s: *mut session, from: *mut timeval) {
         log_debug!(
             "session ${} {} activity {}.{:06} (last {}.{:06})",
             (*s).id,
-            _s((*s).name),
+            (*s).name,
             (*s).activity_time.tv_sec,
             (*s).activity_time.tv_usec,
             (*last).tv_sec,
@@ -569,18 +566,18 @@ pub unsafe fn session_group_contains(target: *mut session) -> *mut session_group
 }
 
 /// Find session group by name.
-pub unsafe fn session_group_find(name: *const u8) -> *mut session_group {
+pub unsafe fn session_group_find(name: &str) -> *mut session_group {
     unsafe {
         let mut sg = MaybeUninit::<session_group>::uninit();
         let sg = sg.as_mut_ptr();
 
-        (*sg).name = name;
+        (*sg).name = Cow::Borrowed(std::mem::transmute::<&str, &'static str>(name));
         rb_find(&raw mut SESSION_GROUPS, sg)
     }
 }
 
 /// Create a new session group.
-pub unsafe fn session_group_new(name: *const u8) -> *mut session_group {
+pub unsafe fn session_group_new(name: &str) -> *mut session_group {
     unsafe {
         let mut sg = session_group_find(name);
         if !sg.is_null() {
@@ -588,7 +585,7 @@ pub unsafe fn session_group_new(name: *const u8) -> *mut session_group {
         }
 
         sg = xcalloc1::<session_group>();
-        (*sg).name = xstrdup(name).as_ptr();
+        (*sg).name = name.to_string().into();
         tailq_init(&raw mut (*sg).sessions);
 
         rb_insert(&raw mut SESSION_GROUPS, sg);
@@ -616,7 +613,7 @@ pub unsafe fn session_group_remove(s: *mut session) {
         tailq_remove(&raw mut (*sg).sessions, s);
         if tailq_empty(&raw mut (*sg).sessions) {
             rb_remove(&raw mut SESSION_GROUPS, sg);
-            free_((*sg).name.cast_mut());
+            (*sg).name = Cow::Borrowed("");
             free_(sg);
         }
     }

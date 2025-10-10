@@ -40,26 +40,22 @@ unsafe fn cmd_rename_session_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
         let s = (*target).s;
 
         let tmp = format_single_from_target(item, args_string(args, 0));
-        let newname = session_check_name(tmp);
-        if newname.is_null() {
+        let Some(newname) = session_check_name(tmp) else {
             cmdq_error!(item, "invalid session: {}", _s(tmp));
             free_(tmp);
             return cmd_retval::CMD_RETURN_ERROR;
-        }
+        };
         free_(tmp);
-        if libc::strcmp(newname, (*s).name) == 0 {
-            free_(newname);
+        if newname == (*s).name {
             return cmd_retval::CMD_RETURN_NORMAL;
         }
-        if !session_find(newname).is_null() {
-            cmdq_error!(item, "duplicate session: {}", _s(newname));
-            free_(newname);
+        if !session_find(&newname).is_null() {
+            cmdq_error!(item, "duplicate session: {}", newname);
             return cmd_retval::CMD_RETURN_ERROR;
         }
 
         rb_remove(&raw mut SESSIONS, s);
-        free_((*s).name);
-        (*s).name = newname;
+        (*s).name = newname.into();
         rb_insert(&raw mut SESSIONS, s);
 
         server_status_session(s);

@@ -231,11 +231,11 @@ unsafe extern "C" fn window_tree_cmp_session(a0: *const c_void, b0: *const c_voi
                 {
                     result = 1;
                 } else {
-                    result = libc::strcmp((*sa).name, (*sb).name);
+                    result = (*sa).name.cmp(&(*sb).name) as i32;
                 }
             }
             Ok(window_tree_sort_type::WINDOW_TREE_BY_NAME) => {
-                result = libc::strcmp((*sa).name, (*sb).name);
+                result = (*sa).name.cmp(&(*sb).name) as i32;
             }
             Err(_) => (),
         }
@@ -337,7 +337,7 @@ unsafe fn window_tree_build_pane(
             parent,
             item.cast(),
             wp as u64,
-            name,
+            cstr_to_str(name),
             text,
             None,
         );
@@ -412,7 +412,7 @@ unsafe fn window_tree_build_window(
                 parent,
                 item.cast(),
                 wl as u64,
-                name,
+                cstr_to_str(name),
                 text,
                 Some(expanded),
             );
@@ -500,7 +500,7 @@ unsafe fn window_tree_build_session(
             null_mut(),
             item.cast(),
             s as u64,
-            (*s).name,
+            &(*s).name,
             text,
             Some(expanded),
         );
@@ -1004,7 +1004,7 @@ unsafe fn window_tree_search(
             window_tree_type::WINDOW_TREE_NONE => return false,
             window_tree_type::WINDOW_TREE_SESSION => {
                 if let Some(s) = s {
-                    return !libc::strstr((*s.as_ptr()).name, ss).is_null();
+                    return (*s.as_ptr()).name.find(cstr_to_str(ss)).is_some();
                 }
             }
             window_tree_type::WINDOW_TREE_WINDOW => {
@@ -1207,19 +1207,19 @@ unsafe fn window_tree_get_target(
             window_tree_type::WINDOW_TREE_NONE => (),
             window_tree_type::WINDOW_TREE_SESSION => {
                 if let Some(s) = s {
-                    target = format_nul!("={}:", _s((*s.as_ptr()).name));
+                    target = format_nul!("={}:", (*s.as_ptr()).name);
                 }
             }
             window_tree_type::WINDOW_TREE_WINDOW => {
                 if let (Some(s), Some(wl)) = (s, wl) {
-                    target = format_nul!("={}:{}.", _s((*s.as_ptr()).name), (*wl.as_ptr()).idx);
+                    target = format_nul!("={}:{}.", (*s.as_ptr()).name, (*wl.as_ptr()).idx);
                 }
             }
             window_tree_type::WINDOW_TREE_PANE => {
                 if let (Some(s), Some(wl), Some(wp)) = (s, wl, wp) {
                     target = format_nul!(
                         "={}:{}.%{}",
-                        _s((*s.as_ptr()).name),
+                        (*s.as_ptr()).name,
                         (*wl.as_ptr()).idx,
                         (*wp.as_ptr()).id
                     );
@@ -1556,7 +1556,7 @@ unsafe fn window_tree_key(
                         window_tree_type::WINDOW_TREE_NONE => (),
                         window_tree_type::WINDOW_TREE_SESSION => {
                             if let Some(ns) = ns {
-                                prompt = format_nul!("Kill session {}? ", _s((*ns.as_ptr()).name));
+                                prompt = format_nul!("Kill session {}? ", (*ns.as_ptr()).name);
                             }
                         }
                         window_tree_type::WINDOW_TREE_WINDOW => {

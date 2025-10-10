@@ -182,7 +182,7 @@ pub unsafe fn window_client_build(
                 null_mut(),
                 item.cast(),
                 c as u64,
-                (*c).name,
+                cstr_to_str((*c).name),
                 text,
                 None,
             );

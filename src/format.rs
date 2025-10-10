@@ -662,7 +662,7 @@ pub unsafe fn format_cb_window_linked_sessions_list(ft: *mut format_tree) -> for
             if EVBUFFER_LENGTH(buffer) > 0 {
                 evbuffer_add(buffer, c!(",").cast(), 1);
             }
-            evbuffer_add_printf!(buffer, "{}", _s((*(*wl).session).name));
+            evbuffer_add_printf!(buffer, "{}", (*(*wl).session).name);
         }
 
         let size = EVBUFFER_LENGTH(buffer);
@@ -711,7 +711,7 @@ pub unsafe fn format_cb_window_active_sessions_list(ft: *mut format_tree) -> for
                 if EVBUFFER_LENGTH(buffer) > 0 {
                     evbuffer_add(buffer, c!(",").cast(), 1);
                 }
-                evbuffer_add_printf!(buffer, "{}", _s((*(*wl).session).name));
+                evbuffer_add_printf!(buffer, "{}", (*(*wl).session).name);
             }
         }
 
@@ -1046,7 +1046,7 @@ pub unsafe fn format_cb_session_group_list(ft: *mut format_tree) -> format_table
             if EVBUFFER_LENGTH(buffer) > 0 {
                 evbuffer_add(buffer, c!(",").cast(), 1);
             }
-            evbuffer_add_printf!(buffer, "{}", _s((*loop_).name));
+            evbuffer_add_printf!(buffer, "{}", (*loop_).name);
         }
 
         let size = EVBUFFER_LENGTH(buffer);
@@ -1451,7 +1451,7 @@ pub unsafe fn format_cb_client_last_session(ft: *mut format_tree) -> format_tabl
             && !(*(*ft).c).last_session.is_null()
             && session_alive((*(*ft).c).last_session)
         {
-            return format!("{}", _s((*(*(*ft).c).last_session).name)).into();
+            return format!("{}", (*(*(*ft).c).last_session).name).into();
         }
         format_table_type::None
     }
@@ -1504,7 +1504,7 @@ pub unsafe fn format_cb_client_readonly(ft: *mut format_tree) -> format_table_ty
 pub unsafe fn format_cb_client_session(ft: *mut format_tree) -> format_table_type {
     unsafe {
         if !(*ft).c.is_null() && !(*(*ft).c).session.is_null() {
-            return format!("{}", _s((*(*(*ft).c).session).name)).into();
+            return format!("{}", (*(*(*ft).c).session).name).into();
         }
         format_table_type::None
     }
@@ -2302,7 +2302,7 @@ pub unsafe fn format_cb_session_group(ft: *mut format_tree) -> format_table_type
         if !(*ft).s.is_null() {
             let sg = session_group_contains((*ft).s);
             if !sg.is_null() {
-                return format!("{}", _s((*sg).name)).into();
+                return format!("{}", (*sg).name).into();
             }
         }
         format_table_type::None
@@ -2404,7 +2404,7 @@ pub unsafe fn format_cb_session_marked(ft: *mut format_tree) -> format_table_typ
 pub unsafe fn format_cb_session_name(ft: *mut format_tree) -> format_table_type {
     unsafe {
         if !(*ft).s.is_null() {
-            return format!("{}", _s((*(*ft).s).name)).into();
+            return format!("{}", (*(*ft).s).name).into();
         }
         format_table_type::None
     }
@@ -3934,7 +3934,7 @@ pub unsafe fn format_session_name(es: *mut format_expand_state, fmt: *const u8) 
         let name = format_expand1(es, fmt);
 
         for s in rb_foreach(&raw mut SESSIONS).map(NonNull::as_ptr) {
-            if strcmp((*s).name, name) == 0 {
+            if streq_(name, &(*s).name) {
                 free_(name);
                 return xstrdup(c!("1")).as_ptr();
             }

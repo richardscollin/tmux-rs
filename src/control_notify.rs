@@ -159,14 +159,14 @@ pub unsafe fn control_notify_client_session_changed(cc: *mut client) {
                 }
 
                 if cc == c {
-                    control_write!(c, "%session-changed ${} {}", (*s).id, _s((*s).name));
+                    control_write!(c, "%session-changed ${} {}", (*s).id, (*s).name);
                 } else {
                     control_write!(
                         c,
                         "%client-session-changed {} ${} {}",
                         _s((*cc).name),
                         (*s).id,
-                        _s((*s).name),
+                        (*s).name,
                     );
                 }
             }
@@ -194,7 +194,7 @@ pub unsafe fn control_notify_session_renamed(s: *mut session) {
                     continue;
                 }
 
-                control_write!(c, "%session-renamed ${} {}", (*s).id, _s((*s).name));
+                control_write!(c, "%session-renamed ${} {}", (*s).id, (*s).name);
             }
         }
     }

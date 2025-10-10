@@ -30,7 +30,7 @@ pub static CMD_ATTACH_SESSION_ENTRY: cmd_entry = cmd_entry {
 
 pub unsafe fn cmd_attach_session(
     item: *mut cmdq_item,
-    tflag: *const u8,
+    tflag: Option<&str>,
     dflag: bool,
     xflag: bool,
     rflag: bool,
@@ -66,7 +66,7 @@ pub unsafe fn cmd_attach_session(
         }
 
         let (type_, flags) =
-            if !tflag.is_null() && *tflag.add(libc::strcspn(tflag, c!(":."))) != b'\0' {
+            if tflag.is_some_and(|tflag| !tflag.trim_start_matches([':', '.']).is_empty()) {
                 (cmd_find_type::CMD_FIND_PANE, cmd_find_flags::empty())
             } else {
                 (
@@ -178,7 +178,7 @@ unsafe fn cmd_attach_session_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
 
         cmd_attach_session(
             item,
-            args_get(args, b't'),
+            cstr_to_str_(args_get(args, b't')),
             args_has(args, 'd'),
             args_has(args, 'x'),
             args_has(args, 'r'),

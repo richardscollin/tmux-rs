@@ -569,6 +569,15 @@ pub unsafe fn utf8_stravis(dst: *mut *mut u8, src: *const u8, flag: vis_flags) -
     }
 }
 
+pub unsafe fn utf8_stravis_(src: *const u8, flag: vis_flags) -> Vec<u8> {
+    unsafe {
+        let mut buf: Vec<u8> = Vec::with_capacity(4 * (strlen(src) + 1));
+        utf8_strvis_(&mut buf, src, strlen(src), flag);
+        buf.shrink_to_fit();
+        buf
+    }
+}
+
 pub unsafe fn utf8_stravisx(
     dst: *mut *mut u8,
     src: *const u8,

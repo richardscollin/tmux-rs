@@ -232,18 +232,18 @@ pub unsafe fn notify_add(
         (*ne).formats = format_create(null_mut(), null_mut(), 0, format_flags::FORMAT_NOJOBS);
         format_add!((*ne).formats, "hook", "{}", _s(name.as_ptr()));
         if !c.is_null() {
-            format_add!((*ne).formats, "hook_client", "{}", _s((*c).name),);
+            format_add!((*ne).formats, "hook_client", "{}", _s((*c).name));
         }
         if !s.is_null() {
             format_add!((*ne).formats, "hook_session", "${}", (*s).id);
-            format_add!((*ne).formats, "hook_session_name", "{}", _s((*s).name),);
+            format_add!((*ne).formats, "hook_session_name", "{}", (*s).name);
         }
         if !w.is_null() {
             format_add!((*ne).formats, "hook_window", "@{}", (*w).id,);
-            format_add!((*ne).formats, "hook_window_name", "{}", _s((*w).name),);
+            format_add!((*ne).formats, "hook_window_name", "{}", _s((*w).name));
         }
         if !wp.is_null() {
-            format_add!((*ne).formats, "hook_pane", "%%{}", (*wp).id,);
+            format_add!((*ne).formats, "hook_pane", "%%{}", (*wp).id);
         }
         format_log_debug((*ne).formats, __func__);
 

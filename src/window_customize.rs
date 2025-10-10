@@ -192,7 +192,7 @@ unsafe fn window_customize_scope_text(
                 format_nul!("pane {}", idx)
             }
             window_customize_scope::WINDOW_CUSTOMIZE_SESSION => {
-                format_nul!("session {}", _s((*(*fs).s).name))
+                format_nul!("session {}", (*(*fs).s).name)
             }
             window_customize_scope::WINDOW_CUSTOMIZE_WINDOW => {
                 format_nul!("window {}", (*(*fs).wl).idx)
@@ -252,7 +252,15 @@ unsafe fn window_customize_build_array(
 
             let text: *mut u8 = format_expand(ft, (*data).format);
             let tag = window_customize_get_tag(o, idx as i32, oe);
-            mode_tree_add((*data).data, top, item.cast(), tag, name, text, None);
+            mode_tree_add(
+                (*data).data,
+                top,
+                item.cast(),
+                tag,
+                cstr_to_str(name),
+                text,
+                None,
+            );
             free_(text);
 
             free_(name);
@@ -337,7 +345,15 @@ unsafe fn window_customize_build_option(
             text = format_expand(ft, (*data).format);
         }
         let tag = window_customize_get_tag(o, -1, oe);
-        let top = mode_tree_add((*data).data, top, item.cast(), tag, name, text, Some(false));
+        let top = mode_tree_add(
+            (*data).data,
+            top,
+            item.cast(),
+            tag,
+            cstr_to_str(name),
+            text,
+            Some(false),
+        );
         free_(text);
 
         if array != 0 {
@@ -403,7 +419,7 @@ unsafe fn window_customize_build_options(
             null_mut(),
             null_mut(),
             tag,
-            title,
+            cstr_to_str(title),
             null_mut(),
             Some(false),
         );
@@ -486,7 +502,7 @@ unsafe fn window_customize_build_keys(
             null_mut(),
             null_mut(),
             tag,
-            title,
+            cstr_to_str(title),
             null_mut(),
             Some(false),
         );
@@ -525,7 +541,7 @@ unsafe fn window_customize_build_keys(
                 top,
                 item.cast(),
                 bd as u64,
-                expanded,
+                cstr_to_str(expanded),
                 null_mut(),
                 Some(false),
             );
@@ -539,7 +555,7 @@ unsafe fn window_customize_build_keys(
                 child,
                 item.cast(),
                 tag | ((*bd).key << 3) | 1,
-                c!("Command"),
+                "Command",
                 text,
                 None,
             );
@@ -557,7 +573,7 @@ unsafe fn window_customize_build_keys(
                 child,
                 item.cast(),
                 tag | ((*bd).key << 3) | (1 << 1) | 1,
-                c!("Note"),
+                "Note",
                 text,
                 None,
             );
@@ -575,7 +591,7 @@ unsafe fn window_customize_build_keys(
                 child,
                 item.cast(),
                 tag | ((*bd).key << 3) | (2 << 1) | 1,
-                c!("Repeat"),
+                "Repeat",
                 flag,
                 None,
             );

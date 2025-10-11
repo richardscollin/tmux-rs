@@ -12,7 +12,6 @@
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 use crate::cmd_::cmd_queue::cmdq_get_callback;
-use crate::libc::{ENOENT, strerror};
 use crate::*;
 
 pub static mut CFG_CLIENT: *mut client = null_mut();
@@ -113,12 +112,12 @@ pub unsafe fn load_cfg(
         let mut f = match std::fs::OpenOptions::new().read(true).open(path) {
             Ok(f) => std::io::BufReader::new(f),
             Err(err) => {
-                let code = err.raw_os_error().unwrap();
-
-                if code == ENOENT && flags.intersects(cmd_parse_input_flags::CMD_PARSE_QUIET) {
+                if matches!(err.kind(), std::io::ErrorKind::NotFound)
+                    && flags.intersects(cmd_parse_input_flags::CMD_PARSE_QUIET)
+                {
                     return 0;
                 }
-                cfg_add_cause!("{}: {}", path, strerror(code));
+                cfg_add_cause!("{path}: {err}");
                 return -1;
             }
         };

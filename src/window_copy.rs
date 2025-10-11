@@ -5550,7 +5550,7 @@ pub unsafe fn window_copy_append_selection(wme: *mut window_mode_entry) {
             notify_pane(c"pane-set-clipboard", wp);
         }
 
-        let mut bufname: *const u8 = null();
+        let mut bufname = None;
         let pb = paste_get_top(&raw mut bufname);
         if !pb.is_null() {
             let bufdata = paste_buffer_data(pb, &raw mut bufsize);

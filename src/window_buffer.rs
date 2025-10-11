@@ -11,7 +11,6 @@
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-use crate::libc::{strcmp, strstr};
 use crate::*;
 
 const WINDOW_BUFFER_DEFAULT_COMMAND: &str = "paste-buffer -p -b '%%'";
@@ -67,34 +66,32 @@ enum window_buffer_sort_type {
 
 static WINDOW_BUFFER_SORT_LIST: [&str; 3] = ["time", "name", "size"];
 
-pub struct window_buffer_itemdata {
-    pub name: *mut u8,
-    pub order: u32,
-    pub size: usize,
+struct window_buffer_itemdata {
+    name: String,
+    order: u32,
+    size: usize,
 }
 
-pub struct window_buffer_modedata {
-    pub wp: *mut window_pane,
-    pub fs: cmd_find_state,
+struct window_buffer_modedata {
+    wp: *mut window_pane,
+    fs: cmd_find_state,
 
-    pub data: *mut mode_tree_data,
-    pub command: *mut u8,
-    pub format: *mut u8,
-    pub key_format: *mut u8,
+    data: *mut mode_tree_data,
+    command: *mut u8,
+    format: *mut u8,
+    key_format: *mut u8,
 
-    pub item_list: *mut *mut window_buffer_itemdata,
-    pub item_size: u32,
+    item_list: *mut *mut window_buffer_itemdata,
+    item_size: u32,
 }
 
 pub struct window_buffer_editdata {
     pub wp_id: u32,
-    pub name: *mut u8,
+    pub name: String,
     pub pb: *mut paste_buffer,
 }
 
-pub unsafe fn window_buffer_add_item(
-    data: *mut window_buffer_modedata,
-) -> *mut window_buffer_itemdata {
+unsafe fn window_buffer_add_item(data: *mut window_buffer_modedata) -> *mut window_buffer_itemdata {
     unsafe {
         (*data).item_list =
             xreallocarray_((*data).item_list, (*data).item_size as usize + 1).as_ptr();
@@ -105,9 +102,9 @@ pub unsafe fn window_buffer_add_item(
     }
 }
 
-pub unsafe fn window_buffer_free_item(item: *mut window_buffer_itemdata) {
+unsafe fn window_buffer_free_item(item: *mut window_buffer_itemdata) {
     unsafe {
-        free_((*item).name);
+        (*item).name = String::new();
         free_(item);
     }
 }
@@ -138,7 +135,7 @@ pub unsafe fn window_buffer_build(
         let mut pb = paste_walk(null_mut());
         while let Some(pb_non_null) = NonNull::new(pb) {
             let item = window_buffer_add_item(data);
-            (*item).name = xstrdup(paste_buffer_name(pb_non_null)).as_ptr();
+            (*item).name = (paste_buffer_name(pb_non_null)).to_string();
             paste_buffer_data(pb, &raw mut (*item).size); // I'm sure if we follow alias rules on item.size here, so keep using older function
             (*item).order = paste_buffer_order(pb_non_null);
             pb = paste_walk(pb);
@@ -153,7 +150,7 @@ pub unsafe fn window_buffer_build(
                     tmp.sort_by(|a, b| {
                         ((**b).order)
                             .cmp(&(**a).order)
-                            .then_with(|| i32_to_ordering(strcmp((**a).name, (**b).name)))
+                            .then_with(|| (**a).name.cmp(&(**b).name))
                             .maybe_reverse((*sort_crit).reversed)
                     });
                 }
@@ -161,13 +158,15 @@ pub unsafe fn window_buffer_build(
                     tmp.sort_by(|a, b| {
                         ((**b).size)
                             .cmp(&(**a).size)
-                            .then_with(|| i32_to_ordering(strcmp((**a).name, (**b).name)))
+                            .then_with(|| (**a).name.cmp(&(**b).name))
                             .maybe_reverse((*sort_crit).reversed)
                     });
                 }
                 Ok(window_buffer_sort_type::WINDOW_BUFFER_BY_NAME) | Err(_) => {
                     tmp.sort_by(|a, b| {
-                        i32_to_ordering(strcmp((**a).name, (**b).name))
+                        (**a)
+                            .name
+                            .cmp(&(**b).name)
                             .maybe_reverse((*sort_crit).reversed)
                     });
                 }
@@ -183,7 +182,7 @@ pub unsafe fn window_buffer_build(
         for i in 0..(*data).item_size {
             item = *(*data).item_list.add(i as usize);
 
-            pb = paste_get_name((*item).name);
+            pb = paste_get_name(Some(&(*item).name));
             if pb.is_null() {
                 continue;
             }
@@ -207,7 +206,7 @@ pub unsafe fn window_buffer_build(
                 null_mut(),
                 item.cast(),
                 (*item).order as u64,
-                cstr_to_str((*item).name),
+                &(*item).name,
                 text,
                 None,
             );
@@ -230,7 +229,7 @@ pub unsafe fn window_buffer_draw(
         let cx = (*(*ctx).s).cx;
         let cy = (*(*ctx).s).cy;
 
-        let Some(pb) = NonNull::new(paste_get_name((*item.unwrap().as_ptr()).name)) else {
+        let Some(pb) = NonNull::new(paste_get_name(Some(&(*item.unwrap().as_ptr()).name))) else {
             return;
         };
 
@@ -279,10 +278,10 @@ pub unsafe fn window_buffer_search(
 ) -> bool {
     unsafe {
         let item: NonNull<window_buffer_itemdata> = itemdata.cast();
-        let Some(pb) = NonNull::new(paste_get_name((*item.as_ptr()).name)) else {
+        let Some(pb) = NonNull::new(paste_get_name(Some(&(*item.as_ptr()).name))) else {
             return false;
         };
-        if !strstr((*item.as_ptr()).name, ss).is_null() {
+        if (*item.as_ptr()).name.contains(cstr_to_str(ss)) {
             return true;
         }
         let mut bufsize = 0;
@@ -324,7 +323,7 @@ pub unsafe fn window_buffer_get_key(
             wl = NonNull::new((*data.as_ptr()).fs.wl);
             wp = NonNull::new((*data.as_ptr()).fs.wp);
         }
-        let Some(pb) = NonNull::new(paste_get_name((*item.as_ptr()).name)) else {
+        let Some(pb) = NonNull::new(paste_get_name(Some(&(*item.as_ptr()).name))) else {
             return KEYC_NONE;
         };
 
@@ -454,7 +453,7 @@ pub unsafe fn window_buffer_do_delete(
             mode_tree_up((*data.as_ptr()).data, 0);
         }
 
-        if let Some(pb) = NonNull::new(paste_get_name((*item.as_ptr()).name)) {
+        if let Some(pb) = NonNull::new(paste_get_name(Some(&(*item.as_ptr()).name))) {
             paste_free(pb);
         }
     }
@@ -470,12 +469,12 @@ pub unsafe fn window_buffer_do_paste(
         let data: NonNull<window_buffer_modedata> = modedata.cast();
         let item: NonNull<window_buffer_itemdata> = itemdata.cast();
 
-        if !paste_get_name((*item.as_ptr()).name).is_null() {
+        if !paste_get_name(Some(&(*item.as_ptr()).name)).is_null() {
             mode_tree_run_command(
                 c,
                 null_mut(),
                 (*data.as_ptr()).command,
-                (*item.as_ptr()).name,
+                Some(&(*item.as_ptr()).name),
             );
         }
     }
@@ -483,7 +482,7 @@ pub unsafe fn window_buffer_do_paste(
 
 pub unsafe fn window_buffer_finish_edit(ed: *mut window_buffer_editdata) {
     unsafe {
-        free_((*ed).name);
+        (*ed).name = String::new();
         free_(ed);
     }
 }
@@ -497,7 +496,7 @@ pub unsafe fn window_buffer_edit_close_cb(buf: *mut u8, mut len: usize, arg: *mu
             return;
         }
 
-        let pb = paste_get_name((*ed).name);
+        let pb = paste_get_name(Some(&(*ed).name));
         if pb.is_null() || pb != (*ed).pb {
             window_buffer_finish_edit(ed);
             return;
@@ -527,23 +526,23 @@ pub unsafe fn window_buffer_edit_close_cb(buf: *mut u8, mut len: usize, arg: *mu
     }
 }
 
-pub unsafe fn window_buffer_start_edit(
+unsafe fn window_buffer_start_edit(
     data: *mut window_buffer_modedata,
     item: *mut window_buffer_itemdata,
     c: *mut client,
 ) {
     unsafe {
-        let Some(pb) = NonNull::new(paste_get_name((*item).name)) else {
+        let Some(pb) = NonNull::new(paste_get_name(Some(&(*item).name))) else {
             return;
         };
         let mut len = 0;
         let buf = paste_buffer_data_(pb, &mut len);
 
-        let ed = xcalloc1::<window_buffer_editdata>();
-        ed.wp_id = (*(*data).wp).id;
-        ed.name = xstrdup(paste_buffer_name(pb)).as_ptr();
-        ed.pb = pb.as_ptr();
-        let ed = ed as *mut window_buffer_editdata;
+        let ed = Box::leak(Box::new(window_buffer_editdata {
+            wp_id: (*(*data).wp).id,
+            name: paste_buffer_name(pb).to_string(),
+            pb: pb.as_ptr(),
+        })) as *mut window_buffer_editdata;
 
         let buf = std::slice::from_raw_parts(buf, len);
         if popup_editor(c, buf, Some(window_buffer_edit_close_cb), ed.cast()) != 0 {

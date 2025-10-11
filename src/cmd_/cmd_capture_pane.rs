@@ -262,10 +262,10 @@ unsafe fn cmd_capture_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
                 free_(buf);
             }
         } else {
-            let mut bufname = null();
+            let mut bufname = None;
             let mut cause = null_mut();
             if args_has(args, 'b') {
-                bufname = args_get(args, b'b');
+                bufname = cstr_to_str_(args_get(args, b'b'));
             }
 
             if paste_set(buf, len, bufname, &raw mut cause) != 0 {

@@ -351,7 +351,8 @@ pub unsafe fn args_copy_copy_value(
             args_type::ARGS_STRING => {
                 let mut expanded = xstrdup((*from).union_.string).as_ptr();
                 for i in 0..argc {
-                    let s = cmd_template_replace(expanded, *argv.add(i as usize), i + 1);
+                    let s =
+                        cmd_template_replace(expanded, cstr_to_str_(*argv.add(i as usize)), i + 1);
                     free_(expanded);
                     expanded = s;
                 }
@@ -832,7 +833,7 @@ pub unsafe fn args_make_commands(
         log_debug!("{}: {}", __func__, _s(cmd));
         cmd_log_argv!(argc, argv, "args_make_commands");
         for i in 0..argc {
-            let new_cmd = cmd_template_replace(cmd, *argv.add(i as usize), i + 1);
+            let new_cmd = cmd_template_replace(cmd, cstr_to_str_(*argv.add(i as usize)), i + 1);
             log_debug!(
                 "{}: %%{} {}: {}",
                 __func__,

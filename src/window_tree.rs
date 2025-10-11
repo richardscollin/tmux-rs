@@ -1194,7 +1194,7 @@ unsafe fn window_tree_update(wme: NonNull<window_mode_entry>) {
 unsafe fn window_tree_get_target(
     item: NonNull<window_tree_itemdata>,
     fs: *mut cmd_find_state,
-) -> *mut u8 {
+) -> Option<String> {
     unsafe {
         let mut s = None;
         let mut wl = None;
@@ -1202,32 +1202,32 @@ unsafe fn window_tree_get_target(
 
         window_tree_pull_item(item, &raw mut s, &raw mut wl, &raw mut wp);
 
-        let mut target: *mut u8 = null_mut();
+        let mut target = None;
         match (*item.as_ptr()).type_ {
             window_tree_type::WINDOW_TREE_NONE => (),
             window_tree_type::WINDOW_TREE_SESSION => {
                 if let Some(s) = s {
-                    target = format_nul!("={}:", (*s.as_ptr()).name);
+                    target = Some(format!("={}:", (*s.as_ptr()).name));
                 }
             }
             window_tree_type::WINDOW_TREE_WINDOW => {
                 if let (Some(s), Some(wl)) = (s, wl) {
-                    target = format_nul!("={}:{}.", (*s.as_ptr()).name, (*wl.as_ptr()).idx);
+                    target = Some(format!("={}:{}.", (*s.as_ptr()).name, (*wl.as_ptr()).idx));
                 }
             }
             window_tree_type::WINDOW_TREE_PANE => {
                 if let (Some(s), Some(wl), Some(wp)) = (s, wl, wp) {
-                    target = format_nul!(
+                    target = Some(format!(
                         "={}:{}.%{}",
                         (*s.as_ptr()).name,
                         (*wl.as_ptr()).idx,
                         (*wp.as_ptr()).id
-                    );
+                    ));
                 }
             }
         }
 
-        if target.is_null() {
+        if target.is_none() {
             cmd_find_clear_state(fs, cmd_find_flags::empty());
         } else {
             cmd_find_from_winlink_pane(
@@ -1252,10 +1252,9 @@ unsafe fn window_tree_command_each(
         let item: NonNull<window_tree_itemdata> = itemdata.cast();
         let mut fs: cmd_find_state = zeroed();
 
-        if let Some(name) = NonNull::new(window_tree_get_target(item, &raw mut fs)) {
+        if let Some(name) = window_tree_get_target(item, &raw mut fs) {
             let data: NonNull<window_tree_modedata> = modedata.cast();
-            mode_tree_run_command(c, &raw mut fs, (*data.as_ptr()).entered, name.as_ptr());
-            free_(name.as_ptr());
+            mode_tree_run_command(c, &raw mut fs, (*data.as_ptr()).entered, Some(&name));
         }
     }
 }
@@ -1631,9 +1630,8 @@ unsafe fn window_tree_key(
                     free_(prompt);
                 }
                 b'\r' => {
-                    if let Some(name) = NonNull::new(window_tree_get_target(item, &raw mut fs)) {
-                        mode_tree_run_command(c, null_mut(), (*data).command, name.as_ptr());
-                        free_(name.as_ptr());
+                    if let Some(name) = window_tree_get_target(item, &raw mut fs) {
+                        mode_tree_run_command(c, null_mut(), (*data).command, Some(&name));
                     }
                     finished = 1;
                 }

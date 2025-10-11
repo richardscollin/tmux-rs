@@ -1353,7 +1353,7 @@ pub unsafe fn format_cb_alternate_saved_y(ft: *mut format_tree) -> format_table_
 pub unsafe fn format_cb_buffer_name(ft: *mut format_tree) -> format_table_type {
     unsafe {
         if let Some(pb) = NonNull::new((*ft).pb) {
-            return cstr_to_str(paste_buffer_name(pb)).to_string().into();
+            return paste_buffer_name(pb).to_string().into();
         }
         format_table_type::None
     }

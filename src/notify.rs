@@ -206,7 +206,7 @@ pub unsafe fn notify_add(
     s: *mut session,
     w: *mut window,
     wp: *mut window_pane,
-    pbname: *const u8,
+    pbname: Option<&str>,
 ) {
     let __func__ = c!("notify_add");
     unsafe {
@@ -223,8 +223,8 @@ pub unsafe fn notify_add(
         (*ne).session = s;
         (*ne).window = w;
         (*ne).pane = if !wp.is_null() { (*wp).id as i32 } else { -1 };
-        (*ne).pbname = if !pbname.is_null() {
-            xstrdup(pbname).as_ptr()
+        (*ne).pbname = if let Some(pbname) = pbname {
+            xstrdup__(pbname)
         } else {
             null_mut()
         };
@@ -308,7 +308,7 @@ pub unsafe fn notify_client(name: &'static CStr, c: *mut client) {
             null_mut(),
             null_mut(),
             null_mut(),
-            null_mut(),
+            None,
         );
     }
 }
@@ -329,7 +329,7 @@ pub unsafe fn notify_session(name: &'static CStr, s: *mut session) {
             s,
             null_mut(),
             null_mut(),
-            null_mut(),
+            None,
         );
     }
 }
@@ -346,7 +346,7 @@ pub unsafe fn notify_winlink(name: &'static CStr, wl: *mut winlink) {
             (*wl).session,
             (*wl).window,
             null_mut(),
-            null_mut(),
+            None,
         );
     }
 }
@@ -356,7 +356,7 @@ pub unsafe fn notify_session_window(name: &'static CStr, s: *mut session, w: *mu
         let mut fs: cmd_find_state = zeroed();
 
         cmd_find_from_session_window(&raw mut fs, s, w, cmd_find_flags::empty());
-        notify_add(name, &raw mut fs, null_mut(), s, w, null_mut(), null_mut());
+        notify_add(name, &raw mut fs, null_mut(), s, w, null_mut(), None);
     }
 }
 
@@ -372,7 +372,7 @@ pub unsafe fn notify_window(name: &'static CStr, w: *mut window) {
             null_mut(),
             w,
             null_mut(),
-            null_mut(),
+            None,
         );
     }
 }
@@ -389,17 +389,17 @@ pub unsafe fn notify_pane(name: &'static CStr, wp: *mut window_pane) {
             null_mut(),
             null_mut(),
             wp,
-            null_mut(),
+            None,
         );
     }
 }
 
-pub unsafe fn notify_paste_buffer(pbname: *const u8, deleted: i32) {
+pub unsafe fn notify_paste_buffer(pbname: &str, deleted: bool) {
     unsafe {
         let mut fs: cmd_find_state = zeroed();
 
         cmd_find_clear_state(&raw mut fs, cmd_find_flags::empty());
-        if deleted != 0 {
+        if deleted {
             notify_add(
                 c"paste-buffer-deleted",
                 &raw mut fs,
@@ -407,7 +407,7 @@ pub unsafe fn notify_paste_buffer(pbname: *const u8, deleted: i32) {
                 null_mut(),
                 null_mut(),
                 null_mut(),
-                pbname,
+                Some(pbname),
             );
         } else {
             notify_add(
@@ -417,7 +417,7 @@ pub unsafe fn notify_paste_buffer(pbname: *const u8, deleted: i32) {
                 null_mut(),
                 null_mut(),
                 null_mut(),
-                pbname,
+                Some(pbname),
             );
         }
     }

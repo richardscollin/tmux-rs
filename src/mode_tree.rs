@@ -1480,7 +1480,7 @@ pub unsafe fn mode_tree_run_command(
     c: *mut client,
     fs: *mut cmd_find_state,
     template: *const u8,
-    name: *const u8,
+    name: Option<&str>,
 ) {
     unsafe {
         let mut error: *mut u8 = null_mut();

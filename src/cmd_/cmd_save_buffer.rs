@@ -66,19 +66,19 @@ unsafe fn cmd_save_buffer_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
     unsafe {
         let args = cmd_get_args(self_);
         let c = cmdq_get_client(item);
-        let bufname = args_get_(args, 'b');
+        let bufname = cstr_to_str_(args_get_(args, 'b'));
         let path;
         let evb;
 
-        let pb = if bufname.is_null() {
-            let Some(pb) = NonNull::new(paste_get_top(null_mut())) else {
-                cmdq_error!(item, "no buffers");
+        let pb = if let Some(bufname) = bufname {
+            let Some(pb) = NonNull::new(paste_get_name(Some(bufname))) else {
+                cmdq_error!(item, "no buffer {}", bufname);
                 return cmd_retval::CMD_RETURN_ERROR;
             };
             pb
         } else {
-            let Some(pb) = NonNull::new(paste_get_name(bufname)) else {
-                cmdq_error!(item, "no buffer {}", _s(bufname));
+            let Some(pb) = NonNull::new(paste_get_top(null_mut())) else {
+                cmdq_error!(item, "no buffers");
                 return cmd_retval::CMD_RETURN_ERROR;
             };
             pb

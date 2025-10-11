@@ -39,20 +39,20 @@ unsafe fn cmd_paste_buffer_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
             return cmd_retval::CMD_RETURN_ERROR;
         }
 
-        let mut bufname = null();
+        let mut bufname = None;
         if args_has(args, 'b') {
-            bufname = args_get(args, b'b');
+            bufname = Some(cstr_to_str(args_get(args, b'b')));
         }
 
         let pb;
-        if bufname.is_null() {
-            pb = paste_get_top(null_mut());
-        } else {
-            pb = paste_get_name(bufname);
+        if let Some(bufname) = bufname {
+            pb = paste_get_name(Some(bufname));
             if pb.is_null() {
-                cmdq_error!(item, "no buffer {}", _s(bufname));
+                cmdq_error!(item, "no buffer {bufname}");
                 return cmd_retval::CMD_RETURN_ERROR;
             }
+        } else {
+            pb = paste_get_top(null_mut());
         }
 
         if let Some(pb) = NonNull::new(pb)

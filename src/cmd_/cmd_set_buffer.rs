@@ -49,8 +49,8 @@ unsafe fn cmd_set_buffer_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retv
         let mut cause = null_mut();
         let olddata;
 
-        let mut bufname = args_get_(args, 'b');
-        if bufname.is_null() {
+        let mut bufname = cstr_to_str_(args_get_(args, 'b'));
+        if bufname.is_none() {
             pb = null_mut();
         } else {
             pb = paste_get_name(bufname);
@@ -58,8 +58,8 @@ unsafe fn cmd_set_buffer_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retv
 
         if std::ptr::eq(cmd_get_entry(self_), &CMD_DELETE_BUFFER_ENTRY) {
             if pb.is_null() {
-                if !bufname.is_null() {
-                    cmdq_error!(item, "unknown buffer: {}", _s(bufname));
+                if let Some(bufname) = bufname {
+                    cmdq_error!(item, "unknown buffer: {}", bufname);
                     return cmd_retval::CMD_RETURN_ERROR;
                 }
                 pb = paste_get_top(&raw mut bufname);
@@ -74,8 +74,8 @@ unsafe fn cmd_set_buffer_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retv
 
         if args_has(args, 'n') {
             if pb.is_null() {
-                if !bufname.is_null() {
-                    cmdq_error!(item, "unknown buffer: {}", _s(bufname));
+                if let Some(bufname) = bufname {
+                    cmdq_error!(item, "unknown buffer: {}", bufname);
                     return cmd_retval::CMD_RETURN_ERROR;
                 }
                 pb = paste_get_top(&raw mut bufname);
@@ -84,7 +84,7 @@ unsafe fn cmd_set_buffer_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retv
                 cmdq_error!(item, "no buffer");
                 return cmd_retval::CMD_RETURN_ERROR;
             }
-            if paste_rename(bufname, args_get_(args, 'n'), &raw mut cause) != 0 {
+            if paste_rename(bufname, cstr_to_str_(args_get_(args, 'n')), &raw mut cause) != 0 {
                 cmdq_error!(item, "{}", _s(cause));
                 free_(cause);
                 return cmd_retval::CMD_RETURN_ERROR;

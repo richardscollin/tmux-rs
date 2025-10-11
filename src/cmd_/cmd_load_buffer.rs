@@ -60,7 +60,13 @@ unsafe fn cmd_load_buffer_done(
             let copy = xmalloc(bsize).as_ptr();
             memcpy_(copy, bdata as _, bsize);
             let mut cause = null_mut();
-            if paste_set(copy as _, bsize, (*cdata).name, &raw mut cause) != 0 {
+            if paste_set(
+                copy as _,
+                bsize,
+                cstr_to_str_((*cdata).name),
+                &raw mut cause,
+            ) != 0
+            {
                 cmdq_error!(item, "{}", _s(cause));
                 free_(cause);
                 free_(copy);

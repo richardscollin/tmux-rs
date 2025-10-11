@@ -865,7 +865,7 @@ pub unsafe fn cmd_mouse_pane(
 }
 
 /// Replace the first %% or %idx in template by s.
-pub unsafe fn cmd_template_replace(template: *const u8, s: *const u8, idx: c_int) -> *mut u8 {
+pub unsafe fn cmd_template_replace(template: *const u8, s: Option<&str>, idx: c_int) -> *mut u8 {
     unsafe {
         let quote = c!("\"\\$;~");
 
@@ -896,16 +896,15 @@ pub unsafe fn cmd_template_replace(template: *const u8, s: *const u8, idx: c_int
                         ptr = ptr.add(1);
                     }
 
-                    buf = xrealloc_(buf, len + (strlen(s) * 3) + 1).as_ptr();
-                    let mut cp = s;
-                    while *cp != b'\0' {
-                        if quoted && !strchr(quote, *cp as i32).is_null() {
+                    buf = xrealloc_(buf, len + (s.map(|e| e.len()).unwrap_or_default() * 3) + 1)
+                        .as_ptr();
+                    for c in s.unwrap_or_default().chars() {
+                        if quoted && !strchr(quote, c as i32).is_null() {
                             *buf.add(len) = b'\\';
                             len += 1;
                         }
-                        *buf.add(len) = *cp;
+                        *buf.add(len) = c as u8;
                         len += 1;
-                        cp = cp.add(1);
                     }
                     *buf.add(len) = b'\0';
                     continue 'outer;
@@ -929,11 +928,7 @@ mod test {
     #[test]
     fn test_template_replace() {
         unsafe {
-            let out = cmd_template_replace(
-                c"%1".as_ptr().cast(),
-                b"resize-pane -D 3\0asdf".as_ptr().cast(),
-                1,
-            );
+            let out = cmd_template_replace(c"%1".as_ptr().cast(), Some("resize-pane -D 3"), 1);
 
             let m = libc::strlen(b"resize-pane -D 3\0junk".as_ptr().cast());
 

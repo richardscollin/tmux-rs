@@ -11,7 +11,6 @@
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-use crate::libc::strstr;
 use crate::*;
 
 pub type mode_tree_build_cb = Option<
@@ -929,7 +928,7 @@ pub unsafe fn mode_tree_search_backward(mtd: *mut mode_tree_data) -> *mut mode_t
             }
 
             let Some(searchcb) = (*mtd).searchcb else {
-                if !strstr((*mti).name, (*mtd).search).is_null() {
+                if cstr_to_str((*mti).name).contains(cstr_to_str((*mtd).search)) {
                     return mti;
                 }
                 continue;
@@ -980,7 +979,7 @@ pub unsafe fn mode_tree_search_forward(mtd: *mut mode_tree_data) -> *mut mode_tr
             }
 
             let Some(searchcb) = (*mtd).searchcb else {
-                if !strstr((*mti).name, (*mtd).search).is_null() {
+                if cstr_to_str((*mti).name).contains(cstr_to_str((*mtd).search)) {
                     return mti;
                 }
                 continue;

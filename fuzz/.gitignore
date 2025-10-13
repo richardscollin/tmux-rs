@@ -2,3 +2,8 @@ target
 corpus
 artifacts
 coverage
+
+# disable lockfile from fuzz git repo because the lockfile 
+# can cause a stale version of the repo to be cached which
+# can be a bit confusing
+Cargo.lock

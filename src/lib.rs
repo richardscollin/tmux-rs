@@ -13,6 +13,13 @@
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #![expect(rustdoc::broken_intra_doc_links, reason = "github markdown callout")]
 #![cfg_attr(doc, doc = include_str!("../README.md"))]
+#![cfg_attr(
+    fuzzing,
+    allow(
+        private_interfaces,
+        reason = "we use the fuzzing config flag to mark modules public which otherwise wouldn't be in order to fuzz internal implementations"
+    )
+)]
 #![allow(
     non_camel_case_types,
     reason = "this lint is here instead of in Cargo.toml because of a bug in rust analyzer"

@@ -179,7 +179,7 @@ pub unsafe fn unvis(cp: *mut u8, c: u8, astate: *mut i32, flag: i32) -> i32 {
         }
     }
 }
-#[unsafe(no_mangle)]
+
 pub unsafe fn strunvis(mut dst: *mut u8, mut src: *const u8) -> i32 {
     unsafe {
         let mut c: u8;
@@ -218,60 +218,4 @@ pub unsafe fn strunvis(mut dst: *mut u8, mut src: *const u8) -> i32 {
         dst.offset_from(start) as i32
     }
 }
-#[unsafe(no_mangle)]
-pub unsafe fn strnunvis(mut dst: *mut u8, mut src: *const u8, sz: usize) -> isize {
-    unsafe {
-        let mut c: u8;
-        let mut p: u8 = 0;
-        let start: *mut u8 = dst;
-        let end: *mut u8 = dst.add(sz).offset(-1);
-        let mut state: i32 = 0;
-        if sz > 0 {
-            *end = b'\0';
-        }
-        loop {
-            let fresh1 = src;
-            src = src.offset(1);
-            c = *fresh1;
-            if c == 0 {
-                break;
-            }
-            loop {
-                match unvis(&mut p, c, &mut state, 0) {
-                    1 => {
-                        if dst < end {
-                            *dst = p;
-                        }
-                        dst = dst.add(1);
-                        break;
-                    }
-                    2 => {
-                        if dst < end {
-                            *dst = p;
-                        }
-                        dst = dst.add(1);
-                    }
-                    0 | 3 => {
-                        break;
-                    }
-                    _ => {
-                        if dst <= end {
-                            *dst = b'\0';
-                        }
-                        return -1;
-                    }
-                }
-            }
-        }
-        if unvis(&mut p, c, &mut state, 1 as libc::c_int) == 1 as libc::c_int {
-            if dst < end {
-                *dst = p;
-            }
-            dst = dst.add(1);
-        }
-        if dst <= end {
-            *dst = b'\0';
-        }
-        dst.offset_from(start)
-    }
-}
+

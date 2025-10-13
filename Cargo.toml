@@ -43,6 +43,9 @@ rand         = { version = "0.9.2" }
 [build-dependencies]
 lalrpop      = { version = "0.22.2", default-features = false }
 
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(fuzzing)'] }
+
 # https://rust-lang.github.io/rust-clippy/master/index.html
 [lints.clippy]
 # disabled

@@ -1,0 +1,24 @@
+[package]
+name = "tmux-rs-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2024"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+arbitrary = { version = "1.0", features = ["derive"] }
+libfuzzer-sys = { version = "0.4.0" }
+
+# fuzz two different versions. these may need to be manually tweeked
+tmux-rs-new = { path = "..", package = "tmux-rs" }
+tmux-rs-old = { git = "https://github.com/richardscollin/tmux-rs", package = "tmux-rs" }
+# tmux-rs-old = { path = "../../tmux-rs-old", package = "tmux-rs-old" }
+
+[[bin]]
+name = "colour_find_rgb"
+path = "fuzz_targets/colour_find_rgb.rs"
+test = false
+doc = false
+bench = false

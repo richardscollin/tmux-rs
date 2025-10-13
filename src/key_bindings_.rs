@@ -345,7 +345,6 @@ unsafe fn key_bindings_init_done(_item: *mut cmdq_item, _data: *mut c_void) -> c
     cmd_retval::CMD_RETURN_NORMAL
 }
 
-#[unsafe(no_mangle)]
 pub unsafe fn key_bindings_init() {
     #[rustfmt::skip]
     static DEFAULTS: [&str; 262] = [

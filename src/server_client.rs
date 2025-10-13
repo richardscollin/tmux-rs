@@ -586,7 +586,6 @@ pub unsafe fn server_client_exec(c: *mut client, cmd: *const u8) {
 }
 
 /// Check for mouse keys.
-#[unsafe(no_mangle)]
 pub unsafe fn server_client_check_mouse(c: *mut client, event: *mut key_event) -> key_code {
     unsafe {
         let m = &raw mut (*event).m;

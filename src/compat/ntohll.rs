@@ -10,7 +10,7 @@ unsafe fn __bswap_32(mut __bsx: __uint32_t) -> __uint32_t {
         | (__bsx & 0xff00 as libc::c_uint) << 8 as libc::c_int
         | (__bsx & 0xff as libc::c_uint) << 24 as libc::c_int;
 }
-#[no_mangle]
+
 pub unsafe fn ntohll(mut v: uint64_t) -> uint64_t {
     let mut b: uint32_t = 0;
     let mut t: uint32_t = 0;

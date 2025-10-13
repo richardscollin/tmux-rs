@@ -2491,7 +2491,6 @@ pub unsafe fn screen_write_rawstring(
 
 /// Write a SIXEL image.
 #[cfg(feature = "sixel")]
-#[unsafe(no_mangle)]
 pub(crate) unsafe fn screen_write_sixelimage(
     ctx: *mut screen_write_ctx,
     mut si: *mut sixel_image,

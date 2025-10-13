@@ -27,10 +27,6 @@ pub unsafe fn list_first<T>(head: *mut list_head<T>) -> *mut T {
     unsafe { (*head).lh_first }
 }
 
-#[expect(dead_code)]
-pub unsafe fn list_empty<T>(head: *const list_head<T>) -> bool {
-    unsafe { (*head).lh_first.is_null() }
-}
 
 pub unsafe fn list_next<T, Discriminant>(elm: *mut T) -> *mut T
 where
@@ -66,42 +62,6 @@ where
     }
 }
 
-#[expect(dead_code)]
-pub unsafe fn list_init<T>(head: *mut list_head<T>) {
-    unsafe {
-        (*head).lh_first = null_mut();
-    }
-}
-
-#[expect(dead_code)]
-pub unsafe fn list_insert_after<T, D>(listelm: *mut T, elm: *mut T)
-where
-    T: ListEntry<T, D>,
-{
-    unsafe {
-        (*ListEntry::field(elm)).le_next = (*ListEntry::field(listelm)).le_next;
-        if !(*ListEntry::field(elm)).le_next.is_null() {
-            (*ListEntry::field((*ListEntry::field(listelm)).le_next)).le_prev =
-                &raw mut (*ListEntry::field(elm)).le_next;
-        }
-        (*ListEntry::field(listelm)).le_next = elm;
-        (*ListEntry::field(elm)).le_prev = &raw mut (*ListEntry::field(listelm)).le_next;
-    }
-}
-
-#[expect(dead_code)]
-pub unsafe fn list_insert_before<T, D>(listelm: *mut T, elm: *mut T)
-where
-    T: ListEntry<T, D>,
-{
-    unsafe {
-        (*ListEntry::field(elm)).le_prev = (*ListEntry::field(listelm)).le_prev;
-        (*ListEntry::field(elm)).le_next = listelm;
-        *(*ListEntry::field(listelm)).le_prev = elm;
-        (*ListEntry::field(listelm)).le_prev = &raw mut (*ListEntry::field(elm)).le_next;
-    }
-}
-
 pub unsafe fn list_insert_head<T, D>(head: *mut list_head<T>, elm: *mut T)
 where
     T: ListEntry<T, D>,
@@ -130,22 +90,6 @@ where
     }
 }
 
-#[expect(dead_code)]
-pub unsafe fn list_replace<T, D>(elm: *mut T, elm2: *mut T)
-where
-    T: ListEntry<T, D>,
-{
-    unsafe {
-        (*ListEntry::field(elm2)).le_next = (*ListEntry::field(elm)).le_next;
-        if !(*ListEntry::field(elm2)).le_next.is_null() {
-            (*ListEntry::field((*ListEntry::field(elm2)).le_next)).le_prev =
-                &raw mut (*ListEntry::field(elm2)).le_next;
-        }
-        (*ListEntry::field(elm2)).le_prev = (*ListEntry::field(elm)).le_prev;
-        *(*ListEntry::field(elm2)).le_prev = elm2;
-    }
-}
-
 // tailq
 
 #[repr(C)]
@@ -153,14 +97,6 @@ where
 pub struct tailq_head<T> {
     pub tqh_first: *mut T,
     pub tqh_last: *mut *mut T,
-}
-
-#[expect(dead_code)]
-pub const unsafe fn tailq_head_initializer<T>(head: *mut tailq_head<T>) {
-    unsafe {
-        (*head).tqh_first = null_mut();
-        (*head).tqh_last = &raw mut (*head).tqh_first;
-    }
 }
 
 macro_rules! TAILQ_HEAD_INITIALIZER {
@@ -207,10 +143,6 @@ pub fn tailq_init_<T>(head: &mut tailq_head<T>) {
 
 pub unsafe fn tailq_first<T>(head: *mut tailq_head<T>) -> *mut T {
     unsafe { (*head).tqh_first }
-}
-#[expect(dead_code)]
-pub fn tailq_end<T>(_head: *mut tailq_head<T>) -> *mut T {
-    core::ptr::null_mut()
 }
 
 pub unsafe fn tailq_next<T, Q, D>(elm: *mut T) -> *mut Q

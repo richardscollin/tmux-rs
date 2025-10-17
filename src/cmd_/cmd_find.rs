@@ -1316,7 +1316,7 @@ pub unsafe fn cmd_find_current_client(item: *mut cmdq_item, quiet: i32) -> *mut 
     let __func__ = "cmd_find_current_client";
     unsafe {
         let mut c: *mut client = null_mut();
-        let mut wp = null_mut();
+        let wp;
         let mut fs: cmd_find_state = zeroed();
 
         if !item.is_null() {

@@ -39,7 +39,11 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy
-      - run: cargo clippy -- -Dwarnings
+      - uses: dtolnay/rust-toolchain@nightly
+        with:
+          components: clippy
+      - run: cargo +stable clippy -- -Dwarnings
+      - run: cargo +nightly clippy -- -Dwarnings
 
   fmt:
     runs-on: ubuntu-latest

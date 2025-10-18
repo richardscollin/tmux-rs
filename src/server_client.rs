@@ -1820,7 +1820,7 @@ pub unsafe fn server_client_key_callback(item: *mut cmdq_item, data: *mut c_void
         let mut bd: *mut key_binding;
         let mut table: *mut key_table;
         let mut first: *mut key_table;
-        let mut wme: *mut window_mode_entry = null_mut();
+        let wme: *mut window_mode_entry;
         let mut fs: cmd_find_state = zeroed();
         let wl: *mut winlink;
         let wp: *mut window_pane;

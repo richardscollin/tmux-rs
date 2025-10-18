@@ -38,7 +38,7 @@ pub static mut OPTARG: *mut u8 = null_mut();
 pub unsafe fn getopt(nargc: i32, nargv: *const *mut u8, ostr: *const u8) -> Option<u8> {
     unsafe {
         static mut PLACE: *const u8 = c"".as_ptr().cast();
-        let mut oli: *mut u8 = null_mut();
+        let mut oli: *mut u8;
         if ostr.is_null() {
             return None;
         }

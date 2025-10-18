@@ -823,7 +823,7 @@ pub unsafe fn cmd_mouse_window(
     sp: *mut *mut session,
 ) -> Option<NonNull<winlink>> {
     unsafe {
-        let mut s: *mut session = null_mut();
+        let s: *mut session;
 
         if !(*m).valid {
             return None;

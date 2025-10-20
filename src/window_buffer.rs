@@ -11,7 +11,7 @@
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-use crate::libc::{memmem, strcmp, strstr};
+use crate::libc::{strcmp, strstr};
 use crate::*;
 
 const WINDOW_BUFFER_DEFAULT_COMMAND: &str = "paste-buffer -p -b '%%'";
@@ -287,7 +287,10 @@ pub unsafe fn window_buffer_search(
         }
         let mut bufsize = 0;
         let bufdata = paste_buffer_data_(pb, &mut bufsize);
-        !memmem(bufdata.cast(), bufsize, ss.cast(), strlen(ss)).is_null()
+        let buf = std::slice::from_raw_parts(bufdata, bufsize);
+        let s = std::slice::from_raw_parts(ss, strlen(ss));
+
+        memchr::memmem::find(buf, s).is_some()
     }
 }
 

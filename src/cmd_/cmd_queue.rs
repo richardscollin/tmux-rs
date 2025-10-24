@@ -775,7 +775,8 @@ pub unsafe fn cmdq_next(c: *mut client) -> u32 {
                 return 0;
             }
             if (*tailq_first(&raw mut (*queue).list)).flags & CMDQ_WAITING != 0 {
-                log_debug!("{} {}: waiting", __func__, _s(name));
+                // Too noisy:
+                // log_debug!("{} {}: waiting", __func__, _s(name));
                 return 0;
             }
 

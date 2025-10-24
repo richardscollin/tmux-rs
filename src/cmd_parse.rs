@@ -392,11 +392,10 @@ pub unsafe fn cmd_parse_build_command(
                     *pr = Err(cmd_parse_get_error(
                         pi.file,
                         pi.line.load(atomic::Ordering::SeqCst),
-                        cstr_to_str(cause),
+                        &cause,
                     )
                     .into_raw()
                     .cast());
-                    free_(cause);
                     break 'out;
                 }
             }

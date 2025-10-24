@@ -472,64 +472,52 @@ pub unsafe fn cmd_get_alias(name: *const u8) -> *mut u8 {
     }
 }
 
-pub unsafe fn cmd_find(name: &str) -> Result<&'static cmd_entry, *mut u8> {
+pub fn cmd_find(name: &str) -> Result<&'static cmd_entry, String> {
     let mut found = None;
+    let mut ambiguous: bool = false;
 
-    let mut ambiguous: i32 = 0;
-    type s_buf = [u8; 8192];
-    let mut s: s_buf = [0; 8192];
-
-    unsafe {
-        'ambiguous: {
-            for entry in CMD_TABLE {
-                if entry.alias.is_some_and(|alias| alias == name) {
-                    ambiguous = 0;
-                    found = Some(entry);
-                    break;
-                }
-
-                if !entry.name.starts_with(name) {
-                    continue;
-                }
-                if found.is_some() {
-                    ambiguous = 1;
-                }
-                found = Some(entry);
-
-                if entry.name == name {
-                    break;
-                }
-            }
-            if ambiguous != 0 {
-                break 'ambiguous;
-            }
-
-            return match found {
-                Some(value) => Ok(value),
-                None => Err(format_nul!("unknown command: {}", name)),
-            };
+    for entry in CMD_TABLE {
+        if entry.alias.is_some_and(|alias| alias == name) {
+            ambiguous = false;
+            found = Some(entry);
+            break;
         }
 
-        // ambiguous:
-        s[0] = b'\0';
+        if entry.name.starts_with(name) {
+            if found.is_some() {
+                ambiguous = true;
+            }
+            found = Some(entry);
+
+            if entry.name == name {
+                break;
+            }
+        }
+    }
+
+    if !ambiguous {
+        match found {
+            Some(value) => {
+                log_debug!("cmd_find: {name} found");
+                Ok(value)
+            }
+            None => Err(format!("unknown command: {name}")),
+        }
+    } else {
+        let mut msg = format!("ambiguous command: {name}, could be: ");
+
+        // TODO, once https://github.com/rust-lang/rust/issues/79524 is stabilized rewrite
         for entry in CMD_TABLE {
-            if !entry.name.starts_with(name) {
-                continue;
-            }
-            if strlcat_(&raw mut s as _, entry.name, size_of::<s_buf>()) >= size_of::<s_buf>() {
-                break;
-            }
-            if strlcat(&raw mut s as _, c!(", "), size_of::<s_buf>()) >= size_of::<s_buf>() {
-                break;
+            if entry.name.starts_with(name) {
+                msg.push_str(name);
+                msg.push_str(", ");
             }
         }
-        s[strlen(&raw mut s as _) - 2] = b'\0';
 
-        Err(format_nul!(
-            "ambiguous command: {}, could be: {}",
-            name,
-            _s((&raw const s).cast::<u8>()),
-        ))
+         // remove last ", "
+        msg.truncate(msg.len() - 2);
+
+        Err(msg)
     }
 }
 
@@ -538,22 +526,21 @@ pub unsafe fn cmd_parse(
     count: c_uint,
     file: Option<&str>,
     line: c_uint,
-) -> Result<*mut cmd, *mut u8> {
+) -> Result<*mut cmd, String> {
     unsafe {
         let mut error: *mut u8 = null_mut();
 
         if count == 0 || (*values).type_ != args_type::ARGS_STRING {
-            return Err(format_nul!("no command"));
+            return Err("no command".to_string());
         }
         let entry = cmd_find(cstr_to_str((*values).union_.string))?;
 
         let args = args_parse(&entry.args, values, count, &raw mut error);
         if args.is_null() && error.is_null() {
-            let cause = format_nul!("usage: {} {}", entry.name, entry.usage);
-            return Err(cause);
+            return Err(format!("usage: {} {}", entry.name, entry.usage));
         }
         if args.is_null() {
-            let cause = format_nul!("command {}: {}", entry.name, _s(error));
+            let cause = format!("command {}: {}", entry.name, _s(error));
             free(error as _);
             return Err(cause);
         }

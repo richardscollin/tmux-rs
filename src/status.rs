@@ -1913,11 +1913,11 @@ unsafe fn status_prompt_complete_list(size: *mut u32, s: *const u8, at_start: i3
 
         *size = 0;
         for cmdent in CMD_TABLE {
-            if cmdent.name == s {
+            if cmdent.name.starts_with(s) {
                 status_prompt_add_list(&raw mut list, size, cmdent.name);
             }
             if let Some(alias) = cmdent.alias
-                && alias == s
+                && alias.starts_with(s)
             {
                 status_prompt_add_list(&raw mut list, size, alias);
             }
@@ -1934,7 +1934,7 @@ unsafe fn status_prompt_complete_list(size: *mut u32, s: *const u8, at_start: i3
                         break 'next;
                     }
                     let valuelen = cp.offset_from_unsigned(value);
-                    if s.len() > valuelen || !streq_(value, s) {
+                    if s.len() > valuelen || !cstr_to_str(value).starts_with(s) {
                         break 'next;
                     }
 
@@ -1949,13 +1949,13 @@ unsafe fn status_prompt_complete_list(size: *mut u32, s: *const u8, at_start: i3
         }
         let mut oe = (&raw mut OPTIONS_TABLE) as *mut options_table_entry;
         while !(*oe).name.is_null() {
-            if streq_((*oe).name, s) {
+            if cstr_to_str((*oe).name).starts_with(s) {
                 status_prompt_add_list(&raw mut list, size, cstr_to_str((*oe).name));
             }
             oe = oe.add(1);
         }
         for layout in layouts {
-            if layout == s {
+            if layout.starts_with(s) {
                 status_prompt_add_list(&raw mut list, size, layout);
             }
         }

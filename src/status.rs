@@ -17,10 +17,11 @@ use std::io::Write;
 use crate::libc::strncmp;
 use crate::*;
 
+#[repr(C)]
 struct status_prompt_menu {
     c: *mut client,
     start: u32,
-    list: Vec<*mut u8>,
+    list: Vec<String>,
     flag: u8,
 }
 
@@ -1188,10 +1189,10 @@ unsafe fn status_prompt_paste(c: *mut client) -> i32 {
 }
 
 /// Finish completion.
-unsafe fn status_prompt_replace_complete(c: *mut client, mut s: *const u8) -> i32 {
+unsafe fn status_prompt_replace_complete(c: *mut client, s: Option<&str>) -> i32 {
     unsafe {
         let mut word: [u8; 64] = [0; 64];
-        let mut allocated: *mut u8 = null_mut();
+        let completion: Option<String>;
 
         let mut used: usize;
 
@@ -1223,7 +1224,10 @@ unsafe fn status_prompt_replace_complete(c: *mut client, mut s: *const u8) -> i3
         if last < first {
             return 0;
         }
-        if s.is_null() {
+
+        let s_str = if let Some(s) = s {
+            s
+        } else {
             used = 0;
             ud = first;
             while ud < last {
@@ -1242,20 +1246,18 @@ unsafe fn status_prompt_replace_complete(c: *mut client, mut s: *const u8) -> i3
                 return 0;
             }
             word[used] = b'\0';
-        }
 
-        // Try to complete it.
-        if s.is_null() {
-            allocated = status_prompt_complete(
+            // Try to complete it.
+            completion = status_prompt_complete(
                 c,
                 (&raw const word).cast(),
                 first.offset_from_unsigned((*c).prompt_buffer) as u32,
             );
-            if allocated.is_null() {
+            if completion.is_none() {
                 return 0;
             }
-            s = allocated;
-        }
+            completion.as_ref().unwrap().as_str()
+        };
 
         // Trim out word.
         let n: usize = size - last.offset_from_unsigned((*c).prompt_buffer) + 1; /* with \0 */
@@ -1263,21 +1265,20 @@ unsafe fn status_prompt_replace_complete(c: *mut client, mut s: *const u8) -> i3
         size -= last.offset_from_unsigned(first);
 
         // Insert the new word.
-        size += strlen(s);
+        size += s_str.len();
         let off: usize = first.offset_from_unsigned((*c).prompt_buffer);
         (*c).prompt_buffer = xreallocarray_::<utf8_data>((*c).prompt_buffer, size + 1).as_ptr();
         first = (*c).prompt_buffer.add(off);
         libc::memmove(
-            first.add(strlen(s)).cast(),
+            first.add(s_str.len()).cast(),
             first.cast(),
             n * size_of::<utf8_data>(),
         );
-        for idx in 0..strlen(s) {
-            utf8_set(first.add(idx), *s.add(idx));
+        for (idx, &byte) in s_str.as_bytes().iter().enumerate() {
+            utf8_set(first.add(idx), byte);
         }
-        (*c).prompt_index = first.offset_from_unsigned((*c).prompt_buffer) + strlen(s);
+        (*c).prompt_index = first.offset_from_unsigned((*c).prompt_buffer) + s_str.len();
 
-        free_(allocated);
         1
     }
 }
@@ -1487,7 +1488,7 @@ pub unsafe fn status_prompt_key(c: *mut client, mut key: key_code) -> i32 {
                         }
                     }
                     code::TAB => {
-                        if status_prompt_replace_complete(c, null_mut()) != 0 {
+                        if status_prompt_replace_complete(c, None) != 0 {
                             break 'changed;
                         }
                     }
@@ -1880,21 +1881,15 @@ unsafe fn status_prompt_add_history(line: *const u8, type_: u32) {
 }
 
 /// Add to completion list.
-unsafe fn status_prompt_add_list(list: &mut Vec<*mut u8>, s: &str) {
-    unsafe {
-        // Check if item already exists
-        for &item in list.iter() {
-            if libc::streq_(item, s) {
-                return;
-            }
-        }
-        // Add new item
-        list.push(xstrdup__(s));
+fn status_prompt_add_list(list: &mut Vec<String>, s: &str) {
+    // Check if item already exists
+    if !list.iter().any(|item| item.as_str() == s) {
+        list.push(s.to_string());
     }
 }
 
 /// Build completion list.
-unsafe fn status_prompt_complete_list(s: *const u8, at_start: i32) -> Vec<*mut u8> {
+unsafe fn status_prompt_complete_list(s: *const u8, at_start: i32) -> Vec<String> {
     unsafe {
         let mut list = Vec::new();
         let s = cstr_to_str(s);
@@ -1961,26 +1956,27 @@ unsafe fn status_prompt_complete_list(s: *const u8, at_start: i32) -> Vec<*mut u
 }
 
 /// Find longest prefix.
-unsafe fn status_prompt_complete_prefix(list: &[*mut u8]) -> *mut u8 {
-    unsafe {
-        if list.is_empty() {
-            return null_mut();
-        }
-        let out = xstrdup(list[0]).as_ptr();
-        for &item in &list[1..] {
-            let mut j = strlen(item);
-            if j > strlen(out) {
-                j = strlen(out);
-            }
-            while j > 0 {
-                if *out.add(j - 1) != *item.add(j - 1) {
-                    *out.add(j - 1) = b'\0';
-                }
-                j -= 1;
-            }
-        }
-        out
+fn status_prompt_complete_prefix(list: &[String]) -> String {
+    if list.is_empty() {
+        return String::new();
     }
+
+    let first = &list[0];
+    let mut prefix_len = first.len();
+
+    for item in &list[1..] {
+        prefix_len = prefix_len
+            .min(item.len())
+            .min(
+                first
+                    .bytes()
+                    .zip(item.bytes())
+                    .take_while(|(a, b)| a == b)
+                    .count()
+            );
+    }
+
+    first[..prefix_len].to_string()
 }
 
 /// Complete word menu callback.
@@ -1993,34 +1989,28 @@ unsafe fn status_prompt_menu_callback(
     unsafe {
         let spm: *mut status_prompt_menu = data.cast();
         let c = (*spm).c;
-        let s: *mut u8;
 
         if key != KEYC_NONE {
             idx += (*spm).start;
-            s = if (*spm).flag == b'\0' {
-                xstrdup((&(*spm).list)[idx as usize]).as_ptr()
+            let selected = &(&(*spm).list)[idx as usize];
+            let completion = if (*spm).flag == b'\0' {
+                selected.clone()
             } else {
-                format_nul!(
-                    "-{}{}",
-                    (*spm).flag as char,
-                    _s((&(*spm).list)[idx as usize])
-                )
+                format!("-{}{}", (*spm).flag as char, selected)
             };
             if (*c).prompt_type == prompt_type::PROMPT_TYPE_WINDOW_TARGET {
                 free_((*c).prompt_buffer);
+                let s = format_nul!("{}", completion);
                 (*c).prompt_buffer = utf8_fromcstr(s);
                 (*c).prompt_index = utf8_strlen((*c).prompt_buffer);
+                free_(s);
                 (*c).flags |= client_flag::REDRAWSTATUS;
-            } else if status_prompt_replace_complete(c, s) != 0 {
+            } else if status_prompt_replace_complete(c, Some(&completion)) != 0 {
                 (*c).flags |= client_flag::REDRAWSTATUS;
             }
-            free_(s);
         }
 
-        // Free all items in the Vec
-        for item in (*spm).list.drain(..) {
-            free_(item);
-        }
+        // Assign empty Vec to drop the old Vec<String> before freeing the struct
         (*spm).list = Vec::new();
         free_(spm);
     }
@@ -2029,20 +2019,13 @@ unsafe fn status_prompt_menu_callback(
 /// Show complete word menu.
 unsafe fn status_prompt_complete_list_menu(
     c: *mut client,
-    list: Vec<*mut u8>,
+    list: Vec<String>,
     mut offset: u32,
     flag: u8,
 ) -> i32 {
     unsafe {
-        // struct menu *menu;
-        // struct menu_item item;
         let mut item: menu_item = zeroed();
-        // struct status_prompt_menu *spm;
         let lines = status_line_size(c);
-
-        // height, i;
-        // u_int py;
-
         let size = list.len() as u32;
 
         if size <= 1 {
@@ -2052,10 +2035,12 @@ unsafe fn status_prompt_complete_list_menu(
             return 0;
         }
 
-        let spm: *mut status_prompt_menu = xmalloc_::<status_prompt_menu>().as_ptr();
-        (*spm).c = c;
-        (*spm).list = list;
-        (*spm).flag = flag;
+        let spm: *mut status_prompt_menu = Box::leak(Box::new(status_prompt_menu {
+            c,
+            start: 0,
+            list,
+            flag,
+        })) as *mut status_prompt_menu;
 
         let mut height = (*c).tty.sy - lines - 2;
         if height > 10 {
@@ -2068,10 +2053,12 @@ unsafe fn status_prompt_complete_list_menu(
 
         let menu = menu_create(c!(""));
         for i in (*spm).start..size {
-            item.name = SyncCharPtr::from_ptr((&(*spm).list)[i as usize]);
+            let name_cstr = format_nul!("{}", (&(*spm).list)[i as usize]);
+            item.name = SyncCharPtr::from_ptr(name_cstr);
             item.key = b'0' as u64 + (i as i64 - (*spm).start as i64) as u64;
             item.command = SyncCharPtr::null();
             menu_add_item(menu, &raw mut item, null_mut(), c, null_mut());
+            free_(name_cstr);
         }
 
         let py = if options_get_number_((*(*c).session).options, "status-position") == 0 {
@@ -2104,10 +2091,8 @@ unsafe fn status_prompt_complete_list_menu(
         ) != 0
         {
             menu_free(menu);
-            // Free the items
-            for item in (*spm).list.drain(..) {
-                free_(item);
-            }
+            // Assign empty Vec to drop the Vec<String>
+            (*spm).list = Vec::new();
             free_(spm);
             return 0;
         }
@@ -2123,7 +2108,7 @@ unsafe fn status_prompt_complete_window_menu(
     word: *const u8,
     mut offset: u32,
     flag: u8,
-) -> *mut u8 {
+) -> Option<String> {
     unsafe {
         let mut item: menu_item = zeroed();
         let mut tmp: *mut u8;
@@ -2131,7 +2116,7 @@ unsafe fn status_prompt_complete_window_menu(
         let lines = status_line_size(c);
 
         if (*c).tty.sy - lines < 3 {
-            return null_mut();
+            return None;
         }
 
         let spm: *mut status_prompt_menu = xmalloc_::<status_prompt_menu>().as_ptr();
@@ -2157,10 +2142,10 @@ unsafe fn status_prompt_complete_window_menu(
 
             if (*c).prompt_type == prompt_type::PROMPT_TYPE_WINDOW_TARGET {
                 tmp = format_nul!("{} ({})", (*wl).idx, _s((*(*wl).window).name),);
-                list.push(format_nul!("{}", (*wl).idx));
+                list.push(format!("{}", (*wl).idx));
             } else {
                 tmp = format_nul!("{}:{} ({})", (*s).name, (*wl).idx, _s((*(*wl).window).name),);
-                list.push(format_nul!("{}:{}", (*s).name, (*wl).idx));
+                list.push(format!("{}:{}", (*s).name, (*wl).idx));
             }
             item.name = SyncCharPtr::from_ptr(tmp);
             item.key = (b'0' as u64) + list.len() as u64 - 1;
@@ -2175,18 +2160,17 @@ unsafe fn status_prompt_complete_window_menu(
         if list.is_empty() {
             menu_free(menu);
             free_(spm);
-            return null_mut();
+            return None;
         }
         if list.len() == 1 {
             menu_free(menu);
-            if flag != b'\0' {
-                tmp = format_nul!("-{}{}", flag as char, _s(list[0]));
-                free_(list[0]);
+            let result = if flag != b'\0' {
+                format!("-{}{}", flag as char, &list[0])
             } else {
-                tmp = list[0];
-            }
+                list[0].clone()
+            };
             free_(spm);
-            return tmp;
+            return Some(result);
         }
         if height as usize > list.len() {
             height = list.len() as u32;
@@ -2224,35 +2208,22 @@ unsafe fn status_prompt_complete_window_menu(
         ) != 0
         {
             menu_free(menu);
-            // Free the items
-            for item in (*spm).list.drain(..) {
-                free_(item);
-            }
+            // Assign empty Vec to drop the Vec<String>
+            (*spm).list = Vec::new();
             free_(spm);
-            return null_mut();
+            return None;
         }
-        null_mut()
-    }
-}
-
-/// Sort complete list.
-unsafe extern "C" fn status_prompt_complete_sort(a: *const c_void, b: *const c_void) -> i32 {
-    unsafe {
-        let aa: *const *const u8 = a.cast();
-        let bb: *const *const u8 = b.cast();
-
-        libc::strcmp(*aa, *bb)
+        None
     }
 }
 
 /// Complete a session.
 unsafe fn status_prompt_complete_session(
-    list: &mut Vec<*mut u8>,
+    list: &mut Vec<String>,
     s: *const u8,
     flag: u8,
-) -> *mut u8 {
+) -> Option<String> {
     unsafe {
-        let tmp;
         let mut n: [u8; 11] = [0; 11];
 
         for loop_ in rb_foreach(&raw mut SESSIONS).map(NonNull::as_ptr) {
@@ -2266,27 +2237,28 @@ unsafe fn status_prompt_complete_session(
                     strlen(s),
                 ) == 0
             {
-                list.push(format_nul!("{}:", (*loop_).name));
+                list.push(format!("{}:", (*loop_).name));
             } else if *s == b'$' {
                 _ = xsnprintf_!((&raw mut n).cast(), n.len(), "{}", (*loop_).id);
                 if *s.add(1) == b'\0' || strncmp((&raw mut n).cast(), s.add(1), strlen(s) - 1) == 0
                 {
-                    list.push(format_nul!("${}:", _s((&raw const n).cast::<u8>())));
+                    list.push(format!("${}:", _s((&raw const n).cast::<u8>())));
                 }
             }
         }
-        let mut out = status_prompt_complete_prefix(list);
-        if !out.is_null() && flag != b'\0' {
-            tmp = format_nul!("-{}{}", flag as char, _s(out));
-            free_(out);
-            out = tmp;
+        let prefix = status_prompt_complete_prefix(list);
+        if prefix.is_empty() {
+            None
+        } else if flag != b'\0' {
+            Some(format!("-{}{}", flag as char, prefix))
+        } else {
+            Some(prefix)
         }
-        out
     }
 }
 
 /// Complete word.
-unsafe fn status_prompt_complete(c: *mut client, word: *const u8, mut offset: u32) -> *mut u8 {
+unsafe fn status_prompt_complete(c: *mut client, word: *const u8, mut offset: u32) -> Option<String> {
     unsafe {
         let session: *mut session;
 
@@ -2295,15 +2267,16 @@ unsafe fn status_prompt_complete(c: *mut client, word: *const u8, mut offset: u3
 
         let mut flag: u8 = b'\0';
 
-        let mut list: Vec<*mut u8> = Vec::new();
+        let mut list: Vec<String> = Vec::new();
         let copy: *mut u8;
-        let mut out: *mut u8 = null_mut();
+        let mut out: Option<String> = None;
+        let word_str = cstr_to_str(word);
 
         if *word == b'\0'
             && (*c).prompt_type != prompt_type::PROMPT_TYPE_TARGET
             && (*c).prompt_type != prompt_type::PROMPT_TYPE_WINDOW_TARGET
         {
-            return null_mut();
+            return None;
         }
 
         'found: {
@@ -2314,11 +2287,11 @@ unsafe fn status_prompt_complete(c: *mut client, word: *const u8, mut offset: u3
             {
                 list = status_prompt_complete_list(word, (offset == 0) as i32);
                 out = if list.is_empty() {
-                    null_mut()
+                    None
                 } else if list.len() == 1 {
-                    format_nul!("{} ", _s(list[0]))
+                    Some(format!("{} ", &list[0]))
                 } else {
-                    status_prompt_complete_prefix(&list)
+                    Some(status_prompt_complete_prefix(&list))
                 };
                 break 'found;
             }
@@ -2360,33 +2333,22 @@ unsafe fn status_prompt_complete(c: *mut client, word: *const u8, mut offset: u3
                         break 'found;
                     }
                 }
-                out = status_prompt_complete_window_menu(c, session, colon.add(1), offset, flag);
-                if out.is_null() {
-                    return null_mut();
-                }
+                out = Some(status_prompt_complete_window_menu(c, session, colon.add(1), offset, flag)?);
             }
         } // found:
         if !list.is_empty() {
-            libc::qsort(
-                list.as_mut_ptr().cast(),
-                list.len(),
-                size_of::<*mut i8>(),
-                Some(status_prompt_complete_sort),
-            );
-            for (i, &item) in list.iter().enumerate() {
-                log_debug!("complete {i}: {}", _s(item));
+            list.sort_unstable();
+            for (i, item) in list.iter().enumerate() {
+                log_debug!("complete {i}: {}", item);
             }
         }
 
-        if !out.is_null() && libc::strcmp(word, out) == 0 {
-            free_(out);
-            out = null_mut();
+        if out.as_ref().is_some_and(|result| result == word_str) {
+            out = None;
         }
-        if !out.is_null() {
-            // We have a result, free the list ourselves
-            for item in list.drain(..) {
-                free_(item);
-            }
+
+        if out.is_some() {
+            // We have a result, list will be automatically dropped
         } else {
             // No result, show menu which takes ownership of list
             status_prompt_complete_list_menu(c, list, offset, flag);

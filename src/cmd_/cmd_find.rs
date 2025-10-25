@@ -1094,11 +1094,11 @@ pub unsafe fn cmd_find_target(
         }
 
         let copy = target; // No need to make copy due to rust slice
-        let colon = copy.find(':').map(|i| &copy[..i]);
+        let colon = copy.find(':');
         let period = if let Some(colon) = colon {
-            colon.find('.').map(|i| &colon[..i])
+            copy[colon + 1..].find('.').map(|i| colon + 1 + i)
         } else {
-            copy.find('.').map(|i| &copy[..i])
+            copy.find('.')
         };
 
         let mut session: Option<&str> = None;
@@ -1106,20 +1106,20 @@ pub unsafe fn cmd_find_target(
         let mut pane: Option<&str> = None;
         match (colon, period) {
             (Some(colon), Some(period)) => {
-                session = Some(copy);
-                window = Some(colon);
+                session = Some(&copy[..colon]);
+                window = Some(&copy[colon + 1..period]);
                 window_only = true;
-                pane = Some(period);
+                pane = Some(&copy[period + 1..]);
                 pane_only = true;
             }
             (Some(colon), None) => {
-                session = Some(copy);
-                window = Some(colon);
+                session = Some(&copy[..colon]);
+                window = Some(&copy[colon + 1..]);
                 window_only = true;
             }
             (None, Some(period)) => {
-                window = Some(copy);
-                pane = Some(period);
+                window = Some(&copy[..period]);
+                pane = Some(&copy[period + 1..]);
                 pane_only = true;
             }
             (None, None) => match copy.chars().next() {

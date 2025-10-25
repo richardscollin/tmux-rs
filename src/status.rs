@@ -17,12 +17,10 @@ use std::io::Write;
 use crate::libc::strncmp;
 use crate::*;
 
-#[repr(C)]
 struct status_prompt_menu {
     c: *mut client,
     start: u32,
-    size: u32,
-    list: *mut *mut u8,
+    list: Vec<*mut u8>,
     flag: u8,
 }
 
@@ -1882,23 +1880,23 @@ unsafe fn status_prompt_add_history(line: *const u8, type_: u32) {
 }
 
 /// Add to completion list.
-unsafe fn status_prompt_add_list(list: *mut *mut *mut u8, size: *mut u32, s: &str) {
+unsafe fn status_prompt_add_list(list: &mut Vec<*mut u8>, s: &str) {
     unsafe {
-        for i in 0..*size {
-            if libc::streq_(*(*list).add(i as usize), s) {
+        // Check if item already exists
+        for &item in list.iter() {
+            if libc::streq_(item, s) {
                 return;
             }
         }
-        *list = xreallocarray_(*list, *size as usize + 1).as_ptr();
-        *(*list).add(*size as usize) = xstrdup__(s);
-        (*size) += 1;
+        // Add new item
+        list.push(xstrdup__(s));
     }
 }
 
 /// Build completion list.
-unsafe fn status_prompt_complete_list(size: *mut u32, s: *const u8, at_start: i32) -> *mut *mut u8 {
+unsafe fn status_prompt_complete_list(s: *const u8, at_start: i32) -> Vec<*mut u8> {
     unsafe {
-        let mut list: *mut *mut u8 = null_mut();
+        let mut list = Vec::new();
         let s = cstr_to_str(s);
 
         let layouts: [&str; 7] = [
@@ -1911,15 +1909,14 @@ unsafe fn status_prompt_complete_list(size: *mut u32, s: *const u8, at_start: i3
             "tiled",
         ];
 
-        *size = 0;
         for cmdent in CMD_TABLE {
             if cmdent.name.starts_with(s) {
-                status_prompt_add_list(&raw mut list, size, cmdent.name);
+                status_prompt_add_list(&mut list, cmdent.name);
             }
             if let Some(alias) = cmdent.alias
                 && alias.starts_with(s)
             {
-                status_prompt_add_list(&raw mut list, size, alias);
+                status_prompt_add_list(&mut list, alias);
             }
         }
         let o = options_get_only(GLOBAL_OPTIONS, c!("command-alias"));
@@ -1939,7 +1936,7 @@ unsafe fn status_prompt_complete_list(size: *mut u32, s: *const u8, at_start: i3
                     }
 
                     let tmp = format!("{:.*}", valuelen, _s(value));
-                    status_prompt_add_list(&raw mut list, size, &tmp);
+                    status_prompt_add_list(&mut list, &tmp);
                 } // next:
                 a = options_array_next(a);
             }
@@ -1950,13 +1947,13 @@ unsafe fn status_prompt_complete_list(size: *mut u32, s: *const u8, at_start: i3
         let mut oe = (&raw mut OPTIONS_TABLE) as *mut options_table_entry;
         while !(*oe).name.is_null() {
             if cstr_to_str((*oe).name).starts_with(s) {
-                status_prompt_add_list(&raw mut list, size, cstr_to_str((*oe).name));
+                status_prompt_add_list(&mut list, cstr_to_str((*oe).name));
             }
             oe = oe.add(1);
         }
         for layout in layouts {
             if layout.starts_with(s) {
-                status_prompt_add_list(&raw mut list, size, layout);
+                status_prompt_add_list(&mut list, layout);
             }
         }
         list
@@ -1964,19 +1961,19 @@ unsafe fn status_prompt_complete_list(size: *mut u32, s: *const u8, at_start: i3
 }
 
 /// Find longest prefix.
-unsafe fn status_prompt_complete_prefix(list: *mut *mut u8, size: u32) -> *mut u8 {
+unsafe fn status_prompt_complete_prefix(list: &[*mut u8]) -> *mut u8 {
     unsafe {
-        if list.is_null() || size == 0 {
+        if list.is_empty() {
             return null_mut();
         }
-        let out = xstrdup(*list).as_ptr();
-        for i in 1..size {
-            let mut j = strlen(*list.add(i as usize));
+        let out = xstrdup(list[0]).as_ptr();
+        for &item in &list[1..] {
+            let mut j = strlen(item);
             if j > strlen(out) {
                 j = strlen(out);
             }
             while j > 0 {
-                if *out.add(j - 1) != *(*list.add(i as usize)).add(j - 1) {
+                if *out.add(j - 1) != *item.add(j - 1) {
                     *out.add(j - 1) = b'\0';
                 }
                 j -= 1;
@@ -2001,12 +1998,12 @@ unsafe fn status_prompt_menu_callback(
         if key != KEYC_NONE {
             idx += (*spm).start;
             s = if (*spm).flag == b'\0' {
-                xstrdup(*(*spm).list.add(idx as usize)).as_ptr()
+                xstrdup((&(*spm).list)[idx as usize]).as_ptr()
             } else {
                 format_nul!(
                     "-{}{}",
                     (*spm).flag as char,
-                    _s(*(*spm).list.add(idx as usize))
+                    _s((&(*spm).list)[idx as usize])
                 )
             };
             if (*c).prompt_type == prompt_type::PROMPT_TYPE_WINDOW_TARGET {
@@ -2020,18 +2017,19 @@ unsafe fn status_prompt_menu_callback(
             free_(s);
         }
 
-        for i in 0..(*spm).size {
-            free_(*(*spm).list.add(i as usize));
+        // Free all items in the Vec
+        for item in (*spm).list.drain(..) {
+            free_(item);
         }
-        free_((*spm).list);
+        (*spm).list = Vec::new();
+        free_(spm);
     }
 }
 
 /// Show complete word menu.
 unsafe fn status_prompt_complete_list_menu(
     c: *mut client,
-    list: *mut *mut u8,
-    size: u32,
+    list: Vec<*mut u8>,
     mut offset: u32,
     flag: u8,
 ) -> i32 {
@@ -2045,6 +2043,8 @@ unsafe fn status_prompt_complete_list_menu(
         // height, i;
         // u_int py;
 
+        let size = list.len() as u32;
+
         if size <= 1 {
             return 0;
         }
@@ -2054,7 +2054,6 @@ unsafe fn status_prompt_complete_list_menu(
 
         let spm: *mut status_prompt_menu = xmalloc_::<status_prompt_menu>().as_ptr();
         (*spm).c = c;
-        (*spm).size = size;
         (*spm).list = list;
         (*spm).flag = flag;
 
@@ -2069,7 +2068,7 @@ unsafe fn status_prompt_complete_list_menu(
 
         let menu = menu_create(c!(""));
         for i in (*spm).start..size {
-            item.name = SyncCharPtr::from_ptr(*list.add(i as usize));
+            item.name = SyncCharPtr::from_ptr((&(*spm).list)[i as usize]);
             item.key = b'0' as u64 + (i as i64 - (*spm).start as i64) as u64;
             item.command = SyncCharPtr::null();
             menu_add_item(menu, &raw mut item, null_mut(), c, null_mut());
@@ -2105,9 +2104,14 @@ unsafe fn status_prompt_complete_list_menu(
         ) != 0
         {
             menu_free(menu);
+            // Free the items
+            for item in (*spm).list.drain(..) {
+                free_(item);
+            }
             free_(spm);
             return 0;
         }
+        // Success - callback will free the list and spm
         1
     }
 }
@@ -2123,10 +2127,8 @@ unsafe fn status_prompt_complete_window_menu(
     unsafe {
         let mut item: menu_item = zeroed();
         let mut tmp: *mut u8;
-        let mut list: *mut *mut u8 = null_mut();
+        let mut list = Vec::new();
         let lines = status_line_size(c);
-
-        let mut size = 0;
 
         if (*c).tty.sy - lines < 3 {
             return null_mut();
@@ -2153,48 +2155,43 @@ unsafe fn status_prompt_complete_window_menu(
                 free_(tmp);
             }
 
-            list = xreallocarray_(list, size + 1).as_ptr();
             if (*c).prompt_type == prompt_type::PROMPT_TYPE_WINDOW_TARGET {
                 tmp = format_nul!("{} ({})", (*wl).idx, _s((*(*wl).window).name),);
-                *list.add(size) = format_nul!("{}", (*wl).idx);
-                size += 1;
+                list.push(format_nul!("{}", (*wl).idx));
             } else {
                 tmp = format_nul!("{}:{} ({})", (*s).name, (*wl).idx, _s((*(*wl).window).name),);
-                *list.add(size) = format_nul!("{}:{}", (*s).name, (*wl).idx);
-                size += 1;
+                list.push(format_nul!("{}:{}", (*s).name, (*wl).idx));
             }
             item.name = SyncCharPtr::from_ptr(tmp);
-            item.key = (b'0' as u64) + size as u64 - 1;
+            item.key = (b'0' as u64) + list.len() as u64 - 1;
             item.command = SyncCharPtr::null();
             menu_add_item(menu, &raw mut item, null_mut(), c, null_mut());
             free_(tmp);
 
-            if size == height as usize {
+            if list.len() == height as usize {
                 break;
             }
         }
-        if size == 0 {
+        if list.is_empty() {
             menu_free(menu);
             free_(spm);
             return null_mut();
         }
-        if size == 1 {
+        if list.len() == 1 {
             menu_free(menu);
             if flag != b'\0' {
-                tmp = format_nul!("-{}{}", flag as char, _s(*list));
-                free_(*list);
+                tmp = format_nul!("-{}{}", flag as char, _s(list[0]));
+                free_(list[0]);
             } else {
-                tmp = *list;
+                tmp = list[0];
             }
-            free_(list);
             free_(spm);
             return tmp;
         }
-        if height as usize > size {
-            height = size as u32;
+        if height as usize > list.len() {
+            height = list.len() as u32;
         }
 
-        (*spm).size = size as u32;
         (*spm).list = list;
 
         let py = if options_get_number_((*(*c).session).options, "status-position") == 0 {
@@ -2227,6 +2224,10 @@ unsafe fn status_prompt_complete_window_menu(
         ) != 0
         {
             menu_free(menu);
+            // Free the items
+            for item in (*spm).list.drain(..) {
+                free_(item);
+            }
             free_(spm);
             return null_mut();
         }
@@ -2246,8 +2247,7 @@ unsafe extern "C" fn status_prompt_complete_sort(a: *const c_void, b: *const c_v
 
 /// Complete a session.
 unsafe fn status_prompt_complete_session(
-    list: *mut *mut *mut u8,
-    size: *mut u32,
+    list: &mut Vec<*mut u8>,
     s: *const u8,
     flag: u8,
 ) -> *mut u8 {
@@ -2266,21 +2266,16 @@ unsafe fn status_prompt_complete_session(
                     strlen(s),
                 ) == 0
             {
-                *list = xreallocarray_(*list, (*size) as usize + 2).as_ptr();
-                *(*list).add(*size as usize) = format_nul!("{}:", (*loop_).name);
-                (*size) += 1;
+                list.push(format_nul!("{}:", (*loop_).name));
             } else if *s == b'$' {
                 _ = xsnprintf_!((&raw mut n).cast(), n.len(), "{}", (*loop_).id);
                 if *s.add(1) == b'\0' || strncmp((&raw mut n).cast(), s.add(1), strlen(s) - 1) == 0
                 {
-                    *list = xreallocarray_(*list, (*size) as usize + 2).as_ptr();
-                    *(*list).add(*size as usize) =
-                        format_nul!("${}:", _s((&raw const n).cast::<u8>()));
-                    (*size) += 1;
+                    list.push(format_nul!("${}:", _s((&raw const n).cast::<u8>())));
                 }
             }
         }
-        let mut out = status_prompt_complete_prefix(*list, *size);
+        let mut out = status_prompt_complete_prefix(list);
         if !out.is_null() && flag != b'\0' {
             tmp = format_nul!("-{}{}", flag as char, _s(out));
             free_(out);
@@ -2300,10 +2295,9 @@ unsafe fn status_prompt_complete(c: *mut client, word: *const u8, mut offset: u3
 
         let mut flag: u8 = b'\0';
 
-        let mut list: *mut *mut u8 = null_mut();
+        let mut list: Vec<*mut u8> = Vec::new();
         let copy: *mut u8;
         let mut out: *mut u8 = null_mut();
-        let mut size: u32 = 0;
 
         if *word == b'\0'
             && (*c).prompt_type != prompt_type::PROMPT_TYPE_TARGET
@@ -2318,13 +2312,13 @@ unsafe fn status_prompt_complete(c: *mut client, word: *const u8, mut offset: u3
                 && strncmp(word, c!("-t"), 2) != 0
                 && strncmp(word, c!("-s"), 2) != 0
             {
-                list = status_prompt_complete_list(&raw mut size, word, (offset == 0) as i32);
-                out = if size == 0 {
+                list = status_prompt_complete_list(word, (offset == 0) as i32);
+                out = if list.is_empty() {
                     null_mut()
-                } else if size == 1 {
-                    format_nul!("{} ", _s(*list))
+                } else if list.len() == 1 {
+                    format_nul!("{} ", _s(list[0]))
                 } else {
-                    status_prompt_complete_prefix(list, size)
+                    status_prompt_complete_prefix(&list)
                 };
                 break 'found;
             }
@@ -2349,7 +2343,7 @@ unsafe fn status_prompt_complete(c: *mut client, word: *const u8, mut offset: u3
 
             // If there is no colon, complete as a session.
             if colon.is_null() {
-                out = status_prompt_complete_session(&raw mut list, &raw mut size, s, flag);
+                out = status_prompt_complete_session(&mut list, s, flag);
                 break 'found;
             }
 
@@ -2372,15 +2366,15 @@ unsafe fn status_prompt_complete(c: *mut client, word: *const u8, mut offset: u3
                 }
             }
         } // found:
-        if size != 0 {
+        if !list.is_empty() {
             libc::qsort(
-                list.cast(),
-                size as usize,
+                list.as_mut_ptr().cast(),
+                list.len(),
                 size_of::<*mut i8>(),
                 Some(status_prompt_complete_sort),
             );
-            for i in 0..size {
-                log_debug!("complete {i}: {}", _s(*list.add(i as usize)));
+            for (i, &item) in list.iter().enumerate() {
+                log_debug!("complete {i}: {}", _s(item));
             }
         }
 
@@ -2388,11 +2382,14 @@ unsafe fn status_prompt_complete(c: *mut client, word: *const u8, mut offset: u3
             free_(out);
             out = null_mut();
         }
-        if !out.is_null() || status_prompt_complete_list_menu(c, list, size, offset, flag) == 0 {
-            for i in 0..size {
-                free_(*list.add(i as usize));
+        if !out.is_null() {
+            // We have a result, free the list ourselves
+            for item in list.drain(..) {
+                free_(item);
             }
-            free_(list);
+        } else {
+            // No result, show menu which takes ownership of list
+            status_prompt_complete_list_menu(c, list, offset, flag);
         }
         out
     }

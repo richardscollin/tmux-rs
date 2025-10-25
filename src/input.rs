@@ -33,7 +33,7 @@
 //! - Special handling for ESC inside a DCS to allow arbitrary byte sequences to
 //!   be passed to the underlying terminals.
 use crate::compat::b64::{b64_ntop, b64_pton};
-use crate::libc::{strchr, strpbrk, strtol};
+use crate::libc::{strchr, strpbrk};
 use crate::*;
 use crate::options_::{options_get_number_, options_get_only, options_remove_or_default, options_set_number};
 

@@ -105,8 +105,104 @@ pub unsafe fn strstr(cs: *const u8, ct: *const u8) -> *mut u8 {
     unsafe { ::libc::strstr(cs.cast(), ct.cast()).cast() }
 }
 
+/// Idiomatic Rust version of strtol - parses an i64 from a string and returns remaining string
+pub fn strtol_(s: &str, base: i32) -> (i64, &str) {
+    let mut chars = s.chars();
+
+    // Skip leading whitespace
+    let mut pos = 0;
+    while let Some(c) = chars.clone().next() {
+        if !c.is_ascii_whitespace() {
+            break;
+        }
+        chars.next();
+        pos += c.len_utf8();
+    }
+
+    let after_whitespace = &s[pos..];
+
+    // Handle sign
+    let (negative, after_sign) = match after_whitespace.as_bytes().first() {
+        Some(b'-') => (true, &after_whitespace[1..]),
+        Some(b'+') => (false, &after_whitespace[1..]),
+        _ => (false, after_whitespace),
+    };
+
+    // Determine actual base and skip prefix if needed
+    let (actual_base, after_prefix) = if base == 0 {
+        if after_sign.starts_with("0x") || after_sign.starts_with("0X") {
+            (16, &after_sign[2..])
+        } else if after_sign.starts_with('0') {
+            (8, after_sign)
+        } else {
+            (10, after_sign)
+        }
+    } else if base == 16 && (after_sign.starts_with("0x") || after_sign.starts_with("0X")) {
+        (16, &after_sign[2..])
+    } else {
+        (base, after_sign)
+    };
+
+    if !(2..=36).contains(&actual_base) {
+        return (0, s);
+    }
+
+    // Find end of valid digits
+    let digit_end = after_prefix
+        .bytes()
+        .position(|b| {
+            let digit_val = match b {
+                b'0'..=b'9' => b - b'0',
+                b'a'..=b'z' => b - b'a' + 10,
+                b'A'..=b'Z' => b - b'A' + 10,
+                _ => return true, // Not a digit character
+            };
+            digit_val >= actual_base as u8
+        })
+        .unwrap_or(after_prefix.len());
+
+    if digit_end == 0 {
+        // No valid digits found
+        return (0, s);
+    }
+
+    let digit_str = &after_prefix[..digit_end];
+    let remaining = &after_prefix[digit_end..];
+
+    // Parse using from_str_radix
+    let result = i64::from_str_radix(digit_str, actual_base as u32).unwrap_or({
+        // Overflow
+        if negative { i64::MIN } else { i64::MAX }
+    });
+
+    let final_result = if negative {
+        result.checked_neg().unwrap_or(i64::MIN)
+    } else {
+        result
+    };
+
+    (final_result, remaining)
+}
+
 pub unsafe fn strtol(s: *const u8, endp: *mut *mut u8, base: i32) -> i64 {
-    unsafe { ::libc::strtol(s.cast(), endp.cast(), base) }
+    unsafe {
+        if s.is_null() {
+            if !endp.is_null() {
+                *endp = s.cast_mut();
+            }
+            return 0;
+        }
+
+        let s_str = crate::cstr_to_str(s);
+        let (result, remaining) = strtol_(s_str, base);
+
+        if !endp.is_null() {
+            let consumed = s_str.len() - remaining.len();
+            *endp = s.add(consumed).cast_mut();
+        }
+
+        result
+    }
 }
 
 pub unsafe fn strtoul(s: *const u8, endp: *mut *mut u8, base: i32) -> u64 {

@@ -958,13 +958,20 @@ pub unsafe fn popup_editor_close_cb(status: i32, arg: *mut c_void) {
     }
 }
 
+// https://blog.orhun.dev/zero-deps-random-in-rust/
+pub fn random_seed() -> u64 {
+    use std::collections::hash_map::RandomState;
+    use std::hash::{BuildHasher, Hasher};
+    RandomState::new().build_hasher().finish()
+}
+
 fn create_temp_file() -> std::path::PathBuf {
-    // TODO consider implementing in a way which doesn't require rand
-    use rand::prelude::*;
-    let mut rng = rand::rng();
+    let mut seed = random_seed();
     let mut filename = String::from("tmux.");
     for _ in 0..8 {
-        filename.push(rng.random_range('a'..='z'));
+        let ch = (b'a' + (seed % 26) as u8) as char;
+        filename.push(ch);
+        seed = seed.wrapping_mul(1103515245).wrapping_add(12345);
     }
     std::env::temp_dir().join(filename)
 }

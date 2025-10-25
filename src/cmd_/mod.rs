@@ -509,7 +509,7 @@ pub fn cmd_find(name: &str) -> Result<&'static cmd_entry, String> {
         // TODO, once https://github.com/rust-lang/rust/issues/79524 is stabilized rewrite
         for entry in CMD_TABLE {
             if entry.name.starts_with(name) {
-                msg.push_str(name);
+                msg.push_str(entry.name);
                 msg.push_str(", ");
             }
         }

@@ -89,8 +89,6 @@ enum window_tree_sort_type {
 
 static WINDOW_TREE_SORT_LIST: [&str; 3] = ["index", "name", "time"];
 
-static mut WINDOW_TREE_SORT: *mut mode_tree_sort_criteria = null_mut();
-
 #[repr(i32)]
 #[derive(Eq, PartialEq)]
 enum window_tree_type {
@@ -206,106 +204,6 @@ unsafe fn window_tree_add_item(data: NonNull<window_tree_modedata>) -> *mut wind
 unsafe fn window_tree_free_item(item: *mut window_tree_itemdata) {
     unsafe {
         free_(item);
-    }
-}
-
-unsafe extern "C" fn window_tree_cmp_session(a0: *const c_void, b0: *const c_void) -> i32 {
-    unsafe {
-        let a: *mut *mut session = a0 as *mut *mut session;
-        let b: *mut *mut session = b0 as *mut *mut session;
-        let sa = *a;
-        let sb = *b;
-
-        let mut result: i32 = 0;
-        match window_tree_sort_type::try_from((*WINDOW_TREE_SORT).field as i32) {
-            Ok(window_tree_sort_type::WINDOW_TREE_BY_INDEX) => {
-                result = ((*sa).id as i32).wrapping_sub((*sb).id as i32);
-            }
-            Ok(window_tree_sort_type::WINDOW_TREE_BY_TIME) => {
-                if timer::new(&raw const (*sa).activity_time)
-                    > timer::new(&raw const (*sb).activity_time)
-                {
-                    result = -1;
-                } else if timer::new(&raw const (*sa).activity_time)
-                    < timer::new(&raw const (*sb).activity_time)
-                {
-                    result = 1;
-                } else {
-                    result = (*sa).name.cmp(&(*sb).name) as i32;
-                }
-            }
-            Ok(window_tree_sort_type::WINDOW_TREE_BY_NAME) => {
-                result = (*sa).name.cmp(&(*sb).name) as i32;
-            }
-            Err(_) => (),
-        }
-
-        if (*WINDOW_TREE_SORT).reversed {
-            result = -result;
-        }
-
-        result
-    }
-}
-
-unsafe extern "C" fn window_tree_cmp_window(a0: *const c_void, b0: *const c_void) -> i32 {
-    unsafe {
-        let a = a0 as *mut *mut winlink;
-        let b = b0 as *mut *mut winlink;
-        let wla: *mut winlink = *a;
-        let wlb: *mut winlink = *b;
-        let wa = (*wla).window;
-        let wb = (*wlb).window;
-        let mut result: i32 = 0;
-
-        match window_tree_sort_type::try_from((*WINDOW_TREE_SORT).field as i32) {
-            Ok(window_tree_sort_type::WINDOW_TREE_BY_INDEX) => result = (*wla).idx - (*wlb).idx,
-            Ok(window_tree_sort_type::WINDOW_TREE_BY_TIME) => {
-                if timer::new(&raw const (*wa).activity_time)
-                    > timer::new(&raw const (*wb).activity_time)
-                {
-                    result = -1;
-                } else if timer::new(&raw const (*wa).activity_time)
-                    < timer::new(&raw const (*wb).activity_time)
-                {
-                    result = 1;
-                } else {
-                    result = libc::strcmp((*wa).name, (*wb).name);
-                }
-            }
-            Ok(window_tree_sort_type::WINDOW_TREE_BY_NAME) => {
-                result = libc::strcmp((*wa).name, (*wb).name);
-            }
-            Err(_) => (),
-        }
-
-        if (*WINDOW_TREE_SORT).reversed {
-            result = -result;
-        }
-        result
-    }
-}
-
-unsafe extern "C" fn window_tree_cmp_pane(a0: *const c_void, b0: *const c_void) -> i32 {
-    unsafe {
-        let a = a0 as *mut *mut window_pane;
-        let b = b0 as *mut *mut window_pane;
-        let mut result: i32;
-        let mut ai: u32 = 0;
-        let mut bi: u32 = 0;
-
-        if (*WINDOW_TREE_SORT).field == window_tree_sort_type::WINDOW_TREE_BY_TIME as u32 {
-            result = ((**a).active_point as i32).wrapping_sub((**b).active_point as i32);
-        } else {
-            // Panes don't have names, so use number order for any other sort field.
-            window_pane_index(*a, &raw mut ai);
-            window_pane_index(*b, &raw mut bi);
-            result = ai as i32 - bi as i32;
-        }
-        if (*WINDOW_TREE_SORT).reversed {
-            result = -result;
-        }
-        result
     }
 }
 
@@ -447,13 +345,24 @@ unsafe fn window_tree_build_window(
                 break 'empty;
             }
 
-            WINDOW_TREE_SORT = sort_crit;
-            libc::qsort(
-                l.cast(),
-                n as usize,
-                size_of::<*mut window_pane>(),
-                Some(window_tree_cmp_pane),
-            );
+            let pane_list = std::slice::from_raw_parts_mut(l, n as usize);
+            if (*sort_crit).field == window_tree_sort_type::WINDOW_TREE_BY_TIME as u32 {
+                pane_list.sort_by(|a, b| {
+                    i32_to_ordering(
+                        ((**a).active_point as i32).wrapping_sub((**b).active_point as i32),
+                    )
+                    .maybe_reverse((*sort_crit).reversed)
+                });
+            } else {
+                // Panes don't have names, so use number order for any other sort field.
+                pane_list.sort_by(|a, b| {
+                    let mut ai: u32 = 0;
+                    let mut bi: u32 = 0;
+                    window_pane_index(*a, &raw mut ai);
+                    window_pane_index(*b, &raw mut bi);
+                    i32_to_ordering(ai as i32 - bi as i32).maybe_reverse((*sort_crit).reversed)
+                });
+            }
 
             for i in 0..n {
                 window_tree_build_pane(s, wl, *l.add(i as usize), modedata, mti);
@@ -513,13 +422,34 @@ unsafe fn window_tree_build_session(
             *l.add(n) = wl;
             n += 1;
         }
-        WINDOW_TREE_SORT = sort_crit;
-        libc::qsort(
-            l.cast(),
-            n,
-            size_of::<&mut winlink>(),
-            Some(window_tree_cmp_window),
-        );
+
+        let winlink_list = std::slice::from_raw_parts_mut(l, n);
+        match window_tree_sort_type::try_from((*sort_crit).field as i32) {
+            Ok(window_tree_sort_type::WINDOW_TREE_BY_INDEX) => {
+                winlink_list.sort_by(|a, b| {
+                    i32_to_ordering((**a).idx - (**b).idx).maybe_reverse((*sort_crit).reversed)
+                });
+            }
+            Ok(window_tree_sort_type::WINDOW_TREE_BY_TIME) => {
+                winlink_list.sort_by(|a, b| {
+                    let wa = (**a).window;
+                    let wb = (**b).window;
+                    timer::new(&raw const (*wa).activity_time)
+                        .cmp(&timer::new(&raw const (*wb).activity_time))
+                        .then_with(|| i32_to_ordering(libc::strcmp((*wa).name, (*wb).name)))
+                        .maybe_reverse((*sort_crit).reversed)
+                });
+            }
+            Ok(window_tree_sort_type::WINDOW_TREE_BY_NAME) => {
+                winlink_list.sort_by(|a, b| {
+                    let wa = (**a).window;
+                    let wb = (**b).window;
+                    i32_to_ordering(libc::strcmp((*wa).name, (*wb).name))
+                        .maybe_reverse((*sort_crit).reversed)
+                });
+            }
+            Err(_) => (),
+        }
 
         let mut empty = 0;
         for i in 0..n {
@@ -575,13 +505,30 @@ unsafe fn window_tree_build(
             *l.add(n as usize) = s;
             n += 1;
         }
-        WINDOW_TREE_SORT = sort_crit;
-        libc::qsort(
-            l.cast(),
-            n as usize,
-            size_of::<*mut session>(),
-            Some(window_tree_cmp_session),
-        );
+
+        let session_list = std::slice::from_raw_parts_mut(l, n as usize);
+        match window_tree_sort_type::try_from((*sort_crit).field as i32) {
+            Ok(window_tree_sort_type::WINDOW_TREE_BY_INDEX) => {
+                session_list.sort_by(|a, b| {
+                    i32_to_ordering(((**a).id as i32).wrapping_sub((**b).id as i32))
+                        .maybe_reverse((*sort_crit).reversed)
+                });
+            }
+            Ok(window_tree_sort_type::WINDOW_TREE_BY_TIME) => {
+                session_list.sort_by(|a, b| {
+                    timer::new(&raw const (**a).activity_time)
+                        .cmp(&timer::new(&raw const (**b).activity_time))
+                        .then_with(|| (**a).name.cmp(&(**b).name))
+                        .maybe_reverse((*sort_crit).reversed)
+                });
+            }
+            Ok(window_tree_sort_type::WINDOW_TREE_BY_NAME) => {
+                session_list.sort_by(|a, b| {
+                    (**a).name.cmp(&(**b).name).maybe_reverse((*sort_crit).reversed)
+                });
+            }
+            Err(_) => (),
+        }
 
         for i in 0..n {
             window_tree_build_session(*l.add(i as usize), modedata, sort_crit, filter);

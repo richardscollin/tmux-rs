@@ -173,9 +173,19 @@ pub unsafe fn paste_add(mut prefix: *const u8, data: *mut u8, size: usize) {
             }
         }
 
-        let pb = xmalloc_::<paste_buffer>().as_ptr();
+        let pb = Box::leak(Box::new(paste_buffer {
+            data,
+            size,
+            name: null_mut(),
+            created: libc::time(null_mut()),
+            automatic: 1,
+            order: PASTE_NEXT_ORDER,
+            name_entry: zeroed(),
+            time_entry: zeroed(),
+        })) as *mut paste_buffer;
+        PASTE_NUM_AUTOMATIC += 1;
+        PASTE_NEXT_ORDER += 1;
 
-        (*pb).name = null_mut();
         loop {
             free_((*pb).name);
             let tmp = PASTE_NEXT_INDEX;
@@ -185,17 +195,6 @@ pub unsafe fn paste_add(mut prefix: *const u8, data: *mut u8, size: usize) {
                 break;
             }
         }
-
-        (*pb).data = data;
-        (*pb).size = size;
-
-        (*pb).automatic = 1;
-        PASTE_NUM_AUTOMATIC += 1;
-
-        (*pb).created = libc::time(null_mut());
-
-        (*pb).order = PASTE_NEXT_ORDER;
-        PASTE_NEXT_ORDER += 1;
         rb_insert::<_, discr_name_entry>(&raw mut PASTE_BY_NAME, pb);
         rb_insert::<_, discr_time_entry>(&raw mut PASTE_BY_TIME, pb);
 
@@ -274,18 +273,17 @@ pub unsafe fn paste_set(data: *mut u8, size: usize, name: *const u8, cause: *mut
             return -1;
         }
 
-        let pb = xmalloc_::<paste_buffer>().as_ptr();
-
-        (*pb).name = xstrdup(name).as_ptr();
-
-        (*pb).data = data;
-        (*pb).size = size;
-
-        (*pb).automatic = 0;
-        (*pb).order = PASTE_NEXT_ORDER;
+        let pb = Box::leak(Box::new(paste_buffer {
+            data,
+            size,
+            name: xstrdup(name).as_ptr(),
+            created: libc::time(null_mut()),
+            automatic: 0,
+            order: PASTE_NEXT_ORDER,
+            name_entry: Default::default(),
+            time_entry: Default::default(),
+        }));
         PASTE_NEXT_ORDER += 1;
-
-        (*pb).created = libc::time(null_mut());
 
         if let Some(old) = NonNull::new(paste_get_name(name)) {
             paste_free(old);

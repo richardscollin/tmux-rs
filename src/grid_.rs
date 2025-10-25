@@ -308,25 +308,20 @@ pub unsafe fn grid_free_lines(gd: *mut grid, py: c_uint, ny: c_uint) {
 }
 
 /// Create a new grid.
-pub unsafe fn grid_create(sx: u32, sy: u32, hlimit: u32) -> *mut grid {
-    unsafe {
-        let gd = xmalloc_::<grid>().as_ptr();
-        (*gd).sx = sx;
-        (*gd).sy = sy;
-        (*gd).flags = if hlimit != 0 { GRID_HISTORY } else { 0 };
-
-        (*gd).hscrolled = 0;
-        (*gd).hsize = 0;
-        (*gd).hlimit = hlimit;
-
-        if (*gd).sy != 0 {
-            (*gd).linedata = xcalloc_::<grid_line>((*gd).sy as usize).as_ptr();
+pub fn grid_create(sx: u32, sy: u32, hlimit: u32) -> *mut grid {
+    Box::leak(Box::new(grid {
+        sx,
+        sy,
+        flags: if hlimit != 0 { GRID_HISTORY } else { 0 },
+        hscrolled: 0,
+        hsize: 0,
+        hlimit,
+        linedata: if sy != 0 {
+            xcalloc_::<grid_line>(sy as usize).as_ptr()
         } else {
-            (*gd).linedata = null_mut();
-        }
-
-        gd
-    }
+            null_mut()
+        },
+    }))
 }
 
 /// Destroy grid.

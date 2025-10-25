@@ -1153,11 +1153,13 @@ pub unsafe fn window_pane_resize(wp: *mut window_pane, sx: u32, sy: u32) {
             return;
         }
 
-        let r: *mut window_pane_resize = xmalloc_::<window_pane_resize>().as_ptr();
-        (*r).sx = sx;
-        (*r).sy = sy;
-        (*r).osx = (*wp).sx;
-        (*r).osy = (*wp).sy;
+        let r = Box::leak(Box::new(window_pane_resize {
+            sx,
+            sy,
+            osx: (*wp).sx,
+            osy: (*wp).sy,
+            entry: Default::default(),
+        }));
         tailq_insert_tail(&raw mut (*wp).resize_queue, r);
 
         (*wp).sx = sx;
@@ -1776,9 +1778,11 @@ pub unsafe fn window_pane_start_input(
             return 1;
         }
 
-        let cdata: *mut window_pane_input_data = xmalloc_::<window_pane_input_data>().as_ptr();
-        (*cdata).item = item;
-        (*cdata).wp = (*wp).id;
+        let cdata = Box::leak(Box::new(window_pane_input_data {
+            item,
+            wp: (*wp).id,
+            file: null_mut(),
+        })) as *mut window_pane_input_data;
         (*cdata).file = file_read(c, c!("-"), Some(window_pane_input_callback), cdata as _);
         (*c).references += 1;
 

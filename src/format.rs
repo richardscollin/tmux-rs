@@ -365,7 +365,7 @@ pub unsafe fn format_job_get(es: *mut format_expand_state, cmd: *mut u8) -> *mut
         } else if !(*(*ft).client).jobs.is_null() {
             (*(*ft).client).jobs
         } else {
-            (*(*ft).client).jobs = xmalloc_().as_ptr();
+            (*(*ft).client).jobs = Box::leak(Box::new(zeroed())) as *mut format_job_tree;
             rb_init((*(*ft).client).jobs);
             (*(*ft).client).jobs
         };
@@ -3262,20 +3262,23 @@ pub(crate) use format_add;
 /// Add a key-value pair.
 pub unsafe fn format_add_(ft: *mut format_tree, key: &str, args: std::fmt::Arguments) {
     unsafe {
-        let mut fe = xmalloc_::<format_entry>().as_ptr();
+        let fe = Box::leak(Box::new(format_entry {
+            key: xstrdup__(key),
+            value: null_mut(),
+            time: 0,
+            cb: None,
+            entry: zeroed(),
+        })) as *mut format_entry;
 
-        (*fe).key = xstrdup__(key);
-
-        let fe_now = rb_insert(&raw mut (*ft).tree, fe);
-        if !fe_now.is_null() {
-            free_((*fe).key);
-            free_(fe);
-            free_((*fe_now).value);
-            fe = fe_now;
-        }
-
-        (*fe).cb = None;
-        (*fe).time = 0;
+        let fe = match rb_insert(&raw mut (*ft).tree, fe) {
+            fe_now if !fe_now.is_null() => {
+                free_((*fe).key);
+                free_(fe);
+                free_((*fe_now).value);
+                fe_now
+            }
+            _ => fe,
+        };
 
         let mut value = args.to_string();
         value.push('\0');
@@ -3286,44 +3289,40 @@ pub unsafe fn format_add_(ft: *mut format_tree, key: &str, args: std::fmt::Argum
 /// Add a key and time.
 pub unsafe fn format_add_tv(ft: *mut format_tree, key: *const u8, tv: *const timeval) {
     unsafe {
-        let mut fe = xmalloc_::<format_entry>().as_ptr();
-
-        (*fe).key = xstrdup(key).as_ptr();
+        let fe = Box::leak(Box::new(format_entry {
+            key: xstrdup(key).as_ptr(),
+            value: null_mut(),
+            time: (*tv).tv_sec,
+            cb: None,
+            entry: zeroed(),
+        })) as *mut format_entry;
 
         let fe_now = rb_insert(&raw mut (*ft).tree, fe);
         if !fe_now.is_null() {
             free_((*fe).key);
             free_(fe);
             free_((*fe_now).value);
-            fe = fe_now;
         }
-
-        (*fe).cb = None;
-        (*fe).time = (*tv).tv_sec;
-
-        (*fe).value = null_mut();
     }
 }
 
 /// Add a key and function.
 pub unsafe fn format_add_cb(ft: *mut format_tree, key: *const u8, cb: format_cb) {
     unsafe {
-        let mut fe = xmalloc_::<format_entry>().as_ptr();
-
-        (*fe).key = xstrdup(key).as_ptr();
+        let fe = Box::leak(Box::new(format_entry {
+            key: xstrdup(key).as_ptr(),
+            value: null_mut(),
+            time: 0,
+            cb: Some(cb),
+            entry: zeroed(),
+        })) as *mut format_entry;
 
         let fe_now = rb_insert(&raw mut (*ft).tree, fe);
         if !fe_now.is_null() {
             free_((*fe).key);
             free_(fe);
             free_((*fe_now).value);
-            fe = fe_now;
         }
-
-        (*fe).cb = Some(cb);
-        (*fe).time = 0;
-
-        (*fe).value = null_mut();
     }
 }
 

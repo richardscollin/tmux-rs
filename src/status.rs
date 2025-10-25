@@ -301,7 +301,7 @@ unsafe fn status_push_screen(c: *mut client) {
         let sl = &raw mut (*c).status;
 
         if (*sl).active == &raw mut (*sl).screen {
-            (*sl).active = xmalloc_::<screen>().as_ptr();
+            (*sl).active = Box::leak(Box::new(zeroed())) as *mut screen;
             screen_init((*sl).active, (*c).tty.sx, status_line_size(c), 0);
         }
         (*sl).references += 1;
@@ -2119,15 +2119,17 @@ unsafe fn status_prompt_complete_window_menu(
             return None;
         }
 
-        let spm: *mut status_prompt_menu = xmalloc_::<status_prompt_menu>().as_ptr();
-        (*spm).c = c;
-        (*spm).flag = flag;
-
         let mut height = (*c).tty.sy - lines - 2;
         if height > 10 {
             height = 10;
         }
-        (*spm).start = 0;
+
+        let spm = Box::leak(Box::new(status_prompt_menu {
+            c,
+            start: 0,
+            list: Vec::new(),
+            flag,
+        })) as *mut status_prompt_menu;
 
         let menu = menu_create(c!(""));
         for wl in rb_foreach(&raw mut (*s).windows).map(NonNull::as_ptr) {

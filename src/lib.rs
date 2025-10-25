@@ -2630,7 +2630,7 @@ enum prompt_mode {
 
 bitflags::bitflags! {
     #[repr(transparent)]
-    #[derive(Copy, Clone, Eq, PartialEq)]
+    #[derive(Copy, Clone, Default, Eq, PartialEq)]
     struct job_flag: i32 {
         const JOB_NOWAIT = 1;
         const JOB_KEEPWRITE = 2;

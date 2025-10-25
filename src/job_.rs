@@ -26,15 +26,17 @@ pub type job_update_cb = Option<unsafe fn(*mut job)>;
 pub type job_complete_cb = Option<unsafe fn(*mut job)>;
 pub type job_free_cb = Option<unsafe fn(*mut c_void)>;
 
-#[derive(Eq, PartialEq)]
+#[derive(Default, Eq, PartialEq)]
 #[repr(i32)]
 pub enum job_state {
+    #[default]
     JOB_RUNNING = 0,
     JOB_DEAD = 1,
     JOB_CLOSED = 2,
 }
 
 #[repr(C)]
+#[derive(Default)]
 pub struct job {
     pub state: job_state,
 
@@ -229,21 +231,23 @@ pub unsafe fn job_run(
             environ_free(env);
             free_(argv0);
 
-            job = xmalloc_::<job>().as_ptr();
-            (*job).state = job_state::JOB_RUNNING;
-            (*job).flags = flags;
+            job = Box::leak(Box::new(job {
+                state: job_state::JOB_RUNNING,
+                flags,
+                cmd: if !cmd.is_null() {
+                    xstrdup(cmd).as_ptr()
+                } else {
+                    CString::new(cmd_stringify_argv(argc, argv))
+                        .unwrap()
+                        .into_raw()
+                        .cast()
+                },
+                pid,
+                status: 0,
+                ..Default::default()
+            }));
 
-            if !cmd.is_null() {
-                (*job).cmd = xstrdup(cmd).as_ptr();
-            } else {
-                (*job).cmd = CString::new(cmd_stringify_argv(argc, argv))
-                    .unwrap()
-                    .into_raw()
-                    .cast();
-            }
-            (*job).pid = pid;
             strlcpy((*job).tty.as_mut_ptr(), tty.as_ptr().cast(), TTY_NAME_MAX);
-            (*job).status = 0;
 
             list_insert_head(&raw mut ALL_JOBS, job);
 

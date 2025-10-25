@@ -16,19 +16,21 @@ use crate::*;
 
 pub unsafe fn layout_create_cell(lcparent: *mut layout_cell) -> *mut layout_cell {
     unsafe {
-        let lc = xmalloc_::<layout_cell>().as_ptr();
-        (*lc).type_ = layout_type::LAYOUT_WINDOWPANE;
-        (*lc).parent = lcparent;
-
-        tailq_init(&raw mut (*lc).cells);
-
-        (*lc).sx = u32::MAX;
-        (*lc).sy = u32::MAX;
-
-        (*lc).xoff = u32::MAX;
-        (*lc).yoff = u32::MAX;
-
-        (*lc).wp = null_mut();
+        let lc = Box::leak(Box::new(layout_cell {
+            type_: layout_type::LAYOUT_WINDOWPANE,
+            parent: lcparent,
+            sx: u32::MAX,
+            sy: u32::MAX,
+            xoff: u32::MAX,
+            yoff: u32::MAX,
+            wp: null_mut(),
+            cells: tailq_head {
+                tqh_first: null_mut(),
+                tqh_last: null_mut(),
+            },
+            entry: Default::default(),
+        }));
+        tailq_init(&raw mut lc.cells);
 
         lc
     }

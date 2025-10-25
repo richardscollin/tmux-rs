@@ -2556,9 +2556,10 @@ pub unsafe extern "C-unwind" fn server_client_click_timer(
 
         if (*c).flags.intersects(client_flag::TRIPLECLICK) {
             // Waiting for a third click that hasn't happened, so this must have been a double click.
-            let event = xmalloc_::<key_event>().as_ptr();
-            (*event).key = keyc::KEYC_DOUBLECLICK as u64;
-            memcpy__(&raw mut (*event).m, &raw const (*c).click_event);
+            let event = Box::leak(Box::new(key_event {
+                key: keyc::KEYC_DOUBLECLICK as u64,
+                m: (*c).click_event,
+            })) as *mut key_event;
             if server_client_handle_key(c, event) == 0 {
                 free_(event);
             }

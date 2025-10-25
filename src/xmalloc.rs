@@ -33,15 +33,6 @@ pub fn xmalloc(size: usize) -> NonNull<c_void> {
         .cast()
 }
 
-pub fn xmalloc_<T>() -> NonNull<T> {
-    debug_assert_ne!(size_of::<T>(), 0, "xmalloc: zero size");
-
-    let alloc = Box::new(MaybeUninit::<T>::uninit());
-    NonNull::new(Box::into_raw(alloc))
-        .expect("box pointer is not null")
-        .cast()
-}
-
 pub fn xcalloc(nmemb: usize, size: usize) -> NonNull<c_void> {
     debug_assert!(size != 0 && nmemb != 0, "xcalloc: zero size");
 

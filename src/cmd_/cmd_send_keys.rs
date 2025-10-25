@@ -64,9 +64,10 @@ pub unsafe fn cmd_send_keys_inject_key(
             if tc.is_null() {
                 return item;
             }
-            let event = xmalloc_::<key_event>().as_ptr();
-            (*event).key = key | KEYC_SENT;
-            memset0(&raw mut (*event).m);
+            let event = Box::leak(Box::new(key_event {
+                key: key | KEYC_SENT,
+                m: zeroed(),
+            })) as *mut key_event;
             if server_client_handle_key(tc, event) == 0 {
                 free_(event);
             }

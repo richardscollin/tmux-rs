@@ -508,7 +508,7 @@ pub unsafe fn file_push(cf: *mut client_file) {
         let mut msglen: usize;
         let mut sent: usize;
 
-        let mut msg = xmalloc_::<msg_write_data>();
+        let mut msg: Vec<u8> = Vec::with_capacity(size_of::<msg_write_data>());
         let mut left = EVBUFFER_LENGTH((*cf).buffer);
         while left != 0 {
             sent = left;
@@ -517,13 +517,17 @@ pub unsafe fn file_push(cf: *mut client_file) {
             }
 
             msglen = size_of::<msg_write_data>() + sent;
-            msg = xrealloc_(msg.as_ptr(), msglen);
-            (*msg.as_ptr()).stream = (*cf).stream;
-            memcpy(
-                msg.as_ptr().add(1).cast(),
+            msg.clear();
+            msg.reserve(msglen);
+            let msg_header = msg_write_data { stream: (*cf).stream };
+            msg.extend_from_slice(std::slice::from_raw_parts(
+                &raw const msg_header as *const u8,
+                size_of::<msg_write_data>(),
+            ));
+            msg.extend_from_slice(std::slice::from_raw_parts(
                 EVBUFFER_DATA((*cf).buffer).cast(),
                 sent,
-            );
+            ));
             if proc_send(
                 (*cf).peer,
                 msgtype::MSG_WRITE,
@@ -555,7 +559,6 @@ pub unsafe fn file_push(cf: *mut client_file) {
             );
             file_fire_done(cf);
         }
-        free_(msg.as_ptr());
     }
 }
 
@@ -792,7 +795,7 @@ pub unsafe extern "C-unwind" fn file_read_error_callback(
 pub unsafe extern "C-unwind" fn file_read_callback(_bev: *mut bufferevent, arg: *mut c_void) {
     let cf = arg as *mut client_file;
     unsafe {
-        let mut msg = xmalloc_::<msg_read_data>();
+        let mut msg: Vec<u8> = Vec::with_capacity(size_of::<msg_read_data>());
 
         loop {
             let bdata = EVBUFFER_DATA((*(*cf).event).input);
@@ -807,9 +810,20 @@ pub unsafe extern "C-unwind" fn file_read_callback(_bev: *mut bufferevent, arg: 
             log_debug!("read {} from file {}", bsize, (*cf).stream);
 
             let msglen = size_of::<msg_read_data>() + bsize;
-            msg = xrealloc_(msg.as_ptr(), msglen);
-            (*msg.as_ptr()).stream = (*cf).stream;
-            memcpy(msg.as_ptr().add(1).cast(), bdata.cast(), bsize);
+            msg.clear();
+            msg.reserve(msglen);
+            msg.extend_from_slice(
+                std::slice::from_raw_parts(
+                &raw const (*cf).stream as *const u8,
+                size_of::<msg_read_data>()
+                )
+            );
+            msg.extend_from_slice(
+                std::slice::from_raw_parts(
+                    bdata,
+                    bsize
+                )
+            );
             proc_send(
                 (*cf).peer,
                 msgtype::MSG_READ,
@@ -820,7 +834,6 @@ pub unsafe extern "C-unwind" fn file_read_callback(_bev: *mut bufferevent, arg: 
 
             evbuffer_drain((*(*cf).event).input, bsize);
         }
-        free_(msg.as_ptr());
     }
 }
 

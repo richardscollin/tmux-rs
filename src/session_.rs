@@ -96,8 +96,7 @@ impl session {
 
             s.tio = null_mut();
             if !tio.is_null() {
-                s.tio = xmalloc_::<termios>().as_ptr();
-                memcpy__(s.tio, tio);
+                s.tio = Box::leak(Box::new(*tio)) as *mut termios;
             }
 
             if let Some(name) = name {

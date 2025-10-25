@@ -423,9 +423,9 @@ pub unsafe fn window_copy_view_init(
         let data = window_copy_common_init(wme);
         (*data).viewmode = 1;
 
-        (*data).backing = xmalloc_::<screen>().as_ptr();
+        (*data).backing = Box::leak(Box::new(zeroed())) as *mut screen;
         screen_init((*data).backing, sx, screen_size_y(base), u32::MAX);
-        (*data).writing = xmalloc_::<screen>().as_ptr();
+        (*data).writing = Box::leak(Box::new(zeroed())) as *mut screen;
         screen_init((*data).writing, sx, screen_size_y(base), 0);
         (*data).ictx = input_init(null_mut(), null_mut(), null_mut());
         (*data).mx = (*data).cx;

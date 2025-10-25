@@ -724,21 +724,15 @@ fn yylex_is_var(ch: u8, first: bool) -> bool {
     }
 }
 
-unsafe fn yylex_append(buf: *mut *mut u8, len: *mut usize, add: *const u8, addlen: usize) {
-    unsafe {
-        if addlen > usize::MAX - 1 || *len > usize::MAX - 1 - addlen {
-            fatalx("buffer is too big");
-        }
-        *buf = xrealloc_(*buf, (*len) + 1 + addlen).as_ptr();
-        libc::memcpy((*buf).add(*len).cast(), add.cast(), addlen);
-        (*len) += addlen;
+fn yylex_append(buf: &mut Vec<u8>, add: &[u8]) {
+    if add.len() > usize::MAX - 1 || buf.len() > usize::MAX - 1 - add.len() {
+        fatalx("buffer is too big");
     }
+    buf.extend_from_slice(add);
 }
 
-unsafe fn yylex_append1(buf: *mut *mut u8, len: *mut usize, add: u8) {
-    unsafe {
-        yylex_append(buf, len, &raw const add, 1);
-    }
+fn yylex_append1(buf: &mut Vec<u8>, add: u8) {
+    yylex_append(buf, &[add]);
 }
 
 fn yylex_getc1(ps: &mut cmd_parse_state) -> i32 {
@@ -811,11 +805,10 @@ fn yylex_getc(ps: &mut cmd_parse_state) -> i32 {
 
 unsafe fn yylex_get_word(ps: &mut cmd_parse_state, mut ch: i32) -> *mut u8 {
     unsafe {
-        let mut len = 0;
-        let mut buf: *mut u8 = xmalloc(1).cast().as_ptr();
+        let mut buf = Vec::new();
 
         loop {
-            yylex_append1(&raw mut buf, &raw mut len, ch as u8);
+            yylex_append1(&mut buf, ch as u8);
             ch = yylex_getc(ps);
             if ch == libc::EOF || !libc::strchr(c!(" \t\n"), ch).is_null() {
                 break;
@@ -823,9 +816,9 @@ unsafe fn yylex_get_word(ps: &mut cmd_parse_state, mut ch: i32) -> *mut u8 {
         }
         yylex_ungetc(ps, ch);
 
-        *buf.add(len) = b'\0';
-        // log_debug("%s: %s", __func__, buf);
-        buf
+        buf.push(b'\0');
+        // log_debug("%s: %s", __func__, buf.as_ptr());
+        Box::leak(buf.into_boxed_slice()).as_mut_ptr()
     }
 }
 
@@ -979,58 +972,50 @@ unsafe fn yylex_(ps: &mut cmd_parse_state) -> Option<Tok> {
 }
 
 unsafe fn yylex_format(ps: &mut cmd_parse_state) -> Option<NonNull<u8>> {
-    unsafe {
-        let mut brackets = 1;
-        let mut len = 0;
-        let mut buf = xmalloc_::<u8>().as_ptr();
+    let mut brackets = 1;
+    let mut buf = Vec::new();
 
-        'error: {
-            yylex_append(&raw mut buf, &raw mut len, c!("#{"), 2);
-            loop {
-                let mut ch = yylex_getc(ps);
+    'error: {
+        yylex_append(&mut buf, b"#{");
+        loop {
+            let mut ch = yylex_getc(ps);
+            if ch == libc::EOF || ch == '\n' as i32 {
+                break 'error;
+            }
+            if ch == '#' as i32 {
+                ch = yylex_getc(ps);
                 if ch == libc::EOF || ch == '\n' as i32 {
                     break 'error;
                 }
-                if ch == '#' as i32 {
-                    ch = yylex_getc(ps);
-                    if ch == libc::EOF || ch == '\n' as i32 {
-                        break 'error;
-                    }
-                    if ch == '{' as i32 {
-                        brackets += 1;
-                    }
-                    yylex_append1(&raw mut buf, &raw mut len, b'#');
-                } else if (ch == '}' as i32)
-                    && brackets != 0
-                    && ({
-                        brackets -= 1;
-                        brackets == 0
-                    })
-                {
-                    yylex_append1(&raw mut buf, &raw mut len, ch as u8);
-                    break;
+                if ch == '{' as i32 {
+                    brackets += 1;
                 }
-                yylex_append1(&raw mut buf, &raw mut len, ch as u8);
+                yylex_append1(&mut buf, b'#');
+            } else if (ch == '}' as i32)
+                && brackets != 0
+                && ({
+                    brackets -= 1;
+                    brackets == 0
+                })
+            {
+                yylex_append1(&mut buf, ch as u8);
+                break;
             }
-            if brackets != 0 {
-                break 'error;
-            }
+            yylex_append1(&mut buf, ch as u8);
+        }
+        if brackets != 0 {
+            break 'error;
+        }
 
-            *buf.add(len) = b'\0';
-            // log_debug("%s: %s", __func__, buf);
-            return NonNull::new(buf);
-        } // error:
+        buf.push(b'\0');
+        // log_debug("%s: %s", __func__, buf.as_ptr());
+        return NonNull::new(Box::leak(buf.into_boxed_slice()).as_mut_ptr());
+    } // error:
 
-        free_(buf);
-        None
-    }
+    None
 }
 
-unsafe fn yylex_token_variable(
-    ps: &mut cmd_parse_state,
-    buf: *mut *mut u8,
-    len: *mut usize,
-) -> bool {
+unsafe fn yylex_token_variable(ps: &mut cmd_parse_state, buf: &mut Vec<u8>) -> bool {
     unsafe {
         let mut namelen: usize = 0;
         let mut name: [u8; 1024] = [0; 1024];
@@ -1045,7 +1030,7 @@ unsafe fn yylex_token_variable(
             brackets = 1;
         } else {
             if !yylex_is_var(ch as u8, true) {
-                yylex_append1(buf, len, b'$');
+                yylex_append1(buf, b'$');
                 yylex_ungetc(ps, ch);
                 return true;
             }
@@ -1079,18 +1064,15 @@ unsafe fn yylex_token_variable(
         if !envent.is_null() && (*envent).value.is_some() {
             let value = (*envent).value;
             // log_debug("%s: %s -> %s", __func__, name, value);
-            yylex_append(
-                buf,
-                len,
-                transmute_ptr(value),
-                libc::strlen(transmute_ptr(value)),
-            );
+            let value_ptr: *const u8 = transmute_ptr(value);
+            let value_len = libc::strlen(transmute_ptr(value));
+            yylex_append(buf, core::slice::from_raw_parts(value_ptr, value_len));
         }
         true
     }
 }
 
-unsafe fn yylex_token_tilde(ps: &mut cmd_parse_state, buf: *mut *mut u8, len: *mut usize) -> bool {
+unsafe fn yylex_token_tilde(ps: &mut cmd_parse_state, buf: &mut Vec<u8>) -> bool {
     unsafe {
         let mut home = null();
         let mut namelen: usize = 0;
@@ -1127,7 +1109,8 @@ unsafe fn yylex_token_tilde(ps: &mut cmd_parse_state, buf: *mut *mut u8, len: *m
         }
 
         // log_debug("%s: ~%s -> %s", __func__, name, home);
-        yylex_append(buf, len, home, strlen(home));
+        let home_len = strlen(home);
+        yylex_append(buf, core::slice::from_raw_parts(home, home_len));
         true
     }
 }
@@ -1145,8 +1128,7 @@ unsafe fn yylex_token(ps: &mut cmd_parse_state, mut ch: i32) -> *mut u8 {
         let mut state = State::None;
         let mut last = State::Start;
 
-        let mut len = 0;
-        let mut buf = xmalloc_::<u8>().as_ptr();
+        let mut buf = Vec::new();
 
         'error: {
             'aloop: loop {
@@ -1182,7 +1164,7 @@ unsafe fn yylex_token(ps: &mut cmd_parse_state, mut ch: i32) -> *mut u8 {
                         // Spaces and comments inside quotes after \n are removed but
                         // the \n is left.
                         if ch == '\n' as i32 && state != State::None {
-                            yylex_append1(&raw mut buf, &raw mut len, b'\n');
+                            yylex_append1(&mut buf, b'\n');
                             while ({
                                 ch = yylex_getc(ps);
                                 ch == b' ' as i32
@@ -1206,19 +1188,19 @@ unsafe fn yylex_token(ps: &mut cmd_parse_state, mut ch: i32) -> *mut u8 {
 
                         // \ ~ and $ are expanded except in single quotes.
                         if ch == '\\' as i32 && state != State::SingleQuotes {
-                            if !yylex_token_escape(ps, &raw mut buf, &raw mut len) {
+                            if !yylex_token_escape(ps, &mut buf) {
                                 break 'error;
                             }
                             break 'skip;
                         }
                         if ch == '~' as i32 && last != state && state != State::SingleQuotes {
-                            if !yylex_token_tilde(ps, &raw mut buf, &raw mut len) {
+                            if !yylex_token_tilde(ps, &mut buf) {
                                 break 'error;
                             }
                             break 'skip;
                         }
                         if ch == '$' as i32 && state != State::SingleQuotes {
-                            if !yylex_token_variable(ps, &raw mut buf, &raw mut len) {
+                            if !yylex_token_variable(ps, &mut buf) {
                                 break 'error;
                             }
                             break 'skip;
@@ -1250,7 +1232,7 @@ unsafe fn yylex_token(ps: &mut cmd_parse_state, mut ch: i32) -> *mut u8 {
                         }
 
                         // Otherwise add the character to the buffer.
-                        yylex_append1(&raw mut buf, &raw mut len, ch as u8);
+                        yylex_append1(&mut buf, ch as u8);
                     }
                     // skip:
                     last = state;
@@ -1260,17 +1242,16 @@ unsafe fn yylex_token(ps: &mut cmd_parse_state, mut ch: i32) -> *mut u8 {
             }
             yylex_ungetc(ps, ch);
 
-            *buf.add(len) = b'\0';
-            // log_debug("%s: %s", __func__, buf);
-            return buf;
+            buf.push(b'\0');
+            // log_debug("%s: %s", __func__, buf.as_ptr());
+            return Box::leak(buf.into_boxed_slice()).as_mut_ptr();
         } // error:
-        free_(buf);
 
         null_mut()
     }
 }
 
-unsafe fn yylex_token_escape(ps: &mut cmd_parse_state, buf: *mut *mut u8, len: *mut usize) -> bool {
+unsafe fn yylex_token_escape(ps: &mut cmd_parse_state, buf: &mut Vec<u8>) -> bool {
     unsafe {
         #[cfg(not(target_os = "macos"))]
         const SIZEOF_M: usize = libc::_SC_MB_LEN_MAX as usize;
@@ -1298,7 +1279,7 @@ unsafe fn yylex_token_escape(ps: &mut cmd_parse_state, buf: *mut *mut u8, len: *
                     let o3 = yylex_getc(ps);
                     if o3 >= '0' as i32 && o3 <= '7' as i32 {
                         ch = 64 * (ch - '0' as i32) + 8 * (o2 - '0' as i32) + (o3 - '0' as i32);
-                        yylex_append1(buf, len, ch as u8);
+                        yylex_append1(buf, ch as u8);
                         return true;
                     }
                 }
@@ -1333,7 +1314,7 @@ unsafe fn yylex_token_escape(ps: &mut cmd_parse_state, buf: *mut *mut u8, len: *
                 _ => (),
             }
 
-            yylex_append1(buf, len, ch as u8);
+            yylex_append1(buf, ch as u8);
             return true;
         } // unicode:
         let mut i = 0;
@@ -1362,7 +1343,7 @@ unsafe fn yylex_token_escape(ps: &mut cmd_parse_state, buf: *mut *mut u8, len: *
             yyerror!(ps, "invalid \\{} argument", type_ as u8 as char);
             return false;
         }
-        yylex_append(buf, len, (&raw const m).cast(), mlen as usize);
+        yylex_append(buf, &m[..mlen as usize]);
 
         true
     }

@@ -252,12 +252,17 @@ pub unsafe fn screen_set_path(s: *mut screen, path: *const u8) {
 pub unsafe fn screen_push_title(s: *mut screen) {
     unsafe {
         if (*s).titles.is_null() {
-            (*s).titles = xmalloc_::<screen_titles>().as_ptr();
+            (*s).titles = Box::leak(Box::new(screen_titles {
+                tqh_first: null_mut(),
+                tqh_last: null_mut(),
+            }));
             tailq_init((*s).titles);
         }
 
-        let title_entry = xmalloc_::<screen_title_entry>().as_ptr();
-        (*title_entry).text = xstrdup((*s).title).as_ptr();
+        let title_entry = Box::leak(Box::new(screen_title_entry {
+            text: xstrdup((*s).title).as_ptr(),
+            entry: Default::default(),
+        }));
         tailq_insert_head((*s).titles, title_entry);
     }
 }

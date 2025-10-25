@@ -23,6 +23,12 @@ pub struct list_entry<T> {
     pub le_prev: *mut *mut T,
 }
 
+impl<T> Default for list_entry<T> {
+    fn default() -> Self {
+        Self { le_next: Default::default(), le_prev: Default::default() }
+    }
+}
+
 pub unsafe fn list_first<T>(head: *mut list_head<T>) -> *mut T {
     unsafe { (*head).lh_first }
 }
@@ -114,6 +120,15 @@ pub(crate) use TAILQ_HEAD_INITIALIZER;
 pub struct tailq_entry<T> {
     pub tqe_next: *mut T,
     pub tqe_prev: *mut *mut T,
+}
+
+impl<T> Default for tailq_entry<T> {
+    fn default() -> Self {
+        Self {
+            tqe_next: null_mut(),
+            tqe_prev: null_mut(),
+        }
+    }
 }
 
 impl<T> std::fmt::Debug for tailq_entry<T> {

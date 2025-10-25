@@ -70,12 +70,15 @@ pub fn wait_channel_cmp(wc1: &wait_channel, wc2: &wait_channel) -> Ordering {
 }
 
 pub unsafe fn cmd_wait_for_add(name: *const u8) -> *mut wait_channel {
-    let wc: *mut wait_channel = xmalloc_().as_ptr();
     unsafe {
-        (*wc).name = xstrdup(name).as_ptr();
-
-        (*wc).locked = false;
-        (*wc).woken = false;
+        let wc = Box::leak(Box::new(wait_channel {
+            name: xstrdup(name).as_ptr(),
+            locked: false,
+            woken: false,
+            waiters: zeroed(),
+            lockers: zeroed(),
+            entry: zeroed(),
+        })) as *mut wait_channel;
 
         tailq_init(&raw mut (*wc).waiters);
         tailq_init(&raw mut (*wc).lockers);
@@ -83,8 +86,9 @@ pub unsafe fn cmd_wait_for_add(name: *const u8) -> *mut wait_channel {
         rb_insert(&raw mut WAIT_CHANNELS, wc);
 
         log_debug!("add wait channel {}", _s((*wc).name));
+
+        wc
     }
-    wc
 }
 
 pub unsafe fn cmd_wait_for_remove(wc: *mut wait_channel) {

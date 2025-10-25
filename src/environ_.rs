@@ -106,10 +106,12 @@ pub unsafe fn environ_set_(
             free_(transmute_ptr((*envent).value));
             (*envent).value = s;
         } else {
-            envent = xmalloc_::<environ_entry>().as_ptr();
-            (*envent).name = Some(xstrdup(name).cast());
-            (*envent).flags = flags;
-            (*envent).value = s;
+            envent = Box::leak(Box::new(environ_entry {
+                name : Some(xstrdup(name).cast()),
+                value: s,
+                flags,
+                entry: Default::default(),
+            }));
             rb_insert(env, envent);
         }
     }
@@ -122,10 +124,12 @@ pub unsafe fn environ_clear(env: *mut environ, name: *const u8) {
             free_(transmute_ptr((*envent).value));
             (*envent).value = None;
         } else {
-            envent = xmalloc_::<environ_entry>().as_ptr();
-            (*envent).name = Some(xstrdup(name).cast());
-            (*envent).flags = environ_flags::empty();
-            (*envent).value = None;
+            envent = Box::leak(Box::new(environ_entry {
+                name : Some(xstrdup(name).cast()),
+                value: None,
+                flags: environ_flags::empty(),
+                entry: Default::default(),
+            }));
             rb_insert(env, envent);
         }
     }

@@ -1142,10 +1142,11 @@ pub unsafe fn mode_tree_display_menu(
         menu_add_items(menu, items, null_mut(), c, null_mut());
         free_(title);
 
-        let mtm = xmalloc_::<mode_tree_menu>().as_ptr();
-        (*mtm).data = mtd;
-        (*mtm).c = c;
-        (*mtm).line = line;
+        let mtm = Box::leak(Box::new(mode_tree_menu {
+            data: mtd,
+            c,
+            line,
+        })) as *mut mode_tree_menu;
         (*mtd).references += 1;
 
         if x >= ((*menu).width + 4) / 2 {

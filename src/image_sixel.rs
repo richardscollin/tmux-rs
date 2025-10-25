@@ -645,7 +645,7 @@ unsafe fn sixel_to_screen(si: *mut sixel_image) -> *mut screen {
 
         let (sx, sy) = sixel_size_in_cells(&*si);
 
-        let s = xmalloc_::<screen>().as_ptr();
+        let s = Box::leak(Box::new(zeroed())) as *mut screen;
         screen_init(s, sx, sy, 0);
 
         memcpy__(&raw mut gc, &raw const GRID_DEFAULT_CELL);

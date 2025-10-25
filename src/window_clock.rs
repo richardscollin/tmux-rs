@@ -184,9 +184,12 @@ pub unsafe fn window_clock_init(
             tv_usec: 0,
         };
 
-        let data = xmalloc_::<window_clock_mode_data>().as_ptr();
+        let data = Box::leak(Box::new(window_clock_mode_data {
+            screen: zeroed(),
+            tim: libc::time(null_mut()),
+            timer: zeroed(),
+        })) as *mut window_clock_mode_data;
         (*wme.as_ptr()).data = data.cast();
-        (*data).tim = libc::time(null_mut());
 
         evtimer_set(&raw mut (*data).timer, window_clock_timer_callback, wme);
         evtimer_add(&raw mut (*data).timer, &raw mut tv);

@@ -1309,9 +1309,7 @@ pub unsafe fn tty_keys_next(tty: *mut tty) -> i32 {
 
                 // Fire the key.
                 if key != KEYC_UNKNOWN {
-                    let event = xmalloc_::<key_event>().as_ptr();
-                    (*event).key = key;
-                    memcpy__(&raw mut (*event).m, &raw const m);
+                    let event = Box::leak(Box::new(key_event { key, m })) as *mut key_event;
                     if server_client_handle_key(c, event) == 0 {
                         free_(event);
                     }

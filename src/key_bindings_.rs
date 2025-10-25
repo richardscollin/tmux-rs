@@ -112,12 +112,17 @@ pub unsafe fn key_bindings_get_table(name: *const u8, create: bool) -> *mut key_
             return table;
         }
 
-        let table = xmalloc_::<key_table>().as_ptr();
-        (*table).name = xstrdup(name).as_ptr();
-        rb_init(&raw mut (*table).key_bindings);
-        rb_init(&raw mut (*table).default_key_bindings);
-
-        (*table).references = 1; /* one reference in key_tables */
+        let table = Box::leak(Box::new(key_table {
+            name: xstrdup(name).as_ptr(),
+            activity_time: timeval {
+                tv_sec: 0,
+                tv_usec: 0,
+            },
+            key_bindings: rb_initializer(),
+            default_key_bindings: rb_initializer(),
+            references: 1, /* one reference in key_tables */
+            entry: Default::default(),
+        }));
         rb_insert(&raw mut KEY_TABLES, table);
 
         table

@@ -43,7 +43,7 @@ unsafe fn cmd_set_environment_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd
         let mut retval = cmd_retval::CMD_RETURN_NORMAL;
 
         'out: {
-            if *name == b'\0' as _ {
+            if *name == b'\0' {
                 cmdq_error!(item, "empty variable name");
                 return cmd_retval::CMD_RETURN_ERROR;
             }

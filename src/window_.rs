@@ -1825,7 +1825,7 @@ pub unsafe fn window_set_fill_character(w: NonNull<window>) {
         (*w).fill_character = null_mut();
 
         let value = options_get_string_((*w).options, "fill-character");
-        if *value != b'\0' as _ && utf8_isvalid(value) {
+        if *value != b'\0' && utf8_isvalid(value) {
             let ud = utf8_fromcstr(value);
             if !ud.is_null() && (*ud).width == 1 {
                 (*w).fill_character = ud;

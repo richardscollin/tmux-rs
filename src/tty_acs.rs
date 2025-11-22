@@ -214,7 +214,7 @@ pub unsafe fn tty_acs_get(tty: *mut tty, ch: u8) -> *const u8 {
     unsafe {
         // Use the ACS set instead of UTF-8 if needed.
         if tty_acs_needed(tty) {
-            if (*(*tty).term).acs[ch as usize][0] == b'\0' as _ {
+            if (*(*tty).term).acs[ch as usize][0] == b'\0' {
                 return null();
             }
             return &raw const (*(*tty).term).acs[ch as usize][0];

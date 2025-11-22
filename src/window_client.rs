@@ -379,11 +379,11 @@ pub unsafe fn window_client_do_detach(
         if item == mode_tree_get_current((*data.as_ptr()).data).cast() {
             mode_tree_down((*data.as_ptr()).data, 0);
         }
-        if key == 'd' as _ || key == 'D' as _ {
+        if key == 'd' as key_code || key == 'D' as key_code {
             server_client_detach((*item.as_ptr()).c, msgtype::MSG_DETACH);
-        } else if key == 'x' as _ || key == 'X' as _ {
+        } else if key == 'x' as key_code || key == 'X' as key_code {
             server_client_detach((*item.as_ptr()).c, msgtype::MSG_DETACHKILL);
-        } else if key == 'z' as _ || key == 'Z' as _ {
+        } else if key == 'z' as key_code || key == 'Z' as key_code {
             server_client_suspend((*item.as_ptr()).c);
         }
     }

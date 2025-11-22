@@ -189,12 +189,12 @@ pub unsafe fn args_parse_flags(
             let tmp = *string != b'-';
             string = string.add(1);
             tmp
-        }) || *string == b'\0' as _
+        }) || *string == b'\0'
         {
             return 1;
         }
         (*i) += 1;
-        if *string == b'-' as _ && *string.add(1) == b'\0' as _ {
+        if *string == b'-' && *string.add(1) == b'\0' {
             return 1;
         }
 
@@ -583,15 +583,15 @@ pub unsafe fn args_escape(s: *const u8) -> *mut u8 {
         if *s == b'\0' {
             return format_nul!("''");
         }
-        let quotes = if *s.add(libc::strcspn(s, dquoted)) != b'\0' as _ {
+        let quotes = if *s.add(libc::strcspn(s, dquoted)) != b'\0' {
             Some('"')
-        } else if *s.add(libc::strcspn(s, squoted)) != b'\0' as _ {
+        } else if *s.add(libc::strcspn(s, squoted)) != b'\0' {
             Some('\'')
         } else {
             None
         };
 
-        if *s != b' ' as _ && *s.add(1) == b'\0' as _ && (quotes.is_some() || *s == b'~' as _) {
+        if *s != b' ' && *s.add(1) == b'\0' && (quotes.is_some() || *s == b'~') {
             escaped = format_nul!("\\{}", *s as char);
             return escaped;
         }
@@ -1033,9 +1033,9 @@ pub unsafe fn args_string_percentage(
             *cause = xstrdup_(c"empty").as_ptr();
             return 0;
         }
-        if *value.add(valuelen - 1) == b'%' as _ {
+        if *value.add(valuelen - 1) == b'%' {
             copy = xstrdup(value).as_ptr();
-            *copy.add(valuelen - 1) = b'\0' as _;
+            *copy.add(valuelen - 1) = b'\0';
 
             let tmp = strtonum(copy, 0, 100);
             free_(copy);
@@ -1109,7 +1109,7 @@ pub unsafe fn args_string_percentage_and_expand(
         let mut ll: i64;
         let f: *mut u8;
 
-        if *value.add(valuelen - 1) == b'%' as _ {
+        if *value.add(valuelen - 1) == b'%' {
             let copy = xstrdup(value).as_ptr();
             *copy.add(valuelen - 1) = b'\0';
 

@@ -71,7 +71,7 @@ unsafe fn cmd_server_access_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
             null_mut(),
         );
         let mut pw = null_mut();
-        if *name != b'\0' as _ {
+        if *name != b'\0' {
             pw = getpwnam(name.cast());
         }
         if pw.is_null() {

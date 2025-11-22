@@ -139,7 +139,7 @@ unsafe fn cmd_show_options_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
                 }
                 if !o.is_null() {
                     cmd_show_options_print(self_, item, o, idx, parent);
-                } else if *name == b'@' as _ {
+                } else if *name == b'@' {
                     if args_has(args, 'q') {
                         break 'out;
                     }

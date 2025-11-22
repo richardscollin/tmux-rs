@@ -110,7 +110,7 @@ pub unsafe fn cmd_send_keys_inject_string(
 
         if args_has(args, 'H') {
             let n = strtol(s, &raw mut endptr, 16);
-            if *s == b'\0' as _ || !(0..=0xff).contains(&n) || *endptr != b'\0' as _ {
+            if *s == b'\0' || !(0..=0xff).contains(&n) || *endptr != b'\0' {
                 return item;
             }
             return cmd_send_keys_inject_key(item, after, args, KEYC_LITERAL | n as u64);

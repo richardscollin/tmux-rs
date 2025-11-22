@@ -62,7 +62,7 @@ unsafe fn cmd_display_menu_args_parse(
         }
 
         unsafe {
-            if *args_string(args, i) == b'\0' as _ {
+            if *args_string(args, i) == b'\0' {
                 i += 1;
                 continue;
             }
@@ -372,7 +372,7 @@ unsafe fn cmd_display_menu_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
         while i != count {
             let name = args_string(args, i);
             i += 1;
-            if *name == b'\0' as _ {
+            if *name == b'\0' {
                 menu_add_item(menu, null_mut(), item, tc, target);
                 continue;
             }
@@ -551,7 +551,7 @@ unsafe fn cmd_display_popup_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
 
         let mut argv = null_mut();
 
-        if count <= 1 && (shellcmd.is_null() || *shellcmd == b'\0' as _) {
+        if count <= 1 && (shellcmd.is_null() || *shellcmd == b'\0') {
             shellcmd = null_mut();
             let mut shell = options_get_string_((*s).options, "default-shell");
             if !checkshell_(shell) {

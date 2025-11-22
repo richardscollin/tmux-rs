@@ -116,7 +116,7 @@ pub unsafe fn cmd_run_shell_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
         let delay = args_get(args, b'd');
         if !delay.is_null() {
             d = strtod(delay, &raw mut end);
-            if *end != b'\0' as _ {
+            if *end != b'\0' {
                 cmdq_error!(item, "invalid delay time: {}", _s(delay));
                 return cmd_retval::CMD_RETURN_ERROR;
             }

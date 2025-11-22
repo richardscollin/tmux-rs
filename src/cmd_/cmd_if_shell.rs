@@ -61,7 +61,7 @@ unsafe fn cmd_if_shell_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retval
 
         let shellcmd = format_single_from_target(item, args_string(args, 0));
         if args_has(args, 'F') {
-            let cmdlist = if *shellcmd != b'0' as _ && *shellcmd != b'\0' as _ {
+            let cmdlist = if *shellcmd != b'0' && *shellcmd != b'\0' {
                 args_make_commands_now(self_, item, 1, false)
             } else if count == 3 {
                 args_make_commands_now(self_, item, 2, false)

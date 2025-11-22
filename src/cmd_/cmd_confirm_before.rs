@@ -59,7 +59,7 @@ unsafe fn cmd_confirm_before_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
         cdata.default_yes = args_has(args, 'y');
         let confirm_key = args_get(args, b'c');
         if !confirm_key.is_null() {
-            if *confirm_key.add(1) == b'\0' as _ && *confirm_key > 31 && *confirm_key < 127 {
+            if *confirm_key.add(1) == b'\0' && *confirm_key > 31 && *confirm_key < 127 {
                 cdata.confirm_key = *confirm_key as _;
             } else {
                 cmdq_error!(item, "invalid confirm key");
@@ -116,8 +116,8 @@ unsafe fn cmd_confirm_before_callback(
             if s.is_null() {
                 break 'out;
             }
-            if *s != (*cdata.as_ptr()).confirm_key as _
-                && (*s != b'\0' as _ || !(*cdata.as_ptr()).default_yes)
+            if *s != (*cdata.as_ptr()).confirm_key
+                && (*s != b'\0' || !(*cdata.as_ptr()).default_yes)
             {
                 break 'out;
             }

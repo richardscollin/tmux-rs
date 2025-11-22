@@ -53,11 +53,11 @@ pub struct hyperlinks {
 
 fn hyperlinks_by_uri_cmp(left: &hyperlinks_uri, right: &hyperlinks_uri) -> cmp::Ordering {
     unsafe {
-        if *left.internal_id == b'\0' as _ || *right.internal_id == b'\0' as _ {
-            if *left.internal_id != b'\0' as _ {
+        if *left.internal_id == b'\0' || *right.internal_id == b'\0' {
+            if *left.internal_id != b'\0' {
                 return cmp::Ordering::Less;
             }
-            if *right.internal_id != b'\0' as _ {
+            if *right.internal_id != b'\0' {
                 return cmp::Ordering::Greater;
             }
             return left.inner.cmp(&right.inner);
@@ -132,7 +132,7 @@ pub unsafe fn hyperlinks_put(
             vis_flags::VIS_OCTAL | vis_flags::VIS_CSTYLE,
         );
 
-        if *internal_id_in != b'\0' as _ {
+        if *internal_id_in != b'\0' {
             let mut find = MaybeUninit::<hyperlinks_uri>::uninit();
             let find = find.as_mut_ptr();
             (*find).uri = uri;

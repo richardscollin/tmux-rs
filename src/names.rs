@@ -147,7 +147,7 @@ pub unsafe fn parse_window_name(in_: *const u8) -> String {
         let sizeof_exec: usize = 6; // sizeof "exec "
         let copy: *mut u8 = xstrdup(in_).cast().as_ptr();
         let mut name = copy;
-        if *name == b'"' as _ {
+        if *name == b'"' {
             name = name.wrapping_add(1);
         }
         *name.add(strcspn(name, c!("\""))) = b'\0';

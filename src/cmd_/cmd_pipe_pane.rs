@@ -67,7 +67,7 @@ pub unsafe fn cmd_pipe_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
         }
 
         // If no pipe command, that is enough.
-        if args_count(args) == 0 || *args_string(args, 0) == b'\0' as _ {
+        if args_count(args) == 0 || *args_string(args, 0) == b'\0' {
             return cmd_retval::CMD_RETURN_NORMAL;
         }
 

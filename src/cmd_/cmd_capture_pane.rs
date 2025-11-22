@@ -246,7 +246,7 @@ unsafe fn cmd_capture_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
         }
 
         if args_has(args, 'p') {
-            if len > 0 && *buf.add(len - 1) == b'\n' as _ {
+            if len > 0 && *buf.add(len - 1) == b'\n' {
                 len -= 1;
             }
             if (*c).flags.intersects(client_flag::CONTROL) {

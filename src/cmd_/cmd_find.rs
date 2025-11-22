@@ -1382,7 +1382,7 @@ pub unsafe fn cmd_find_client(
                 break;
             }
 
-            if *(*c).ttyname == b'\0' as _ {
+            if *(*c).ttyname == b'\0' {
                 continue;
             }
             if streq_((*c).ttyname, copy) {

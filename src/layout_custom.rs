@@ -27,7 +27,7 @@ pub unsafe fn layout_find_bottomright(mut lc: *mut layout_cell) -> *mut layout_c
 pub unsafe fn layout_checksum(mut layout: *const u8) -> u16 {
     unsafe {
         let mut csum = 0u16;
-        while *layout != b'\0' as _ {
+        while *layout != b'\0' {
             csum = (csum >> 1) + ((csum & 1) << 15);
             csum += *layout as u16;
             layout = layout.add(1);
@@ -184,7 +184,7 @@ pub unsafe fn layout_parse(w: *mut window, mut layout: *const u8, cause: *mut *m
                 *cause = xstrdup_(c"invalid layout").as_ptr();
                 return -1;
             }
-            if *layout != b'\0' as _ {
+            if *layout != b'\0' {
                 *cause = xstrdup_(c"invalid layout").as_ptr();
                 break 'fail;
             }
@@ -314,34 +314,34 @@ unsafe fn layout_construct(lcparent: *mut layout_cell, layout: *mut *const u8) -
             while isdigit(**layout as i32) != 0 {
                 (*layout) = (*layout).add(1);
             }
-            if **layout != b'x' as _ {
+            if **layout != b'x' {
                 return null_mut();
             }
             (*layout) = (*layout).add(1);
             while isdigit(**layout as i32) != 0 {
                 (*layout) = (*layout).add(1);
             }
-            if **layout != b',' as _ {
+            if **layout != b',' {
                 return null_mut();
             }
             (*layout) = (*layout).add(1);
             while isdigit(**layout as i32) != 0 {
                 (*layout) = (*layout).add(1);
             }
-            if **layout != b',' as _ {
+            if **layout != b',' {
                 return null_mut();
             }
             (*layout) = (*layout).add(1);
             while isdigit(**layout as i32) != 0 {
                 (*layout) = (*layout).add(1);
             }
-            if **layout == b',' as _ {
+            if **layout == b',' {
                 let saved = *layout;
                 (*layout) = (*layout).add(1);
                 while isdigit(**layout as i32) != 0 {
                     (*layout) = (*layout).add(1);
                 }
-                if **layout == b'x' as _ {
+                if **layout == b'x' {
                     *layout = saved;
                 }
             }
@@ -366,19 +366,19 @@ unsafe fn layout_construct(lcparent: *mut layout_cell, layout: *mut *const u8) -
                     break 'fail;
                 }
                 tailq_insert_tail(&raw mut (*lc).cells, lcchild);
-                if **layout != b',' as _ {
+                if **layout != b',' {
                     break;
                 }
             }
 
             match (*lc).type_ {
                 layout_type::LAYOUT_LEFTRIGHT => {
-                    if **layout != b'}' as _ {
+                    if **layout != b'}' {
                         break 'fail;
                     }
                 }
                 layout_type::LAYOUT_TOPBOTTOM => {
-                    if **layout != b']' as _ {
+                    if **layout != b']' {
                         break 'fail;
                     }
                 }

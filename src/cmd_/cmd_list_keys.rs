@@ -54,7 +54,7 @@ unsafe fn cmd_list_keys_get_width(tablename: *const u8, only: key_code) -> u32 {
             if (only != KEYC_UNKNOWN && (*bd).key != only)
                 || KEYC_IS_MOUSE((*bd).key)
                 || (*bd).note.is_null()
-                || *(*bd).note == b'\0' as _
+                || *(*bd).note == b'\0'
             {
                 bd = key_bindings_next(table, bd);
                 continue;
@@ -90,7 +90,7 @@ unsafe fn cmd_list_keys_print_notes(
         while !bd.is_null() {
             if (only != KEYC_UNKNOWN && (*bd).key != only)
                 || KEYC_IS_MOUSE((*bd).key)
-                || (((*bd).note.is_null() || *(*bd).note == b'\0' as _) && !args_has(args, 'a'))
+                || (((*bd).note.is_null() || *(*bd).note == b'\0') && !args_has(args, 'a'))
             {
                 bd = key_bindings_next(table, bd);
                 continue;
@@ -98,7 +98,7 @@ unsafe fn cmd_list_keys_print_notes(
             found = 1;
             let key = key_string_lookup_key((*bd).key, 0);
 
-            let note = if (*bd).note.is_null() || *(*bd).note == b'\0' as _ {
+            let note = if (*bd).note.is_null() || *(*bd).note == b'\0' {
                 cmd_list_print(&mut *(*bd).cmdlist, 1)
             } else {
                 xstrdup((*bd).note).as_ptr()
@@ -388,7 +388,7 @@ unsafe fn cmd_list_keys_commands(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
             format_add!(ft, "command_list_usage", "{}", entry.usage);
 
             let line = format_expand(ft, template);
-            if *line != b'\0' as _ {
+            if *line != b'\0' {
                 cmdq_print!(item, "{}", _s(line));
             }
             free_(line);

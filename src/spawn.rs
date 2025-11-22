@@ -256,7 +256,7 @@ pub unsafe fn spawn_pane(sc: *mut spawn_context, cause: *mut *mut u8) -> *mut wi
 
             if !(*sc).cwd.is_null() {
                 cwd = format_single(item, (*sc).cwd, c, (*target).s, null_mut(), null_mut());
-                if *cwd != b'/' as _ {
+                if *cwd != b'/' {
                     new_cwd =
                         format_nul!("{}/{}", _s(server_client_get_cwd(c, (*target).s)), _s(cwd));
                     free_(cwd);

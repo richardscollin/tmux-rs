@@ -57,7 +57,7 @@ pub unsafe fn style_parse(sy: *mut style, base: *const grid_cell, mut in_: *cons
         let mut found: *mut u8;
         let mut end: usize;
 
-        if *in_ == b'\0' as _ {
+        if *in_ == b'\0' {
             return 0;
         }
 
@@ -68,10 +68,10 @@ pub unsafe fn style_parse(sy: *mut style, base: *const grid_cell, mut in_: *cons
         'error: {
             log_debug!("{}: {}", "style_parse", _s(in_));
             loop {
-                while *in_ != b'\0' as _ && !strchr(delimiters, *in_ as _).is_null() {
+                while *in_ != b'\0' && !strchr(delimiters, *in_ as _).is_null() {
                     in_ = in_.add(1);
                 }
-                if *in_ == b'\0' as _ {
+                if *in_ == b'\0' {
                     break;
                 }
 
@@ -124,7 +124,7 @@ pub unsafe fn style_parse(sy: *mut style, base: *const grid_cell, mut in_: *cons
                     if !found.is_null() {
                         *found = b'\0' as _;
                         found = found.add(1);
-                        if *found == b'\0' as _ {
+                        if *found == b'\0' {
                             break 'error;
                         }
                     }
@@ -146,7 +146,7 @@ pub unsafe fn style_parse(sy: *mut style, base: *const grid_cell, mut in_: *cons
                         if found.is_null() {
                             break 'error;
                         }
-                        if *found != b'%' as _ || *found.add(1) == b'\0' as _ {
+                        if *found != b'%' || *found.add(1) == b'\0' {
                             break 'error;
                         }
                         let Ok(n) = strtonum(found.add(1), 0, u32::MAX) else {
@@ -169,7 +169,7 @@ pub unsafe fn style_parse(sy: *mut style, base: *const grid_cell, mut in_: *cons
                         if found.is_null() {
                             break 'error;
                         }
-                        if *found != b'$' as _ || *found.add(1) == b'\0' as _ {
+                        if *found != b'$' || *found.add(1) == b'\0' {
                             break 'error;
                         }
                         let Ok(n) = strtonum(found.add(1), 0, u32::MAX) else {
@@ -211,13 +211,13 @@ pub unsafe fn style_parse(sy: *mut style, base: *const grid_cell, mut in_: *cons
                     if value == -1 {
                         break 'error;
                     }
-                    if *in_ == b'f' as _ || *in_ == b'F' as _ {
+                    if *in_ == b'f' || *in_ == b'F' {
                         if value != 8 {
                             (*sy).gc.fg = value;
                         } else {
                             (*sy).gc.fg = (*base).fg;
                         }
-                    } else if *in_ == b'b' as _ || *in_ == b'B' as _ {
+                    } else if *in_ == b'b' || *in_ == b'B' {
                         if value != 8 {
                             (*sy).gc.bg = value;
                         } else {
@@ -251,7 +251,7 @@ pub unsafe fn style_parse(sy: *mut style, base: *const grid_cell, mut in_: *cons
                 }
 
                 in_ = in_.add(end + strspn(in_.add(end), delimiters));
-                if *in_ == b'\0' as _ {
+                if *in_ == b'\0' {
                     break;
                 }
             }

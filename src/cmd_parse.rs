@@ -573,10 +573,10 @@ pub unsafe fn cmd_parse_from_arguments(
             if (*values.add(i as usize)).type_ == args_type::ARGS_STRING {
                 let copy = xstrdup((*values.add(i as usize)).union_.string).as_ptr();
                 let mut size = strlen(copy);
-                if size != 0 && *copy.add(size - 1) == b';' as _ {
+                if size != 0 && *copy.add(size - 1) == b';' {
                     size -= 1;
                     *copy.add(size) = b'\0' as _;
-                    if size > 0 && *copy.add(size - 1) == b'\\' as _ {
+                    if size > 0 && *copy.add(size - 1) == b'\\' {
                         *copy.add(size - 1) = b';' as _;
                     } else {
                         end = 1;

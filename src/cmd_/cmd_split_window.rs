@@ -99,7 +99,7 @@ unsafe fn cmd_split_window_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
         if args_has(args, 'f') {
             flags |= SPAWN_FULLSIZE;
         }
-        if input || (count == 1 && *args_string(args, 0) == b'\0' as _) {
+        if input || (count == 1 && *args_string(args, 0) == b'\0') {
             flags |= SPAWN_EMPTY;
         }
 

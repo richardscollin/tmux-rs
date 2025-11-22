@@ -239,7 +239,7 @@ pub unsafe fn cmd_refresh_report(tty: *mut tty, value: *const u8) {
         let pane: u32 = 0;
         let mut size: usize = 0;
 
-        if *value != b'%' as _ {
+        if *value != b'%' {
             return;
         }
         let copy = xstrdup(value).as_ptr();

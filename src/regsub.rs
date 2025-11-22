@@ -145,7 +145,7 @@ pub unsafe fn regsub(
             }
 
             // Stop now if anchored to start.
-            if *pattern == b'^' as _ {
+            if *pattern == b'^' {
                 regsub_copy(
                     &raw mut buf,
                     &raw mut len,

@@ -225,14 +225,6 @@ pub fn proc_start(name: &CStr) -> *mut tmuxproc {
         {
             log_debug!("using utf8proc {}", _s(utf8proc_version()));
         }
-        #[cfg(feature = "ncurses")]
-        {
-            log_debug!(
-                "using ncurses {} {:06}",
-                _s(NCURSES_VERSION),
-                NCURSES_VERSION_PATCH
-            );
-        }
 
         let tp = xcalloc1::<tmuxproc>();
         tp.name = xstrdup(name).as_ptr();

@@ -16,6 +16,7 @@ jobs:
   update-wiki:
     runs-on: ubuntu-latest
     name: Update Wiki with Safety Analysis
+    continue-on-error: true
 
     steps:
       - name: Install crate-report

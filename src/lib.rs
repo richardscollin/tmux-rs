@@ -1749,18 +1749,19 @@ bitflags::bitflags! {
     #[repr(transparent)]
     #[derive(Copy, Clone)]
     struct tty_flags: i32 {
-        const TTY_NOCURSOR = 0x1;
-        const TTY_FREEZE = 0x2;
-        const TTY_TIMER = 0x4;
-        const TTY_NOBLOCK = 0x8;
-        const TTY_STARTED = 0x10;
-        const TTY_OPENED = 0x20;
-        const TTY_OSC52QUERY = 0x40;
-        const TTY_BLOCK = 0x80;
-        const TTY_HAVEDA = 0x100; // Primary DA.
-        const TTY_HAVEXDA = 0x200;
-        const TTY_SYNCING = 0x400;
-        const TTY_HAVEDA2 = 0x800; // Secondary DA.
+        const TTY_NOCURSOR     = 0x00001;
+        const TTY_FREEZE       = 0x00002;
+        const TTY_TIMER        = 0x00004;
+        const TTY_NOBLOCK      = 0x00008;
+        const TTY_STARTED      = 0x00010;
+        const TTY_OPENED       = 0x00020;
+        const TTY_OSC52QUERY   = 0x00040;
+        const TTY_BLOCK        = 0x00080;
+        const TTY_HAVEDA       = 0x00100; // Primary DA.
+        const TTY_HAVEXDA      = 0x00200;
+        const TTY_SYNCING      = 0x00400;
+        const TTY_HAVEDA2      = 0x00800; // Secondary DA.
+        const TTY_WINSIZEQUERY = 0x01000;
     }
 }
 const TTY_ALL_REQUEST_FLAGS: tty_flags = tty_flags::TTY_HAVEDA

@@ -1034,8 +1034,82 @@ unsafe fn tty_keys_next1(
     }
 }
 
-// Process at least one key in the buffer. Return 0 if no keys present.
+/// Process window size change escape sequences.
+unsafe fn tty_keys_winsz(tty: *mut tty, buf: &[u8], size: &mut usize) -> i32
+{
+    unsafe {
+       let c: *mut client = (*tty).client;
+       *size = 0;
 
+       // If we did not request this, ignore it.
+       if !(*tty).flags.intersects(tty_flags::TTY_WINSIZEQUERY) {
+           return -1;
+       }
+
+       // First two bytes are always \033[.
+       if buf[0] != b'\x1b' {
+           return -1;
+       }
+       if  buf.len() == 1 {
+           return 1;
+       }
+       if  buf[1] != b'[' {
+            return  -1;
+       }
+       if buf.len() == 2 {
+           return 1;
+       }
+
+
+       // Stop at either 't' or anything that isn't a number or ';'.
+       let Some(end) = buf[2..].iter().copied().position(|ch| !ch.is_ascii_digit() && ch != b';') else {
+           return 1;
+       };
+       if buf[end] != b't' {
+           return -1;
+       }
+
+       let tmp = std::str::from_utf8(&buf[2..end]).unwrap();
+       let mut it = tmp.split(";").flat_map(|s| {
+           s.parse::<u32>().ok()
+       });
+
+       // Try to parse the window size sequence.
+       match it.next() {
+           Some(8) => {
+               // sscanf "8;%u;%u"
+               if let (Some(sy), Some(sx), None) = (it.next(), it.next(), it.next()) {
+                   // Window size in characters.
+                   tty_set_size(tty, sx, sy, (*tty).xpixel, (*tty).ypixel);
+
+                   *size = end + 1;
+                   return 0;
+               }
+           },
+           Some(4) => {
+               // sscanf "4;%u;%u"
+               if let (Some(ypixel), Some(xpixel), None) = (it.next(), it.next(), it.next()) {
+                   // Window size in pixels.
+                   let char_x = if xpixel != 0 && (*tty).sx != 0 { xpixel / (*tty).sx } else { 0 };
+                   let char_y = if ypixel != 0 && (*tty).sy != 0 { ypixel / (*tty).sy } else { 0 };
+                   tty_set_size(tty, (*tty).sx, (*tty).sy, char_x, char_y);
+                   tty_invalidate(tty);
+
+                   (*tty).flags &= !tty_flags::TTY_WINSIZEQUERY;
+                   *size = end + 1;
+                   return 0;
+               }
+           },
+           _ => (),
+       }
+
+       log_debug!("{}: unrecognized window size sequence: {}", _s((*c).name), tmp);
+
+       -1
+    }
+}
+
+/// Process at least one key in the buffer. Return 0 if no keys present.
 pub unsafe fn tty_keys_next(tty: *mut tty) -> i32 {
     unsafe {
         let c = (*tty).client;
@@ -1169,7 +1243,21 @@ pub unsafe fn tty_keys_next(tty: *mut tty) -> i32 {
                                 1 => break 'partial_key,
                                 _ => (),
                             }
+
+                            // TODO should this be inside if start?
+                            match tty_keys_winsz(tty, std::slice::from_raw_parts(buf, len), &mut size) {
+                                0 => {
+                                    key = KEYC_UNKNOWN;
+                                    break 'complete_key;
+                                }
+                                1 => (),
+                                -1 => {
+                                    break 'partial_key;
+                                }
+                                _ => unreachable!(),
+                            }
                         } // if start
+
 
                         // 'first_key:
                         // Try to lookup complete key.

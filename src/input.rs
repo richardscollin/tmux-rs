@@ -2412,9 +2412,9 @@ unsafe fn input_exit_osc(ictx: *mut input_ctx) {
             }
         );
 
-        let mut option = 0;
+        let mut option: u32 = 0;
         while *p >= b'0' && *p <= b'9' {
-            option = option * 10 + *p - b'0';
+            option = option.saturating_mul(10).saturating_add((*p - b'0') as u32);
             p = p.add(1);
         }
         if *p != b';' && *p != b'\0' {

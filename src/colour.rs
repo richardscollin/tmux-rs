@@ -974,14 +974,8 @@ pub fn colour_palette_set(p: Option<&mut colour_palette>, n: i32, c: i32) -> i32
         return 0;
     }
 
-    if c != -1 && p.palette.is_none() {
-        // TODO investigate, the upstream code looks a bit fishy here.
-        // it's possible this && should actually be ||
-        if p.palette.is_none() {
-            p.palette = Some(vec![-1; 256].into_boxed_slice());
-        } else {
-            p.palette.as_mut().unwrap().fill(-1);
-        }
+    if p.palette.is_none() {
+        p.palette = Some(vec![-1; 256].into_boxed_slice());
     }
     (p.palette.as_mut().unwrap())[n as usize] = c;
 
@@ -1002,10 +996,9 @@ pub unsafe fn colour_palette_from_option(p: Option<&mut colour_palette>, oo: *mu
             return;
         }
 
-        if p.default_palette.is_none() {
-            p.default_palette = Some(vec![-1; 256].into_boxed_slice());
-        } else {
-            p.default_palette.as_mut().unwrap().fill(-1);
+        match &mut p.default_palette {
+            None => p.default_palette = Some(vec![-1; 256].into_boxed_slice()),
+            Some(palette) => palette.fill(-1),
         }
 
         while !a.is_null() {

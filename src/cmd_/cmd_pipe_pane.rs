@@ -22,7 +22,7 @@ pub static CMD_PIPE_PANE_ENTRY: cmd_entry = cmd_entry {
     name: "pipe-pane",
     alias: Some("pipep"),
 
-    args: args_parse::new(c"IOot:", 0, 1, None),
+    args: args_parse::new("IOot:", 0, 1, None),
     usage: "[-IOo] [-t target-pane] [shell-command]",
 
     target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_PANE, cmd_find_flags::empty()),

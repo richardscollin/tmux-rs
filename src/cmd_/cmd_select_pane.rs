@@ -18,7 +18,7 @@ pub static CMD_SELECT_PANE_ENTRY: cmd_entry = cmd_entry {
     name: "select-pane",
     alias: Some("selectp"),
 
-    args: args_parse::new(c"DdegLlMmP:RT:t:UZ", 0, 0, None), // -P and -g deprecated
+    args: args_parse::new("DdegLlMmP:RT:t:UZ", 0, 0, None), // -P and -g deprecated
     usage: "[-DdeLlMmRUZ] [-T title] [-t target-pane]",
 
     target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_PANE, cmd_find_flags::empty()),
@@ -32,7 +32,7 @@ pub static CMD_LAST_PANE_ENTRY: cmd_entry = cmd_entry {
     name: "last-pane",
     alias: Some("lastp"),
 
-    args: args_parse::new(c"det:Z", 0, 0, None),
+    args: args_parse::new("det:Z", 0, 0, None),
     usage: "[-deZ] [-t target-window]",
 
     target: cmd_entry_flag::new(

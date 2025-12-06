@@ -18,7 +18,7 @@ pub static CMD_KILL_PANE_ENTRY: cmd_entry = cmd_entry {
     name: "kill-pane",
     alias: Some("killp"),
 
-    args: args_parse::new(c"at:", 0, 0, None),
+    args: args_parse::new("at:", 0, 0, None),
     usage: "[-a] [-t target-client]",
 
     target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_PANE, cmd_find_flags::empty()),

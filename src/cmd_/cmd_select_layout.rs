@@ -17,7 +17,7 @@ pub static CMD_SELECT_LAYOUT_ENTRY: cmd_entry = cmd_entry {
     name: "select-layout",
     alias: Some("selectl"),
 
-    args: args_parse::new(c"Enopt:", 0, 1, None),
+    args: args_parse::new("Enopt:", 0, 1, None),
     usage: "[-Enop] [-t target-pane] [layout-name]",
 
     target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_PANE, cmd_find_flags::empty()),
@@ -31,7 +31,7 @@ pub static CMD_NEXT_LAYOUT_ENTRY: cmd_entry = cmd_entry {
     name: "next-layout",
     alias: Some("nextl"),
 
-    args: args_parse::new(c"t:", 0, 0, None),
+    args: args_parse::new("t:", 0, 0, None),
     usage: "[-t target-window]",
 
     target: cmd_entry_flag::new(
@@ -49,7 +49,7 @@ pub static CMD_PREVIOUS_LAYOUT_ENTRY: cmd_entry = cmd_entry {
     name: "previous-layout",
     alias: Some("prevl"),
 
-    args: args_parse::new(c"t:", 0, 0, None),
+    args: args_parse::new("t:", 0, 0, None),
     usage: "[-t target-window]",
 
     target: cmd_entry_flag::new(

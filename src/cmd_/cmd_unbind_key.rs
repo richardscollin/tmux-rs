@@ -18,7 +18,7 @@ pub static CMD_UNBIND_KEY_ENTRY: cmd_entry = cmd_entry {
     name: "unbind-key",
     alias: Some("unbind"),
 
-    args: args_parse::new(c"anqT:", 0, 1, None),
+    args: args_parse::new("anqT:", 0, 1, None),
     usage: "[-anq] [-T key-table] key",
 
     flags: cmd_flag::CMD_AFTERHOOK,

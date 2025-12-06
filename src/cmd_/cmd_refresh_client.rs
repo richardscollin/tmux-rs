@@ -18,7 +18,7 @@ pub static CMD_REFRESH_CLIENT_ENTRY: cmd_entry = cmd_entry {
     name: "refresh-client",
     alias: Some("refresh"),
 
-    args: args_parse::new(c"A:B:cC:Df:r:F:l::LRSt:U", 0, 1, None),
+    args: args_parse::new("A:B:cC:Df:r:F:l::LRSt:U", 0, 1, None),
     usage: "[-cDlLRSU] [-A pane:state] [-B name:what:format] [-C XxY] [-f flags] [-r pane:report] [-t target-client] [adjustment]",
 
     flags: cmd_flag::CMD_AFTERHOOK.union(cmd_flag::CMD_CLIENT_TFLAG),

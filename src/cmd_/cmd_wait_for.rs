@@ -24,7 +24,7 @@ pub static CMD_WAIT_FOR_ENTRY: cmd_entry = cmd_entry {
     name: "wait-for",
     alias: Some("wait"),
 
-    args: args_parse::new(c"LSU", 1, 1, None),
+    args: args_parse::new("LSU", 1, 1, None),
     usage: "[-L|-S|-U] channel",
 
     flags: cmd_flag::empty(),

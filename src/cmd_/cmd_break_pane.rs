@@ -17,7 +17,7 @@ pub static CMD_BREAK_PANE_ENTRY: cmd_entry = cmd_entry {
     name: "break-pane",
     alias: Some("breakp"),
 
-    args: args_parse::new(c"abdPF:n:s:t:", 0, 0, None),
+    args: args_parse::new("abdPF:n:s:t:", 0, 0, None),
     usage: "[-abdP] [-F format] [-n window-name] [-s src-pane] [-t dst-window]",
 
     source: cmd_entry_flag::new(b's', cmd_find_type::CMD_FIND_PANE, cmd_find_flags::empty()),

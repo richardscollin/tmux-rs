@@ -17,7 +17,7 @@ pub static CMD_SET_BUFFER_ENTRY: cmd_entry = cmd_entry {
     name: "set-buffer",
     alias: Some("setb"),
 
-    args: args_parse::new(c"ab:t:n:w", 0, 1, None),
+    args: args_parse::new("ab:t:n:w", 0, 1, None),
     usage: "[-aw] [-b buffer-name] [-n new-buffer-name] [-t target-client] data",
 
     flags: cmd_flag::CMD_AFTERHOOK
@@ -32,7 +32,7 @@ pub static CMD_DELETE_BUFFER_ENTRY: cmd_entry = cmd_entry {
     name: "delete-buffer",
     alias: Some("deleteb"),
 
-    args: args_parse::new(c"b:", 0, 0, None),
+    args: args_parse::new("b:", 0, 0, None),
     usage: "[-b buffer-name]",
 
     flags: cmd_flag::CMD_AFTERHOOK,

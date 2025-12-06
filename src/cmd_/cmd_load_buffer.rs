@@ -17,7 +17,7 @@ pub static CMD_LOAD_BUFFER_ENTRY: cmd_entry = cmd_entry {
     name: "load-buffer",
     alias: Some("loadb"),
 
-    args: args_parse::new(c"b:t:w", 1, 1, None),
+    args: args_parse::new("b:t:w", 1, 1, None),
     usage: "[-b buffer-name] [-t target-client] path",
 
     flags: cmd_flag::CMD_AFTERHOOK

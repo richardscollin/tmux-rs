@@ -22,7 +22,7 @@ pub static CMD_DISPLAY_MESSAGE_ENTRY: cmd_entry = cmd_entry {
     name: "display-message",
     alias: Some("display"),
 
-    args: args_parse::new(c"ac:d:lINpt:F:v", 0, 1, None),
+    args: args_parse::new("ac:d:lINpt:F:v", 0, 1, None),
     usage: "[-aIlNpv] [-c target-client] [-d delay] [-F format] [-t target-pane] [message]",
 
     target: cmd_entry_flag::new(

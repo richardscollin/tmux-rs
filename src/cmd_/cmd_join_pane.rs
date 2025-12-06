@@ -20,7 +20,7 @@ pub static CMD_JOIN_PANE_ENTRY: cmd_entry = cmd_entry {
     name: "join-pane",
     alias: Some("joinp"),
 
-    args: args_parse::new(c"bdfhvp:l:s:t:", 0, 0, None),
+    args: args_parse::new("bdfhvp:l:s:t:", 0, 0, None),
     usage: "[-bdfhv] [-l size] [-s src-pane] [-t dst-pane]",
 
     source: cmd_entry_flag::new(
@@ -38,7 +38,7 @@ pub static CMD_MOVE_PANE_ENTRY: cmd_entry = cmd_entry {
     name: "move-pane",
     alias: Some("movep"),
 
-    args: args_parse::new(c"bdfhvp:l:s:t:", 0, 0, None),
+    args: args_parse::new("bdfhvp:l:s:t:", 0, 0, None),
     usage: "[-bdfhv] [-l size] [-s src-pane] [-t dst-pane]",
 
     source: cmd_entry_flag::new(

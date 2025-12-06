@@ -18,7 +18,7 @@ pub static CMD_SWITCH_CLIENT_ENTRY: cmd_entry = cmd_entry {
     name: "switch-client",
     alias: Some("switchc"),
 
-    args: args_parse::new(c"lc:EFnpt:rT:Z", 0, 0, None),
+    args: args_parse::new("lc:EFnpt:rT:Z", 0, 0, None),
     usage: "[-ElnprZ] [-c target-client] [-t target-session] [-T key-table]",
 
     flags: cmd_flag::CMD_READONLY.union(cmd_flag::CMD_CLIENT_CFLAG),

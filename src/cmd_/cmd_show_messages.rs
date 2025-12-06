@@ -20,7 +20,7 @@ pub static CMD_SHOW_MESSAGES_ENTRY: cmd_entry = cmd_entry {
     name: "show-messages",
     alias: Some("showmsgs"),
 
-    args: args_parse::new(c"JTt:", 0, 0, None),
+    args: args_parse::new("JTt:", 0, 0, None),
     usage: "[-JT] [-t target-client]",
 
     flags: cmd_flag::CMD_AFTERHOOK.union(cmd_flag::CMD_CLIENT_TFLAG),

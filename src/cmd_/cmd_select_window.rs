@@ -18,7 +18,7 @@ pub static CMD_SELECT_WINDOW_ENTRY: cmd_entry = cmd_entry {
     name: "select-window",
     alias: Some("selectw"),
 
-    args: args_parse::new(c"lnpTt:", 0, 0, None),
+    args: args_parse::new("lnpTt:", 0, 0, None),
     usage: "[-lnpT] [-t target-window]",
 
     target: cmd_entry_flag::new(
@@ -36,7 +36,7 @@ pub static CMD_NEXT_WINDOW_ENTRY: cmd_entry = cmd_entry {
     name: "next-window",
     alias: Some("next"),
 
-    args: args_parse::new(c"at:", 0, 0, None),
+    args: args_parse::new("at:", 0, 0, None),
     usage: "[-a] [-t target-session]",
 
     target: cmd_entry_flag::new(
@@ -54,7 +54,7 @@ pub static CMD_PREVIOUS_WINDOW_ENTRY: cmd_entry = cmd_entry {
     name: "previous-window",
     alias: Some("prev"),
 
-    args: args_parse::new(c"at:", 0, 0, None),
+    args: args_parse::new("at:", 0, 0, None),
     usage: "[-a] [-t target-session]",
 
     target: cmd_entry_flag::new(
@@ -72,7 +72,7 @@ pub static CMD_LAST_WINDOW_ENTRY: cmd_entry = cmd_entry {
     name: "last-window",
     alias: Some("last"),
 
-    args: args_parse::new(c"t:", 0, 0, None),
+    args: args_parse::new("t:", 0, 0, None),
     usage: "[-t target-session]",
 
     target: cmd_entry_flag::new(

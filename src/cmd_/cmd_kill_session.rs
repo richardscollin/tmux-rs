@@ -18,7 +18,7 @@ pub static CMD_KILL_SESSION_ENTRY: cmd_entry = cmd_entry {
     name: "kill-session",
     alias: None,
 
-    args: args_parse::new(c"aCt:", 0, 0, None),
+    args: args_parse::new("aCt:", 0, 0, None),
     usage: "[-aC] [-t target-session]",
 
     target: cmd_entry_flag::new(

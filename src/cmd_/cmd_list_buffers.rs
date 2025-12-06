@@ -18,7 +18,7 @@ pub static CMD_LIST_BUFFERS_ENTRY: cmd_entry = cmd_entry {
     name: "list-buffers",
     alias: Some("lsb"),
 
-    args: args_parse::new(c"F:f:", 0, 0, None),
+    args: args_parse::new("F:f:", 0, 0, None),
     usage: "[-F format] [-f filter]",
 
     flags: cmd_flag::CMD_AFTERHOOK,

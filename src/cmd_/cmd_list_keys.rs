@@ -19,7 +19,7 @@ pub static CMD_LIST_KEYS_ENTRY: cmd_entry = cmd_entry {
     name: "list-keys",
     alias: Some("lsk"),
 
-    args: args_parse::new(c"1aNP:T:", 0, 1, None),
+    args: args_parse::new("1aNP:T:", 0, 1, None),
     usage: "[-1aN] [-P prefix-string] [-T key-table] [key]",
 
     flags: cmd_flag::CMD_STARTSERVER.union(cmd_flag::CMD_AFTERHOOK),
@@ -32,7 +32,7 @@ pub static CMD_LIST_COMMANDS_ENTRY: cmd_entry = cmd_entry {
     name: "list-commands",
     alias: Some("lscm"),
 
-    args: args_parse::new(c"F:", 0, 1, None),
+    args: args_parse::new("F:", 0, 1, None),
     usage: "[-F format] [command]",
 
     flags: cmd_flag::CMD_STARTSERVER.union(cmd_flag::CMD_AFTERHOOK),

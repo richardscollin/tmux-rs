@@ -18,7 +18,7 @@ pub static CMD_SHOW_ENVIRONMENT_ENTRY: cmd_entry = cmd_entry {
     name: "show-environment",
     alias: Some("showenv"),
 
-    args: args_parse::new(c"hgst:", 0, 1, None),
+    args: args_parse::new("hgst:", 0, 1, None),
     usage: "[-hgs] [-t target-session] [name]",
 
     target: cmd_entry_flag::new(

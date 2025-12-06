@@ -22,7 +22,7 @@ pub static CMD_SWAP_PANE_ENTRY: cmd_entry = cmd_entry {
     name: "swap-pane",
     alias: Some("swapp"),
 
-    args: args_parse::new(c"dDs:t:UZ", 0, 0, None),
+    args: args_parse::new("dDs:t:UZ", 0, 0, None),
     usage: "[-dDUZ] [-s src-window] [-t dst-window]",
 
     source: cmd_entry_flag::new(

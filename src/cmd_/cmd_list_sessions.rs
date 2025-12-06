@@ -18,7 +18,7 @@ pub static CMD_LIST_SESSIONS_ENTRY: cmd_entry = cmd_entry {
     name: "list-sessions",
     alias: Some("ls"),
 
-    args: args_parse::new(c"F:f:", 0, 0, None),
+    args: args_parse::new("F:f:", 0, 0, None),
     usage: "[-F format] [-f filter]",
 
     flags: cmd_flag::CMD_AFTERHOOK,

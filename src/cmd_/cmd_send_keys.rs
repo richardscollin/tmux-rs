@@ -20,7 +20,7 @@ pub static CMD_SEND_KEYS_ENTRY: cmd_entry = cmd_entry {
     name: "send-keys",
     alias: Some("send"),
 
-    args: args_parse::new(c"c:FHKlMN:Rt:X", 0, -1, None),
+    args: args_parse::new("c:FHKlMN:Rt:X", 0, -1, None),
     usage: "[-FHKlMRX] [-c target-client] [-N repeat-count] -t target-pane key ...",
 
     target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_PANE, cmd_find_flags::empty()),
@@ -37,7 +37,7 @@ pub static CMD_SEND_PREFIX_ENTRY: cmd_entry = cmd_entry {
     name: "send-prefix",
     alias: None,
 
-    args: args_parse::new(c"2t:", 0, 0, None),
+    args: args_parse::new("2t:", 0, 0, None),
     usage: "[-2] -t target-pane",
 
     target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_PANE, cmd_find_flags::empty()),

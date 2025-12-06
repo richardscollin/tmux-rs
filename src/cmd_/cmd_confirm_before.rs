@@ -17,7 +17,7 @@ pub static CMD_CONFIRM_BEFORE_ENTRY: cmd_entry = cmd_entry {
     name: "confirm-before",
     alias: Some("confirm"),
 
-    args: args_parse::new(c"bc:p:t:y", 1, 1, Some(cmd_confirm_before_args_parse)),
+    args: args_parse::new("bc:p:t:y", 1, 1, Some(cmd_confirm_before_args_parse)),
     usage: "[-by] [-c confirm_key] [-p prompt] [-t target-pane] command",
 
     flags: cmd_flag::CMD_CLIENT_TFLAG,

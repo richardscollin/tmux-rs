@@ -19,7 +19,7 @@ pub static CMD_SERVER_ACCESS_ENTRY: cmd_entry = cmd_entry {
     name: "server-access",
     alias: None,
 
-    args: args_parse::new(c"adlrw", 0, 1, None),
+    args: args_parse::new("adlrw", 0, 1, None),
     usage: "[-adlrw] [-t target-pane] [user]",
 
     flags: cmd_flag::CMD_CLIENT_CANFAIL,

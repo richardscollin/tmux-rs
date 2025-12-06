@@ -19,7 +19,7 @@ pub static CMD_CAPTURE_PANE_ENTRY: cmd_entry = cmd_entry {
     name: "capture-pane",
     alias: Some("capturep"),
 
-    args: args_parse::new(c"ab:CeE:JNpPqS:Tt:", 0, 0, None),
+    args: args_parse::new("ab:CeE:JNpPqS:Tt:", 0, 0, None),
     usage: "[-aCeJNpPqT] [-b buffer-name] [-E end-line] [-S start-line] [-t target-pane]",
 
     source: cmd_entry_flag::zeroed(),
@@ -33,7 +33,7 @@ pub static CMD_CLEAR_HISTORY_ENTRY: cmd_entry = cmd_entry {
     name: "clear-history",
     alias: Some("clearhist"),
 
-    args: args_parse::new(c"Ht:", 0, 0, None),
+    args: args_parse::new("Ht:", 0, 0, None),
     usage: "[-H] [-t target-pane]",
 
     source: cmd_entry_flag::zeroed(),

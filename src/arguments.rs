@@ -116,7 +116,7 @@ pub unsafe fn args_parse_flag_argument(
     i: *mut u32,
     string: *mut u8,
     flag: i32,
-    optional_argument: i32,
+    optional_argument: bool,
 ) -> i32 {
     let argument: *mut args_value;
     let new: *mut args_value;
@@ -145,7 +145,7 @@ pub unsafe fn args_parse_flag_argument(
             if argument.is_null() {
                 args_free_value(new);
                 free(new as _);
-                if optional_argument != 0 {
+                if optional_argument {
                     log_debug!("{}: -{} (optional)", "args_parse_flag_argument", flag);
                     args_set(args, flag as c_uchar, null_mut(), ARGS_ENTRY_OPTIONAL_VALUE);
                     return 0; /* either - or end */
@@ -168,6 +168,7 @@ pub unsafe fn args_parse_flag_argument(
     0
 }
 
+#[expect(clippy::needless_borrow, reason = "false positive")]
 pub unsafe fn args_parse_flags(
     parse: *const args_parse,
     values: *mut args_value,
@@ -212,17 +213,16 @@ pub unsafe fn args_parse_flags(
                 return -1;
             }
 
-            let found = libc::strchr((*parse).template.as_ptr(), flag as i32);
-            if found.is_null() {
+            let Some(found) = (*parse).template.bytes().position(|ch| ch == flag) else {
                 *cause = format_nul!("unknown flag -{}", flag as char);
                 return -1;
-            }
-            if *found.add(1) != b':' {
+            };
+            if found + 1 >= (&(*parse).template).len() || (*parse).template.as_bytes()[found + 1] != b':' {
                 log_debug!("{}: -{}", __func__, flag as char);
                 args_set(args, flag, null_mut(), 0);
                 continue;
             }
-            let optional_argument = (*found.add(2) == b':') as i32;
+            let optional_argument = found + 2 < (&(*parse).template).len() && (*parse).template.as_bytes()[found + 2] == b':';
             return args_parse_flag_argument(
                 values,
                 count,

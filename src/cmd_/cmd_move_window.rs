@@ -17,7 +17,7 @@ pub static CMD_MOVE_WINDOW_ENTRY: cmd_entry = cmd_entry {
     name: "move-window",
     alias: Some("movew"),
 
-    args: args_parse::new(c"abdkrs:t:", 0, 0, None),
+    args: args_parse::new("abdkrs:t:", 0, 0, None),
     usage: "[-abdkr] [-s src-window] [-t dst-window]",
 
     source: cmd_entry_flag::new(
@@ -35,7 +35,7 @@ pub static CMD_LINK_WINDOW_ENTRY: cmd_entry = cmd_entry {
     name: "link-window",
     alias: Some("linkw"),
 
-    args: args_parse::new(c"abdks:t:", 0, 0, None),
+    args: args_parse::new("abdks:t:", 0, 0, None),
     usage: "[-abdk] [-s src-window] [-t dst-window]",
 
     source: cmd_entry_flag::new(

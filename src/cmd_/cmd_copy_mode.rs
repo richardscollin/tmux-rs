@@ -18,7 +18,7 @@ pub static CMD_COPY_MODE_ENTRY: cmd_entry = cmd_entry {
     name: "copy-mode",
     alias: None,
 
-    args: args_parse::new(c"deHMs:t:uq", 0, 0, None),
+    args: args_parse::new("deHMs:t:uq", 0, 0, None),
     usage: "[-deHMuq] [-s src-pane] [-t target-pane]",
 
     source: cmd_entry_flag::new(b's', cmd_find_type::CMD_FIND_PANE, cmd_find_flags::empty()),
@@ -32,7 +32,7 @@ pub static CMD_CLOCK_MODE_ENTRY: cmd_entry = cmd_entry {
     name: "clock-mode",
     alias: None,
 
-    args: args_parse::new(c"t:", 0, 0, None),
+    args: args_parse::new("t:", 0, 0, None),
     usage: "[-t target-pane]",
 
     target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_PANE, cmd_find_flags::empty()),

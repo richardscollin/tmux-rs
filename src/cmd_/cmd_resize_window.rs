@@ -17,7 +17,7 @@ pub static CMD_RESIZE_WINDOW_ENTRY: cmd_entry = cmd_entry {
     name: "resize-window",
     alias: Some("resizew"),
 
-    args: args_parse::new(c"aADLRt:Ux:y:", 0, 1, None),
+    args: args_parse::new("aADLRt:Ux:y:", 0, 1, None),
     usage: "[-aADLRU] [-x width] [-y height] [-t target-window] [adjustment]",
 
     target: cmd_entry_flag::new(

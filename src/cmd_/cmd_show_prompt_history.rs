@@ -17,7 +17,7 @@ pub static CMD_SHOW_PROMPT_HISTORY_ENTRY: cmd_entry = cmd_entry {
     name: "show-prompt-history",
     alias: Some("showphist"),
 
-    args: args_parse::new(c"T:", 0, 0, None),
+    args: args_parse::new("T:", 0, 0, None),
     usage: "[-T type]",
 
     flags: cmd_flag::CMD_AFTERHOOK,
@@ -30,7 +30,7 @@ pub static CMD_CLEAR_PROMPT_HISTORY_ENTRY: cmd_entry = cmd_entry {
     name: "clear-prompt-history",
     alias: Some("clearphist"),
 
-    args: args_parse::new(c"T:", 0, 0, None),
+    args: args_parse::new("T:", 0, 0, None),
     usage: "[-T type]",
 
     flags: cmd_flag::CMD_AFTERHOOK,

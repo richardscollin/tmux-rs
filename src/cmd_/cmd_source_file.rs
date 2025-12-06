@@ -18,7 +18,7 @@ pub static CMD_SOURCE_FILE_ENTRY: cmd_entry = cmd_entry {
     name: "source-file",
     alias: Some("source"),
 
-    args: args_parse::new(c"t:Fnqv", 1, -1, None),
+    args: args_parse::new("t:Fnqv", 1, -1, None),
     usage: "[-Fnqv] [-t target-pane] path ...",
 
     target: cmd_entry_flag::new(

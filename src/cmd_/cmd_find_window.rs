@@ -18,7 +18,7 @@ pub static CMD_FIND_WINDOW_ENTRY: cmd_entry = cmd_entry {
     name: "find-window",
     alias: Some("findw"),
 
-    args: args_parse::new(c"CiNrt:TZ", 1, 1, None),
+    args: args_parse::new("CiNrt:TZ", 1, 1, None),
     usage: "[-CiNrTZ] [-t target-pane] match-string",
 
     target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_PANE, cmd_find_flags::empty()),

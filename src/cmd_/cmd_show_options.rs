@@ -17,7 +17,7 @@ pub static CMD_SHOW_OPTIONS_ENTRY: cmd_entry = cmd_entry {
     name: "show-options",
     alias: Some("show"),
 
-    args: args_parse::new(c"AgHpqst:vw", 0, 1, None),
+    args: args_parse::new("AgHpqst:vw", 0, 1, None),
     usage: "[-AgHpqsvw] [-t target-pane] [option]",
 
     target: cmd_entry_flag::new(
@@ -35,7 +35,7 @@ pub static CMD_SHOW_WINDOW_OPTIONS_ENTRY: cmd_entry = cmd_entry {
     name: "show-window-options",
     alias: Some("showw"),
 
-    args: args_parse::new(c"gvt:", 0, 1, None),
+    args: args_parse::new("gvt:", 0, 1, None),
     usage: "[-gv] [-t target-window] [option]",
 
     target: cmd_entry_flag::new(
@@ -54,7 +54,7 @@ pub static CMD_SHOW_HOOKS_ENTRY: cmd_entry = cmd_entry {
     name: "show-hooks",
     alias: None,
 
-    args: args_parse::new(c"gpt:w", 0, 1, None),
+    args: args_parse::new("gpt:w", 0, 1, None),
     usage: "[-gpw] [-t target-pane]",
 
     target: cmd_entry_flag::new(

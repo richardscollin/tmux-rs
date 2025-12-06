@@ -17,7 +17,7 @@ pub static CMD_SET_ENVIRONMENT_ENTRY: cmd_entry = cmd_entry {
     name: "set-environment",
     alias: Some("setenv"),
 
-    args: args_parse::new(c"Fhgrt:u", 1, 2, None),
+    args: args_parse::new("Fhgrt:u", 1, 2, None),
     usage: "[-Fhgru] [-t target-session] name [value]",
 
     target: cmd_entry_flag::new(

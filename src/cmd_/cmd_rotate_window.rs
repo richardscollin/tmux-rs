@@ -21,7 +21,7 @@ pub static CMD_ROTATE_WINDOW_ENTRY: cmd_entry = cmd_entry {
     name: "rotate-window",
     alias: Some("rotatew"),
 
-    args: args_parse::new(c"Dt:UZ", 0, 0, None),
+    args: args_parse::new("Dt:UZ", 0, 0, None),
     usage: "[-DUZ] [-t target-window]",
 
     target: cmd_entry_flag::new(

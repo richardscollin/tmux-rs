@@ -18,7 +18,7 @@ pub static CMD_SAVE_BUFFER_ENTRY: cmd_entry = cmd_entry {
     name: "save-buffer",
     alias: Some("saveb"),
 
-    args: args_parse::new(c"ab:", 1, 1, None),
+    args: args_parse::new("ab:", 1, 1, None),
     usage: "[-a] [-b buffer-name] path",
 
     flags: cmd_flag::CMD_AFTERHOOK,
@@ -31,7 +31,7 @@ pub static CMD_SHOW_BUFFER_ENTRY: cmd_entry = cmd_entry {
     name: "show-buffer",
     alias: Some("showb"),
 
-    args: args_parse::new(c"b:", 0, 0, None),
+    args: args_parse::new("b:", 0, 0, None),
     usage: "[-b buffer-name]",
 
     flags: cmd_flag::CMD_AFTERHOOK,

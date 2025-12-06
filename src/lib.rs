@@ -1929,16 +1929,16 @@ enum args_parse_type {
 type args_parse_cb = Option<unsafe fn(*mut args, u32, *mut *mut u8) -> args_parse_type>;
 #[repr(C)]
 struct args_parse {
-    template: SyncCharPtr,
+    template: &'static str,
     lower: i32,
     upper: i32,
     cb: args_parse_cb,
 }
 
 impl args_parse {
-    const fn new(template: &'static CStr, lower: i32, upper: i32, cb: args_parse_cb) -> Self {
+    const fn new(template: &'static str, lower: i32, upper: i32, cb: args_parse_cb) -> Self {
         Self {
-            template: SyncCharPtr::new(template),
+            template,
             lower,
             upper,
             cb,

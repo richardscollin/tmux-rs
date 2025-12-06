@@ -18,7 +18,7 @@ pub static CMD_LIST_PANES_ENTRY: cmd_entry = cmd_entry {
     name: "list-panes",
     alias: Some("lsp"),
 
-    args: args_parse::new(c"asF:f:t:", 0, 0, None),
+    args: args_parse::new("asF:f:t:", 0, 0, None),
     usage: "[-as] [-F format] [-f filter] [-t target-window]",
 
     target: cmd_entry_flag::new(

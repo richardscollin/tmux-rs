@@ -25,7 +25,7 @@ pub static CMD_LIST_WINDOWS_ENTRY: cmd_entry = cmd_entry {
     name: "list-windows",
     alias: Some("lsw"),
 
-    args: args_parse::new(c"F:f:at:", 0, 0, None),
+    args: args_parse::new("F:f:at:", 0, 0, None),
     usage: "[-a] [-F format] [-f filter] [-t target-session]",
 
     target: cmd_entry_flag::new(

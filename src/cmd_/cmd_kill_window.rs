@@ -19,7 +19,7 @@ pub static CMD_KILL_WINDOW_ENTRY: cmd_entry = cmd_entry {
     name: "kill-window",
     alias: Some("killw"),
 
-    args: args_parse::new(c"at:", 0, 0, None),
+    args: args_parse::new("at:", 0, 0, None),
     usage: "[-a] [-t target-window]",
 
     target: cmd_entry_flag::new(
@@ -37,7 +37,7 @@ pub static CMD_UNLINK_WINDOW_ENTRY: cmd_entry = cmd_entry {
     name: "unlink-window",
     alias: Some("unlinkw"),
 
-    args: args_parse::new(c"kt:", 0, 0, None),
+    args: args_parse::new("kt:", 0, 0, None),
     usage: "[-k] [-t target-window]",
 
     target: cmd_entry_flag::new(

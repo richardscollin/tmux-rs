@@ -18,7 +18,7 @@ pub static CMD_RESIZE_PANE_ENTRY: cmd_entry = cmd_entry {
     name: "resize-pane",
     alias: Some("resizep"),
 
-    args: args_parse::new(c"DLMRTt:Ux:y:Z", 0, 1, None),
+    args: args_parse::new("DLMRTt:Ux:y:Z", 0, 1, None),
     usage: "[-DLMRTUZ] [-x width] [-y height] [-t target-pane] [adjustment]",
 
     target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_PANE, cmd_find_flags::empty()),

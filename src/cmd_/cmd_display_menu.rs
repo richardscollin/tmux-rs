@@ -21,7 +21,7 @@ pub static CMD_DISPLAY_MENU_ENTRY: cmd_entry = cmd_entry {
     alias: Some("menu"),
 
     args: args_parse::new(
-        c"b:c:C:H:s:S:MOt:T:x:y:",
+        "b:c:C:H:s:S:MOt:T:x:y:",
         1,
         -1,
         Some(cmd_display_menu_args_parse),
@@ -38,7 +38,7 @@ pub static CMD_DISPLAY_POPUP_ENTRY: cmd_entry = cmd_entry {
     name: "display-popup",
     alias: Some("popup"),
 
-    args: args_parse::new(c"Bb:Cc:d:e:Eh:s:S:t:T:w:x:y:", 0, -1, None),
+    args: args_parse::new("Bb:Cc:d:e:Eh:s:S:t:T:w:x:y:", 0, -1, None),
     usage: "[-BCE] [-b border-lines] [-c target-client] [-d start-directory] [-e environment] [-h height] [-s style] [-S border-style] [-t target-pane][-T title] [-w width] [-x position] [-y position] [shell-command]",
     target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_PANE, cmd_find_flags::empty()),
 

@@ -17,7 +17,7 @@ pub static CMD_PASTE_BUFFER_ENTRY: cmd_entry = cmd_entry {
     name: "paste-buffer",
     alias: Some("pasteb"),
 
-    args: args_parse::new(c"db:prs:t:", 0, 0, None),
+    args: args_parse::new("db:prs:t:", 0, 0, None),
     usage: "[-dpr] [-s separator] [-b buffer-name] [-t target-pane]",
 
     target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_PANE, cmd_find_flags::empty()),

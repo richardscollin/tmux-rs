@@ -19,7 +19,7 @@ pub static CMD_ATTACH_SESSION_ENTRY: cmd_entry = cmd_entry {
     name: "attach-session",
     alias: Some("attach"),
 
-    args: args_parse::new(c"c:dEf:rt:x", 0, 0, None),
+    args: args_parse::new("c:dEf:rt:x", 0, 0, None),
     usage: "[-dErx] [-c working-directory] [-f flags] [-t target-session]",
 
     flags: cmd_flag::CMD_STARTSERVER.union(cmd_flag::CMD_READONLY),

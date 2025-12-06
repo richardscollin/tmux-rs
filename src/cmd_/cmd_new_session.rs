@@ -21,7 +21,7 @@ pub static CMD_NEW_SESSION_ENTRY: cmd_entry = cmd_entry {
     name: "new-session",
     alias: Some("new"),
 
-    args: args_parse::new(c"Ac:dDe:EF:f:n:Ps:t:x:Xy:", 0, -1, None),
+    args: args_parse::new("Ac:dDe:EF:f:n:Ps:t:x:Xy:", 0, -1, None),
     usage: "[-AdDEPX] [-c start-directory] [-e environment] [-F format] [-f flags] [-n window-name] [-s session-name] [-t target-session] [-x width] [-y height] [shell-command]",
 
     target: cmd_entry_flag::new(
@@ -39,7 +39,7 @@ pub static CMD_HAS_SESSION_ENTRY: cmd_entry = cmd_entry {
     name: "has-session",
     alias: Some("has"),
 
-    args: args_parse::new(c"t:", 0, 0, None),
+    args: args_parse::new("t:", 0, 0, None),
     usage: "[-t target-session]",
 
     target: cmd_entry_flag::new(

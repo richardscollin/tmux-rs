@@ -49,5 +49,5 @@ jobs:
           git config --local user.name "GitHub Action"
 
           git add Safety-Analysis.md
-          git commit -m "Update safety analysis from commit ${{ github.sha }}"
+          git commit --allow-empty -m "Update safety analysis from commit ${{ github.sha }}"
           git push

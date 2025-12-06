@@ -1,0 +1,49 @@
+---
+name: Coverage
+
+on:
+  push
+
+jobs:
+  coverage:
+    name: Coverage
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: dtolnay/rust-toolchain@nightly
+        with:
+          components: llvm-tools
+
+      - name: Install system dependencies (ubuntu)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libncurses-dev libevent-dev
+
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-llvm-cov@0.6.21,cargo-nextest@0.9.114
+
+      - uses: actions/checkout@v5
+
+      - name: Coverage
+        run: |
+          cargo +nightly llvm-cov --no-report nextest --profile ci
+          mv ./target/nextest/ci/junit.xml junit.xml
+
+          source <(cargo llvm-cov show-env --export-prefix --branch)
+          cargo +nightly build
+          make -C regress
+
+          cargo llvm-cov report --lcov --output-path lcov.info
+
+      - name: Upload results to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: lcov.info
+
+      - name: Upload test results to Codecov
+        if: ${{ !cancelled() }}
+        uses: codecov/test-results-action@v1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}

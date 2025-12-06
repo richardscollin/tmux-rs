@@ -30,7 +30,9 @@ jobs:
           cargo +nightly llvm-cov --no-report nextest --profile ci
           mv ./target/nextest/ci/junit.xml junit.xml
 
-          # TODO run additional tests here and convert results to junit
+          source <(cargo llvm-cov show-env --export-prefix --branch)
+          cargo +nightly build
+          make -C regress
 
           cargo llvm-cov report --lcov --output-path lcov.info
 

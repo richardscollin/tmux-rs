@@ -4,3 +4,6 @@
 /result
 # tmux log files
 tmux-*.log
+
+# github wiki in CI
+/wiki

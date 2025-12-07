@@ -20,6 +20,7 @@ use crate::libc::{
     sockaddr_un, socket, socklen_t, stat, strerror, strsignal, umask, unlink, waitpid,
 };
 use crate::*;
+use crate::options_::*;
 
 pub static mut CLIENTS: clients = unsafe { zeroed() };
 pub static mut SERVER_PROC: *mut tmuxproc = null_mut();

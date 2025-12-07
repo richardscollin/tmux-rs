@@ -12,6 +12,7 @@
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 use crate::*;
+use crate::options_::*;
 
 pub type environ = rb_head<environ_entry>;
 RB_GENERATE!(environ, environ_entry, entry, discr_entry, environ_cmp);

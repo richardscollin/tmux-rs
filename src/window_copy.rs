@@ -12,6 +12,7 @@
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 use crate::*;
+use crate::options_::*;
 
 pub static WINDOW_COPY_MODE: window_mode = window_mode {
     name: "copy-mode",

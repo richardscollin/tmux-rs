@@ -13,6 +13,7 @@
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 use crate::*;
 use crate::{colour::colour_split_rgb, compat::b64::b64_ntop};
+use crate::options_::*;
 
 static mut TTY_LOG_FD: i32 = -1;
 

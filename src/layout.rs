@@ -13,6 +13,7 @@
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 use crate::*;
+use crate::options_::*;
 
 pub unsafe fn layout_create_cell(lcparent: *mut layout_cell) -> *mut layout_cell {
     unsafe {

@@ -13,6 +13,7 @@
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 use crate::libc::sscanf;
 use crate::*;
+use crate::options_::*;
 
 pub unsafe fn resize_window(w: *mut window, mut sx: u32, mut sy: u32, xpixel: i32, ypixel: i32) {
     unsafe {

@@ -13,6 +13,7 @@
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 use crate::compat::queue::tailq_foreach;
 use crate::*;
+use crate::options_::*;
 
 pub static CMD_SET_OPTION_ENTRY: cmd_entry = cmd_entry {
     name: "set-option",

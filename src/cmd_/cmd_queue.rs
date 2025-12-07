@@ -18,6 +18,7 @@ use crate::compat::queue::{
 };
 use crate::xmalloc::xcalloc1;
 use crate::*;
+use crate::options_::*;
 
 // #define cmdq_get_callback(cb, data) cmdq_get_callback1(#cb, cb, data)
 macro_rules! cmdq_get_callback {

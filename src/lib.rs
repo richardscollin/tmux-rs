@@ -176,7 +176,7 @@ use crate::{
     mode_tree::*,
     names::*,
     notify::*,
-    options_::*,
+    options_::{options, options_array_item},
     options_table::*,
     osdep::*,
     paste::*,

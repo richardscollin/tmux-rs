@@ -13,6 +13,7 @@
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 use crate::compat::queue::{tailq_first, tailq_foreach, tailq_next, tailq_prev};
 use crate::*;
+use crate::options_::*;
 
 pub static CMD_SELECT_PANE_ENTRY: cmd_entry = cmd_entry {
     name: "select-pane",

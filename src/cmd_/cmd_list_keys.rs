@@ -14,6 +14,7 @@
 use crate::compat::strlcat;
 use crate::libc::strcmp;
 use crate::*;
+use crate::options_::*;
 
 pub static CMD_LIST_KEYS_ENTRY: cmd_entry = cmd_entry {
     name: "list-keys",

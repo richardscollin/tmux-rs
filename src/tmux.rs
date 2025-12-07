@@ -15,6 +15,7 @@ use std::borrow::Cow;
 use std::path::PathBuf;
 use std::sync::OnceLock;
 
+
 use crate::compat::getopt::{OPTARG, OPTIND, getopt};
 use crate::compat::{S_ISDIR, fdforkpty::getptmfd, getprogname::getprogname};
 use crate::libc::{
@@ -23,13 +24,11 @@ use crate::libc::{
     mkdir, nl_langinfo, setlocale, stat, strchr, strcspn, strerror, strncmp, strrchr, timespec,
 };
 use crate::*;
+use crate::options_::{options, options_create, options_default, options_set_number, options_set_string};
 
 pub static mut GLOBAL_OPTIONS: *mut options = null_mut();
-
 pub static mut GLOBAL_S_OPTIONS: *mut options = null_mut();
-
 pub static mut GLOBAL_W_OPTIONS: *mut options = null_mut();
-
 pub static mut GLOBAL_ENVIRON: *mut environ = null_mut();
 
 pub static mut START_TIME: timeval = timeval {

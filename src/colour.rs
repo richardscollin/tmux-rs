@@ -15,6 +15,7 @@
 use std::borrow::Cow;
 
 use crate::*;
+use crate::options_::*;
 
 const COLOUR_FLAG_256: i32 = 0x01000000;
 const COLOUR_FLAG_RGB: i32 = 0x02000000;

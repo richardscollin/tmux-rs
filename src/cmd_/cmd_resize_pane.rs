@@ -13,6 +13,7 @@
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 use crate::compat::queue::tailq_empty;
 use crate::*;
+use crate::options_::*;
 
 pub static CMD_RESIZE_PANE_ENTRY: cmd_entry = cmd_entry {
     name: "resize-pane",

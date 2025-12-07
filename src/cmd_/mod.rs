@@ -21,6 +21,7 @@ use crate::compat::{
 use crate::libc::{strchr, strlen, strncmp};
 use crate::xmalloc::{xrealloc_, xreallocarray_};
 use crate::*;
+use crate::options_::*;
 
 pub mod cmd_attach_session;
 pub mod cmd_bind_key;

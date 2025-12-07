@@ -19,6 +19,7 @@ use crate::libc::{
 #[cfg(feature = "utempter")]
 use crate::utempter::utempter_remove_record;
 use crate::*;
+use crate::options_::*;
 
 /// Default pixel cell sizes.
 pub const DEFAULT_XPIXEL: u32 = 16;

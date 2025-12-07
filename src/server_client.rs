@@ -16,6 +16,7 @@ use crate::{
     compat::imsg::{IMSG_HEADER_SIZE, imsg_get_fd},
     options_::options_get_number_,
 };
+use crate::options_::*;
 
 /// Compare client windows.
 pub fn server_client_window_cmp(cw1: &client_window, cw2: &client_window) -> std::cmp::Ordering {

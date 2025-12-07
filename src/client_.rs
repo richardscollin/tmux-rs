@@ -25,6 +25,7 @@ use crate::libc::{
     strsignal, system, tcgetattr, tcsetattr, unlink, waitpid,
 };
 use crate::*;
+use crate::options_::*;
 
 pub static mut CLIENT_PROC: *mut tmuxproc = null_mut();
 

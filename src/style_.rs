@@ -14,6 +14,7 @@
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 use crate::libc::{snprintf, strchr, strcspn, strncasecmp, strspn};
 use crate::*;
+use crate::options_::*;
 
 // #define STYLE_ATTR_MASK (~0)
 

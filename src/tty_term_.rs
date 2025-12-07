@@ -14,6 +14,7 @@
 use crate::compat::{strnvis, strunvis};
 use crate::libc::{fnmatch, memset, strchr, strcmp, strcspn, strncmp};
 use crate::*;
+use crate::options_::*;
 
 pub static mut TTY_TERMS: tty_terms = list_head_initializer();
 

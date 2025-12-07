@@ -13,7 +13,7 @@
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 use crate::compat::queue::tailq_foreach;
 use crate::libc::strtol;
-use crate::options_::options_find_choice;
+use crate::options_::*;
 use crate::*;
 
 pub static CMD_DISPLAY_MENU_ENTRY: cmd_entry = cmd_entry {

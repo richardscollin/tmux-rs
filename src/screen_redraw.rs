@@ -12,6 +12,7 @@
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 use crate::*;
+use crate::options_::*;
 
 const START_ISOLATE: *const u8 = c"\xe2\x81\xa6".as_ptr().cast();
 const END_ISOLATE: *const u8 = c"\xe2\x81\xa9".as_ptr().cast();

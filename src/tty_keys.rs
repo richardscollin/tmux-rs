@@ -13,6 +13,7 @@
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 use crate::compat::b64::b64_pton;
 use crate::*;
+use crate::options_::*;
 
 // Handle keys input from the outside terminal. tty_default_*_keys[] are a base
 // table of supported keys which are looked up in terminfo(5) and translated

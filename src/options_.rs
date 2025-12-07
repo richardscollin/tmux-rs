@@ -313,7 +313,7 @@ pub unsafe fn options_get_(mut oo: *mut options, name: &str) -> *mut options_ent
     }
 }
 
-pub unsafe fn options_get_const(mut oo: *const options, name: &str) -> *const options_entry {
+unsafe fn options_get_const(mut oo: *const options, name: &str) -> *const options_entry {
     unsafe {
         let mut o;
         while {
@@ -430,7 +430,7 @@ unsafe fn options_add(oo: *mut options, name: *const u8) -> *mut options_entry {
     }
 }
 
-pub unsafe fn options_remove(o: *mut options_entry) {
+unsafe fn options_remove(o: *mut options_entry) {
     unsafe {
         let oo = (*o).owner;
 

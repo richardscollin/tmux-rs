@@ -14,6 +14,7 @@
 use crate::compat::tree::rb_min;
 use crate::libc::{sscanf, tcgetattr};
 use crate::*;
+use crate::options_::*;
 
 const NEW_SESSION_TEMPLATE: *const u8 = c!("#{session_name}:");
 

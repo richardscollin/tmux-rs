@@ -19,6 +19,7 @@ use crate::libc::{
     regex_t, regexec, regfree, strchr, strcmp, strcspn, strftime, strstr, strtod, tm,
 };
 use crate::*;
+use crate::options_::*;
 
 bitflags::bitflags! {
     #[repr(transparent)]

@@ -14,6 +14,7 @@
 use crate::event_::{event_add, event_initialized};
 use crate::libc::{gettimeofday, memcpy, strchr, strcmp, strcspn, strlen, strncmp};
 use crate::*;
+use crate::options_::*;
 
 pub unsafe extern "C-unwind" fn name_time_callback(
     _fd: c_int,

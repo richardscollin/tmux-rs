@@ -21,6 +21,7 @@ use crate::libc::{
 #[cfg(feature = "utempter")]
 use crate::utempter::utempter_add_record;
 use crate::*;
+use crate::options_::*;
 
 pub unsafe fn spawn_log(from: &str, sc: *mut spawn_context) {
     unsafe {

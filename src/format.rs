@@ -217,8 +217,8 @@ static FORMAT_LOWER: [SyncCharPtr; 26] = const {
 };
 
 /// Is logging enabled?
-pub unsafe fn format_logging(ft: *mut format_tree) -> bool {
-    unsafe { log_get_level() != 0 || (*ft).flags.intersects(format_flags::FORMAT_VERBOSE) }
+pub fn format_logging(ft: &format_tree) -> bool {
+    log_get_level() != 0 || ft.flags.intersects(format_flags::FORMAT_VERBOSE)
 }
 
 macro_rules! format_log1 {
@@ -237,7 +237,7 @@ pub unsafe fn format_log1_(
         let ft: *mut format_tree = (*es).ft;
         let spaces = c"          ";
 
-        if !format_logging(ft) {
+        if !format_logging(&*ft) {
             return;
         }
 
@@ -4387,7 +4387,7 @@ pub unsafe fn format_replace(
                 list = format_build_modifiers(es, &raw mut copy, &raw mut count);
                 for i in 0..count {
                     let fm = list.add(i as usize);
-                    if format_logging(ft) {
+                    if format_logging(&*ft) {
                         format_log1!(
                             es,
                             __func__,
@@ -4917,7 +4917,7 @@ pub unsafe fn format_expand1(es: *mut format_expand_state, mut fmt: *const u8) -
                 format_log1!(es, c!("format_expand1"), "format is too long",);
                 return xstrdup(c!("")).as_ptr();
             }
-            if format_logging(ft) && strcmp(expanded, fmt) != 0 {
+            if format_logging(&*ft) && strcmp(expanded, fmt) != 0 {
                 format_log1!(
                     es,
                     c!("format_expand1"),

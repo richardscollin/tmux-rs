@@ -3437,21 +3437,21 @@ fn format_find(
         let mut found = null_mut();
 
         'found: {
-            let mut o = options_parse_get(GLOBAL_OPTIONS, key, &raw mut idx, 0);
+            let mut o = options_parse_get(GLOBAL_OPTIONS, cstr_to_str(key), &raw mut idx, 0);
             if o.is_null() && !(*ft).wp.is_null() {
-                o = options_parse_get((*(*ft).wp).options, key, &raw mut idx, 0);
+                o = options_parse_get((*(*ft).wp).options, cstr_to_str(key), &raw mut idx, 0);
             }
             if o.is_null() && !(*ft).w.is_null() {
-                o = options_parse_get((*(*ft).w).options, key, &raw mut idx, 0);
+                o = options_parse_get((*(*ft).w).options, cstr_to_str(key), &raw mut idx, 0);
             }
             if o.is_null() {
-                o = options_parse_get(GLOBAL_W_OPTIONS, key, &raw mut idx, 0);
+                o = options_parse_get(GLOBAL_W_OPTIONS, cstr_to_str(key), &raw mut idx, 0);
             }
             if o.is_null() && !(*ft).s.is_null() {
-                o = options_parse_get((*(*ft).s).options, key, &raw mut idx, 0);
+                o = options_parse_get((*(*ft).s).options, cstr_to_str(key), &raw mut idx, 0);
             }
             if o.is_null() {
-                o = options_parse_get(GLOBAL_S_OPTIONS, key, &raw mut idx, 0);
+                o = options_parse_get(GLOBAL_S_OPTIONS, cstr_to_str(key), &raw mut idx, 0);
             }
             if !o.is_null() {
                 found = options_to_string(o, idx, 1);

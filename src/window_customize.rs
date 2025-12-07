@@ -239,16 +239,16 @@ unsafe fn window_customize_build_array(
         let mut ai = options_array_first(o);
         while !ai.is_null() {
             let idx = options_array_item_index(ai);
-            let name: *mut u8 = format_nul!("{}[{}]", _s(options_name(o)), idx);
+            let name: String = format!("{}[{}]", options_name(o), idx);
 
-            format_add!(ft, "option_name", "{}", _s(name));
+            format_add!(ft, "option_name", "{}", name);
             let value: *mut u8 = options_to_string(o, idx as i32, 0);
             format_add!(ft, "option_value", "{}", _s(value));
 
             let item = window_customize_add_item(data);
             (*item).scope = scope;
             (*item).oo = oo;
-            (*item).name = xstrdup(options_name(o)).as_ptr();
+            (*item).name = xstrdup__(options_name(o));
             (*item).idx = idx as i32;
 
             let text: *mut u8 = format_expand(ft, (*data).format);
@@ -258,13 +258,12 @@ unsafe fn window_customize_build_array(
                 top,
                 item.cast(),
                 tag,
-                cstr_to_str(name),
+                &name,
                 text,
                 None,
             );
             free_(text);
 
-            free_(name);
             free_(value);
 
             ai = options_array_next(ai);
@@ -284,7 +283,7 @@ unsafe fn window_customize_build_option(
     unsafe {
         let oe = options_table_entry(o);
         let oo = options_owner(o);
-        let name: *const u8 = options_name(o);
+        let name: &str = options_name(o);
 
         let mut global: i32 = 0;
         let mut array: i32 = 0;
@@ -306,7 +305,7 @@ unsafe fn window_customize_build_option(
             return;
         }
 
-        format_add!(ft, "option_name", "{}", _s(name));
+        format_add!(ft, "option_name", "{}", name);
         format_add!(ft, "option_is_global", "{global}");
         format_add!(ft, "option_is_array", "{array}");
 
@@ -337,7 +336,7 @@ unsafe fn window_customize_build_option(
         let item = window_customize_add_item(data);
         (*item).oo = oo;
         (*item).scope = scope;
-        (*item).name = xstrdup(name).as_ptr();
+        (*item).name = xstrdup__(name);
         (*item).idx = -1;
 
         if array != 0 {
@@ -351,7 +350,7 @@ unsafe fn window_customize_build_option(
             top,
             item.cast(),
             tag,
-            cstr_to_str(name),
+            name,
             text,
             Some(false),
         );
@@ -365,31 +364,29 @@ unsafe fn window_customize_build_option(
 
 unsafe fn window_customize_find_user_options(
     oo: *mut options,
-    list: *mut *mut *const u8,
-    size: *mut u32,
+    list: &mut Vec<&str>
 ) {
     unsafe {
         let mut o = options_first(oo);
+        let size = list.len();
         while !o.is_null() {
             let name = options_name(o);
-            if *name != b'@' {
+            if !name.starts_with('@') {
                 o = options_next(o);
                 continue;
             }
             let mut i = 0;
-            for j in 0..(*size) {
+            for j in 0..size {
                 i = j;
-                if libc::strcmp(*(*list).add(i as usize), name) == 0 {
+                if list[i] == name {
                     break;
                 }
             }
-            if i != *size {
+            if i != size {
                 o = options_next(o);
                 continue;
             }
-            *list = xreallocarray_(*list, (*size) as usize + 1).as_ptr();
-            *(*list).add(*size as usize) = name;
-            (*size) += 1;
+            list.push(name);
 
             o = options_next(o);
         }
@@ -412,8 +409,7 @@ unsafe fn window_customize_build_options(
 ) {
     unsafe {
         let mut o = null_mut();
-        let mut list = null_mut();
-        let mut size: u32 = 0;
+        let mut list = Vec::new();
 
         let top = mode_tree_add(
             (*data).data,
@@ -430,23 +426,23 @@ unsafe fn window_customize_build_options(
         // values from the other two. Any tree can have user options so we need
         // to build a separate list of them.
 
-        window_customize_find_user_options(oo0, &raw mut list, &raw mut size);
+        window_customize_find_user_options(oo0, &mut list);
         if !oo1.is_null() {
-            window_customize_find_user_options(oo1, &raw mut list, &raw mut size);
+            window_customize_find_user_options(oo1, &mut list);
         }
         if !oo2.is_null() {
-            window_customize_find_user_options(oo2, &raw mut list, &raw mut size);
+            window_customize_find_user_options(oo2, &mut list);
         }
 
-        for i in 0..size {
+        for li in list {
             if !oo2.is_null() {
-                o = options_get(oo2, *list.add(i as usize));
+                o = options_get(oo2, li);
             }
             if o.is_null() && !oo1.is_null() {
-                o = options_get(oo1, *list.add(i as usize));
+                o = options_get(oo1, li);
             }
             if o.is_null() {
-                o = options_get(oo0, *list.add(i as usize));
+                o = options_get(oo0, li);
             }
             let scope = if options_owner(o) == oo2 {
                 scope2
@@ -457,12 +453,12 @@ unsafe fn window_customize_build_options(
             };
             window_customize_build_option(data, top, scope, o, ft, filter, fs);
         }
-        free_(list);
+        list = Vec::new();
 
         let mut loop_ = options_first(oo0);
         while !loop_.is_null() {
-            let name: *const u8 = options_name(loop_);
-            if *name == b'@' {
+            let name = options_name(loop_);
+            if name.starts_with('@') {
                 loop_ = options_next(loop_);
                 continue;
             }
@@ -841,10 +837,10 @@ unsafe fn window_customize_draw_option(
             if !window_customize_check_item(data, item, &raw mut fs) {
                 return;
             }
-            let name: *mut u8 = (*item).name;
+            let name = (*item).name;
             let idx = (*item).idx;
 
-            let o = options_get((*item).oo, name);
+            let o = options_get((*item).oo, cstr_to_str(name));
             if o.is_null() {
                 return;
             }
@@ -1011,7 +1007,7 @@ unsafe fn window_customize_draw_option(
                     break 'out;
                 }
                 memcpy__(&raw mut gc, &raw const GRID_DEFAULT_CELL);
-                gc.fg = options_get_number((*item).oo, name) as i32;
+                gc.fg = options_get_number((*item).oo, cstr_to_str(name)) as i32;
                 if !screen_write_text!(
                     ctx,
                     cx,
@@ -1079,7 +1075,7 @@ unsafe fn window_customize_draw_option(
                 }
             };
             if !wo.is_null() && options_owner(o) != wo {
-                let parent = options_get_only(wo, name);
+                let parent = options_get_only(wo, cstr_to_str(name));
                 if !parent.is_null() {
                     value = options_to_string(parent, -1, 0);
                     if !screen_write_text!(
@@ -1100,7 +1096,7 @@ unsafe fn window_customize_draw_option(
                 }
             }
             if !go.is_null() && options_owner(o) != go {
-                let parent = options_get_only(go, name);
+                let parent = options_get_only(go, cstr_to_str(name));
                 if !parent.is_null() {
                     value = options_to_string(parent, -1, 0);
                     if !screen_write_text!(
@@ -1281,7 +1277,7 @@ pub unsafe fn window_customize_set_option_callback(
         let data: *mut window_customize_modedata = (*item).data.cast();
 
         let oo: *mut options = (*item).oo;
-        let name: *mut u8 = (*item).name;
+        let name = cstr_to_str((*item).name);
 
         let mut idx: i32 = (*item).idx;
 
@@ -1317,7 +1313,7 @@ pub unsafe fn window_customize_set_option_callback(
             status_message_set!(c, -1, 1, false, "{err_msg}");
         }
 
-        options_push_changes((*item).name);
+        options_push_changes(name);
         mode_tree_build((*data).data);
         mode_tree_draw(&mut *(*data).data);
         (*(*data).wp).flags |= window_pane_flags::PANE_REDRAW;
@@ -1336,7 +1332,8 @@ pub unsafe fn window_customize_set_option(
     unsafe {
         let idx = (*item).idx;
 
-        let name = (*item).name;
+        let name_ptr = (*item).name;
+        let name = cstr_to_str((*item).name);
         let mut space = c!("");
         let mut fs: cmd_find_state = zeroed();
 
@@ -1430,12 +1427,12 @@ pub unsafe fn window_customize_set_option(
             }
             let prompt = if !oe.is_null() && (*oe).flags & OPTIONS_TABLE_IS_ARRAY != 0 {
                 if idx == -1 {
-                    format_nul!("({}[+]{}{}) ", _s(name), _s(space), _s(text))
+                    format_nul!("({}[+]{}{}) ", name, _s(space), _s(text))
                 } else {
-                    format_nul!("({}[{}]{}{}) ", _s(name), idx, _s(space), _s(text))
+                    format_nul!("({}[{}]{}{}) ", name, idx, _s(space), _s(text))
                 }
             } else {
-                format_nul!("({}{}{}) ", _s(name), _s(space), _s(text))
+                format_nul!("({}{}{}) ", name, _s(space), _s(text))
             };
             free_(text);
 
@@ -1445,7 +1442,7 @@ pub unsafe fn window_customize_set_option(
                 data,
                 scope,
                 oo,
-                name,
+                name: name_ptr,
                 idx,
                 table: null_mut(),
                 key: 0,
@@ -1479,7 +1476,7 @@ pub unsafe fn window_customize_unset_option(
             return;
         }
 
-        let o = options_get((*item).oo, (*item).name);
+        let o = options_get((*item).oo, cstr_to_str((*item).name));
         if o.is_null() {
             return;
         }
@@ -1504,7 +1501,7 @@ pub unsafe fn window_customize_reset_option(
 
         let mut oo = (*item).oo;
         while !oo.is_null() {
-            let o = options_get_only((*item).oo, (*item).name);
+            let o = options_get_only((*item).oo, cstr_to_str((*item).name));
             if !o.is_null() {
                 _ = options_remove_or_default(o, -1);
             }
@@ -1740,7 +1737,7 @@ pub unsafe fn window_customize_change_each(
             }
         }
         if (*item).scope != window_customize_scope::WINDOW_CUSTOMIZE_KEY {
-            options_push_changes((*item).name);
+            options_push_changes(cstr_to_str((*item).name));
         }
     }
 }
@@ -1780,7 +1777,7 @@ pub unsafe fn window_customize_change_current_callback(
             }
         }
         if (*item).scope != window_customize_scope::WINDOW_CUSTOMIZE_KEY {
-            options_push_changes((*item).name);
+            options_push_changes(cstr_to_str((*item).name));
         }
         mode_tree_build((*data).data);
         mode_tree_draw(&mut *(*data).data);
@@ -1850,7 +1847,7 @@ pub unsafe fn window_customize_key(
                         window_customize_set_key(c, data, item);
                     } else {
                         window_customize_set_option(c, data, item, 0, 1);
-                        options_push_changes((*item).name);
+                        options_push_changes(cstr_to_str((*item).name));
                     }
                     mode_tree_build((*data).data);
                 }
@@ -1860,7 +1857,7 @@ pub unsafe fn window_customize_key(
                     || (*item).scope == window_customize_scope::WINDOW_CUSTOMIZE_KEY)
                 {
                     window_customize_set_option(c, data, item, 0, 0);
-                    options_push_changes((*item).name);
+                    options_push_changes(cstr_to_str((*item).name));
                     mode_tree_build((*data).data);
                 }
             }
@@ -1869,7 +1866,7 @@ pub unsafe fn window_customize_key(
                     || (*item).scope == window_customize_scope::WINDOW_CUSTOMIZE_KEY)
                 {
                     window_customize_set_option(c, data, item, 1, 0);
-                    options_push_changes((*item).name);
+                    options_push_changes(cstr_to_str((*item).name));
                     mode_tree_build((*data).data);
                 }
             }

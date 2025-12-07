@@ -449,7 +449,7 @@ pub unsafe fn cmd_get_source(cmd: *mut cmd, file: *mut *const u8, line: &AtomicU
 
 pub unsafe fn cmd_get_alias(name: *const u8) -> *mut u8 {
     unsafe {
-        let o = options_get_only(GLOBAL_OPTIONS, c!("command-alias"));
+        let o = options_get_only(GLOBAL_OPTIONS, "command-alias");
         if o.is_null() {
             return null_mut();
         }

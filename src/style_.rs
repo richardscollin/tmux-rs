@@ -462,7 +462,7 @@ pub unsafe fn style_add(
             ft = ft0;
         }
 
-        let mut sy = options_string_to_style(oo, name, ft);
+        let mut sy = options_string_to_style(oo, cstr_to_str(name), ft);
         if sy.is_null() {
             sy = &raw mut STYLE_DEFAULT;
         }

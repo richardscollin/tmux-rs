@@ -203,7 +203,7 @@ pub unsafe fn spawn_window(sc: *mut spawn_context, cause: *mut *mut u8) -> *mut 
             free_((*w).name);
             if !(*sc).name.is_null() {
                 (*w).name = format_single(item, (*sc).name, c, s, null_mut(), null_mut());
-                options_set_number((*w).options, c!("automatic-rename"), 0);
+                options_set_number((*w).options, "automatic-rename", 0);
             } else {
                 (*w).name = CString::new(default_window_name(w))
                     .unwrap()

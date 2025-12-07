@@ -256,7 +256,7 @@ pub unsafe fn server_start(
         if !flags.intersects(client_flag::NOFORK) {
             c = server_client_create(fd);
         } else {
-            options_set_number(GLOBAL_OPTIONS, c!("exit-empty"), 0);
+            options_set_number(GLOBAL_OPTIONS, "exit-empty", 0);
         }
 
         if lockfd >= 0 {

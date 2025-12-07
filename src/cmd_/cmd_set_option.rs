@@ -88,7 +88,6 @@ pub unsafe fn cmd_set_option_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
         let mut oo: *mut options = null_mut();
         let parent: *mut options_entry;
         let mut o: *mut options_entry;
-        let name: *mut u8;
         let argument: *mut u8;
         let mut expanded: *mut u8 = null_mut();
         let mut value: *const u8;
@@ -113,8 +112,7 @@ pub unsafe fn cmd_set_option_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
                 }
 
                 // Parse option name and index.
-                name = options_match(argument, &raw mut idx, &raw mut ambiguous);
-                if name.is_null() {
+                let Some(name) = options_match(cstr_to_str(argument), &raw mut idx, &raw mut ambiguous) else {
                     if args_has(args, 'q') {
                         break 'out;
                     }
@@ -124,7 +122,7 @@ pub unsafe fn cmd_set_option_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
                         cmdq_error!(item, "invalid option: {}", _s(argument));
                     }
                     break 'fail;
-                }
+                };
                 if args_count(args) < 2 {
                     value = null_mut();
                 } else {
@@ -140,7 +138,7 @@ pub unsafe fn cmd_set_option_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
                 scope = options_scope_from_name(
                     args,
                     window,
-                    name,
+                    &name,
                     target,
                     &raw mut oo,
                     &raw mut cause,
@@ -153,11 +151,11 @@ pub unsafe fn cmd_set_option_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
                     free_(cause);
                     break 'fail;
                 }
-                o = options_get_only(oo, name);
-                parent = options_get(oo, name);
+                o = options_get_only(oo, &name);
+                parent = options_get(oo, &name);
 
                 // Check that array options and indexes match up.
-                if idx != -1 && (*name == b'@' || !options_is_array(parent)) {
+                if idx != -1 && (name.starts_with('@') || !options_is_array(parent)) {
                     cmdq_error!(item, "not an array: {}", _s(argument));
                     break 'fail;
                 }
@@ -185,7 +183,7 @@ pub unsafe fn cmd_set_option_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
                     for loop_ in tailq_foreach::<_, discr_entry>(&raw mut (*(*target).w).panes)
                         .map(NonNull::as_ptr)
                     {
-                        let po = options_get_only((*loop_).options, name);
+                        let po = options_get_only((*loop_).options, &name);
                         if po.is_null() {
                             continue;
                         }
@@ -203,12 +201,12 @@ pub unsafe fn cmd_set_option_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
                         cmdq_error!(item, "{}", cause.to_str().unwrap());
                         break 'fail;
                     }
-                } else if *name == b'@' {
+                } else if name.starts_with('@') {
                     if value.is_null() {
                         cmdq_error!(item, "empty value");
                         break 'fail;
                     }
-                    options_set_string!(oo, name, append, "{}", _s(value));
+                    options_set_string!(oo, &name, append, "{}", _s(value));
                 } else if idx == -1 && !options_is_array(parent) {
                     if let Err(cause) = options_from_string(
                         oo,
@@ -244,18 +242,18 @@ pub unsafe fn cmd_set_option_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
                     }
                 }
 
-                options_push_changes(name);
+                options_push_changes(&name);
             }
             // out:
             free_(argument);
             free_(expanded);
-            free_(name);
+            // free_(name);
             return cmd_retval::CMD_RETURN_NORMAL;
         }
         // fail:
         free_(argument);
         free_(expanded);
-        free_(name);
+        // free_(name);
         cmd_retval::CMD_RETURN_ERROR
     }
 }

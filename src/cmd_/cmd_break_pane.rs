@@ -81,7 +81,7 @@ pub unsafe fn cmd_break_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
             }
             if args_has(args, 'n') {
                 window_set_name(w, args_get(args, b'n'));
-                options_set_number((*w).options, c!("automatic-rename"), 0);
+                options_set_number((*w).options, "automatic-rename", 0);
             }
             server_unlink_window(src_s, wl);
             return cmd_retval::CMD_RETURN_NORMAL;
@@ -114,7 +114,7 @@ pub unsafe fn cmd_break_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
             free_(name);
         } else {
             window_set_name(w, args_get(args, b'n'));
-            options_set_number((*w).options, c!("automatic-rename"), 0);
+            options_set_number((*w).options, "automatic-rename", 0);
         }
 
         layout_init(w, wp);

@@ -2528,14 +2528,14 @@ unsafe fn input_exit_rename(ictx: *mut input_ctx) {
         let w = (*wp).window;
 
         if (*ictx).input_len == 0 {
-            if let Some(o) = NonNull::new(options_get_only((*w).options, c!("automatic-rename"))) {
+            if let Some(o) = NonNull::new(options_get_only((*w).options, "automatic-rename")) {
                 _ = options_remove_or_default(o.as_ptr(), -1);
             }
             if options_get_number_((*w).options, "automatic-rename") == 0 {
                 window_set_name(w, c!(""));
             }
         } else {
-            options_set_number((*w).options, c!("automatic-rename"), 0);
+            options_set_number((*w).options, "automatic-rename", 0);
             window_set_name(w, (*ictx).input_buf.cast());
         }
         server_redraw_window_borders(w);

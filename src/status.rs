@@ -429,7 +429,7 @@ pub unsafe fn status_redraw(c: *mut client) -> i32 {
         screen_write_start(&raw mut ctx, &raw mut (*sl).screen);
 
         // Write the status lines.
-        let o = options_get((*s).options, c!("status-format"));
+        let o = options_get((*s).options, "status-format");
         if o.is_null() {
             for _ in 0..(width * lines) {
                 screen_write_putc(&raw mut ctx, &raw mut gc, b' ');
@@ -1915,7 +1915,7 @@ unsafe fn status_prompt_complete_list(s: *const u8, at_start: i32) -> Vec<String
                 status_prompt_add_list(&mut list, alias);
             }
         }
-        let o = options_get_only(GLOBAL_OPTIONS, c!("command-alias"));
+        let o = options_get_only(GLOBAL_OPTIONS, "command-alias");
         if !o.is_null() {
             let mut a = options_array_first(o);
             while !a.is_null() {
@@ -1940,12 +1940,10 @@ unsafe fn status_prompt_complete_list(s: *const u8, at_start: i32) -> Vec<String
         if at_start != 0 {
             return list;
         }
-        let mut oe = (&raw mut OPTIONS_TABLE) as *mut options_table_entry;
-        while !(*oe).name.is_null() {
-            if cstr_to_str((*oe).name).starts_with(s) {
-                status_prompt_add_list(&mut list, cstr_to_str((*oe).name));
+        for oe in &OPTIONS_TABLE {
+            if oe.name.starts_with(s) {
+                status_prompt_add_list(&mut list, oe.name);
             }
-            oe = oe.add(1);
         }
         for layout in layouts {
             if layout.starts_with(s) {

@@ -127,7 +127,7 @@ unsafe fn cmd_resize_window_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
 
         options_set_number(
             (*w).options,
-            c!("window-size"),
+            "window-size",
             window_size_option::WINDOW_SIZE_MANUAL as i64,
         );
         (*w).manual_sx = sx;

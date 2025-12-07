@@ -76,7 +76,7 @@ unsafe fn cmd_show_options_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
         let target = cmdq_get_target(item);
         let mut oo: *mut options = null_mut();
         let argument: *mut u8;
-        let name: *mut u8;
+        let mut name: Option<String> = None;
         let mut cause: *mut u8 = null_mut();
 
         let mut idx = 0;
@@ -103,8 +103,8 @@ unsafe fn cmd_show_options_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
                 }
                 argument = format_single_from_target(item, args_string(args, 0));
 
-                name = options_match(argument, &raw mut idx, &raw mut ambiguous);
-                if name.is_null() {
+                name = options_match(cstr_to_str(argument), &raw mut idx, &raw mut ambiguous);
+                let Some(name) = name else {
                     if args_has(args, 'q') {
                         break 'out;
                     }
@@ -114,11 +114,11 @@ unsafe fn cmd_show_options_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
                         cmdq_error!(item, "invalid option: {}", _s(argument));
                     }
                     break 'fail;
-                }
+                };
                 let scope = options_scope_from_name(
                     args,
                     window,
-                    name,
+                    &name,
                     target,
                     &raw mut oo,
                     &raw mut cause,
@@ -131,16 +131,16 @@ unsafe fn cmd_show_options_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
                     free_(cause);
                     break 'fail;
                 }
-                o = options_get_only(oo, name);
+                o = options_get_only(oo, &name);
                 if args_has(args, 'A') && o.is_null() {
-                    o = options_get(oo, name);
+                    o = options_get(oo, &name);
                     parent = 1;
                 } else {
                     parent = 0;
                 }
                 if !o.is_null() {
                     cmd_show_options_print(self_, item, o, idx, parent);
-                } else if *name == b'@' {
+                } else if name.starts_with('@') {
                     if args_has(args, 'q') {
                         break 'out;
                     }
@@ -149,12 +149,10 @@ unsafe fn cmd_show_options_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
                 }
             }
             // out:
-            free_(name);
             free_(argument);
             return cmd_retval::CMD_RETURN_NORMAL;
         }
         // fail:
-        free_(name);
         free_(argument);
         cmd_retval::CMD_RETURN_ERROR
     }
@@ -170,19 +168,18 @@ pub unsafe fn cmd_show_options_print(
     unsafe {
         let args = cmd_get_args(self_);
         let mut a: *mut options_array_item;
+        let tmp;
         let mut name = options_name(o);
-
-        let mut tmp = null_mut();
         let escaped;
 
         if idx != -1 {
-            tmp = format_nul!("{}[{}]", _s(name), idx);
-            name = tmp;
+            tmp = format!("{}[{}]", name, idx);
+            name = &tmp;
         } else if options_is_array(o) {
             a = options_array_first(o);
             if a.is_null() {
                 if !args_has(args, 'v') {
-                    cmdq_print!(item, "{}", _s(name));
+                    cmdq_print!(item, "{}", name);
                 }
                 return;
             }
@@ -200,19 +197,17 @@ pub unsafe fn cmd_show_options_print(
         } else if options_is_string(o) {
             escaped = args_escape(value);
             if parent != 0 {
-                cmdq_print!(item, "{}* {}", _s(name), _s(escaped));
+                cmdq_print!(item, "{}* {}", name, _s(escaped));
             } else {
-                cmdq_print!(item, "{} {}", _s(name), _s(escaped));
+                cmdq_print!(item, "{} {}", name, _s(escaped));
             }
             free_(escaped);
         } else if parent != 0 {
-            cmdq_print!(item, "{}* {}", _s(name), _s(value));
+            cmdq_print!(item, "{}* {}", name, _s(value));
         } else {
-            cmdq_print!(item, "{} {}", _s(name), _s(value));
+            cmdq_print!(item, "{} {}", name, _s(value));
         }
         free_(value);
-
-        free_(tmp);
     }
 }
 
@@ -236,10 +231,9 @@ pub unsafe fn cmd_show_options_all(
                 o = options_next(o);
             }
         }
-        let mut oe = &raw const OPTIONS_TABLE as *const options_table_entry;
-        while !(*oe).name.is_null() {
+
+        for oe in &OPTIONS_TABLE {
             if !(*oe).scope & scope != 0 {
-                oe = oe.add(1);
                 continue;
             }
 
@@ -249,19 +243,16 @@ pub unsafe fn cmd_show_options_all(
                 || (std::ptr::eq(cmd_get_entry(self_), &CMD_SHOW_HOOKS_ENTRY)
                     && (!(*oe).flags & OPTIONS_TABLE_IS_HOOK != 0))
             {
-                oe = oe.add(1);
                 continue;
             }
 
             o = options_get_only(oo, (*oe).name);
             if o.is_null() {
                 if !args_has(args, 'A') {
-                    oe = oe.add(1);
                     continue;
                 }
                 o = options_get(oo, (*oe).name);
                 if o.is_null() {
-                    oe = oe.add(1);
                     continue;
                 }
                 parent = 1;
@@ -281,13 +272,12 @@ pub unsafe fn cmd_show_options_all(
             } else if !args_has(args, 'v') {
                 let name = options_name(o);
                 if parent != 0 {
-                    cmdq_print!(item, "{}*", _s(name));
+                    cmdq_print!(item, "{name}*");
                 } else {
-                    cmdq_print!(item, "{}", _s(name));
+                    cmdq_print!(item, "{name}");
                 }
             }
 
-            oe = oe.add(1);
         }
     }
     cmd_retval::CMD_RETURN_NORMAL

@@ -503,24 +503,22 @@ pub unsafe fn tmux_main(mut argc: i32, mut argv: *mut *mut u8, _env: *mut *mut u
         GLOBAL_S_OPTIONS = options_create(null_mut());
         GLOBAL_W_OPTIONS = options_create(null_mut());
 
-        let mut oe: *const options_table_entry = &raw const OPTIONS_TABLE as _;
-        while !(*oe).name.is_null() {
-            if (*oe).scope & OPTIONS_TABLE_SERVER != 0 {
+        for oe in &OPTIONS_TABLE {
+            if oe.scope & OPTIONS_TABLE_SERVER != 0 {
                 options_default(GLOBAL_OPTIONS, oe);
             }
-            if (*oe).scope & OPTIONS_TABLE_SESSION != 0 {
+            if oe.scope & OPTIONS_TABLE_SESSION != 0 {
                 options_default(GLOBAL_S_OPTIONS, oe);
             }
-            if (*oe).scope & OPTIONS_TABLE_WINDOW != 0 {
+            if oe.scope & OPTIONS_TABLE_WINDOW != 0 {
                 options_default(GLOBAL_W_OPTIONS, oe);
             }
-            oe = oe.add(1);
         }
 
         // The default shell comes from SHELL or from the user's passwd entry if available.
         options_set_string!(
             GLOBAL_S_OPTIONS,
-            c!("default-shell"),
+            "default-shell",
             false,
             "{}",
             getshell().to_string_lossy(),
@@ -528,7 +526,7 @@ pub unsafe fn tmux_main(mut argc: i32, mut argv: *mut *mut u8, _env: *mut *mut u
 
         // Override keys to vi if VISUAL or EDITOR are set.
         if let Ok(s) = std::env::var("VISUAL").or_else(|_| std::env::var("EDITOR")) {
-            options_set_string!(GLOBAL_OPTIONS, c!("editor"), false, "{s}");
+            options_set_string!(GLOBAL_OPTIONS, "editor", false, "{s}");
 
             let s = if let Some(slash_end) = s.rfind('/') {
                 &s[slash_end + 1..]
@@ -541,8 +539,8 @@ pub unsafe fn tmux_main(mut argc: i32, mut argv: *mut *mut u8, _env: *mut *mut u
             } else {
                 modekey::MODEKEY_EMACS
             };
-            options_set_number(GLOBAL_S_OPTIONS, c!("status-keys"), keys as _);
-            options_set_number(GLOBAL_W_OPTIONS, c!("mode-keys"), keys as _);
+            options_set_number(GLOBAL_S_OPTIONS, "status-keys", keys as _);
+            options_set_number(GLOBAL_W_OPTIONS, "mode-keys", keys as _);
         }
 
         // If socket is specified on the command-line with -S or -L, it is

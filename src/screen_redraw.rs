@@ -595,7 +595,7 @@ unsafe fn screen_redraw_update(c: *mut client, mut flags: client_flag) -> client
             flags |= client_flag::REDRAWOVERLAY;
         }
 
-        if options_get_number(wo, c!("pane-border-status")) as i32
+        if options_get_number(wo, "pane-border-status") as i32
             != pane_status::PANE_STATUS_OFF as i32
         {
             screen_redraw_set_context(c, ctx.as_mut_ptr());

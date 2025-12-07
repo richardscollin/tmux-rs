@@ -291,7 +291,7 @@ unsafe fn cmd_new_session_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
                 if !args_has(args, 'y') {
                     dsy = sy;
                 }
-                options_set_string!(oo, c!("default-size"), false, "{dsx}x{dsy}");
+                options_set_string!(oo, "default-size", false, "{dsx}x{dsy}");
             }
             env = environ_create().as_ptr();
             if !c.is_null() && !args_has(args, 'E') {

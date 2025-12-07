@@ -863,7 +863,7 @@ pub unsafe fn tty_keys_build(tty: *mut tty) {
             }
         }
 
-        let o = options_get(GLOBAL_OPTIONS, c!("user-keys"));
+        let o = options_get(GLOBAL_OPTIONS, "user-keys");
         if !o.is_null() {
             let mut a = options_array_first(o);
             while !a.is_null() {
@@ -1254,7 +1254,7 @@ pub unsafe fn tty_keys_next(tty: *mut tty) -> i32 {
                     }
 
                     // Get the time period.
-                    let mut delay = options_get_number(GLOBAL_OPTIONS, c!("escape-time"));
+                    let mut delay = options_get_number(GLOBAL_OPTIONS, "escape-time");
                     if delay == 0 {
                         delay = 1;
                     }

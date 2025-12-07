@@ -59,13 +59,12 @@ static OPTIONS_TABLE_ALLOW_PASSTHROUGH_LIST: [&str; 3] = ["off", "on", "all"];
 
 #[rustfmt::skip]
 /// Map of name conversions.
-pub static mut OPTIONS_OTHER_NAMES: [options_name_map; 6] = [
-    options_name_map::new(c"display-panes-color", c"display-panes-colour"),
-    options_name_map::new(c"display-panes-active-color", c"display-panes-active-colour"),
-    options_name_map::new(c"clock-mode-color", c"clock-mode-colour"),
-    options_name_map::new(c"cursor-color", c"cursor-colour"),
-    options_name_map::new(c"pane-colors", c"pane-colours"),
-    options_name_map { from: null(), to: null() },
+pub static OPTIONS_OTHER_NAMES: [options_name_map; 5] = [
+    options_name_map::new("display-panes-color", "display-panes-colour"),
+    options_name_map::new("display-panes-active-color", "display-panes-active-colour"),
+    options_name_map::new("clock-mode-color", "clock-mode-colour"),
+    options_name_map::new("cursor-color", "cursor-colour"),
+    options_name_map::new("pane-colors", "pane-colours"),
 ];
 
 #[rustfmt::skip]
@@ -167,7 +166,7 @@ pub static mut OPTIONS_TABLE_STATUS_FORMAT_DEFAULT: [*const u8; 3] = [
 macro_rules! options_table_hook {
     ($hook_name:expr, $default_value:expr) => {
         options_table_entry {
-            name: $hook_name.as_ptr().cast(),
+            name: $hook_name,
             type_: options_table_type::OPTIONS_TABLE_COMMAND,
             scope: OPTIONS_TABLE_SESSION,
             flags: OPTIONS_TABLE_IS_ARRAY | OPTIONS_TABLE_IS_HOOK,
@@ -181,7 +180,7 @@ macro_rules! options_table_hook {
 macro_rules! options_table_pane_hook {
     ($hook_name:expr, $default_value:expr) => {
         options_table_entry {
-            name: $hook_name.as_ptr().cast(),
+            name: $hook_name,
             type_: options_table_type::OPTIONS_TABLE_COMMAND,
             scope: OPTIONS_TABLE_WINDOW | OPTIONS_TABLE_PANE,
             flags: OPTIONS_TABLE_IS_ARRAY | OPTIONS_TABLE_IS_HOOK,
@@ -195,7 +194,7 @@ macro_rules! options_table_pane_hook {
 macro_rules! options_table_window_hook {
     ($hook_name:expr, $default_value:expr) => {
         options_table_entry {
-            name: $hook_name.as_ptr().cast(),
+            name: $hook_name,
             type_: options_table_type::OPTIONS_TABLE_COMMAND,
             scope: OPTIONS_TABLE_WINDOW,
             flags: OPTIONS_TABLE_IS_ARRAY | OPTIONS_TABLE_IS_HOOK,
@@ -206,9 +205,9 @@ macro_rules! options_table_window_hook {
     };
 }
 
-pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
+pub static OPTIONS_TABLE: [options_table_entry; 190] = [
     options_table_entry {
-        name: c!("backspace"),
+        name: "backspace",
         type_: options_table_type::OPTIONS_TABLE_KEY,
         scope: OPTIONS_TABLE_SERVER,
         default_num: b'\x7f' as i64,
@@ -217,7 +216,7 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
-        name: c!("buffer-limit"),
+        name: "buffer-limit",
         type_: options_table_type::OPTIONS_TABLE_NUMBER,
         scope: OPTIONS_TABLE_SERVER,
         minimum: 1,
@@ -230,7 +229,7 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
-        name: c!("command-alias"),
+        name: "command-alias",
         type_: options_table_type::OPTIONS_TABLE_STRING,
         scope: OPTIONS_TABLE_SERVER,
         flags: OPTIONS_TABLE_IS_ARRAY,
@@ -244,7 +243,7 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
-        name: c!("copy-command"),
+        name: "copy-command",
         type_: options_table_type::OPTIONS_TABLE_STRING,
         scope: OPTIONS_TABLE_SERVER,
         default_str: Some(""),
@@ -252,7 +251,7 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
-        name: c!("cursor-colour"),
+        name: "cursor-colour",
         type_: options_table_type::OPTIONS_TABLE_COLOUR,
         scope: OPTIONS_TABLE_WINDOW | OPTIONS_TABLE_PANE,
         default_num: -1,
@@ -260,7 +259,7 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
-        name: c!("cursor-style"),
+        name: "cursor-style",
         type_: options_table_type::OPTIONS_TABLE_CHOICE,
         scope: OPTIONS_TABLE_WINDOW | OPTIONS_TABLE_PANE,
         choices: &OPTIONS_TABLE_CURSOR_STYLE_LIST,
@@ -269,7 +268,7 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
-        name: c!("default-terminal"),
+        name: "default-terminal",
         type_: options_table_type::OPTIONS_TABLE_STRING,
         scope: OPTIONS_TABLE_SERVER,
         default_str: Some(TMUX_TERM),
@@ -277,7 +276,7 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
-        name: c!("editor"),
+        name: "editor",
         type_: options_table_type::OPTIONS_TABLE_STRING,
         scope: OPTIONS_TABLE_SERVER,
         default_str: Some(_PATH_VI),
@@ -285,7 +284,7 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
-        name: c!("escape-time"),
+        name: "escape-time",
         type_: options_table_type::OPTIONS_TABLE_NUMBER,
         scope: OPTIONS_TABLE_SERVER,
         minimum: 0,
@@ -296,7 +295,7 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
-        name: c!("exit-empty"),
+        name: "exit-empty",
         type_: options_table_type::OPTIONS_TABLE_FLAG,
         scope: OPTIONS_TABLE_SERVER,
         default_num: 1,
@@ -304,7 +303,7 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
-        name: c!("exit-unattached"),
+        name: "exit-unattached",
         type_: options_table_type::OPTIONS_TABLE_FLAG,
         scope: OPTIONS_TABLE_SERVER,
         default_num: 0,
@@ -312,7 +311,7 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
-        name: c!("extended-keys"),
+        name: "extended-keys",
         type_: options_table_type::OPTIONS_TABLE_CHOICE,
         scope: OPTIONS_TABLE_SERVER,
         choices: &OPTIONS_TABLE_EXTENDED_KEYS_LIST,
@@ -321,7 +320,7 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
-        name: c!("extended-keys-format"),
+        name: "extended-keys-format",
         type_: options_table_type::OPTIONS_TABLE_CHOICE,
         scope: OPTIONS_TABLE_SERVER,
         choices: &OPTIONS_TABLE_EXTENDED_KEYS_FORMAT_LIST,
@@ -330,7 +329,7 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
-        name: c!("focus-events"),
+        name: "focus-events",
         type_: options_table_type::OPTIONS_TABLE_FLAG,
         scope: OPTIONS_TABLE_SERVER,
         default_num: 0,
@@ -338,7 +337,7 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
-        name: c!("history-file"),
+        name: "history-file",
         type_: options_table_type::OPTIONS_TABLE_STRING,
         scope: OPTIONS_TABLE_SERVER,
         default_str: Some(""),
@@ -348,7 +347,7 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
-        name: c!("menu-style"),
+        name: "menu-style",
         type_: options_table_type::OPTIONS_TABLE_STRING,
         scope: OPTIONS_TABLE_WINDOW,
         flags: OPTIONS_TABLE_IS_STYLE,
@@ -358,7 +357,7 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
-        name: c!("menu-selected-style"),
+        name: "menu-selected-style",
         type_: options_table_type::OPTIONS_TABLE_STRING,
         scope: OPTIONS_TABLE_WINDOW,
         flags: OPTIONS_TABLE_IS_STYLE,
@@ -368,7 +367,7 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
-        name: c!("menu-border-style"),
+        name: "menu-border-style",
         type_: options_table_type::OPTIONS_TABLE_STRING,
         scope: OPTIONS_TABLE_WINDOW,
         default_str: Some("default"),
@@ -378,7 +377,7 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
-        name: c!("menu-border-lines"),
+        name: "menu-border-lines",
         type_: options_table_type::OPTIONS_TABLE_CHOICE,
         scope: OPTIONS_TABLE_WINDOW,
         choices: &OPTIONS_TABLE_POPUP_BORDER_LINES_LIST,
@@ -389,7 +388,7 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
-        name: c!("message-limit"),
+        name: "message-limit",
         type_: options_table_type::OPTIONS_TABLE_NUMBER,
         scope: OPTIONS_TABLE_SERVER,
         minimum: 0,
@@ -399,7 +398,7 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
-        name: c!("prefix-timeout"),
+        name: "prefix-timeout",
         type_: options_table_type::OPTIONS_TABLE_NUMBER,
         scope: OPTIONS_TABLE_SERVER,
         minimum: 0,
@@ -412,7 +411,7 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
-        name: c!("prompt-history-limit"),
+        name: "prompt-history-limit",
         type_: options_table_type::OPTIONS_TABLE_NUMBER,
         scope: OPTIONS_TABLE_SERVER,
         minimum: 0,
@@ -422,7 +421,7 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
-        name: c!("set-clipboard"),
+        name: "set-clipboard",
         type_: options_table_type::OPTIONS_TABLE_CHOICE,
         scope: OPTIONS_TABLE_SERVER,
         choices: &OPTIONS_TABLE_SET_CLIPBOARD_LIST,
@@ -433,7 +432,7 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
-        name: c!("terminal-overrides"),
+        name: "terminal-overrides",
         type_: options_table_type::OPTIONS_TABLE_STRING,
         scope: OPTIONS_TABLE_SERVER,
         flags: OPTIONS_TABLE_IS_ARRAY,
@@ -443,7 +442,7 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
-        name: c!("terminal-features"),
+        name: "terminal-features",
         type_: options_table_type::OPTIONS_TABLE_STRING,
         scope: OPTIONS_TABLE_SERVER,
         flags: OPTIONS_TABLE_IS_ARRAY,
@@ -455,7 +454,7 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
-        name: c!("user-keys"),
+        name: "user-keys",
         type_: options_table_type::OPTIONS_TABLE_STRING,
         scope: OPTIONS_TABLE_SERVER,
         flags: OPTIONS_TABLE_IS_ARRAY,
@@ -468,7 +467,7 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
     },
     // Session options.
     options_table_entry {
-        name: c!("activity-action"),
+        name: "activity-action",
         type_: options_table_type::OPTIONS_TABLE_CHOICE,
         scope: OPTIONS_TABLE_SESSION,
         choices: &OPTIONS_TABLE_BELL_ACTION_LIST,
@@ -477,7 +476,7 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
-        name: c!("assume-paste-time"),
+        name: "assume-paste-time",
         type_: options_table_type::OPTIONS_TABLE_NUMBER,
         scope: OPTIONS_TABLE_SESSION,
         minimum: 0,
@@ -488,7 +487,7 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
-        name: c!("base-index"),
+        name: "base-index",
         type_: options_table_type::OPTIONS_TABLE_NUMBER,
         scope: OPTIONS_TABLE_SESSION,
         minimum: 0,
@@ -498,7 +497,7 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
-        name: c!("bell-action"),
+        name: "bell-action",
         type_: options_table_type::OPTIONS_TABLE_CHOICE,
         scope: OPTIONS_TABLE_SESSION,
         choices: &OPTIONS_TABLE_BELL_ACTION_LIST,
@@ -507,7 +506,7 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
-        name: c!("default-command"),
+        name: "default-command",
         type_: options_table_type::OPTIONS_TABLE_STRING,
         scope: OPTIONS_TABLE_SESSION,
         default_str: Some(""),
@@ -515,7 +514,7 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
-        name: c!("default-shell"),
+        name: "default-shell",
         type_: options_table_type::OPTIONS_TABLE_STRING,
         scope: OPTIONS_TABLE_SESSION,
         default_str: Some(_PATH_BSHELL_STR),
@@ -523,7 +522,7 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
-        name: c!("default-size"),
+        name: "default-size",
         type_: options_table_type::OPTIONS_TABLE_STRING,
         scope: OPTIONS_TABLE_SESSION,
         pattern: c!("[0-9]*x[0-9]*"),
@@ -532,7 +531,7 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
-        name: c!("destroy-unattached"),
+        name: "destroy-unattached",
         type_: options_table_type::OPTIONS_TABLE_CHOICE,
         scope: OPTIONS_TABLE_SESSION,
         choices: &OPTIONS_TABLE_DESTROY_UNATTACHED_LIST,
@@ -543,7 +542,7 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
-        name: c!("detach-on-destroy"),
+        name: "detach-on-destroy",
         type_: options_table_type::OPTIONS_TABLE_CHOICE,
         scope: OPTIONS_TABLE_SESSION,
         choices: &OPTIONS_TABLE_DETACH_ON_DESTROY_LIST,
@@ -554,7 +553,7 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
-        name: c!("display-panes-active-colour"),
+        name: "display-panes-active-colour",
         type_: options_table_type::OPTIONS_TABLE_COLOUR,
         scope: OPTIONS_TABLE_SESSION,
         default_num: 1,
@@ -562,7 +561,7 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
-        name: c!("display-panes-colour"),
+        name: "display-panes-colour",
         type_: options_table_type::OPTIONS_TABLE_COLOUR,
         scope: OPTIONS_TABLE_SESSION,
         default_num: 4,
@@ -570,7 +569,7 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
-        name: c!("display-panes-time"),
+        name: "display-panes-time",
         type_: options_table_type::OPTIONS_TABLE_NUMBER,
         scope: OPTIONS_TABLE_SESSION,
         minimum: 1,
@@ -581,7 +580,7 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
-        name: c!("display-time"),
+        name: "display-time",
         type_: options_table_type::OPTIONS_TABLE_NUMBER,
         scope: OPTIONS_TABLE_SESSION,
         minimum: 0,
@@ -592,7 +591,7 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
-        name: c!("history-limit"),
+        name: "history-limit",
         type_: options_table_type::OPTIONS_TABLE_NUMBER,
         scope: OPTIONS_TABLE_SESSION,
         minimum: 0,
@@ -605,7 +604,7 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
-        name: c!("key-table"),
+        name: "key-table",
         type_: options_table_type::OPTIONS_TABLE_STRING,
         scope: OPTIONS_TABLE_SESSION,
         default_str: Some("root"),
@@ -613,7 +612,7 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
-        name: c!("lock-after-time"),
+        name: "lock-after-time",
         type_: options_table_type::OPTIONS_TABLE_NUMBER,
         scope: OPTIONS_TABLE_SESSION,
         minimum: 0,
@@ -624,7 +623,7 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
-        name: c!("lock-command"),
+        name: "lock-command",
         type_: options_table_type::OPTIONS_TABLE_STRING,
         scope: OPTIONS_TABLE_SESSION,
         default_str: Some(TMUX_LOCK_CMD),
@@ -632,7 +631,7 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
-        name: c!("message-command-style"),
+        name: "message-command-style",
         type_: options_table_type::OPTIONS_TABLE_STRING,
         scope: OPTIONS_TABLE_SESSION,
         default_str: Some("bg=black,fg=yellow"),
@@ -644,7 +643,7 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
-        name: c!("message-line"),
+        name: "message-line",
         type_: options_table_type::OPTIONS_TABLE_CHOICE,
         scope: OPTIONS_TABLE_SESSION,
         choices: &OPTIONS_TABLE_MESSAGE_LINE_LIST,
@@ -653,7 +652,7 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
-        name: c!("message-style"),
+        name: "message-style",
         type_: options_table_type::OPTIONS_TABLE_STRING,
         scope: OPTIONS_TABLE_SESSION,
         default_str: Some("bg=yellow,fg=black"),
@@ -663,7 +662,7 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
-        name: c!("mouse"),
+        name: "mouse",
         type_: options_table_type::OPTIONS_TABLE_FLAG,
         scope: OPTIONS_TABLE_SESSION,
         default_num: 0,
@@ -673,7 +672,7 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
-        name: c!("prefix"),
+        name: "prefix",
         type_: options_table_type::OPTIONS_TABLE_KEY,
         scope: OPTIONS_TABLE_SESSION,
         default_num: b'b' as i64 | KEYC_CTRL as i64,
@@ -681,7 +680,7 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
-        name: c!("prefix2"),
+        name: "prefix2",
         type_: options_table_type::OPTIONS_TABLE_KEY,
         scope: OPTIONS_TABLE_SESSION,
         default_num: KEYC_NONE as i64,
@@ -689,7 +688,7 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
-        name: c!("renumber-windows"),
+        name: "renumber-windows",
         type_: options_table_type::OPTIONS_TABLE_FLAG,
         scope: OPTIONS_TABLE_SESSION,
         default_num: 0,
@@ -697,7 +696,7 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
-        name: c!("repeat-time"),
+        name: "repeat-time",
         type_: options_table_type::OPTIONS_TABLE_NUMBER,
         scope: OPTIONS_TABLE_SESSION,
         minimum: 0,
@@ -708,7 +707,7 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
-        name: c!("set-titles"),
+        name: "set-titles",
         type_: options_table_type::OPTIONS_TABLE_FLAG,
         scope: OPTIONS_TABLE_SESSION,
         default_num: 0,
@@ -716,7 +715,7 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
-        name: c!("set-titles-string"),
+        name: "set-titles-string",
         type_: options_table_type::OPTIONS_TABLE_STRING,
         scope: OPTIONS_TABLE_SESSION,
         default_str: Some("#S:#I:#W - \"#T\" #{session_alerts}"),
@@ -724,7 +723,7 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
-        name: c!("silence-action"),
+        name: "silence-action",
         type_: options_table_type::OPTIONS_TABLE_CHOICE,
         scope: OPTIONS_TABLE_SESSION,
         choices: &OPTIONS_TABLE_BELL_ACTION_LIST,
@@ -733,7 +732,7 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
-        name: c!("status"),
+        name: "status",
         type_: options_table_type::OPTIONS_TABLE_CHOICE,
         scope: OPTIONS_TABLE_SESSION,
         choices: &OPTIONS_TABLE_STATUS_LIST,
@@ -742,7 +741,7 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
-        name: c!("status-bg"),
+        name: "status-bg",
         type_: options_table_type::OPTIONS_TABLE_COLOUR,
         scope: OPTIONS_TABLE_SESSION,
         default_num: 8,
@@ -752,7 +751,7 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
-        name: c!("status-fg"),
+        name: "status-fg",
         type_: options_table_type::OPTIONS_TABLE_COLOUR,
         scope: OPTIONS_TABLE_SESSION,
         default_num: 8,
@@ -762,7 +761,7 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
-        name: c!("status-format"),
+        name: "status-format",
         type_: options_table_type::OPTIONS_TABLE_STRING,
         scope: OPTIONS_TABLE_SESSION,
         flags: OPTIONS_TABLE_IS_ARRAY,
@@ -773,7 +772,7 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
-        name: c!("status-interval"),
+        name: "status-interval",
         type_: options_table_type::OPTIONS_TABLE_NUMBER,
         scope: OPTIONS_TABLE_SESSION,
         minimum: 0,
@@ -784,7 +783,7 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
-        name: c!("status-justify"),
+        name: "status-justify",
         type_: options_table_type::OPTIONS_TABLE_CHOICE,
         scope: OPTIONS_TABLE_SESSION,
         choices: &OPTIONS_TABLE_STATUS_JUSTIFY_LIST,
@@ -793,7 +792,7 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
-        name: c!("status-keys"),
+        name: "status-keys",
         type_: options_table_type::OPTIONS_TABLE_CHOICE,
         scope: OPTIONS_TABLE_SESSION,
         choices: &OPTIONS_TABLE_STATUS_KEYS_LIST,
@@ -802,7 +801,7 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
-        name: c!("status-left"),
+        name: "status-left",
         type_: options_table_type::OPTIONS_TABLE_STRING,
         scope: OPTIONS_TABLE_SESSION,
         default_str: Some("[#{session_name}] "),
@@ -810,7 +809,7 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
-        name: c!("status-left-length"),
+        name: "status-left-length",
         type_: options_table_type::OPTIONS_TABLE_NUMBER,
         scope: OPTIONS_TABLE_SESSION,
         minimum: 0,
@@ -820,7 +819,7 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
-        name: c!("status-left-style"),
+        name: "status-left-style",
         type_: options_table_type::OPTIONS_TABLE_STRING,
         scope: OPTIONS_TABLE_SESSION,
         default_str: Some("default"),
@@ -830,7 +829,7 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
-        name: c!("status-position"),
+        name: "status-position",
         type_: options_table_type::OPTIONS_TABLE_CHOICE,
         scope: OPTIONS_TABLE_SESSION,
         choices: &OPTIONS_TABLE_STATUS_POSITION_LIST,
@@ -839,7 +838,7 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
-        name: c!("status-right"),
+        name: "status-right",
         type_: options_table_type::OPTIONS_TABLE_STRING,
         scope: OPTIONS_TABLE_SESSION,
         default_str: Some(
@@ -849,7 +848,7 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
-        name: c!("status-right-length"),
+        name: "status-right-length",
         type_: options_table_type::OPTIONS_TABLE_NUMBER,
         scope: OPTIONS_TABLE_SESSION,
         minimum: 0,
@@ -859,7 +858,7 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
-        name: c!("status-right-style"),
+        name: "status-right-style",
         type_: options_table_type::OPTIONS_TABLE_STRING,
         scope: OPTIONS_TABLE_SESSION,
         default_str: Some("default"),
@@ -869,7 +868,7 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
-        name: c!("status-style"),
+        name: "status-style",
         type_: options_table_type::OPTIONS_TABLE_STRING,
         scope: OPTIONS_TABLE_SESSION,
         default_str: Some("bg=green,fg=black"),
@@ -879,7 +878,7 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
-        name: c!("update-environment"),
+        name: "update-environment",
         type_: options_table_type::OPTIONS_TABLE_STRING,
         scope: OPTIONS_TABLE_SESSION,
         flags: OPTIONS_TABLE_IS_ARRAY,
@@ -892,7 +891,7 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
-        name: c!("visual-activity"),
+        name: "visual-activity",
         type_: options_table_type::OPTIONS_TABLE_CHOICE,
         scope: OPTIONS_TABLE_SESSION,
         choices: &OPTIONS_TABLE_VISUAL_BELL_LIST,
@@ -903,7 +902,7 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
-        name: c!("visual-bell"),
+        name: "visual-bell",
         type_: options_table_type::OPTIONS_TABLE_CHOICE,
         scope: OPTIONS_TABLE_SESSION,
         choices: &OPTIONS_TABLE_VISUAL_BELL_LIST,
@@ -914,7 +913,7 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
-        name: c!("visual-silence"),
+        name: "visual-silence",
         type_: options_table_type::OPTIONS_TABLE_CHOICE,
         scope: OPTIONS_TABLE_SESSION,
         choices: &OPTIONS_TABLE_VISUAL_BELL_LIST,
@@ -925,7 +924,7 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
-        name: c!("word-separators"),
+        name: "word-separators",
         type_: options_table_type::OPTIONS_TABLE_STRING,
         scope: OPTIONS_TABLE_SESSION,
         default_str: Some("!\"#$%&'()*+,-./:;<=>?@[\\]^`{|}~"),
@@ -934,7 +933,7 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
     },
     // Window options
     options_table_entry {
-        name: c!("aggressive-resize"),
+        name: "aggressive-resize",
         type_: options_table_type::OPTIONS_TABLE_FLAG,
         scope: OPTIONS_TABLE_WINDOW,
         default_num: 0,
@@ -944,7 +943,7 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
-        name: c!("allow-passthrough"),
+        name: "allow-passthrough",
         type_: options_table_type::OPTIONS_TABLE_CHOICE,
         scope: OPTIONS_TABLE_WINDOW | OPTIONS_TABLE_PANE,
         choices: &OPTIONS_TABLE_ALLOW_PASSTHROUGH_LIST,
@@ -955,7 +954,7 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
-        name: c!("allow-rename"),
+        name: "allow-rename",
         type_: options_table_type::OPTIONS_TABLE_FLAG,
         scope: OPTIONS_TABLE_WINDOW | OPTIONS_TABLE_PANE,
         default_num: 0,
@@ -963,7 +962,7 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
-        name: c!("allow-set-title"),
+        name: "allow-set-title",
         type_: options_table_type::OPTIONS_TABLE_FLAG,
         scope: OPTIONS_TABLE_WINDOW | OPTIONS_TABLE_PANE,
         default_num: 1,
@@ -973,7 +972,7 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
-        name: c!("alternate-screen"),
+        name: "alternate-screen",
         type_: options_table_type::OPTIONS_TABLE_FLAG,
         scope: OPTIONS_TABLE_WINDOW | OPTIONS_TABLE_PANE,
         default_num: 1,
@@ -981,7 +980,7 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
-        name: c!("automatic-rename"),
+        name: "automatic-rename",
         type_: options_table_type::OPTIONS_TABLE_FLAG,
         scope: OPTIONS_TABLE_WINDOW,
         default_num: 1,
@@ -989,7 +988,7 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
-        name: c!("automatic-rename-format"),
+        name: "automatic-rename-format",
         type_: options_table_type::OPTIONS_TABLE_STRING,
         scope: OPTIONS_TABLE_WINDOW,
         default_str: Some("#{?pane_in_mode,[tmux],#{pane_current_command}}#{?pane_dead,[dead],}"),
@@ -997,7 +996,7 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
-        name: c!("clock-mode-colour"),
+        name: "clock-mode-colour",
         type_: options_table_type::OPTIONS_TABLE_COLOUR,
         scope: OPTIONS_TABLE_WINDOW,
         default_num: 4,
@@ -1005,7 +1004,7 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
-        name: c!("clock-mode-style"),
+        name: "clock-mode-style",
         type_: options_table_type::OPTIONS_TABLE_CHOICE,
         scope: OPTIONS_TABLE_WINDOW,
         choices: &OPTIONS_TABLE_CLOCK_MODE_STYLE_LIST,
@@ -1014,7 +1013,7 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
-        name: c!("copy-mode-match-style"),
+        name: "copy-mode-match-style",
         type_: options_table_type::OPTIONS_TABLE_STRING,
         scope: OPTIONS_TABLE_WINDOW,
         default_str: Some("bg=cyan,fg=black"),
@@ -1024,7 +1023,7 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
-        name: c!("copy-mode-current-match-style"),
+        name: "copy-mode-current-match-style",
         type_: options_table_type::OPTIONS_TABLE_STRING,
         scope: OPTIONS_TABLE_WINDOW,
         default_str: Some("bg=magenta,fg=black"),
@@ -1034,7 +1033,7 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
-        name: c!("copy-mode-mark-style"),
+        name: "copy-mode-mark-style",
         type_: options_table_type::OPTIONS_TABLE_STRING,
         scope: OPTIONS_TABLE_WINDOW,
         default_str: Some("bg=red,fg=black"),
@@ -1044,7 +1043,7 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
-        name: c!("fill-character"),
+        name: "fill-character",
         type_: options_table_type::OPTIONS_TABLE_STRING,
         scope: OPTIONS_TABLE_WINDOW,
         default_str: Some(""),
@@ -1052,7 +1051,7 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
-        name: c!("main-pane-height"),
+        name: "main-pane-height",
         type_: options_table_type::OPTIONS_TABLE_STRING,
         scope: OPTIONS_TABLE_WINDOW,
         default_str: Some("24"),
@@ -1062,7 +1061,7 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
-        name: c!("main-pane-width"),
+        name: "main-pane-width",
         type_: options_table_type::OPTIONS_TABLE_STRING,
         scope: OPTIONS_TABLE_WINDOW,
         default_str: Some("80"),
@@ -1072,7 +1071,7 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
-        name: c!("mode-keys"),
+        name: "mode-keys",
         type_: options_table_type::OPTIONS_TABLE_CHOICE,
         scope: OPTIONS_TABLE_WINDOW,
         choices: &OPTIONS_TABLE_MODE_KEYS_LIST,
@@ -1081,7 +1080,7 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
-        name: c!("mode-style"),
+        name: "mode-style",
         type_: options_table_type::OPTIONS_TABLE_STRING,
         scope: OPTIONS_TABLE_WINDOW,
         flags: OPTIONS_TABLE_IS_STYLE,
@@ -1091,7 +1090,7 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
-        name: c!("monitor-activity"),
+        name: "monitor-activity",
         type_: options_table_type::OPTIONS_TABLE_FLAG,
         scope: OPTIONS_TABLE_WINDOW,
         default_num: 0,
@@ -1099,7 +1098,7 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
-        name: c!("monitor-bell"),
+        name: "monitor-bell",
         type_: options_table_type::OPTIONS_TABLE_FLAG,
         scope: OPTIONS_TABLE_WINDOW,
         default_num: 1,
@@ -1107,7 +1106,7 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
-        name: c!("monitor-silence"),
+        name: "monitor-silence",
         type_: options_table_type::OPTIONS_TABLE_NUMBER,
         scope: OPTIONS_TABLE_WINDOW,
         minimum: 0,
@@ -1117,7 +1116,7 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
-        name: c!("other-pane-height"),
+        name: "other-pane-height",
         type_: options_table_type::OPTIONS_TABLE_STRING,
         scope: OPTIONS_TABLE_WINDOW,
         default_str: Some("0"),
@@ -1127,7 +1126,7 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
-        name: c!("other-pane-width"),
+        name: "other-pane-width",
         type_: options_table_type::OPTIONS_TABLE_STRING,
         scope: OPTIONS_TABLE_WINDOW,
         default_str: Some("0"),
@@ -1137,7 +1136,7 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
-        name: c!("pane-active-border-style"),
+        name: "pane-active-border-style",
         type_: options_table_type::OPTIONS_TABLE_STRING,
         scope: OPTIONS_TABLE_WINDOW,
         default_str: Some("#{?pane_in_mode,fg=yellow,#{?synchronize-panes,fg=red,fg=green}}"),
@@ -1147,7 +1146,7 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
-        name: c!("pane-base-index"),
+        name: "pane-base-index",
         type_: options_table_type::OPTIONS_TABLE_NUMBER,
         scope: OPTIONS_TABLE_WINDOW,
         minimum: 0,
@@ -1157,7 +1156,7 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
-        name: c!("pane-border-format"),
+        name: "pane-border-format",
         type_: options_table_type::OPTIONS_TABLE_STRING,
         scope: OPTIONS_TABLE_WINDOW | OPTIONS_TABLE_PANE,
         default_str: Some("#{?pane_active,#[reverse],}#{pane_index}#[default] \"#{pane_title}\""),
@@ -1165,7 +1164,7 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
-        name: c!("pane-border-indicators"),
+        name: "pane-border-indicators",
         type_: options_table_type::OPTIONS_TABLE_CHOICE,
         scope: OPTIONS_TABLE_WINDOW,
         choices: &OPTIONS_TABLE_PANE_BORDER_INDICATORS_LIST,
@@ -1176,7 +1175,7 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
-        name: c!("pane-border-lines"),
+        name: "pane-border-lines",
         type_: options_table_type::OPTIONS_TABLE_CHOICE,
         scope: OPTIONS_TABLE_WINDOW,
         choices: &OPTIONS_TABLE_PANE_BORDER_LINES_LIST,
@@ -1187,7 +1186,7 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
-        name: c!("pane-border-status"),
+        name: "pane-border-status",
         type_: options_table_type::OPTIONS_TABLE_CHOICE,
         scope: OPTIONS_TABLE_WINDOW,
         choices: &OPTIONS_TABLE_PANE_STATUS_LIST,
@@ -1196,7 +1195,7 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
-        name: c!("pane-border-style"),
+        name: "pane-border-style",
         type_: options_table_type::OPTIONS_TABLE_STRING,
         scope: OPTIONS_TABLE_WINDOW,
         default_str: Some("default"),
@@ -1206,7 +1205,7 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
-        name: c!("pane-colours"),
+        name: "pane-colours",
         type_: options_table_type::OPTIONS_TABLE_COLOUR,
         scope: OPTIONS_TABLE_WINDOW | OPTIONS_TABLE_PANE,
         default_str: Some(""),
@@ -1215,7 +1214,7 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
-        name: c!("popup-style"),
+        name: "popup-style",
         type_: options_table_type::OPTIONS_TABLE_STRING,
         scope: OPTIONS_TABLE_WINDOW,
         default_str: Some("default"),
@@ -1225,7 +1224,7 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
-        name: c!("popup-border-style"),
+        name: "popup-border-style",
         type_: options_table_type::OPTIONS_TABLE_STRING,
         scope: OPTIONS_TABLE_WINDOW,
         default_str: Some("default"),
@@ -1235,7 +1234,7 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
-        name: c!("popup-border-lines"),
+        name: "popup-border-lines",
         type_: options_table_type::OPTIONS_TABLE_CHOICE,
         scope: OPTIONS_TABLE_WINDOW,
         choices: &OPTIONS_TABLE_POPUP_BORDER_LINES_LIST,
@@ -1246,7 +1245,7 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
-        name: c!("remain-on-exit"),
+        name: "remain-on-exit",
         type_: options_table_type::OPTIONS_TABLE_CHOICE,
         scope: OPTIONS_TABLE_WINDOW | OPTIONS_TABLE_PANE,
         choices: &OPTIONS_TABLE_REMAIN_ON_EXIT_LIST,
@@ -1257,7 +1256,7 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
-        name: c!("remain-on-exit-format"),
+        name: "remain-on-exit-format",
         type_: options_table_type::OPTIONS_TABLE_STRING,
         scope: OPTIONS_TABLE_WINDOW | OPTIONS_TABLE_PANE,
         default_str: Some(
@@ -1269,7 +1268,7 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
-        name: c!("scroll-on-clear"),
+        name: "scroll-on-clear",
         type_: options_table_type::OPTIONS_TABLE_FLAG,
         scope: OPTIONS_TABLE_WINDOW | OPTIONS_TABLE_PANE,
         default_num: 1,
@@ -1279,7 +1278,7 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
-        name: c!("synchronize-panes"),
+        name: "synchronize-panes",
         type_: options_table_type::OPTIONS_TABLE_FLAG,
         scope: OPTIONS_TABLE_WINDOW | OPTIONS_TABLE_PANE,
         default_num: 0,
@@ -1287,7 +1286,7 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
-        name: c!("window-active-style"),
+        name: "window-active-style",
         type_: options_table_type::OPTIONS_TABLE_STRING,
         scope: OPTIONS_TABLE_WINDOW | OPTIONS_TABLE_PANE,
         default_str: Some("default"),
@@ -1297,7 +1296,7 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
-        name: c!("window-size"),
+        name: "window-size",
         type_: options_table_type::OPTIONS_TABLE_CHOICE,
         scope: OPTIONS_TABLE_WINDOW,
         choices: &OPTIONS_TABLE_WINDOW_SIZE_LIST,
@@ -1308,7 +1307,7 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
-        name: c!("window-style"),
+        name: "window-style",
         type_: options_table_type::OPTIONS_TABLE_STRING,
         scope: OPTIONS_TABLE_WINDOW | OPTIONS_TABLE_PANE,
         default_str: Some("default"),
@@ -1318,7 +1317,7 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
-        name: c!("window-status-activity-style"),
+        name: "window-status-activity-style",
         type_: options_table_type::OPTIONS_TABLE_STRING,
         scope: OPTIONS_TABLE_WINDOW,
         default_str: Some("reverse"),
@@ -1328,7 +1327,7 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
-        name: c!("window-status-bell-style"),
+        name: "window-status-bell-style",
         type_: options_table_type::OPTIONS_TABLE_STRING,
         scope: OPTIONS_TABLE_WINDOW,
         default_str: Some("reverse"),
@@ -1338,7 +1337,7 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
-        name: c!("window-status-current-format"),
+        name: "window-status-current-format",
         type_: options_table_type::OPTIONS_TABLE_STRING,
         scope: OPTIONS_TABLE_WINDOW,
         default_str: Some("#I:#W#{?window_flags,#{window_flags}, }"),
@@ -1346,7 +1345,7 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
-        name: c!("window-status-current-style"),
+        name: "window-status-current-style",
         type_: options_table_type::OPTIONS_TABLE_STRING,
         scope: OPTIONS_TABLE_WINDOW,
         default_str: Some("default"),
@@ -1356,7 +1355,7 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
-        name: c!("window-status-format"),
+        name: "window-status-format",
         type_: options_table_type::OPTIONS_TABLE_STRING,
         scope: OPTIONS_TABLE_WINDOW,
         default_str: Some("#I:#W#{?window_flags,#{window_flags}, }"),
@@ -1364,7 +1363,7 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
-        name: c!("window-status-last-style"),
+        name: "window-status-last-style",
         type_: options_table_type::OPTIONS_TABLE_STRING,
         scope: OPTIONS_TABLE_WINDOW,
         default_str: Some("default"),
@@ -1374,7 +1373,7 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
-        name: c!("window-status-separator"),
+        name: "window-status-separator",
         type_: options_table_type::OPTIONS_TABLE_STRING,
         scope: OPTIONS_TABLE_WINDOW,
         default_str: Some(" "),
@@ -1382,7 +1381,7 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
-        name: c!("window-status-style"),
+        name: "window-status-style",
         type_: options_table_type::OPTIONS_TABLE_STRING,
         scope: OPTIONS_TABLE_WINDOW,
         default_str: Some("default"),
@@ -1392,7 +1391,7 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
-        name: c!("wrap-search"),
+        name: "wrap-search",
         type_: options_table_type::OPTIONS_TABLE_FLAG,
         scope: OPTIONS_TABLE_WINDOW,
         default_num: 1,
@@ -1400,7 +1399,7 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
-        name: c!("xterm-keys"),
+        name: "xterm-keys",
         type_: options_table_type::OPTIONS_TABLE_FLAG,
         scope: OPTIONS_TABLE_WINDOW,
         default_num: 1,
@@ -1410,74 +1409,70 @@ pub static mut OPTIONS_TABLE: [options_table_entry; 191] = [
         ..options_table_entry::const_default()
     },
     // Hook options.
-    options_table_hook!(c"after-bind-key", ""),
-    options_table_hook!(c"after-capture-pane", ""),
-    options_table_hook!(c"after-copy-mode", ""),
-    options_table_hook!(c"after-display-message", ""),
-    options_table_hook!(c"after-display-panes", ""),
-    options_table_hook!(c"after-kill-pane", ""),
-    options_table_hook!(c"after-list-buffers", ""),
-    options_table_hook!(c"after-list-clients", ""),
-    options_table_hook!(c"after-list-keys", ""),
-    options_table_hook!(c"after-list-panes", ""),
-    options_table_hook!(c"after-list-sessions", ""),
-    options_table_hook!(c"after-list-windows", ""),
-    options_table_hook!(c"after-load-buffer", ""),
-    options_table_hook!(c"after-lock-server", ""),
-    options_table_hook!(c"after-new-session", ""),
-    options_table_hook!(c"after-new-window", ""),
-    options_table_hook!(c"after-paste-buffer", ""),
-    options_table_hook!(c"after-pipe-pane", ""),
-    options_table_hook!(c"after-queue", ""),
-    options_table_hook!(c"after-refresh-client", ""),
-    options_table_hook!(c"after-rename-session", ""),
-    options_table_hook!(c"after-rename-window", ""),
-    options_table_hook!(c"after-resize-pane", ""),
-    options_table_hook!(c"after-resize-window", ""),
-    options_table_hook!(c"after-save-buffer", ""),
-    options_table_hook!(c"after-select-layout", ""),
-    options_table_hook!(c"after-select-pane", ""),
-    options_table_hook!(c"after-select-window", ""),
-    options_table_hook!(c"after-send-keys", ""),
-    options_table_hook!(c"after-set-buffer", ""),
-    options_table_hook!(c"after-set-environment", ""),
-    options_table_hook!(c"after-set-hook", ""),
-    options_table_hook!(c"after-set-option", ""),
-    options_table_hook!(c"after-show-environment", ""),
-    options_table_hook!(c"after-show-messages", ""),
-    options_table_hook!(c"after-show-options", ""),
-    options_table_hook!(c"after-split-window", ""),
-    options_table_hook!(c"after-unbind-key", ""),
-    options_table_hook!(c"alert-activity", ""),
-    options_table_hook!(c"alert-bell", ""),
-    options_table_hook!(c"alert-silence", ""),
-    options_table_hook!(c"client-active", ""),
-    options_table_hook!(c"client-attached", ""),
-    options_table_hook!(c"client-detached", ""),
-    options_table_hook!(c"client-focus-in", ""),
-    options_table_hook!(c"client-focus-out", ""),
-    options_table_hook!(c"client-resized", ""),
-    options_table_hook!(c"client-session-changed", ""),
-    options_table_hook!(c"command-error", ""),
-    options_table_pane_hook!(c"pane-died", ""),
-    options_table_pane_hook!(c"pane-exited", ""),
-    options_table_pane_hook!(c"pane-fous-in", ""),
-    options_table_pane_hook!(c"pane-fous-out", ""),
-    options_table_pane_hook!(c"pane-mode-hanged", ""),
-    options_table_pane_hook!(c"pane-set-lipboard", ""),
-    options_table_pane_hook!(c"pane-title-hanged", ""),
-    options_table_hook!(c"session-closed", ""),
-    options_table_hook!(c"session-created", ""),
-    options_table_hook!(c"session-renamed", ""),
-    options_table_hook!(c"session-window-changed", ""),
-    options_table_window_hook!(c"window-layout-changed", ""),
-    options_table_hook!(c"window-linked", ""),
-    options_table_window_hook!(c"window-pane-changed", ""),
-    options_table_window_hook!(c"window-renamed", ""),
-    options_table_window_hook!(c"window-resized", ""),
-    options_table_hook!(c"window-unlinked", ""),
-    options_table_entry {
-        name: null(),
-        ..options_table_entry::const_default()
-    },
+    options_table_hook!("after-bind-key", ""),
+    options_table_hook!("after-capture-pane", ""),
+    options_table_hook!("after-copy-mode", ""),
+    options_table_hook!("after-display-message", ""),
+    options_table_hook!("after-display-panes", ""),
+    options_table_hook!("after-kill-pane", ""),
+    options_table_hook!("after-list-buffers", ""),
+    options_table_hook!("after-list-clients", ""),
+    options_table_hook!("after-list-keys", ""),
+    options_table_hook!("after-list-panes", ""),
+    options_table_hook!("after-list-sessions", ""),
+    options_table_hook!("after-list-windows", ""),
+    options_table_hook!("after-load-buffer", ""),
+    options_table_hook!("after-lock-server", ""),
+    options_table_hook!("after-new-session", ""),
+    options_table_hook!("after-new-window", ""),
+    options_table_hook!("after-paste-buffer", ""),
+    options_table_hook!("after-pipe-pane", ""),
+    options_table_hook!("after-queue", ""),
+    options_table_hook!("after-refresh-client", ""),
+    options_table_hook!("after-rename-session", ""),
+    options_table_hook!("after-rename-window", ""),
+    options_table_hook!("after-resize-pane", ""),
+    options_table_hook!("after-resize-window", ""),
+    options_table_hook!("after-save-buffer", ""),
+    options_table_hook!("after-select-layout", ""),
+    options_table_hook!("after-select-pane", ""),
+    options_table_hook!("after-select-window", ""),
+    options_table_hook!("after-send-keys", ""),
+    options_table_hook!("after-set-buffer", ""),
+    options_table_hook!("after-set-environment", ""),
+    options_table_hook!("after-set-hook", ""),
+    options_table_hook!("after-set-option", ""),
+    options_table_hook!("after-show-environment", ""),
+    options_table_hook!("after-show-messages", ""),
+    options_table_hook!("after-show-options", ""),
+    options_table_hook!("after-split-window", ""),
+    options_table_hook!("after-unbind-key", ""),
+    options_table_hook!("alert-activity", ""),
+    options_table_hook!("alert-bell", ""),
+    options_table_hook!("alert-silence", ""),
+    options_table_hook!("client-active", ""),
+    options_table_hook!("client-attached", ""),
+    options_table_hook!("client-detached", ""),
+    options_table_hook!("client-focus-in", ""),
+    options_table_hook!("client-focus-out", ""),
+    options_table_hook!("client-resized", ""),
+    options_table_hook!("client-session-changed", ""),
+    options_table_hook!("command-error", ""),
+    options_table_pane_hook!("pane-died", ""),
+    options_table_pane_hook!("pane-exited", ""),
+    options_table_pane_hook!("pane-fous-in", ""),
+    options_table_pane_hook!("pane-fous-out", ""),
+    options_table_pane_hook!("pane-mode-hanged", ""),
+    options_table_pane_hook!("pane-set-lipboard", ""),
+    options_table_pane_hook!("pane-title-hanged", ""),
+    options_table_hook!("session-closed", ""),
+    options_table_hook!("session-created", ""),
+    options_table_hook!("session-renamed", ""),
+    options_table_hook!("session-window-changed", ""),
+    options_table_window_hook!("window-layout-changed", ""),
+    options_table_hook!("window-linked", ""),
+    options_table_window_hook!("window-pane-changed", ""),
+    options_table_window_hook!("window-renamed", ""),
+    options_table_window_hook!("window-resized", ""),
+    options_table_hook!("window-unlinked", ""),
 ];

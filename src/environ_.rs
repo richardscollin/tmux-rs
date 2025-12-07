@@ -169,7 +169,7 @@ pub unsafe fn environ_update(oo: *mut options, src: *mut environ, dst: *mut envi
     unsafe {
         let mut found;
 
-        let o = options_get(oo, c!("update-environment"));
+        let o = options_get(oo, "update-environment");
         if o.is_null() {
             return;
         }

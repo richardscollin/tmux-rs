@@ -2483,9 +2483,11 @@ const OPTIONS_TABLE_IS_ARRAY: i32 = 0x1;
 const OPTIONS_TABLE_IS_HOOK: i32 = 0x2;
 const OPTIONS_TABLE_IS_STYLE: i32 = 0x4;
 
+unsafe impl Sync for options_table_entry {}
+
 #[repr(C)]
 struct options_table_entry {
-    name: *const u8,
+    name: &'static str,
     alternative_name: *mut u8,
     type_: options_table_type,
     scope: i32,
@@ -2509,7 +2511,7 @@ struct options_table_entry {
 impl options_table_entry {
     pub const fn const_default() -> Self {
         Self {
-            name: null(),
+            name: "",
             alternative_name: null_mut(),
             type_: options_table_type::OPTIONS_TABLE_STRING,
             scope: 0,
@@ -2541,15 +2543,12 @@ impl options_name_map_str {
 
 #[repr(C)]
 struct options_name_map {
-    from: *const u8,
-    to: *const u8,
+    from: &'static str,
+    to: &'static str,
 }
 impl options_name_map {
-    const fn new(from: &'static CStr, to: &'static CStr) -> Self {
-        Self {
-            from: from.as_ptr().cast(),
-            to: to.as_ptr().cast(),
-        }
+    const fn new(from: &'static str, to: &'static str) -> Self {
+        Self { from, to }
     }
 }
 

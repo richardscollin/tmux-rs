@@ -474,7 +474,7 @@ pub unsafe fn tty_term_apply_overrides(term: *mut tty_term) {
 
     unsafe {
         // Update capabilities from the option.
-        let o = options_get_only(GLOBAL_OPTIONS, c!("terminal-overrides"));
+        let o = options_get_only(GLOBAL_OPTIONS, "terminal-overrides");
         let mut a = options_array_first(o);
         while !a.is_null() {
             ov = options_array_item_value(a);
@@ -636,7 +636,7 @@ pub unsafe fn tty_term_create(
             }
 
             // Apply terminal features.
-            let o = options_get_only(GLOBAL_OPTIONS, c!("terminal-features"));
+            let o = options_get_only(GLOBAL_OPTIONS, "terminal-features");
             let mut a = options_array_first(o);
             while !a.is_null() {
                 let ov = options_array_item_value(a);

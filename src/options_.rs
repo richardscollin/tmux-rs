@@ -11,7 +11,7 @@
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-use crate::libc::{fnmatch, isdigit, sscanf, strchr, strcmp, strncmp, strstr};
+use crate::libc::{fnmatch, sscanf, strchr, strcmp, strncmp, strstr};
 use crate::options_table::OPTIONS_OTHER_NAMES_STR;
 use crate::*;
 
@@ -25,7 +25,7 @@ pub struct options_array_item {
     pub entry: rb_entry<options_array_item>,
 }
 
-pub fn options_array_cmp(a1: &options_array_item, a2: &options_array_item) -> cmp::Ordering {
+fn options_array_cmp(a1: &options_array_item, a2: &options_array_item) -> cmp::Ordering {
     a1.index.cmp(&a2.index)
 }
 RB_GENERATE!(
@@ -55,7 +55,7 @@ pub struct options {
 
 #[expect(non_snake_case)]
 #[inline]
-pub unsafe fn OPTIONS_IS_STRING(o: *const options_entry) -> bool {
+unsafe fn OPTIONS_IS_STRING(o: *const options_entry) -> bool {
     unsafe {
         (*o).tableentry.is_null()
             || (*(*o).tableentry).type_ == options_table_type::OPTIONS_TABLE_STRING
@@ -64,7 +64,7 @@ pub unsafe fn OPTIONS_IS_STRING(o: *const options_entry) -> bool {
 
 #[expect(non_snake_case)]
 #[inline]
-pub fn OPTIONS_IS_NUMBER(o: *const options_entry) -> bool {
+fn OPTIONS_IS_NUMBER(o: *const options_entry) -> bool {
     unsafe {
         !(*o).tableentry.is_null()
             && ((*(*o).tableentry).type_ == options_table_type::OPTIONS_TABLE_NUMBER
@@ -77,7 +77,7 @@ pub fn OPTIONS_IS_NUMBER(o: *const options_entry) -> bool {
 
 #[expect(non_snake_case)]
 #[inline]
-pub unsafe fn OPTIONS_IS_COMMAND(o: *const options_entry) -> bool {
+unsafe fn OPTIONS_IS_COMMAND(o: *const options_entry) -> bool {
     unsafe {
         !(*o).tableentry.is_null()
             && (*(*o).tableentry).type_ == options_table_type::OPTIONS_TABLE_COMMAND
@@ -86,7 +86,7 @@ pub unsafe fn OPTIONS_IS_COMMAND(o: *const options_entry) -> bool {
 
 #[expect(non_snake_case)]
 #[inline]
-pub unsafe fn OPTIONS_IS_ARRAY(o: *const options_entry) -> bool {
+unsafe fn OPTIONS_IS_ARRAY(o: *const options_entry) -> bool {
     unsafe {
         !(*o).tableentry.is_null() && ((*(*o).tableentry).flags & OPTIONS_TABLE_IS_ARRAY) != 0
     }
@@ -94,11 +94,11 @@ pub unsafe fn OPTIONS_IS_ARRAY(o: *const options_entry) -> bool {
 
 RB_GENERATE!(options_tree, options_entry, entry, discr_entry, options_cmp);
 
-pub fn options_cmp(lhs: &options_entry, rhs: &options_entry) -> cmp::Ordering {
+fn options_cmp(lhs: &options_entry, rhs: &options_entry) -> cmp::Ordering {
     unsafe { i32_to_ordering(libc::strcmp(lhs.name, rhs.name)) }
 }
 
-pub unsafe fn options_map_name(name: *const u8) -> *const u8 {
+unsafe fn options_map_name(name: *const u8) -> *const u8 {
     unsafe {
         let mut map = &raw const OPTIONS_OTHER_NAMES as *const options_name_map;
         while !(*map).from.is_null() {
@@ -111,7 +111,7 @@ pub unsafe fn options_map_name(name: *const u8) -> *const u8 {
     }
 }
 
-pub fn options_map_name_str(name: &str) -> &str {
+fn options_map_name_str(name: &str) -> &str {
     for map in &OPTIONS_OTHER_NAMES_STR {
         if map.from == name {
             return map.to;
@@ -120,7 +120,7 @@ pub fn options_map_name_str(name: &str) -> &str {
     name
 }
 
-pub unsafe fn options_parent_table_entry(
+unsafe fn options_parent_table_entry(
     oo: *mut options,
     s: *const u8,
 ) -> *const options_table_entry {
@@ -138,7 +138,7 @@ pub unsafe fn options_parent_table_entry(
     }
 }
 
-pub unsafe fn options_value_free(o: *const options_entry, ov: *mut options_value) {
+unsafe fn options_value_free(o: *const options_entry, ov: *mut options_value) {
     unsafe {
         if OPTIONS_IS_STRING(o) {
             free_((*ov).string);
@@ -149,7 +149,7 @@ pub unsafe fn options_value_free(o: *const options_entry, ov: *mut options_value
     }
 }
 
-pub unsafe fn options_value_to_string(
+unsafe fn options_value_to_string(
     o: *mut options_entry,
     ov: *mut options_value,
     numeric: i32,
@@ -727,7 +727,7 @@ pub unsafe fn options_parse(name: *const u8, idx: *mut i32) -> *mut u8 {
         }
 
         let end = strchr(cp.offset(1), b']' as i32);
-        if end.is_null() || *end.offset(1) != 0 || isdigit(*end.offset(-1) as i32) == 0 {
+        if end.is_null() || *end.offset(1) != 0 || !(*end.offset(-1)).is_ascii_digit() {
             free_(copy);
             return null_mut();
         }

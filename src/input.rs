@@ -1405,7 +1405,7 @@ unsafe fn input_c0_dispatch(ictx: *mut input_ctx) -> i32 {
                     // Don't tab beyond the end of the line.
                     // Find the next tab point, or use the last column if none.
                     (*s).cx += 1;
-                    if bit_test((*s).tabs, (*s).cx) {
+                    if (*s).tabs.as_ref().unwrap().bit_test((*s).cx) {
                         break;
                     }
                 }
@@ -1468,7 +1468,7 @@ unsafe fn input_esc_dispatch(ictx: *mut input_ctx) -> i32 {
             }
             Ok(input_esc_type::INPUT_ESC_HTS) => {
                 if (*s).cx < screen_size_x(s) {
-                    bit_set((*s).tabs, (*s).cx);
+                    (*s).tabs.as_mut().unwrap().bit_set((*s).cx);
                 }
             }
             Ok(input_esc_type::INPUT_ESC_RI) => {
@@ -1543,7 +1543,7 @@ unsafe fn input_csi_dispatch(ictx: *mut input_ctx) -> i32 {
                         n -= 1;
                         loop {
                             cx -= 1;
-                            if cx == 0 || bit_test((*s).tabs, cx) {
+                            if cx == 0 || (*s).tabs.as_ref().unwrap().bit_test(cx) {
                                 break;
                             }
                         }
@@ -1760,10 +1760,10 @@ unsafe fn input_csi_dispatch(ictx: *mut input_ctx) -> i32 {
                 -1 => (),
                 0 => {
                     if (*s).cx < screen_size_x(s) {
-                        bit_clear((*s).tabs, (*s).cx);
+                        (*s).tabs.as_mut().unwrap().bit_clear((*s).cx);
                     }
                 }
-                3 => bit_nclear((*s).tabs, 0, screen_size_x(s) - 1),
+                3 => (*s).tabs.as_mut().unwrap().bit_nclear(0, screen_size_x(s) - 1),
                 _ => log_debug!("{}: unknown '{}'", __func__, (*ictx).ch as u8 as char),
             },
             Ok(input_csi_type::INPUT_CSI_VPA) => {

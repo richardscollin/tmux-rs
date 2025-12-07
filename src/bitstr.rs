@@ -1,40 +1,38 @@
-pub type bitstr_t = u8;
-
-pub unsafe fn bit_alloc(nbits: u32) -> *mut u8 {
-    unsafe { libc::calloc(nbits.div_ceil(8) as usize, 1).cast() }
+#[repr(transparent)]
+pub struct BitStr {
+    bits: Box<[u8]>,
 }
 
-pub unsafe fn bit_set(bits: *mut u8, i: u32) {
-    unsafe {
-        let byte_index = i / 8;
-        let bit_index = i % 8;
-        *bits.add(byte_index as usize) |= 1 << bit_index;
-    }
-}
-
-#[inline]
-pub unsafe fn bit_clear(bits: *mut u8, i: u32) {
-    unsafe {
-        let byte_index = i / 8;
-        let bit_index = i % 8;
-        *bits.add(byte_index as usize) &= !(1 << bit_index);
-    }
-}
-
-/// clear bits start..=stop in bitstring
-pub unsafe fn bit_nclear(bits: *mut u8, start: u32, stop: u32) {
-    unsafe {
-        // TODO this is written inefficiently, assuming the compiler will optimize it. if it doesn't rewrite it
-        for i in start..=stop {
-            bit_clear(bits, i);
+impl BitStr {
+    pub fn new(nbits: u32) -> Self {
+        Self {
+            bits: vec![0; nbits.div_ceil(8) as usize].into_boxed_slice()
         }
     }
-}
 
-pub unsafe fn bit_test(bits: *const u8, i: u32) -> bool {
-    unsafe {
+    pub fn bit_set(&mut self, i: u32) {
         let byte_index = i / 8;
         let bit_index = i % 8;
-        (*bits.add(byte_index as usize) & (1 << bit_index)) != 0
+        self.bits[byte_index as usize] |= 1 << bit_index;
+    }
+
+    #[inline]
+    pub fn bit_clear(&mut self, i: u32) {
+        let byte_index = i / 8;
+        let bit_index = i % 8;
+        self.bits[byte_index as usize] &= !(1 << bit_index); 
+    }
+
+    pub fn bit_nclear(&mut self, start: u32, stop: u32) {
+        // TODO this is written inefficiently, assuming the compiler will optimize it. if it doesn't rewrite it
+        for i in start..=stop {
+            self.bit_clear(i);
+        }
+    }
+
+    pub fn bit_test(&self, i: u32) -> bool {
+        let byte_index = i / 8;
+        let bit_index = i % 8;
+        self.bits[byte_index as usize] & (1 << bit_index) != 0
     }
 }

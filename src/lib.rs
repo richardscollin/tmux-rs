@@ -1041,7 +1041,6 @@ enum screen_cursor_style {
 
 /// Virtual screen.
 #[repr(C)]
-#[derive(Clone)]
 struct screen {
     title: *mut u8,
     path: *mut u8,
@@ -1077,7 +1076,7 @@ struct screen {
     saved_cell: grid_cell,
     saved_flags: i32,
 
-    tabs: *mut bitstr_t,
+    tabs: Option<BitStr>,
     sel: *mut screen_sel,
 
     #[cfg(feature = "sixel")]

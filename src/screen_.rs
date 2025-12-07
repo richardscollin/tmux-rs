@@ -74,7 +74,7 @@ pub unsafe fn screen_init(s: *mut screen, sx: u32, sy: u32, hlimit: u32) {
         (*s).default_mode = mode_flag::empty();
         (*s).ccolour = -1;
         (*s).default_ccolour = -1;
-        (*s).tabs = null_mut();
+        (*s).tabs = None;
         (*s).sel = null_mut();
 
         #[cfg(feature = "sixel")]
@@ -138,7 +138,7 @@ pub unsafe fn screen_reset_hyperlinks(s: *mut screen) {
 pub unsafe fn screen_free(s: *mut screen) {
     unsafe {
         free_((*s).sel);
-        free_((*s).tabs);
+        (*s).tabs = None;
         free_((*s).path);
         free_((*s).title);
 
@@ -164,16 +164,11 @@ pub unsafe fn screen_free(s: *mut screen) {
 /// Reset tabs to default, eight spaces apart.
 pub unsafe fn screen_reset_tabs(s: *mut screen) {
     unsafe {
-        free_((*s).tabs);
-
-        (*s).tabs = bit_alloc(screen_size_x(s));
-        if (*s).tabs.is_null() {
-            fatal("bit_alloc failed");
-        }
+        (*s).tabs = Some(BitStr::new(screen_size_x(s)));
 
         let mut i = 8;
         while i < screen_size_x(s) {
-            bit_set((*s).tabs, i);
+            (*s).tabs.as_mut().unwrap().bit_set(i);
             i += 8;
         }
     }

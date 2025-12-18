@@ -255,12 +255,12 @@ pub unsafe fn options_get_only(oo: *mut options, name: &str) -> *mut options_ent
 pub unsafe fn options_get_only_(oo: *mut options, name: &str) -> *mut options_entry {
     unsafe {
         let found = rb_find_by(&raw mut (*oo).tree, |oe| {
-            (&*oe.name).cmp(name).reverse()
+            (*oe.name).cmp(name).reverse()
         });
         if found.is_null() {
             let name = options_map_name_str(name);
             rb_find_by(&raw mut (*oo).tree, |oe| {
-                (&*oe.name).cmp(name).reverse()
+                (*oe.name).cmp(name).reverse()
             })
         } else {
             found
@@ -270,10 +270,10 @@ pub unsafe fn options_get_only_(oo: *mut options, name: &str) -> *mut options_en
 
 pub unsafe fn options_get_only_const(oo: *const options, name: &str) -> *const options_entry {
     unsafe {
-        let found = rb_find_by_const(&(*oo).tree, |oe| (&*oe.name).cmp(name).reverse());
+        let found = rb_find_by_const(&(*oo).tree, |oe| (*oe.name).cmp(name).reverse());
         if found.is_null() {
             let name = options_map_name_str(name);
-            rb_find_by_const(&(*oo).tree, |oe| (&*oe.name).cmp(name).reverse())
+            rb_find_by_const(&(*oo).tree, |oe| (*oe.name).cmp(name).reverse())
         } else {
             found
         }
@@ -451,7 +451,7 @@ unsafe fn options_remove(o: *mut options_entry) {
 }
 
 pub unsafe fn options_name<'a>(o: *mut options_entry) -> &'a str {
-    unsafe { &*(*o).name }
+    unsafe { &(*o).name }
 }
 
 pub unsafe fn options_owner(o: *mut options_entry) -> *mut options {
@@ -728,9 +728,7 @@ pub fn options_parse(name: &str) -> Option<(String, i32)> {
         return Some((copy, -1));
     };
 
-    let Some(end) = copy[cp+1..].find(']').map(|end| end + cp + 1) else {
-        return None;
-    };
+    let end = copy[cp+1..].find(']').map(|end| end + cp + 1)?;
 
     if end != copy.len() - 1 || !copy.as_bytes()[end - 1].is_ascii_digit() {
         return None;
@@ -779,11 +777,11 @@ pub unsafe fn options_match(s: &str, idx: *mut i32, ambiguous: *mut i32) -> Opti
         let mut found: *const options_table_entry = null();
 
         for oe in &OPTIONS_TABLE {
-            if (*oe).name == name {
+            if oe.name == name {
                 found = oe;
                 break;
             }
-            if (*oe).name.starts_with(name) {
+            if oe.name.starts_with(name) {
                 if !found.is_null() {
                     *ambiguous = 1;
                     return None;

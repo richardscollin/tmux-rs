@@ -76,7 +76,6 @@ unsafe fn cmd_show_options_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
         let target = cmdq_get_target(item);
         let mut oo: *mut options = null_mut();
         let argument: *mut u8;
-        let mut name: Option<String> = None;
         let mut cause: *mut u8 = null_mut();
 
         let mut idx = 0;
@@ -103,8 +102,7 @@ unsafe fn cmd_show_options_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
                 }
                 argument = format_single_from_target(item, args_string(args, 0));
 
-                name = options_match(cstr_to_str(argument), &raw mut idx, &raw mut ambiguous);
-                let Some(name) = name else {
+                let Some(name) = options_match(cstr_to_str(argument), &raw mut idx, &raw mut ambiguous) else {
                     if args_has(args, 'q') {
                         break 'out;
                     }
@@ -173,7 +171,7 @@ pub unsafe fn cmd_show_options_print(
         let escaped;
 
         if idx != -1 {
-            tmp = format!("{}[{}]", name, idx);
+            tmp = format!("{name}[{idx}]");
             name = &tmp;
         } else if options_is_array(o) {
             a = options_array_first(o);
@@ -233,25 +231,25 @@ pub unsafe fn cmd_show_options_all(
         }
 
         for oe in &OPTIONS_TABLE {
-            if !(*oe).scope & scope != 0 {
+            if !oe.scope & scope != 0 {
                 continue;
             }
 
             if !std::ptr::eq(cmd_get_entry(self_), &CMD_SHOW_HOOKS_ENTRY)
                 && !args_has(args, 'H')
-                && ((*oe).flags & OPTIONS_TABLE_IS_HOOK != 0)
+                && (oe.flags & OPTIONS_TABLE_IS_HOOK != 0)
                 || (std::ptr::eq(cmd_get_entry(self_), &CMD_SHOW_HOOKS_ENTRY)
-                    && (!(*oe).flags & OPTIONS_TABLE_IS_HOOK != 0))
+                    && (!oe.flags & OPTIONS_TABLE_IS_HOOK != 0))
             {
                 continue;
             }
 
-            o = options_get_only(oo, (*oe).name);
+            o = options_get_only(oo, oe.name);
             if o.is_null() {
                 if !args_has(args, 'A') {
                     continue;
                 }
-                o = options_get(oo, (*oe).name);
+                o = options_get(oo, oe.name);
                 if o.is_null() {
                     continue;
                 }

@@ -453,7 +453,6 @@ unsafe fn window_customize_build_options(
             };
             window_customize_build_option(data, top, scope, o, ft, filter, fs);
         }
-        list = Vec::new();
 
         let mut loop_ = options_first(oo0);
         while !loop_.is_null() {

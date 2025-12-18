@@ -161,16 +161,11 @@ pub unsafe fn file_fire_read(cf: *mut client_file) {
     }
 }
 
-pub unsafe fn file_can_print(c: *mut client) -> c_int {
+pub unsafe fn file_can_print(c: *mut client) -> bool {
     unsafe {
-        if c.is_null()
+        !(c.is_null()
             || (*c).flags.intersects(client_flag::ATTACHED)
-            || (*c).flags.intersects(client_flag::CONTROL)
-        {
-            0
-        } else {
-            1
-        }
+            || (*c).flags.intersects(client_flag::CONTROL))
     }
 }
 
@@ -186,7 +181,7 @@ pub unsafe fn file_vprint(c: *mut client, args: std::fmt::Arguments) {
         let mut find: client_file = zeroed();
         let mut msg: msg_write_open = zeroed();
 
-        if file_can_print(c) == 0 {
+        if !file_can_print(c) {
             return;
         }
 
@@ -221,7 +216,7 @@ pub unsafe fn file_print_buffer(c: *mut client, data: *mut c_void, size: usize) 
         let mut find: client_file = zeroed();
         let mut msg: msg_write_open = zeroed();
 
-        if file_can_print(c) == 0 {
+        if !file_can_print(c) {
             return;
         }
 
@@ -262,7 +257,7 @@ pub unsafe fn file_error_(c: *mut client, args: std::fmt::Arguments) {
         let mut find: client_file = zeroed();
         let mut msg: msg_write_open = zeroed();
 
-        if file_can_print(c) == 0 {
+        if !file_can_print(c) {
             return;
         }
 

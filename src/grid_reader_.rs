@@ -287,7 +287,7 @@ pub unsafe fn grid_reader_cursor_previous_word(
     gr: *mut grid_reader,
     separators: *const u8,
     already: i32,
-    stop_at_eol: i32,
+    stop_at_eol: bool,
 ) {
     unsafe {
         let mut oldx: i32;
@@ -308,7 +308,7 @@ pub unsafe fn grid_reader_cursor_previous_word(
                     grid_reader_cursor_up(gr);
                     grid_reader_cursor_end_of_line(gr, 0, 0);
 
-                    if stop_at_eol != 0 && (*gr).cx > 0 {
+                    if stop_at_eol && (*gr).cx > 0 {
                         oldx = (*gr).cx as i32;
                         (*gr).cx -= 1;
                         let at_eol = grid_reader_in_set(gr, WHITESPACE);

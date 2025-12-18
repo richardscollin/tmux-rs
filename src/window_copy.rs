@@ -6223,7 +6223,7 @@ pub unsafe fn window_copy_cursor_previous_word_pos(
             // already=
             0,
             // stop_at_eol=
-            1,
+            true,
         );
         grid_reader_get_cursor(&raw mut gr, &raw mut px, &raw mut py);
         *ppx = px;
@@ -6243,13 +6243,7 @@ pub unsafe fn window_copy_cursor_previous_word(
         let back_s: *mut screen = (*data).backing;
         let mut gr: grid_reader = zeroed();
 
-        let stop_at_eol = if modekey::try_from(options_get_number_((*w).options, "mode-keys") as i32)
-            == Ok(modekey::MODEKEY_EMACS)
-        {
-            1
-        } else {
-            0
-        };
+        let stop_at_eol = matches!(modekey::try_from(options_get_number_((*w).options, "mode-keys") as i32), Ok(modekey::MODEKEY_EMACS));
 
         let mut px = (*data).cx;
         let hsize = screen_hsize(back_s);

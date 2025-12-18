@@ -144,10 +144,10 @@ unsafe fn cmd_swap_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retva
             }
         }
 
-        if window_pop_zoom(src_w) != 0 {
+        if window_pop_zoom(src_w) {
             server_redraw_window(src_w);
         }
-        if src_w != dst_w && window_pop_zoom(dst_w) != 0 {
+        if src_w != dst_w && window_pop_zoom(dst_w) {
             server_redraw_window(dst_w);
         }
 

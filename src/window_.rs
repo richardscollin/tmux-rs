@@ -753,7 +753,7 @@ pub unsafe fn window_push_zoom(w: *mut window, always: bool, flag: bool) -> bool
     }
 }
 
-pub unsafe fn window_pop_zoom(w: *mut window) -> i32 {
+pub unsafe fn window_pop_zoom(w: *mut window) -> bool {
     unsafe {
         log_debug!(
             "{}: @{} {}",
@@ -762,11 +762,11 @@ pub unsafe fn window_pop_zoom(w: *mut window) -> i32 {
             (*w).flags.intersects(window_flag::WASZOOMED) as i32,
         );
         if (*w).flags.intersects(window_flag::WASZOOMED) {
-            return if window_zoom((*w).active) == 0 { 1 } else { 0 };
+            return window_zoom((*w).active) == 0;
         }
     }
 
-    0
+    false
 }
 
 pub unsafe fn window_add_pane(

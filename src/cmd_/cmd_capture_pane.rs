@@ -252,7 +252,7 @@ unsafe fn cmd_capture_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
             if (*c).flags.intersects(client_flag::CONTROL) {
                 control_write!(c, "{1:0$}", len, _s(buf));
             } else {
-                if file_can_print(c) == 0 {
+                if !file_can_print(c) {
                     cmdq_error!(item, "can't write to client");
                     free_(buf);
                     return cmd_retval::CMD_RETURN_ERROR;

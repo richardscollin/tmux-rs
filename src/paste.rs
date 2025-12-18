@@ -292,8 +292,8 @@ pub unsafe fn paste_set(
             created: libc::time(null_mut()),
             automatic: 0,
             order: PASTE_NEXT_ORDER,
-            name_entry: Default::default(),
-            time_entry: Default::default(),
+            name_entry: rb_entry::default(),
+            time_entry: rb_entry::default(),
         }));
         PASTE_NEXT_ORDER += 1;
 

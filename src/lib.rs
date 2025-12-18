@@ -2794,7 +2794,10 @@ macro_rules! c {
     ($s:literal) => {{
         const S: &str = concat!($s, "\0");
         #[allow(clippy::allow_attributes)]
-        #[allow(unused_unsafe)]
+        #[allow(
+            unused_unsafe,
+            reason = "this macro should work in safe and unsafe blocks"
+        )]
         unsafe { std::ffi::CStr::from_bytes_with_nul_unchecked(S.as_bytes()) }
             .as_ptr()
             .cast::<u8>()

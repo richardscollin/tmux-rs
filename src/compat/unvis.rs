@@ -117,11 +117,7 @@ pub unsafe fn unvis(cp: *mut u8, c: u8, astate: *mut i32, flag: i32) -> i32 {
                         *astate = 0;
                         return 1;
                     }
-                    10 => {
-                        *astate = 0;
-                        return 3;
-                    }
-                    36 => {
+                    10 | 36 => {
                         *astate = 0;
                         return 3;
                     }

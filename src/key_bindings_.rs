@@ -121,7 +121,7 @@ pub unsafe fn key_bindings_get_table(name: *const u8, create: bool) -> *mut key_
             key_bindings: rb_initializer(),
             default_key_bindings: rb_initializer(),
             references: 1, /* one reference in key_tables */
-            entry: Default::default(),
+            entry: rb_entry::default(),
         }));
         rb_insert(&raw mut KEY_TABLES, table);
 

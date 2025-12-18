@@ -257,7 +257,7 @@ pub unsafe fn screen_push_title(s: *mut screen) {
 
         let title_entry = Box::leak(Box::new(screen_title_entry {
             text: xstrdup((*s).title).as_ptr(),
-            entry: Default::default(),
+            entry: tailq_entry::default(),
         }));
         tailq_insert_head((*s).titles, title_entry);
     }
@@ -503,20 +503,24 @@ pub unsafe fn screen_check_selection(s: *mut screen, px: u32, py: u32) -> c_int 
         }
 
         if (*sel).rectangle != 0 {
-            if (*sel).sy < (*sel).ey {
-                // start line < end line -- downward selection.
-                if py < (*sel).sy || py > (*sel).ey {
-                    return 0;
+            match (*sel).sy.cmp(&(*sel).ey) {
+                cmp::Ordering::Less => {
+                    // start line < end line -- downward selection.
+                    if py < (*sel).sy || py > (*sel).ey {
+                        return 0;
+                    }
                 }
-            } else if (*sel).sy > (*sel).ey {
-                // start line > end line -- upward selection.
-                if py > (*sel).sy || py < (*sel).ey {
-                    return 0;
+                cmp::Ordering::Greater => {
+                    // start line > end line -- upward selection.
+                    if py > (*sel).sy || py < (*sel).ey {
+                        return 0;
+                    }
                 }
-            } else {
-                // starting line == ending line.
-                if py != (*sel).sy {
-                    return 0;
+                cmp::Ordering::Equal => {
+                    // starting line == ending line.
+                    if py != (*sel).sy {
+                        return 0;
+                    }
                 }
             }
 
@@ -543,69 +547,74 @@ pub unsafe fn screen_check_selection(s: *mut screen, px: u32, py: u32) -> c_int 
                 }
             }
         } else {
+
             // Like emacs, keep the top-left-most character, and drop the
             // bottom-right-most, regardless of copy direction.
-            if (*sel).sy < (*sel).ey {
-                // starting line < ending line -- downward selection.
-                if py < (*sel).sy || py > (*sel).ey {
-                    return 0;
-                }
-
-                if py == (*sel).sy && px < (*sel).sx {
-                    return 0;
-                }
-
-                if (*sel).modekeys == modekey::MODEKEY_EMACS {
-                    xx = if (*sel).ex == 0 { 0 } else { (*sel).ex - 1 };
-                } else {
-                    xx = (*sel).ex;
-                }
-                if py == (*sel).ey && px > xx {
-                    return 0;
-                }
-            } else if (*sel).sy > (*sel).ey {
-                // starting line > ending line -- upward selection.
-                if py > (*sel).sy || py < (*sel).ey {
-                    return 0;
-                }
-
-                if py == (*sel).ey && px < (*sel).ex {
-                    return 0;
-                }
-
-                if (*sel).modekeys == modekey::MODEKEY_EMACS {
-                    xx = (*sel).sx - 1;
-                } else {
-                    xx = (*sel).sx;
-                }
-                if py == (*sel).sy && ((*sel).sx == 0 || px > xx) {
-                    return 0;
-                }
-            } else {
-                // starting line == ending line.
-                if py != (*sel).sy {
-                    return 0;
-                }
-
-                if (*sel).ex < (*sel).sx {
-                    // cursor (ex) is on the left
-                    if (*sel).modekeys == modekey::MODEKEY_EMACS {
-                        xx = (*sel).sx - 1;
-                    } else {
-                        xx = (*sel).sx;
-                    }
-                    if px > xx || px < (*sel).ex {
+            match (*sel).sy.cmp(&((*sel).ey)) {
+                cmp::Ordering::Less => {
+                    // starting line < ending line -- downward selection.
+                    if py < (*sel).sy || py > (*sel).ey {
                         return 0;
                     }
-                } else {
-                    // selection start (sx) is on the left
+
+                    if py == (*sel).sy && px < (*sel).sx {
+                        return 0;
+                    }
+
                     if (*sel).modekeys == modekey::MODEKEY_EMACS {
                         xx = if (*sel).ex == 0 { 0 } else { (*sel).ex - 1 };
                     } else {
                         xx = (*sel).ex;
                     }
-                    if px < (*sel).sx || px > xx {
+                    if py == (*sel).ey && px > xx {
                         return 0;
+                    }
+                }
+                cmp::Ordering::Greater => {
+                    // starting line > ending line -- upward selection.
+                    if py > (*sel).sy || py < (*sel).ey {
+                        return 0;
+                    }
+
+                    if py == (*sel).ey && px < (*sel).ex {
+                        return 0;
+                    }
+
+                    if (*sel).modekeys == modekey::MODEKEY_EMACS {
+                        xx = (*sel).sx - 1;
+                    } else {
+                        xx = (*sel).sx;
+                    }
+                    if py == (*sel).sy && ((*sel).sx == 0 || px > xx) {
+                        return 0;
+                    }
+                }
+                cmp::Ordering::Equal => {
+                    // starting line == ending line.
+                    if py != (*sel).sy {
+                        return 0;
+                    }
+
+                    if (*sel).ex < (*sel).sx {
+                        // cursor (ex) is on the left
+                        if (*sel).modekeys == modekey::MODEKEY_EMACS {
+                            xx = (*sel).sx - 1;
+                        } else {
+                            xx = (*sel).sx;
+                        }
+                        if px > xx || px < (*sel).ex {
+                            return 0;
+                        }
+                    } else {
+                        // selection start (sx) is on the left
+                        if (*sel).modekeys == modekey::MODEKEY_EMACS {
+                            xx = if (*sel).ex == 0 { 0 } else { (*sel).ex - 1 };
+                        } else {
+                            xx = (*sel).ex;
+                        }
+                        if px < (*sel).sx || px > xx {
+                            return 0;
+                        }
                     }
                 }
             }

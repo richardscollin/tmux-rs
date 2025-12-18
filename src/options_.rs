@@ -413,7 +413,7 @@ unsafe fn options_add(oo: *mut options, name: &str) -> *mut options_entry {
                 value: options_value {number: 0},
                 cached: 0,
                 style: zeroed(),
-                entry: Default::default(),
+                entry: rb_entry::default(),
             }
         ));
 
@@ -1211,6 +1211,7 @@ unsafe fn options_from_string_choice(
     unsafe {
         let choice = if value.is_null() {
             let mut choice = options_get_number(oo, name);
+            #[expect(clippy::bool_to_int_with_if, reason = "more readable this way")]
             if choice < 2 {
                 choice = if choice == 0 { 1 } else { 0 };
             }

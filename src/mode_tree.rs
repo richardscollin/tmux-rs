@@ -425,10 +425,10 @@ pub unsafe fn mode_tree_start(
             keycb,
             dead: 0,
             zoomed: 0,
-            sort_crit: Default::default(),
+            sort_crit: mode_tree_sort_criteria::default(),
             children: zeroed(),
             saved: zeroed(),
-            line_list: Default::default(),
+            line_list: Vec::default(),
             depth: Default::default(),
             width: Default::default(),
             height: Default::default(),
@@ -1148,6 +1148,7 @@ pub unsafe fn mode_tree_display_menu(
         })) as *mut mode_tree_menu;
         (*mtd).references += 1;
 
+        #[expect(clippy::manual_midpoint, reason = "not really being used as midpoint calculation")]
         if x >= ((*menu).width + 4) / 2 {
             x -= ((*menu).width + 4) / 2;
         } else {

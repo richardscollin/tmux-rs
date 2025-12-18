@@ -2888,7 +2888,7 @@ pub unsafe fn tty_reset(tty: *mut tty) {
     unsafe {
         let gc = &raw mut (*tty).cell;
 
-        if grid_cells_equal(gc, &raw const GRID_DEFAULT_CELL) == 0 {
+        if !grid_cells_equal(gc, &raw const GRID_DEFAULT_CELL) {
             if (*gc).link != 0 {
                 tty_putcode_ss(tty, tty_code_code::TTYC_HLS, c!(""), c!(""));
             }

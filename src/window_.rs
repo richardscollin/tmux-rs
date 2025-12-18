@@ -1159,7 +1159,7 @@ pub unsafe fn window_pane_resize(wp: *mut window_pane, sx: u32, sy: u32) {
             sy,
             osx: (*wp).sx,
             osy: (*wp).sy,
-            entry: Default::default(),
+            entry: tailq_entry::default(),
         }));
         tailq_insert_tail(&raw mut (*wp).resize_queue, r);
 

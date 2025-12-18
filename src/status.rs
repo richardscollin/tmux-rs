@@ -413,7 +413,7 @@ pub unsafe fn status_redraw(c: *mut client) -> i32 {
         if !COLOUR_DEFAULT(bg) {
             gc.bg = bg;
         }
-        if grid_cells_equal(&raw const gc, &raw const (*sl).style) == 0 {
+        if !grid_cells_equal(&raw const gc, &raw const (*sl).style) {
             force = true;
             memcpy__(&raw mut (*sl).style, &raw mut gc);
         }

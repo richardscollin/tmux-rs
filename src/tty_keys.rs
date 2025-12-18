@@ -796,24 +796,23 @@ unsafe fn tty_keys_add1(mut tkp: *mut *mut tty_key, mut s: *const u8, key: key_c
             (*tk).key = KEYC_UNKNOWN;
         }
 
-        // Find the next entry.
-        if *s == (*tk).ch {
-            // Move forward in string.
-            s = s.add(1);
+        tkp = match (*s).cmp(&(*tk).ch) {
+            cmp::Ordering::Equal => {
+                // Move forward in string.
+                s = s.add(1);
 
-            // If this is the end of the string, no more is necessary.
-            if *s == b'\0' {
-                (*tk).key = key;
-                return;
+                // If this is the end of the string, no more is necessary.
+                if *s == b'\0' {
+                    (*tk).key = key;
+                    return;
+                }
+
+                // Use the child tree for the next character.
+                &raw mut (*tk).next
             }
-
-            // Use the child tree for the next character.
-            tkp = &raw mut (*tk).next;
-        } else if *s < (*tk).ch {
-            tkp = &raw mut (*tk).left;
-        } else if *s > (*tk).ch {
-            tkp = &raw mut (*tk).right;
-        }
+            cmp::Ordering::Less => &raw mut (*tk).left,
+            cmp::Ordering::Greater => &raw mut (*tk).right,
+        };
 
         // And recurse to add it.
         tty_keys_add1(tkp, s, key);
@@ -930,24 +929,24 @@ unsafe fn tty_keys_find1(
         }
 
         // Pick the next in the sequence
-        if (*tk).ch == *buf {
-            // Move forward in the string
-            buf = buf.add(1);
-            len -= 1;
-            *size += 1;
+        tk = match (*tk).ch.cmp(&*buf) {
+            cmp::Ordering::Equal => {
+                // Move forward in the string
+                buf = buf.add(1);
+                len -= 1;
+                *size += 1;
 
-            // At the end of the string, return the current node
-            if len == 0 || ((*tk).next.is_null() && (*tk).key != KEYC_UNKNOWN) {
-                return tk;
+                // At the end of the string, return the current node
+                if len == 0 || ((*tk).next.is_null() && (*tk).key != KEYC_UNKNOWN) {
+                    return tk;
+                }
+
+                // Move into the next tree for the following character
+                (*tk).next
             }
-
-            // Move into the next tree for the following character
-            tk = (*tk).next;
-        } else if *buf < (*tk).ch {
-            tk = (*tk).left;
-        } else if *buf > (*tk).ch {
-            tk = (*tk).right;
-        }
+            cmp::Ordering::Greater => (*tk).left,
+            cmp::Ordering::Less => (*tk).right,
+        };
 
         // Move to the next in the tree
         tty_keys_find1(tk, buf, len, size)

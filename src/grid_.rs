@@ -264,27 +264,22 @@ pub unsafe fn grid_cells_look_equal(gc1: *const grid_cell, gc2: *const grid_cell
 }
 
 /// Compare grid cells. Return 1 if equal, 0 if not.
-pub unsafe fn grid_cells_equal(gc1: *const grid_cell, gc2: *const grid_cell) -> c_int {
+pub unsafe fn grid_cells_equal(gc1: *const grid_cell, gc2: *const grid_cell) -> bool {
     unsafe {
         if grid_cells_look_equal(gc1, gc2) == 0 {
-            return 0;
+            return false;
         }
         if (*gc1).data.width != (*gc2).data.width {
-            return 0;
+            return false;
         }
         if (*gc1).data.size != (*gc2).data.size {
-            return 0;
+            return false;
         }
-        if libc::memcmp(
+        libc::memcmp(
             (*gc1).data.data.as_ptr().cast(),
             (*gc2).data.data.as_ptr().cast(),
             (*gc1).data.size as usize,
         ) == 0
-        {
-            1
-        } else {
-            0
-        }
     }
 }
 
@@ -371,7 +366,7 @@ pub unsafe fn grid_compare(ga: *mut grid, gb: *mut grid) -> c_int {
                 grid_get_cell(ga, xx, yy, &mut gca);
                 grid_get_cell(gb, xx, yy, &mut gcb);
 
-                if grid_cells_equal(&gca, &gcb) == 0 {
+                if !grid_cells_equal(&gca, &gcb) {
                     return 1;
                 }
             }

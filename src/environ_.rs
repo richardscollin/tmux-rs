@@ -111,7 +111,7 @@ pub unsafe fn environ_set_(
                 name : Some(xstrdup(name).cast()),
                 value: s,
                 flags,
-                entry: Default::default(),
+                entry: rb_entry::default(),
             }));
             rb_insert(env, envent);
         }
@@ -129,7 +129,7 @@ pub unsafe fn environ_clear(env: *mut environ, name: *const u8) {
                 name : Some(xstrdup(name).cast()),
                 value: None,
                 flags: environ_flags::empty(),
-                entry: Default::default(),
+                entry: rb_entry::default(),
             }));
             rb_insert(env, envent);
         }

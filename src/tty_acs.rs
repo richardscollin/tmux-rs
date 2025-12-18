@@ -19,6 +19,7 @@ pub struct tty_acs_entry {
     pub string: &'static [u8; 4],
 }
 impl tty_acs_entry {
+    #[expect(clippy::trivially_copy_pass_by_ref, reason = "false positive")]
     pub const fn new(key: u8, string: &'static [u8; 4]) -> Self {
         Self { key, string }
     }
@@ -69,6 +70,7 @@ pub struct tty_acs_reverse_entry {
     pub key: u8,
 }
 impl tty_acs_reverse_entry {
+    #[expect(clippy::trivially_copy_pass_by_ref, reason = "false positive")]
     const fn new(string: &'static [u8; 4], key: u8) -> Self {
         Self { string, key }
     }
@@ -178,7 +180,7 @@ pub fn tty_acs_rounded_borders(cell_type: cell_type) -> &'static utf8_data {
     &TTY_ACS_ROUNDED_BORDERS_LIST[cell_type as usize]
 }
 
-pub fn tty_acs_cmp(test: &u8, entry: &tty_acs_entry) -> std::cmp::Ordering {
+pub fn tty_acs_cmp(test: u8, entry: &tty_acs_entry) -> std::cmp::Ordering {
     test.cmp(&entry.key)
 }
 
@@ -220,7 +222,7 @@ pub unsafe fn tty_acs_get(tty: *mut tty, ch: u8) -> *const u8 {
             return &raw const (*(*tty).term).acs[ch as usize][0];
         }
 
-        let Ok(entry) = TTY_ACS_TABLE.binary_search_by(|e| tty_acs_cmp(&ch, e).reverse()) else {
+        let Ok(entry) = TTY_ACS_TABLE.binary_search_by(|e| tty_acs_cmp(ch, e).reverse()) else {
             return null_mut();
         };
 

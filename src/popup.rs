@@ -678,6 +678,7 @@ pub unsafe fn popup_key_cb(c: *mut client, data: *mut c_void, event: *mut key_ev
             } else {
                 menu_add_items((*pd).menu, &POPUP_MENU_ITEMS, null_mut(), c, null_mut());
             }
+            #[expect(clippy::manual_midpoint, reason = "not really being used as midpoint calculation")]
             let x = (*m).x.saturating_sub(((*(*pd).menu).width + 4) / 2);
             (*pd).md = menu_prepare(
                 (*pd).menu,

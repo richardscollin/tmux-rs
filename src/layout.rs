@@ -29,7 +29,7 @@ pub unsafe fn layout_create_cell(lcparent: *mut layout_cell) -> *mut layout_cell
                 tqh_first: null_mut(),
                 tqh_last: null_mut(),
             },
-            entry: Default::default(),
+            entry: tailq_entry::default(),
         }));
         tailq_init(&raw mut lc.cells);
 

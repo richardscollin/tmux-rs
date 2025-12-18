@@ -21,7 +21,7 @@ use crate::libc::{
     sigfillset, sigprocmask, sigset_t, socketpair, winsize,
 };
 use crate::*;
-use crate::options_::*;
+use crate::options_::{options, options_get_string_};
 
 pub type job_update_cb = Option<unsafe fn(*mut job)>;
 pub type job_complete_cb = Option<unsafe fn(*mut job)>;

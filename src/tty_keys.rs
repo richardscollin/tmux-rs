@@ -1254,7 +1254,7 @@ pub unsafe fn tty_keys_next(tty: *mut tty) -> i32 {
                     }
 
                     // Get the time period.
-                    let mut delay = options_get_number(GLOBAL_OPTIONS, "escape-time");
+                    let mut delay = options_get_number___(&*GLOBAL_OPTIONS, "escape-time");
                     if delay == 0 {
                         delay = 1;
                     }

@@ -14,7 +14,7 @@
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 use crate::compat::queue::{tailq_insert_after, tailq_insert_before, tailq_remove};
 use crate::*;
-use crate::options_::*;
+use crate::options_::options_set_parent;
 
 pub static CMD_JOIN_PANE_ENTRY: cmd_entry = cmd_entry {
     name: "join-pane",
@@ -144,7 +144,7 @@ unsafe fn cmd_join_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retva
         tailq_remove::<_, discr_entry>(&raw mut (*src_w).panes, src_wp);
 
         (*src_wp).window = dst_w;
-        options_set_parent((*src_wp).options, (*dst_w).options);
+        options_set_parent(&mut *(*src_wp).options, (*dst_w).options);
         (*src_wp).flags |= window_pane_flags::PANE_STYLECHANGED;
         if flags.intersects(SPAWN_BEFORE) {
             tailq_insert_before::<_, discr_entry>(dst_wp, src_wp);

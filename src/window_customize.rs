@@ -1006,7 +1006,7 @@ unsafe fn window_customize_draw_option(
                     break 'out;
                 }
                 memcpy__(&raw mut gc, &raw const GRID_DEFAULT_CELL);
-                gc.fg = options_get_number((*item).oo, cstr_to_str(name)) as i32;
+                gc.fg = options_get_number___(&*(*item).oo, cstr_to_str(name));
                 if !screen_write_text!(
                     ctx,
                     cx,
@@ -1406,10 +1406,10 @@ pub unsafe fn window_customize_set_option(
         }
 
         if !oe.is_null() && (*oe).type_ == options_table_type::OPTIONS_TABLE_FLAG {
-            let flag = options_get_number(oo, name) as i32;
+            let flag: i32 = options_get_number___(&*oo, name);
             options_set_number(oo, name, (flag == 0) as i64);
         } else if !oe.is_null() && (*oe).type_ == options_table_type::OPTIONS_TABLE_CHOICE {
-            let mut choice: u32 = options_get_number(oo, name) as u32;
+            let mut choice: u32 = options_get_number___(&*oo, name);
             #[expect(clippy::needless_borrow, reason = "false positive")]
             if choice as usize + 1 >= (&(*oe).choices).len() {
                 choice = 0;

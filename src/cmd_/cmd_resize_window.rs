@@ -12,7 +12,7 @@
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 use crate::*;
-use crate::options_::*;
+use crate::options_::options_set_number;
 
 pub static CMD_RESIZE_WINDOW_ENTRY: cmd_entry = cmd_entry {
     name: "resize-window",

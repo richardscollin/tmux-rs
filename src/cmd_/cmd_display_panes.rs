@@ -13,7 +13,7 @@
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 use crate::compat::queue::tailq_foreach;
 use crate::*;
-use crate::options_::*;
+use crate::options_::options_get_number___;
 
 pub static CMD_DISPLAY_PANES_ENTRY: cmd_entry = cmd_entry {
     name: "display-panes",
@@ -43,12 +43,8 @@ unsafe fn cmd_display_panes_draw_pane(ctx: *mut screen_redraw_ctx, wp: *mut wind
         let c = (*ctx).c;
         let tty = &raw mut (*c).tty;
         let s = (*c).session;
-        let oo = (*s).options;
+        let oo = &*(*s).options;
         let w = (*wp).window;
-        // u_int			 pane, idx, px, py, i, j, xoff, yoff, sx, sy;
-        // int			 colour, active_colour;
-        // char			 buf[16], lbuf[16], rbuf[16], *ptr;
-        // size_t			 len, llen, rlen;
 
         'out: {
             if (*wp).xoff + (*wp).sx <= (*ctx).ox
@@ -117,8 +113,8 @@ unsafe fn cmd_display_panes_draw_pane(ctx: *mut screen_redraw_ctx, wp: *mut wind
                 return;
             }
 
-            let colour: i32 = options_get_number_(oo, "display-panes-colour") as _;
-            let active_colour: i32 = options_get_number_(oo, "display-panes-active-colour") as _;
+            let colour: i32 = options_get_number___(oo, "display-panes-colour");
+            let active_colour: i32 = options_get_number___(oo, "display-panes-active-colour");
 
             let mut fgc = GRID_DEFAULT_CELL;
             let mut bgc = GRID_DEFAULT_CELL;
@@ -328,7 +324,7 @@ unsafe fn cmd_display_panes_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
                 return cmd_retval::CMD_RETURN_ERROR;
             }
         } else {
-            delay = options_get_number_((*s).options, "display-panes-time") as u32;
+            delay = options_get_number___(&*(*s).options, "display-panes-time");
         }
 
         let cdata = xcalloc_::<cmd_display_panes_data>(1).as_ptr();

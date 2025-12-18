@@ -1129,7 +1129,7 @@ pub unsafe fn format_cb_pane_at_top(ft: *mut format_tree) -> format_table_type {
         }
 
         let w = (*wp).window;
-        let status = options_get_number_((*w).options, "pane-border-status");
+        let status: i64 = options_get_number___(&*(*w).options, "pane-border-status");
         let flag = if status == pane_status::PANE_STATUS_TOP as i64 {
             (*wp).yoff == 1
         } else {
@@ -1149,7 +1149,7 @@ pub unsafe fn format_cb_pane_at_bottom(ft: *mut format_tree) -> format_table_typ
         }
 
         let w = (*wp).window;
-        let status = options_get_number_((*w).options, "pane-border-status");
+        let status: i64 = options_get_number___(&*(*w).options, "pane-border-status");
         let flag = if status == pane_status::PANE_STATUS_BOTTOM as i64 {
             (*wp).yoff + (*wp).sy == (*w).sy - 1
         } else {
@@ -2200,7 +2200,7 @@ pub unsafe fn format_cb_pane_search_string(ft: *mut format_tree) -> format_table
 pub unsafe fn format_cb_pane_synchronized(ft: *mut format_tree) -> format_table_type {
     unsafe {
         if !(*ft).wp.is_null() {
-            if options_get_number_((*(*ft).wp).options, "synchronize-panes") != 0 {
+            if options_get_number___::<i64>(&*(*(*ft).wp).options, "synchronize-panes") != 0 {
                 return "1".into();
             }
             return "0".into();

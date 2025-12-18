@@ -12,7 +12,7 @@
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 use crate::*;
-use crate::options_::*;
+use crate::options_::{options_get_number___};
 
 /// Alert option values
 #[repr(i32)]
@@ -58,7 +58,7 @@ unsafe extern "C-unwind" fn alerts_callback(_fd: c_int, _events: c_short, _arg: 
 
 fn alerts_action_applies(wl: &winlink, name: &str) -> bool {
     unsafe {
-        match alert_option::try_from(options_get_number_((*wl.session).options, name) as i32) {
+        match alert_option::try_from(options_get_number___::<i32>(&*(*wl.session).options, name)) {
             Ok(alert_option::ALERT_ANY) => true,
             Ok(alert_option::ALERT_CURRENT) => std::ptr::eq(wl, (*wl.session).curw),
             Ok(alert_option::ALERT_OTHER) => !std::ptr::eq(wl, (*wl.session).curw),
@@ -82,17 +82,17 @@ pub(crate) fn alerts_check_session(s: &session) {
 fn alerts_enabled(w: &window, flags: window_flag) -> bool {
     unsafe {
         if flags.intersects(window_flag::BELL)
-            && options_get_number_(w.options, "monitor-bell") != 0
+            && options_get_number___::<i64>(&*w.options, "monitor-bell") != 0
         {
             return true;
         }
         if flags.intersects(window_flag::ACTIVITY)
-            && options_get_number_(w.options, "monitor-activity") != 0
+            && options_get_number___::<i64>(&*w.options, "monitor-activity") != 0
         {
             return true;
         }
         if flags.intersects(window_flag::SILENCE)
-            && options_get_number_(w.options, "monitor-silence") != 0
+            && options_get_number___::<i64>(&*w.options, "monitor-silence") != 0
         {
             return true;
         }
@@ -120,7 +120,7 @@ unsafe fn alerts_reset(w: NonNull<window>) {
         event_del(&raw mut (*w).alerts_timer);
 
         let mut tv = timeval {
-            tv_sec: options_get_number_((*w).options, "monitor-silence"),
+            tv_sec: options_get_number___(&*(*w).options, "monitor-silence"),
             tv_usec: 0,
         };
 
@@ -170,7 +170,7 @@ fn alerts_check_bell(w: &window) -> window_flag {
         if !w.flags.intersects(window_flag::BELL) {
             return window_flag::empty();
         }
-        if options_get_number_(w.options, "monitor-bell") == 0 {
+        if options_get_number___::<i64>(&*w.options, "monitor-bell") == 0 {
             return window_flag::empty();
         }
 
@@ -209,7 +209,7 @@ fn alerts_check_activity(w: &window) -> window_flag {
         if !w.flags.intersects(window_flag::ACTIVITY) {
             return window_flag::empty();
         }
-        if options_get_number_(w.options, "monitor-activity") == 0 {
+        if options_get_number___::<i64>(&*w.options, "monitor-activity") == 0 {
             return window_flag::empty();
         }
 
@@ -248,7 +248,7 @@ fn alerts_check_silence(w: &window) -> window_flag {
         if !w.flags.intersects(window_flag::SILENCE) {
             return window_flag::empty();
         }
-        if options_get_number_(w.options, "monitor-silence") == 0 {
+        if options_get_number___::<i64>(&*w.options, "monitor-silence") == 0 {
             return window_flag::empty();
         }
 
@@ -289,7 +289,7 @@ fn alerts_check_silence(w: &window) -> window_flag {
 fn alerts_set_message(wl: &winlink, type_: &str, option: &str) {
     unsafe {
         let visual =
-            visual_option::try_from(options_get_number__(&*(*wl.session).options, option) as i32);
+            visual_option::try_from(options_get_number___::<i32>(&*(*wl.session).options, option));
 
         for c in tailq_foreach(&raw mut CLIENTS).map(NonNull::as_ptr) {
             if (*c).session != wl.session || (*c).flags.intersects(client_flag::CONTROL) {

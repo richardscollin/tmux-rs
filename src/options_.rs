@@ -221,10 +221,8 @@ pub unsafe fn options_get_parent(oo: *mut options) -> *mut options {
     unsafe { (*oo).parent }
 }
 
-pub unsafe fn options_set_parent(oo: *mut options, parent: *mut options) {
-    unsafe {
-        (*oo).parent = parent;
-    }
+pub fn options_set_parent(oo: &mut options, parent: *mut options) {
+    oo.parent = parent;
 }
 
 pub unsafe fn options_first(oo: *mut options) -> *mut options_entry {
@@ -847,7 +845,7 @@ pub unsafe fn options_get_string_(oo: *const options, name: &str) -> *const u8 {
     }
 }
 
-pub unsafe fn options_get_number(oo: *mut options, name: &str) -> i64 {
+unsafe fn options_get_number(oo: *mut options, name: &str) -> i64 {
     unsafe {
         let o = options_get(oo, name);
         if o.is_null() {
@@ -873,16 +871,22 @@ pub unsafe fn options_get_number_(oo: *const options, name: &str) -> i64 {
     }
 }
 
-pub fn options_get_number__(oo: &options, name: &str) -> i64 {
+/// panics if internally stored value is out of range of returned type
+#[track_caller]
+pub fn options_get_number___<T: TryFrom<i64>>(oo: &options, name: &str) -> T {
     unsafe {
         let o = options_get_const(oo, name);
         if o.is_null() {
-            fatalx_!("missing option {name}");
+            panic!("missing option {name}");
         }
         if !OPTIONS_IS_NUMBER(o) {
-            fatalx_!("option {name} is not a number");
+            panic!("option {name} is not a number");
         }
-        (*o).value.number
+
+        match T::try_from((*o).value.number) {
+            Ok(value) => value,
+            Err(_) => panic!("options_get_number out of range"),
+        }
     }
 }
 

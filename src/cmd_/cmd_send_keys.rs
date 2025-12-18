@@ -206,9 +206,9 @@ pub unsafe fn cmd_send_keys_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
 
         if std::ptr::eq(cmd_get_entry(self_), &CMD_SEND_PREFIX_ENTRY) {
             let key = if args_has(args, '2') {
-                options_get_number_((*s).options, "prefix2") as u64
+                options_get_number___::<u64>(&*(*s).options, "prefix2")
             } else {
-                options_get_number_((*s).options, "prefix") as u64
+                options_get_number___::<u64>(&*(*s).options, "prefix")
             };
             cmd_send_keys_inject_key(item, item, args, key);
             return cmd_retval::CMD_RETURN_NORMAL;

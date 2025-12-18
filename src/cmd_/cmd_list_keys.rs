@@ -14,7 +14,7 @@
 use crate::compat::strlcat;
 use crate::libc::strcmp;
 use crate::*;
-use crate::options_::*;
+use crate::options_::options_get_number___;
 
 pub static CMD_LIST_KEYS_ENTRY: cmd_entry = cmd_entry {
     name: "list-keys",
@@ -125,7 +125,7 @@ unsafe fn cmd_list_keys_print_notes(
 
 unsafe fn cmd_list_keys_get_prefix(args: *mut args, prefix: *mut key_code) -> NonNull<u8> {
     unsafe {
-        *prefix = options_get_number_(GLOBAL_S_OPTIONS, "prefix") as _;
+        *prefix = options_get_number___::<i64>(&*GLOBAL_S_OPTIONS, "prefix") as _;
         if !args_has(args, 'P') {
             if *prefix != KEYC_NONE {
                 let s = format_nul!("{} ", _s(key_string_lookup_key(*prefix, 0)));

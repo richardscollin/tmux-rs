@@ -99,7 +99,7 @@ pub unsafe fn cmd_break_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
         (*wp).window = window_create((*w).sx, (*w).sy, (*w).xpixel, (*w).ypixel);
         w = (*wp).window;
 
-        options_set_parent((*wp).options, (*w).options);
+        options_set_parent(&mut *(*wp).options, (*w).options);
         (*wp).flags |= window_pane_flags::PANE_STYLECHANGED;
         tailq_insert_head::<_, discr_entry>(&raw mut (*w).panes, wp);
         (*w).active = wp;
@@ -122,7 +122,7 @@ pub unsafe fn cmd_break_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
         colour_palette_from_option(Some(&mut (*wp).palette), (*wp).options);
 
         if idx == -1 {
-            idx = -1 - options_get_number_((*dst_s).options, "base-index") as i32;
+            idx = -1 - options_get_number___::<i32>(&*(*dst_s).options, "base-index");
         }
         wl = session_attach(dst_s, w, idx, &raw mut cause);
         if !args_has(args, 'd') {

@@ -13,7 +13,7 @@
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 use crate::compat::queue::tailq_foreach;
 use crate::libc::strtol;
-use crate::options_::*;
+use crate::options_::{options_find_choice, options_get, options_get_number___, options_get_string_, options_table_entry};
 use crate::*;
 
 pub static CMD_DISPLAY_MENU_ENTRY: cmd_entry = cmd_entry {
@@ -132,7 +132,7 @@ unsafe fn cmd_display_menu_get_position(
             } else {
                 top = 0;
             }
-            let position = options_get_number_((*s).options, "status-position");
+            let position = options_get_number___::<i64>(&*(*s).options, "status-position");
 
             for line_ in 0..lines {
                 line = line_;

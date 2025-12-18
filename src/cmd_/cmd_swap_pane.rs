@@ -97,10 +97,10 @@ unsafe fn cmd_swap_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retva
             (*src_wp).layout_cell = dst_lc;
 
             (*src_wp).window = dst_w;
-            options_set_parent((*src_wp).options, (*dst_w).options);
+            options_set_parent(&mut *(*src_wp).options, (*dst_w).options);
             (*src_wp).flags |= window_pane_flags::PANE_STYLECHANGED;
             (*dst_wp).window = src_w;
-            options_set_parent((*dst_wp).options, (*src_w).options);
+            options_set_parent(&mut *(*dst_wp).options, (*src_w).options);
             (*dst_wp).flags |= window_pane_flags::PANE_STYLECHANGED;
 
             let sx = (*src_wp).sx;

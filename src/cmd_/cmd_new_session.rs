@@ -258,7 +258,7 @@ unsafe fn cmd_new_session_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
             if !detached && !is_control {
                 sx = (*c).tty.sx;
                 sy = (*c).tty.sy;
-                if sy > 0 && options_get_number_(GLOBAL_S_OPTIONS, "status") != 0 {
+                if sy > 0 && options_get_number___::<i64>(&*GLOBAL_S_OPTIONS, "status") != 0 {
                     sy -= 1;
                 }
             } else {

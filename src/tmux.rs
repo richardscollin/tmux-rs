@@ -361,7 +361,7 @@ pub unsafe fn tmux_main(mut argc: i32, mut argv: *mut *mut u8, _env: *mut *mut u
     std::panic::set_hook(Box::new(|_panic_info| {
         let backtrace = std::backtrace::Backtrace::capture();
         let err_str = format!("{backtrace:#?}");
-        std::fs::write("client-panic.txt", err_str).unwrap();
+        _ = std::fs::write("client-panic.txt", err_str);
     }));
 
     unsafe {

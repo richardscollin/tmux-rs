@@ -49,7 +49,7 @@ fn pton<'out>(src: &'_ [u8], dst: &'out mut [MaybeUninit<u8>]) -> Result<&'out m
     }
 
     let mut i = 0;
-    let mut it = src.iter().cloned().filter(|b| !b.is_ascii_whitespace());
+    let mut it = src.iter().copied().filter(|b| !b.is_ascii_whitespace());
 
     while let Some(ch) = it.next() {
         let chunk: [u8; 4] = [

@@ -346,9 +346,10 @@ fn KEYC_IS_MOUSE(key: key_code) -> bool {
 #[expect(non_snake_case)]
 #[inline]
 fn KEYC_IS_UNICODE(key: key_code) -> bool {
+    const KEYC_BASE_END: c_ulonglong = keyc::KEYC_BASE_END as c_ulonglong;
+
     let masked = key & KEYC_MASK_KEY;
 
-    const KEYC_BASE_END: c_ulonglong = keyc::KEYC_BASE_END as c_ulonglong;
     masked > 0x7f
         && !(KEYC_BASE..KEYC_BASE_END).contains(&masked)
         && !(KEYC_USER..KEYC_USER_END).contains(&masked)

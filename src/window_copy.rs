@@ -742,7 +742,7 @@ pub unsafe fn window_copy_cursor_hyperlink_cb(ft: *mut format_tree) -> format_ta
             &raw mut (*data).screen,
         )
         .map(Into::into)
-        .unwrap_or(format_table_type::None)
+        .unwrap_or_default()
     }
 }
 
@@ -774,7 +774,7 @@ pub unsafe fn window_copy_search_match_cb(ft: *mut format_tree) -> format_table_
 
         window_copy_match_at_cursor(data)
             .map(Into::into)
-            .unwrap_or(format_table_type::None)
+            .unwrap_or_default()
     }
 }
 

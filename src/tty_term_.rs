@@ -759,7 +759,7 @@ pub unsafe fn tty_term_read_list(
         *caps = null_mut();
 
         let mut s = null();
-        for ent in TTY_TERM_CODES.iter() {
+        for ent in &TTY_TERM_CODES {
             match ent.type_ {
                 tty_code_type::None => (),
                 tty_code_type::String => {

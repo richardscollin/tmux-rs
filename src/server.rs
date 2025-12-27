@@ -366,7 +366,7 @@ pub unsafe fn server_update_socket() {
         let mut sb: stat = zeroed(); // TODO remove unecessary init
 
         let mut n = 0;
-        for s in rb_foreach(&raw mut SESSIONS).map(|s| s.as_ptr()) {
+        for s in rb_foreach(&raw mut SESSIONS).map(std::ptr::NonNull::as_ptr) {
             if (*s).attached != 0 {
                 n += 1;
                 break;

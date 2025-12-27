@@ -1063,7 +1063,7 @@ pub unsafe fn grid_string_cells_code(
         ];
 
         // If any attribute is removed, begin with 0
-        for &(mask, _) in ATTRS.iter() {
+        for &(mask, _) in &ATTRS {
             if !attr.intersects(mask) && lastattr.intersects(mask)
                 || ((*lastgc).us != 8 && (*gc).us == 8)
             {
@@ -1075,7 +1075,7 @@ pub unsafe fn grid_string_cells_code(
         }
 
         // For each attribute that is newly set, add its code
-        for &(mask, code) in ATTRS.iter() {
+        for &(mask, code) in &ATTRS {
             if attr.intersects(mask) && !lastattr.intersects(mask) {
                 s[n as usize] = code as c_int;
                 n += 1;

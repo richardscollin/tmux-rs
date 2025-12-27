@@ -1230,7 +1230,7 @@ pub unsafe fn format_cb_mouse_hyperlink(ft: *mut format_tree) -> format_table_ty
         let gd = (*wp.as_ptr()).base.grid;
         format_grid_hyperlink(gd, x, (*gd).hsize + y, (*wp.as_ptr()).screen)
             .map(Into::into)
-            .unwrap_or(format_table_type::None)
+            .unwrap_or_default()
     }
 }
 

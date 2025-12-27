@@ -896,7 +896,7 @@ pub unsafe fn cmd_template_replace(template: *const u8, s: Option<&str>, idx: c_
                         ptr = ptr.add(1);
                     }
 
-                    buf = xrealloc_(buf, len + (s.map(|e| e.len()).unwrap_or_default() * 3) + 1)
+                    buf = xrealloc_(buf, len + (s.map(str::len).unwrap_or_default() * 3) + 1)
                         .as_ptr();
                     for c in s.unwrap_or_default().chars() {
                         if quoted && !strchr(quote, c as i32).is_null() {

@@ -1354,7 +1354,7 @@ pub unsafe fn format_draw(
         } // out:
 
         // Free the screens.
-        for s_i in s.iter_mut() {
+        for s_i in &mut s {
             screen_free(s_i);
         }
 

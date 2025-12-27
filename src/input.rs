@@ -2545,7 +2545,6 @@ unsafe fn input_exit_rename(ictx: *mut input_ctx) {
 
 /// Open UTF-8 character.
 unsafe fn input_top_bit_set(ictx: *mut input_ctx) -> i32 {
-    let __func__ = "input_top_bit_set";
     unsafe {
         let sctx = &raw mut (*ictx).ctx;
         let ud = &raw mut (*ictx).utf8data;
@@ -2570,7 +2569,7 @@ unsafe fn input_top_bit_set(ictx: *mut input_ctx) -> i32 {
         }
         (*ictx).utf8started = 0;
 
-        // log_debug!("{} {} '%*s' (width {})", __func__, (*ud).size, (int)(*ud).size, (*ud).data, (*ud).width);
+        // log_debug!("input_top_bit_set {} '%*s' (width {})", (*ud).size, (int)(*ud).size, (*ud).data, (*ud).width);
 
         utf8_copy(&raw mut (*ictx).cell.cell.data, ud);
         screen_write_collect_add(sctx, &raw mut (*ictx).cell.cell);

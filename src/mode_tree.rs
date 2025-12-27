@@ -230,7 +230,7 @@ unsafe fn mode_tree_build_lines(mtd: *mut mode_tree_data, mtl: *mut mode_tree_li
             }
         }
         for mti in tailq_foreach(mtl).map(NonNull::as_ptr) {
-            for line in (*mtd).line_list.iter_mut() {
+            for line in &mut (*mtd).line_list {
                 if line.item == mti {
                     line.flat = flat;
                 }
@@ -370,7 +370,7 @@ pub unsafe fn mode_tree_each_tagged(
 ) {
     unsafe {
         let mut fired = false;
-        for line in (*mtd).line_list.iter_mut() {
+        for line in &mut (*mtd).line_list {
             let mti = line.item;
             if (*mti).tagged != 0 {
                 fired = true;
@@ -694,7 +694,7 @@ pub unsafe fn mode_tree_draw(mtd: &mut mode_tree_data) {
             screen_write_clearscreen(&raw mut ctx, 8);
 
             let mut keylen: i32 = 0;
-            for line in mtd.line_list.iter() {
+            for line in &mtd.line_list {
                 let mti = line.item;
                 if (*mti).key == KEYC_NONE {
                     continue;
@@ -1368,12 +1368,12 @@ pub unsafe fn mode_tree_key(
                 }
             }
             code::T_UPPER => {
-                for line in (*mtd).line_list.iter_mut() {
+                for line in &mut (*mtd).line_list {
                     (*line.item).tagged = 0;
                 }
             }
             code::T_CTRL => {
-                for line in (*mtd).line_list.iter_mut() {
+                for line in &mut (*mtd).line_list {
                     if ((*line.item).parent.is_null() && (*line.item).no_tag == 0)
                         || (!(*line.item).parent.is_null() && (*(*line.item).parent).no_tag != 0)
                     {

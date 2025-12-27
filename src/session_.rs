@@ -642,7 +642,7 @@ pub unsafe fn session_group_synchronize_to(s: *mut session) {
         }
 
         let mut target = null_mut();
-        for target_ in tailq_foreach(&raw mut (*sg).sessions).map(|e| e.as_ptr()) {
+        for target_ in tailq_foreach(&raw mut (*sg).sessions).map(std::ptr::NonNull::as_ptr) {
             target = target_;
             if target != s {
                 break;
@@ -662,7 +662,7 @@ pub unsafe fn session_group_synchronize_from(target: *mut session) {
             return;
         }
 
-        for s in tailq_foreach(&raw mut (*sg).sessions).map(|e| e.as_ptr()) {
+        for s in tailq_foreach(&raw mut (*sg).sessions).map(std::ptr::NonNull::as_ptr) {
             if s != target {
                 session_group_synchronize1(target, s);
             }
@@ -698,7 +698,7 @@ pub unsafe fn session_group_synchronize1(target: *mut session, s: *mut session) 
         rb_init(&raw mut (*s).windows);
 
         // Link all the windows from the target.
-        for wl in rb_foreach(ww).map(|e| e.as_ptr()) {
+        for wl in rb_foreach(ww).map(std::ptr::NonNull::as_ptr) {
             let wl2 = winlink_add(&raw mut (*s).windows, (*wl).idx);
             (*wl2).session = s;
             winlink_set_window(wl2, (*wl).window);
@@ -717,7 +717,7 @@ pub unsafe fn session_group_synchronize1(target: *mut session, s: *mut session) 
         memcpy__(old_lastw.as_mut_ptr(), &raw mut (*s).lastw);
         tailq_init(&raw mut (*s).lastw);
 
-        for wl in tailq_foreach::<_, discr_sentry>(old_lastw.as_mut_ptr()).map(|e| e.as_ptr()) {
+        for wl in tailq_foreach::<_, discr_sentry>(old_lastw.as_mut_ptr()).map(std::ptr::NonNull::as_ptr) {
             if let Some(wl2) = NonNull::new(winlink_find_by_index(&raw mut (*s).windows, (*wl).idx))
             {
                 tailq_insert_tail::<_, discr_sentry>(&raw mut (*s).lastw, wl2.as_ptr());
@@ -753,7 +753,7 @@ pub unsafe fn session_renumber_windows(s: *mut session) {
         let mut new_curw_idx = 0;
 
         // Go through the winlinks and assign new indexes.
-        for wl in rb_foreach(old_wins.as_mut_ptr()).map(|e| e.as_ptr()) {
+        for wl in rb_foreach(old_wins.as_mut_ptr()).map(std::ptr::NonNull::as_ptr) {
             let wl_new = winlink_add(&raw mut (*s).windows, new_idx);
             (*wl_new).session = s;
             winlink_set_window(wl_new, (*wl).window);
@@ -772,7 +772,7 @@ pub unsafe fn session_renumber_windows(s: *mut session) {
         // Fix the stack of last windows now.
         memcpy__(old_lastw.as_mut_ptr(), &raw mut (*s).lastw);
         tailq_init(&raw mut (*s).lastw);
-        for wl in tailq_foreach::<_, discr_sentry>(old_lastw.as_mut_ptr()).map(|e| e.as_ptr()) {
+        for wl in tailq_foreach::<_, discr_sentry>(old_lastw.as_mut_ptr()).map(std::ptr::NonNull::as_ptr) {
             (*wl).flags &= !winlink_flags::WINLINK_VISITED;
 
             if let Some(wl_new) = winlink_find_by_window(&raw mut (*s).windows, (*wl).window) {
@@ -791,7 +791,7 @@ pub unsafe fn session_renumber_windows(s: *mut session) {
         (*s).curw = winlink_find_by_index(&raw mut (*s).windows, new_curw_idx);
 
         // Free the old winlinks (reducing window references too).
-        for wl in rb_foreach(old_wins.as_mut_ptr()).map(|e| e.as_ptr()) {
+        for wl in rb_foreach(old_wins.as_mut_ptr()).map(std::ptr::NonNull::as_ptr) {
             winlink_remove(old_wins.as_mut_ptr(), wl);
         }
     }

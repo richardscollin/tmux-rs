@@ -361,7 +361,7 @@ pub fn popup_free_cb(c: *mut client, data: *mut c_void) {
     }
 }
 
-pub fn popup_resize_cb(_c: *mut client, data: *mut c_void) {
+pub fn popup_resize_cb(c: *mut client, data: *mut c_void) {
     unsafe {
         let pd = data as *mut popup_data;
         if pd.is_null() {
@@ -371,7 +371,7 @@ pub fn popup_resize_cb(_c: *mut client, data: *mut c_void) {
         let tty = &raw mut (*(*pd).c).tty;
 
         if !(*pd).md.is_null() {
-            menu_free_cb(_c, (*pd).md.cast());
+            menu_free_cb(c, (*pd).md.cast());
         }
 
         // Adjust position and size

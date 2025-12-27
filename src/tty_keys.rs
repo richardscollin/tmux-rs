@@ -830,10 +830,10 @@ pub unsafe fn tty_keys_build(tty: *mut tty) {
         }
         (*tty).key_tree = null_mut();
 
-        for tdkx in TTY_DEFAULT_XTERM_KEYS.iter() {
+        for tdkx in &TTY_DEFAULT_XTERM_KEYS {
             for (j, tty_default_xterm_modifiers_j) in TTY_DEFAULT_XTERM_MODIFIERS
                 .iter()
-                .cloned()
+                .copied()
                 .enumerate()
                 .skip(2)
             {
@@ -849,14 +849,14 @@ pub unsafe fn tty_keys_build(tty: *mut tty) {
             }
         }
 
-        for tdkr in TTY_DEFAULT_RAW_KEYS.iter() {
+        for tdkr in &TTY_DEFAULT_RAW_KEYS {
             let s = tdkr.string.as_ptr();
             if *s != 0 {
                 tty_keys_add(tty, s, tdkr.key);
             }
         }
 
-        for tdkc in TTY_DEFAULT_CODE_KEYS.iter() {
+        for tdkc in &TTY_DEFAULT_CODE_KEYS {
             let s = tty_term_string((*tty).term, tdkc.code);
             if *s != 0 {
                 tty_keys_add(tty, s, tdkc.key);

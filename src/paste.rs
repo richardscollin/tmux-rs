@@ -216,13 +216,13 @@ pub unsafe fn paste_rename(
             *cause = null_mut();
         }
 
-        if oldname.is_none_or(|oldname| oldname.is_empty()) {
+        if oldname.is_none_or(str::is_empty) {
             if !cause.is_null() {
                 *cause = xstrdup_(c"no buffer").as_ptr();
             }
             return -1;
         }
-        if newname.is_none_or(|newname| newname.is_empty()) {
+        if newname.is_none_or(str::is_empty) {
             if !cause.is_null() {
                 *cause = xstrdup_(c"new name is empty").as_ptr();
             }

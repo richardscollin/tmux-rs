@@ -206,7 +206,7 @@ pub unsafe fn cmd_parse_run_parser(
         match retval {
             Ok(Some(cmds)) => Ok(cmds),
             Ok(None) => Ok(cmd_parse_new_commands()),
-            Err(_) => Err(ps.error),
+            Err(()) => Err(ps.error),
         }
     }
 }

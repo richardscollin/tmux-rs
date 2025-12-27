@@ -2370,7 +2370,7 @@ pub unsafe fn status_prompt_type(type_: *const u8) -> prompt_type {
     }
 }
 
-/// Accessor for prompt_type_strings.
+/// Accessor for `prompt_type_strings`.
 pub fn status_prompt_type_string(type_: u32) -> &'static str {
     if type_ >= PROMPT_NTYPES {
         return "invalid";

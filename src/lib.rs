@@ -357,7 +357,7 @@ fn KEYC_IS_UNICODE(key: key_code) -> bool {
 const KEYC_CLICK_TIMEOUT: i32 = 300;
 
 /// A single key. This can be ASCII or Unicode or one of the keys between
-/// KEYC_BASE and KEYC_BASE_END.
+/// `KEYC_BASE` and `KEYC_BASE_END`.
 type key_code = core::ffi::c_ulonglong;
 
 // skipped C0 control characters
@@ -2694,7 +2694,7 @@ impl ToU8Ptr for SyncCharPtr {
     }
 }
 // TODO struct should have some sort of lifetime
-/// Display wrapper for a *c_char pointer
+/// Display wrapper for a *`c_char` pointer
 #[repr(transparent)]
 struct DisplayCStrPtr(*const u8);
 impl std::fmt::Display for DisplayCStrPtr {

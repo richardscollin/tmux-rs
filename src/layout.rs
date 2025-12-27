@@ -916,7 +916,7 @@ pub unsafe fn layout_resize_child_cells(w: *mut window, lc: *mut layout_cell) {
 }
 
 /// Split a pane into two. size is a hint, or -1 for default half/half
-/// split. This must be followed by layout_assign_pane before much else happens!
+/// split. This must be followed by `layout_assign_pane` before much else happens!
 pub unsafe fn layout_split_pane(
     wp: *mut window_pane,
     type_: layout_type,

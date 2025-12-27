@@ -1098,7 +1098,7 @@ pub unsafe fn colour_parse_x11(mut p: *const u8) -> i32 {
             );
         } else {
             while len != 0 && *p == b' ' {
-                p = p.offset(1);
+                p = p.add(1);
                 len = len.wrapping_sub(1);
             }
             while len != 0 && *p.add(len - 1) == b' ' {

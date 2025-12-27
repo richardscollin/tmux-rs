@@ -187,7 +187,7 @@ pub unsafe fn strunvis(mut dst: *mut u8, mut src: *const u8) -> i32 {
         let mut state: i32 = 0;
         loop {
             let fresh0 = src;
-            src = src.offset(1);
+            src = src.add(1);
             c = *fresh0;
             if c == 0 {
                 break;
@@ -195,11 +195,11 @@ pub unsafe fn strunvis(mut dst: *mut u8, mut src: *const u8) -> i32 {
             loop {
                 match unvis(dst, c, &mut state, 0 as libc::c_int) {
                     1 => {
-                        dst = dst.offset(1);
+                        dst = dst.add(1);
                         break;
                     }
                     2 => {
-                        dst = dst.offset(1);
+                        dst = dst.add(1);
                     }
                     0 | 3 => {
                         break;
@@ -212,7 +212,7 @@ pub unsafe fn strunvis(mut dst: *mut u8, mut src: *const u8) -> i32 {
             }
         }
         if unvis(dst, c, &mut state, 1 as libc::c_int) == 1 as libc::c_int {
-            dst = dst.offset(1);
+            dst = dst.add(1);
         }
         *dst = b'\0';
         dst.offset_from(start) as i32

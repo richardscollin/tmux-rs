@@ -64,7 +64,7 @@ pub unsafe fn getopt(nargc: i32, nargv: *const *mut u8, ostr: *const u8) -> Opti
             }
         }
         let fresh0 = PLACE;
-        PLACE = PLACE.offset(1);
+        PLACE = PLACE.add(1);
         OPTOPT = *fresh0;
         if OPTOPT == b':' || {
             oli = crate::libc::strchr(ostr, OPTOPT as i32);
@@ -82,7 +82,7 @@ pub unsafe fn getopt(nargc: i32, nargv: *const *mut u8, ostr: *const u8) -> Opti
             }
             return Some(b'?');
         }
-        oli = oli.offset(1);
+        oli = oli.add(1);
         if *oli != b':' {
             OPTARG = null_mut();
             if *PLACE == 0 {

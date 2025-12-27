@@ -5005,7 +5005,7 @@ pub unsafe fn format_expand1(es: *mut format_expand_state, mut fmt: *const u8) -
                     continue;
                 }
                 b'{' => {
-                    ptr = format_skip(fmt.offset(-2), c!("}"));
+                    ptr = format_skip(fmt.sub(2), c!("}"));
                     if ptr.is_null() {
                         break;
                     }
@@ -5028,13 +5028,13 @@ pub unsafe fn format_expand1(es: *mut format_expand_state, mut fmt: *const u8) -
                         n += 1;
                     }
                     if *ptr == b'[' {
-                        style_end = format_skip(fmt.offset(-2), c!("]"));
+                        style_end = format_skip(fmt.sub(2), c!("]"));
                         format_log1!(es, c!("format_expand1"), "found #*{}[", n);
                         while len - off < n + 2 {
                             buf = xreallocarray(buf.cast(), 2, len).as_ptr().cast();
                             len *= 2;
                         }
-                        memcpy(buf.add(off).cast(), fmt.offset(-2).cast(), n + 1);
+                        memcpy(buf.add(off).cast(), fmt.sub(2).cast(), n + 1);
                         off += n + 1;
                         fmt = ptr.add(1);
                         continue;

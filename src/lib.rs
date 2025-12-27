@@ -335,7 +335,7 @@ const KEYC_MASK_KEY: c_ulonglong = 0x000fffffffffff;
 const KEYC_NUSER: c_ulonglong = 1000;
 
 #[expect(non_snake_case)]
-#[inline(always)]
+#[inline]
 fn KEYC_IS_MOUSE(key: key_code) -> bool {
     const KEYC_MOUSE: c_ulonglong = keyc::KEYC_MOUSE as c_ulonglong;
     const KEYC_BSPACE: c_ulonglong = keyc::KEYC_BSPACE as c_ulonglong;
@@ -344,7 +344,7 @@ fn KEYC_IS_MOUSE(key: key_code) -> bool {
 }
 
 #[expect(non_snake_case)]
-#[inline(always)]
+#[inline]
 fn KEYC_IS_UNICODE(key: key_code) -> bool {
     let masked = key & KEYC_MASK_KEY;
 

@@ -72,14 +72,14 @@ pub unsafe fn notify_insert_hook(mut item: *mut cmdq_item, ne: *mut notify_entry
         } else {
             (*fs.s).options
         };
-        let mut o = options_get(oo, cstr_to_str((*ne).name));
+        let mut o = options_get(&mut *oo, cstr_to_str((*ne).name));
         if o.is_null() && !fs.wp.is_null() {
             oo = (*fs.wp).options;
-            o = options_get(oo, cstr_to_str((*ne).name));
+            o = options_get(&mut *oo, cstr_to_str((*ne).name));
         }
         if o.is_null() && !fs.wl.is_null() {
             oo = (*(*fs.wl).window).options;
-            o = options_get(oo, cstr_to_str((*ne).name));
+            o = options_get(&mut *oo, cstr_to_str((*ne).name));
         }
         if o.is_null() {
             log_debug!("{}: hook {} not found", __func__, _s((*ne).name));

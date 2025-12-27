@@ -429,7 +429,7 @@ pub unsafe fn status_redraw(c: *mut client) -> i32 {
         screen_write_start(&raw mut ctx, &raw mut (*sl).screen);
 
         // Write the status lines.
-        let o = options_get((*s).options, "status-format");
+        let o = options_get(&mut *(*s).options, "status-format");
         if o.is_null() {
             for _ in 0..(width * lines) {
                 screen_write_putc(&raw mut ctx, &raw mut gc, b' ');

@@ -131,7 +131,7 @@ unsafe fn cmd_show_options_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
                 }
                 o = options_get_only(oo, &name);
                 if args_has(args, 'A') && o.is_null() {
-                    o = options_get(oo, &name);
+                    o = options_get(&mut *oo, &name);
                     parent = 1;
                 } else {
                     parent = 0;
@@ -249,7 +249,7 @@ pub unsafe fn cmd_show_options_all(
                 if !args_has(args, 'A') {
                     continue;
                 }
-                o = options_get(oo, oe.name);
+                o = options_get(&mut *oo, oe.name);
                 if o.is_null() {
                     continue;
                 }

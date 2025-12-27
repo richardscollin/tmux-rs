@@ -152,7 +152,7 @@ pub unsafe fn cmd_set_option_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
                     break 'fail;
                 }
                 o = options_get_only(oo, &name);
-                parent = options_get(oo, &name);
+                parent = options_get(&mut *oo, &name);
 
                 // Check that array options and indexes match up.
                 if idx != -1 && (name.starts_with('@') || !options_is_array(parent)) {

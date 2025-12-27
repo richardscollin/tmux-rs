@@ -863,7 +863,7 @@ pub unsafe fn tty_keys_build(tty: *mut tty) {
             }
         }
 
-        let o = options_get(GLOBAL_OPTIONS, "user-keys");
+        let o = options_get(&mut *GLOBAL_OPTIONS, "user-keys");
         if !o.is_null() {
             let mut a = options_array_first(o);
             while !a.is_null() {

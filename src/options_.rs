@@ -125,7 +125,7 @@ unsafe fn options_parent_table_entry(
             fatalx_!("no parent options for {s}");
         }
 
-        let o = options_get((*oo).parent, s);
+        let o = options_get(&mut *(*oo).parent, s);
         if o.is_null() {
             fatalx_!("{s} not in parent options");
         }
@@ -250,7 +250,9 @@ pub unsafe fn options_get_only(oo: *mut options, name: &str) -> *mut options_ent
         }
     }
 }
-pub unsafe fn options_get_only_(oo: *mut options, name: &str) -> *mut options_entry {
+// consider to remove this one or the other
+#[expect(dead_code)]
+unsafe fn options_get_only_(oo: *mut options, name: &str) -> *mut options_entry {
     unsafe {
         let found = rb_find_by(&raw mut (*oo).tree, |oe| {
             (*oe.name).cmp(name).reverse()
@@ -278,7 +280,10 @@ pub unsafe fn options_get_only_const(oo: *const options, name: &str) -> *const o
     }
 }
 
-pub unsafe fn options_get(mut oo: *mut options, name: &str) -> *mut options_entry {
+pub fn options_get(oo: &mut options, name: &str) -> *mut options_entry {
+    #[expect(clippy::shadow_same)]
+    let mut oo: *mut options = oo;
+
     unsafe {
         let mut o = options_get_only(oo, name);
         while o.is_null() {
@@ -287,22 +292,6 @@ pub unsafe fn options_get(mut oo: *mut options, name: &str) -> *mut options_entr
                 break;
             }
             o = options_get_only(oo, name);
-        }
-        o
-    }
-}
-
-pub unsafe fn options_get_(mut oo: *mut options, name: &str) -> *mut options_entry {
-    unsafe {
-        let mut o;
-        while {
-            o = options_get_only_(oo, name);
-            o.is_null()
-        } {
-            oo = (*oo).parent;
-            if oo.is_null() {
-                break;
-            }
         }
         o
     }
@@ -755,7 +744,7 @@ pub unsafe fn options_parse_get(
         if only != 0 {
             options_get_only(oo, &name)
         } else {
-            options_get(oo, &name)
+            options_get(&mut *oo, &name)
         }
     }
 }
@@ -814,14 +803,14 @@ unsafe fn options_match_get(
         if only != 0 {
             options_get_only(oo, &name)
         } else {
-            options_get(oo, &name)
+            options_get(&mut *oo, &name)
         }
     }
 }
 
 pub unsafe fn options_get_string(oo: *mut options, name: &str) -> *const u8 {
     unsafe {
-        let o = options_get(oo, name);
+        let o = options_get(&mut *oo, name);
         if o.is_null() {
             fatalx_!("missing option {name}");
         }
@@ -847,7 +836,7 @@ pub unsafe fn options_get_string_(oo: *const options, name: &str) -> *const u8 {
 
 unsafe fn options_get_number(oo: *mut options, name: &str) -> i64 {
     unsafe {
-        let o = options_get(oo, name);
+        let o = options_get(&mut *oo, name);
         if o.is_null() {
             fatalx_!("missing option {name}");
         }
@@ -1127,7 +1116,7 @@ pub unsafe fn options_string_to_style(
 ) -> *mut style {
     let __func__ = c!("options_string_to_style");
     unsafe {
-        let o = options_get(oo, name);
+        let o = options_get(&mut *oo, name);
         if o.is_null() || !OPTIONS_IS_STRING(o) {
             return null_mut();
         }

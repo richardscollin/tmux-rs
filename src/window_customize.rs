@@ -436,13 +436,13 @@ unsafe fn window_customize_build_options(
 
         for li in list {
             if !oo2.is_null() {
-                o = options_get(oo2, li);
+                o = options_get(&mut *oo2, li);
             }
             if o.is_null() && !oo1.is_null() {
-                o = options_get(oo1, li);
+                o = options_get(&mut *oo1, li);
             }
             if o.is_null() {
-                o = options_get(oo0, li);
+                o = options_get(&mut *oo0, li);
             }
             let scope = if options_owner(o) == oo2 {
                 scope2
@@ -462,9 +462,9 @@ unsafe fn window_customize_build_options(
                 continue;
             }
             if !oo2.is_null() {
-                o = options_get(oo2, name);
+                o = options_get(&mut *oo2, name);
             } else if !oo1.is_null() {
-                o = options_get(oo1, name);
+                o = options_get(&mut *oo1, name);
             } else {
                 o = loop_;
             }
@@ -839,7 +839,7 @@ unsafe fn window_customize_draw_option(
             let name = (*item).name;
             let idx = (*item).idx;
 
-            let o = options_get((*item).oo, cstr_to_str(name));
+            let o = options_get(&mut *(*item).oo, cstr_to_str(name));
             if o.is_null() {
                 return;
             }
@@ -1286,7 +1286,7 @@ pub unsafe fn window_customize_set_option_callback(
         if item.is_null() || !window_customize_check_item(data, item, null_mut()) {
             return 0;
         }
-        let o = options_get(oo, name);
+        let o = options_get(&mut *oo, name);
         if o.is_null() {
             return 0;
         }
@@ -1339,7 +1339,7 @@ pub unsafe fn window_customize_set_option(
         if item.is_null() || !window_customize_check_item(data, item, &raw mut fs) {
             return;
         }
-        let o = options_get((*item).oo, name);
+        let o = options_get(&mut *(*item).oo, name);
         if o.is_null() {
             return;
         }
@@ -1475,7 +1475,7 @@ pub unsafe fn window_customize_unset_option(
             return;
         }
 
-        let o = options_get((*item).oo, cstr_to_str((*item).name));
+        let o = options_get(&mut *(*item).oo, cstr_to_str((*item).name));
         if o.is_null() {
             return;
         }

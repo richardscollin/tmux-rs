@@ -2457,7 +2457,7 @@ unsafe fn input_exit_osc(ictx: *mut input_ctx) {
             112 => input_osc_112(ictx, p.cast()),
             133 => input_osc_133(ictx, p.cast()),
             _ => log_debug!("{}: unknown '{}'", "input_exit_osc", option),
-        };
+        }
     }
 }
 

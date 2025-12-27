@@ -931,7 +931,7 @@ unsafe fn window_tree_draw(
             window_tree_type::WINDOW_TREE_PANE => {
                 screen_write_preview(ctx, &raw mut (*wp.as_ptr()).base, sx, sy);
             }
-        };
+        }
     }
 }
 

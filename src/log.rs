@@ -72,7 +72,7 @@ pub fn log_toggle(name: &CStr) {
     } else {
         log_debug!("log closed");
         log_close();
-    };
+    }
 }
 
 pub fn log_close() {

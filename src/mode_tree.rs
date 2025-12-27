@@ -1471,7 +1471,7 @@ pub unsafe fn mode_tree_key(
                 }
             }
             _ => (),
-        };
+        }
         0
     }
 }

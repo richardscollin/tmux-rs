@@ -751,7 +751,7 @@ pub unsafe fn tty_term_read_list(
                 0 => *cause = format_nul!("missing or unsuitable terminal: {}", _s(name)),
                 -1 => *cause = format_nul!("can't find terminfo database"),
                 _ => *cause = format_nul!("unknown error"),
-            };
+            }
             return -1;
         }
 
@@ -1046,7 +1046,7 @@ pub unsafe fn tty_term_describe(term: *mut tty_term, code: tty_code_code) -> *co
                     (*(*term).codes.add(code as usize)).value.flag != 0
                 );
             }
-        };
+        }
 
         &raw const S as *const u8
     }

@@ -413,7 +413,7 @@ unsafe extern "C-unwind" fn job_error_callback(
         } else {
             bufferevent_disable((*job).event, EV_READ);
             (*job).state = job_state::JOB_CLOSED;
-        };
+        }
     }
 }
 

@@ -683,7 +683,7 @@ pub unsafe fn cmd_find_valid_state(fs: *const cmd_find_state) -> bool {
             .any(|wl| (*wl.as_ptr()).window == (*fs).w && wl.as_ptr() == (*fs).wl)
         {
             return false;
-        };
+        }
 
         if (*fs).w != (*(*fs).wl).window {
             return false;

@@ -2950,7 +2950,7 @@ pub unsafe fn server_client_dispatch(imsg: *mut imsg, arg: *mut c_void) {
             msgtype::MSG_READ => file_read_data(&raw mut (*c).files, imsg),
             msgtype::MSG_READ_DONE => file_read_done(&raw mut (*c).files, imsg),
             _ => (),
-        };
+        }
     }
 }
 

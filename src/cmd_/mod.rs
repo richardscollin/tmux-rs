@@ -855,7 +855,7 @@ pub unsafe fn cmd_mouse_pane(
             if !window_has_pane((*wl.as_ptr()).window, wp.unwrap().as_ptr()) {
                 return None;
             }
-        };
+        }
 
         if !wlp.is_null() {
             *wlp = wl.as_ptr();

@@ -110,7 +110,7 @@ pub fn status_prompt_load_history() {
                 status_prompt_add_typed_history(line_bytes.as_mut_ptr());
             } else {
                 break;
-            };
+            }
         }
     }
 }

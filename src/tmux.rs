@@ -91,7 +91,7 @@ pub unsafe fn checkshell_(shell: *const u8) -> bool {
     unsafe {
         if shell.is_null() {
             return false;
-        };
+        }
         if *shell != b'/' {
             return false;
         }

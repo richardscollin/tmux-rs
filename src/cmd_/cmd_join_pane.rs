@@ -87,18 +87,15 @@ unsafe fn cmd_join_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retva
 
         // If the 'p' flag is dropped then this bit can be moved into 'l'.
         if args_has(args, 'l') || args_has(args, 'p') {
-            #[expect(clippy::collapsible_else_if)]
             if args_has(args, 'f') {
-                if type_ == layout_type::LAYOUT_TOPBOTTOM {
-                    curval = (*dst_w).sy;
-                } else {
-                    curval = (*dst_w).sx;
+                match type_ {
+                    layout_type::LAYOUT_TOPBOTTOM => curval = (*dst_w).sy,
+                    _ => curval = (*dst_w).sx,
                 }
             } else {
-                if type_ == layout_type::LAYOUT_TOPBOTTOM {
-                    curval = (*dst_wp).sy;
-                } else {
-                    curval = (*dst_wp).sx;
+                match type_ {
+                    layout_type::LAYOUT_TOPBOTTOM => curval = (*dst_wp).sy,
+                    _ => curval = (*dst_wp).sx,
                 }
             }
         }

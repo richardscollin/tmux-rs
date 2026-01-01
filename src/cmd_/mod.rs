@@ -514,7 +514,7 @@ pub fn cmd_find(name: &str) -> Result<&'static cmd_entry, String> {
             }
         }
 
-         // remove last ", "
+        // remove last ", "
         msg.truncate(msg.len() - 2);
 
         Err(msg)
@@ -704,6 +704,13 @@ pub fn cmd_list_print(cmdlist: &mut cmd_list, escaped: c_int) -> *mut u8 {
         let mut len = 1;
         let mut buf: *mut u8 = xcalloc(1, len).cast().as_ptr();
 
+        let single_separator = if escaped != 0 { c!(" \\; ") } else { c!(" ; ") };
+        let double_separator = if escaped != 0 {
+            c!(" \\;\\; ")
+        } else {
+            c!(" ;; ")
+        };
+
         for cmd in tailq_foreach::<_, qentry>(cmdlist.list).map(NonNull::as_ptr) {
             let this = cmd_print(cmd);
 
@@ -713,21 +720,13 @@ pub fn cmd_list_print(cmdlist: &mut cmd_list, escaped: c_int) -> *mut u8 {
             strlcat(buf, this, len);
 
             let next = tailq_next::<_, _, qentry>(cmd);
-            #[expect(clippy::collapsible_else_if)]
             if !next.is_null() {
-                if (*cmd).group != (*next).group {
-                    if escaped != 0 {
-                        strlcat(buf, c!(" \\;\\; "), len);
-                    } else {
-                        strlcat(buf, c!(" ;; "), len);
-                    }
+                let separator = if (*cmd).group != (*next).group {
+                    double_separator
                 } else {
-                    if escaped != 0 {
-                        strlcat(buf, c!(" \\; "), len);
-                    } else {
-                        strlcat(buf, c!(" ; "), len);
-                    }
-                }
+                    single_separator
+                };
+                strlcat(buf, separator, len);
             }
 
             free_(this);

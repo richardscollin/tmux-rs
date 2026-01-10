@@ -15,6 +15,18 @@
 
 </section>
 
+# Notes for 1.85 Compat Branch
+
+The purpose of this branch is to be able to build on platforms which only ship older rust compilers.
+
+The platforms I care about specifically are Debian 13 and termux.
+
+This branch will be periodically rebased on top of the main branch.
+If you care about it's git history, I recommend you fork this repo,
+because it will otherwise be rewritten during rebasing.
+
+I don't care about it linting cleanly on clippy either.
+
 # tmux-rs
 
 A rust port of [tmux](https://github.com/tmux/tmux).

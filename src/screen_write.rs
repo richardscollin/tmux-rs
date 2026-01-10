@@ -2154,7 +2154,7 @@ pub unsafe fn screen_write_cell(ctx: *mut screen_write_ctx, gc: *const grid_cell
 
         let width = (*ud).width as u32;
         // xx, not_wrap;
-        let mut skip = 1;
+        let mut skip = true;
 
         // Ignore padding cells.
         if (*gc).flags.intersects(grid_flag::PADDING) {
@@ -2180,7 +2180,7 @@ pub unsafe fn screen_write_cell(ctx: *mut screen_write_ctx, gc: *const grid_cell
         // If in insert mode, make space for the cells.
         if (*s).mode.intersects(mode_flag::MODE_INSERT) {
             grid_view_insert_cells((*s).grid, (*s).cx, (*s).cy, width, 8);
-            skip = 0;
+            skip = false;
         }
 
         // Check this will fit on the current line and wrap if not.
@@ -2202,7 +2202,7 @@ pub unsafe fn screen_write_cell(ctx: *mut screen_write_ctx, gc: *const grid_cell
         if (*gl).flags.intersects(grid_line_flag::EXTENDED) {
             grid_view_get_cell(gd, (*s).cx, (*s).cy, &raw mut now_gc);
             if screen_write_overwrite(ctx, &raw mut now_gc, width) != 0 {
-                skip = 0;
+                skip = false;
             }
         }
 
@@ -2211,11 +2211,11 @@ pub unsafe fn screen_write_cell(ctx: *mut screen_write_ctx, gc: *const grid_cell
         for xx in ((*s).cx + 1)..((*s).cx + width) {
             // log_debug("%s: new padding at %u,%u", __func__, xx, (*s).cy);
             grid_view_set_padding(gd, xx, (*s).cy);
-            skip = 0;
+            skip = false;
         }
 
         // If no change, do not draw.
-        if skip != 0 {
+        if skip {
             if (*s).cx >= (*gl).cellsize {
                 skip = grid_cells_equal(gc, &GRID_DEFAULT_CELL);
             } else {
@@ -2229,7 +2229,7 @@ pub unsafe fn screen_write_cell(ctx: *mut screen_write_ctx, gc: *const grid_cell
                     || (*gc).data.size != 1
                     || (*gce).union_.data.data != (*gc).data.data[0]
                 {
-                    skip = 0;
+                    skip = false;
                 }
             }
         }
@@ -2244,11 +2244,11 @@ pub unsafe fn screen_write_cell(ctx: *mut screen_write_ctx, gc: *const grid_cell
             memcpy__(&raw mut tmp_gc, gc);
             tmp_gc.flags &= !grid_flag::SELECTED;
             grid_view_set_cell(gd, (*s).cx, (*s).cy, &tmp_gc);
-        } else if skip == 0 {
+        } else if !skip {
             grid_view_set_cell(gd, (*s).cx, (*s).cy, gc);
         }
         if selected {
-            skip = 0;
+            skip = false;
         }
 
         // Move the cursor. If not wrapping, stick at the last character and
@@ -2268,7 +2268,7 @@ pub unsafe fn screen_write_cell(ctx: *mut screen_write_ctx, gc: *const grid_cell
         }
 
         // Write to the screen.
-        if skip == 0 {
+        if !skip {
             if selected {
                 screen_select_cell(s, &raw mut tmp_gc, gc);
                 ttyctx.cell = &tmp_gc;

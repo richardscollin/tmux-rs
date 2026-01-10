@@ -21,6 +21,7 @@ use crate::compat::{
 use crate::libc::{strchr, strlen, strncmp};
 use crate::xmalloc::{xrealloc_, xreallocarray_};
 use crate::*;
+use crate::options_::*;
 
 pub mod cmd_attach_session;
 pub mod cmd_bind_key;
@@ -448,7 +449,7 @@ pub unsafe fn cmd_get_source(cmd: *mut cmd, file: *mut *const u8, line: &AtomicU
 
 pub unsafe fn cmd_get_alias(name: *const u8) -> *mut u8 {
     unsafe {
-        let o = options_get_only(GLOBAL_OPTIONS, c!("command-alias"));
+        let o = options_get_only(GLOBAL_OPTIONS, "command-alias");
         if o.is_null() {
             return null_mut();
         }
@@ -854,7 +855,7 @@ pub unsafe fn cmd_mouse_pane(
             if !window_has_pane((*wl.as_ptr()).window, wp.unwrap().as_ptr()) {
                 return None;
             }
-        };
+        }
 
         if !wlp.is_null() {
             *wlp = wl.as_ptr();
@@ -895,7 +896,7 @@ pub unsafe fn cmd_template_replace(template: *const u8, s: Option<&str>, idx: c_
                         ptr = ptr.add(1);
                     }
 
-                    buf = xrealloc_(buf, len + (s.map(|e| e.len()).unwrap_or_default() * 3) + 1)
+                    buf = xrealloc_(buf, len + (s.map(str::len).unwrap_or_default() * 3) + 1)
                         .as_ptr();
                     for c in s.unwrap_or_default().chars() {
                         if quoted && !strchr(quote, c as i32).is_null() {

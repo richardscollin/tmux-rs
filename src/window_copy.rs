@@ -12,6 +12,7 @@
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 use crate::*;
+use crate::options_::*;
 
 pub static WINDOW_COPY_MODE: window_mode = window_mode {
     name: "copy-mode",
@@ -741,7 +742,7 @@ pub unsafe fn window_copy_cursor_hyperlink_cb(ft: *mut format_tree) -> format_ta
             &raw mut (*data).screen,
         )
         .map(Into::into)
-        .unwrap_or(format_table_type::None)
+        .unwrap_or_default()
     }
 }
 
@@ -773,7 +774,7 @@ pub unsafe fn window_copy_search_match_cb(ft: *mut format_tree) -> format_table_
 
         window_copy_match_at_cursor(data)
             .map(Into::into)
-            .unwrap_or(format_table_type::None)
+            .unwrap_or_default()
     }
 }
 
@@ -6222,7 +6223,7 @@ pub unsafe fn window_copy_cursor_previous_word_pos(
             // already=
             0,
             // stop_at_eol=
-            1,
+            true,
         );
         grid_reader_get_cursor(&raw mut gr, &raw mut px, &raw mut py);
         *ppx = px;
@@ -6242,13 +6243,7 @@ pub unsafe fn window_copy_cursor_previous_word(
         let back_s: *mut screen = (*data).backing;
         let mut gr: grid_reader = zeroed();
 
-        let stop_at_eol = if modekey::try_from(options_get_number_((*w).options, "mode-keys") as i32)
-            == Ok(modekey::MODEKEY_EMACS)
-        {
-            1
-        } else {
-            0
-        };
+        let stop_at_eol = matches!(modekey::try_from(options_get_number_((*w).options, "mode-keys") as i32), Ok(modekey::MODEKEY_EMACS));
 
         let mut px = (*data).cx;
         let hsize = screen_hsize(back_s);

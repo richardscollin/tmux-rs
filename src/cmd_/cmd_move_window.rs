@@ -12,6 +12,7 @@
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 use crate::*;
+use crate::options_::*;
 
 pub static CMD_MOVE_WINDOW_ENTRY: cmd_entry = cmd_entry {
     name: "move-window",
@@ -118,7 +119,7 @@ unsafe fn cmd_move_window_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
         // Renumber the winlinks in the src session only, the destination
         // session already has the correct winlink id to us, either
         // automatically or specified by -s.
-        if !sflag && options_get_number_((*src).options, "renumber-windows") != 0 {
+        if !sflag && options_get_number___::<i64>(&*(*src).options, "renumber-windows") != 0 {
             session_renumber_windows(src);
         }
 

@@ -105,7 +105,7 @@ unsafe fn cmd_switch_client_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
                 }
                 window_redraw_active_switch(w, wp);
                 window_set_active_pane(w, wp, 1);
-                if window_pop_zoom(w) != 0 {
+                if window_pop_zoom(w) {
                     server_redraw_window(w);
                 }
             }

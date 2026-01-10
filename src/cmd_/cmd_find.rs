@@ -152,7 +152,7 @@ pub unsafe fn cmd_find_best_session(
                 }
             }
         } else {
-            for s_loop in rb_foreach(&raw mut SESSIONS).map(|e| e.as_ptr()) {
+            for s_loop in rb_foreach(&raw mut SESSIONS).map(std::ptr::NonNull::as_ptr) {
                 if cmd_find_session_better(s_loop, s, flags) != 0 {
                     s = s_loop;
                 }
@@ -683,7 +683,7 @@ pub unsafe fn cmd_find_valid_state(fs: *const cmd_find_state) -> bool {
             .any(|wl| (*wl.as_ptr()).window == (*fs).w && wl.as_ptr() == (*fs).wl)
         {
             return false;
-        };
+        }
 
         if (*fs).w != (*(*fs).wl).window {
             return false;
@@ -1143,13 +1143,13 @@ pub unsafe fn cmd_find_target(
             (*fs).flags |= cmd_find_flags::CMD_FIND_EXACT_WINDOW;
         }
 
-        if session.is_some_and(|s| s.is_empty()) {
+        if session.is_some_and(str::is_empty) {
             session = None;
         }
-        if window.is_some_and(|w| w.is_empty()) {
+        if window.is_some_and(str::is_empty) {
             window = None;
         }
-        if pane.is_some_and(|p| p.is_empty()) {
+        if pane.is_some_and(str::is_empty) {
             pane = None;
         }
 

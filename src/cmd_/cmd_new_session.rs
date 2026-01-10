@@ -14,6 +14,7 @@
 use crate::compat::tree::rb_min;
 use crate::libc::{sscanf, tcgetattr};
 use crate::*;
+use crate::options_::*;
 
 const NEW_SESSION_TEMPLATE: *const u8 = c!("#{session_name}:");
 
@@ -257,7 +258,7 @@ unsafe fn cmd_new_session_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
             if !detached && !is_control {
                 sx = (*c).tty.sx;
                 sy = (*c).tty.sy;
-                if sy > 0 && options_get_number_(GLOBAL_S_OPTIONS, "status") != 0 {
+                if sy > 0 && options_get_number___::<i64>(&*GLOBAL_S_OPTIONS, "status") != 0 {
                     sy -= 1;
                 }
             } else {
@@ -290,7 +291,7 @@ unsafe fn cmd_new_session_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
                 if !args_has(args, 'y') {
                     dsy = sy;
                 }
-                options_set_string!(oo, c!("default-size"), false, "{dsx}x{dsy}");
+                options_set_string!(oo, "default-size", false, "{dsx}x{dsy}");
             }
             env = environ_create().as_ptr();
             if !c.is_null() && !args_has(args, 'E') {

@@ -13,6 +13,7 @@
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 use crate::compat::queue::tailq_empty;
 use crate::*;
+use crate::options_::*;
 
 pub static CMD_RESIZE_PANE_ENTRY: cmd_entry = cmd_entry {
     name: "resize-pane",
@@ -124,7 +125,7 @@ unsafe fn cmd_resize_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
                 return cmd_retval::CMD_RETURN_ERROR;
             }
 
-            let status: i32 = options_get_number_((*w).options, "pane-border-status") as i32;
+            let status: i32 = options_get_number___(&*(*w).options, "pane-border-status");
             match pane_status::try_from(status) {
                 Ok(pane_status::PANE_STATUS_TOP) => {
                     if y != i32::MAX && (*wp).yoff == 1 {

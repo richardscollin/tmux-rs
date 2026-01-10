@@ -59,7 +59,7 @@ impl<T> Default for rb_entry<T> {
             rbe_left: null_mut(),
             rbe_right: null_mut(),
             rbe_parent: null_mut(),
-            rbe_color: Default::default(),
+            rbe_color: rb_color::default(),
         }
     }
 }

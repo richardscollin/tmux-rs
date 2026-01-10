@@ -8,7 +8,7 @@ pub unsafe fn b64_ntop(src: *const u8, srclength: usize, target: *mut u8, targsi
 
     match ntop(src, dst) {
         Ok(out) => (out.len() - 1) as i32,
-        Err(_) => -1,
+        Err(()) => -1,
     }
 }
 
@@ -23,7 +23,7 @@ pub unsafe fn b64_pton(src: *const u8, target: *mut u8, targsize: usize) -> i32 
 
     match pton(src, dst) {
         Ok(out) => out.len() as i32,
-        Err(_) => -1,
+        Err(()) => -1,
     }
 }
 
@@ -49,7 +49,7 @@ fn pton<'out>(src: &'_ [u8], dst: &'out mut [MaybeUninit<u8>]) -> Result<&'out m
     }
 
     let mut i = 0;
-    let mut it = src.iter().cloned().filter(|b| !b.is_ascii_whitespace());
+    let mut it = src.iter().copied().filter(|b| !b.is_ascii_whitespace());
 
     while let Some(ch) = it.next() {
         let chunk: [u8; 4] = [

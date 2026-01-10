@@ -11,10 +11,10 @@
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-
 use crate::compat::queue::tailq_first;
 use crate::libc::strtol;
 use crate::*;
+use crate::options_::*;
 
 pub static CMD_SEND_KEYS_ENTRY: cmd_entry = cmd_entry {
     name: "send-keys",
@@ -206,9 +206,9 @@ pub unsafe fn cmd_send_keys_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
 
         if std::ptr::eq(cmd_get_entry(self_), &CMD_SEND_PREFIX_ENTRY) {
             let key = if args_has(args, '2') {
-                options_get_number_((*s).options, "prefix2") as u64
+                options_get_number___::<u64>(&*(*s).options, "prefix2")
             } else {
-                options_get_number_((*s).options, "prefix") as u64
+                options_get_number___::<u64>(&*(*s).options, "prefix")
             };
             cmd_send_keys_inject_key(item, item, args, key);
             return cmd_retval::CMD_RETURN_NORMAL;

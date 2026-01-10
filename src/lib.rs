@@ -176,7 +176,7 @@ use crate::{
     mode_tree::*,
     names::*,
     notify::*,
-    options_::*,
+    options_::{options, options_array_item},
     options_table::*,
     osdep::*,
     paste::*,
@@ -335,7 +335,7 @@ const KEYC_MASK_KEY: c_ulonglong = 0x000fffffffffff;
 const KEYC_NUSER: c_ulonglong = 1000;
 
 #[expect(non_snake_case)]
-#[inline(always)]
+#[inline]
 fn KEYC_IS_MOUSE(key: key_code) -> bool {
     const KEYC_MOUSE: c_ulonglong = keyc::KEYC_MOUSE as c_ulonglong;
     const KEYC_BSPACE: c_ulonglong = keyc::KEYC_BSPACE as c_ulonglong;
@@ -344,11 +344,12 @@ fn KEYC_IS_MOUSE(key: key_code) -> bool {
 }
 
 #[expect(non_snake_case)]
-#[inline(always)]
+#[inline]
 fn KEYC_IS_UNICODE(key: key_code) -> bool {
+    const KEYC_BASE_END: c_ulonglong = keyc::KEYC_BASE_END as c_ulonglong;
+
     let masked = key & KEYC_MASK_KEY;
 
-    const KEYC_BASE_END: c_ulonglong = keyc::KEYC_BASE_END as c_ulonglong;
     masked > 0x7f
         && !(KEYC_BASE..KEYC_BASE_END).contains(&masked)
         && !(KEYC_USER..KEYC_USER_END).contains(&masked)
@@ -357,7 +358,7 @@ fn KEYC_IS_UNICODE(key: key_code) -> bool {
 const KEYC_CLICK_TIMEOUT: i32 = 300;
 
 /// A single key. This can be ASCII or Unicode or one of the keys between
-/// KEYC_BASE and KEYC_BASE_END.
+/// `KEYC_BASE` and `KEYC_BASE_END`.
 type key_code = core::ffi::c_ulonglong;
 
 // skipped C0 control characters
@@ -2483,9 +2484,11 @@ const OPTIONS_TABLE_IS_ARRAY: i32 = 0x1;
 const OPTIONS_TABLE_IS_HOOK: i32 = 0x2;
 const OPTIONS_TABLE_IS_STYLE: i32 = 0x4;
 
+unsafe impl Sync for options_table_entry {}
+
 #[repr(C)]
 struct options_table_entry {
-    name: *const u8,
+    name: &'static str,
     alternative_name: *mut u8,
     type_: options_table_type,
     scope: i32,
@@ -2509,7 +2512,7 @@ struct options_table_entry {
 impl options_table_entry {
     pub const fn const_default() -> Self {
         Self {
-            name: null(),
+            name: "",
             alternative_name: null_mut(),
             type_: options_table_type::OPTIONS_TABLE_STRING,
             scope: 0,
@@ -2541,15 +2544,12 @@ impl options_name_map_str {
 
 #[repr(C)]
 struct options_name_map {
-    from: *const u8,
-    to: *const u8,
+    from: &'static str,
+    to: &'static str,
 }
 impl options_name_map {
-    const fn new(from: &'static CStr, to: &'static CStr) -> Self {
-        Self {
-            from: from.as_ptr().cast(),
-            to: to.as_ptr().cast(),
-        }
+    const fn new(from: &'static str, to: &'static str) -> Self {
+        Self { from, to }
     }
 }
 
@@ -2695,7 +2695,7 @@ impl ToU8Ptr for SyncCharPtr {
     }
 }
 // TODO struct should have some sort of lifetime
-/// Display wrapper for a *c_char pointer
+/// Display wrapper for a *`c_char` pointer
 #[repr(transparent)]
 struct DisplayCStrPtr(*const u8);
 impl std::fmt::Display for DisplayCStrPtr {
@@ -2794,7 +2794,10 @@ macro_rules! c {
     ($s:literal) => {{
         const S: &str = concat!($s, "\0");
         #[allow(clippy::allow_attributes)]
-        #[allow(unused_unsafe)]
+        #[allow(
+            unused_unsafe,
+            reason = "this macro should work in safe and unsafe blocks"
+        )]
         unsafe { std::ffi::CStr::from_bytes_with_nul_unchecked(S.as_bytes()) }
             .as_ptr()
             .cast::<u8>()

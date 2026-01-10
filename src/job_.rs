@@ -21,6 +21,7 @@ use crate::libc::{
     sigfillset, sigprocmask, sigset_t, socketpair, winsize,
 };
 use crate::*;
+use crate::options_::{options, options_get_string_};
 
 pub type job_update_cb = Option<unsafe fn(*mut job)>;
 pub type job_complete_cb = Option<unsafe fn(*mut job)>;
@@ -412,7 +413,7 @@ unsafe extern "C-unwind" fn job_error_callback(
         } else {
             bufferevent_disable((*job).event, EV_READ);
             (*job).state = job_state::JOB_CLOSED;
-        };
+        }
     }
 }
 

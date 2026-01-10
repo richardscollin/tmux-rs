@@ -12,6 +12,7 @@
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 use crate::*;
+use crate::options_::*;
 
 #[repr(C)]
 pub struct paste_buffer {
@@ -215,13 +216,13 @@ pub unsafe fn paste_rename(
             *cause = null_mut();
         }
 
-        if oldname.is_none_or(|oldname| oldname.is_empty()) {
+        if oldname.is_none_or(str::is_empty) {
             if !cause.is_null() {
                 *cause = xstrdup_(c"no buffer").as_ptr();
             }
             return -1;
         }
-        if newname.is_none_or(|newname| newname.is_empty()) {
+        if newname.is_none_or(str::is_empty) {
             if !cause.is_null() {
                 *cause = xstrdup_(c"new name is empty").as_ptr();
             }
@@ -291,8 +292,8 @@ pub unsafe fn paste_set(
             created: libc::time(null_mut()),
             automatic: 0,
             order: PASTE_NEXT_ORDER,
-            name_entry: Default::default(),
-            time_entry: Default::default(),
+            name_entry: rb_entry::default(),
+            time_entry: rb_entry::default(),
         }));
         PASTE_NEXT_ORDER += 1;
 

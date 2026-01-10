@@ -20,6 +20,7 @@ use crate::libc::{
     sockaddr_un, socket, socklen_t, stat, strerror, strsignal, umask, unlink, waitpid,
 };
 use crate::*;
+use crate::options_::*;
 
 pub static mut CLIENTS: clients = unsafe { zeroed() };
 pub static mut SERVER_PROC: *mut tmuxproc = null_mut();
@@ -255,7 +256,7 @@ pub unsafe fn server_start(
         if !flags.intersects(client_flag::NOFORK) {
             c = server_client_create(fd);
         } else {
-            options_set_number(GLOBAL_OPTIONS, c!("exit-empty"), 0);
+            options_set_number(GLOBAL_OPTIONS, "exit-empty", 0);
         }
 
         if lockfd >= 0 {
@@ -365,7 +366,7 @@ pub unsafe fn server_update_socket() {
         let mut sb: stat = zeroed(); // TODO remove unecessary init
 
         let mut n = 0;
-        for s in rb_foreach(&raw mut SESSIONS).map(|s| s.as_ptr()) {
+        for s in rb_foreach(&raw mut SESSIONS).map(std::ptr::NonNull::as_ptr) {
             if (*s).attached != 0 {
                 n += 1;
                 break;

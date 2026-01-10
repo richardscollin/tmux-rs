@@ -13,6 +13,7 @@
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 use crate::compat::queue::{tailq_first, tailq_foreach, tailq_next, tailq_prev};
 use crate::*;
+use crate::options_::*;
 
 pub static CMD_SELECT_PANE_ENTRY: cmd_entry = cmd_entry {
     name: "select-pane",
@@ -116,7 +117,7 @@ pub unsafe fn cmd_select_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd
                     cmd_find_from_winlink(current, wl, cmd_find_flags::empty());
                     cmd_select_pane_redraw(w);
                 }
-                if window_pop_zoom(w) != 0 {
+                if window_pop_zoom(w) {
                     server_redraw_window(w);
                 }
             }
@@ -157,12 +158,12 @@ pub unsafe fn cmd_select_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd
 
         let style = args_get(args, b'P');
         if !style.is_null() {
-            let o = options_set_string!(oo, c!("window-style"), false, "{}", _s(style));
+            let o = options_set_string!(oo, "window-style", false, "{}", _s(style));
             if o.is_null() {
                 cmdq_error!(item, "bad style: {}", _s(style));
                 return cmd_retval::CMD_RETURN_ERROR;
             }
-            options_set_string!(oo, c!("window-active-style"), false, "{}", _s(style),);
+            options_set_string!(oo, "window-active-style", false, "{}", _s(style),);
             (*wp).flags |= window_pane_flags::PANE_REDRAW | window_pane_flags::PANE_STYLECHANGED;
         }
         if args_has(args, 'g') {
@@ -240,7 +241,7 @@ pub unsafe fn cmd_select_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd
         }
         cmdq_insert_hook!(s, item, current, "after-select-pane");
         cmd_select_pane_redraw(w);
-        if window_pop_zoom(w) != 0 {
+        if window_pop_zoom(w) {
             server_redraw_window(w);
         }
 

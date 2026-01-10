@@ -12,6 +12,7 @@
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 use crate::*;
+use crate::options_::*;
 
 pub static CMD_BREAK_PANE_ENTRY: cmd_entry = cmd_entry {
     name: "break-pane",
@@ -80,7 +81,7 @@ pub unsafe fn cmd_break_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
             }
             if args_has(args, 'n') {
                 window_set_name(w, args_get(args, b'n'));
-                options_set_number((*w).options, c!("automatic-rename"), 0);
+                options_set_number((*w).options, "automatic-rename", 0);
             }
             server_unlink_window(src_s, wl);
             return cmd_retval::CMD_RETURN_NORMAL;
@@ -98,7 +99,7 @@ pub unsafe fn cmd_break_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
         (*wp).window = window_create((*w).sx, (*w).sy, (*w).xpixel, (*w).ypixel);
         w = (*wp).window;
 
-        options_set_parent((*wp).options, (*w).options);
+        options_set_parent(&mut *(*wp).options, (*w).options);
         (*wp).flags |= window_pane_flags::PANE_STYLECHANGED;
         tailq_insert_head::<_, discr_entry>(&raw mut (*w).panes, wp);
         (*w).active = wp;
@@ -113,7 +114,7 @@ pub unsafe fn cmd_break_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
             free_(name);
         } else {
             window_set_name(w, args_get(args, b'n'));
-            options_set_number((*w).options, c!("automatic-rename"), 0);
+            options_set_number((*w).options, "automatic-rename", 0);
         }
 
         layout_init(w, wp);
@@ -121,7 +122,7 @@ pub unsafe fn cmd_break_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
         colour_palette_from_option(Some(&mut (*wp).palette), (*wp).options);
 
         if idx == -1 {
-            idx = -1 - options_get_number_((*dst_s).options, "base-index") as i32;
+            idx = -1 - options_get_number___::<i32>(&*(*dst_s).options, "base-index");
         }
         wl = session_attach(dst_s, w, idx, &raw mut cause);
         if !args_has(args, 'd') {

@@ -279,7 +279,7 @@ pub unsafe fn tty_get_features(feat: i32) -> *const u8 {
         // const struct tty_feature *tf;
 
         *s = b'\0';
-        for (i, tf) in TTY_FEATURES.iter().cloned().enumerate() {
+        for (i, tf) in TTY_FEATURES.iter().copied().enumerate() {
             if (!feat & (1 << i)) != 0 {
                 continue;
             }
@@ -303,7 +303,7 @@ pub unsafe fn tty_apply_features(term: *mut tty_term, feat: i32) -> bool {
     unsafe {
         log_debug!("applying terminal features: {}", _s(tty_get_features(feat)));
 
-        for (i, tf) in TTY_FEATURES.iter().cloned().enumerate() {
+        for (i, tf) in TTY_FEATURES.iter().copied().enumerate() {
             if ((*term).features & (1 << i) != 0) || (!feat & (1 << i)) != 0 {
                 continue;
             }

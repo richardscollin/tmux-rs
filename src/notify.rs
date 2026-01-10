@@ -12,6 +12,7 @@
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 use crate::*;
+use crate::options_::*;
 
 #[repr(C)]
 pub struct notify_entry {
@@ -71,14 +72,14 @@ pub unsafe fn notify_insert_hook(mut item: *mut cmdq_item, ne: *mut notify_entry
         } else {
             (*fs.s).options
         };
-        let mut o = options_get(oo, (*ne).name);
+        let mut o = options_get(&mut *oo, cstr_to_str((*ne).name));
         if o.is_null() && !fs.wp.is_null() {
             oo = (*fs.wp).options;
-            o = options_get(oo, (*ne).name);
+            o = options_get(&mut *oo, cstr_to_str((*ne).name));
         }
         if o.is_null() && !fs.wl.is_null() {
             oo = (*(*fs.wl).window).options;
-            o = options_get(oo, (*ne).name);
+            o = options_get(&mut *oo, cstr_to_str((*ne).name));
         }
         if o.is_null() {
             log_debug!("{}: hook {} not found", __func__, _s((*ne).name));
@@ -93,7 +94,7 @@ pub unsafe fn notify_insert_hook(mut item: *mut cmdq_item, ne: *mut notify_entry
         cmdq_add_formats(state, (*ne).formats);
 
         if *(*ne).name == b'@' {
-            let value = options_get_string(oo, (*ne).name);
+            let value = options_get_string(oo, cstr_to_str((*ne).name));
             match cmd_parse_from_string(cstr_to_str(value), None) {
                 Err(error) => {
                     log_debug!(

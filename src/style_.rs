@@ -14,6 +14,7 @@
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 use crate::libc::{snprintf, strchr, strcspn, strncasecmp, strspn};
 use crate::*;
+use crate::options_::*;
 
 // #define STYLE_ATTR_MASK (~0)
 
@@ -461,7 +462,7 @@ pub unsafe fn style_add(
             ft = ft0;
         }
 
-        let mut sy = options_string_to_style(oo, name, ft);
+        let mut sy = options_string_to_style(oo, cstr_to_str(name), ft);
         if sy.is_null() {
             sy = &raw mut STYLE_DEFAULT;
         }

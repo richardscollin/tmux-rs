@@ -13,6 +13,7 @@
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 use crate::compat::b64::b64_pton;
 use crate::*;
+use crate::options_::*;
 
 // Handle keys input from the outside terminal. tty_default_*_keys[] are a base
 // table of supported keys which are looked up in terminfo(5) and translated
@@ -795,24 +796,23 @@ unsafe fn tty_keys_add1(mut tkp: *mut *mut tty_key, mut s: *const u8, key: key_c
             (*tk).key = KEYC_UNKNOWN;
         }
 
-        // Find the next entry.
-        if *s == (*tk).ch {
-            // Move forward in string.
-            s = s.add(1);
+        tkp = match (*s).cmp(&(*tk).ch) {
+            cmp::Ordering::Equal => {
+                // Move forward in string.
+                s = s.add(1);
 
-            // If this is the end of the string, no more is necessary.
-            if *s == b'\0' {
-                (*tk).key = key;
-                return;
+                // If this is the end of the string, no more is necessary.
+                if *s == b'\0' {
+                    (*tk).key = key;
+                    return;
+                }
+
+                // Use the child tree for the next character.
+                &raw mut (*tk).next
             }
-
-            // Use the child tree for the next character.
-            tkp = &raw mut (*tk).next;
-        } else if *s < (*tk).ch {
-            tkp = &raw mut (*tk).left;
-        } else if *s > (*tk).ch {
-            tkp = &raw mut (*tk).right;
-        }
+            cmp::Ordering::Less => &raw mut (*tk).left,
+            cmp::Ordering::Greater => &raw mut (*tk).right,
+        };
 
         // And recurse to add it.
         tty_keys_add1(tkp, s, key);
@@ -829,10 +829,10 @@ pub unsafe fn tty_keys_build(tty: *mut tty) {
         }
         (*tty).key_tree = null_mut();
 
-        for tdkx in TTY_DEFAULT_XTERM_KEYS.iter() {
+        for tdkx in &TTY_DEFAULT_XTERM_KEYS {
             for (j, tty_default_xterm_modifiers_j) in TTY_DEFAULT_XTERM_MODIFIERS
                 .iter()
-                .cloned()
+                .copied()
                 .enumerate()
                 .skip(2)
             {
@@ -848,21 +848,21 @@ pub unsafe fn tty_keys_build(tty: *mut tty) {
             }
         }
 
-        for tdkr in TTY_DEFAULT_RAW_KEYS.iter() {
+        for tdkr in &TTY_DEFAULT_RAW_KEYS {
             let s = tdkr.string.as_ptr();
             if *s != 0 {
                 tty_keys_add(tty, s, tdkr.key);
             }
         }
 
-        for tdkc in TTY_DEFAULT_CODE_KEYS.iter() {
+        for tdkc in &TTY_DEFAULT_CODE_KEYS {
             let s = tty_term_string((*tty).term, tdkc.code);
             if *s != 0 {
                 tty_keys_add(tty, s, tdkc.key);
             }
         }
 
-        let o = options_get(GLOBAL_OPTIONS, c!("user-keys"));
+        let o = options_get(&mut *GLOBAL_OPTIONS, "user-keys");
         if !o.is_null() {
             let mut a = options_array_first(o);
             while !a.is_null() {
@@ -929,24 +929,24 @@ unsafe fn tty_keys_find1(
         }
 
         // Pick the next in the sequence
-        if (*tk).ch == *buf {
-            // Move forward in the string
-            buf = buf.add(1);
-            len -= 1;
-            *size += 1;
+        tk = match (*tk).ch.cmp(&*buf) {
+            cmp::Ordering::Equal => {
+                // Move forward in the string
+                buf = buf.add(1);
+                len -= 1;
+                *size += 1;
 
-            // At the end of the string, return the current node
-            if len == 0 || ((*tk).next.is_null() && (*tk).key != KEYC_UNKNOWN) {
-                return tk;
+                // At the end of the string, return the current node
+                if len == 0 || ((*tk).next.is_null() && (*tk).key != KEYC_UNKNOWN) {
+                    return tk;
+                }
+
+                // Move into the next tree for the following character
+                (*tk).next
             }
-
-            // Move into the next tree for the following character
-            tk = (*tk).next;
-        } else if *buf < (*tk).ch {
-            tk = (*tk).left;
-        } else if *buf > (*tk).ch {
-            tk = (*tk).right;
-        }
+            cmp::Ordering::Greater => (*tk).left,
+            cmp::Ordering::Less => (*tk).right,
+        };
 
         // Move to the next in the tree
         tty_keys_find1(tk, buf, len, size)
@@ -1253,7 +1253,7 @@ pub unsafe fn tty_keys_next(tty: *mut tty) -> i32 {
                     }
 
                     // Get the time period.
-                    let mut delay = options_get_number(GLOBAL_OPTIONS, c!("escape-time"));
+                    let mut delay = options_get_number___(&*GLOBAL_OPTIONS, "escape-time");
                     if delay == 0 {
                         delay = 1;
                     }

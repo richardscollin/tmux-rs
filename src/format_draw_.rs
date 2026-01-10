@@ -1354,7 +1354,7 @@ pub unsafe fn format_draw(
         } // out:
 
         // Free the screens.
-        for s_i in s.iter_mut() {
+        for s_i in &mut s {
             screen_free(s_i);
         }
 
@@ -1415,7 +1415,7 @@ pub unsafe fn format_width(expanded: *const u8) -> u32 {
 /// Trim on the left, taking #[] into account.
 ///
 /// Note, we copy the whole set of unescaped #s, but only add their escaped size to width.
-/// This is because the format_draw function will actually do the escaping when it runs
+/// This is because the `format_draw` function will actually do the escaping when it runs
 pub unsafe fn format_trim_left(expanded: *const u8, limit: u32) -> *mut u8 {
     unsafe {
         let mut cp = expanded;

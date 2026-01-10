@@ -11,12 +11,12 @@
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-
 use crate::compat::queue::{
     tailq_first, tailq_insert_after, tailq_insert_head, tailq_last, tailq_next, tailq_prev,
     tailq_remove, tailq_replace,
 };
 use crate::*;
+use crate::options_::*;
 
 pub static CMD_SWAP_PANE_ENTRY: cmd_entry = cmd_entry {
     name: "swap-pane",
@@ -97,10 +97,10 @@ unsafe fn cmd_swap_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retva
             (*src_wp).layout_cell = dst_lc;
 
             (*src_wp).window = dst_w;
-            options_set_parent((*src_wp).options, (*dst_w).options);
+            options_set_parent(&mut *(*src_wp).options, (*dst_w).options);
             (*src_wp).flags |= window_pane_flags::PANE_STYLECHANGED;
             (*dst_wp).window = src_w;
-            options_set_parent((*dst_wp).options, (*src_w).options);
+            options_set_parent(&mut *(*dst_wp).options, (*src_w).options);
             (*dst_wp).flags |= window_pane_flags::PANE_STYLECHANGED;
 
             let sx = (*src_wp).sx;
@@ -144,10 +144,10 @@ unsafe fn cmd_swap_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retva
             }
         }
 
-        if window_pop_zoom(src_w) != 0 {
+        if window_pop_zoom(src_w) {
             server_redraw_window(src_w);
         }
-        if src_w != dst_w && window_pop_zoom(dst_w) != 0 {
+        if src_w != dst_w && window_pop_zoom(dst_w) {
             server_redraw_window(dst_w);
         }
 

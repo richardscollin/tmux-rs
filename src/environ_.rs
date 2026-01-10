@@ -12,6 +12,7 @@
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 use crate::*;
+use crate::options_::*;
 
 pub type environ = rb_head<environ_entry>;
 RB_GENERATE!(environ, environ_entry, entry, discr_entry, environ_cmp);
@@ -110,7 +111,7 @@ pub unsafe fn environ_set_(
                 name : Some(xstrdup(name).cast()),
                 value: s,
                 flags,
-                entry: Default::default(),
+                entry: rb_entry::default(),
             }));
             rb_insert(env, envent);
         }
@@ -128,7 +129,7 @@ pub unsafe fn environ_clear(env: *mut environ, name: *const u8) {
                 name : Some(xstrdup(name).cast()),
                 value: None,
                 flags: environ_flags::empty(),
-                entry: Default::default(),
+                entry: rb_entry::default(),
             }));
             rb_insert(env, envent);
         }
@@ -168,7 +169,7 @@ pub unsafe fn environ_update(oo: *mut options, src: *mut environ, dst: *mut envi
     unsafe {
         let mut found;
 
-        let o = options_get(oo, c!("update-environment"));
+        let o = options_get(&mut *oo, "update-environment");
         if o.is_null() {
             return;
         }

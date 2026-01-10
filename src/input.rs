@@ -35,6 +35,7 @@
 use crate::compat::b64::{b64_ntop, b64_pton};
 use crate::libc::{strchr, strpbrk, strtol};
 use crate::*;
+use crate::options_::{options_get_number_, options_get_only, options_remove_or_default, options_set_number};
 
 // Input parser cell.
 #[repr(C)]
@@ -2456,7 +2457,7 @@ unsafe fn input_exit_osc(ictx: *mut input_ctx) {
             112 => input_osc_112(ictx, p.cast()),
             133 => input_osc_133(ictx, p.cast()),
             _ => log_debug!("{}: unknown '{}'", "input_exit_osc", option),
-        };
+        }
     }
 }
 
@@ -2527,14 +2528,14 @@ unsafe fn input_exit_rename(ictx: *mut input_ctx) {
         let w = (*wp).window;
 
         if (*ictx).input_len == 0 {
-            if let Some(o) = NonNull::new(options_get_only((*w).options, c!("automatic-rename"))) {
+            if let Some(o) = NonNull::new(options_get_only((*w).options, "automatic-rename")) {
                 _ = options_remove_or_default(o.as_ptr(), -1);
             }
             if options_get_number_((*w).options, "automatic-rename") == 0 {
                 window_set_name(w, c!(""));
             }
         } else {
-            options_set_number((*w).options, c!("automatic-rename"), 0);
+            options_set_number((*w).options, "automatic-rename", 0);
             window_set_name(w, (*ictx).input_buf.cast());
         }
         server_redraw_window_borders(w);
@@ -2544,7 +2545,6 @@ unsafe fn input_exit_rename(ictx: *mut input_ctx) {
 
 /// Open UTF-8 character.
 unsafe fn input_top_bit_set(ictx: *mut input_ctx) -> i32 {
-    let __func__ = "input_top_bit_set";
     unsafe {
         let sctx = &raw mut (*ictx).ctx;
         let ud = &raw mut (*ictx).utf8data;
@@ -2569,7 +2569,7 @@ unsafe fn input_top_bit_set(ictx: *mut input_ctx) -> i32 {
         }
         (*ictx).utf8started = 0;
 
-        // log_debug!("{} {} '%*s' (width {})", __func__, (*ud).size, (int)(*ud).size, (*ud).data, (*ud).width);
+        // log_debug!("input_top_bit_set {} '%*s' (width {})", (*ud).size, (int)(*ud).size, (*ud).data, (*ud).width);
 
         utf8_copy(&raw mut (*ictx).cell.cell.data, ud);
         screen_write_collect_add(sctx, &raw mut (*ictx).cell.cell);

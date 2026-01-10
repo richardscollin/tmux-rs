@@ -11,7 +11,7 @@
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-use crate::libc::{fnmatch, isdigit, sscanf, strchr, strcmp, strncmp, strstr};
+use crate::libc::{fnmatch};
 use crate::options_table::OPTIONS_OTHER_NAMES_STR;
 use crate::*;
 
@@ -25,7 +25,7 @@ pub struct options_array_item {
     pub entry: rb_entry<options_array_item>,
 }
 
-pub fn options_array_cmp(a1: &options_array_item, a2: &options_array_item) -> cmp::Ordering {
+fn options_array_cmp(a1: &options_array_item, a2: &options_array_item) -> cmp::Ordering {
     a1.index.cmp(&a2.index)
 }
 RB_GENERATE!(
@@ -38,24 +38,24 @@ RB_GENERATE!(
 
 #[repr(C)]
 pub struct options_entry {
-    pub owner: *mut options,
-    pub name: *const u8,
-    pub tableentry: *const options_table_entry,
-    pub value: options_value,
-    pub cached: i32,
-    pub style: style,
-    pub entry: rb_entry<options_entry>,
+    owner: *mut options,
+    name: Cow<'static, str>,
+    tableentry: *const options_table_entry,
+    value: options_value,
+    cached: i32,
+    style: style,
+    entry: rb_entry<options_entry>,
 }
 
 #[repr(C)]
 pub struct options {
-    pub tree: rb_head<options_entry>,
-    pub parent: *mut options,
+    tree: rb_head<options_entry>,
+    parent: *mut options,
 }
 
 #[expect(non_snake_case)]
 #[inline]
-pub unsafe fn OPTIONS_IS_STRING(o: *const options_entry) -> bool {
+unsafe fn OPTIONS_IS_STRING(o: *const options_entry) -> bool {
     unsafe {
         (*o).tableentry.is_null()
             || (*(*o).tableentry).type_ == options_table_type::OPTIONS_TABLE_STRING
@@ -64,7 +64,7 @@ pub unsafe fn OPTIONS_IS_STRING(o: *const options_entry) -> bool {
 
 #[expect(non_snake_case)]
 #[inline]
-pub fn OPTIONS_IS_NUMBER(o: *const options_entry) -> bool {
+fn OPTIONS_IS_NUMBER(o: *const options_entry) -> bool {
     unsafe {
         !(*o).tableentry.is_null()
             && ((*(*o).tableentry).type_ == options_table_type::OPTIONS_TABLE_NUMBER
@@ -77,7 +77,7 @@ pub fn OPTIONS_IS_NUMBER(o: *const options_entry) -> bool {
 
 #[expect(non_snake_case)]
 #[inline]
-pub unsafe fn OPTIONS_IS_COMMAND(o: *const options_entry) -> bool {
+unsafe fn OPTIONS_IS_COMMAND(o: *const options_entry) -> bool {
     unsafe {
         !(*o).tableentry.is_null()
             && (*(*o).tableentry).type_ == options_table_type::OPTIONS_TABLE_COMMAND
@@ -86,7 +86,7 @@ pub unsafe fn OPTIONS_IS_COMMAND(o: *const options_entry) -> bool {
 
 #[expect(non_snake_case)]
 #[inline]
-pub unsafe fn OPTIONS_IS_ARRAY(o: *const options_entry) -> bool {
+unsafe fn OPTIONS_IS_ARRAY(o: *const options_entry) -> bool {
     unsafe {
         !(*o).tableentry.is_null() && ((*(*o).tableentry).flags & OPTIONS_TABLE_IS_ARRAY) != 0
     }
@@ -94,24 +94,20 @@ pub unsafe fn OPTIONS_IS_ARRAY(o: *const options_entry) -> bool {
 
 RB_GENERATE!(options_tree, options_entry, entry, discr_entry, options_cmp);
 
-pub fn options_cmp(lhs: &options_entry, rhs: &options_entry) -> cmp::Ordering {
-    unsafe { i32_to_ordering(libc::strcmp(lhs.name, rhs.name)) }
+fn options_cmp(lhs: &options_entry, rhs: &options_entry) -> cmp::Ordering {
+    lhs.name.cmp(&rhs.name)
 }
 
-pub unsafe fn options_map_name(name: *const u8) -> *const u8 {
-    unsafe {
-        let mut map = &raw const OPTIONS_OTHER_NAMES as *const options_name_map;
-        while !(*map).from.is_null() {
-            if libc::strcmp((*map).from, name) == 0 {
-                return (*map).to;
-            }
-            map = map.add(1);
+fn options_map_name(name: &str) -> Option<&'static str> {
+    for &options_name_map { from, to} in &OPTIONS_OTHER_NAMES {
+        if from == name {
+            return Some(to);
         }
-        name
     }
+    None
 }
 
-pub fn options_map_name_str(name: &str) -> &str {
+fn options_map_name_str(name: &str) -> &str {
     for map in &OPTIONS_OTHER_NAMES_STR {
         if map.from == name {
             return map.to;
@@ -120,25 +116,25 @@ pub fn options_map_name_str(name: &str) -> &str {
     name
 }
 
-pub unsafe fn options_parent_table_entry(
+unsafe fn options_parent_table_entry(
     oo: *mut options,
-    s: *const u8,
+    s: &str,
 ) -> *const options_table_entry {
     unsafe {
         if (*oo).parent.is_null() {
-            fatalx_!("no parent options for {}", _s(s));
+            fatalx_!("no parent options for {s}");
         }
 
-        let o = options_get((*oo).parent, s);
+        let o = options_get(&mut *(*oo).parent, s);
         if o.is_null() {
-            fatalx_!("{} not in parent options", _s(s));
+            fatalx_!("{s} not in parent options");
         }
 
         (*o).tableentry
     }
 }
 
-pub unsafe fn options_value_free(o: *const options_entry, ov: *mut options_value) {
+unsafe fn options_value_free(o: *const options_entry, ov: *mut options_value) {
     unsafe {
         if OPTIONS_IS_STRING(o) {
             free_((*ov).string);
@@ -149,7 +145,7 @@ pub unsafe fn options_value_free(o: *const options_entry, ov: *mut options_value
     }
 }
 
-pub unsafe fn options_value_to_string(
+unsafe fn options_value_to_string(
     o: *mut options_entry,
     ov: *mut options_value,
     numeric: i32,
@@ -225,10 +221,8 @@ pub unsafe fn options_get_parent(oo: *mut options) -> *mut options {
     unsafe { (*oo).parent }
 }
 
-pub unsafe fn options_set_parent(oo: *mut options, parent: *mut options) {
-    unsafe {
-        (*oo).parent = parent;
-    }
+pub fn options_set_parent(oo: &mut options, parent: *mut options) {
+    oo.parent = parent;
 }
 
 pub unsafe fn options_first(oo: *mut options) -> *mut options_entry {
@@ -239,31 +233,34 @@ pub unsafe fn options_next(o: *mut options_entry) -> *mut options_entry {
     unsafe { rb_next(o) }
 }
 
-pub unsafe fn options_get_only(oo: *mut options, name: *const u8) -> *mut options_entry {
+pub unsafe fn options_get_only(oo: *mut options, name: &str) -> *mut options_entry {
     unsafe {
+        let name = std::mem::transmute::<&str, &'static str>(name);
         let mut o = options_entry {
-            name,
+            name: Cow::Borrowed(name),
             ..zeroed() // TODO use uninit
         };
 
         let found = rb_find(&raw mut (*oo).tree, &raw const o);
         if found.is_null() {
-            o.name = options_map_name(name);
+            o.name = Cow::Borrowed(options_map_name(name).unwrap_or(name));
             rb_find(&raw mut (*oo).tree, &o)
         } else {
             found
         }
     }
 }
-pub unsafe fn options_get_only_(oo: *mut options, name: &str) -> *mut options_entry {
+// consider to remove this one or the other
+#[expect(dead_code)]
+unsafe fn options_get_only_(oo: *mut options, name: &str) -> *mut options_entry {
     unsafe {
         let found = rb_find_by(&raw mut (*oo).tree, |oe| {
-            libc::strcmp_(oe.name, name).reverse()
+            (*oe.name).cmp(name).reverse()
         });
         if found.is_null() {
             let name = options_map_name_str(name);
             rb_find_by(&raw mut (*oo).tree, |oe| {
-                libc::strcmp_(oe.name, name).reverse()
+                (*oe.name).cmp(name).reverse()
             })
         } else {
             found
@@ -273,17 +270,20 @@ pub unsafe fn options_get_only_(oo: *mut options, name: &str) -> *mut options_en
 
 pub unsafe fn options_get_only_const(oo: *const options, name: &str) -> *const options_entry {
     unsafe {
-        let found = rb_find_by_const(&(*oo).tree, |oe| libc::strcmp_(oe.name, name).reverse());
+        let found = rb_find_by_const(&(*oo).tree, |oe| (*oe.name).cmp(name).reverse());
         if found.is_null() {
             let name = options_map_name_str(name);
-            rb_find_by_const(&(*oo).tree, |oe| libc::strcmp_(oe.name, name).reverse())
+            rb_find_by_const(&(*oo).tree, |oe| (*oe.name).cmp(name).reverse())
         } else {
             found
         }
     }
 }
 
-pub unsafe fn options_get(mut oo: *mut options, name: *const u8) -> *mut options_entry {
+pub fn options_get(oo: &mut options, name: &str) -> *mut options_entry {
+    #[expect(clippy::shadow_same)]
+    let mut oo: *mut options = oo;
+
     unsafe {
         let mut o = options_get_only(oo, name);
         while o.is_null() {
@@ -297,23 +297,7 @@ pub unsafe fn options_get(mut oo: *mut options, name: *const u8) -> *mut options
     }
 }
 
-pub unsafe fn options_get_(mut oo: *mut options, name: &str) -> *mut options_entry {
-    unsafe {
-        let mut o;
-        while {
-            o = options_get_only_(oo, name);
-            o.is_null()
-        } {
-            oo = (*oo).parent;
-            if oo.is_null() {
-                break;
-            }
-        }
-        o
-    }
-}
-
-pub unsafe fn options_get_const(mut oo: *const options, name: &str) -> *const options_entry {
+unsafe fn options_get_const(mut oo: *const options, name: &str) -> *const options_entry {
     unsafe {
         let mut o;
         while {
@@ -414,23 +398,31 @@ pub unsafe fn options_default_to_string(oe: *const options_table_entry) -> NonNu
     }
 }
 
-unsafe fn options_add(oo: *mut options, name: *const u8) -> *mut options_entry {
+unsafe fn options_add(oo: *mut options, name: &str) -> *mut options_entry {
     unsafe {
         let mut o = options_get_only(oo, name);
         if !o.is_null() {
             options_remove(o);
         }
 
-        o = xcalloc1::<options_entry>() as *mut options_entry;
-        (*o).owner = oo;
-        (*o).name = xstrdup(name).as_ptr();
+        o = Box::into_raw(Box::new(
+            options_entry {
+                owner: oo,
+                name: Cow::Owned(name.to_string()),
+                tableentry: null(),
+                value: options_value {number: 0},
+                cached: 0,
+                style: zeroed(),
+                entry: rb_entry::default(),
+            }
+        ));
 
         rb_insert(&raw mut (*oo).tree, o);
         o
     }
 }
 
-pub unsafe fn options_remove(o: *mut options_entry) {
+unsafe fn options_remove(o: *mut options_entry) {
     unsafe {
         let oo = (*o).owner;
 
@@ -440,13 +432,13 @@ pub unsafe fn options_remove(o: *mut options_entry) {
             options_value_free(o, &mut (*o).value);
         }
         rb_remove(&mut (*oo).tree, o);
-        free_((*o).name.cast_mut()); // TODO cast away const
+        (*o).name = Cow::Borrowed("");
         free_(o);
     }
 }
 
-pub unsafe fn options_name(o: *mut options_entry) -> *const u8 {
-    unsafe { (*o).name }
+pub unsafe fn options_name<'a>(o: *mut options_entry) -> &'a str {
+    unsafe { &(*o).name }
 }
 
 pub unsafe fn options_owner(o: *mut options_entry) -> *mut options {
@@ -712,139 +704,118 @@ pub unsafe fn options_to_string(o: *mut options_entry, idx: i32, numeric: i32) -
     }
 }
 
-pub unsafe fn options_parse(name: *const u8, idx: *mut i32) -> *mut u8 {
-    unsafe {
-        if *name == 0 {
-            return null_mut();
-        }
-
-        let copy = xstrdup(name).as_ptr();
-        let cp = strchr(copy, b'[' as i32);
-
-        if cp.is_null() {
-            *idx = -1;
-            return copy;
-        }
-
-        let end = strchr(cp.offset(1), b']' as i32);
-        if end.is_null() || *end.offset(1) != 0 || isdigit(*end.offset(-1) as i32) == 0 {
-            free_(copy);
-            return null_mut();
-        }
-
-        let mut parsed_idx = 0;
-        if sscanf(cp.cast(), c"[%d]".as_ptr(), &mut parsed_idx) != 1 || parsed_idx < 0 {
-            free_(copy);
-            return null_mut();
-        }
-
-        *idx = parsed_idx;
-        *cp = 0;
-        copy
+pub fn options_parse(name: &str) -> Option<(String, i32)> {
+    if name.is_empty() {
+        return None;
     }
+
+    let mut copy = name.to_string();
+
+    let Some(cp) = copy.find('[') else {
+        return Some((copy, -1));
+    };
+
+    let end = copy[cp+1..].find(']').map(|end| end + cp + 1)?;
+
+    if end != copy.len() - 1 || !copy.as_bytes()[end - 1].is_ascii_digit() {
+        return None;
+    }
+
+    let Ok(parsed_idx) = copy[cp+1..end].parse::<i32>() else {
+        return None;
+    };
+
+    copy.truncate(cp);
+    Some((copy, parsed_idx))
 }
 
 pub unsafe fn options_parse_get(
     oo: *mut options,
-    s: *const u8,
+    s: &str,
     idx: *mut i32,
     only: i32,
 ) -> *mut options_entry {
     unsafe {
-        let name = options_parse(s, idx);
-        if name.is_null() {
+        let Some((name, idx_value)) = options_parse(s) else {
             return null_mut();
-        }
-
-        let o = if only != 0 {
-            options_get_only(oo, name)
-        } else {
-            options_get(oo, name)
         };
+        *idx = idx_value;
 
-        free_(name);
-        o
+        if only != 0 {
+            options_get_only(oo, &name)
+        } else {
+            options_get(&mut *oo, &name)
+        }
     }
 }
 
-pub unsafe fn options_match(s: *const u8, idx: *mut i32, ambiguous: *mut i32) -> *mut u8 {
+pub unsafe fn options_match(s: &str, idx: *mut i32, ambiguous: *mut i32) -> Option<String> {
     unsafe {
-        let parsed = options_parse(s, idx);
-        if parsed.is_null() {
-            return null_mut();
-        }
+        let (parsed, idx_value) = options_parse(s)?;
+        *idx = idx_value;
 
-        if *parsed == b'@' {
+        if parsed.starts_with('@') {
             *ambiguous = 0;
-            return parsed;
+            return Some(parsed);
         }
 
-        let name = options_map_name(parsed);
-        let namelen = strlen(name);
+        let name = options_map_name(&parsed).unwrap_or(&parsed);
 
         let mut found: *const options_table_entry = null();
-        let mut oe = &raw const OPTIONS_TABLE as *const options_table_entry;
 
-        while !(*oe).name.is_null() {
-            if strcmp((*oe).name, name) == 0 {
+        for oe in &OPTIONS_TABLE {
+            if oe.name == name {
                 found = oe;
                 break;
             }
-            if strncmp((*oe).name, name, namelen) == 0 {
+            if oe.name.starts_with(name) {
                 if !found.is_null() {
                     *ambiguous = 1;
-                    free_(parsed);
-                    return null_mut();
+                    return None;
                 }
                 found = oe;
             }
-            oe = oe.add(1);
         }
 
-        free_(parsed);
         if found.is_null() {
             *ambiguous = 0;
-            return null_mut();
+            return None;
         }
 
-        xstrdup((*found).name).as_ptr()
+        Some((*found).name.to_string())
     }
 }
 
 #[expect(dead_code)]
 unsafe fn options_match_get(
     oo: *mut options,
-    s: *const u8,
+    s: &str,
     idx: *mut i32,
     only: i32,
     ambiguous: *mut i32,
 ) -> *mut options_entry {
     unsafe {
-        let name = options_match(s, idx, ambiguous);
-        if name.is_null() {
+        let Some(name) = options_match(s, idx, ambiguous) else {
             return null_mut();
-        }
-
-        *ambiguous = 0;
-        let o = if only != 0 {
-            options_get_only(oo, name)
-        } else {
-            options_get(oo, name)
         };
 
-        free_(name);
-        o
+        *ambiguous = 0;
+        if only != 0 {
+            options_get_only(oo, &name)
+        } else {
+            options_get(&mut *oo, &name)
+        }
     }
 }
 
-pub unsafe fn options_get_string(oo: *mut options, name: *const u8) -> *const u8 {
+pub unsafe fn options_get_string(oo: *mut options, name: &str) -> *const u8 {
     unsafe {
-        let o = options_get(oo, name);
+        let o = options_get(&mut *oo, name);
         if o.is_null() {
-            fatalx_!("missing option {}", _s(name));
+            fatalx_!("missing option {name}");
         }
         if !OPTIONS_IS_STRING(o) {
-            fatalx_!("option {} is not a string", _s(name));
+            fatalx_!("option {name} is not a string");
         }
         (*o).value.string
     }
@@ -863,14 +834,14 @@ pub unsafe fn options_get_string_(oo: *const options, name: &str) -> *const u8 {
     }
 }
 
-pub unsafe fn options_get_number(oo: *mut options, name: *const u8) -> i64 {
+unsafe fn options_get_number(oo: *mut options, name: &str) -> i64 {
     unsafe {
-        let o = options_get(oo, name);
+        let o = options_get(&mut *oo, name);
         if o.is_null() {
-            fatalx_!("missing option {}", _s(name));
+            fatalx_!("missing option {name}");
         }
         if !OPTIONS_IS_NUMBER(o) {
-            fatalx_!("option {} is not a number", _s(name));
+            fatalx_!("option {name} is not a number");
         }
         (*o).value.number
     }
@@ -889,16 +860,22 @@ pub unsafe fn options_get_number_(oo: *const options, name: &str) -> i64 {
     }
 }
 
-pub fn options_get_number__(oo: &options, name: &str) -> i64 {
+/// panics if internally stored value is out of range of returned type
+#[track_caller]
+pub fn options_get_number___<T: TryFrom<i64>>(oo: &options, name: &str) -> T {
     unsafe {
         let o = options_get_const(oo, name);
         if o.is_null() {
-            fatalx_!("missing option {name}");
+            panic!("missing option {name}");
         }
         if !OPTIONS_IS_NUMBER(o) {
-            fatalx_!("option {name} is not a number");
+            panic!("option {name} is not a number");
         }
-        (*o).value.number
+
+        match T::try_from((*o).value.number) {
+            Ok(value) => value,
+            Err(_) => panic!("options_get_number out of range"),
+        }
     }
 }
 
@@ -911,7 +888,7 @@ pub(crate) use options_set_string;
 
 pub unsafe fn options_set_string_(
     oo: *mut options,
-    name: *const u8,
+    name: &str,
     append: bool,
     args: std::fmt::Arguments,
 ) -> *mut options_entry {
@@ -925,7 +902,7 @@ pub unsafe fn options_set_string_(
 
         let mut o = options_get_only(oo, name);
         if !o.is_null() && append && OPTIONS_IS_STRING(o) {
-            if *name != b'@' {
+            if !name.starts_with('@') {
                 separator = (*(*o).tableentry).separator;
                 if separator.is_null() {
                     separator = c!("");
@@ -937,7 +914,7 @@ pub unsafe fn options_set_string_(
             value = s;
         }
 
-        if o.is_null() && *name == b'@' {
+        if o.is_null() && name.starts_with('@') {
             o = options_add(oo, name);
         } else if o.is_null() {
             o = options_default(oo, options_parent_table_entry(oo, name));
@@ -947,7 +924,7 @@ pub unsafe fn options_set_string_(
         }
 
         if !OPTIONS_IS_STRING(o) {
-            panic!("option {} is not a string", _s(name));
+            panic!("option {name} is not a string");
         }
         free_((*o).value.string);
         (*o).value.string = value;
@@ -958,12 +935,12 @@ pub unsafe fn options_set_string_(
 
 pub unsafe fn options_set_number(
     oo: *mut options,
-    name: *const u8,
+    name: &str,
     value: i64,
 ) -> *mut options_entry {
     unsafe {
-        if *name == b'@' {
-            panic!("user option {} must be a string", _s(name));
+        if name.starts_with('@') {
+            panic!("user option {name} must be a string");
         }
 
         let mut o = options_get_only(oo, name);
@@ -975,7 +952,7 @@ pub unsafe fn options_set_number(
         }
 
         if !OPTIONS_IS_NUMBER(o) {
-            panic!("option {} is not a number", _s(name));
+            panic!("option {name} is not a number");
         }
         (*o).value.number = value;
         o
@@ -985,7 +962,7 @@ pub unsafe fn options_set_number(
 pub unsafe fn options_scope_from_name(
     args: *mut args,
     window: i32,
-    name: *const u8,
+    name: &str,
     fs: *mut cmd_find_state,
     oo: *mut *mut options,
     cause: *mut *mut u8,
@@ -997,25 +974,17 @@ pub unsafe fn options_scope_from_name(
         let target = args_get_(args, 't');
         let mut scope = OPTIONS_TABLE_NONE;
 
-        if *name == b'@' {
+        if name.starts_with('@') {
             return options_scope_from_flags(args, window, fs, oo, cause);
         }
 
-        let mut oe = &raw const OPTIONS_TABLE as *const options_table_entry;
-        while !(*oe).name.is_null() {
-            if strcmp((*oe).name, name) == 0 {
-                break;
-            }
-            oe = oe.add(1);
-        }
-
-        if (*oe).name.is_null() {
-            *cause = format_nul!("unknown option: {}", _s(name));
+        let Some(oe) = OPTIONS_TABLE.iter().find(|oe| oe.name == name) else {
+            *cause = format_nul!("unknown option: {name}");
             return OPTIONS_TABLE_NONE;
-        }
+        };
 
         const OPTIONS_TABLE_WINDOW_AND_PANE: i32 = OPTIONS_TABLE_WINDOW | OPTIONS_TABLE_PANE;
-        match (*oe).scope {
+        match oe.scope {
             OPTIONS_TABLE_SERVER => {
                 *oo = GLOBAL_OPTIONS;
                 scope = OPTIONS_TABLE_SERVER;
@@ -1142,12 +1111,12 @@ pub unsafe fn options_scope_from_flags(
 
 pub unsafe fn options_string_to_style(
     oo: *mut options,
-    name: *const u8,
+    name: &str,
     ft: *mut format_tree,
 ) -> *mut style {
     let __func__ = c!("options_string_to_style");
     unsafe {
-        let o = options_get(oo, name);
+        let o = options_get(&mut *oo, name);
         if o.is_null() || !OPTIONS_IS_STRING(o) {
             return null_mut();
         }
@@ -1156,10 +1125,10 @@ pub unsafe fn options_string_to_style(
             return &mut (*o).style;
         }
         let s = (*o).value.string;
-        log_debug!("{}: {} is '{}'", _s(__func__), _s(name), _s(s));
+        log_debug!("{}: {} is '{}'", _s(__func__), name, _s(s));
 
         style_set(&mut (*o).style, &GRID_DEFAULT_CELL);
-        (*o).cached = if strstr(s, c!("#{")).is_null() { 1 } else { 0 };
+        (*o).cached = cstr_to_str(s).contains("#{") as i32;
 
         if !ft.is_null() && (*o).cached == 0 {
             let expanded = format_expand(ft, s);
@@ -1185,14 +1154,14 @@ unsafe fn options_from_string_check(
         if oe.is_null() {
             return Ok(());
         }
-        if streq_((*oe).name, "default-shell") && !checkshell_(value) {
+        if (*oe).name == "default-shell" && !checkshell_(value) {
             return Err(CString::new(format!("not a suitable shell: {}", _s(value))).unwrap());
         }
         if !(*oe).pattern.is_null() && fnmatch((*oe).pattern, value, 0) != 0 {
             return Err(CString::new(format!("value is invalid: {}", _s(value))).unwrap());
         }
         if ((*oe).flags & OPTIONS_TABLE_IS_STYLE) != 0
-            && strstr(value, c!("#{")).is_null()
+            && !cstr_to_str(value).contains("#{")
             && style_parse(&mut sy, &GRID_DEFAULT_CELL, value) != 0
         {
             return Err(CString::new(format!("invalid style: {}", _s(value))).unwrap());
@@ -1203,7 +1172,7 @@ unsafe fn options_from_string_check(
 
 unsafe fn options_from_string_flag(
     oo: *mut options,
-    name: *const u8,
+    name: &str,
     value: *const u8,
 ) -> Result<(), CString> {
     unsafe {
@@ -1236,12 +1205,13 @@ pub unsafe fn options_find_choice(
 unsafe fn options_from_string_choice(
     oe: *const options_table_entry,
     oo: *mut options,
-    name: *const u8,
+    name: &str,
     value: *const u8,
 ) -> Result<(), CString> {
     unsafe {
         let choice = if value.is_null() {
             let mut choice = options_get_number(oo, name);
+            #[expect(clippy::bool_to_int_with_if, reason = "more readable this way")]
             if choice < 2 {
                 choice = if choice == 0 { 1 } else { 0 };
             }
@@ -1257,7 +1227,7 @@ unsafe fn options_from_string_choice(
 pub unsafe fn options_from_string(
     oo: *mut options,
     oe: *const options_table_entry,
-    name: *const u8,
+    name: &str,
     value: *const u8,
     append: bool,
 ) -> Result<(), CString> {
@@ -1275,7 +1245,7 @@ pub unsafe fn options_from_string(
             }
             (*oe).type_
         } else {
-            if *name != b'@' {
+            if !name.starts_with('@') {
                 return Err(CString::new("bad option name").unwrap());
             }
             options_table_type::OPTIONS_TABLE_STRING
@@ -1346,12 +1316,12 @@ pub unsafe fn options_from_string(
     }
 }
 
-pub unsafe fn options_push_changes(name: *const u8) {
+pub unsafe fn options_push_changes(name: &str) {
     let __func__ = c!("options_push_changes");
     unsafe {
-        log_debug!("{}: {}", _s(__func__), _s(name));
+        log_debug!("{}: {}", _s(__func__), name);
 
-        if streq_(name, "automatic-rename") {
+        if name == "automatic-rename" {
             for w in rb_foreach(&raw mut WINDOWS).map(NonNull::as_ptr) {
                 if (*w).active.is_null() {
                     continue;
@@ -1362,31 +1332,31 @@ pub unsafe fn options_push_changes(name: *const u8) {
             }
         }
 
-        if streq_(name, "cursor-colour") {
+        if name == "cursor-colour" {
             for wp in rb_foreach(&raw mut ALL_WINDOW_PANES) {
                 window_pane_default_cursor(wp.as_ptr());
             }
         }
 
-        if streq_(name, "cursor-style") {
+        if name == "cursor-style" {
             for wp in rb_foreach(&raw mut ALL_WINDOW_PANES) {
                 window_pane_default_cursor(wp.as_ptr());
             }
         }
 
-        if streq_(name, "fill-character") {
+        if name == "fill-character" {
             for w in rb_foreach(&raw mut WINDOWS) {
                 window_set_fill_character(w);
             }
         }
 
-        if streq_(name, "key-table") {
+        if name == "key-table" {
             for loop_ in tailq_foreach(&raw mut CLIENTS).map(NonNull::as_ptr) {
                 server_client_set_key_table(loop_, null_mut());
             }
         }
 
-        if streq_(name, "user-keys") {
+        if name == "user-keys" {
             for loop_ in tailq_foreach(&raw mut CLIENTS).map(NonNull::as_ptr) {
                 if (*loop_).tty.flags.intersects(tty_flags::TTY_OPENED) {
                     tty_keys_build(&mut (*loop_).tty);
@@ -1394,27 +1364,27 @@ pub unsafe fn options_push_changes(name: *const u8) {
             }
         }
 
-        if streq_(name, "status") || streq_(name, "status-interval") {
+        if name == "status" || name == "status-interval" {
             status_timer_start_all();
         }
 
-        if streq_(name, "monitor-silence") {
+        if name == "monitor-silence" {
             alerts_reset_all();
         }
 
-        if streq_(name, "window-style") || streq_(name, "window-active-style") {
+        if name == "window-style" || name == "window-active-style" {
             for wp in rb_foreach(&raw mut ALL_WINDOW_PANES) {
                 (*wp.as_ptr()).flags |= window_pane_flags::PANE_STYLECHANGED;
             }
         }
 
-        if streq_(name, "pane-colours") {
+        if name == "pane-colours" {
             for wp in rb_foreach(&raw mut ALL_WINDOW_PANES).map(NonNull::as_ptr) {
                 colour_palette_from_option(Some(&mut (*wp).palette), (*wp).options);
             }
         }
 
-        if streq_(name, "pane-border-status") {
+        if name == "pane-border-status" {
             for w in rb_foreach(&raw mut WINDOWS) {
                 layout_fix_panes(w.as_ptr(), null_mut());
             }

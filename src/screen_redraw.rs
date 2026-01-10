@@ -12,6 +12,7 @@
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 use crate::*;
+use crate::options_::*;
 
 const START_ISOLATE: *const u8 = c"\xe2\x81\xa6".as_ptr().cast();
 const END_ISOLATE: *const u8 = c"\xe2\x81\xa9".as_ptr().cast();
@@ -594,8 +595,7 @@ unsafe fn screen_redraw_update(c: *mut client, mut flags: client_flag) -> client
             flags |= client_flag::REDRAWOVERLAY;
         }
 
-        if options_get_number(wo, c!("pane-border-status")) as i32
-            != pane_status::PANE_STATUS_OFF as i32
+        if options_get_number___::<i32>(&*wo, "pane-border-status") != pane_status::PANE_STATUS_OFF as i32
         {
             screen_redraw_set_context(c, ctx.as_mut_ptr());
             let lines = pane_lines::try_from(options_get_number_(wo, "pane-border-lines") as i32)

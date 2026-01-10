@@ -11,6 +11,8 @@
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+use std::io::Write;
+
 use crate::compat::{
     WAIT_ANY, closefrom,
     imsg::{IMSG_HEADER_SIZE, MAX_IMSGSIZE, imsg},
@@ -25,13 +27,11 @@ use crate::libc::{
     strsignal, system, tcgetattr, tcsetattr, unlink, waitpid,
 };
 use crate::*;
+use crate::options_::options_free;
 
 pub static mut CLIENT_PROC: *mut tmuxproc = null_mut();
-
 pub static mut CLIENT_PEER: *mut tmuxpeer = null_mut();
-
 pub static mut CLIENT_FLAGS: client_flag = client_flag::empty();
-
 pub static mut CLIENT_SUSPENDED: i32 = 0;
 
 #[repr(i32)]
@@ -49,23 +49,14 @@ pub enum client_exitreason {
 }
 
 pub static mut CLIENT_EXITREASON: client_exitreason = client_exitreason::CLIENT_EXIT_NONE;
-
 pub static mut CLIENT_EXITFLAG: i32 = 0;
-
 pub static mut CLIENT_EXITVAL: i32 = 0;
-
 static mut CLIENT_EXITTYPE: msgtype = msgtype::MSG_ZERO; // TODO
-
 static mut CLIENT_EXITSESSION: *mut u8 = null_mut();
-
 static mut CLIENT_EXITMESSAGE: *mut u8 = null_mut();
-
 static mut CLIENT_EXECSHELL: *mut u8 = null_mut();
-
 static mut CLIENT_EXECCMD: *mut u8 = null_mut();
-
 static mut CLIENT_ATTACHED: i32 = 0;
-
 static mut CLIENT_FILES: client_files = rb_initializer();
 
 pub unsafe fn client_get_lock(lockfile: *mut u8) -> i32 {
@@ -415,8 +406,6 @@ pub unsafe extern "C-unwind" fn client_main(
         setblocking(STDIN_FILENO, 1);
         setblocking(STDOUT_FILENO, 1);
         setblocking(STDERR_FILENO, 1);
-
-        use std::io::Write;
 
         if CLIENT_ATTACHED != 0 {
             if CLIENT_EXITREASON != client_exitreason::CLIENT_EXIT_NONE {

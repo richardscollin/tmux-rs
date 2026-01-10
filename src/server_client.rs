@@ -16,6 +16,7 @@ use crate::{
     compat::imsg::{IMSG_HEADER_SIZE, imsg_get_fd},
     options_::options_get_number_,
 };
+use crate::options_::*;
 
 /// Compare client windows.
 pub fn server_client_window_cmp(cw1: &client_window, cw2: &client_window) -> std::cmp::Ordering {
@@ -2401,7 +2402,7 @@ pub unsafe fn server_client_check_pane_buffer(wp: *mut window_pane) {
 /// a user may interrupt tmux, for example with ~^Z in ssh(1). This is a
 /// compromise between excessive resets and likelihood of an interrupt.
 ///
-/// tty_region/tty_reset/tty_update_mode already take care of not resetting
+/// `tty_region/tty_reset/tty_update_mode` already take care of not resetting
 /// things that are already in their default state.
 pub unsafe fn server_client_reset_state(c: *mut client) {
     unsafe {
@@ -2949,7 +2950,7 @@ pub unsafe fn server_client_dispatch(imsg: *mut imsg, arg: *mut c_void) {
             msgtype::MSG_READ => file_read_data(&raw mut (*c).files, imsg),
             msgtype::MSG_READ_DONE => file_read_done(&raw mut (*c).files, imsg),
             _ => (),
-        };
+        }
     }
 }
 

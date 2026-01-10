@@ -13,7 +13,7 @@
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 use crate::compat::queue::tailq_foreach;
 use crate::libc::strtol;
-use crate::options_::options_find_choice;
+use crate::options_::{options_find_choice, options_get, options_get_number___, options_get_string_, options_table_entry};
 use crate::*;
 
 pub static CMD_DISPLAY_MENU_ENTRY: cmd_entry = cmd_entry {
@@ -132,7 +132,7 @@ unsafe fn cmd_display_menu_get_position(
             } else {
                 top = 0;
             }
-            let position = options_get_number_((*s).options, "status-position");
+            let position = options_get_number___::<i64>(&*(*s).options, "status-position");
 
             for line_ in 0..lines {
                 line = line_;
@@ -416,7 +416,7 @@ unsafe fn cmd_display_menu_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
 
         let value = args_get_(args, 'b');
         if !value.is_null() {
-            let oe = options_get(o, c!("menu-border-lines"));
+            let oe = options_get(&mut *o, "menu-border-lines");
             if let Err(cause) = options_find_choice(options_table_entry(oe), value) {
                 cmdq_error!(item, "menu-border-lines {}", cause.to_str().unwrap());
                 return cmd_retval::CMD_RETURN_ERROR;
@@ -526,7 +526,7 @@ unsafe fn cmd_display_popup_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
         if args_has(args, 'B') {
             lines = box_lines::BOX_LINES_NONE as i32;
         } else if !value.is_null() {
-            let oe = options_get(o, c!("popup-border-lines"));
+            let oe = options_get(&mut *o, "popup-border-lines");
             lines = match options_find_choice(options_table_entry(oe), value) {
                 Ok(ok) => ok,
                 Err(cause) => {

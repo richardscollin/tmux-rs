@@ -12,6 +12,7 @@
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 use crate::*;
+use crate::options_::options_get_number_;
 
 // Entry in the key tree.
 pub struct input_key_entry {
@@ -187,7 +188,7 @@ pub unsafe extern "C-unwind" fn input_key_build() {
             }
 
             for (j, input_key_modifiers_j) in
-                INPUT_KEY_MODIFIERS.iter().cloned().enumerate().skip(2)
+                INPUT_KEY_MODIFIERS.iter().copied().enumerate().skip(2)
             {
                 let key = (*ike).key & !KEYC_BUILD_MODIFIERS;
                 let data = xstrdup((*ike).data).as_ptr();

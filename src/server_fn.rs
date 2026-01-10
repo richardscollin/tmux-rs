@@ -14,6 +14,7 @@
 use crate::compat::imsg::{IMSG_HEADER_SIZE, MAX_IMSGSIZE};
 use crate::libc::{WEXITSTATUS, WIFEXITED, close, gettimeofday};
 use crate::*;
+use crate::options_::*;
 
 pub unsafe fn server_redraw_client(c: *mut client) {
     unsafe {

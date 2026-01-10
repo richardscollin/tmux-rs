@@ -18,6 +18,7 @@ use crate::compat::queue::{
 };
 use crate::xmalloc::xcalloc1;
 use crate::*;
+use crate::options_::*;
 
 // #define cmdq_get_callback(cb, data) cmdq_get_callback1(#cb, cb, data)
 macro_rules! cmdq_get_callback {
@@ -395,7 +396,7 @@ pub unsafe fn cmdq_insert_hook_(
 
         let name: String = format_args.to_string();
 
-        let o = options_get_(oo, &name);
+        let o = options_get(&mut *oo, &name);
         if o.is_null() {
             return;
         }

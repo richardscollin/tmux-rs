@@ -14,6 +14,7 @@
 use crate::compat::{strnvis, strunvis};
 use crate::libc::{fnmatch, memset, strchr, strcmp, strcspn, strncmp};
 use crate::*;
+use crate::options_::*;
 
 pub static mut TTY_TERMS: tty_terms = list_head_initializer();
 
@@ -473,7 +474,7 @@ pub unsafe fn tty_term_apply_overrides(term: *mut tty_term) {
 
     unsafe {
         // Update capabilities from the option.
-        let o = options_get_only(GLOBAL_OPTIONS, c!("terminal-overrides"));
+        let o = options_get_only(GLOBAL_OPTIONS, "terminal-overrides");
         let mut a = options_array_first(o);
         while !a.is_null() {
             ov = options_array_item_value(a);
@@ -635,7 +636,7 @@ pub unsafe fn tty_term_create(
             }
 
             // Apply terminal features.
-            let o = options_get_only(GLOBAL_OPTIONS, c!("terminal-features"));
+            let o = options_get_only(GLOBAL_OPTIONS, "terminal-features");
             let mut a = options_array_first(o);
             while !a.is_null() {
                 let ov = options_array_item_value(a);
@@ -750,7 +751,7 @@ pub unsafe fn tty_term_read_list(
                 0 => *cause = format_nul!("missing or unsuitable terminal: {}", _s(name)),
                 -1 => *cause = format_nul!("can't find terminfo database"),
                 _ => *cause = format_nul!("unknown error"),
-            };
+            }
             return -1;
         }
 
@@ -758,7 +759,7 @@ pub unsafe fn tty_term_read_list(
         *caps = null_mut();
 
         let mut s = null();
-        for ent in TTY_TERM_CODES.iter() {
+        for ent in &TTY_TERM_CODES {
             match ent.type_ {
                 tty_code_type::None => (),
                 tty_code_type::String => {
@@ -1045,7 +1046,7 @@ pub unsafe fn tty_term_describe(term: *mut tty_term, code: tty_code_code) -> *co
                     (*(*term).codes.add(code as usize)).value.flag != 0
                 );
             }
-        };
+        }
 
         &raw const S as *const u8
     }

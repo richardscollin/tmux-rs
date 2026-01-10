@@ -12,6 +12,7 @@
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 use crate::*;
+use crate::options_::*;
 
 bitflags::bitflags! {
     #[repr(transparent)]
@@ -360,7 +361,7 @@ pub fn popup_free_cb(c: *mut client, data: *mut c_void) {
     }
 }
 
-pub fn popup_resize_cb(_c: *mut client, data: *mut c_void) {
+pub fn popup_resize_cb(c: *mut client, data: *mut c_void) {
     unsafe {
         let pd = data as *mut popup_data;
         if pd.is_null() {
@@ -370,7 +371,7 @@ pub fn popup_resize_cb(_c: *mut client, data: *mut c_void) {
         let tty = &raw mut (*(*pd).c).tty;
 
         if !(*pd).md.is_null() {
-            menu_free_cb(_c, (*pd).md.cast());
+            menu_free_cb(c, (*pd).md.cast());
         }
 
         // Adjust position and size
@@ -677,6 +678,7 @@ pub unsafe fn popup_key_cb(c: *mut client, data: *mut c_void, event: *mut key_ev
             } else {
                 menu_add_items((*pd).menu, &POPUP_MENU_ITEMS, null_mut(), c, null_mut());
             }
+            #[expect(clippy::manual_midpoint, reason = "not really being used as midpoint calculation")]
             let x = (*m).x.saturating_sub(((*(*pd).menu).width + 4) / 2);
             (*pd).md = menu_prepare(
                 (*pd).menu,

@@ -37,7 +37,6 @@ pub enum job_state {
 }
 
 #[repr(C)]
-#[derive(Default)]
 pub struct job {
     pub state: job_state,
 
@@ -58,6 +57,27 @@ pub struct job {
 
     pub entry: list_entry<job>,
 }
+
+impl Default for job {
+    fn default() -> Self {
+        Self {
+            state: Default::default(),
+            flags: Default::default(),
+            cmd: null_mut(),
+            pid: Default::default(),
+            tty: Default::default(),
+            status: Default::default(),
+            fd: Default::default(),
+            event: null_mut(),
+            updatecb: Default::default(),
+            completecb: Default::default(),
+            freecb: Default::default(),
+            data: null_mut(),
+            entry: Default::default(),
+        }
+    }
+}
+
 impl ListEntry<job, ()> for job {
     unsafe fn field(this: *mut Self) -> *mut list_entry<job> {
         unsafe { &raw mut (*this).entry }

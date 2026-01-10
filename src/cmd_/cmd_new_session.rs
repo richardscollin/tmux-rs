@@ -134,11 +134,12 @@ unsafe fn cmd_new_session_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
                     return retval;
                 }
             }
-            if let Some(newname) = newname.as_deref()
-                && !session_find(newname).is_null()
-            {
-                cmdq_error!(item, "duplicate session: {newname}");
-                break 'fail;
+            if let Some(newname) = newname.as_deref() {
+                if !session_find(newname).is_null()
+                {
+                    cmdq_error!(item, "duplicate session: {newname}");
+                    break 'fail;
+                }
             }
 
             // Is this going to be part of a session group?
@@ -157,7 +158,7 @@ unsafe fn cmd_new_session_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
                 } else {
                     prefix = session_check_name(group)
                         .map(|s| CString::new(s).unwrap().into_raw().cast())
-                        .unwrap_or_default();
+                        .unwrap_or(null_mut());
                     if prefix.is_null() {
                         cmdq_error!(item, "invalid session group: {}", _s(group));
                         break 'fail;

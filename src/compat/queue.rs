@@ -25,7 +25,7 @@ pub struct list_entry<T> {
 
 impl<T> Default for list_entry<T> {
     fn default() -> Self {
-        Self { le_next: Default::default(), le_prev: Default::default() }
+        Self { le_next: null_mut(), le_prev: null_mut() }
     }
 }
 

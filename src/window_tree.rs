@@ -227,7 +227,7 @@ unsafe fn window_tree_build_pane(
         (*item).pane = (*wp).id as i32;
 
         let text: *mut u8 =
-            format_single(null_mut(), (*data.as_ptr()).format, null_mut(), s, wl, wp);
+            format_single(null_mut(), cstr_to_str((*data.as_ptr()).format), null_mut(), s, wl, wp);
         let name = format_nul!("{idx}");
 
         mode_tree_add(
@@ -248,12 +248,12 @@ unsafe fn window_tree_filter_pane(
     s: *mut session,
     wl: *mut winlink,
     wp: *mut window_pane,
-    filter: *const u8,
+    filter: Option<&str>,
 ) -> bool {
     unsafe {
-        if filter.is_null() {
+        let Some(filter) = filter else {
             return true;
-        }
+        };
 
         let cp: *mut u8 = format_single(null_mut(), filter, null_mut(), s, wl, wp);
         let result = format_true(cp);
@@ -292,7 +292,7 @@ unsafe fn window_tree_build_window(
 
             text = format_single(
                 null_mut(),
-                (*data.as_ptr()).format,
+                cstr_to_str((*data.as_ptr()).format),
                 null_mut(),
                 s,
                 wl,
@@ -322,7 +322,7 @@ unsafe fn window_tree_build_window(
                 break 'empty;
             }
             if tailq_next::<_, window_pane, discr_entry>(wp).is_null() {
-                if !window_tree_filter_pane(s, wl, wp, filter) {
+                if !window_tree_filter_pane(s, wl, wp, cstr_to_str_(filter)) {
                     break 'empty;
                 }
                 return 1;
@@ -334,7 +334,7 @@ unsafe fn window_tree_build_window(
             for wp in
                 tailq_foreach::<_, discr_entry>(&raw mut (*(*wl).window).panes).map(NonNull::as_ptr)
             {
-                if !window_tree_filter_pane(s, wl, wp, filter) {
+                if !window_tree_filter_pane(s, wl, wp, cstr_to_str_(filter)) {
                     continue;
                 }
                 l = xreallocarray_(l, n as usize + 1).as_ptr();
@@ -396,7 +396,7 @@ unsafe fn window_tree_build_session(
 
         let text = format_single(
             null_mut(),
-            (*data).format,
+            cstr_to_str((*data).format),
             null_mut(),
             s,
             null_mut(),

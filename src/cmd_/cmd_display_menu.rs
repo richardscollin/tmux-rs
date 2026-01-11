@@ -397,7 +397,7 @@ unsafe fn cmd_display_menu_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
         //     cmdq_error!(item, "invalid menu arguments");
         //     return cmd_retval::CMD_RETURN_ERROR;
         // }
-        if (*menu).items.is_empty() {
+        if menu.items.is_empty() {
             menu_free(menu);
             return cmd_retval::CMD_RETURN_NORMAL;
         }
@@ -407,8 +407,8 @@ unsafe fn cmd_display_menu_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
             args,
             &raw mut px,
             &raw mut py,
-            (*menu).width + 4,
-            (*menu).items.len() as u32 + 2,
+            menu.width + 4,
+            menu.items.len() as u32 + 2,
         ) == 0
         {
             menu_free(menu);

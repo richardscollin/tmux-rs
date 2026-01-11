@@ -95,7 +95,7 @@ pub unsafe fn cmd_attach_session(
         }
 
         if !cflag.is_null() {
-            cwd = format_single(item, cflag, c, s, wl, wp);
+            cwd = format_single(item, cstr_to_str(cflag), c, s, wl, wp);
             free_((*s).cwd);
             (*s).cwd = cwd;
         }

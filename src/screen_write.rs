@@ -785,14 +785,15 @@ pub unsafe fn screen_write_menu(
         );
 
         for (i, item) in (*menu).items.iter_mut().enumerate() {
-            let name = item.name.as_ptr();
-            if name.is_null() {
+            let name: &str = &item.name;
+            // TODO double check this name.is_empty() was previously name.is_null()
+            if name.is_empty() {
                 screen_write_cursormove(ctx, cx as i32, (cy + 1 + i as u32) as i32, 0);
                 screen_write_hline(ctx, width + 4, 1, 1, lines, border_gc);
                 continue;
             }
 
-            if choice >= 0 && i as u32 == choice as u32 && *name != b'-' {
+            if choice >= 0 && i as u32 == choice as u32 && !name.starts_with('-') {
                 gc = choice_gc;
             }
 
@@ -802,14 +803,14 @@ pub unsafe fn screen_write_menu(
             }
 
             screen_write_cursormove(ctx, cx as i32 + 2, (cy + 1 + i as u32) as i32, 0);
-            if *name == b'-' {
+            if let Some(stripped) = name.strip_prefix('-') {
                 default_gc.attr |= grid_attr::GRID_ATTR_DIM;
-                format_draw(ctx, gc, width, cstr_to_str(name.add(1)), null_mut(), 0);
+                format_draw(ctx, gc, width, stripped, null_mut(), 0);
                 default_gc.attr &= !grid_attr::GRID_ATTR_DIM;
                 continue;
             }
 
-            format_draw(ctx, gc, width, cstr_to_str(name), null_mut(), 0);
+            format_draw(ctx, gc, width, name, null_mut(), 0);
             gc = &raw mut default_gc;
         }
 

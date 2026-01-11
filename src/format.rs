@@ -5133,7 +5133,7 @@ pub unsafe fn format_expand(ft: *mut format_tree, fmt: *const u8) -> *mut u8 {
 /// Expand a single string.
 pub unsafe fn format_single(
     item: *mut cmdq_item,
-    fmt: *const u8,
+    fmt: &str,
     c: *mut client,
     s: *mut session,
     wl: *mut winlink,
@@ -5141,7 +5141,9 @@ pub unsafe fn format_single(
 ) -> *mut u8 {
     unsafe {
         let ft = format_create_defaults(item, c, s, wl, wp);
-        let expanded: *mut u8 = format_expand(ft, fmt);
+        let fmt = CString::new(fmt).unwrap(); // TODO shim to not have to rewrite
+                                                       // format_expand now, remove later
+        let expanded: *mut u8 = format_expand(ft, fmt.as_ptr().cast());
         format_free(ft);
         expanded
     }
@@ -5150,7 +5152,7 @@ pub unsafe fn format_single(
 /// Expand a single string using state.
 pub unsafe fn format_single_from_state(
     item: *mut cmdq_item,
-    fmt: *const u8,
+    fmt: &str,
     c: *mut client,
     fs: *mut cmd_find_state,
 ) -> *mut u8 {
@@ -5162,7 +5164,7 @@ pub unsafe fn format_single_from_target(item: *mut cmdq_item, fmt: *const u8) ->
     unsafe {
         let tc = cmdq_get_target_client(item);
 
-        format_single_from_state(item, fmt, tc, cmdq_get_target(item))
+        format_single_from_state(item, cstr_to_str(fmt), tc, cmdq_get_target(item))
     }
 }
 

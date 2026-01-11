@@ -202,7 +202,7 @@ pub unsafe fn spawn_window(sc: *mut spawn_context, cause: *mut *mut u8) -> *mut 
         if !(*sc).flags.intersects(SPAWN_RESPAWN) {
             free_((*w).name);
             if !(*sc).name.is_null() {
-                (*w).name = format_single(item, (*sc).name, c, s, null_mut(), null_mut());
+                (*w).name = format_single(item, cstr_to_str((*sc).name), c, s, null_mut(), null_mut());
                 options_set_number((*w).options, "automatic-rename", 0);
             } else {
                 (*w).name = CString::new(default_window_name(w))
@@ -256,7 +256,7 @@ pub unsafe fn spawn_pane(sc: *mut spawn_context, cause: *mut *mut u8) -> *mut wi
             spawn_log("spawn_pane", sc);
 
             if !(*sc).cwd.is_null() {
-                cwd = format_single(item, (*sc).cwd, c, (*target).s, null_mut(), null_mut());
+                cwd = format_single(item, cstr_to_str((*sc).cwd), c, (*target).s, null_mut(), null_mut());
                 if *cwd != b'/' {
                     new_cwd =
                         format_nul!("{}/{}", _s(server_client_get_cwd(c, (*target).s)), _s(cwd));

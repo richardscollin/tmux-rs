@@ -1148,8 +1148,8 @@ pub unsafe fn mode_tree_display_menu(
         (*mtd).references += 1;
 
         #[expect(clippy::manual_midpoint, reason = "not really being used as midpoint calculation")]
-        if x >= ((*menu).width + 4) / 2 {
-            x -= ((*menu).width + 4) / 2;
+        if x >= (menu.width + 4) / 2 {
+            x -= (menu.width + 4) / 2;
         } else {
             x = 0;
         }

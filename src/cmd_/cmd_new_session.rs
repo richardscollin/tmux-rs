@@ -106,7 +106,7 @@ unsafe fn cmd_new_session_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
             let mut newname = None;
             tmp = args_get_(args, 's');
             if !tmp.is_null() {
-                name = format_single(item, tmp, c, null_mut(), null_mut(), null_mut());
+                name = format_single(item, cstr_to_str(tmp), c, null_mut(), null_mut(), null_mut());
                 newname = session_check_name(name);
                 if newname.is_none() {
                     cmdq_error!(item, "invalid session: {}", _s(name));
@@ -182,7 +182,7 @@ unsafe fn cmd_new_session_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
             // Get the new session working directory.
             tmp = args_get_(args, 'c');
             cwd = if !tmp.is_null() {
-                format_single(item, tmp, c, null_mut(), null_mut(), null_mut())
+                format_single(item, cstr_to_str(tmp), c, null_mut(), null_mut(), null_mut())
             } else {
                 xstrdup(server_client_get_cwd(c, null_mut())).as_ptr()
             };
@@ -368,7 +368,7 @@ unsafe fn cmd_new_session_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
                 if template.is_null() {
                     template = NEW_SESSION_TEMPLATE;
                 }
-                cp = format_single(item, template, c, s, (*s).curw, null_mut());
+                cp = format_single(item, cstr_to_str(template), c, s, (*s).curw, null_mut());
                 cmdq_print!(item, "{}", _s(cp));
                 free_(cp);
             }

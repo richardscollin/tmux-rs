@@ -2052,7 +2052,7 @@ unsafe fn status_prompt_complete_list_menu(
 
         let menu = Box::leak(menu_create(""));
         for i in (*spm).start..size {
-            item.name = Cow::Owned(format!("{}", (&(*spm).list)[i as usize]));
+            item.name = Cow::Owned((&(*spm).list)[i as usize].to_string());
             item.key = b'0' as u64 + (i as i64 - (*spm).start as i64) as u64;
             item.command = SyncCharPtr::null();
             menu_add_item(menu, Some(&item), null_mut(), c, null_mut());

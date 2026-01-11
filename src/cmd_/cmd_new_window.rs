@@ -53,7 +53,7 @@ unsafe fn cmd_new_window_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retv
         // name already exists, select it.
         let name = args_get(args, b'n');
         if args_has(args, 'S') && !name.is_null() && (*target).idx == -1 {
-            let expanded = format_single(item, name, c, s, null_mut(), null_mut());
+            let expanded = format_single(item, cstr_to_str(name), c, s, null_mut(), null_mut());
             for wl in rb_foreach(&raw mut (*s).windows).map(NonNull::as_ptr) {
                 if libc::strcmp((*(*wl).window).name, expanded) != 0 {
                     continue;
@@ -138,7 +138,7 @@ unsafe fn cmd_new_window_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retv
             if template.is_null() {
                 template = NEW_WINDOW_TEMPLATE;
             }
-            let cp = format_single(item, template, tc, s, new_wl, (*(*new_wl).window).active);
+            let cp = format_single(item, cstr_to_str(template), tc, s, new_wl, (*(*new_wl).window).active);
             cmdq_print!(item, "{}", _s(cp));
             free_(cp);
         }

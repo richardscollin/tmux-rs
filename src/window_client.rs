@@ -161,7 +161,7 @@ pub unsafe fn window_client_build(
             let c = (*item).c;
 
             if !filter.is_null() {
-                let cp = format_single(null_mut(), filter, c, null_mut(), null_mut(), null_mut());
+                let cp = format_single(null_mut(), cstr_to_str(filter), c, null_mut(), null_mut(), null_mut());
                 if !format_true(cp) {
                     free_(cp);
                     continue;
@@ -171,7 +171,7 @@ pub unsafe fn window_client_build(
 
             let text = format_single(
                 null_mut(),
-                (*data).format,
+                cstr_to_str((*data).format),
                 c,
                 null_mut(),
                 null_mut(),

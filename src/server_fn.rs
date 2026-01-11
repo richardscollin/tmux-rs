@@ -359,7 +359,7 @@ pub unsafe fn server_destroy_pane(wp: *mut window_pane, notify: i32) {
                         memcpy_(gc, &raw const GRID_DEFAULT_CELL, size_of::<grid_cell>());
 
                         let expanded =
-                            format_single(null_mut(), s, null_mut(), null_mut(), null_mut(), wp);
+                            format_single(null_mut(), cstr_to_str(s), null_mut(), null_mut(), null_mut(), wp);
                         format_draw(ctx, gc, sx, cstr_to_str(expanded), null_mut(), 0);
                         free_(expanded);
 

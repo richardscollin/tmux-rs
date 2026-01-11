@@ -60,7 +60,7 @@ pub unsafe fn control_notify_window_layout_changed(w: *mut window) {
 
                 if let Some(wl) = winlink_find_by_window(&raw mut (*s).windows, w) {
                     let cp =
-                        format_single(null_mut(), template, c, null_mut(), wl.as_ptr(), null_mut());
+                        format_single(null_mut(), cstr_to_str(template), c, null_mut(), wl.as_ptr(), null_mut());
                     control_write!(c, "{}", _s(cp));
                     free_(cp);
                 }

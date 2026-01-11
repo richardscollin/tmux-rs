@@ -918,7 +918,7 @@ pub unsafe fn window_copy_expand_search_string(cs: *mut window_copy_cmd_state) -
         if args_has((*cs).args, 'F') {
             let expanded = format_single(
                 null_mut(),
-                ss,
+                cstr_to_str(ss),
                 null_mut(),
                 null_mut(),
                 null_mut(),
@@ -1063,13 +1063,13 @@ pub unsafe fn window_copy_do_copy_end_of_line(
 
         if pipe != 0 {
             if count == 3 {
-                prefix = format_single(null_mut(), arg2, c, s, wl, wp);
+                prefix = format_single(null_mut(), cstr_to_str(arg2), c, s, wl, wp);
             }
             if !s.is_null() && count > 1 && *arg1 != b'\0' {
-                command = format_single(null_mut(), arg1, c, s, wl, wp);
+                command = format_single(null_mut(), cstr_to_str(arg1), c, s, wl, wp);
             }
         } else if count == 2 {
-            prefix = format_single(null_mut(), arg1, c, s, wl, wp);
+            prefix = format_single(null_mut(), cstr_to_str(arg1), c, s, wl, wp);
         }
 
         let ocx = (*data).cx;
@@ -1155,13 +1155,13 @@ pub unsafe fn window_copy_do_copy_line(
 
         if pipe != 0 {
             if count == 3 {
-                prefix = format_single(null_mut(), arg2, c, s, wl, wp);
+                prefix = format_single(null_mut(), cstr_to_str(arg2), c, s, wl, wp);
             }
             if !s.is_null() && count > 1 && *arg1 != b'\0' {
-                command = format_single(null_mut(), arg1, c, s, wl, wp);
+                command = format_single(null_mut(), cstr_to_str(arg1), c, s, wl, wp);
             }
         } else if count == 2 {
-            prefix = format_single(null_mut(), arg1, c, s, wl, wp);
+            prefix = format_single(null_mut(), cstr_to_str(arg1), c, s, wl, wp);
         }
 
         let ocx = (*data).cx;
@@ -1237,7 +1237,7 @@ pub unsafe fn window_copy_cmd_copy_selection_no_clear(
         let arg1 = args_string((*cs).args, 1);
 
         if !arg1.is_null() {
-            prefix = format_single(null_mut(), arg1, c, s, wl, wp);
+            prefix = format_single(null_mut(), cstr_to_str(arg1), c, s, wl, wp);
         }
 
         if !s.is_null() {
@@ -2331,11 +2331,11 @@ pub unsafe fn window_copy_cmd_copy_pipe_no_clear(
         let arg2 = args_string((*cs).args, 2);
 
         if !arg2.is_null() {
-            prefix = format_single(null_mut(), arg2, c, s, wl, wp);
+            prefix = format_single(null_mut(), cstr_to_str(arg2), c, s, wl, wp);
         }
 
         if !s.is_null() && !arg1.is_null() && *arg1 != b'\0' {
-            command = format_single(null_mut(), arg1, c, s, wl, wp);
+            command = format_single(null_mut(), cstr_to_str(arg1), c, s, wl, wp);
         }
         window_copy_copy_pipe(wme, s, prefix, command);
         free_(command);
@@ -2380,7 +2380,7 @@ pub unsafe fn window_copy_cmd_pipe_no_clear(
         let arg1 = args_string((*cs).args, 1);
 
         if !s.is_null() && !arg1.is_null() && *arg1 != b'\0' {
-            command = format_single(null_mut(), arg1, c, s, wl, wp);
+            command = format_single(null_mut(), cstr_to_str(arg1), c, s, wl, wp);
         }
         window_copy_pipe(wme, s, command);
         free_(command);

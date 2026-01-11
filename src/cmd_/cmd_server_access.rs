@@ -64,7 +64,7 @@ unsafe fn cmd_server_access_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
 
         let name = format_single(
             item,
-            args_string(args, 0),
+            cstr_to_str(args_string(args, 0)),
             c,
             null_mut(),
             null_mut(),

@@ -176,7 +176,7 @@ unsafe fn cmd_split_window_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
             if template.is_null() {
                 template = SPLIT_WINDOW_TEMPLATE;
             }
-            let cp = format_single(item, template, tc, s, wl, new_wp);
+            let cp = format_single(item, cstr_to_str(template), tc, s, wl, new_wp);
             cmdq_print!(item, "{}", _s(cp));
             free_(cp);
         }

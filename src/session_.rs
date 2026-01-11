@@ -47,7 +47,7 @@ pub unsafe fn session_find(name: &str) -> *mut session {
     let s = s.as_mut_ptr();
 
     unsafe {
-        (*s).name = Cow::Borrowed(std::mem::transmute::<&str, &'static str>(name));
+        std::ptr::write(&raw mut (*s).name, Cow::Borrowed(std::mem::transmute::<&str, &'static str>(name)));
         rb_find(&raw mut SESSIONS, s)
     }
 }

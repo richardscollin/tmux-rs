@@ -3362,6 +3362,7 @@ pub unsafe fn server_client_dispatch_identify(c: *mut client, imsg: *mut imsg) {
         // #[cfg(feature = "cygwin")] // I don't think rust even works on cygwin
         // {
         //     (*c).fd = open((*c).ttyname, O_RDWR | O_NOCTTY);
+        //     (*c).out_fd = dup((*c).fd);
         // }
 
         if (*c).flags.intersects(client_flag::CONTROL) {

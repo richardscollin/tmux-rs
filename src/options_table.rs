@@ -883,7 +883,7 @@ pub static OPTIONS_TABLE: [options_table_entry; 190] = [
         scope: OPTIONS_TABLE_SESSION,
         flags: OPTIONS_TABLE_IS_ARRAY,
         default_str: Some(
-            "DISPLAY KRB5CCNAME SSH_ASKPASS SSH_AUTH_SOCK SSH_AGENT_PID SSH_CONNECTION WINDOWID XAUTHORITY",
+            "DISPLAY KRB5CCNAME MSYSTEM SSH_ASKPASS SSH_AUTH_SOCK SSH_AGENT_PID SSH_CONNECTION WINDOWID XAUTHORITY",
         ),
         text: c!(
             "List of environment variables to update in the session environment when a client is attached."

@@ -30,7 +30,13 @@ pub struct sixel_image {
     xpixel: u32,
     ypixel: u32,
 
+    set_ra: u32,
+    ra_x: u32,
+    ra_y: u32,
+
     colours: Vec<u32>,
+    p2: u32,
+
     dx: u32,
     dy: u32,
     dc: u32,
@@ -163,6 +169,10 @@ unsafe fn sixel_parse_attributes(si: *mut sixel_image, cp: *const u8, end: *cons
         (*si).x = x;
         sixel_parse_expand_lines(si, y);
 
+        (*si).set_ra = 1;
+        (*si).ra_x = x;
+        (*si).ra_y = y;
+
         last
     }
 }
@@ -271,6 +281,7 @@ unsafe fn sixel_parse_repeat(si: *mut sixel_image, cp: *const u8, end: *const u8
 pub unsafe fn sixel_parse(
     buf: *const u8,
     len: usize,
+    p2: u32,
     xpixel: u32,
     ypixel: u32,
 ) -> *mut sixel_image {
@@ -289,6 +300,7 @@ pub unsafe fn sixel_parse(
             si = xcalloc1::<sixel_image>() as *mut sixel_image;
             (*si).xpixel = xpixel;
             (*si).ypixel = ypixel;
+            (*si).p2 = p2;
 
             while cp != end {
                 let ch = *cp;
@@ -437,6 +449,19 @@ pub unsafe fn sixel_scale(
         let new = xcalloc1::<sixel_image>() as *mut sixel_image;
         (*new).xpixel = xpixel;
         (*new).ypixel = ypixel;
+        (*new).p2 = (*si).p2;
+
+        (*new).set_ra = (*si).set_ra;
+
+        // clamp to slice end
+        (*new).ra_x = if (*si).ra_x < psx { (*si).ra_x } else { psx };
+        (*new).ra_y = if (*si).ra_y < psy { (*si).ra_y } else { psy };
+        // subtract slice origin
+        (*new).ra_x = (*new).ra_x.saturating_sub(pox);
+        (*new).ra_y = (*new).ra_y.saturating_sub(poy);
+        // resize
+        (*new).ra_x = (*new).ra_x * xpixel / (*si).xpixel;
+        (*new).ra_y = (*new).ra_y * ypixel / (*si).ypixel;
 
         for y in 0..tsy {
             let py: u32 = poy + ((y as f64) * psy as f64 / tsy as f64) as u32;
@@ -526,9 +551,8 @@ pub(crate) unsafe fn sixel_print(
         len = 8192;
         buf = xmalloc(len).as_ptr().cast();
 
-        sixel_print_add(&raw mut buf, &raw mut len, &raw mut used, c!("\x1bPq"), 3);
-
-        let tmp = CString::new(format!("\"1;1;{};{}", (*si).x, (*si).y)).unwrap();
+        // TODO consider using stack buffer like upstream
+        let tmp = CString::new(format!("\x1bP0;{}q", (*si).p2)).unwrap();
         sixel_print_add(
             &raw mut buf,
             &raw mut len,
@@ -537,7 +561,17 @@ pub(crate) unsafe fn sixel_print(
             tmp.as_bytes().len(),
         );
 
-        log_debug!("sixel_print before colours");
+        if (*si).set_ra != 0 {
+            let tmp = CString::new(format!("\"1;1;{};{}", (*si).x, (*si).y)).unwrap();
+            sixel_print_add(
+                &raw mut buf,
+                &raw mut len,
+                &raw mut used,
+                tmp.as_ptr().cast(),
+                tmp.as_bytes().len(),
+            );
+        }
+
         for (i, c) in colours.iter().copied().enumerate() {
             let tmp = CString::new(format!(
                 "#{};{};{};{};{}",
@@ -615,9 +649,7 @@ pub(crate) unsafe fn sixel_print(
             if *buf.add(used - 1) == b'$' {
                 used -= 1;
             }
-            if *buf.add(used - 1) != b'-' {
-                sixel_print_add(&raw mut buf, &raw mut len, &raw mut used, c!("-"), 1);
-            }
+            sixel_print_add(&raw mut buf, &raw mut len, &raw mut used, c!("-"), 1);
 
             y += 6;
         }

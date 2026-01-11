@@ -2378,10 +2378,20 @@ unsafe fn input_dcs_dispatch(ictx: *mut input_ctx) -> i32 {
             use crate::screen_write::screen_write_sixelimage;
 
             let w = (*wp).window;
-            if *buf == b'q'
-                && let Some(si) = NonNull::new(sixel_parse(buf, len, (*w).xpixel, (*w).ypixel))
-            {
-                screen_write_sixelimage(sctx, si.as_ptr(), (*ictx).cell.cell.bg as _);
+            if *buf == b'q' {
+               if input_split(ictx) != 0 {
+                   return 0;
+               }
+
+               let mut p2 = input_get(ictx, 1, 0, 0);
+               if p2 == -1 {
+                   p2 = 0;
+               }
+
+                if let Some(si) = NonNull::new(sixel_parse(buf, len, p2 as u32, (*w).xpixel, (*w).ypixel))
+                {
+                    screen_write_sixelimage(sctx, si.as_ptr(), (*ictx).cell.cell.bg as _);
+                }
             }
         }
 

@@ -1186,14 +1186,14 @@ unsafe fn screen_hlimit(s: *const screen) -> u32 {
 #[repr(C)]
 #[derive(Default)]
 struct menu_item {
-    name: SyncCharPtr,
+    name: Cow<'static, str>,
     key: key_code,
     command: SyncCharPtr,
 }
 impl menu_item {
-    const fn new(name: &'static CStr, key: key_code, command: *const u8) -> Self {
+    const fn new(name: &'static str, key: key_code, command: *const u8) -> Self {
         Self {
-            name: SyncCharPtr::new(name),
+            name: Cow::Borrowed(name),
             key,
             command: SyncCharPtr(command),
         }
@@ -1202,7 +1202,7 @@ impl menu_item {
 
 #[repr(C)]
 struct menu {
-    title: *const u8,
+    title: String,
     items: Vec<menu_item>,
     width: u32,
 }

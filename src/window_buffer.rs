@@ -29,17 +29,17 @@ const WINDOW_BUFFER_DEFAULT_KEY_FORMAT: &str = concat!(
 );
 
 static WINDOW_BUFFER_MENU_ITEMS: [menu_item; 11] = [
-    menu_item::new(c"Paste", 'p' as u64, null_mut()),
-    menu_item::new(c"Paste Tagged", 'P' as u64, null_mut()),
-    menu_item::new(c"", KEYC_NONE, null_mut()),
-    menu_item::new(c"Tag", 't' as u64, null_mut()),
-    menu_item::new(c"Tag All", '\x14' as u64, null_mut()),
-    menu_item::new(c"Tag None", 'T' as u64, null_mut()),
-    menu_item::new(c"", KEYC_NONE, null_mut()),
-    menu_item::new(c"Delete", 'd' as u64, null_mut()),
-    menu_item::new(c"Delete Tagged", 'D' as u64, null_mut()),
-    menu_item::new(c"", KEYC_NONE, null_mut()),
-    menu_item::new(c"Cancel", 'q' as u64, null_mut()),
+    menu_item::new("Paste", 'p' as u64, null_mut()),
+    menu_item::new("Paste Tagged", 'P' as u64, null_mut()),
+    menu_item::new("", KEYC_NONE, null_mut()),
+    menu_item::new("Tag", 't' as u64, null_mut()),
+    menu_item::new("Tag All", '\x14' as u64, null_mut()),
+    menu_item::new("Tag None", 'T' as u64, null_mut()),
+    menu_item::new("", KEYC_NONE, null_mut()),
+    menu_item::new("Delete", 'd' as u64, null_mut()),
+    menu_item::new("Delete Tagged", 'D' as u64, null_mut()),
+    menu_item::new("", KEYC_NONE, null_mut()),
+    menu_item::new("Cancel", 'q' as u64, null_mut()),
 ];
 
 pub static WINDOW_BUFFER_MODE: window_mode = window_mode {

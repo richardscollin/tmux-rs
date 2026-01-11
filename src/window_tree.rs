@@ -51,18 +51,18 @@ const WINDOW_TREE_DEFAULT_KEY_FORMAT: &CStr = cstring_concat!(
 );
 
 static WINDOW_TREE_MENU_ITEMS: [menu_item; 12] = [
-    menu_item::new(c"Select", b'\r' as key_code, null()),
-    menu_item::new(c"Expand", keyc::KEYC_RIGHT as key_code, null()),
-    menu_item::new(c"Mark", 'm' as key_code, null()),
-    menu_item::new(c"", KEYC_NONE, null()),
-    menu_item::new(c"Tag", b't' as key_code, null()),
-    menu_item::new(c"Tag All", b'\x14' as key_code, null()),
-    menu_item::new(c"Tag None", b'T' as key_code, null()),
-    menu_item::new(c"", KEYC_NONE, null()),
-    menu_item::new(c"Kill", b'x' as key_code, null()),
-    menu_item::new(c"Kill Tagged", b'X' as key_code, null()),
-    menu_item::new(c"", KEYC_NONE, null()),
-    menu_item::new(c"Cancel", b'q' as key_code, null()),
+    menu_item::new("Select", b'\r' as key_code, null()),
+    menu_item::new("Expand", keyc::KEYC_RIGHT as key_code, null()),
+    menu_item::new("Mark", 'm' as key_code, null()),
+    menu_item::new("", KEYC_NONE, null()),
+    menu_item::new("Tag", b't' as key_code, null()),
+    menu_item::new("Tag All", b'\x14' as key_code, null()),
+    menu_item::new("Tag None", b'T' as key_code, null()),
+    menu_item::new("", KEYC_NONE, null()),
+    menu_item::new("Kill", b'x' as key_code, null()),
+    menu_item::new("Kill Tagged", b'X' as key_code, null()),
+    menu_item::new("", KEYC_NONE, null()),
+    menu_item::new("Cancel", b'q' as key_code, null()),
 ];
 
 pub static WINDOW_TREE_MODE: window_mode = window_mode {
@@ -575,7 +575,7 @@ unsafe fn window_tree_draw_label(
                 3,
                 box_lines::BOX_LINES_DEFAULT,
                 null_mut(),
-                null_mut(),
+                None,
             );
         }
         screen_write_cursormove(ctx, (px + ox) as i32, (py + oy) as i32, 0);

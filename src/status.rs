@@ -467,7 +467,7 @@ pub unsafe fn status_redraw(c: *mut client) -> i32 {
                     &raw mut ctx,
                     &raw mut gc,
                     width,
-                    expanded,
+                    cstr_to_str(expanded),
                     &raw mut (*sle).ranges,
                     0,
                 );
@@ -643,7 +643,7 @@ pub unsafe fn status_message_redraw(c: *mut client) -> i32 {
                 &raw mut ctx,
                 &raw const gc,
                 (*c).tty.sx,
-                (*c).message_string,
+                cstr_to_str((*c).message_string),
                 null_mut(),
                 0,
             );
@@ -840,7 +840,7 @@ pub unsafe fn status_prompt_redraw(c: *mut client) -> i32 {
             memcpy__(&raw mut cursorgc, &raw const gc);
             cursorgc.attr ^= grid_attr::GRID_ATTR_REVERSE;
 
-            let mut start = format_width((*c).prompt_string);
+            let mut start = format_width(cstr_to_str((*c).prompt_string));
             if start > (*c).tty.sx {
                 start = (*c).tty.sx;
             }
@@ -863,7 +863,7 @@ pub unsafe fn status_prompt_redraw(c: *mut client) -> i32 {
                 &raw mut ctx,
                 &raw const gc,
                 start,
-                (*c).prompt_string,
+                cstr_to_str((*c).prompt_string),
                 null_mut(),
                 0,
             );
@@ -2050,14 +2050,13 @@ unsafe fn status_prompt_complete_list_menu(
         }
         (*spm).start = size - height;
 
-        let menu = menu_create(c!(""));
+        let menu = Box::leak(menu_create(""));
         for i in (*spm).start..size {
-            let name_cstr = format_nul!("{}", (&(*spm).list)[i as usize]);
-            item.name = SyncCharPtr::from_ptr(name_cstr);
+            item.name = Cow::Owned(format!("{}", (&(*spm).list)[i as usize]));
             item.key = b'0' as u64 + (i as i64 - (*spm).start as i64) as u64;
             item.command = SyncCharPtr::null();
-            menu_add_item(menu, &raw mut item, null_mut(), c, null_mut());
-            free_(name_cstr);
+            menu_add_item(menu, Some(&item), null_mut(), c, null_mut());
+            drop(item.name);
         }
 
         let py = if options_get_number_((*(*c).session).options, "status-position") == 0 {
@@ -2110,7 +2109,6 @@ unsafe fn status_prompt_complete_window_menu(
 ) -> Option<String> {
     unsafe {
         let mut item: menu_item = zeroed();
-        let mut tmp: *mut u8;
         let mut list = Vec::new();
         let lines = status_line_size(c);
 
@@ -2130,29 +2128,28 @@ unsafe fn status_prompt_complete_window_menu(
             flag,
         })) as *mut status_prompt_menu;
 
-        let menu = menu_create(c!(""));
+        let menu = Box::leak(menu_create(""));
         for wl in rb_foreach(&raw mut (*s).windows).map(NonNull::as_ptr) {
+            let mut tmp;
             if !word.is_null() && *word != b'\0' {
-                tmp = format_nul!("{}", (*wl).idx);
-                if strncmp(tmp, word, strlen(word)) != 0 {
-                    free_(tmp);
+                tmp = format!("{}", (*wl).idx);
+                if !tmp.starts_with(cstr_to_str(word)) {
                     continue;
                 }
-                free_(tmp);
             }
 
             if (*c).prompt_type == prompt_type::PROMPT_TYPE_WINDOW_TARGET {
-                tmp = format_nul!("{} ({})", (*wl).idx, _s((*(*wl).window).name),);
+                tmp = format!("{} ({})", (*wl).idx, _s((*(*wl).window).name),);
                 list.push(format!("{}", (*wl).idx));
             } else {
-                tmp = format_nul!("{}:{} ({})", (*s).name, (*wl).idx, _s((*(*wl).window).name),);
+                tmp = format!("{}:{} ({})", (*s).name, (*wl).idx, _s((*(*wl).window).name),);
                 list.push(format!("{}:{}", (*s).name, (*wl).idx));
             }
-            item.name = SyncCharPtr::from_ptr(tmp);
+            item.name = Cow::Owned(tmp);
             item.key = (b'0' as u64) + list.len() as u64 - 1;
             item.command = SyncCharPtr::null();
-            menu_add_item(menu, &raw mut item, null_mut(), c, null_mut());
-            free_(tmp);
+            menu_add_item(menu, Some(&item), null_mut(), c, null_mut());
+            drop(item.name);
 
             if list.len() == height as usize {
                 break;

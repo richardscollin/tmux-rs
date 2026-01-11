@@ -25,14 +25,14 @@ static WINDOW_CUSTOMIZE_DEFAULT_FORMAT: &str = concat!(
 );
 
 static WINDOW_CUSTOMIZE_MENU_ITEMS: [menu_item; 8] = [
-    menu_item::new(c"Select", '\r' as key_code, null_mut()),
-    menu_item::new(c"Expand", keyc::KEYC_RIGHT as key_code, null_mut()),
-    menu_item::new(c"", KEYC_NONE, null_mut()),
-    menu_item::new(c"Tag", 't' as key_code, null_mut()),
-    menu_item::new(c"Tag All", '\x14' as key_code, null_mut()),
-    menu_item::new(c"Tag None", 'T' as key_code, null_mut()),
-    menu_item::new(c"", KEYC_NONE, null_mut()),
-    menu_item::new(c"Cancel", 'q' as key_code, null_mut()),
+    menu_item::new("Select", '\r' as key_code, null_mut()),
+    menu_item::new("Expand", keyc::KEYC_RIGHT as key_code, null_mut()),
+    menu_item::new("", KEYC_NONE, null_mut()),
+    menu_item::new("Tag", 't' as key_code, null_mut()),
+    menu_item::new("Tag All", '\x14' as key_code, null_mut()),
+    menu_item::new("Tag None", 'T' as key_code, null_mut()),
+    menu_item::new("", KEYC_NONE, null_mut()),
+    menu_item::new("Cancel", 'q' as key_code, null_mut()),
 ];
 
 pub static WINDOW_CUSTOMIZE_MODE: window_mode = window_mode {

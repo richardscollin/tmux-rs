@@ -4835,7 +4835,7 @@ pub unsafe fn format_replace(
                 format_log1!(es, __func__, "replacing with length: {}", _s(new));
             }
             if modifiers.intersects(format_modifiers::FORMAT_WIDTH) {
-                new = format_nul!("{}", format_width(value));
+                new = format_nul!("{}", format_width(cstr_to_str(value)));
                 free_(value);
                 value = new;
                 format_log1!(es, __func__, "replacing with width: {}", _s(new));

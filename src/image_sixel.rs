@@ -666,7 +666,7 @@ unsafe fn sixel_to_screen(si: *mut sixel_image) -> *mut screen {
                 sy,
                 box_lines::BOX_LINES_DEFAULT,
                 null(),
-                null(),
+                None,
             );
             for y in 1..(sy - 1) {
                 for x in 1..(sx - 1) {

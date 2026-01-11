@@ -327,7 +327,6 @@ unsafe fn cmd_display_menu_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
         let target = cmdq_get_target(item);
         let event = cmdq_get_event(item);
         let tc = cmdq_get_target_client(item);
-        let mut menu_item: menu_item = zeroed();
 
         let style = args_get_(args, 's');
         let border_style = args_get_(args, 'S');
@@ -363,9 +362,9 @@ unsafe fn cmd_display_menu_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
         let title = if args_has(args, 'T') {
             format_single_from_target(item, args_get(args, b'T'))
         } else {
-            xstrdup_(c"").as_ptr()
+            xstrdup__("")
         };
-        let menu = menu_create(title);
+        let menu = Box::leak(menu_create(cstr_to_str(title)));
         free_(title);
 
         let mut i: u32 = 0;
@@ -373,7 +372,7 @@ unsafe fn cmd_display_menu_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
             let name = args_string(args, i);
             i += 1;
             if *name == b'\0' {
-                menu_add_item(menu, null_mut(), item, tc, target);
+                menu_add_item(menu, None, item, tc, target);
                 continue;
             }
 
@@ -385,17 +384,19 @@ unsafe fn cmd_display_menu_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
             let key = args_string(args, i);
             i += 1;
 
-            menu_item.name = SyncCharPtr::from_ptr(name);
-            menu_item.key = key_string_lookup_string(key);
-            menu_item.command = SyncCharPtr::from_ptr(args_string(args, i));
+            let menu_item: menu_item = menu_item {
+                name: Cow::Borrowed(cstr_to_str::<'static>(name)),
+                key: key_string_lookup_string(key),
+                command: SyncCharPtr::from_ptr(args_string(args, i)),
+            };
             i += 1;
 
-            menu_add_item(menu, &raw mut menu_item, item, tc, target);
+            menu_add_item(menu, Some(&menu_item), item, tc, target);
         }
-        if menu.is_null() {
-            cmdq_error!(item, "invalid menu arguments");
-            return cmd_retval::CMD_RETURN_ERROR;
-        }
+        // if menu.is_null() {
+        //     cmdq_error!(item, "invalid menu arguments");
+        //     return cmd_retval::CMD_RETURN_ERROR;
+        // }
         if (*menu).items.is_empty() {
             menu_free(menu);
             return cmd_retval::CMD_RETURN_NORMAL;

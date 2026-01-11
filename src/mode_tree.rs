@@ -126,10 +126,10 @@ struct mode_tree_menu {
 }
 
 static MODE_TREE_MENU_ITEMS: [menu_item; 4] = [
-    menu_item::new(c"Scroll Left", '<' as u64, null_mut()),
-    menu_item::new(c"Scroll Right", '>' as u64, null_mut()),
-    menu_item::new(c"", KEYC_NONE, null_mut()),
-    menu_item::new(c"Cancel", 'q' as u64, null_mut()),
+    menu_item::new("Scroll Left", '<' as u64, null_mut()),
+    menu_item::new("Scroll Right", '>' as u64, null_mut()),
+    menu_item::new("", KEYC_NONE, null_mut()),
+    menu_item::new("Cancel", 'q' as u64, null_mut()),
 ];
 
 unsafe fn mode_tree_find_item(mtl: *mut mode_tree_list, tag: u64) -> *mut mode_tree_item {
@@ -781,12 +781,12 @@ pub unsafe fn mode_tree_draw(mtd: &mut mode_tree_data) {
                 if i as u32 != mtd.current {
                     screen_write_clearendofline(&raw mut ctx, 8);
                     screen_write_nputs!(&raw mut ctx, w as isize, &raw mut gc0, "{}", _s(text),);
-                    if !(*mti).text.is_null() {
+                    if let Some(text) = cstr_to_str_((*mti).text) {
                         format_draw(
                             &raw mut ctx,
                             &raw mut gc0,
                             w - width,
-                            (*mti).text,
+                            text,
                             null_mut(),
                             0,
                         );
@@ -799,7 +799,7 @@ pub unsafe fn mode_tree_draw(mtd: &mut mode_tree_data) {
                             &raw mut ctx,
                             &raw mut gc,
                             w - width,
-                            (*mti).text,
+                            cstr_to_str((*mti).text),
                             null_mut(),
                             0,
                         );
@@ -832,7 +832,7 @@ pub unsafe fn mode_tree_draw(mtd: &mut mode_tree_data) {
                 sy - h,
                 box_lines::BOX_LINES_DEFAULT,
                 null(),
-                null(),
+                None,
             );
 
             let text = if !mtd.sort_list.is_empty() {
@@ -1132,14 +1132,13 @@ pub unsafe fn mode_tree_display_menu(
         let (items, title) = if outside == 0 {
             (
                 (*mtd).menu,
-                format_nul!("#[align=centre]{}", _s((*mti).name)),
+                format!("#[align=centre]{}", _s((*mti).name)),
             )
         } else {
-            (MODE_TREE_MENU_ITEMS.as_slice(), xstrdup_(c"").as_ptr())
+            (MODE_TREE_MENU_ITEMS.as_slice(), String::new())
         };
-        let menu = menu_create(title);
+        let menu = Box::leak(menu_create(&title));
         menu_add_items(menu, items, null_mut(), c, null_mut());
-        free_(title);
 
         let mtm = Box::leak(Box::new(mode_tree_menu {
             data: mtd,

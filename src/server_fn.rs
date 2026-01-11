@@ -360,7 +360,7 @@ pub unsafe fn server_destroy_pane(wp: *mut window_pane, notify: i32) {
 
                         let expanded =
                             format_single(null_mut(), s, null_mut(), null_mut(), null_mut(), wp);
-                        format_draw(ctx, gc, sx, expanded, null_mut(), 0);
+                        format_draw(ctx, gc, sx, cstr_to_str(expanded), null_mut(), 0);
                         free_(expanded);
 
                         screen_write_stop(ctx);

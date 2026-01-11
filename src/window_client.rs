@@ -20,14 +20,14 @@ static WINDOW_CLIENT_DEFAULT_KEY_FORMAT: &str =
     "#{?#{e|<:#{line},10},#{line},#{?#{e|<:#{line},36},M-#{a:#{e|+:97,#{e|-:#{line},10}}},}}";
 
 static WINDOW_CLIENT_MENU_ITEMS: [menu_item; 8] = [
-    menu_item::new(c"Detach", b'd' as _, null()),
-    menu_item::new(c"Detach Tagged", b'D' as _, null()),
-    menu_item::new(c"", KEYC_NONE, null()),
-    menu_item::new(c"Tag", b't' as _, null()),
-    menu_item::new(c"Tag All", b'\x14' as _, null()),
-    menu_item::new(c"Tag None", b'T' as _, null()),
-    menu_item::new(c"", KEYC_NONE, null()),
-    menu_item::new(c"Cancel", b'q' as _, null()),
+    menu_item::new("Detach", b'd' as _, null()),
+    menu_item::new("Detach Tagged", b'D' as _, null()),
+    menu_item::new("", KEYC_NONE, null()),
+    menu_item::new("Tag", b't' as _, null()),
+    menu_item::new("Tag All", b'\x14' as _, null()),
+    menu_item::new("Tag None", b'T' as _, null()),
+    menu_item::new("", KEYC_NONE, null()),
+    menu_item::new("Cancel", b'q' as _, null()),
 ];
 
 pub static WINDOW_CLIENT_MODE: window_mode = window_mode {

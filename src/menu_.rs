@@ -59,25 +59,21 @@ pub unsafe fn menu_add_items(
 ) {
     for loop_ in items {
         unsafe {
-            menu_add_item(menu, loop_, qitem, c, fs);
+            menu_add_item(menu, Some(loop_), qitem, c, fs);
         }
     }
 }
 
 pub unsafe fn menu_add_item(
     menu: *mut menu,
-    item: *const menu_item,
+    item: Option<&menu_item>,
     qitem: *mut cmdq_item,
     c: *mut client,
     fs: *mut cmd_find_state,
 ) {
     unsafe {
-        let line =
-            item.is_null() || (*item).name.as_ptr().is_null() || *(*item).name.as_ptr() == b'\0';
+        let line = item.is_none() || item.as_ref().unwrap().name.is_empty();
         if line && (*menu).items.is_empty() {
-            return;
-        }
-        if line && (*menu).items.last().unwrap().name.as_ptr().is_null() {
             return;
         }
 
@@ -88,11 +84,11 @@ pub unsafe fn menu_add_item(
         }
 
         let s0 = if !fs.is_null() {
-            format_single_from_state(qitem, (*item).name.as_ptr(), c, fs)
+            format_single_from_state(qitem, item.as_ref().unwrap().name.as_ptr(), c, fs)
         } else {
             format_single(
                 qitem,
-                (*item).name.as_ptr(),
+                item.as_ref().unwrap().name.as_ptr(),
                 c,
                 null_mut(),
                 null_mut(),
@@ -108,8 +104,8 @@ pub unsafe fn menu_add_item(
 
         let mut key = null();
         let slen: usize = strlen(s0);
-        if *s0 != b'-' && (*item).key != KEYC_UNKNOWN && (*item).key != KEYC_NONE {
-            key = key_string_lookup_key((*item).key, 0);
+        if *s0 != b'-' && item.as_ref().unwrap().key != KEYC_UNKNOWN && item.as_ref().unwrap().key != KEYC_NONE {
+            key = key_string_lookup_key(item.as_ref().unwrap().key, 0);
             let keylen: usize = strlen(key) + 3;
 
             if keylen <= max_width as usize / 4 {
@@ -126,24 +122,24 @@ pub unsafe fn menu_add_item(
             c!("")
         };
         let trimmed = format_trim_right(s0, max_width);
-        let name: *mut u8 = if !key.is_null() {
-            format_nul!(
+        let name: String = if !key.is_null() {
+            format!(
                 "{}{}#[default] #[align=right]({})",
                 _s(trimmed),
                 _s(suffix),
                 _s(key),
             )
         } else {
-            format_nul!("{}{}", _s(trimmed), _s(suffix))
+            format!("{}{}", _s(trimmed), _s(suffix))
         };
         free_(trimmed);
 
         let new_item = (*menu).items.last_mut().unwrap();
 
-        new_item.name = SyncCharPtr::from_ptr(name);
+        new_item.name = Cow::Owned(name);
         free_(s0);
 
-        let cmd: *const u8 = (*item).command.as_ptr();
+        let cmd: *const u8 = item.as_ref().unwrap().command.as_ptr();
         let s1: *mut u8 = if !cmd.is_null() {
             if !fs.is_null() {
                 format_single_from_state(qitem, cmd, c, fs)
@@ -154,10 +150,10 @@ pub unsafe fn menu_add_item(
             null_mut()
         };
         new_item.command = SyncCharPtr::from_ptr(s1);
-        new_item.key = (*item).key;
+        new_item.key = item.as_ref().unwrap().key;
 
-        let mut width = format_width(new_item.name.as_ptr());
-        if *new_item.name.as_ptr() == b'-' {
+        let mut width = format_width(&new_item.name);
+        if new_item.name.starts_with('-') {
             width -= 1;
         }
         if width > (*menu).width {
@@ -166,14 +162,12 @@ pub unsafe fn menu_add_item(
     }
 }
 
-pub unsafe fn menu_create(title: *const u8) -> *mut menu {
-    unsafe {
-        let menu = xcalloc1::<menu>() as *mut menu;
-        (*menu).title = xstrdup(title).as_ptr();
-        (*menu).width = format_width(title);
-
-        menu
-    }
+pub fn menu_create(title: &str) -> Box<menu> {
+    Box::new(menu {
+        title: title.to_string(),
+        items: Vec::new(),
+        width: unsafe { format_width(title) },
+    })
 }
 
 pub unsafe fn menu_free(menu: *mut menu) {
@@ -183,8 +177,7 @@ pub unsafe fn menu_free(menu: *mut menu) {
             free_(item.command.as_ptr().cast_mut());
         }
         (*menu).items = Vec::new();
-
-        free_((*menu).title.cast_mut());
+        (*menu).title = String::new();
         free_(menu);
     }
 }
@@ -256,7 +249,7 @@ pub unsafe fn menu_draw_cb(c: *mut client, data: *mut c_void, _rctx: *mut screen
                 (*menu).items.len() as u32 + 2,
                 (*md).border_lines,
                 &raw mut (*md).border_style,
-                (*menu).title,
+                Some(&(*menu).title),
             );
         }
 
@@ -518,7 +511,8 @@ pub unsafe fn menu_key_cb(c: *mut client, data: *mut c_void, mut event: *mut key
             return 1;
         }
         let item = &mut (&mut (*menu).items)[(*md).choice as usize];
-        if item.name.as_ptr().is_null() || *item.name.as_ptr() == b'-' {
+        // TODO previously was is_null check here (but doesn't make sense for rust type), should it now be is_empty?
+        if item.name.starts_with('-') {
             if (*md).flags.intersects(MENU_STAYOPEN) {
                 return 0;
             }

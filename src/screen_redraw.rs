@@ -486,7 +486,7 @@ pub unsafe fn screen_redraw_make_pane_status(
             ctx.as_mut_ptr(),
             &raw mut gc,
             width,
-            expanded,
+            cstr_to_str(expanded),
             null_mut(),
             0,
         );

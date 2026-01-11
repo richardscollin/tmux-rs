@@ -846,10 +846,14 @@ pub unsafe fn format_draw(
     octx: *mut screen_write_ctx,
     base: *const grid_cell,
     available: c_uint,
-    expanded: *const u8,
+    expanded: &str,
     srs: *mut style_ranges,
     default_colours: c_int,
 ) {
+    let size = expanded.len() as u32;
+    let expanded = CString::new(expanded).unwrap(); // TODO FIXME extra allocation to
+                                                             // avoid rewritting rest of
+                                                             // function now
     let func = "format_draw";
     let mut __func__ = c!("format_draw");
     unsafe {
@@ -881,7 +885,6 @@ pub unsafe fn format_draw(
             "AFTER",
         ];
 
-        let size = libc::strlen(expanded) as u32;
         let os: *mut screen = (*octx).s;
         let mut s: [screen; TOTAL] = zeroed();
 
@@ -932,7 +935,7 @@ pub unsafe fn format_draw(
         'out: {
             // Walk the string and add to the corresponding screens,
             // parsing styles as we go.
-            let mut cp = expanded;
+            let mut cp: *const u8 = expanded.as_ptr().cast();
             while *cp != b'\0' {
                 // Handle sequences of #.
                 if *cp == b'#' && *cp.add(1) != b'[' && *cp.add(1) != b'\0' {
@@ -1364,9 +1367,12 @@ pub unsafe fn format_draw(
 }
 
 /// Get width, taking #[] into account.
-pub unsafe fn format_width(expanded: *const u8) -> u32 {
+pub unsafe fn format_width(expanded: &str) -> u32 {
     unsafe {
-        let mut cp: *const u8 = expanded;
+        let expanded = CString::new(expanded).unwrap(); // TODO FIXME extra allocation to
+                                                                 // avoid rewritting rest of
+                                                                 // function now
+        let mut cp: *const u8 = expanded.as_ptr().cast();
 
         let mut n: u32 = 0;
         let mut leading_width: u32 = 0;
@@ -1506,7 +1512,7 @@ pub unsafe fn format_trim_right(expanded: *const u8, limit: u32) -> *mut u8 {
 
         let mut cp = expanded;
 
-        let total_width: u32 = format_width(expanded);
+        let total_width: u32 = format_width(cstr_to_str(expanded));
         if total_width <= limit {
             return xstrdup(expanded).as_ptr();
         }

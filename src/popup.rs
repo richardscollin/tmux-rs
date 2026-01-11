@@ -88,25 +88,25 @@ pub struct popup_editor {
 }
 
 static POPUP_MENU_ITEMS: [menu_item; 8] = [
-    menu_item::new(c"Close", 'q' as u64, null_mut()),
+    menu_item::new("Close", 'q' as u64, null_mut()),
     menu_item::new(
-        c"#{?buffer_name,Paste #[underscore]#{buffer_name},}",
+        "#{?buffer_name,Paste #[underscore]#{buffer_name},}",
         'p' as u64,
         null_mut(),
     ),
-    menu_item::new(c"", KEYC_NONE, null_mut()),
-    menu_item::new(c"Fill Space", 'F' as u64, null_mut()),
-    menu_item::new(c"Centre", 'C' as u64, null_mut()),
-    menu_item::new(c"", KEYC_NONE, null_mut()),
-    menu_item::new(c"To Horizontal Pane", 'h' as u64, null_mut()),
-    menu_item::new(c"To Vertical Pane", 'v' as u64, null_mut()),
+    menu_item::new("", KEYC_NONE, null_mut()),
+    menu_item::new("Fill Space", 'F' as u64, null_mut()),
+    menu_item::new("Centre", 'C' as u64, null_mut()),
+    menu_item::new("", KEYC_NONE, null_mut()),
+    menu_item::new("To Horizontal Pane", 'h' as u64, null_mut()),
+    menu_item::new("To Vertical Pane", 'v' as u64, null_mut()),
 ];
 
 static POPUP_INTERNAL_MENU_ITEMS: [menu_item; 4] = [
-    menu_item::new(c"Close", 'q' as u64, null_mut()),
-    menu_item::new(c"", KEYC_NONE, null_mut()),
-    menu_item::new(c"Fill Space", 'F' as u64, null_mut()),
-    menu_item::new(c"Centre", 'C' as u64, null_mut()),
+    menu_item::new("Close", 'q' as u64, null_mut()),
+    menu_item::new("", KEYC_NONE, null_mut()),
+    menu_item::new("Fill Space", 'F' as u64, null_mut()),
+    menu_item::new("Centre", 'C' as u64, null_mut()),
 ];
 
 pub unsafe fn popup_redraw_cb(ttyctx: *const tty_ctx) {
@@ -269,7 +269,7 @@ pub unsafe fn popup_draw_cb(c: *mut client, data: *mut c_void, rctx: *mut screen
                 (*pd).sy,
                 (*pd).border_lines,
                 &(*pd).border_cell,
-                (*pd).title,
+                cstr_to_str_((*pd).title),
             );
             screen_write_cursormove(ctx.as_mut_ptr(), 1, 1, 0);
             screen_write_fast_copy(
@@ -666,7 +666,7 @@ pub unsafe fn popup_key_cb(c: *mut client, data: *mut c_void, event: *mut key_ev
                 return 0;
             }
             // menu:
-            (*pd).menu = menu_create(c!(""));
+            (*pd).menu = Box::leak(menu_create(""));
             if (*pd).flags.intersects(popup_flag::POPUP_INTERNAL) {
                 menu_add_items(
                     (*pd).menu,

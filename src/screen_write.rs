@@ -781,7 +781,7 @@ pub unsafe fn screen_write_menu(
             (*menu).items.len() as u32 + 2,
             lines,
             border_gc,
-            (*menu).title,
+            Some(&(*menu).title),
         );
 
         for (i, item) in (*menu).items.iter_mut().enumerate() {
@@ -804,12 +804,12 @@ pub unsafe fn screen_write_menu(
             screen_write_cursormove(ctx, cx as i32 + 2, (cy + 1 + i as u32) as i32, 0);
             if *name == b'-' {
                 default_gc.attr |= grid_attr::GRID_ATTR_DIM;
-                format_draw(ctx, gc, width, name.add(1), null_mut(), 0);
+                format_draw(ctx, gc, width, cstr_to_str(name.add(1)), null_mut(), 0);
                 default_gc.attr &= !grid_attr::GRID_ATTR_DIM;
                 continue;
             }
 
-            format_draw(ctx, gc, width, name, null_mut(), 0);
+            format_draw(ctx, gc, width, cstr_to_str(name), null_mut(), 0);
             gc = &raw mut default_gc;
         }
 
@@ -824,7 +824,7 @@ pub unsafe fn screen_write_box(
     ny: u32,
     lines: box_lines,
     gcp: *const grid_cell,
-    title: *const u8,
+    title: Option<&str>,
 ) {
     unsafe {
         let s = (*ctx).s;
@@ -874,7 +874,7 @@ pub unsafe fn screen_write_box(
             screen_write_cell(ctx, &raw const gc);
         }
 
-        if !title.is_null() {
+        if let Some(title) = title {
             gc.attr &= !grid_attr::GRID_ATTR_CHARSET;
             screen_write_cursormove(ctx, (cx + 2) as i32, cy as i32, 0);
             format_draw(ctx, &raw const gc, nx - 4, title, null_mut(), 0);

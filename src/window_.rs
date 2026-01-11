@@ -1881,18 +1881,7 @@ pub unsafe fn window_set_fill_character(w: NonNull<window>) {
 
 pub unsafe fn window_pane_default_cursor(wp: *mut window_pane) {
     unsafe {
-        let s = (*wp).screen;
-
-        let c: i32 = options_get_number___::<i32>(&*(*wp).options, "cursor-colour");
-        (*s).default_ccolour = c;
-
-        let c: i32 = options_get_number___::<i32>(&*(*wp).options, "cursor-style");
-        (*s).default_mode = mode_flag::empty();
-        screen_set_cursor_style(
-            c as u32,
-            &raw mut (*s).default_cstyle,
-            &raw mut (*s).default_mode,
-        );
+        screen_set_default_cursor((*wp).screen, (*wp).options);
     }
 }
 

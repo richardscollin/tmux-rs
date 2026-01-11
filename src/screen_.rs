@@ -175,6 +175,18 @@ pub unsafe fn screen_reset_tabs(s: *mut screen) {
     }
 }
 
+/// Set default cursor style and colour from options.
+pub unsafe fn screen_set_default_cursor(s: *mut screen , oo: *const options) {
+    unsafe {
+       let c: i32 = options_get_number___(&*oo, "cursor-colour");
+       (*s).default_ccolour = c;
+
+       let c: i32 = options_get_number___(&*oo, "cursor-style");
+       (*s).default_mode = mode_flag::empty();
+       screen_set_cursor_style(c as u32, &raw mut (*s).default_cstyle, &raw mut (*s).default_mode);
+    }
+}
+
 /// Set screen cursor style and mode.
 pub unsafe fn screen_set_cursor_style(
     style: u32,

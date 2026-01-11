@@ -341,6 +341,7 @@ pub unsafe fn window_copy_common_init(wme: *mut window_mode_entry) -> *mut windo
             screen_size_y(base),
             0,
         );
+        screen_set_default_cursor(&raw mut (*data).screen, GLOBAL_W_OPTIONS);
         (*data).modekeys =
             modekey::try_from(options_get_number_((*(*wp).window).options, "mode-keys") as i32)
                 .expect("invalid modekey");

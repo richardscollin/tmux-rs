@@ -584,8 +584,6 @@ pub unsafe fn status_message_redraw(c: *mut client) -> i32 {
         let sl = &raw mut (*c).status;
         let mut ctx: screen_write_ctx = zeroed();
         let s = (*c).session;
-        let mut old_screen: screen = zeroed();
-
         // size_t len;
         // u_int lines, offset, messageline;
         let mut gc: grid_cell = zeroed();
@@ -594,7 +592,7 @@ pub unsafe fn status_message_redraw(c: *mut client) -> i32 {
         if (*c).tty.sx == 0 || (*c).tty.sy == 0 {
             return 0;
         }
-        memcpy__(&raw mut old_screen, (*sl).active);
+        let mut old_screen = (*(*sl).active).clone();
 
         let mut lines = status_line_size(c);
         if lines <= 1 {
@@ -805,18 +803,18 @@ pub unsafe fn status_prompt_redraw(c: *mut client) -> i32 {
         let mut ctx: screen_write_ctx = zeroed();
 
         let s = (*c).session;
-        let mut old_screen: screen = zeroed();
 
         let offset: u32;
 
         let mut gc: grid_cell = zeroed();
         let mut cursorgc: grid_cell = zeroed();
+        let mut old_screen: screen;
 
         'finished: {
             if (*c).tty.sx == 0 || (*c).tty.sy == 0 {
                 return 0;
             }
-            memcpy__(&raw mut old_screen, (*sl).active);
+            old_screen = (*(*sl).active).clone();
 
             let mut lines = status_line_size(c);
             if lines <= 1 {

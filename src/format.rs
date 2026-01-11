@@ -971,7 +971,7 @@ pub unsafe fn format_cb_pane_tabs(ft: *mut format_tree) -> format_table_type {
 
         let mut first = true;
         for i in 0..(*(*wp).base.grid).sx {
-            if !(*wp).base.tabs.as_ref().unwrap().bit_test(i) {
+            if !(*wp).base.tabs.as_ref().unwrap().borrow().bit_test(i) {
                 continue;
             }
 

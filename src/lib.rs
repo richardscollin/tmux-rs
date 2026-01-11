@@ -132,6 +132,7 @@ use std::{
     },
     mem::{MaybeUninit, size_of, zeroed},
     ptr::{NonNull, addr_of, addr_of_mut, null, null_mut},
+    rc::Rc,
     sync::{
         Mutex,
         atomic::{self, AtomicBool, AtomicU32, AtomicU64},
@@ -1042,6 +1043,7 @@ enum screen_cursor_style {
 
 /// Virtual screen.
 #[repr(C)]
+#[derive(Clone)]
 struct screen {
     title: *mut u8,
     path: *mut u8,
@@ -1077,7 +1079,7 @@ struct screen {
     saved_cell: grid_cell,
     saved_flags: i32,
 
-    tabs: Option<BitStr>,
+    tabs: Option<Rc<RefCell<BitStr>>>,
     sel: *mut screen_sel,
 
     #[cfg(feature = "sixel")]

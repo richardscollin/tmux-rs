@@ -165,11 +165,11 @@ pub unsafe fn screen_free(s: *mut screen) {
 /// Reset tabs to default, eight spaces apart.
 pub unsafe fn screen_reset_tabs(s: *mut screen) {
     unsafe {
-        (*s).tabs = Some(BitStr::new(screen_size_x(s)));
+        (*s).tabs = Some(Rc::new(RefCell::new(BitStr::new(screen_size_x(s)))));
 
         let mut i = 8;
         while i < screen_size_x(s) {
-            (*s).tabs.as_mut().unwrap().bit_set(i);
+            (*s).tabs.as_ref().unwrap().borrow_mut().bit_set(i);
             i += 8;
         }
     }

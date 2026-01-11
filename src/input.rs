@@ -1406,7 +1406,7 @@ unsafe fn input_c0_dispatch(ictx: *mut input_ctx) -> i32 {
                     // Don't tab beyond the end of the line.
                     // Find the next tab point, or use the last column if none.
                     (*s).cx += 1;
-                    if (*s).tabs.as_ref().unwrap().bit_test((*s).cx) {
+                    if (*s).tabs.as_ref().unwrap().borrow().bit_test((*s).cx) {
                         break;
                     }
                 }
@@ -1469,7 +1469,7 @@ unsafe fn input_esc_dispatch(ictx: *mut input_ctx) -> i32 {
             }
             Ok(input_esc_type::INPUT_ESC_HTS) => {
                 if (*s).cx < screen_size_x(s) {
-                    (*s).tabs.as_mut().unwrap().bit_set((*s).cx);
+                    (*s).tabs.as_ref().unwrap().borrow_mut().bit_set((*s).cx);
                 }
             }
             Ok(input_esc_type::INPUT_ESC_RI) => {
@@ -1544,7 +1544,7 @@ unsafe fn input_csi_dispatch(ictx: *mut input_ctx) -> i32 {
                         n -= 1;
                         loop {
                             cx -= 1;
-                            if cx == 0 || (*s).tabs.as_ref().unwrap().bit_test(cx) {
+                            if cx == 0 || (*s).tabs.as_ref().unwrap().borrow().bit_test(cx) {
                                 break;
                             }
                         }
@@ -1761,10 +1761,10 @@ unsafe fn input_csi_dispatch(ictx: *mut input_ctx) -> i32 {
                 -1 => (),
                 0 => {
                     if (*s).cx < screen_size_x(s) {
-                        (*s).tabs.as_mut().unwrap().bit_clear((*s).cx);
+                        (*s).tabs.as_ref().unwrap().borrow_mut().bit_clear((*s).cx);
                     }
                 }
-                3 => (*s).tabs.as_mut().unwrap().bit_nclear(0, screen_size_x(s) - 1),
+                3 => (*s).tabs.as_ref().unwrap().borrow_mut().bit_nclear(0, screen_size_x(s) - 1),
                 _ => log_debug!("{}: unknown '{}'", __func__, (*ictx).ch as u8 as char),
             },
             Ok(input_csi_type::INPUT_CSI_VPA) => {

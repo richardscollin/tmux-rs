@@ -312,9 +312,6 @@ unsafe fn expand_paths(s: &str, paths: &mut Vec<CString>, ignore_errors: i32) {
 }
 
 unsafe fn make_label(mut label: *const u8) -> Result<String, String> {
-    #[cfg(not(target_os = "windows"))]
-    use crate::libc::S_IRWXO;
-
     let mut paths: Vec<CString> = Vec::new();
 
     unsafe {
@@ -373,7 +370,7 @@ unsafe fn make_label(mut label: *const u8) -> Result<String, String> {
                 #[cfg(not(target_os = "windows"))]
                 {
                     use std::os::unix::fs::MetadataExt;
-                    if md.uid() != user_id || (md.mode() & S_IRWXO) != 0 {
+                    if md.uid() != user_id || (md.mode() & TMUX_SOCK_PERM) != 0 {
                         return Err(format!("directory {base} has unsafe permissions"));
                     }
                 }

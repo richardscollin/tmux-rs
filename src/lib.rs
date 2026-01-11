@@ -244,6 +244,8 @@ const TMUX_SOCK: &str = env_or!("TMUX_SOCK", "$TMUX_TMPDIR:/tmp/");
 const TMUX_TERM: &str = env_or!("TMUX_TERM", "screen");
 const TMUX_LOCK_CMD: &str = env_or!("TMUX_LOCK_CMD", "lock -np");
 
+const TMUX_SOCK_PERM: u32 = 7; /* o+rwx */
+
 // /usr/include/paths.h
 const _PATH_TTY: *const u8 = c!("/dev/tty");
 const _PATH_BSHELL: *const u8 = c!("/bin/sh");

@@ -41,6 +41,14 @@ enum mode_tree_search_dir {
     MODE_TREE_SEARCH_BACKWARD,
 }
 
+#[repr(C)]
+#[derive(Copy, Clone, Eq, PartialEq)]
+enum mode_tree_preview {
+    MODE_TREE_PREVIEW_OFF,
+    MODE_TREE_PREVIEW_NORMAL,
+    MODE_TREE_PREVIEW_BIG
+}
+
 pub type mode_tree_list = tailq_head<mode_tree_item>;
 
 #[repr(C)]
@@ -78,7 +86,7 @@ pub struct mode_tree_data {
 
     screen: screen,
 
-    preview: bool,
+    preview: mode_tree_preview,
     search: *mut u8,
     filter: *mut u8,
     no_matches: i32,
@@ -415,7 +423,13 @@ pub unsafe fn mode_tree_start(
             modedata,
             menu,
             sort_list,
-            preview: !args_has(&*args, 'N'),
+            preview: if args_has_count(&*args, b'N') > 1 {
+                mode_tree_preview::MODE_TREE_PREVIEW_BIG
+            } else if args_has(&*args, 'N') {
+                mode_tree_preview::MODE_TREE_PREVIEW_OFF
+            } else {
+                mode_tree_preview::MODE_TREE_PREVIEW_NORMAL
+            },
 
             buildcb,
             drawcb,
@@ -493,13 +507,29 @@ pub unsafe fn mode_tree_set_height(mtd: *mut mode_tree_data) {
                 (*mtd).height = screen_size_y(s) - height;
             }
         } else {
-            (*mtd).height = (screen_size_y(s) / 3) * 2;
-            if (*mtd).height > (*mtd).line_list.len() as u32 {
-                (*mtd).height = screen_size_y(s) / 2;
+            match (*mtd).preview {
+                mode_tree_preview::MODE_TREE_PREVIEW_NORMAL => {
+                    (*mtd).height = (screen_size_y(s) / 3) * 2;
+                       if (*mtd).height as usize > (*mtd).line_list.len() {
+                           (*mtd).height = screen_size_y(s) / 2;
+                       }
+                       if (*mtd).height < 10 {
+                           (*mtd).height = screen_size_y(s);
+                       }
+                }
+                mode_tree_preview::MODE_TREE_PREVIEW_BIG => {
+                    (*mtd).height = screen_size_y(s) / 4;
+                       if (*mtd).height as usize > (*mtd).line_list.len() {
+                           (*mtd).height = (*mtd).line_list.len() as u32;
+                       }
+                       if (*mtd).height < 2 {
+                           (*mtd).height = 2;
+                       }
+                }
+                mode_tree_preview::MODE_TREE_PREVIEW_OFF => {
+                    (*mtd).height = screen_size_y(s);
+                }
             }
-        }
-        if (*mtd).height < 10 {
-            (*mtd).height = screen_size_y(s);
         }
         if screen_size_y(s) - (*mtd).height < 2 {
             (*mtd).height = screen_size_y(s);
@@ -548,7 +578,7 @@ pub unsafe fn mode_tree_build(mtd: *mut mode_tree_data) {
         mode_tree_set_current(mtd, tag);
 
         (*mtd).width = screen_size_x(s);
-        if (*mtd).preview {
+        if (*mtd).preview != mode_tree_preview::MODE_TREE_PREVIEW_OFF {
             mode_tree_set_height(mtd);
         } else {
             (*mtd).height = screen_size_y(s);
@@ -814,8 +844,12 @@ pub unsafe fn mode_tree_draw(mtd: &mut mode_tree_data) {
                 }
             }
 
+            if mtd.preview == mode_tree_preview::MODE_TREE_PREVIEW_OFF {
+                break 'done;
+            }
+
             let sy = screen_size_y(s);
-            if !mtd.preview || sy <= 4 || h <= 4 || sy - h <= 4 || w <= 4 {
+            if sy <= 4 || h <= 4 || sy - h <= 4 || w <= 4 {
                 break 'done;
             }
 
@@ -1202,7 +1236,7 @@ pub unsafe fn mode_tree_key(
                 if *key == keyc::KEYC_MOUSEDOWN3_PANE as u64 {
                     mode_tree_display_menu(mtd, c, x, y, 1);
                 }
-                if !(*mtd).preview {
+                if (*mtd).preview == mode_tree_preview::MODE_TREE_PREVIEW_OFF {
                     *key = KEYC_NONE;
                 }
                 return 0;
@@ -1464,9 +1498,13 @@ pub unsafe fn mode_tree_key(
                 );
             }
             code::V => {
-                (*mtd).preview = !(*mtd).preview;
+                (*mtd).preview = match (*mtd).preview {
+                    mode_tree_preview::MODE_TREE_PREVIEW_OFF => mode_tree_preview::MODE_TREE_PREVIEW_BIG,
+                    mode_tree_preview::MODE_TREE_PREVIEW_NORMAL => mode_tree_preview::MODE_TREE_PREVIEW_OFF,
+                    mode_tree_preview::MODE_TREE_PREVIEW_BIG => mode_tree_preview::MODE_TREE_PREVIEW_NORMAL,
+                };
                 mode_tree_build(mtd);
-                if (*mtd).preview {
+                if (*mtd).preview != mode_tree_preview::MODE_TREE_PREVIEW_OFF {
                     mode_tree_check_selected(mtd);
                 }
             }

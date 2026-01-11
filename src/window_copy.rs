@@ -80,6 +80,7 @@ pub enum window_copy_cmd_clear {
 pub struct window_copy_cmd_state {
     wme: *mut window_mode_entry,
     args: *mut args,
+    wargs: *mut args,
     m: *mut mouse_event,
 
     c: *mut client,
@@ -910,7 +911,7 @@ pub unsafe fn window_copy_expand_search_string(cs: *mut window_copy_cmd_state) -
     unsafe {
         let wme: *mut window_mode_entry = (*cs).wme;
         let data: *mut window_copy_mode_data = (*wme).data.cast();
-        let ss = args_string(&*(*cs).args, 1);
+        let ss = args_string(&*(*cs).wargs, 0);
 
         if ss.is_none() || ss.unwrap().is_empty() {
             return false;
@@ -1055,23 +1056,27 @@ pub unsafe fn window_copy_do_copy_end_of_line(
         let s = (*cs).s;
         let wl = (*cs).wl;
         let wp = (*wme).wp;
-        let count = args_count(&*(*cs).args);
+        let count = args_count(&*(*cs).wargs);
         let mut np = (*wme).prefix;
         let data: *mut window_copy_mode_data = (*wme).data.cast();
         let mut prefix = null_mut();
         let mut command = null_mut();
-        let arg1 = args_string(&*(*cs).args, 1).unwrap().as_ptr().cast::<u8>();
-        let arg2 = args_string(&*(*cs).args, 2).unwrap().as_ptr().cast::<u8>();
+        let arg0 = args_string(&*(*cs).wargs, 0).unwrap().as_ptr().cast::<u8>();
+        let arg1 = args_string(&*(*cs).wargs, 1).unwrap().as_ptr().cast::<u8>();
+        let set_paste = !args_has(&*(*cs).wargs, 'P');
+        let set_clip = !args_has(&*(*cs).wargs, 'C');
 
         if pipe != 0 {
-            if count == 3 {
-                prefix = format_single(null_mut(), cstr_to_str(arg2), c, s, wl, wp);
+            if count == 2 {
+                prefix = format_single(null_mut(), cstr_to_str(arg1), c, s, wl, wp);
             }
-            if !s.is_null() && count > 1 && *arg1 != b'\0' {
+            if !s.is_null() && count > 0 && *arg0 != b'\0' {
                 command = format_single(null_mut(), cstr_to_str(arg1), c, s, wl, wp);
             }
-        } else if count == 2 {
-            prefix = format_single(null_mut(), cstr_to_str(arg1), c, s, wl, wp);
+        } else {
+            if count == 1 {
+                prefix = format_single(null_mut(), cstr_to_str(arg0), c, s, wl, wp);
+            }
         }
 
         let ocx = (*data).cx;
@@ -1087,9 +1092,9 @@ pub unsafe fn window_copy_do_copy_end_of_line(
 
         if !s.is_null() {
             if pipe != 0 {
-                window_copy_copy_pipe(wme, s, prefix, command);
+                window_copy_copy_pipe(wme, s, prefix, command, set_paste, set_clip);
             } else {
-                window_copy_copy_selection(wme, prefix);
+                window_copy_copy_selection(wme, prefix, set_paste, set_clip);
             }
 
             if cancel != 0 {
@@ -1181,9 +1186,9 @@ pub unsafe fn window_copy_do_copy_line(
 
         if !s.is_null() {
             if pipe != 0 {
-                window_copy_copy_pipe(wme, s, prefix, command);
+                window_copy_copy_pipe(wme, s, prefix, command, true, true);
             } else {
-                window_copy_copy_selection(wme, prefix);
+                window_copy_copy_selection(wme, prefix, true, true);
             }
 
             if cancel != 0 {
@@ -1236,14 +1241,16 @@ pub unsafe fn window_copy_cmd_copy_selection_no_clear(
         let wl: *mut winlink = (*cs).wl;
         let wp: *mut window_pane = (*wme).wp;
         let mut prefix = null_mut();
-        let arg1 = args_string(&*(*cs).args, 1);
+        let arg0 = args_string(&*(*cs).args, 0);
+        let set_paste = !args_has(&*(*cs).wargs, 'P');
+        let set_clip = !args_has(&*(*cs).wargs, 'C');
 
-        if let Some(arg1) = arg1 {
-            prefix = format_single(null_mut(), cstr_to_str(arg1.as_ptr().cast()), c, s, wl, wp);
+        if let Some(arg0) = arg0 {
+            prefix = format_single(null_mut(), cstr_to_str(arg0.as_ptr().cast()), c, s, wl, wp);
         }
 
         if !s.is_null() {
-            window_copy_copy_selection(wme, prefix);
+            window_copy_copy_selection(wme, prefix, set_paste, set_clip);
         }
 
         free_(prefix);
@@ -2329,20 +2336,22 @@ pub unsafe fn window_copy_cmd_copy_pipe_no_clear(
         let wp: *mut window_pane = (*wme).wp;
         let mut command = null_mut();
         let mut prefix = null_mut();
+        let arg0 = args_string(&*(*cs).args, 0);
         let arg1 = args_string(&*(*cs).args, 1);
-        let arg2 = args_string(&*(*cs).args, 2);
+        let set_paste = !args_has(&*(*cs).wargs, 'P');
+        let set_clip = !args_has(&*(*cs).wargs, 'C');
 
-        if let Some(arg2) = arg2 {
-            prefix = format_single(null_mut(), cstr_to_str(arg2.as_ptr().cast()), c, s, wl, wp);
+        if let Some(arg1) = arg1 {
+            prefix = format_single(null_mut(), cstr_to_str(arg1.as_ptr().cast()), c, s, wl, wp);
         }
 
         if !s.is_null()
-            && let Some(arg1) = arg1
-            && !arg1.is_empty()
+            && let Some(arg0) = arg0
+            && !arg0.is_empty()
         {
-            command = format_single(null_mut(), cstr_to_str(arg1.as_ptr().cast()), c, s, wl, wp);
+            command = format_single(null_mut(), cstr_to_str(arg0.as_ptr().cast()), c, s, wl, wp);
         }
-        window_copy_copy_pipe(wme, s, prefix, command);
+        window_copy_copy_pipe(wme, s, prefix, command, set_paste, set_clip);
         free_(command);
 
         free_(prefix);
@@ -5454,19 +5463,23 @@ pub unsafe fn window_copy_copy_buffer(
     prefix: *const u8,
     buf: *mut c_void,
     len: usize,
+    set_paste: bool,
+    set_clip: bool,
 ) {
     unsafe {
         let wp: *mut window_pane = (*wme).wp;
         let mut ctx: screen_write_ctx = zeroed();
 
-        if options_get_number_(GLOBAL_OPTIONS, "set-clipboard") != 0 {
+        if set_clip && options_get_number_(GLOBAL_OPTIONS, "set-clipboard") != 0 {
             screen_write_start_pane(&raw mut ctx, wp, null_mut());
             screen_write_setselection(&raw mut ctx, c!(""), buf.cast(), len as u32);
             screen_write_stop(&raw mut ctx);
             notify_pane(c"pane-set-clipboard", wp);
         }
 
-        paste_add(prefix, buf.cast(), len);
+        if set_paste {
+            paste_add(prefix, buf.cast(), len);
+        }
     }
 }
 
@@ -5516,22 +5529,29 @@ pub unsafe fn window_copy_copy_pipe(
     s: *mut session,
     prefix: *const u8,
     cmd: *const u8,
+    set_paste: bool,
+    set_clip: bool,
 ) {
     unsafe {
         let mut len: usize = 0;
         let buf = window_copy_pipe_run(wme, s, cmd, &raw mut len);
         if !buf.is_null() {
-            window_copy_copy_buffer(wme, prefix, buf, len);
+            window_copy_copy_buffer(wme, prefix, buf, len, set_paste, set_clip);
         }
     }
 }
 
-pub unsafe fn window_copy_copy_selection(wme: *mut window_mode_entry, prefix: *const u8) {
+pub unsafe fn window_copy_copy_selection(
+    wme: *mut window_mode_entry,
+    prefix: *const u8,
+    set_paste: bool,
+    set_clip: bool,
+) {
     unsafe {
         let mut len: usize = 0;
         let buf = window_copy_get_selection(wme, &raw mut len);
         if !buf.is_null() {
-            window_copy_copy_buffer(wme, prefix, buf.cast(), len);
+            window_copy_copy_buffer(wme, prefix, buf.cast(), len, set_paste, set_clip);
         }
     }
 }

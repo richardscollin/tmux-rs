@@ -1876,18 +1876,18 @@ pub unsafe fn server_client_check_mouse(c: *mut client, event: *mut key_event) -
 }
 
 /// Is this a bracket paste key?
-pub unsafe fn server_client_is_bracket_pasting(c: *mut client, key: key_code) -> bool {
+pub unsafe fn server_client_is_bracket_paste(c: *mut client, key: key_code) -> bool {
     unsafe {
         if key == keyc::KEYC_PASTE_START as u64 {
             (*c).flags |= client_flag::BRACKETPASTING;
             log_debug!("{}: bracket paste on", _s((*c).name));
-            return true;
+            return false;
         }
 
         if key == keyc::KEYC_PASTE_END as u64 {
             (*c).flags &= !client_flag::BRACKETPASTING;
             log_debug!("{}: bracket paste off", _s((*c).name));
-            return true;
+            return false;
         }
 
         (*c).flags.intersects(client_flag::BRACKETPASTING)
@@ -1895,34 +1895,37 @@ pub unsafe fn server_client_is_bracket_pasting(c: *mut client, key: key_code) ->
 }
 
 /// Is this fast enough to probably be a paste?
-pub unsafe fn server_client_assume_paste(s: *mut session) -> bool {
+pub unsafe fn server_client_is_assume_paste(c: *mut client) -> bool {
     unsafe {
+        let s = (*c).session;
         let mut tv: timeval = zeroed();
-        let t: i32 = options_get_number_((*s).options, "assume-paste-time") as i32;
 
+        if (*c).flags.intersects(client_flag::BRACKETPASTING) {
+            return false;
+        }
+
+        let t: i32 = options_get_number___(&*(*s).options, "assume-paste-time");
         if t == 0 {
             return false;
         }
 
         timersub(
-            &raw const (*s).activity_time,
-            &raw const (*s).last_activity_time,
+            &raw const (*c).activity_time,
+            &raw const (*c).last_activity_time,
             &raw mut tv,
         );
         if tv.tv_sec == 0 && tv.tv_usec < t as libc::suseconds_t * 1000 {
-            log_debug!(
-                "session {} pasting (flag {})",
-                (*s).name,
-                ((*s).flags & SESSION_PASTING != 0) as i32
-            );
-            if (*s).flags & SESSION_PASTING != 0 {
+            if (*c).flags.contains(client_flag::ASSUMEPASTING) {
                 return true;
             }
-            (*s).flags |= SESSION_PASTING;
+            (*c).flags |= client_flag::ASSUMEPASTING;
+            log_debug!("{}: assume paste on", _s((*c).name));
             return false;
         }
-        log_debug!("session {} not pasting", (*s).name);
-        (*s).flags &= !SESSION_PASTING;
+        if (*c).flags.contains(client_flag::ASSUMEPASTING) {
+            (*c).flags &= !client_flag::ASSUMEPASTING;
+            log_debug!("{}: assume paste off", _s((*c).name));
+        }
 
         false
     }
@@ -1977,6 +1980,7 @@ pub unsafe fn server_client_key_callback(item: *mut cmdq_item, data: *mut c_void
         let mut prefix2: key_code;
 
         'out: {
+            'paste_key: {
             'forward_key: {
                 // Check the client is good to accept input.
                 if s.is_null() || (*c).flags.intersects(CLIENT_UNATTACHEDFLAGS) {
@@ -1985,6 +1989,7 @@ pub unsafe fn server_client_key_callback(item: *mut cmdq_item, data: *mut c_void
                 wl = (*s).curw;
 
                 // Update the activity timer.
+                (*c).last_activity_time = (*c).activity_time;
                 (*c).activity_time = libc::gettimeofday_();
                 session_update_activity(s, &raw mut (*c).activity_time);
 
@@ -2025,13 +2030,16 @@ pub unsafe fn server_client_key_callback(item: *mut cmdq_item, data: *mut c_void
                 }
 
                 // Forward if bracket pasting.
-                if server_client_is_bracket_pasting(c, key) {
-                    break 'forward_key;
+                if server_client_is_bracket_paste(c, key) {
+                    break 'paste_key;
                 }
 
                 // Treat everything as a regular key when pasting is detected.
-                if !KEYC_IS_MOUSE(key) && (!key & KEYC_SENT) != 0 && server_client_assume_paste(s) {
-                    break 'forward_key;
+                if !KEYC_IS_MOUSE(key) && 
+                    key != keyc::KEYC_FOCUS_IN as u64 &&
+                    key != keyc::KEYC_FOCUS_OUT as u64 &&
+                    (!key & KEYC_SENT) != 0 && server_client_is_assume_paste(c) {
+                    break 'paste_key;
                 }
 
                 // Work out the current key table. If the pane is in a mode, use
@@ -2222,23 +2230,37 @@ pub unsafe fn server_client_key_callback(item: *mut cmdq_item, data: *mut c_void
             if !wp.is_null() {
                 window_pane_key(wp, c, s, wl, key, m);
             }
+            break 'out;
+
+            } // paste_key:
+
+               if (*c).flags.intersects(client_flag::READONLY) {
+                   break 'out;
+               }
+               if !(*event).buf.is_null() {
+                   window_pane_paste(wp, (*event).buf, (*event).len);
+               }
+               key = KEYC_NONE;
+               // goto out;
+
         } // 'out:
         if !s.is_null() && key != keyc::KEYC_FOCUS_OUT as u64 {
             server_client_update_latest(c);
         }
+        free_((*event).buf);
         free_(event);
         cmd_retval::CMD_RETURN_NORMAL
     }
 }
 
 /// Handle a key event.
-pub unsafe fn server_client_handle_key(c: *mut client, event: *mut key_event) -> i32 {
+pub unsafe fn server_client_handle_key(c: *mut client, event: *mut key_event) -> bool {
     unsafe {
         let s = (*c).session;
 
         // Check the client is good to accept input.
         if s.is_null() || (*c).flags.intersects(CLIENT_UNATTACHEDFLAGS) {
-            return 0;
+            return false;
         }
 
         // Key presses in overlay mode and the command prompt are a special
@@ -2247,30 +2269,30 @@ pub unsafe fn server_client_handle_key(c: *mut client, event: *mut key_event) ->
         if !(*c).flags.intersects(client_flag::READONLY) {
             if !(*c).message_string.is_null() {
                 if (*c).message_ignore_keys != 0 {
-                    return 0;
+                    return false;
                 }
                 status_message_clear(NonNull::new_unchecked(c));
             }
             if let Some(overlay_key) = (*c).overlay_key {
                 match overlay_key(c, (*c).overlay_data, event) {
-                    0 => return 0,
+                    0 => return false,
                     1 => {
                         server_client_clear_overlay(c);
-                        return 0;
+                        return false;
                     }
                     _ => (),
                 }
             }
             server_client_clear_overlay(c);
             if !(*c).prompt_string.is_null() && status_prompt_key(c, (*event).key) == 0 {
-                return 0;
+                return false;
             }
         }
 
         // Add the key to the queue so it happens after any commands queued by previous keys.
         let item = cmdq_get_callback!(server_client_key_callback, event.cast());
         cmdq_append(c, item.as_ptr());
-        1
+        true
     }
 }
 
@@ -2707,8 +2729,11 @@ pub unsafe extern "C-unwind" fn server_client_click_timer(
             let event = Box::leak(Box::new(key_event {
                 key: keyc::KEYC_DOUBLECLICK as u64,
                 m: (*c).click_event,
+                buf: null_mut(),
+                len: 0,
             })) as *mut key_event;
-            if server_client_handle_key(c, event) == 0 {
+            if !server_client_handle_key(c, event) {
+                free_((*event).buf);
                 free_(event);
             }
         }

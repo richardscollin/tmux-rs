@@ -336,9 +336,9 @@ pub unsafe fn input_key_vt10x(bev: *mut bufferevent, mut key: key_code) -> i32 {
             return 0;
         }
 
-        /* Prevent TAB and RET from being swallowed by C0 remapping logic. */
+        // Prevent TAB, CR and LF from being swallowed by C0 remapping logic.
         let onlykey: key_code = key & KEYC_MASK_KEY;
-        if onlykey == b'\r' as u64 || onlykey == b'\t' as u64 {
+        if onlykey == b'\r' as u64 || onlykey == b'\n' as u64 || onlykey == b'\t' as u64 {
             key &= !KEYC_CTRL;
         }
 

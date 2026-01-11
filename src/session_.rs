@@ -83,7 +83,7 @@ impl session {
         unsafe {
             let mut s: Box<session> = Box::new(zeroed());
             s.references = 1;
-            s.flags = 0;
+            s.flags = session_flags::empty();
 
             s.cwd = xstrdup(cwd).as_ptr();
 
@@ -278,9 +278,6 @@ pub unsafe extern "C-unwind" fn session_lock_timer(_fd: i32, _events: i16, s: No
 /// Update activity time.
 pub unsafe fn session_update_activity(s: *mut session, from: *mut timeval) {
     unsafe {
-        let last = &raw mut (*s).last_activity_time;
-
-        memcpy__(last, &raw mut (*s).activity_time);
         if from.is_null() {
             (*s).activity_time = libc::gettimeofday_();
         } else {
@@ -288,13 +285,11 @@ pub unsafe fn session_update_activity(s: *mut session, from: *mut timeval) {
         }
 
         log_debug!(
-            "session ${} {} activity {}.{:06} (last {}.{:06})",
+            "session ${} {} activity {}.{:06}",
             (*s).id,
             (*s).name,
             (*s).activity_time.tv_sec,
             (*s).activity_time.tv_usec,
-            (*last).tv_sec,
-            (*last).tv_usec,
         );
 
         if evtimer_initialized(&raw mut (*s).lock_timer) {

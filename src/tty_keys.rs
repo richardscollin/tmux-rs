@@ -1392,9 +1392,6 @@ pub unsafe fn tty_keys_next(tty: *mut tty) -> i32 {
                     key = (key & KEYC_MASK_MODIFIERS) | keyc::KEYC_BSPACE as u64;
                 }
 
-                // Remove data from buffer.
-                evbuffer_drain((*tty).in_, size);
-
                 // Remove key timer.
                 if event_initialized(&raw const (*tty).key_timer) != 0 {
                     evtimer_del(&raw mut (*tty).key_timer);
@@ -1414,11 +1411,23 @@ pub unsafe fn tty_keys_next(tty: *mut tty) -> i32 {
 
                 // Fire the key.
                 if key != KEYC_UNKNOWN {
-                    let event = Box::leak(Box::new(key_event { key, m })) as *mut key_event;
-                    if server_client_handle_key(c, event) == 0 {
+                    let event = Box::leak(Box::new(
+                        key_event {
+                            key,
+                            m,
+                            buf: xmalloc(size).as_mut() as *mut c_void as *mut u8,
+                            len: size,
+                    })) as *mut key_event;
+                    memcpy_((*event).buf, buf, (*event).len);
+
+                    if !server_client_handle_key(c, event) {
+                        free_((*event).buf);
                         free_(event);
                     }
                 }
+
+                // Remove data from buffer.
+                evbuffer_drain((*tty).in_, size);
 
                 return 1;
             }

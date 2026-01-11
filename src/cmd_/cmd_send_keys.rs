@@ -67,8 +67,11 @@ pub unsafe fn cmd_send_keys_inject_key(
             let event = Box::leak(Box::new(key_event {
                 key: key | KEYC_SENT,
                 m: zeroed(),
+                buf: null_mut(),
+                len: 0,
             })) as *mut key_event;
-            if server_client_handle_key(tc, event) == 0 {
+            if !server_client_handle_key(tc, event) {
+                free_((*event).buf);
                 free_(event);
             }
             return item;

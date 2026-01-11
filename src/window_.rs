@@ -19,7 +19,7 @@ use crate::libc::{
 #[cfg(feature = "utempter")]
 use crate::utempter::utempter_remove_record;
 use crate::*;
-use crate::options_::{options_create, options_free, options_get_number___, options_get_string_};
+use crate::options_::{options_create, options_free, options_get_number___, options_get_string_, options_get_number_};
 
 /// Default pixel cell sizes.
 pub const DEFAULT_XPIXEL: u32 = 16;
@@ -1297,6 +1297,22 @@ pub unsafe fn window_pane_reset_mode_all(wp: *mut window_pane) {
     }
 }
 
+unsafe fn window_pane_copy_paste(wp: *mut window_pane , buf: *mut u8, len: usize) {
+    unsafe {
+        for loop_ in tailq_foreach::<_, discr_entry>(&raw mut (*(*wp).window).panes).map(NonNull::as_ptr) {
+            if loop_ != wp &&
+                   tailq_empty(&(*loop_).modes) &&
+                       (*loop_).fd != -1 &&
+                   !(*loop_).flags.contains(window_pane_flags::PANE_INPUTOFF) &&
+                   window_pane_visible(loop_) &&
+                   options_get_number_((*loop_).options, "synchronize-panes") != 0 {
+                       // log_debug("%s: %.*s", __func__, (int)len, buf);
+                       bufferevent_write((*loop_).event, buf.cast(), len);
+               }
+        }
+    }
+}
+
 unsafe fn window_pane_copy_key(wp: *mut window_pane, key: key_code) {
     unsafe {
         for loop_ in
@@ -1895,5 +1911,25 @@ pub unsafe fn window_pane_mode(wp: *mut window_pane) -> i32 {
             }
         }
         WINDOW_PANE_NO_MODE
+    }
+}
+
+
+pub unsafe fn window_pane_paste(wp: *mut window_pane, buf: *mut u8, len: usize)
+{
+    unsafe {
+       if !tailq_empty(&(*wp).modes) {
+           return;
+       }
+
+       if (*wp).fd == -1 || (*wp).flags.intersects(window_pane_flags::PANE_INPUTOFF) {
+           return;
+       }
+
+       bufferevent_write((*wp).event, buf.cast(), len);
+
+       if options_get_number_((*wp).options, "synchronize-panes") != 0 {
+           window_pane_copy_paste(wp, buf, len);
+       }
     }
 }

@@ -1586,8 +1586,13 @@ struct session_group {
 }
 type session_groups = rb_head<session_group>;
 
-const SESSION_PASTING: i32 = 0x1;
-const SESSION_ALERTED: i32 = 0x2;
+bitflags::bitflags! {
+    #[repr(transparent)]
+    #[derive(Copy, Clone)]
+    struct session_flags: i32 {
+        const SESSION_ALERTED = 0x1;
+    }
+}
 
 #[repr(C)]
 struct session {
@@ -1611,7 +1616,7 @@ struct session {
 
     options: *mut options,
 
-    flags: i32,
+    flags: session_flags,
 
     attached: u32,
 
@@ -1707,6 +1712,9 @@ struct mouse_event {
 struct key_event {
     key: key_code,
     m: mouse_event,
+
+    buf: *mut u8,
+    len: usize,
 }
 
 bitflags::bitflags! {
@@ -2302,6 +2310,7 @@ bitflags::bitflags! {
         const WINDOWSIZECHANGED  = 0x0400000000u64;
         const CLIPBOARDBUFFER    = 0x0800000000u64;
         const BRACKETPASTING     = 0x1000000000u64;
+        const ASSUMEPASTING      = 0x2000000000u64;
     }
 }
 
@@ -2351,6 +2360,7 @@ struct client {
 
     creation_time: timeval,
     activity_time: timeval,
+    last_activity_time: timeval,
 
     environ: *mut environ,
     jobs: *mut format_job_tree,

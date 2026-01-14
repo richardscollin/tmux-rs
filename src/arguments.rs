@@ -109,7 +109,7 @@ pub fn args_create<'a>() -> &'a mut args {
 }
 
 pub unsafe fn args_parse_flag_argument(
-    values: *mut args_value,
+    values: *const args_value,
     count: u32,
     cause: *mut *mut u8,
     args: *mut args,
@@ -118,7 +118,7 @@ pub unsafe fn args_parse_flag_argument(
     flag: i32,
     optional_argument: bool,
 ) -> i32 {
-    let argument: *mut args_value;
+    let argument: *const args_value;
     let new: *mut args_value;
     unsafe {
         'out: {

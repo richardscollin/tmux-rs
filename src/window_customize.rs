@@ -157,7 +157,7 @@ unsafe fn window_customize_check_item(
 }
 
 unsafe fn window_customize_get_key(
-    item: *mut window_customize_itemdata,
+    item: *const window_customize_itemdata,
     ktp: *mut *mut key_table,
     bdp: *mut *mut key_binding,
 ) -> i32 {

@@ -2614,7 +2614,7 @@ unsafe fn input_osc_colour_reply(ictx: *mut input_ctx, n: u32, mut c: i32) {
 }
 
 /// Handle the OSC 4 sequence for setting (multiple) palette entries.
-unsafe fn input_osc_4(ictx: *mut input_ctx, p: *mut u8) {
+unsafe fn input_osc_4(ictx: *mut input_ctx, p: *const u8) {
     unsafe {
         // char *copy, *s, *next = NULL;
         // long idx;
@@ -2669,7 +2669,7 @@ unsafe fn input_osc_4(ictx: *mut input_ctx, p: *mut u8) {
 }
 
 /// Handle the OSC 8 sequence for embedding hyperlinks.
-unsafe fn input_osc_8(ictx: *mut input_ctx, p: *mut u8) {
+unsafe fn input_osc_8(ictx: *mut input_ctx, p: *const u8) {
     unsafe {
         let hl: *mut hyperlinks = (*(*ictx).ctx.s).hyperlinks;
         let gc = &raw mut (*ictx).cell.cell;
@@ -2799,7 +2799,7 @@ unsafe fn input_get_fg_control_client(wp: *mut window_pane) -> i32 {
 }
 
 /// Handle the OSC 10 sequence for setting and querying foreground colour.
-unsafe fn input_osc_10(ictx: *mut input_ctx, p: *mut u8) {
+unsafe fn input_osc_10(ictx: *mut input_ctx, p: *const u8) {
     unsafe {
         let wp = (*ictx).wp;
         let mut defaults: grid_cell = zeroed();
@@ -2897,7 +2897,7 @@ unsafe fn input_osc_11(ictx: *mut input_ctx, p: *const u8) {
 }
 
 /// Handle the OSC 111 sequence for resetting background colour.
-unsafe fn input_osc_111(ictx: *mut input_ctx, p: *mut u8) {
+unsafe fn input_osc_111(ictx: *mut input_ctx, p: *const u8) {
     unsafe {
         let wp = (*ictx).wp;
 

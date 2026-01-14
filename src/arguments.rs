@@ -114,7 +114,7 @@ pub unsafe fn args_parse_flag_argument(
     cause: *mut *mut u8,
     args: *mut args,
     i: *mut u32,
-    string: *mut u8,
+    string: *const u8,
     flag: i32,
     optional_argument: bool,
 ) -> i32 {

@@ -11,8 +11,8 @@
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-use crate::*;
 use crate::options_::*;
+use crate::*;
 
 pub static WINDOW_COPY_MODE: window_mode = window_mode {
     name: "copy-mode",
@@ -3943,27 +3943,22 @@ pub unsafe fn window_copy_cstrtocellpos(
     unsafe {
         let mut match_: i32;
 
-        #[repr(C)]
-        struct cell {
+        struct Cell {
             d: *const u8,
             dlen: usize,
             allocated: i32,
         }
 
         // Populate the array of cell data.
-        let cells: *mut cell = xreallocarray_::<cell>(null_mut(), ncells as usize).as_ptr();
-        let mut cell = 0;
+        let mut cells: Vec<Cell> = Vec::with_capacity(ncells as usize);
         let mut px = *ppx;
         let mut pywrap = *ppy;
         let mut gl = grid_peek_line(gd, pywrap);
-        while cell < ncells {
-            (*cells.add(cell as usize)).d = window_copy_cellstring(
-                gl,
-                px,
-                &raw mut (*cells.add(cell as usize)).dlen,
-                &raw mut (*cells.add(cell as usize)).allocated,
-            );
-            cell += 1;
+        for _ in 0..ncells {
+            let mut dlen: usize = 0;
+            let mut allocated: i32 = 0;
+            let d = window_copy_cellstring(gl, px, &raw mut dlen, &raw mut allocated);
+            cells.push(Cell { d, dlen, allocated });
             px += 1;
             if px == (*gd).sx {
                 px = 0;
@@ -3973,7 +3968,7 @@ pub unsafe fn window_copy_cstrtocellpos(
         }
 
         // Locate starting cell.
-        cell = 0;
+        let mut cell = 0u32;
         let len = strlen(str) as u32;
         while cell < ncells {
             let mut ccell = cell;
@@ -3984,8 +3979,8 @@ pub unsafe fn window_copy_cstrtocellpos(
                     match_ = 0;
                     break;
                 }
-                let d = (*cells.add(ccell as usize)).d;
-                let mut dlen = (*cells.add(ccell as usize)).dlen;
+                let d = cells[ccell as usize].d;
+                let mut dlen = cells[ccell as usize].dlen;
                 if dlen == 1 {
                     if *str.add(pos) != *d {
                         match_ = 0;
@@ -4022,12 +4017,12 @@ pub unsafe fn window_copy_cstrtocellpos(
         *ppy = pywrap;
 
         // Free cell data.
-        for cell in 0..ncells {
-            if (*cells.add(cell as usize)).allocated != 0 {
-                free_((*cells.add(cell as usize)).d as *mut c_void);
+        for cell in &cells {
+            if cell.allocated != 0 {
+                free_(cell.d as *mut c_void);
             } // TODO cast away const
         }
-        free_(cells);
+        // Vec automatically deallocates when dropped
     }
 }
 

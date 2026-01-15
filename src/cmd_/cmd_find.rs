@@ -80,7 +80,7 @@ pub unsafe fn cmd_find_inside_pane(c: *mut client) -> *mut window_pane {
     }
 }
 
-pub unsafe fn cmd_find_client_better(c: *mut client, than: *mut client) -> i32 {
+pub unsafe fn cmd_find_client_better(c: *const client, than: *const client) -> i32 {
     if than.is_null() {
         return 1;
     }

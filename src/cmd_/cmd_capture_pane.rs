@@ -50,7 +50,7 @@ pub static CMD_CLEAR_HISTORY_ENTRY: cmd_entry = cmd_entry {
 unsafe fn cmd_capture_pane_append(
     mut buf: *mut u8,
     len: *mut usize,
-    line: *mut u8,
+    line: *const u8,
     linelen: usize,
 ) -> *mut u8 {
     unsafe {

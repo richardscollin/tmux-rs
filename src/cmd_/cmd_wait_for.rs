@@ -134,7 +134,7 @@ pub unsafe fn cmd_wait_for_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
 }
 
 pub unsafe fn cmd_wait_for_signal(
-    _item: *mut cmdq_item,
+    _item: *const cmdq_item,
     name: *const u8,
     mut wc: *mut wait_channel,
 ) -> cmd_retval {

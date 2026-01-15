@@ -3772,37 +3772,37 @@ pub unsafe fn window_copy_cellstring(
     gl: *mut grid_line,
     px: u32,
     size: *mut usize,
-    allocated: *mut i32,
+    allocated: *mut bool,
 ) -> *mut u8 {
     unsafe {
         // struct grid_cell_entry *gce;
 
         if px >= (*gl).cellsize {
             *size = 1;
-            *allocated = 0;
+            *allocated = false;
             return c!(" ") as *mut u8; // TODO think of a better type-safe way to represent returning a MaybeAllocated type
         }
 
         let gce = (*gl).celldata.add(px as usize);
         if (*gce).flags.intersects(grid_flag::PADDING) {
             *size = 0;
-            *allocated = 0;
+            *allocated = false;
             return null_mut();
         }
         if !(*gce).flags.intersects(grid_flag::EXTENDED) {
             *size = 1;
-            *allocated = 0;
+            *allocated = false;
             return (&raw mut (*gce).union_.data.data).cast();
         }
 
         let ud = utf8_to_data((*(*gl).extddata.add((*gce).union_.offset as usize)).data);
         if ud.size == 0 {
             *size = 0;
-            *allocated = 0;
+            *allocated = false;
             return null_mut();
         }
         *size = ud.size as usize;
-        *allocated = 1;
+        *allocated = true;
 
         let copy: *mut u8 = xmalloc(ud.size as usize).as_ptr().cast();
         libc::memcpy(copy.cast(), (&raw const ud.data).cast(), ud.size as usize);
@@ -3898,7 +3898,7 @@ pub unsafe fn window_copy_stringify(
 
         let mut bufsize: usize = 1024;
         let mut dlen: usize = 0;
-        let mut allocated = 0;
+        let mut allocated = false;
 
         while bufsize < newsize as usize {
             bufsize *= 2;
@@ -3921,7 +3921,7 @@ pub unsafe fn window_copy_stringify(
                 libc::memcpy(buf.add(bx as usize).cast(), d.cast(), dlen);
                 bx += dlen as u32;
             }
-            if allocated != 0 {
+            if allocated {
                 free_(d);
             }
         }
@@ -3946,7 +3946,7 @@ pub unsafe fn window_copy_cstrtocellpos(
         struct Cell {
             d: *const u8,
             dlen: usize,
-            allocated: i32,
+            allocated: bool,
         }
 
         // Populate the array of cell data.
@@ -3956,7 +3956,7 @@ pub unsafe fn window_copy_cstrtocellpos(
         let mut gl = grid_peek_line(gd, pywrap);
         for _ in 0..ncells {
             let mut dlen: usize = 0;
-            let mut allocated: i32 = 0;
+            let mut allocated = false;
             let d = window_copy_cellstring(gl, px, &raw mut dlen, &raw mut allocated);
             cells.push(Cell { d, dlen, allocated });
             px += 1;
@@ -4018,7 +4018,7 @@ pub unsafe fn window_copy_cstrtocellpos(
 
         // Free cell data.
         for cell in &cells {
-            if cell.allocated != 0 {
+            if cell.allocated {
                 free_(cell.d as *mut c_void);
             } // TODO cast away const
         }

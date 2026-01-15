@@ -452,7 +452,7 @@ pub unsafe extern "C-unwind" fn client_main(
 unsafe fn client_send_identify(
     ttynam: *const u8,
     termname: &CStr,
-    caps: *mut *mut u8,
+    caps: *const *mut u8,
     ncaps: u32,
     cwd: &CStr,
     mut feat: i32,

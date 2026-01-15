@@ -671,7 +671,7 @@ pub unsafe fn cmd_list_free(cmdlist: *mut cmd_list) {
 }
 
 pub unsafe fn cmd_list_copy(
-    cmdlist: &mut cmd_list,
+    cmdlist: &cmd_list,
     argc: c_int,
     argv: *mut *mut u8,
 ) -> *mut cmd_list {
@@ -682,7 +682,7 @@ pub unsafe fn cmd_list_copy(
         free(s as _);
 
         let new_cmdlist = cmd_list_new();
-        for cmd in tailq_foreach(cmdlist.list).map(NonNull::as_ptr) {
+        for cmd in tailq_foreach_const(cmdlist.list).map(NonNull::as_ptr) {
             if (*cmd).group != group {
                 new_cmdlist.group =
                     CMD_LIST_NEXT_GROUP.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
@@ -700,7 +700,7 @@ pub unsafe fn cmd_list_copy(
     }
 }
 
-pub fn cmd_list_print(cmdlist: &mut cmd_list, escaped: c_int) -> *mut u8 {
+pub fn cmd_list_print(cmdlist: &cmd_list, escaped: c_int) -> *mut u8 {
     unsafe {
         let mut len = 1;
         let mut buf: *mut u8 = xcalloc(1, len).cast().as_ptr();
@@ -712,7 +712,7 @@ pub fn cmd_list_print(cmdlist: &mut cmd_list, escaped: c_int) -> *mut u8 {
             c!(" ;; ")
         };
 
-        for cmd in tailq_foreach::<_, qentry>(cmdlist.list).map(NonNull::as_ptr) {
+        for cmd in tailq_foreach_const::<_, qentry>(cmdlist.list).map(NonNull::as_ptr) {
             let this = cmd_print(cmd);
 
             len += strlen(this) + 6;

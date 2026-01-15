@@ -171,7 +171,7 @@ pub unsafe fn args_parse_flag_argument(
 #[expect(clippy::needless_borrow, reason = "false positive")]
 pub unsafe fn args_parse_flags(
     parse: *const args_parse,
-    values: *mut args_value,
+    values: *const args_value,
     count: u32,
     cause: *mut *mut u8,
     args: *mut args,
@@ -340,7 +340,7 @@ pub unsafe fn args_parse(
 
 pub unsafe fn args_copy_copy_value(
     to: *mut args_value,
-    from: *mut args_value,
+    from: *const args_value,
     argc: i32,
     argv: *mut *mut u8,
 ) {
@@ -437,7 +437,7 @@ pub unsafe fn args_free(args: *mut args) {
     }
 }
 
-pub unsafe fn args_to_vector(args: *mut args, argc: *mut i32, argv: *mut *mut *mut u8) {
+pub unsafe fn args_to_vector(args: *const args, argc: *mut i32, argv: *mut *mut *mut u8) {
     unsafe {
         *argc = 0;
         *argv = null_mut();
@@ -450,7 +450,7 @@ pub unsafe fn args_to_vector(args: *mut args, argc: *mut i32, argv: *mut *mut *m
                 }
                 args_type::ARGS_COMMANDS => {
                     let s =
-                        cmd_list_print(&mut *(*(*args).values.add(i as usize)).union_.cmdlist, 0);
+                        cmd_list_print(&*(*(*args).values.add(i as usize)).union_.cmdlist, 0);
                     cmd_append_argv(argc, argv, s);
                     free_(s);
                 }
@@ -459,7 +459,7 @@ pub unsafe fn args_to_vector(args: *mut args, argc: *mut i32, argv: *mut *mut *m
     }
 }
 
-pub unsafe fn args_from_vector(argc: i32, argv: *mut *mut u8) -> *mut args_value {
+pub unsafe fn args_from_vector(argc: i32, argv: *const *mut u8) -> *mut args_value {
     unsafe {
         let values: *mut args_value = xcalloc_(argc as usize).as_ptr();
         for i in 0..argc {

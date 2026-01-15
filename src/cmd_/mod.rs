@@ -426,7 +426,7 @@ pub unsafe fn cmd_stringify_argv(argc: c_int, argv: *mut *mut u8) -> String {
     }
 }
 
-pub unsafe fn cmd_get_entry(cmd: *mut cmd) -> &'static cmd_entry {
+pub unsafe fn cmd_get_entry(cmd: *const cmd) -> &'static cmd_entry {
     unsafe { (*cmd).entry }
 }
 
@@ -434,7 +434,7 @@ pub unsafe fn cmd_get_args(cmd: *mut cmd) -> *mut args {
     unsafe { (*cmd).args }
 }
 
-pub unsafe fn cmd_get_group(cmd: *mut cmd) -> c_uint {
+pub unsafe fn cmd_get_group(cmd: *const cmd) -> c_uint {
     unsafe { (*cmd).group }
 }
 

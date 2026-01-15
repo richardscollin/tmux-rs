@@ -114,8 +114,8 @@ pub unsafe fn cmd_find_best_client(mut s: *const session) -> *mut client {
 }
 
 pub unsafe fn cmd_find_session_better(
-    s: *mut session,
-    than: *mut session,
+    s: *const session,
+    than: *const session,
     flags: cmd_find_flags,
 ) -> i32 {
     if than.is_null() {

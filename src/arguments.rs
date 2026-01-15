@@ -86,7 +86,7 @@ pub unsafe fn args_value_as_string(value: *mut args_value) -> *const u8 {
             args_type::ARGS_STRING => (*value).union_.string,
             args_type::ARGS_COMMANDS => {
                 if (*value).cached.is_null() {
-                    (*value).cached = cmd_list_print(&mut *(*value).union_.cmdlist, 0);
+                    (*value).cached = cmd_list_print(&*(*value).union_.cmdlist, 0);
                 }
                 (*value).cached
             }
@@ -359,7 +359,7 @@ pub unsafe fn args_copy_copy_value(
                 (*to).union_.string = expanded;
             }
             args_type::ARGS_COMMANDS => {
-                (*to).union_.cmdlist = cmd_list_copy(&mut *(*from).union_.cmdlist, argc, argv);
+                (*to).union_.cmdlist = cmd_list_copy(&*(*from).union_.cmdlist, argc, argv);
             }
         }
     }
@@ -826,7 +826,7 @@ pub unsafe fn args_make_commands(
             if argc == 0 {
                 return (*state).cmdlist;
             }
-            return cmd_list_copy(&mut *(*state).cmdlist, argc, argv);
+            return cmd_list_copy(&*(*state).cmdlist, argc, argv);
         }
 
         let mut cmd = xstrdup((*state).cmd).as_ptr();

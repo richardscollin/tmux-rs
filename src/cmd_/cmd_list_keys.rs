@@ -100,7 +100,7 @@ unsafe fn cmd_list_keys_print_notes(
             let key = key_string_lookup_key((*bd).key, 0);
 
             let note = if (*bd).note.is_null() || *(*bd).note == b'\0' {
-                cmd_list_print(&mut *(*bd).cmdlist, 1)
+                cmd_list_print(&*(*bd).cmdlist, 1)
             } else {
                 xstrdup((*bd).note).as_ptr()
             };
@@ -311,7 +311,7 @@ unsafe fn cmd_list_keys_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retva
                     tmpused = strlcat(tmp.as_ptr(), c!(" "), tmpsize);
                     free_(cp);
 
-                    cp = cmd_list_print(&mut *(*bd).cmdlist, 1);
+                    cp = cmd_list_print(&*(*bd).cmdlist, 1);
                     cplen = strlen(cp);
                     while tmpused + cplen + 1 >= tmpsize {
                         tmpsize *= 2;

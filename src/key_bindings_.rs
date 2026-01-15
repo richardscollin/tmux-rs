@@ -225,7 +225,7 @@ pub unsafe fn key_bindings_add(
         }
         (*bd).cmdlist = cmdlist;
 
-        let s = cmd_list_print(&mut *(*bd).cmdlist, 0);
+        let s = cmd_list_print(&*(*bd).cmdlist, 0);
         log_debug!(
             "{}: {:#x} {} = {}",
             "key_bindings_add",

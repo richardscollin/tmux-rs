@@ -114,7 +114,7 @@ pub unsafe fn cmd_parse_get_error(file: Option<&str>, line: u32, error: &str) ->
     }
 }
 
-pub fn cmd_parse_print_commands(pi: &cmd_parse_input, cmdlist: &mut cmd_list) {
+pub fn cmd_parse_print_commands(pi: &cmd_parse_input, cmdlist: &cmd_list) {
     if pi.item.is_null()
         || !pi
             .flags
@@ -253,7 +253,7 @@ pub unsafe fn cmd_parse_log_commands(cmds: *mut cmd_parse_commands, prefix: *con
                         free_(s);
                     }
                     cmd_parse_argument_type::ParsedCommands(cmdlist) => {
-                        let s = cmd_list_print(&mut **cmdlist, 0);
+                        let s = cmd_list_print(&**cmdlist, 0);
                         log_debug!("{} {}:{}: {}", _s(prefix), i, j, _s(s));
                         free_(s);
                     }
@@ -438,7 +438,7 @@ pub unsafe fn cmd_parse_build_commands(
                 && (*cmd).line != line
             {
                 if !current.is_null() {
-                    cmd_parse_print_commands(pi, &mut *current);
+                    cmd_parse_print_commands(pi, &*current);
                     cmd_list_move(result, current);
                     cmd_list_free(current);
                 }
@@ -465,7 +465,7 @@ pub unsafe fn cmd_parse_build_commands(
         }
 
         if !current.is_null() {
-            cmd_parse_print_commands(pi, &mut *current);
+            cmd_parse_print_commands(pi, &*current);
             cmd_list_move(result, current);
             cmd_list_free(current);
         }

@@ -101,7 +101,7 @@ pub unsafe fn cmd_find_best_client(mut s: *const session) -> *mut client {
             if (*c_loop).session.is_null() {
                 continue;
             }
-            if !s.is_null() && (*c_loop).session != s as *mut session {
+            if !s.is_null() && !std::ptr::eq((*c_loop).session, s) {
                 continue;
             }
             if cmd_find_client_better(c_loop, c) != 0 {

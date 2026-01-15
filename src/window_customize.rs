@@ -543,7 +543,7 @@ unsafe fn window_customize_build_keys(
             );
             free_(expanded);
 
-            let tmp = cmd_list_print(&mut *(*bd).cmdlist, 0);
+            let tmp = cmd_list_print(&*(*bd).cmdlist, 0);
             let mut text = format_nul!("#[ignore]{}", _s(tmp));
             free_(tmp);
             let mut mti = mode_tree_add(
@@ -770,7 +770,7 @@ unsafe fn window_customize_draw_key(
             return;
         }
 
-        let cmd = cmd_list_print(&mut *(*bd).cmdlist, 0);
+        let cmd = cmd_list_print(&*(*bd).cmdlist, 0);
         if !screen_write_text!(
             ctx,
             cx,
@@ -786,7 +786,7 @@ unsafe fn window_customize_draw_key(
         }
         let default_bd = key_bindings_get_default(kt, (*bd).key);
         if !default_bd.is_null() {
-            let default_cmd = cmd_list_print(&mut *(*default_bd).cmdlist, 0);
+            let default_cmd = cmd_list_print(&*(*default_bd).cmdlist, 0);
             if libc::strcmp(cmd, default_cmd) != 0
                 && !screen_write_text!(
                     ctx,
@@ -1602,7 +1602,7 @@ pub unsafe fn window_customize_set_key(
             (*bd).flags ^= KEY_BINDING_REPEAT;
         } else if streq_(s, "Command") {
             prompt = format_nul!("({}) ", _s(key_string_lookup_key(key, 0)));
-            value = cmd_list_print(&mut *(*bd).cmdlist, 0);
+            value = cmd_list_print(&*(*bd).cmdlist, 0);
 
             let new_item = Box::new(window_customize_itemdata {
                 data,

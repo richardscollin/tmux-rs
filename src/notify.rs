@@ -38,7 +38,7 @@ pub unsafe fn notify_insert_one_hook(
             return item;
         }
         if log_get_level() != 0 {
-            let s = cmd_list_print(&mut *cmdlist, 0);
+            let s = cmd_list_print(&*cmdlist, 0);
             log_debug!(
                 "{}: hook {}: {}",
                 "notify_insert_one_hook",

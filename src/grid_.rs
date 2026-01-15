@@ -980,16 +980,16 @@ pub unsafe fn grid_string_cells_add_code(
     }
 }
 
-pub unsafe fn grid_string_cells_add_hyperlink(
+unsafe fn grid_string_cells_add_hyperlink(
     buf: *mut u8,
     len: usize,
     id: *const u8,
     uri: *const u8,
     flags: grid_string_flags,
-) -> c_int {
+) -> bool {
     unsafe {
         if strlen(uri) + strlen(id) + 17 >= len {
-            return 0;
+            return false;
         }
 
         if flags.intersects(grid_string_flags::GRID_STRING_ESCAPE_SEQUENCES) {
@@ -1014,20 +1014,19 @@ pub unsafe fn grid_string_cells_add_hyperlink(
             strlcat(buf, c!("\x1b\\"), len);
         }
 
-        1
+        true
     }
 }
 
 /// Returns ANSI code to set particular attributes (colour, bold and so on) given a current state.
-pub unsafe fn grid_string_cells_code(
+unsafe fn grid_string_cells_code(
     lastgc: *const grid_cell,
     gc: *const grid_cell,
     buf: *mut u8,
     len: usize,
     flags: grid_string_flags,
     sc: *mut screen,
-    has_link: *mut c_int,
-) {
+) -> bool {
     unsafe {
         let mut oldc: [c_int; 64] = [0; 64];
         let mut newc: [c_int; 64] = [0; 64];
@@ -1040,6 +1039,7 @@ pub unsafe fn grid_string_cells_code(
         let mut tmp: [u8; 64] = [0; 64];
         let mut uri: *const u8 = null();
         let mut id: *const u8 = null();
+        let mut has_link = false;
 
         static ATTRS: [(grid_attr, c_uint); 13] = [
             (grid_attr::GRID_ATTR_BRIGHT, 1),
@@ -1180,12 +1180,13 @@ pub unsafe fn grid_string_cells_code(
                 &raw mut id,
                 null_mut(),
             ) {
-                *has_link = grid_string_cells_add_hyperlink(buf, len, id, uri, flags);
-            } else if *has_link != 0 {
+                has_link = grid_string_cells_add_hyperlink(buf, len, id, uri, flags);
+            } else if has_link {
                 grid_string_cells_add_hyperlink(buf, len, c!(""), c!(""), flags);
-                *has_link = 0;
+                has_link = false;
             }
         }
+        has_link
     }
 }
 
@@ -1208,7 +1209,7 @@ pub unsafe fn grid_string_cells(
         let mut off: usize = 0;
         let mut size: usize = 0;
         let mut codelen: usize;
-        let mut has_link: c_int = 0;
+        let mut has_link: bool = false;
 
         if !lastgc.is_null() && (*lastgc).is_null() {
             std::ptr::copy(&GRID_DEFAULT_CELL, &raw mut LASTGC1, 1);
@@ -1234,14 +1235,13 @@ pub unsafe fn grid_string_cells(
             }
 
             if flags.intersects(grid_string_flags::GRID_STRING_WITH_SEQUENCES) {
-                grid_string_cells_code(
+                has_link = grid_string_cells_code(
                     *lastgc,
                     &gc,
                     code.as_mut_ptr(),
                     code.len(),
                     flags,
-                    s,
-                    &raw mut has_link,
+                    s
                 );
                 codelen = strlen(code.as_ptr());
                 std::ptr::copy(&gc, *lastgc, 1);
@@ -1272,7 +1272,7 @@ pub unsafe fn grid_string_cells(
             off += size;
         }
 
-        if has_link != 0 {
+        if has_link {
             grid_string_cells_add_hyperlink(code.as_mut_ptr(), code.len(), c!(""), c!(""), flags);
             codelen = strlen(code.as_ptr());
             while len < off + size + codelen + 1 {

@@ -181,7 +181,7 @@ pub unsafe fn cmdq_get_current(item: *mut cmdq_item) -> *mut cmd_find_state {
     unsafe { &raw mut (*(*item).state).current }
 }
 
-pub unsafe fn cmdq_get_flags(item: *mut cmdq_item) -> cmdq_state_flags {
+pub unsafe fn cmdq_get_flags(item: *const cmdq_item) -> cmdq_state_flags {
     unsafe { (*(*item).state).flags }
 }
 

@@ -663,7 +663,7 @@ pub unsafe fn cmd_find_clear_state(fs: *mut cmd_find_state, flags: cmd_find_flag
     }
 }
 
-pub unsafe fn cmd_find_empty_state(fs: *mut cmd_find_state) -> i32 {
+pub unsafe fn cmd_find_empty_state(fs: *const cmd_find_state) -> i32 {
     unsafe {
         ((*fs).s.is_null() && (*fs).wl.is_null() && (*fs).w.is_null() && (*fs).wp.is_null()) as i32
     }

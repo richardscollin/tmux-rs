@@ -90,10 +90,10 @@ pub unsafe fn cmd_find_client_better(c: *const client, than: *const client) -> i
     }
 }
 
-pub unsafe fn cmd_find_best_client(mut s: *mut session) -> *mut client {
+pub unsafe fn cmd_find_best_client(mut s: *const session) -> *mut client {
     unsafe {
         if (*s).attached == 0 {
-            s = null_mut();
+            s = null();
         }
 
         let mut c = null_mut();
@@ -101,7 +101,7 @@ pub unsafe fn cmd_find_best_client(mut s: *mut session) -> *mut client {
             if (*c_loop).session.is_null() {
                 continue;
             }
-            if !s.is_null() && (*c_loop).session != s {
+            if !s.is_null() && (*c_loop).session != s as *mut session {
                 continue;
             }
             if cmd_find_client_better(c_loop, c) != 0 {

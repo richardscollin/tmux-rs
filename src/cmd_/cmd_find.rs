@@ -693,7 +693,7 @@ pub unsafe fn cmd_find_valid_state(fs: *const cmd_find_state) -> bool {
     }
 }
 
-pub unsafe fn cmd_find_copy_state(dst: *mut cmd_find_state, src: *mut cmd_find_state) {
+pub unsafe fn cmd_find_copy_state(dst: *mut cmd_find_state, src: *const cmd_find_state) {
     unsafe {
         (*dst).s = (*src).s;
         (*dst).wl = (*src).wl;

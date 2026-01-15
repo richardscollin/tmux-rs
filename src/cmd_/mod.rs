@@ -369,7 +369,7 @@ pub unsafe fn cmd_unpack_argv(
     }
 }
 
-pub unsafe fn cmd_copy_argv(argc: c_int, argv: *mut *mut u8) -> *mut *mut u8 {
+pub unsafe fn cmd_copy_argv(argc: c_int, argv: *const *mut u8) -> *mut *mut u8 {
     unsafe {
         if argc == 0 {
             return null_mut();

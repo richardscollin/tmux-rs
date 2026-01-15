@@ -1097,7 +1097,7 @@ pub unsafe fn args_percentage_and_expand(
 
 /// Convert a string to a number which may be a percentage, and expand formats.
 pub unsafe fn args_string_percentage_and_expand(
-    value: *mut u8,
+    value: *const u8,
     minval: i64,
     maxval: i64,
     curval: i64,

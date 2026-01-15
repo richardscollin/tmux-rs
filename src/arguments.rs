@@ -487,7 +487,7 @@ pub unsafe fn args_print_add_(buf: *mut *mut u8, len: *mut usize, fmt: std::fmt:
     }
 }
 
-pub unsafe fn args_print_add_value(buf: *mut *mut u8, len: *mut usize, value: *mut args_value) {
+pub unsafe fn args_print_add_value(buf: *mut *mut u8, len: *mut usize, value: *const args_value) {
     unsafe {
         if **buf != b'\0' {
             args_print_add!(buf, len, " ");
@@ -496,7 +496,7 @@ pub unsafe fn args_print_add_value(buf: *mut *mut u8, len: *mut usize, value: *m
         match (*value).type_ {
             args_type::ARGS_NONE => (),
             args_type::ARGS_COMMANDS => {
-                let expanded = cmd_list_print(&mut *(*value).union_.cmdlist, 0);
+                let expanded = cmd_list_print(&*(*value).union_.cmdlist, 0);
                 args_print_add!(buf, len, "{{ {} }}", _s(expanded));
                 free_(expanded);
             }

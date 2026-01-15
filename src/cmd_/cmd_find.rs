@@ -137,7 +137,7 @@ pub unsafe fn cmd_find_session_better(
 }
 
 pub unsafe fn cmd_find_best_session(
-    slist: *mut *mut session,
+    slist: *const *mut session,
     ssize: u32,
     flags: cmd_find_flags,
 ) -> *mut session {

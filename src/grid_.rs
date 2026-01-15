@@ -60,7 +60,7 @@ pub static GRID_CLEARED_ENTRY: grid_cell_entry = grid_cell_entry {
 };
 
 /// Store cell in entry.
-pub unsafe fn grid_store_cell(gce: *mut grid_cell_entry, gc: *const grid_cell, c: u8) {
+unsafe fn grid_store_cell(gce: *mut grid_cell_entry, gc: *const grid_cell, c: u8) {
     unsafe {
         (*gce).flags = (*gc).flags & !grid_flag::CLEARED;
 
@@ -80,7 +80,7 @@ pub unsafe fn grid_store_cell(gce: *mut grid_cell_entry, gc: *const grid_cell, c
 }
 
 /// Check if a cell should be an extended cell.
-pub unsafe fn grid_need_extended_cell(gce: *const grid_cell_entry, gc: *const grid_cell) -> bool {
+unsafe fn grid_need_extended_cell(gce: *const grid_cell_entry, gc: *const grid_cell) -> bool {
     unsafe {
         if (*gce).flags.contains(grid_flag::EXTENDED) {
             return true;
@@ -106,7 +106,7 @@ pub unsafe fn grid_need_extended_cell(gce: *const grid_cell_entry, gc: *const gr
 }
 
 /// Get an extended cell.
-pub unsafe fn grid_get_extended_cell(
+unsafe fn grid_get_extended_cell(
     gl: *mut grid_line,
     gce: *mut grid_cell_entry,
     flags: grid_flag,
@@ -123,7 +123,7 @@ pub unsafe fn grid_get_extended_cell(
 }
 
 /// Set cell as extended.
-pub unsafe fn grid_extended_cell(
+unsafe fn grid_extended_cell(
     gl: *mut grid_line,
     gce: *mut grid_cell_entry,
     gc: *const grid_cell,
@@ -155,7 +155,7 @@ pub unsafe fn grid_extended_cell(
 }
 
 /// Free up unused extended cells.
-pub unsafe fn grid_compact_line(gl: *mut grid_line) {
+unsafe fn grid_compact_line(gl: *mut grid_line) {
     unsafe {
         let mut new_extdsize = 0u32;
 
@@ -216,7 +216,7 @@ pub unsafe fn grid_adjust_lines(gd: *mut grid, lines: c_uint) {
 }
 
 /// Copy default into a cell.
-pub unsafe fn grid_clear_cell(gd: *mut grid, px: c_uint, py: c_uint, bg: c_uint) {
+unsafe fn grid_clear_cell(gd: *mut grid, px: c_uint, py: c_uint, bg: c_uint) {
     unsafe {
         let gl = (*gd).linedata.add(py as usize);
         let gce = (*gl).celldata.add(px as usize);
@@ -237,7 +237,7 @@ pub unsafe fn grid_clear_cell(gd: *mut grid, px: c_uint, py: c_uint, bg: c_uint)
 }
 
 /// Check grid y position.
-pub unsafe fn grid_check_y(gd: *mut grid, from: *const u8, py: c_uint) -> c_int {
+unsafe fn grid_check_y(gd: *mut grid, from: *const u8, py: c_uint) -> c_int {
     unsafe {
         if py >= (*gd).hsize as c_uint + (*gd).sy as c_uint {
             log_debug!("{}: y out of range: {}", _s(from), py);
@@ -284,7 +284,7 @@ pub unsafe fn grid_cells_equal(gc1: *const grid_cell, gc2: *const grid_cell) -> 
 }
 
 /// Free one line.
-pub unsafe fn grid_free_line(gd: *mut grid, py: c_uint) {
+unsafe fn grid_free_line(gd: *mut grid, py: c_uint) {
     unsafe {
         free_((*(*gd).linedata.add(py as usize)).celldata);
         (*(*gd).linedata.add(py as usize)).celldata = null_mut();
@@ -294,7 +294,7 @@ pub unsafe fn grid_free_line(gd: *mut grid, py: c_uint) {
 }
 
 /// Free several lines.
-pub unsafe fn grid_free_lines(gd: *mut grid, py: c_uint, ny: c_uint) {
+unsafe fn grid_free_lines(gd: *mut grid, py: c_uint, ny: c_uint) {
     unsafe {
         for yy in py..(py + ny) {
             grid_free_line(gd, yy);
@@ -812,7 +812,7 @@ pub unsafe fn grid_move_cells(
 }
 
 /// Get ANSI foreground sequence.
-pub unsafe fn grid_string_cells_fg(gc: *const grid_cell, values: *mut c_int) -> usize {
+unsafe fn grid_string_cells_fg(gc: *const grid_cell, values: *mut c_int) -> usize {
     unsafe {
         let mut n: usize = 0;
 
@@ -857,7 +857,7 @@ pub unsafe fn grid_string_cells_fg(gc: *const grid_cell, values: *mut c_int) -> 
 }
 
 /// Get ANSI background sequence.
-pub unsafe fn grid_string_cells_bg(gc: *const grid_cell, values: *mut c_int) -> usize {
+unsafe fn grid_string_cells_bg(gc: *const grid_cell, values: *mut c_int) -> usize {
     unsafe {
         let mut n: usize = 0;
 
@@ -902,7 +902,7 @@ pub unsafe fn grid_string_cells_bg(gc: *const grid_cell, values: *mut c_int) -> 
 }
 
 /// Get underscore colour sequence.
-pub unsafe fn grid_string_cells_us(gc: *const grid_cell, values: *mut c_int) -> usize {
+unsafe fn grid_string_cells_us(gc: *const grid_cell, values: *mut c_int) -> usize {
     unsafe {
         let mut n: usize = 0;
         if (*gc).us & COLOUR_FLAG_256 != 0 {
@@ -930,7 +930,7 @@ pub unsafe fn grid_string_cells_us(gc: *const grid_cell, values: *mut c_int) -> 
 }
 
 /// Add on SGR code.
-pub unsafe fn grid_string_cells_add_code(
+unsafe fn grid_string_cells_add_code(
     buf: *mut u8,
     len: usize,
     n: c_uint,
@@ -1498,7 +1498,7 @@ unsafe fn grid_reflow_join(
 }
 
 /// Split this line into several new ones
-pub unsafe fn grid_reflow_split(target: *mut grid, gd: *mut grid, sx: u32, yy: u32, at: u32) {
+unsafe fn grid_reflow_split(target: *mut grid, gd: *mut grid, sx: u32, yy: u32, at: u32) {
     unsafe {
         let gl = (*gd).linedata.add(yy as usize);
         let mut gc = zeroed();

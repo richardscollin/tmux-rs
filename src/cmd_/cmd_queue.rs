@@ -187,7 +187,7 @@ pub unsafe fn cmdq_get_flags(item: *const cmdq_item) -> cmdq_state_flags {
 
 pub unsafe fn cmdq_new_state(
     current: *mut cmd_find_state,
-    event: *mut key_event,
+    event: *const key_event,
     flags: cmdq_state_flags,
 ) -> *mut cmdq_state {
     unsafe {

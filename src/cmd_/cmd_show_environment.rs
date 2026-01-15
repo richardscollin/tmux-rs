@@ -32,7 +32,7 @@ pub static CMD_SHOW_ENVIRONMENT_ENTRY: cmd_entry = cmd_entry {
     source: cmd_entry_flag::zeroed(),
 };
 
-unsafe fn cmd_show_environment_escape(envent: *mut environ_entry) -> *mut u8 {
+unsafe fn cmd_show_environment_escape(envent: *const environ_entry) -> *mut u8 {
     unsafe {
         let mut value = transmute_ptr((*envent).value);
         let ret: *mut u8 = xmalloc(strlen(value) * 2 + 1).as_ptr().cast(); /* at most twice the size */

@@ -28,18 +28,12 @@ fn main() {
                 "cargo::rustc-link-search={}",
                 brew_link_prefix("libevent").display()
             );
-            println!(
-                "cargo::rustc-link-search={}",
-                brew_link_prefix("ncurses").display()
-            );
         }
     }
 
     if is_static_linking() {
-        println!("cargo::rustc-link-lib=static=ncurses");
         println!("cargo::rustc-link-lib=static=event_core");
     } else {
-        println!("cargo::rustc-link-lib=ncurses");
         println!("cargo::rustc-link-lib=event_core");
     }
 }

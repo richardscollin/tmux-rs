@@ -32,10 +32,9 @@ pub(crate) use crate::libc::{free_, memcpy_, memcpy__, streq_};
 
 // libevent2
 mod event_;
-use crate::event_::*;
+use terminfo_lean::expand::ExpandContext;
 
-mod ncurses_;
-use crate::ncurses_::*;
+use crate::event_::*;
 
 macro_rules! cfg_pub_mods {
     ($( mod $mod_name:ident; )*) => {
@@ -1730,7 +1729,7 @@ struct tty_term {
     acs: [[u8; 2]; c_uchar::MAX as usize + 1],
 
     codes: *mut tty_code,
-
+    expand_context: ExpandContext,
     flags: term_flags,
 
     entry: list_entry<tty_term>,

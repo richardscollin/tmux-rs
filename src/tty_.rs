@@ -484,7 +484,7 @@ pub unsafe fn tty_stop_tty(tty: *mut tty) {
 
         tty_raw(
             tty,
-            tty_term_string_ii(
+            &tty_term_string_ii(
                 (*tty).term,
                 tty_code_code::TTYC_CSR,
                 0,
@@ -503,7 +503,7 @@ pub unsafe fn tty_stop_tty(tty: *mut tty) {
             } else if tty_term_has((*tty).term, tty_code_code::TTYC_SS) {
                 tty_raw(
                     tty,
-                    tty_term_string_i((*tty).term, tty_code_code::TTYC_SS, 0),
+                    &tty_term_string_i((*tty).term, tty_code_code::TTYC_SS, 0),
                 );
             }
         }
@@ -513,15 +513,15 @@ pub unsafe fn tty_stop_tty(tty: *mut tty) {
 
         tty_raw(tty, tty_term_string((*tty).term, tty_code_code::TTYC_CNORM));
         if tty_term_has((*tty).term, tty_code_code::TTYC_KMOUS) {
-            tty_raw(tty, c!("\x1b[?1000l\x1b[?1002l\x1b[?1003l"));
-            tty_raw(tty, c!("\x1b[?1006l\x1b[?1005l"));
+            tty_raw(tty, b"\x1b[?1000l\x1b[?1002l\x1b[?1003l");
+            tty_raw(tty, b"\x1b[?1006l\x1b[?1005l");
         }
         if tty_term_has((*tty).term, tty_code_code::TTYC_DSBP) {
             tty_raw(tty, tty_term_string((*tty).term, tty_code_code::TTYC_DSBP));
         }
 
         if (*(*tty).term).flags.intersects(term_flags::TERM_VT100LIKE) {
-            tty_raw(tty, c!("\x1b[?7727l"));
+            tty_raw(tty, b"\x1b[?7727l");
         }
         tty_raw(tty, tty_term_string((*tty).term, tty_code_code::TTYC_DSFCS));
         tty_raw(tty, tty_term_string((*tty).term, tty_code_code::TTYC_DSEKS));
@@ -574,10 +574,10 @@ pub unsafe fn tty_update_features(tty: *mut tty) {
             tty_putcode(tty, tty_code_code::TTYC_ENMG);
         }
         if options_get_number_(GLOBAL_OPTIONS, "extended-keys") != 0 {
-            tty_puts(tty, tty_term_string((*tty).term, tty_code_code::TTYC_ENEKS));
+            tty_puts_(tty, tty_term_string((*tty).term, tty_code_code::TTYC_ENEKS));
         }
         if options_get_number_(GLOBAL_OPTIONS, "focus-events") != 0 {
-            tty_puts(tty, tty_term_string((*tty).term, tty_code_code::TTYC_ENFCS));
+            tty_puts_(tty, tty_term_string((*tty).term, tty_code_code::TTYC_ENFCS));
         }
         if (*(*tty).term).flags.intersects(term_flags::TERM_VT100LIKE) {
             tty_puts(tty, c!("\x1b[?7727h"));
@@ -591,17 +591,15 @@ pub unsafe fn tty_update_features(tty: *mut tty) {
     }
 }
 
-pub unsafe fn tty_raw(tty: *mut tty, mut s: *const u8) {
+pub unsafe fn tty_raw(tty: *mut tty, mut s: &[u8]) {
     unsafe {
         let c = (*tty).client;
 
-        let mut slen = strlen(s);
         for _ in 0..5 {
-            let n = libc::write((*c).fd, s.cast(), slen);
+            let n = libc::write((*c).fd, s.as_ptr().cast(), s.len());
             if n >= 0 {
-                s = s.add(n as usize);
-                slen -= n as usize;
-                if slen == 0 {
+                s = &s[n as usize..];
+                if s.is_empty() {
                     break;
                 }
             } else if n == -1 && errno!() != libc::EAGAIN {
@@ -614,7 +612,7 @@ pub unsafe fn tty_raw(tty: *mut tty, mut s: *const u8) {
 
 pub unsafe fn tty_putcode(tty: *mut tty, code: tty_code_code) {
     unsafe {
-        tty_puts(tty, tty_term_string((*tty).term, code));
+        tty_puts_(tty, tty_term_string((*tty).term, code));
     }
 }
 
@@ -623,7 +621,7 @@ pub unsafe fn tty_putcode_i(tty: *mut tty, code: tty_code_code, a: i32) {
         if a < 0 {
             return;
         }
-        tty_puts(tty, tty_term_string_i((*tty).term, code, a));
+        tty_puts_(tty, &tty_term_string_i((*tty).term, code, a));
     }
 }
 
@@ -632,7 +630,7 @@ pub unsafe fn tty_putcode_ii(tty: *mut tty, code: tty_code_code, a: i32, b: i32)
         if a < 0 || b < 0 {
             return;
         }
-        tty_puts(tty, tty_term_string_ii((*tty).term, code, a, b));
+        tty_puts_(tty, &tty_term_string_ii((*tty).term, code, a, b));
     }
 }
 
@@ -641,14 +639,14 @@ pub unsafe fn tty_putcode_iii(tty: *mut tty, code: tty_code_code, a: i32, b: i32
         if a < 0 || b < 0 || c < 0 {
             return;
         }
-        tty_puts(tty, tty_term_string_iii((*tty).term, code, a, b, c));
+        tty_puts_(tty, &tty_term_string_iii((*tty).term, code, a, b, c));
     }
 }
 
 pub unsafe fn tty_putcode_s(tty: *mut tty, code: tty_code_code, a: *const u8) {
     unsafe {
         if !a.is_null() {
-            tty_puts(tty, tty_term_string_s((*tty).term, code, a));
+            tty_puts_(tty, &tty_term_string_s((*tty).term, code, a));
         }
     }
 }
@@ -656,7 +654,7 @@ pub unsafe fn tty_putcode_s(tty: *mut tty, code: tty_code_code, a: *const u8) {
 pub unsafe fn tty_putcode_ss(tty: *mut tty, code: tty_code_code, a: *const u8, b: *const u8) {
     unsafe {
         if !a.is_null() && !b.is_null() {
-            tty_puts(tty, tty_term_string_ss((*tty).term, code, a, b));
+            tty_puts_(tty, &tty_term_string_ss((*tty).term, code, a, b));
         }
     }
 }
@@ -687,6 +685,14 @@ pub unsafe fn tty_puts(tty: *mut tty, s: *const u8) {
     unsafe {
         if *s != b'\0' {
             tty_add(tty, s, strlen(s));
+        }
+    }
+}
+
+pub unsafe fn tty_puts_(tty: *mut tty, s: &[u8]) {
+    unsafe {
+        if !s.is_empty() {
+            tty_add(tty, s.as_ptr(), s.len());
         }
     }
 }

@@ -464,7 +464,7 @@ pub(crate) unsafe fn sixel_print_add(
 ) {
     log_debug!("sixel_print_add begin");
     unsafe {
-        if *used + slen >= *len + 1 {
+        if *used + slen > *len {
             *len *= 2;
             *buf = xrealloc_(*buf, *len).as_ptr();
         }

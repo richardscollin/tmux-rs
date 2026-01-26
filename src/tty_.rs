@@ -11,9 +11,9 @@
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+use crate::options_::*;
 use crate::*;
 use crate::{colour::colour_split_rgb, compat::b64::b64_ntop};
-use crate::options_::*;
 
 static mut TTY_LOG_FD: i32 = -1;
 
@@ -99,19 +99,15 @@ pub unsafe fn tty_resize(tty: *mut tty) {
 
         if libc::ioctl((*c).fd, libc::TIOCGWINSZ, &raw mut ws) != -1 {
             sx = ws.ws_col as u32;
-            if sx == 0 {
+            xpixel = (ws.ws_xpixel as u32).checked_div(sx).unwrap_or_else(|| {
                 sx = 80;
-                xpixel = 0;
-            } else {
-                xpixel = ws.ws_xpixel as u32 / sx;
-            }
+                0
+            });
             sy = ws.ws_row as u32;
-            if sy == 0 {
+            ypixel = (ws.ws_ypixel as u32).checked_div(sy).unwrap_or_else(|| {
                 sy = 24;
-                ypixel = 0;
-            } else {
-                ypixel = ws.ws_ypixel as u32 / sy;
-            }
+                0
+            });
         } else {
             sx = 80;
             sy = 24;
@@ -2833,9 +2829,9 @@ pub unsafe fn tty_cmd_syncstart(tty: *mut tty, ctx: *const tty_ctx) {
         {
             tty_sync_start(tty);
         } /*
-         * This is a pane. If there is an overlay, always start;
-         * otherwise, only if requested.
-         */
+           * This is a pane. If there is an overlay, always start;
+           * otherwise, only if requested.
+           */
     }
 }
 
@@ -3389,9 +3385,9 @@ pub unsafe fn tty_colours(tty: *mut tty, gc: *const grid_cell) {
                 }
             }
         } /*
-         * If don't have AX, send sgr0. This resets both colours to default.
-         * Otherwise, try to set the default colour only as needed.
-         */
+           * If don't have AX, send sgr0. This resets both colours to default.
+           * Otherwise, try to set the default colour only as needed.
+           */
 
         /* Set the foreground colour. */
         if !COLOUR_DEFAULT((*gc).fg) && (*gc).fg != (*tc).fg {

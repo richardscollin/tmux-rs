@@ -3913,10 +3913,15 @@ pub unsafe fn window_copy_cstrtocellpos(
                     match_ = 0;
                     break;
                 }
-                let d = cells[ccell as usize].d;
-                let mut dlen = cells[ccell as usize].dlen;
+                let Some(ref cell_str) = cells[ccell as usize] else {
+                    // Padding cell, skip it
+                    ccell += 1;
+                    continue;
+                };
+                let d = cell_str.as_bytes();
+                let mut dlen = d.len();
                 if dlen == 1 {
-                    if *str.add(pos) != *d {
+                    if *str.add(pos) != d[0] {
                         match_ = 0;
                         break;
                     }
@@ -3925,7 +3930,7 @@ pub unsafe fn window_copy_cstrtocellpos(
                     if dlen > len as usize - pos {
                         dlen = len as usize - pos;
                     }
-                    if memcmp(str.add(pos).cast(), d.cast(), dlen) != 0 {
+                    if memcmp(str.add(pos).cast(), d.as_ptr().cast(), dlen) != 0 {
                         match_ = 0;
                         break;
                     }

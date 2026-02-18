@@ -3646,12 +3646,7 @@ pub unsafe fn window_copy_search_lr_regex(
 ) -> bool {
     unsafe {
         let mut eflags = 0;
-        let mut size: u32 = 1;
-        // u_int endline, foundx, foundy, len, pywrap, size = 1;
-        // char *buf;
-        // regmatch_t regmatch;
         let mut regmatch: libc::regmatch_t = zeroed();
-        // struct grid_line *gl;
 
         // This can happen during search if the last match was the last
         // character on a line.
@@ -3665,23 +3660,22 @@ pub unsafe fn window_copy_search_lr_regex(
         }
 
         // Need to look at the entire string.
-        let mut buf = xmalloc(size as usize).cast::<u8>().as_ptr();
-        *buf = b'\0';
-        buf = window_copy_stringify(gd, py, first, (*gd).sx, buf, &raw mut size);
+        let mut buf = Vec::new();
+        window_copy_stringify(gd, py, first, (*gd).sx, &mut buf);
         let mut len = (*gd).sx - first;
         let endline = (*gd).hsize + (*gd).sy - 1;
         let mut pywrap = py;
-        while !buf.is_null() && pywrap <= endline && len < WINDOW_COPY_SEARCH_MAX_LINE {
+        while pywrap <= endline && len < WINDOW_COPY_SEARCH_MAX_LINE {
             let gl = grid_get_line(gd, pywrap);
             if !(*gl).flags.intersects(grid_line_flag::WRAPPED) {
                 break;
             }
             pywrap += 1;
-            buf = window_copy_stringify(gd, pywrap, 0, (*gd).sx, buf, &raw mut size);
+            window_copy_stringify(gd, pywrap, 0, (*gd).sx, &mut buf);
             len += (*gd).sx;
         }
 
-        if libc::regexec(reg, buf, 1, &raw mut regmatch, eflags) == 0
+        if libc::regexec(reg, buf.as_ptr(), 1, &raw mut regmatch, eflags) == 0
             && regmatch.rm_so != regmatch.rm_eo
         {
             let mut foundx = first;
@@ -3691,7 +3685,7 @@ pub unsafe fn window_copy_search_lr_regex(
                 len,
                 &raw mut foundx,
                 &raw mut foundy,
-                buf.add(regmatch.rm_so as usize),
+                buf.as_ptr().add(regmatch.rm_so as usize),
             );
             if foundy == py && foundx < last {
                 *ppx = foundx;
@@ -3701,7 +3695,7 @@ pub unsafe fn window_copy_search_lr_regex(
                     len,
                     &raw mut foundx,
                     &raw mut foundy,
-                    buf.add(regmatch.rm_eo as usize),
+                    buf.as_ptr().add(regmatch.rm_eo as usize),
                 );
                 *psx = foundx;
                 while foundy > py {
@@ -3709,12 +3703,10 @@ pub unsafe fn window_copy_search_lr_regex(
                     foundy -= 1;
                 }
                 *psx -= *ppx;
-                free_(buf);
                 return true;
             }
         }
 
-        free_(buf);
         *ppx = 0;
         *psx = 0;
         false
@@ -3732,7 +3724,6 @@ pub unsafe fn window_copy_search_rl_regex(
 ) -> bool {
     unsafe {
         let mut eflags = 0;
-        let mut size: u32 = 1;
 
         // Set flags for regex search.
         if first != 0 {
@@ -3740,73 +3731,55 @@ pub unsafe fn window_copy_search_rl_regex(
         }
 
         // Need to look at the entire string.
-        let mut buf = xmalloc(size as usize).cast::<u8>().as_ptr();
-        *buf = b'\0';
-        buf = window_copy_stringify(gd, py, first, (*gd).sx, buf, &raw mut size);
+        let mut buf = Vec::new();
+        window_copy_stringify(gd, py, first, (*gd).sx, &mut buf);
         let mut len = (*gd).sx - first;
         let endline = (*gd).hsize + (*gd).sy - 1;
         let mut pywrap = py;
-        while !buf.is_null() && pywrap <= endline && len < WINDOW_COPY_SEARCH_MAX_LINE {
+        while pywrap <= endline && len < WINDOW_COPY_SEARCH_MAX_LINE {
             let gl = grid_get_line(gd, pywrap);
             if !(*gl).flags.intersects(grid_line_flag::WRAPPED) {
                 break;
             }
             pywrap += 1;
-            buf = window_copy_stringify(gd, pywrap, 0, (*gd).sx, buf, &raw mut size);
+            window_copy_stringify(gd, pywrap, 0, (*gd).sx, &mut buf);
             len += (*gd).sx;
         }
 
-        if window_copy_last_regex(gd, py, first, last, len, ppx, psx, buf, reg, eflags) {
-            free_(buf);
+        if window_copy_last_regex(gd, py, first, last, len, ppx, psx, buf.as_ptr(), reg, eflags) {
             return true;
         }
 
-        free_(buf);
         *ppx = 0;
         *psx = 0;
         false
     }
 }
 
-pub unsafe fn window_copy_cellstring(
+// lifetime is bound to grid_line or static in some cases
+pub unsafe fn window_copy_cellstring<'a>(
     gl: *mut grid_line,
     px: u32,
-    size: *mut usize,
-    allocated: *mut i32,
-) -> *mut u8 {
+) -> Option<Cow<'a, str>> {
     unsafe {
-        // struct grid_cell_entry *gce;
-
         if px >= (*gl).cellsize {
-            *size = 1;
-            *allocated = 0;
-            return c!(" ") as *mut u8; // TODO think of a better type-safe way to represent returning a MaybeAllocated type
+            return Some(Cow::Borrowed(" "));
         }
 
         let gce = (*gl).celldata.add(px as usize);
         if (*gce).flags.intersects(grid_flag::PADDING) {
-            *size = 0;
-            *allocated = 0;
-            return null_mut();
+            return None;
         }
         if !(*gce).flags.intersects(grid_flag::EXTENDED) {
-            *size = 1;
-            *allocated = 0;
-            return (&raw mut (*gce).union_.data.data).cast();
+            return Some(Cow::Borrowed(str::from_utf8(std::slice::from_raw_parts((&raw const (*gce).union_.data.data).cast(), 1)).expect("incorrect assumption during refactoring")));
         }
 
         let ud = utf8_to_data((*(*gl).extddata.add((*gce).union_.offset as usize)).data);
         if ud.size == 0 {
-            *size = 0;
-            *allocated = 0;
-            return null_mut();
+            return None;
         }
-        *size = ud.size as usize;
-        *allocated = 1;
 
-        let copy: *mut u8 = xmalloc(ud.size as usize).as_ptr().cast();
-        libc::memcpy(copy.cast(), (&raw const ud.data).cast(), ud.size as usize);
-        copy
+        Some(Cow::Owned(str::from_utf8(ud.initialized_slice()).expect("incorrect assumption during refactoring").to_string()))
     }
 }
 
@@ -3890,45 +3863,15 @@ pub unsafe fn window_copy_stringify(
     py: u32,
     first: u32,
     last: u32,
-    mut buf: *mut u8,
-    size: *mut u32,
-) -> *mut u8 {
+    buf: &mut Vec<u8>,
+) {
     unsafe {
-        let mut newsize = *size;
-
-        let mut bufsize: usize = 1024;
-        let mut dlen: usize = 0;
-        let mut allocated = 0;
-
-        while bufsize < newsize as usize {
-            bufsize *= 2;
-        }
-        buf = xrealloc(buf.cast(), bufsize).as_ptr().cast();
-
         let gl = grid_peek_line(gd, py);
-        let mut bx = *size - 1;
         for ax in first..last {
-            let d = window_copy_cellstring(gl, ax, &raw mut dlen, &raw mut allocated);
-            newsize += dlen as u32;
-            while bufsize < newsize as usize {
-                bufsize *= 2;
-                buf = xrealloc(buf.cast(), bufsize).as_ptr().cast();
-            }
-            if dlen == 1 {
-                *buf.add(bx as usize) = *d;
-                bx += 1;
-            } else {
-                libc::memcpy(buf.add(bx as usize).cast(), d.cast(), dlen);
-                bx += dlen as u32;
-            }
-            if allocated != 0 {
-                free_(d);
-            }
+            let d = window_copy_cellstring(gl, ax).unwrap();
+            buf.extend(d.as_bytes());
         }
-        *buf.add(newsize as usize - 1) = b'\0';
-
-        *size = newsize;
-        buf
+        buf.push(b'\0');
     }
 }
 
@@ -3943,22 +3886,13 @@ pub unsafe fn window_copy_cstrtocellpos(
     unsafe {
         let mut match_: i32;
 
-        struct Cell {
-            d: *const u8,
-            dlen: usize,
-            allocated: i32,
-        }
-
         // Populate the array of cell data.
-        let mut cells: Vec<Cell> = Vec::with_capacity(ncells as usize);
+        let mut cells: Vec<Option<Cow<'static, str>>> = Vec::with_capacity(ncells as usize);
         let mut px = *ppx;
         let mut pywrap = *ppy;
         let mut gl = grid_peek_line(gd, pywrap);
         for _ in 0..ncells {
-            let mut dlen: usize = 0;
-            let mut allocated: i32 = 0;
-            let d = window_copy_cellstring(gl, px, &raw mut dlen, &raw mut allocated);
-            cells.push(Cell { d, dlen, allocated });
+            cells.push(window_copy_cellstring(gl, px));
             px += 1;
             if px == (*gd).sx {
                 px = 0;
@@ -3979,10 +3913,15 @@ pub unsafe fn window_copy_cstrtocellpos(
                     match_ = 0;
                     break;
                 }
-                let d = cells[ccell as usize].d;
-                let mut dlen = cells[ccell as usize].dlen;
+                let Some(ref cell_str) = cells[ccell as usize] else {
+                    // Padding cell, skip it
+                    ccell += 1;
+                    continue;
+                };
+                let d = cell_str.as_bytes();
+                let mut dlen = d.len();
                 if dlen == 1 {
-                    if *str.add(pos) != *d {
+                    if *str.add(pos) != d[0] {
                         match_ = 0;
                         break;
                     }
@@ -3991,7 +3930,7 @@ pub unsafe fn window_copy_cstrtocellpos(
                     if dlen > len as usize - pos {
                         dlen = len as usize - pos;
                     }
-                    if memcmp(str.add(pos).cast(), d.cast(), dlen) != 0 {
+                    if memcmp(str.add(pos).cast(), d.as_ptr().cast(), dlen) != 0 {
                         match_ = 0;
                         break;
                     }
@@ -4017,11 +3956,7 @@ pub unsafe fn window_copy_cstrtocellpos(
         *ppy = pywrap;
 
         // Free cell data.
-        for cell in &cells {
-            if cell.allocated != 0 {
-                free_(cell.d as *mut c_void);
-            } // TODO cast away const
-        }
+        drop(cells);
         // Vec automatically deallocates when dropped
     }
 }
@@ -4158,23 +4093,19 @@ pub unsafe fn window_copy_search_jump(
     unsafe {
         let mut px = 0;
         let mut sx = 0;
-        let mut ssize: u32 = 1;
         let mut found = false;
         let mut cflags = libc::REG_EXTENDED;
         let mut reg: libc::regex_t = zeroed();
 
         if regex != 0 {
-            let mut sbuf: *mut u8 = xmalloc(ssize as usize).as_ptr().cast();
-            *sbuf = b'\0';
-            sbuf = window_copy_stringify(sgd, 0, 0, (*sgd).sx, sbuf, &raw mut ssize);
+            let mut sbuf: Vec<u8> = Vec::new();
+            window_copy_stringify(sgd, 0, 0, (*sgd).sx, &mut sbuf);
             if cis != 0 {
                 cflags |= REG_ICASE;
             }
-            if libc::regcomp(&raw mut reg, sbuf, cflags) != 0 {
-                free_(sbuf);
+            if libc::regcomp(&raw mut reg, sbuf.as_ptr(), cflags) != 0 {
                 return false;
             }
-            free_(sbuf);
         }
 
         let mut i = 0;
@@ -4500,7 +4431,6 @@ pub unsafe fn window_copy_search_marks(
         let mut nfound: u32 = 0;
         let mut width: u32;
 
-        let mut ssize: u32 = 1;
         let mut start: u32 = 0;
         let mut end: u32 = 0;
 
@@ -4527,24 +4457,20 @@ pub unsafe fn window_copy_search_marks(
             let cis = window_copy_is_lowercase((*data).searchstr) as i32;
 
             if regex != 0 {
-                let mut sbuf = xmalloc(ssize as usize).as_ptr().cast();
-                *sbuf = b'\0';
-                sbuf = window_copy_stringify(
+                let mut sbuf = Vec::new();
+                window_copy_stringify(
                     (*ssp).grid,
                     0,
                     0,
                     (*(*ssp).grid).sx,
-                    sbuf,
-                    &raw mut ssize,
+                    &mut sbuf,
                 );
                 if cis != 0 {
                     cflags |= REG_ICASE;
                 }
-                if libc::regcomp(&raw mut reg, sbuf, cflags) != 0 {
-                    free_(sbuf);
+                if libc::regcomp(&raw mut reg, sbuf.as_ptr(), cflags) != 0 {
                     return false;
                 }
-                free_(sbuf);
             }
             let tstart = get_timer();
 

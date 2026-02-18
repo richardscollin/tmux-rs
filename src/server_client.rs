@@ -294,12 +294,12 @@ pub unsafe fn server_client_create(fd: i32) -> *mut client {
 }
 
 /// Open client terminal if needed.
-pub unsafe fn server_client_open(c: *mut client, cause: *mut *mut u8) -> i32 {
+pub unsafe fn server_client_open(c: *mut client) -> Result<(), String> {
     unsafe {
         let mut ttynam = _PATH_TTY;
 
         if (*c).flags.intersects(client_flag::CONTROL) {
-            return 0;
+            return Ok(());
         }
 
         if libc::strcmp((*c).ttyname, ttynam) == 0
@@ -322,20 +322,14 @@ pub unsafe fn server_client_open(c: *mut client, cause: *mut *mut u8) -> i32 {
                     })
                     && libc::strcmp((*c).ttyname, ttynam) == 0))
         {
-            *cause = format_nul!("can't use {}", _s((*c).ttyname));
-            return -1;
+            return Err(format!("can't use {}", _s((*c).ttyname)));
         }
 
         if !(*c).flags.intersects(client_flag::TERMINAL) {
-            *cause = xstrdup(c!("not a terminal")).as_ptr();
-            return -1;
+            return Err("not a terminal".to_string());
         }
 
-        if tty_open(&raw mut (*c).tty, cause) != 0 {
-            return -1;
-        }
-
-        0
+        tty_open(&raw mut (*c).tty)
     }
 }
 

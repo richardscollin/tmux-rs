@@ -12,7 +12,7 @@
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 use crate::event_::{event_add, event_initialized};
-use crate::libc::{gettimeofday, memcpy, strchr, strcmp, strcspn, strlen, strncmp};
+use crate::libc::{memcpy, strchr, strcmp, strcspn, strlen, strncmp};
 use crate::*;
 use crate::options_::*;
 
@@ -43,7 +43,6 @@ pub unsafe fn name_time_expired(w: *mut window, tv: *mut timeval) -> c_int {
 
 pub unsafe fn check_window_name(w: *mut window) {
     unsafe {
-        let mut tv: timeval = zeroed();
         let mut next: timeval = zeroed();
 
         if (*w).active.is_null() {
@@ -63,7 +62,7 @@ pub unsafe fn check_window_name(w: *mut window) {
         }
         log_debug!("@{} pane changed", (*w).id);
 
-        gettimeofday(&raw mut tv, null_mut());
+        let mut tv: timeval = gettimeofday_();
         let left = name_time_expired(w, &raw mut tv);
         if left != 0 {
             if event_initialized(&raw mut (*w).name_event) == 0 {
@@ -76,7 +75,7 @@ pub unsafe fn check_window_name(w: *mut window) {
             if evtimer_pending(&raw mut (*w).name_event, null_mut()) == 0 {
                 log_debug!("@{} timer queued ({})", (*w).id, left);
                 timerclear(&raw mut next);
-                next.tv_usec = left as libc::suseconds_t;
+                next.tv_usec = left as _;
                 event_add(&raw mut (*w).name_event, &raw const next);
             } else {
                 log_debug!("@{} timer already queued ({})", (*w).id, left);

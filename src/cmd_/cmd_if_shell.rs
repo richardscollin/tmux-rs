@@ -12,7 +12,6 @@
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-use crate::libc::{WEXITSTATUS, WIFEXITED};
 use crate::*;
 
 pub static CMD_IF_SHELL_ENTRY: cmd_entry = cmd_entry {
@@ -126,7 +125,16 @@ unsafe fn cmd_if_shell_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retval
     }
 }
 
+#[cfg(target_os = "windows")]
+unsafe fn cmd_if_shell_callback(_job: *mut job) {
+    todo!()
+}
+
+
+#[cfg(not(target_os = "windows"))]
 unsafe fn cmd_if_shell_callback(job: *mut job) {
+    use crate::libc::{WEXITSTATUS, WIFEXITED};
+
     unsafe {
         let cdata = job_get_data(job) as *mut cmd_if_shell_data;
         let c = (*cdata).client;

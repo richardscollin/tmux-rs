@@ -17,11 +17,11 @@ use std::sync::OnceLock;
 
 
 use crate::compat::getopt::{OPTARG, OPTIND, getopt};
-use crate::compat::{S_ISDIR, fdforkpty::getptmfd, getprogname::getprogname};
+use crate::compat::{fdforkpty::getptmfd, getprogname::getprogname};
 use crate::libc::{
-    CLOCK_MONOTONIC, CLOCK_REALTIME, CODESET, EEXIST, F_GETFL, F_SETFL, LC_CTYPE, LC_TIME,
-    O_NONBLOCK, S_IRWXO, S_IRWXU, X_OK, access, clock_gettime, fcntl, getpwuid, getuid, lstat,
-    mkdir, nl_langinfo, setlocale, stat, strchr, strcspn, strerror, strncmp, strrchr, timespec,
+    LC_TIME,
+    access, fcntl, getpwuid, getuid, 
+    nl_langinfo, setlocale, strchr, strcspn, strerror, strncmp, strrchr, timespec,
 };
 use crate::*;
 use crate::options_::{options, options_create, options_default, options_set_number, options_set_string};
@@ -89,20 +89,14 @@ pub unsafe fn checkshell(shell: Option<&CStr>) -> bool {
 
 pub unsafe fn checkshell_(shell: *const u8) -> bool {
     unsafe {
-        if shell.is_null() {
-            return false;
-        }
-        if *shell != b'/' {
-            return false;
-        }
-        if areshell(CStr::from_ptr(shell.cast())) {
-            return false;
-        }
-        if access(shell.cast(), X_OK) != 0 {
-            return false;
-        }
+        let shell = if shell.is_null() {
+            None
+        } else {
+            Some(CStr::from_ptr(shell.cast()))
+        };
+
+        checkshell(shell)
     }
-    true
 }
 
 unsafe fn areshell(shell: &CStr) -> bool {
@@ -207,61 +201,49 @@ unsafe fn expand_paths(s: &str, paths: &mut Vec<CString>, ignore_errors: i32) {
     }
 }
 
-unsafe fn make_label(mut label: *const u8, cause: *mut *mut u8) -> *const u8 {
+unsafe fn make_label(mut label: *const u8) -> Result<CString, String> {
+    use crate::libc::S_IRWXO;
+
     let mut paths: Vec<CString> = Vec::new();
-    let base: *mut u8;
-    let mut sb: stat = unsafe { zeroed() }; // TODO use uninit
 
     unsafe {
-        'fail: {
-            *cause = null_mut();
-            if label.is_null() {
-                label = c!("default");
-            }
-            let uid = getuid();
+        if label.is_null() {
+            label = c!("default");
+        }
+        let uid = getuid();
 
-            expand_paths(TMUX_SOCK, &mut paths, 1);
-            if paths.is_empty() {
-                *cause = format_nul!("no suitable socket path");
-                return null_mut();
-            }
-
-            paths.truncate(1);
-            let mut path = paths.pop().unwrap(); /* can only have one socket! */
-
-            base = format_nul!("{}/tmux-rs-{}", path.to_string_lossy(), uid);
-            if mkdir(base.cast(), S_IRWXU) != 0 && errno!() != EEXIST {
-                *cause = format_nul!(
-                    "couldn't create directory {} ({})",
-                    _s(base),
-                    strerror(errno!())
-                );
-                break 'fail;
-            }
-            if lstat(base.cast(), &raw mut sb) != 0 {
-                *cause = format_nul!(
-                    "couldn't read directory {} ({})",
-                    _s(base),
-                    strerror(errno!()),
-                );
-                break 'fail;
-            }
-            if !S_ISDIR(sb.st_mode) {
-                *cause = format_nul!("{} is not a directory", _s(base));
-                break 'fail;
-            }
-            if sb.st_uid != uid || (sb.st_mode & S_IRWXO) != 0 {
-                *cause = format_nul!("directory {} has unsafe permissions", _s(base));
-                break 'fail;
-            }
-            path = CString::new(format!("{}/{}", _s(base), _s(label))).unwrap();
-            free_(base);
-            return path.into_raw().cast();
+        expand_paths(TMUX_SOCK, &mut paths, 1);
+        if paths.is_empty() {
+            return Err("no suitable socket path".to_string());
         }
 
-        // fail:
-        free_(base);
-        null_mut()
+        paths.truncate(1);
+        let path = paths.pop().unwrap(); /* can only have one socket! */
+
+        let base = format!("{}/tmux-rs-{}", path.to_string_lossy(), uid);
+        if let Err(mkdir_err) = std::fs::create_dir(&base) && mkdir_err.kind() != std::io::ErrorKind::AlreadyExists {
+            return Err(format!("couldn't create directory {base} ({mkdir_err:?})"));
+        }
+
+        use std::os::unix::fs::MetadataExt;
+        match std::fs::symlink_metadata(&base) {
+            Err(err) => {
+                return Err(format!(
+                    "couldn't read directory {base} ({err})",
+                ));
+            }
+            Ok(md) => {
+                if !md.is_dir() {
+                    return Err(format!("{base} is not a directory"));
+                }
+
+                if md.uid() != uid || (md.mode() & S_IRWXO) != 0 {
+                    return Err(format!("directory {base} has unsafe permissions"));
+                }
+            }
+        }
+
+        Ok(CString::new(format!("{}/{}", base, _s(label))).unwrap())
     }
 }
 
@@ -283,6 +265,7 @@ pub unsafe fn shell_argv0(shell: *const u8, is_login: c_int) -> *mut u8 {
 }
 
 pub unsafe fn setblocking(fd: c_int, state: c_int) {
+    use crate::libc::{F_GETFL, F_SETFL, O_NONBLOCK, };
     unsafe {
         let mut mode = fcntl(fd, F_GETFL);
 
@@ -298,6 +281,7 @@ pub unsafe fn setblocking(fd: c_int, state: c_int) {
 }
 
 pub unsafe fn get_timer() -> u64 {
+    use crate::libc::{ clock_gettime, CLOCK_MONOTONIC, CLOCK_REALTIME};
     unsafe {
         let mut ts: timespec = zeroed();
         // We want a timestamp in milliseconds suitable for time measurement,
@@ -358,6 +342,11 @@ pub fn getversion() -> &'static str {
 /// This code is work in progress. There is no guarantee that the code is safe.
 /// This function should only be called by the tmux binary crate to start tmux.
 pub unsafe fn tmux_main(mut argc: i32, mut argv: *mut *mut u8, _env: *mut *mut u8) {
+    use crate::libc::{
+        CODESET, 
+        LC_CTYPE
+    };
+
     std::panic::set_hook(Box::new(|_panic_info| {
         let backtrace = std::backtrace::Backtrace::capture();
         let err_str = format!("{backtrace:#?}");
@@ -366,7 +355,6 @@ pub unsafe fn tmux_main(mut argc: i32, mut argv: *mut *mut u8, _env: *mut *mut u
 
     unsafe {
         // setproctitle_init(argc, argv.cast(), env.cast());
-        let mut cause: *mut u8 = null_mut();
         let mut path: *const u8 = null_mut();
         let mut label: *mut u8 = null_mut();
         let mut feat: i32 = 0;
@@ -557,13 +545,14 @@ pub unsafe fn tmux_main(mut argc: i32, mut argv: *mut *mut u8, _env: *mut *mut u
             path = tmp;
         }
         if path.is_null() {
-            path = make_label(label.cast(), &raw mut cause);
-            if path.is_null() {
-                if !cause.is_null() {
-                    eprintln!("{}", _s(cause));
-                    free(cause as _);
+            match make_label(label.cast()) {
+                Ok(p) => {
+                    path = p.into_raw().cast();
                 }
-                std::process::exit(1);
+                Err(cause) => {
+                    eprintln!("{cause}");
+                    std::process::exit(1);
+                }
             }
             flags |= client_flag::DEFAULTSOCKET;
         }

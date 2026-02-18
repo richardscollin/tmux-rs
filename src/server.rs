@@ -70,62 +70,66 @@ pub unsafe fn server_check_marked() -> bool {
     unsafe { cmd_find_valid_state(&raw mut MARKED_PANE) }
 }
 
-pub unsafe fn server_create_socket(flags: client_flag, cause: *mut *mut u8) -> c_int {
+pub unsafe fn server_create_socket(flags: client_flag) -> Result<i32, String> {
     unsafe {
-        'fail: {
-            let mut sa: sockaddr_un = zeroed();
-            sa.sun_family = AF_UNIX as _;
-            let size = strlcpy(
-                sa.sun_path.as_mut_ptr().cast(),
-                SOCKET_PATH,
-                size_of_val(&sa.sun_path),
-            );
-            if size >= size_of_val(&sa.sun_path) {
-                errno!() = ENAMETOOLONG;
-                break 'fail;
-            }
-            unlink(sa.sun_path.as_ptr().cast());
-
-            let fd = socket(AF_UNIX, SOCK_STREAM, 0);
-            if fd == -1 {
-                break 'fail;
-            }
-
-            let mask = if flags.intersects(client_flag::DEFAULTSOCKET) {
-                umask(S_IXUSR | S_IXGRP | S_IRWXO)
-            } else {
-                umask(S_IXUSR | S_IRWXG | S_IRWXO)
-            };
-
-            let saved_errno: c_int;
-            if bind(fd, &raw const sa as _, size_of::<sockaddr_un>() as _) == -1 {
-                saved_errno = errno!();
-                close(fd);
-                errno!() = saved_errno;
-                break 'fail;
-            }
-            umask(mask);
-
-            if listen(fd, 128) == -1 {
-                saved_errno = errno!();
-                close(fd);
-                errno!() = saved_errno;
-                break 'fail;
-            }
-            setblocking(fd, 0);
-
-            return fd;
-        }
-
-        // fail:
-        if !cause.is_null() {
-            *cause = format_nul!(
+        let mut sa: sockaddr_un = zeroed();
+        sa.sun_family = AF_UNIX as _;
+        let size = strlcpy(
+            sa.sun_path.as_mut_ptr().cast(),
+            SOCKET_PATH,
+            size_of_val(&sa.sun_path),
+        );
+        if size >= size_of_val(&sa.sun_path) {
+            errno!() = ENAMETOOLONG;
+            return Err(format!(
                 "error creating {} ({})",
                 _s(SOCKET_PATH),
                 strerror(errno!())
-            );
+            ));
         }
-        -1
+        unlink(sa.sun_path.as_ptr().cast());
+
+        let fd = socket(AF_UNIX, SOCK_STREAM, 0);
+        if fd == -1 {
+            return Err(format!(
+                "error creating {} ({})",
+                _s(SOCKET_PATH),
+                strerror(errno!())
+            ));
+        }
+
+        let mask = if flags.intersects(client_flag::DEFAULTSOCKET) {
+            umask(S_IXUSR | S_IXGRP | S_IRWXO)
+        } else {
+            umask(S_IXUSR | S_IRWXG | S_IRWXO)
+        };
+
+        let saved_errno: c_int;
+        if bind(fd, &raw const sa as _, size_of::<sockaddr_un>() as _) == -1 {
+            saved_errno = errno!();
+            close(fd);
+            errno!() = saved_errno;
+            return Err(format!(
+                "error creating {} ({})",
+                _s(SOCKET_PATH),
+                strerror(errno!())
+            ));
+        }
+        umask(mask);
+
+        if listen(fd, 128) == -1 {
+            saved_errno = errno!();
+            close(fd);
+            errno!() = saved_errno;
+            return Err(format!(
+                "error creating {} ({})",
+                _s(SOCKET_PATH),
+                strerror(errno!())
+            ));
+        }
+        setblocking(fd, 0);
+
+        Ok(fd)
     }
 }
 
@@ -167,7 +171,6 @@ pub unsafe fn server_start(
         let mut oldset: sigset_t = zeroed();
 
         let mut c: *mut client = null_mut();
-        let mut cause: *mut u8 = null_mut();
         let tv: timeval = timeval {
             tv_sec: 3600,
             tv_usec: 0,
@@ -243,16 +246,23 @@ pub unsafe fn server_start(
         tailq_init(&raw mut MESSAGE_LOG);
         gettimeofday(&raw mut START_TIME, null_mut());
 
-        if cfg!(feature = "systemd") {
-            // TODO we could be truncating important bits
-            SERVER_FD =
-                crate::compat::systemd::systemd_create_socket(flags.bits() as i32, &raw mut cause);
-        } else {
-            SERVER_FD = server_create_socket(flags, &raw mut cause);
-        }
-        if SERVER_FD != -1 {
-            server_update_socket();
-        }
+        // if cfg!(feature = "systemd") {
+        //     // TODO we could be truncating important bits
+        //     SERVER_FD = crate::compat::systemd::systemd_create_socket(flags.bits() as i32, &raw mut cause);
+        // }
+
+        let cause = match server_create_socket(flags) {
+            Ok(fd) => {
+                SERVER_FD = fd;
+                server_update_socket();
+                None
+            }
+            Err(cause) => {
+                SERVER_FD = -1;
+                Some(cause)
+            }
+        };
+
         if !flags.intersects(client_flag::NOFORK) {
             c = server_client_create(fd);
         } else {
@@ -265,12 +275,12 @@ pub unsafe fn server_start(
             close(lockfd);
         }
 
-        if !cause.is_null() {
+        if let Some(cause) = cause {
             if !c.is_null() {
-                (*c).exit_message = cause;
+                (*c).exit_message = ManuallyDrop::new(Some(cause));
                 (*c).flags |= client_flag::EXIT;
             } else {
-                eprintln!("{}", _s(cause));
+                eprintln!("{cause}");
                 libc::exit(1);
             }
         }
@@ -427,7 +437,7 @@ unsafe extern "C-unwind" fn server_accept(fd: i32, events: i16, _data: *mut c_vo
         }
         let c = server_client_create(newfd);
         if server_acl_join(c) == 0 {
-            (*c).exit_message = xmalloc::xstrdup(c!("access not allowed")).cast().as_ptr();
+            (*c).exit_message = ManuallyDrop::new(Some("access not allowed".to_string()));
             (*c).flags |= client_flag::EXIT;
         }
     }
@@ -436,7 +446,7 @@ unsafe extern "C-unwind" fn server_accept(fd: i32, events: i16, _data: *mut c_vo
 pub unsafe fn server_add_accept(timeout: c_int) {
     unsafe {
         let mut tv = timeval {
-            tv_sec: timeout as i64,
+            tv_sec: timeout as _,
             tv_usec: 0,
         };
 
@@ -482,8 +492,7 @@ unsafe fn server_signal(sig: i32) {
             libc::SIGCHLD => server_child_signal(),
             libc::SIGUSR1 => {
                 event_del(&raw mut SERVER_EV_ACCEPT);
-                let fd = server_create_socket(SERVER_CLIENT_FLAGS, null_mut());
-                if fd != -1 {
+                if let Ok(fd) = server_create_socket(SERVER_CLIENT_FLAGS) {
                     close(SERVER_FD);
                     SERVER_FD = fd;
                     server_update_socket();

@@ -28,7 +28,6 @@ macro_rules! cmdq_get_callback {
 }
 pub(crate) use cmdq_get_callback;
 
-use crate::libc::{getpwuid, getuid};
 
 // Command queue flags.
 pub const CMDQ_FIRED: i32 = 0x1;
@@ -577,7 +576,15 @@ pub unsafe fn cmdq_find_flag(
     }
 }
 
+#[cfg(target_os = "windows")]
+pub unsafe fn cmdq_add_message(_item: *mut cmdq_item) {
+    todo!()
+}
+
+#[cfg(not(target_os = "windows"))]
 pub unsafe fn cmdq_add_message(item: *mut cmdq_item) {
+    use crate::libc::{getpwuid, getuid};
+
     unsafe {
         let c = (*item).client;
         let state = (*item).state;

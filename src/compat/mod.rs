@@ -1,4 +1,5 @@
 pub mod b64;
+pub mod closefrom;
 pub mod fdforkpty;
 pub mod getdtablecount;
 pub mod getopt;
@@ -8,10 +9,8 @@ pub mod imsg_buffer;
 pub mod queue;
 pub mod reallocarray;
 pub mod recallocarray;
-pub mod systemd;
 pub mod tree;
 
-mod closefrom;
 mod freezero;
 mod getpeereid;
 mod setproctitle;
@@ -21,7 +20,6 @@ mod strtonum;
 mod unvis;
 mod vis;
 
-pub use closefrom::closefrom;
 pub use freezero::freezero;
 pub use getpeereid::getpeereid;
 pub use setproctitle::setproctitle_;
@@ -41,15 +39,5 @@ pub use vis::*;
 // }
 
 pub const HOST_NAME_MAX: usize = 255;
-
 pub const WAIT_ANY: libc::pid_t = -1;
-
 pub const ACCESSPERMS: libc::mode_t = libc::S_IRWXU | libc::S_IRWXG | libc::S_IRWXO;
-
-// #define S_ISDIR(mode)  (((mode) & S_IFMT) == S_IFDIR)
-// TODO move this to a better spot
-#[expect(non_snake_case)]
-#[inline]
-pub fn S_ISDIR(mode: libc::mode_t) -> bool {
-    mode & libc::S_IFMT == libc::S_IFDIR
-}

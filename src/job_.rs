@@ -13,11 +13,11 @@
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 use std::path::Path;
 
-use crate::compat::{closefrom, fdforkpty::fdforkpty};
+use crate::compat::fdforkpty::fdforkpty;
 use crate::libc::{
-    AF_UNIX, O_RDWR, PF_UNSPEC, SHUT_WR, SIG_BLOCK, SIG_SETMASK, SIGCONT, SIGTERM, SIGTTIN,
+    AF_UNIX, PF_UNSPEC, SHUT_WR, SIG_BLOCK, SIG_SETMASK, SIGCONT, SIGTERM, SIGTTIN,
     SIGTTOU, SOCK_STREAM, STDERR_FILENO, STDIN_FILENO, STDOUT_FILENO, TIOCSWINSZ, WIFSTOPPED,
-    WSTOPSIG, close, dup2, execl, execvp, fork, ioctl, kill, killpg, memset, open, shutdown,
+    WSTOPSIG, close, dup2, execl, execvp, fork, ioctl, kill, killpg, memset, shutdown,
     sigfillset, sigprocmask, sigset_t, socketpair, winsize,
 };
 use crate::*;
@@ -82,12 +82,13 @@ pub unsafe fn job_run(
     sx: c_int,
     sy: c_int,
 ) -> *mut job {
+    use crate::compat::closefrom::closefrom;
+
     let __func__ = "job_run";
     unsafe {
         let job: *mut job;
         let env: *mut environ;
         let pid: pid_t;
-        let nullfd: i32;
         let mut out: [i32; 2] = [0; 2];
         let mut master: i32 = 0;
         let mut shell: *const u8;
@@ -196,10 +197,8 @@ pub unsafe fn job_run(
                         }
                         close(out[0]);
 
-                        nullfd = open(_PATH_DEVNULL, O_RDWR, 0);
-                        if nullfd == -1 {
-                            fatal("open failed");
-                        }
+                        use std::os::unix::io::IntoRawFd;
+                        let nullfd= std::fs::OpenOptions::new().read(true).write(true).open(PATH_DEVNULL).expect("open failed").into_raw_fd();
                         if dup2(nullfd, STDERR_FILENO) == -1 {
                             fatal("dup2 failed");
                         }

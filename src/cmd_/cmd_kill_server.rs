@@ -11,7 +11,6 @@
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-use crate::libc::{SIGTERM, kill, pid_t};
 use crate::*;
 use crate::{args_parse, cmd, cmd_entry, cmd_flag, cmd_get_entry, cmd_retval, cmdq_item};
 
@@ -39,7 +38,15 @@ pub static CMD_START_SERVER_ENTRY: cmd_entry = cmd_entry {
     target: cmd_entry_flag::zeroed(),
 };
 
+#[cfg(target_os = "windows")]
+unsafe fn cmd_kill_server_exec(_self_: *mut cmd, _: *mut cmdq_item) -> cmd_retval {
+    todo!()
+}
+
+#[cfg(not(target_os = "windows"))]
 unsafe fn cmd_kill_server_exec(self_: *mut cmd, _: *mut cmdq_item) -> cmd_retval {
+    use crate::libc::{SIGTERM, kill, pid_t};
+
     unsafe {
         if std::ptr::eq(cmd_get_entry(self_), &CMD_KILL_SERVER_ENTRY) {
             kill(std::process::id() as pid_t, SIGTERM);

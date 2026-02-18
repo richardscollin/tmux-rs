@@ -101,7 +101,10 @@ pub unsafe fn osdep_event_init() -> *mut event_base {
     }
 }
 
-// osdep darwin
+#[cfg(target_os = "windows")]
+pub unsafe fn osdep_get_name(_fd: i32, _tty: *const u8) -> *mut u8 {
+    null_mut()
+}
 
 #[cfg(target_os = "macos")]
 pub unsafe fn osdep_get_name(fd: i32, _tty: *const u8) -> *mut u8 {

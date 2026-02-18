@@ -180,7 +180,7 @@ unsafe fn cmd_display_menu_get_position(
         format_add!(ft, "popup_height", "{h}");
 
         // Position so popup is in the centre.
-        let mut n: c_long = ((*tty).sx - 1) as c_long / 2 - w as c_long / 2;
+        let mut n: i64 = ((*tty).sx - 1) as i64 / 2 - w as i64 / 2;
         if n < 0 {
             format_add!(ft, "popup_centre_x", "0");
         } else {
@@ -195,25 +195,25 @@ unsafe fn cmd_display_menu_get_position(
 
         // Position of popup relative to mouse.
         if (*event).m.valid {
-            n = (*event).m.x as c_long - w as c_long / 2;
+            n = (*event).m.x as i64 - w as i64 / 2;
             if n < 0 {
                 format_add!(ft, "popup_mouse_centre_x", "0");
             } else {
                 format_add!(ft, "popup_mouse_centre_x", "{n}");
             }
             n = ((*event).m.y - h / 2) as i64;
-            if n + h as c_long >= (*tty).sy as i64 {
-                format_add!(ft, "popup_mouse_centre_y", "{}", (*tty).sy - h,);
+            if n + h as i64 >= (*tty).sy as i64 {
+                format_add!(ft, "popup_mouse_centre_y", "{}", (*tty).sy - h);
             } else {
                 format_add!(ft, "popup_mouse_centre_y", "{n}");
             }
-            n = (*event).m.y as c_long + h as c_long;
-            if n >= (*tty).sy as c_long {
-                format_add!(ft, "popup_mouse_top", "{}", (*tty).sy - 1,);
+            n = (*event).m.y as i64 + h as i64;
+            if n >= (*tty).sy as i64 {
+                format_add!(ft, "popup_mouse_top", "{}", (*tty).sy - 1);
             } else {
                 format_add!(ft, "popup_mouse_top", "{n}");
             }
-            n = ((*event).m.y - h) as c_long;
+            n = ((*event).m.y - h) as i64;
             if n < 0 {
                 format_add!(ft, "popup_mouse_bottom", "0");
             } else {
@@ -242,7 +242,7 @@ unsafe fn cmd_display_menu_get_position(
             top + (*wp).yoff as i32 + (*wp).sy as i32 - oy as i32,
         );
         format_add!(ft, "popup_pane_left", "{}", (*wp).xoff - ox,);
-        n = (*wp).xoff as c_long + (*wp).sx as i64 - ox as i64 - w as i64;
+        n = (*wp).xoff as i64 + (*wp).sx as i64 - ox as i64 - w as i64;
         if n < 0 {
             format_add!(ft, "popup_pane_right", "0");
         } else {

@@ -12,7 +12,7 @@
 // ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 // OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-#[cfg(target_os = "macos")]
+#[cfg(not(target_os = "linux"))]
 pub unsafe fn reallocarray(
     optr: *mut core::ffi::c_void,
     nmemb: usize,

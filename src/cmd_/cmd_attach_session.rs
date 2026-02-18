@@ -44,8 +44,6 @@ pub unsafe fn cmd_attach_session(
         let c: *mut client = cmdq_get_client(item);
 
         let cwd: *mut u8;
-        let mut cause: *mut u8 = null_mut();
-
         let msgtype: msgtype;
 
         if rb_empty(&raw mut SESSIONS) {
@@ -132,9 +130,8 @@ pub unsafe fn cmd_attach_session(
                 server_client_set_key_table(c, null_mut());
             }
         } else {
-            if server_client_open(c, &raw mut cause) != 0 {
-                cmdq_error!(item, "open terminal failed: {}", _s(cause));
-                free_(cause);
+            if let Err(cause) = server_client_open(c) {
+                cmdq_error!(item, "open terminal failed: {}", cause);
                 return cmd_retval::CMD_RETURN_ERROR;
             }
 

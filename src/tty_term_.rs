@@ -583,8 +583,7 @@ pub unsafe fn tty_term_create(
     caps: *mut *mut u8,
     ncaps: u32,
     feat: *mut i32,
-    cause: *mut *mut u8,
-) -> *mut tty_term {
+) -> Result<*mut tty_term, String> {
     unsafe {
         log_debug!("adding term {}", _s(name));
         let term = xcalloc1::<tty_term>() as *mut tty_term;
@@ -593,125 +592,120 @@ pub unsafe fn tty_term_create(
         (*term).codes = xcalloc_(tty_term_ncodes() as usize).as_ptr();
         (*term).expand_context = ExpandContext::new();
         list_insert_head(&raw mut TTY_TERMS, term);
-        'error: {
-            // Fill in codes.
-            for i in 0..ncaps as usize {
-                let namelen = strcspn(*caps.add(i), c!("="));
-                if namelen == 0 {
+
+        // Fill in codes.
+        for i in 0..ncaps as usize {
+            let namelen = strcspn(*caps.add(i), c!("="));
+            if namelen == 0 {
+                continue;
+            }
+            let value = (*caps.add(i)).add(namelen + 1);
+
+            for (j, ent) in TTY_TERM_CODES.iter().enumerate() {
+                if strncmp(ent.name.as_ptr(), *caps.add(i), namelen) != 0 {
                     continue;
                 }
-                let value = (*caps.add(i)).add(namelen + 1);
+                if *ent.name.as_ptr().add(namelen) != b'\0' {
+                    continue;
+                }
 
-                for (j, ent) in TTY_TERM_CODES.iter().enumerate() {
-                    if strncmp(ent.name.as_ptr(), *caps.add(i), namelen) != 0 {
-                        continue;
+                let code = (*term).codes.add(j);
+                (*code).type_ = tty_code_type::None;
+                match ent.type_ {
+                    tty_code_type::None => (),
+                    tty_code_type::String => {
+                        (*code).type_ = tty_code_type::String;
+                        (*code).value.string = tty_term_strip(value);
                     }
-                    if *ent.name.as_ptr().add(namelen) != b'\0' {
-                        continue;
-                    }
-
-                    let code = (*term).codes.add(j);
-                    (*code).type_ = tty_code_type::None;
-                    match ent.type_ {
-                        tty_code_type::None => (),
-                        tty_code_type::String => {
-                            (*code).type_ = tty_code_type::String;
-                            (*code).value.string = tty_term_strip(value);
+                    tty_code_type::Number => match strtonum(value, 0, i32::MAX) {
+                        Ok(n) => {
+                            (*code).type_ = tty_code_type::Number;
+                            (*code).value.number = n;
                         }
-                        tty_code_type::Number => match strtonum(value, 0, i32::MAX) {
-                            Ok(n) => {
-                                (*code).type_ = tty_code_type::Number;
-                                (*code).value.number = n;
-                            }
-                            Err(errstr) => {
-                                log_debug!(
-                                    "{}: {}",
-                                    _s(ent.name.as_ptr()),
-                                    errstr.to_string_lossy()
-                                );
-                            }
-                        },
-                        tty_code_type::Flag => {
-                            (*code).type_ = tty_code_type::Flag;
-                            (*code).value.flag = (*value == b'1') as i32;
+                        Err(errstr) => {
+                            log_debug!(
+                                "{}: {}",
+                                _s(ent.name.as_ptr()),
+                                errstr.to_string_lossy()
+                            );
                         }
+                    },
+                    tty_code_type::Flag => {
+                        (*code).type_ = tty_code_type::Flag;
+                        (*code).value.flag = (*value == b'1') as i32;
                     }
                 }
             }
-
-            // Apply terminal features.
-            let o = options_get_only(GLOBAL_OPTIONS, "terminal-features");
-            let mut a = options_array_first(o);
-            while !a.is_null() {
-                let ov = options_array_item_value(a);
-                let s = (*ov).string;
-
-                let mut offset = 0;
-                let first = tty_term_override_next(cstr_to_str(s), &raw mut offset);
-                if !first.is_null() && fnmatch(first, (*term).name, 0) == 0 {
-                    tty_add_features(feat, cstr_to_str(s.add(offset)), c!(":"));
-                }
-                a = options_array_next(a);
-            }
-
-            // Apply overrides so any capabilities used for features are changed.
-            tty_term_apply_overrides(term);
-
-            // These are always required.
-            if !tty_term_has(term, tty_code_code::TTYC_CLEAR) {
-                *cause = format_nul!("terminal does not support clear");
-                break 'error;
-            }
-            if !tty_term_has(term, tty_code_code::TTYC_CUP) {
-                *cause = format_nul!("terminal does not support cup");
-                break 'error;
-            }
-
-            // If TERM has XT or clear starts with CSI then it is safe to assume
-            // the terminal is derived from the VT100. This controls whether device
-            // attributes requests are sent to get more information.
-            //
-            // This is a bit of a hack but there aren't that many alternatives.
-            // Worst case tmux will just fall back to using whatever terminfo(5)
-            // says without trying to correct anything that is missing.
-            //
-            // Also add few features that VT100-like terminals should either
-            // support or safely ignore.
-            let s = tty_term_string(term, tty_code_code::TTYC_CLEAR);
-            if tty_term_flag(term, tty_code_code::TTYC_XT) != 0 || &s[0..2] == b"\x1b[" {
-                (*term).flags |= term_flags::TERM_VT100LIKE;
-                tty_add_features(feat, "bpaste,focus,title", c!(","));
-            }
-
-            // Add RGB feature if terminal has RGB colours.
-            if (tty_term_flag(term, tty_code_code::TTYC_TC) != 0
-                || tty_term_has(term, tty_code_code::TTYC_RGB))
-                && (!tty_term_has(term, tty_code_code::TTYC_SETRGBF)
-                    || !tty_term_has(term, tty_code_code::TTYC_SETRGBB))
-            {
-                tty_add_features(feat, "RGB", c!(","));
-            }
-
-            // Apply the features and overrides again.
-            if tty_apply_features(term, *feat) {
-                tty_term_apply_overrides(term);
-            }
-
-            // Log the capabilities.
-            for i in 0..tty_term_ncodes() {
-                log_debug!(
-                    "{}{}",
-                    _s(name),
-                    _s(tty_term_describe(term, tty_code_code::try_from(i).unwrap()))
-                );
-            }
-
-            return term;
         }
 
-        // error:
-        tty_term_free(term);
-        null_mut()
+        // Apply terminal features.
+        let o = options_get_only(GLOBAL_OPTIONS, "terminal-features");
+        let mut a = options_array_first(o);
+        while !a.is_null() {
+            let ov = options_array_item_value(a);
+            let s = (*ov).string;
+
+            let mut offset = 0;
+            let first = tty_term_override_next(cstr_to_str(s), &raw mut offset);
+            if !first.is_null() && fnmatch(first, (*term).name, 0) == 0 {
+                tty_add_features(feat, cstr_to_str(s.add(offset)), c!(":"));
+            }
+            a = options_array_next(a);
+        }
+
+        // Apply overrides so any capabilities used for features are changed.
+        tty_term_apply_overrides(term);
+
+        // These are always required.
+        if !tty_term_has(term, tty_code_code::TTYC_CLEAR) {
+            tty_term_free(term);
+            return Err("terminal does not support clear".to_string());
+        }
+        if !tty_term_has(term, tty_code_code::TTYC_CUP) {
+            tty_term_free(term);
+            return Err("terminal does not support cup".to_string());
+        }
+
+        // If TERM has XT or clear starts with CSI then it is safe to assume
+        // the terminal is derived from the VT100. This controls whether device
+        // attributes requests are sent to get more information.
+        //
+        // This is a bit of a hack but there aren't that many alternatives.
+        // Worst case tmux will just fall back to using whatever terminfo(5)
+        // says without trying to correct anything that is missing.
+        //
+        // Also add few features that VT100-like terminals should either
+        // support or safely ignore.
+        let s = tty_term_string(term, tty_code_code::TTYC_CLEAR);
+        if tty_term_flag(term, tty_code_code::TTYC_XT) != 0 || &s[0..2] == b"\x1b[" {
+            (*term).flags |= term_flags::TERM_VT100LIKE;
+            tty_add_features(feat, "bpaste,focus,title", c!(","));
+        }
+
+        // Add RGB feature if terminal has RGB colours.
+        if (tty_term_flag(term, tty_code_code::TTYC_TC) != 0
+            || tty_term_has(term, tty_code_code::TTYC_RGB))
+            && (!tty_term_has(term, tty_code_code::TTYC_SETRGBF)
+                || !tty_term_has(term, tty_code_code::TTYC_SETRGBB))
+        {
+            tty_add_features(feat, "RGB", c!(","));
+        }
+
+        // Apply the features and overrides again.
+        if tty_apply_features(term, *feat) {
+            tty_term_apply_overrides(term);
+        }
+
+        // Log the capabilities.
+        for i in 0..tty_term_ncodes() {
+            log_debug!(
+                "{}{}",
+                _s(name),
+                _s(tty_term_describe(term, tty_code_code::try_from(i).unwrap()))
+            );
+        }
+
+        Ok(term)
     }
 }
 

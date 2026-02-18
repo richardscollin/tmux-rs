@@ -250,22 +250,27 @@ pub unsafe extern "C-unwind" fn tty_write_callback(_fd: i32, _events: i16, data:
     }
 }
 
-pub unsafe fn tty_open(tty: *mut tty, cause: *mut *mut u8) -> i32 {
+pub unsafe fn tty_open(tty: *mut tty) -> Result<(), String> {
     unsafe {
         let c = (*tty).client;
 
-        (*tty).term = tty_term_create(
+        match tty_term_create(
             tty,
             (*c).term_name,
             (*c).term_caps,
             (*c).term_ncaps,
             &raw mut (*c).term_features,
-            cause,
-        );
-        if (*tty).term.is_null() {
-            tty_close(tty);
-            return -1;
+        ) {
+            Ok(term) => {
+                (*tty).term = term;
+            }
+            Err(cause) => {
+                (*tty).term = null_mut();
+                tty_close(tty);
+                return Err(cause);
+            }
         }
+
         (*tty).flags |= tty_flags::TTY_OPENED;
 
         (*tty).flags &= !(tty_flags::TTY_NOCURSOR
@@ -306,7 +311,7 @@ pub unsafe fn tty_open(tty: *mut tty, cause: *mut *mut u8) -> i32 {
         tty_start_tty(tty);
         tty_keys_build(tty);
 
-        0
+        Ok(())
     }
 }
 

@@ -184,3 +184,9 @@ pub unsafe fn osdep_event_init() -> *mut event_base {
         base
     }
 }
+
+
+#[cfg(target_os = "windows")]
+pub unsafe fn osdep_event_init() -> *mut event_base {
+    unsafe { event_init() }
+}

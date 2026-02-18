@@ -311,7 +311,7 @@ pub unsafe fn session_update_activity(s: *mut session, from: *mut timeval) {
 
         if (*s).attached != 0 {
             let tv = timeval {
-                tv_sec: options_get_number_((*s).options, "lock-after-time") as time_t,
+                tv_sec: options_get_number_((*s).options, "lock-after-time") as _,
                 tv_usec: 0,
             };
 

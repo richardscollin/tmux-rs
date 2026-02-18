@@ -225,7 +225,6 @@ unsafe fn make_label(mut label: *const u8) -> Result<CString, String> {
             return Err(format!("couldn't create directory {base} ({mkdir_err:?})"));
         }
 
-        use std::os::unix::fs::MetadataExt;
         match std::fs::symlink_metadata(&base) {
             Err(err) => {
                 return Err(format!(
@@ -237,8 +236,12 @@ unsafe fn make_label(mut label: *const u8) -> Result<CString, String> {
                     return Err(format!("{base} is not a directory"));
                 }
 
-                if md.uid() != uid || (md.mode() & S_IRWXO) != 0 {
-                    return Err(format!("directory {base} has unsafe permissions"));
+                #[cfg(not(target_os = "windows"))]
+                {
+                    use std::os::unix::fs::MetadataExt;
+                    if md.uid() != uid || (md.mode() & S_IRWXO) != 0 {
+                        return Err(format!("directory {base} has unsafe permissions"));
+                    }
                 }
             }
         }

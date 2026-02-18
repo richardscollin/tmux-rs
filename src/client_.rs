@@ -11,22 +11,26 @@
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+#[cfg_attr(target_os = "windows", expect(unused_imports))]
 use std::io::Write;
 
+#[cfg_attr(target_os = "windows", expect(unused_imports))]
 use crate::compat::{
     WAIT_ANY,
     imsg::{IMSG_HEADER_SIZE, MAX_IMSGSIZE, imsg},
 };
+#[cfg_attr(target_os = "windows", expect(unused_imports))]
 use crate::libc::{
-    EAGAIN, ECHILD, ECONNREFUSED, EINTR, ENAMETOOLONG, ENOENT, 
+    EAGAIN, ECHILD, ECONNREFUSED, EINTR, ENAMETOOLONG, ENOENT,
     O_CREAT, O_WRONLY, SIG_DFL, SIG_IGN,
     SIGTERM, STDERR_FILENO, STDIN_FILENO,
-    STDOUT_FILENO, 
+    STDOUT_FILENO,
     close, connect, dup, execl, memcpy,
     memset, open, sockaddr, socket, strerror, strlen,
     system, unlink,
 };
 use crate::*;
+#[cfg_attr(target_os = "windows", expect(unused_imports))]
 use crate::options_::options_free;
 
 #[cfg(not(target_os = "windows"))]

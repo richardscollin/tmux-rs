@@ -191,6 +191,11 @@ pub unsafe fn osdep_event_init() -> *mut event_base {
 
 
 #[cfg(target_os = "windows")]
+pub unsafe fn osdep_get_cwd(_fd: i32) -> *const u8 {
+    null_mut()
+}
+
+#[cfg(target_os = "windows")]
 pub unsafe fn osdep_event_init() -> *mut event_base {
     unsafe { event_init() }
 }

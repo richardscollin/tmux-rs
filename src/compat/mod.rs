@@ -39,5 +39,6 @@ pub use vis::*;
 // }
 
 pub const HOST_NAME_MAX: usize = 255;
-pub const WAIT_ANY: libc::pid_t = -1;
-pub const ACCESSPERMS: libc::mode_t = libc::S_IRWXU | libc::S_IRWXG | libc::S_IRWXO;
+pub const WAIT_ANY: crate::libc::pid_t = -1;
+pub const ACCESSPERMS: crate::libc::mode_t =
+    crate::libc::S_IRWXU | crate::libc::S_IRWXG | crate::libc::S_IRWXO;

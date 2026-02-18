@@ -1,7 +1,19 @@
 #![allow(clippy::disallowed_types)]
 
 // reexport everything in libc from this module, then override things we want to change the interface for
+#[cfg(not(target_os = "windows"))]
 pub use ::libc::*;
+
+#[cfg(target_os = "windows")]
+mod windows;
+#[cfg(target_os = "windows")]
+pub use windows::*;
+
+// On Windows, pub use windows::* re-exports items for consumers but we also need them in local scope
+#[cfg(target_os = "windows")]
+use core::ffi::{c_int, c_void};
+#[cfg(target_os = "windows")]
+pub use windows::mode_t;
 
 pub type wchar_t = core::ffi::c_int;
 
@@ -19,7 +31,7 @@ pub unsafe fn free_<T>(p: *mut T) {
     clippy::unnecessary_cast,
     reason = "mode_t is u16 on macos so cast is required for some platforms only (should be allow, not expect)"
 )]
-pub unsafe fn open(path: *const u8, oflag: i32, mode: libc::mode_t) -> i32 {
+pub unsafe fn open(path: *const u8, oflag: i32, mode: mode_t) -> i32 {
     unsafe { ::libc::open(path.cast(), oflag, mode as u32) }
 }
 
@@ -27,10 +39,12 @@ pub unsafe fn fopen(filename: *const u8, mode: *const u8) -> *mut FILE {
     unsafe { ::libc::fopen(filename.cast(), mode.cast()) }
 }
 
+#[cfg(not(target_os = "windows"))]
 pub unsafe fn fnmatch(pattern: *const u8, name: *const u8, flags: c_int) -> c_int {
     unsafe { ::libc::fnmatch(pattern.cast(), name.cast(), flags) }
 }
 
+#[cfg(not(target_os = "windows"))]
 pub unsafe fn gethostname(name: *mut u8, len: size_t) -> c_int {
     unsafe { ::libc::gethostname(name.cast(), len) }
 }
@@ -47,6 +61,7 @@ pub unsafe fn setlocale(category: i32, locale: *const u8) -> *mut u8 {
     unsafe { ::libc::setlocale(category, locale.cast()).cast() }
 }
 
+#[cfg(not(target_os = "windows"))]
 pub unsafe fn strftime(s: *mut u8, max: usize, format: *const u8, tm: *const tm) -> usize {
     unsafe { ::libc::strftime(s.cast(), max, format.cast(), tm.cast()) }
 }
@@ -206,7 +221,7 @@ pub unsafe fn strtol(s: *const u8, endp: *mut *mut u8, base: i32) -> i64 {
 }
 
 pub unsafe fn strtoul(s: *const u8, endp: *mut *mut u8, base: i32) -> u64 {
-    unsafe { ::libc::strtoul(s.cast(), endp.cast(), base) }
+    unsafe { ::libc::strtoul(s.cast(), endp.cast(), base).into() }
 }
 
 pub unsafe fn strtod(s: *const u8, endp: *mut *mut u8) -> f64 {
@@ -220,7 +235,7 @@ pub fn gettimeofday_() -> timeval {
         .unwrap();
 
     timeval {
-        tv_sec: duration.as_secs() as time_t,
+        tv_sec: duration.as_secs() as _,
         tv_usec: duration.subsec_micros() as _,
     }
 }
@@ -257,6 +272,17 @@ macro_rules! errno {
         *::libc::__error()
     };
 }
+#[cfg(target_os = "windows")]
+macro_rules! errno {
+    () => {
+        *{
+            unsafe extern "C" {
+                unsafe fn _errno() -> *mut i32;
+            }
+            _errno()
+        }
+    };
+}
 pub(crate) use errno;
 
 #[cfg(target_os = "linux")]
@@ -290,10 +316,12 @@ pub unsafe fn memset0<T>(dest: *mut T) -> *mut T {
     unsafe { libc::memset(dest.cast(), 0, size_of::<T>()).cast() }
 }
 
+#[cfg(not(target_os = "windows"))]
 pub unsafe fn regcomp(preg: *mut regex_t, pattern: *const u8, cflags: i32) -> i32 {
     unsafe { ::libc::regcomp(preg, pattern.cast(), cflags) }
 }
 
+#[cfg(not(target_os = "windows"))]
 pub unsafe fn glob(
     pattern: *const u8,
     flags: i32,
@@ -303,6 +331,7 @@ pub unsafe fn glob(
     unsafe { ::libc::glob(pattern.cast(), flags, errfunc, pglob) }
 }
 
+#[cfg(not(target_os = "windows"))]
 pub unsafe fn regexec(
     preg: *const regex_t,
     input: *const u8,
@@ -400,6 +429,7 @@ pub unsafe fn streq_(left: *const u8, right: &str) -> bool {
     unsafe { matches!(strcmp_(left, right), std::cmp::Ordering::Equal) }
 }
 
+#[cfg(not(target_os = "windows"))]
 pub unsafe fn strncasecmp(s1: *const u8, s2: *const u8, n: usize) -> i32 {
     unsafe { ::libc::strncasecmp(s1.cast(), s2.cast(), n) }
 }
@@ -435,6 +465,7 @@ pub unsafe fn strerror<'a>(n: c_int) -> &'a str {
     unsafe { crate::cstr_to_str(::libc::strerror(n).cast()) }
 }
 
+#[cfg(not(target_os = "windows"))]
 pub unsafe fn ttyname(fd: i32) -> *mut u8 {
     unsafe { ::libc::ttyname(fd).cast() }
 }

@@ -4,7 +4,7 @@ use ::core::{
     ffi::{c_int, c_void},
     ptr::{NonNull, null_mut},
 };
-use ::libc::{
+use crate::libc::{
     CMSG_DATA, CMSG_FIRSTHDR, CMSG_LEN, CMSG_SPACE, EAGAIN, EBADMSG, EINTR, EINVAL, ENOBUFS,
     ERANGE, SCM_RIGHTS, SOL_SOCKET, abort, c_uchar, calloc, close, cmsghdr, free, iovec, memcpy,
     memset, msghdr, sendmsg, writev,
@@ -15,7 +15,7 @@ use super::queue::{
     tailq_first, tailq_foreach, tailq_init, tailq_insert_tail, tailq_next, tailq_remove,
 };
 use super::{freezero, recallocarray::recallocarray};
-use crate::errno;
+use crate::libc::errno;
 
 const IOV_MAX: usize = 1024; // TODO find where IOV_MAX is defined
 

@@ -27,3 +27,6 @@ pub fn closefrom(start_fd: i32) {
         }
     }
 }
+
+#[cfg(target_os = "windows")]
+pub fn closefrom(_start_fd: i32) {}

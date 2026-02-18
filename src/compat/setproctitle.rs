@@ -40,3 +40,6 @@ pub unsafe fn setproctitle_(_fmt: *const u8, name: *const u8, socket_path: *cons
 
 #[cfg(target_os = "macos")]
 pub unsafe fn setproctitle_(_: *const u8, _: *const u8, _: *const u8) {}
+
+#[cfg(target_os = "windows")]
+pub unsafe fn setproctitle_(_: *const u8, _: *const u8, _: *const u8) {}

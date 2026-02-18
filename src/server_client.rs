@@ -737,7 +737,7 @@ pub unsafe fn server_client_check_mouse(c: *mut client, event: *mut key_event) -
                         (*c).click_button = (*m).b;
 
                         log_debug!("click timer started");
-                        tv.tv_sec = KEYC_CLICK_TIMEOUT as i64 / 1000;
+                        tv.tv_sec = (KEYC_CLICK_TIMEOUT / 1000) as _;
                         tv.tv_usec = ((KEYC_CLICK_TIMEOUT % 1000) * 1000) as libc::suseconds_t;
                         evtimer_del(&raw mut (*c).click_timer);
                         evtimer_add(&raw mut (*c).click_timer, &raw const tv);
@@ -1998,7 +1998,7 @@ pub unsafe fn server_client_key_callback(item: *mut cmdq_item, data: *mut c_void
                             if xtimeout != 0 && (*bd).flags & KEY_BINDING_REPEAT != 0 {
                                 (*c).flags |= client_flag::REPEAT;
 
-                                tv.tv_sec = xtimeout as libc::time_t / 1000;
+                                tv.tv_sec = (xtimeout / 1000) as _;
                                 tv.tv_usec = (xtimeout as libc::suseconds_t % 1000) * 1000;
                                 evtimer_del(&raw mut (*c).repeat_timer);
                                 evtimer_add(&raw mut (*c).repeat_timer, &tv);

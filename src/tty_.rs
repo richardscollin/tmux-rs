@@ -44,18 +44,31 @@ unsafe fn TTY_BLOCK_STOP(tty: *const tty) -> u32 {
 }
 
 pub unsafe fn tty_create_log() {
-    unsafe {
-        use std::os::fd::IntoRawFd;
-        use std::os::unix::fs::OpenOptionsExt;
+    let mut open_options = std::fs::File::options();
+    let open_options = open_options
+        .write(true)
+        .create(true)
+        .truncate(true);
 
-        if let Ok(file) = std::fs::File::options()
-            .write(true)
-            .create(true)
-            .truncate(true)
-            .mode(0o644)
-            .open(format!("tmux-out-{}.log", std::process::id()))
+    #[cfg(not(target_os = "windows"))]
+    let open_options = {
+        use std::os::unix::fs::OpenOptionsExt;
+        open_options.mode(0o644)
+    };
+
+    unsafe {
+        if let Ok(file) = open_options.open(format!("tmux-out-{}.log", std::process::id()))
         {
-            TTY_LOG_FD = file.into_raw_fd();
+            #[cfg(not(target_os = "windows"))]
+            {
+                use std::os::fd::IntoRawFd;
+                TTY_LOG_FD = file.into_raw_fd();
+            }
+            #[cfg(target_os = "windows")]
+            {
+                use std::os::windows::io::IntoRawHandle;
+                TTY_LOG_FD = file.into_raw_handle() as i32;
+            }
         } else {
             TTY_LOG_FD = -1;
         }

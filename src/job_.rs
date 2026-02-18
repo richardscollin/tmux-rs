@@ -67,6 +67,26 @@ impl ListEntry<job, ()> for job {
 type joblist = list_head<job>;
 static mut ALL_JOBS: joblist = list_head_initializer();
 
+#[cfg(target_os = "windows")]
+pub unsafe fn job_run(
+    _cmd: *const u8,
+    _argc: c_int,
+    _argv: *mut *mut u8,
+    _e: *mut environ,
+    _s: *mut session,
+    _cwd: *const u8,
+    _updatecb: job_update_cb,
+    _completecb: job_complete_cb,
+    _freecb: job_free_cb,
+    _data: *mut c_void,
+    _flags: job_flag,
+    _sx: c_int,
+    _sy: c_int,
+) -> *mut job {
+    todo!()
+}
+
+#[cfg(not(target_os = "windows"))]
 pub unsafe fn job_run(
     cmd: *const u8,
     argc: c_int,

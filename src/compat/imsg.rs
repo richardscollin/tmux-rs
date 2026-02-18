@@ -3,10 +3,10 @@ use core::ffi::{c_int, c_uchar, c_void};
 use std::ptr::NonNull;
 use std::{mem::MaybeUninit, ptr::null_mut};
 
-use libc::{
+use crate::libc::{
     CMSG_DATA, CMSG_FIRSTHDR, CMSG_NXTHDR, CMSG_SPACE, EAGAIN, EBADMSG, EINTR, EINVAL, ERANGE,
     SCM_RIGHTS, SOL_SOCKET, calloc, close, cmsghdr, free, getdtablesize, iovec, memcpy, memmove,
-    memset, msghdr, pid_t,
+    memset, msghdr, pid_t, recvmsg,
 };
 
 use super::getdtablecount::getdtablecount;
@@ -18,7 +18,7 @@ use super::imsg_buffer::{
 use super::queue::{
     Entry, tailq_entry, tailq_first, tailq_head, tailq_init, tailq_insert_tail, tailq_remove,
 };
-use crate::errno;
+use crate::libc::errno;
 // begin imsg.h
 
 pub const IBUF_READ_SIZE: usize = 65535;
@@ -115,6 +115,7 @@ pub unsafe fn imsg_init(imsgbuf: *mut imsgbuf, fd: c_int) {
     }
 }
 
+#[allow(unused_unsafe)]
 pub unsafe fn imsg_read(imsgbuf: *mut imsgbuf) -> isize {
     const BUFSIZE: usize = unsafe { CMSG_SPACE(size_of::<c_int>() as u32) } as usize;
     union cmsgbuf {
@@ -148,7 +149,7 @@ pub unsafe fn imsg_read(imsgbuf: *mut imsgbuf) -> isize {
             'again: loop {
                 if getdtablecount()
                     + IMSG_FD_OVERHEAD
-                    + ((CMSG_SPACE(size_of::<libc::c_int>() as u32) - CMSG_SPACE(0)) as i32
+                    + ((CMSG_SPACE(size_of::<c_int>() as u32) - CMSG_SPACE(0)) as i32
                         / size_of::<c_int>() as i32)
                     >= getdtablesize()
                 {
@@ -157,7 +158,7 @@ pub unsafe fn imsg_read(imsgbuf: *mut imsgbuf) -> isize {
                     return -1;
                 }
 
-                n = libc::recvmsg((*imsgbuf).fd, &raw mut msg, 0);
+                n = recvmsg((*imsgbuf).fd, &raw mut msg, 0);
                 if n == -1 {
                     if errno!() == EINTR {
                         continue 'again;

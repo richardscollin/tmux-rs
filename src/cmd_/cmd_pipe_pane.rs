@@ -11,10 +11,9 @@
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-use crate::compat::closefrom;
 use crate::libc::{
-    _exit, AF_UNIX, O_WRONLY, PF_UNSPEC, SIG_BLOCK, SIG_SETMASK, STDERR_FILENO, STDIN_FILENO,
-    STDOUT_FILENO, close, dup2, execl, open, sigfillset, sigprocmask, sigset_t, socketpair,
+    _exit, STDERR_FILENO, STDIN_FILENO,
+    STDOUT_FILENO, close, dup2, execl
 };
 use crate::*;
 
@@ -32,7 +31,18 @@ pub static CMD_PIPE_PANE_ENTRY: cmd_entry = cmd_entry {
     exec: cmd_pipe_pane_exec,
 };
 
+#[cfg(target_os = "windows")]
+pub unsafe fn cmd_pipe_pane_exec(_self_: *mut cmd, _item: *mut cmdq_item) -> cmd_retval {
+    todo!()
+}
+
+#[cfg(not(target_os = "windows"))]
 pub unsafe fn cmd_pipe_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retval {
+    use crate::compat::closefrom::closefrom;
+    use crate::libc::{
+        AF_UNIX, PF_UNSPEC, SIG_BLOCK, SIG_SETMASK, sigfillset, sigprocmask, sigset_t, socketpair,
+    };
+
     unsafe {
         let args = cmd_get_args(self_);
         let target = cmdq_get_target(item);
@@ -121,7 +131,7 @@ pub unsafe fn cmd_pipe_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
                 sigprocmask(SIG_SETMASK, &oldset, null_mut());
                 close(pipe_fd[0]);
 
-                let null_fd = open(_PATH_DEVNULL, O_WRONLY, 0);
+                let null_fd = std::fs::OpenOptions::new().write(true).open(PATH_DEVNULL).map(std::os::fd::IntoRawFd::into_raw_fd).unwrap_or(-1);
                 #[expect(clippy::collapsible_else_if)]
                 if out {
                     if dup2(pipe_fd[1], STDIN_FILENO) == -1 {

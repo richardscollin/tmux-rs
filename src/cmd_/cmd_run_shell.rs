@@ -13,7 +13,6 @@
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 use crate::compat::queue::tailq_first;
-use crate::libc::{WEXITSTATUS, WIFEXITED, WIFSIGNALED, WTERMSIG, memcpy, strtod};
 use crate::*;
 
 pub static CMD_RUN_SHELL_ENTRY: cmd_entry = cmd_entry {
@@ -168,7 +167,7 @@ pub unsafe fn cmd_run_shell_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
         );
         if !delay.is_null() {
             let mut tv: timeval = timeval {
-                tv_sec: d as time_t,
+                tv_sec: d as _,
                 tv_usec: (d - (d as time_t as f64)) as libc::suseconds_t * 1000000,
             };
             evtimer_add(&raw mut (*cdata).timer, &raw mut tv);
@@ -249,7 +248,14 @@ pub unsafe extern "C-unwind" fn cmd_run_shell_timer(
     }
 }
 
+#[cfg(target_os = "windows")]
+pub unsafe fn cmd_run_shell_callback(_job: *mut job) {
+    todo!()
+}
+
+#[cfg(not(target_os = "windows"))]
 pub unsafe fn cmd_run_shell_callback(job: *mut job) {
+    use crate::libc::{WEXITSTATUS, WIFEXITED, WIFSIGNALED, WTERMSIG, memcpy};
     unsafe {
         let cdata = job_get_data(job) as *mut cmd_run_shell_data;
         let event = job_get_event(job);

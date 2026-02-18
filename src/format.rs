@@ -2782,7 +2782,7 @@ pub unsafe fn format_cb_buffer_created(ft: *mut format_tree) -> format_table_typ
     unsafe {
         if let Some(pb) = NonNull::new((*ft).pb) {
             format_table_type::Time(timeval {
-                tv_sec: paste_buffer_created(pb),
+                tv_sec: paste_buffer_created(pb) as _,
                 tv_usec: 0,
             })
         } else {
@@ -3293,7 +3293,7 @@ pub unsafe fn format_add_tv(ft: *mut format_tree, key: *const u8, tv: *const tim
         let fe = Box::leak(Box::new(format_entry {
             key: xstrdup(key).as_ptr(),
             value: null_mut(),
-            time: (*tv).tv_sec,
+            time: (*tv).tv_sec as _,
             cb: None,
             entry: zeroed(),
         })) as *mut format_entry;
@@ -3460,7 +3460,7 @@ fn format_find(
 
             if let Some(fte) = format_table_get(key) {
                 match (fte.cb)(ft) {
-                    format_table_type::Time(tv) => t = tv.tv_sec,
+                    format_table_type::Time(tv) => t = tv.tv_sec as _,
                     format_table_type::String(string) => {
                         found = CString::new(string.into_owned()).unwrap().into_raw().cast();
                     }

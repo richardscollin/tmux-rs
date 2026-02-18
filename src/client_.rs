@@ -14,20 +14,23 @@
 use std::io::Write;
 
 use crate::compat::{
-    WAIT_ANY, closefrom,
+    WAIT_ANY,
     imsg::{IMSG_HEADER_SIZE, MAX_IMSGSIZE, imsg},
 };
 use crate::libc::{
-    AF_UNIX, CREAD, CS8, EAGAIN, ECHILD, ECONNREFUSED, EINTR, ENAMETOOLONG, ENOENT, HUPCL, ICRNL,
-    IXANY, LOCK_EX, LOCK_NB, O_CREAT, O_WRONLY, ONLCR, OPOST, SA_RESTART, SIG_DFL, SIG_IGN,
-    SIGCHLD, SIGCONT, SIGHUP, SIGTERM, SIGTSTP, SIGWINCH, SOCK_STREAM, STDERR_FILENO, STDIN_FILENO,
-    STDOUT_FILENO, TCSAFLUSH, TCSANOW, VMIN, VTIME, WNOHANG, cfgetispeed, cfgetospeed, cfmakeraw,
-    cfsetispeed, cfsetospeed, close, connect, dup, execl, flock, getppid, isatty, kill, memcpy,
-    memset, open, sigaction, sigemptyset, sockaddr, sockaddr_un, socket, strerror, strlen,
-    strsignal, system, tcgetattr, tcsetattr, unlink, waitpid,
+    EAGAIN, ECHILD, ECONNREFUSED, EINTR, ENAMETOOLONG, ENOENT, 
+    O_CREAT, O_WRONLY, SIG_DFL, SIG_IGN,
+    SIGTERM, STDERR_FILENO, STDIN_FILENO,
+    STDOUT_FILENO, 
+    close, connect, dup, execl, memcpy,
+    memset, open, sockaddr, socket, strerror, strlen,
+    system, unlink,
 };
 use crate::*;
 use crate::options_::options_free;
+
+#[cfg(not(target_os = "windows"))]
+use crate::libc::{ SIGHUP, SIGTSTP, sigaction, sigemptyset };
 
 pub static mut CLIENT_PROC: *mut tmuxproc = null_mut();
 pub static mut CLIENT_PEER: *mut tmuxpeer = null_mut();
@@ -59,7 +62,15 @@ static mut CLIENT_EXECCMD: *mut u8 = null_mut();
 static mut CLIENT_ATTACHED: i32 = 0;
 static mut CLIENT_FILES: client_files = rb_initializer();
 
+#[cfg(target_os = "windows")]
+pub unsafe fn client_get_lock(_lockfile: *mut u8) -> i32 {
+    todo!()
+}
+
+#[cfg(not(target_os = "windows"))]
 pub unsafe fn client_get_lock(lockfile: *mut u8) -> i32 {
+    use crate::libc::{flock, LOCK_EX,LOCK_NB};
+
     unsafe {
         log_debug!("lock file is {}", _s(lockfile));
 
@@ -84,7 +95,16 @@ pub unsafe fn client_get_lock(lockfile: *mut u8) -> i32 {
     }
 }
 
+
+#[cfg(target_os = "windows")]
+pub unsafe fn client_connect(_base: *mut event_base, _path: *const u8, _flags: client_flag) -> i32 {
+    todo!()
+}
+
+#[cfg(not(target_os = "windows"))]
 pub unsafe fn client_connect(base: *mut event_base, path: *const u8, flags: client_flag) -> i32 {
+    use crate::libc::{AF_UNIX,SOCK_STREAM,sockaddr_un};
+
     unsafe {
         let mut sa: sockaddr_un = zeroed();
         let mut fd;
@@ -213,7 +233,20 @@ unsafe fn client_exit() {
     }
 }
 
+
+#[cfg(target_os = "windows")]
+pub unsafe extern "C-unwind" fn client_main(
+    _base: *mut event_base,
+    _argc: i32,
+    _argv: *mut *mut u8,
+    mut _flags: client_flag,
+    _feat: i32,
+) -> i32 {
+    todo!()
+}
+
 #[expect(clippy::deref_addrof)]
+#[cfg(not(target_os = "windows"))]
 pub unsafe extern "C-unwind" fn client_main(
     base: *mut event_base,
     argc: i32,
@@ -221,6 +254,12 @@ pub unsafe extern "C-unwind" fn client_main(
     mut flags: client_flag,
     feat: i32,
 ) -> i32 {
+    use crate::libc::{
+        CREAD, CS8, HUPCL, ICRNL, IXANY, ONLCR, OPOST, cfsetispeed, cfsetospeed, TCSAFLUSH, TCSANOW, VMIN, VTIME,
+        cfgetispeed, cfgetospeed, cfmakeraw, getppid,kill, isatty, tcgetattr, 
+tcsetattr, 
+    };
+
     unsafe {
         let data: *mut msg_command;
         let fd;
@@ -559,6 +598,7 @@ unsafe fn client_send_identify(
 
 #[expect(clippy::deref_addrof)]
 unsafe fn client_exec(shell: *mut u8, shellcmd: *mut u8) {
+    use crate::compat::closefrom::closefrom;
     unsafe {
         log_debug!("shell {}, command {}", _s(shell), _s(shellcmd));
         let argv0 = shell_argv0(
@@ -587,7 +627,15 @@ unsafe fn client_exec(shell: *mut u8, shellcmd: *mut u8) {
     }
 }
 
+#[cfg(target_os = "windows")]
+unsafe fn client_signal(_sig: i32) {
+    todo!()
+}
+
+#[cfg(not(target_os = "windows"))]
 unsafe fn client_signal(sig: i32) {
+    use crate::libc::{SA_RESTART, SIGCHLD, SIGCONT, SIGWINCH, WNOHANG, strsignal, waitpid};
+    
     unsafe {
         let mut sigact: sigaction = zeroed();
         let mut status: i32 = 0;

@@ -165,7 +165,7 @@ unsafe extern "C-unwind" fn status_timer_callback(_fd: i32, _events: i16, c: Non
 
         let mut tv: timeval = zeroed();
         timerclear(&raw mut tv);
-        tv.tv_sec = options_get_number_((*s).options, "status-interval");
+        tv.tv_sec = options_get_number_((*s).options, "status-interval") as _;
 
         if tv.tv_sec != 0 {
             evtimer_add(&raw mut (*c).status.timer, &raw const tv);
@@ -526,7 +526,7 @@ pub unsafe fn status_message_set_(
             delay = options_get_number_((*(*c).session).options, "display-time") as i32;
         }
         if delay > 0 {
-            tv.tv_sec = (delay / 1000) as libc::time_t;
+            tv.tv_sec = (delay / 1000) as _;
             tv.tv_usec = (delay as libc::suseconds_t % 1000) * (1000 as libc::suseconds_t);
 
             if event_initialized(&raw mut (*c).message_timer) != 0 {

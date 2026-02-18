@@ -340,7 +340,7 @@ pub unsafe fn tty_start_tty(tty: *mut tty) {
         let c = (*tty).client;
         let mut tio: libc::termios = zeroed();
         let tv = libc::timeval {
-            tv_sec: TTY_QUERY_TIMEOUT as i64,
+            tv_sec: TTY_QUERY_TIMEOUT as _,
             tv_usec: 0,
         };
 
@@ -447,7 +447,7 @@ pub unsafe fn tty_repeat_requests(tty: *mut tty) {
             return;
         }
 
-        if t - (*tty).last_requests <= TTY_REQUEST_LIMIT as i64 {
+        if t - (*tty).last_requests <= TTY_REQUEST_LIMIT as time_t {
             return;
         }
         (*tty).last_requests = t;
@@ -601,7 +601,7 @@ pub unsafe fn tty_raw(tty: *mut tty, mut s: &[u8]) {
         let c = (*tty).client;
 
         for _ in 0..5 {
-            let n = libc::write((*c).fd, s.as_ptr().cast(), s.len());
+            let n = libc::write((*c).fd, s.as_ptr().cast(), s.len() as _);
             if n >= 0 {
                 s = &s[n as usize..];
                 if s.is_empty() {
@@ -678,7 +678,7 @@ pub unsafe fn tty_add(tty: *mut tty, buf: *const u8, len: usize) {
         (*c).written += len;
 
         if TTY_LOG_FD != -1 {
-            libc::write(TTY_LOG_FD, buf.cast(), len);
+            libc::write(TTY_LOG_FD, buf.cast(), len as _);
         }
         if (*tty).flags.intersects(tty_flags::TTY_STARTED) {
             event_add(&raw mut (*tty).event_out, null_mut());
@@ -3815,7 +3815,7 @@ pub unsafe extern "C-unwind" fn tty_clipboard_query_callback(
 pub unsafe fn tty_clipboard_query(tty: *mut tty) {
     unsafe {
         let tv = libc::timeval {
-            tv_sec: TTY_QUERY_TIMEOUT as i64,
+            tv_sec: TTY_QUERY_TIMEOUT as _,
             tv_usec: 0,
         };
 

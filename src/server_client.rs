@@ -64,7 +64,7 @@ pub unsafe fn server_client_set_overlay(
         }
 
         let tv: libc::timeval = libc::timeval {
-            tv_sec: delay as i64 / 1000,
+            tv_sec: (delay / 1000) as _,
             tv_usec: ((delay % 1000) * 1000) as libc::suseconds_t,
         };
 
@@ -253,12 +253,13 @@ pub unsafe fn server_client_create(fd: i32) -> *mut client {
         (*c).references = 1;
         (*c).peer = proc_add_peer(SERVER_PROC, fd, Some(server_client_dispatch), c.cast());
 
-        if libc::gettimeofday(&raw mut (*c).creation_time, null_mut()) != 0 {
-            fatal("gettimeofday failed");
-        }
-        memcpy__(&raw mut (*c).activity_time, &raw mut (*c).creation_time);
+        let now = libc::gettimeofday_();
+        (*c).creation_time = now;
+        (*c).activity_time = now;
 
         (*c).environ = environ_create().as_ptr();
+
+        (*c).exit_message = ManuallyDrop::new(None);
 
         (*c).fd = -1;
         (*c).out_fd = -1;
@@ -2593,20 +2594,17 @@ pub unsafe fn server_client_check_exit(c: *mut client) {
 
         match (*c).exit_type {
             exit_type::CLIENT_EXIT_RETURN => {
-                let msize = if !(*c).exit_message.is_null() {
-                    strlen((*c).exit_message) + 1
-                } else {
-                    0
-                };
+                let msize = (*c).exit_message.as_ref().map(|m| m.len() + 1).unwrap_or_default();
                 let size = size_of::<i32>() + msize;
                 let data = xmalloc(size).as_ptr();
                 libc::memcpy(data, (&raw mut (*c).retval).cast(), size_of::<i32>());
-                if !(*c).exit_message.is_null() {
+                if let Some(exit_message) = (*c).exit_message.as_deref() {
                     libc::memcpy(
                         data.add(size_of::<i32>()).cast(),
-                        (*c).exit_message.cast(),
-                        msize,
+                        exit_message.as_ptr().cast(),
+                        exit_message.len(),
                     );
+                    *data.cast::<u8>().add(size_of::<i32>() + exit_message.len()) = 0;
                 }
                 proc_send((*c).peer, msgtype::MSG_EXIT, -1, data, size);
                 free_(data);
@@ -2625,7 +2623,7 @@ pub unsafe fn server_client_check_exit(c: *mut client) {
             }
         }
         free_((*c).exit_session);
-        free_((*c).exit_message);
+        drop((*c).exit_message.take());
     }
 }
 

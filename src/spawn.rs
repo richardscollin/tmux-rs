@@ -13,7 +13,7 @@
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 use std::path::Path;
 
-use crate::compat::{closefrom, fdforkpty::fdforkpty};
+use crate::compat::fdforkpty::fdforkpty;
 use crate::libc::{
     _exit, SIG_BLOCK, SIG_SETMASK, STDERR_FILENO, STDIN_FILENO, TCSANOW, VERASE, close, execl,
     execvp, sigfillset, sigprocmask, strrchr, tcgetattr, tcsetattr,
@@ -228,6 +228,8 @@ pub unsafe fn spawn_window(sc: *mut spawn_context, cause: *mut *mut u8) -> *mut 
 }
 
 pub unsafe fn spawn_pane(sc: *mut spawn_context, cause: *mut *mut u8) -> *mut window_pane {
+    use crate::compat::closefrom::closefrom;
+
     unsafe {
         let item = (*sc).item;
         let target = cmdq_get_target(item);

@@ -129,7 +129,7 @@ use std::{
     ffi::{
         CStr, CString, c_int, c_long, c_longlong, c_short, c_uchar, c_uint, c_ulonglong, c_void,
     },
-    mem::{MaybeUninit, size_of, zeroed},
+    mem::{ManuallyDrop, MaybeUninit, size_of, zeroed},
     ptr::{NonNull, addr_of, addr_of_mut, null, null_mut},
     rc::Rc,
     sync::{
@@ -247,7 +247,7 @@ const _PATH_BSHELL: *const u8 = c!("/bin/sh");
 const _PATH_BSHELL_STR: &str = "/bin/sh";
 const _PATH_DEFPATH: *const u8 = c!("/usr/bin:/bin");
 const _PATH_DEV: *const u8 = c!("/dev/");
-const _PATH_DEVNULL: *const u8 = c!("/dev/null");
+const PATH_DEVNULL: &str = "/dev/null";
 const _PATH_VI: &str = "/usr/bin/vi";
 const SIZEOF_PATH_DEV: usize = 6;
 const TTY_NAME_MAX: usize = 32;
@@ -2357,7 +2357,7 @@ struct client {
     exit_type: exit_type,
     exit_msgtype: msgtype,
     exit_session: *mut u8,
-    exit_message: *mut u8,
+    exit_message: ManuallyDrop<Option<String>>,
 
     keytable: *mut key_table,
 

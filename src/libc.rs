@@ -213,6 +213,18 @@ pub unsafe fn strtod(s: *const u8, endp: *mut *mut u8) -> f64 {
     unsafe { ::libc::strtod(s.cast(), endp.cast()) }
 }
 
+#[inline]
+pub fn gettimeofday_() -> timeval {
+    let duration = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap();
+
+    timeval {
+        tv_sec: duration.as_secs() as time_t,
+        tv_usec: duration.subsec_micros() as _,
+    }
+}
+
 pub fn time(t: *mut time_t) -> time_t {
     assert!(t.is_null());
 
@@ -257,7 +269,7 @@ pub fn MB_CUR_MAX() -> usize {
     unsafe { __ctype_get_mb_cur_max() }
 }
 
-#[cfg(target_os = "macos")]
+#[cfg(any(target_os = "macos", target_os = "windows"))]
 #[expect(non_snake_case)]
 #[inline]
 pub fn MB_CUR_MAX() -> usize {

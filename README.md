@@ -33,7 +33,13 @@ not something else.
 Like `tmux`, it requires `libevent2` and `libtinfo` (usually packaged with ncurses).
 
 ```sh
+# on Debian / Ubuntu
 sudo apt-get install libncurses-dev libevent-dev
+# on Fedora
+sudo dnf install ncurses-devel libevent-devel
+```
+
+```sh
 cargo install tmux-rs
 tmux-rs
 ```

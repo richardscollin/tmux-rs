@@ -39,11 +39,12 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy
-      - uses: dtolnay/rust-toolchain@nightly
-        with:
-          components: clippy
+      # - uses: dtolnay/rust-toolchain@nightly
+        # with:
+          # components: clippy
       - run: cargo +stable clippy -- -Dwarnings
-      - run: cargo +nightly clippy -- -Dwarnings
+      # disable nightly clippy: too much noise in my opinion
+      # - run: cargo +nightly clippy -- -Dwarnings
 
   fmt:
     runs-on: ubuntu-latest

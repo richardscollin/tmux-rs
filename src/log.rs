@@ -46,17 +46,20 @@ pub fn log_get_level() -> i32 {
 }
 
 pub fn log_open(name: &CStr) {
-    if LOG_LEVEL.load(DEFAULT_ORDERING) == 0 {
+    let level = LOG_LEVEL.load(DEFAULT_ORDERING);
+    let pid = std::process::id();
+    let filename = format!("tmux-{}-{}.log", name.to_str().unwrap(), pid);
+
+    if level == 0 {
         return;
     }
 
     log_close();
-    let pid = std::process::id();
     let Ok(file) = std::fs::File::options()
         .read(false)
         .append(true)
         .create(true)
-        .open(format!("tmux-{}-{}.log", name.to_str().unwrap(), pid))
+        .open(&filename)
     else {
         return;
     };

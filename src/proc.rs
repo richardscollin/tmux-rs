@@ -73,9 +73,12 @@ pub unsafe extern "C-unwind" fn proc_event_cb(_fd: i32, events: i16, arg: *mut c
         let mut imsg: MaybeUninit<imsg> = MaybeUninit::<imsg>::uninit();
         let imsg = imsg.as_mut_ptr();
 
+        log_debug!("proc_event_cb: fd={_fd} events=0x{events:x}");
         if (*peer).flags & PEER_BAD == 0 && events & EV_READ != 0 {
             let mut n = imsg_read(&raw mut (*peer).ibuf);
+            log_debug!("proc_event_cb: imsg_read={n} errno={}", errno!());
             if (n == -1 && errno!() != EAGAIN) || n == 0 {
+                log_debug!("proc_event_cb: dispatch null (read)");
                 ((*peer).dispatchcb.unwrap())(null_mut(), (*peer).arg);
                 return;
             }
@@ -105,12 +108,14 @@ pub unsafe extern "C-unwind" fn proc_event_cb(_fd: i32, events: i16, arg: *mut c
             }
         }
 
-        if events & EV_WRITE != 0
-            && msgbuf_write((&raw mut (*peer).ibuf.w).cast()) <= 0
-            && errno!() != EAGAIN
-        {
-            ((*peer).dispatchcb.unwrap())(null_mut(), (*peer).arg);
-            return;
+        if events & EV_WRITE != 0 {
+            let w = msgbuf_write((&raw mut (*peer).ibuf.w).cast());
+            log_debug!("proc_event_cb: msgbuf_write={w} errno={} queued={}", errno!(), (*peer).ibuf.w.queued);
+            if w <= 0 && errno!() != EAGAIN {
+                log_debug!("proc_event_cb: dispatch null (write)");
+                ((*peer).dispatchcb.unwrap())(null_mut(), (*peer).arg);
+                return;
+            }
         }
 
         if ((*peer).flags & PEER_BAD != 0) && (*peer).ibuf.w.queued == 0 {
@@ -234,6 +239,7 @@ pub fn proc_start(name: &CStr) -> *mut tmuxproc {
     }
 }
 
+#[unsafe(no_mangle)]
 pub unsafe fn proc_loop(tp: *mut tmuxproc, loopcb: Option<unsafe fn() -> i32>) {
     unsafe {
         log_debug!("{} loop enter", _s((*tp).name));

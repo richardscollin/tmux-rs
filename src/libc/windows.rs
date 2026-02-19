@@ -1,7 +1,13 @@
 //! Windows shims for Unix types, constants, and functions that don't exist in the libc crate on Windows.
 //! These are used to allow the codebase to compile on Windows. Most function implementations
 //! use todo!() since they have no Windows equivalent.
-#![allow(nonstandard_style, non_camel_case_types, non_upper_case_globals, dead_code, clippy::missing_safety_doc)]
+#![allow(
+    nonstandard_style,
+    non_camel_case_types,
+    non_upper_case_globals,
+    dead_code,
+    clippy::missing_safety_doc
+)]
 
 // Re-export everything from ::libc first, then our definitions shadow what we override
 pub use ::libc::*;
@@ -429,7 +435,6 @@ pub unsafe fn globfree(_pglob: *mut glob_t) {
     todo!("globfree not available on Windows")
 }
 
-
 pub unsafe fn fork() -> pid_t {
     todo!("fork not available on Windows")
 }
@@ -516,11 +521,7 @@ pub unsafe fn sigemptyset(_set: *mut sigset_t) -> c_int {
     todo!("sigemptyset not available on Windows")
 }
 
-pub unsafe fn sigaction(
-    _signum: c_int,
-    _act: *const sigaction,
-    _oldact: *mut sigaction,
-) -> c_int {
+pub unsafe fn sigaction(_signum: c_int, _act: *const sigaction, _oldact: *mut sigaction) -> c_int {
     todo!("sigaction not available on Windows")
 }
 
@@ -607,10 +608,7 @@ pub unsafe fn ctime_r(_time: *const ::libc::time_t, _buf: *mut u8) -> *mut u8 {
     todo!("ctime_r not available on Windows")
 }
 
-pub unsafe fn gmtime_r(
-    _time: *const ::libc::time_t,
-    _result: *mut ::libc::tm,
-) -> *mut ::libc::tm {
+pub unsafe fn gmtime_r(_time: *const ::libc::time_t, _result: *mut ::libc::tm) -> *mut ::libc::tm {
     todo!("gmtime_r not available on Windows")
 }
 

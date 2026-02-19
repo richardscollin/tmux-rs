@@ -1,69 +1,71 @@
 [package]
-name         = "tmux-rs"
-version      = "0.0.3"
-authors      = ["Collin Richards <richardscollin@gatech.edu>"]
-categories   = ["command-line-utilities"]
-edition      = "2024"
-include      = ["/src", "COPYING", "README.md", "build.rs"]
-keywords     = ["tmux"]
-license      = "ISC"
-repository   = "https://github.com/richardscollin/tmux-rs"
+name = "tmux-rs"
+version = "0.0.3"
+authors = ["Collin Richards <richardscollin@gatech.edu>"]
+categories = ["command-line-utilities"]
+edition = "2024"
+include = ["/src", "COPYING", "README.md", "build.rs"]
+keywords = ["tmux"]
+license = "ISC"
+repository = "https://github.com/richardscollin/tmux-rs"
 rust-version = "1.88" # let chains
-description  = "A Rust port of tmux"
+description = "A Rust port of tmux"
 
 # Note: most of these features are not supported yet
 # they just exist to make matching upstream's
 # configuration options easier. However, sixel support is implemented
 [features]
-default     = ["sixel"]
-cgroups     = []
-hyperlinks  = []
-iutf8       = []
-ncurses     = []
-nokerninfo  = []
-sixel       = []
+default = ["sixel"]
+cgroups = []
+hyperlinks = []
+iutf8 = []
+ncurses = []
+nokerninfo = []
+sixel = []
 sys_signame = []
-systemd     = []
-utempter    = []
-utf8proc    = []
+systemd = []
+utempter = []
+utf8proc = []
+event-tokio = ["dep:tokio"]
 
 # configure linking of external libraries
 # defaults to static linking on macOS, and dynamic linking on all other platforms
-static      = []
-dynamic     = []
+static = []
+dynamic = []
 
 [dependencies]
-bitflags      = { version = "2.9.1" }
-lalrpop-util  = { version = "0.22.2", default-features = false, features = ["unicode"] }
-libc          = { version = "0.2.174" }
-memchr        = { version = "2.7.6" }
-num_enum      = { version = "0.7.4" }
-paste         = { version = "1.0.15" }
+bitflags = { version = "2.9.1" }
+lalrpop-util = { version = "0.22.2", default-features = false, features = ["unicode"] }
+libc = { version = "0.2.174" }
+memchr = { version = "2.7.6" }
+num_enum = { version = "0.7.4" }
+paste = { version = "1.0.15" }
 terminfo-lean = { version = "=0.1.2" }
+tokio = { version = "1.49", features = ["rt", "net", "time", "io-util", "sync", "macros"], optional = true }
 
 [build-dependencies]
-lalrpop      = { version = "0.22.2", default-features = false }
+lalrpop = { version = "0.22.2", default-features = false }
 
 [lints.rust]
-unexpected_cfgs = { level = "warn", check-cfg = ['cfg(fuzzing)'] }
+unexpected_cfgs = { level = "warn", check-cfg = ["cfg(fuzzing)"] }
 
 [lints.clippy]
 # # All about Lints
-# 
+#
 # Clippy has many lint groups (restriction, pedantic, style, etc.).
 # None of those groups actually matter to me. What actually matters if they are default enabled or disabled.
 # Sometimes a lint may change groups (and therefore it's default enabled behavior) from one Rust version to the next.
-# 
+#
 # If a lint is default enabled and we disable it, the reason should be stated as a comment.
 #
 # Some lints are more useful for certain rust compiler versions.
 # Since I want to support multiple compiler versions, I primarily care about the latest stable rust version.
-# 
+#
 # I have gotten burned before wasting time fixing lints enabled on nightly, only to see those lints
 # removed by the time they were stabilized.
 #
 # # References
-# 
+#
 # - [Clippy Lints Index](https://rust-lang.github.io/rust-clippy/master/index.html)
 # - [Cargo Manifest Lints Section](https://doc.rust-lang.org/nightly/cargo/reference/manifest.html#the-lints-section)
 # - [Clippy Lints Section Docs](https://doc.rust-lang.org/clippy/lints.html)
@@ -74,84 +76,84 @@ unexpected_cfgs = { level = "warn", check-cfg = ['cfg(fuzzing)'] }
 # However, if a specific lint finds real bugs in this codebase, I'm open to enabling it.
 
 # Enabled by Default: disabled
-too_many_arguments                  = "allow" # match upstream code
+too_many_arguments = "allow" # match upstream code
 
 # cargo = { level = "warn", priority = -1 }
-multiple_crate_versions             = "warn"
+multiple_crate_versions = "warn"
 
 # Disabled by Default (nursery): enabled
 # nursery     = { level = "warn", priority = -1 }
 literal_string_with_formatting_args = "warn"
-too_long_first_doc_paragraph        = "warn"
+too_long_first_doc_paragraph = "warn"
 
 # Disabled by Default (restriction): enabled
 # restriction = { level = "warn", priority = -1 }
-allow_attributes                    = "warn"
+allow_attributes = "warn"
 # allow_attributes_without_reason     = "warn"
 # as_conversions                      = "warn"
-shadow_same                         = "warn"
-unused_result_ok                    = "warn"
+shadow_same = "warn"
+unused_result_ok = "warn"
 
 # Disabled by Default (pedantic): enabled
-assigning_clones                    = "warn"
-bool_to_int_with_if                 = "warn"
-cloned_instead_of_copied            = "warn"
-comparison_chain                    = "warn"
-default_trait_access                = "warn" # consider disabling again
-doc_markdown                        = "warn"
-explicit_iter_loop                  = "warn"
-ignored_unit_patterns               = "warn"
-large_types_passed_by_value         = "warn"
-manual_is_variant_and               = "warn"
-manual_let_else                     = "warn"
-manual_midpoint                     = "warn"
-manual_string_new                   = "warn"
-map_unwrap_or                       = "warn"
-match_bool                          = "warn"
-no_effect_underscore_binding        = "warn"
+assigning_clones = "warn"
+bool_to_int_with_if = "warn"
+cloned_instead_of_copied = "warn"
+comparison_chain = "warn"
+default_trait_access = "warn" # consider disabling again
+doc_markdown = "warn"
+explicit_iter_loop = "warn"
+ignored_unit_patterns = "warn"
+large_types_passed_by_value = "warn"
+manual_is_variant_and = "warn"
+manual_let_else = "warn"
+manual_midpoint = "warn"
+manual_string_new = "warn"
+map_unwrap_or = "warn"
+match_bool = "warn"
+no_effect_underscore_binding = "warn"
 # ptr_offset_by_literal               = "warn" # nightly only
-redundant_closure_for_method_calls  = "warn"
-semicolon_if_nothing_returned       = "warn"
-trivially_copy_pass_by_ref          = "warn"
-uninlined_format_args               = "warn"
-unnecessary_semicolon               = "warn"
-used_underscore_binding             = "warn"
+redundant_closure_for_method_calls = "warn"
+semicolon_if_nothing_returned = "warn"
+trivially_copy_pass_by_ref = "warn"
+uninlined_format_args = "warn"
+unnecessary_semicolon = "warn"
+used_underscore_binding = "warn"
 #
 # setting these to allow is a bit redundant unless you enable the pedantic lint group
 # pedantic    = { level = "warn", priority = -1 }
 #
 # considering fixing and warning by default:
-cast_lossless                       = "allow"
-cast_possible_truncation            = "allow"
-cast_possible_wrap                  = "allow"
-cast_precision_loss                 = "allow"
-cast_ptr_alignment                  = "allow"
-cast_sign_loss                      = "allow"
-items_after_statements              = "allow"
-manual_assert                       = "allow"
-many_single_char_names              = "allow"
-match_same_arms                     = "allow"
-match_wild_err_arm                  = "allow"
-match_wildcard_for_single_variants  = "allow"
-missing_panics_doc                  = "allow"
-needless_continue                   = "allow"
-ptr_as_ptr                          = "allow"
-ptr_cast_constness                  = "allow" # TODO this one probably does indicate some real issues
-redundant_else                      = "allow"
-ref_as_ptr                          = "allow" # enable after no raw pointers are used
-single_match_else                   = "allow"
-unnecessary_box_returns             = "allow"
+cast_lossless = "allow"
+cast_possible_truncation = "allow"
+cast_possible_wrap = "allow"
+cast_precision_loss = "allow"
+cast_ptr_alignment = "allow"
+cast_sign_loss = "allow"
+items_after_statements = "allow"
+manual_assert = "allow"
+many_single_char_names = "allow"
+match_same_arms = "allow"
+match_wild_err_arm = "allow"
+match_wildcard_for_single_variants = "allow"
+missing_panics_doc = "allow"
+needless_continue = "allow"
+ptr_as_ptr = "allow"
+ptr_cast_constness = "allow" # TODO this one probably does indicate some real issues
+redundant_else = "allow"
+ref_as_ptr = "allow" # enable after no raw pointers are used
+single_match_else = "allow"
+unnecessary_box_returns = "allow"
 #
 # WON'T FIX
 # I don't think these lints should be fixed or enabled in this project
-borrow_as_ptr                       = "allow" # pattern is good for slowly transitioning to safer code
-fn_params_excessive_bools           = "allow" # match upstream code
-if_not_else                         = "allow" # match upstream code
-linkedlist                          = "allow" # we want to use a linked list
-similar_names                       = "allow" # match upstream code
-struct_field_names                  = "allow" # used in libevent and tree
-too_many_lines                      = "allow" # match upstream code
-unnested_or_patterns                = "allow" # I think it's more readable the other way
-unreadable_literal                  = "allow" # too many color constants
-used_underscore_items               = "allow" # _s and other's will naturally be removed in transition to safer rust
-wildcard_imports                    = "allow" # too many, c style codebase, eventually will be fixed / refactored
+borrow_as_ptr = "allow" # pattern is good for slowly transitioning to safer code
+fn_params_excessive_bools = "allow" # match upstream code
+if_not_else = "allow" # match upstream code
+linkedlist = "allow" # we want to use a linked list
+similar_names = "allow" # match upstream code
+struct_field_names = "allow" # used in libevent and tree
+too_many_lines = "allow" # match upstream code
+unnested_or_patterns = "allow" # I think it's more readable the other way
+unreadable_literal = "allow" # too many color constants
+used_underscore_items = "allow" # _s and other's will naturally be removed in transition to safer rust
+wildcard_imports = "allow" # too many, c style codebase, eventually will be fixed / refactored

@@ -157,6 +157,9 @@ pub unsafe extern "C-unwind" fn tty_read_callback(_fd: i32, _events: i16, data: 
         if nread == 0 || nread == -1 {
             if nread == 0 {
                 log_debug!("{}: read closed", _s(name));
+            } else if errno!() == libc::EAGAIN {
+                log_debug!("{}: read EAGAIN (spurious wakeup)", _s(name));
+                return;
             } else {
                 log_debug!("{}: read error: {}", _s(name), strerror(errno!()));
             }

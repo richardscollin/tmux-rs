@@ -9,21 +9,56 @@ struct MyAlloc;
 static ALLOCATOR: MyAlloc = MyAlloc;
 unsafe impl GlobalAlloc for MyAlloc {
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
-        unsafe { libc::malloc(layout.size()) as *mut u8 }
+        unsafe {
+            if layout.align() <= MIN_ALIGN {
+                libc::malloc(layout.size()) as *mut u8
+            } else {
+                // malloc only guarantees MIN_ALIGN alignment; use
+                // aligned_alloc for larger alignment requirements.
+                libc::aligned_alloc(layout.align(), layout.size()) as *mut u8
+            }
+        }
     }
     unsafe fn dealloc(&self, ptr: *mut u8, _layout: Layout) {
         unsafe { libc::free(ptr.cast()) }
     }
     unsafe fn alloc_zeroed(&self, layout: Layout) -> *mut u8 {
-        let align = layout.align();
-        // exploit we know align must be a non-zero power of 2 to do a faster division
-        let nmemb = (layout.size() + align - 1) >> align.trailing_zeros();
-        unsafe { libc::calloc(nmemb, align) as *mut u8 }
+        if layout.align() <= MIN_ALIGN {
+            let align = layout.align();
+            // exploit we know align must be a non-zero power of 2 to do a faster division
+            let nmemb = (layout.size() + align - 1) >> align.trailing_zeros();
+            unsafe { libc::calloc(nmemb, align) as *mut u8 }
+        } else {
+            let ptr = unsafe { self.alloc(layout) };
+            if !ptr.is_null() {
+                unsafe { core::ptr::write_bytes(ptr, 0, layout.size()) };
+            }
+            ptr
+        }
     }
-    unsafe fn realloc(&self, ptr: *mut u8, _layout: Layout, new_size: usize) -> *mut u8 {
-        unsafe { libc::realloc(ptr.cast(), new_size) as *mut u8 }
+    unsafe fn realloc(&self, ptr: *mut u8, layout: Layout, new_size: usize) -> *mut u8 {
+        if layout.align() <= MIN_ALIGN {
+            unsafe { libc::realloc(ptr.cast(), new_size) as *mut u8 }
+        } else {
+            // realloc doesn't guarantee alignment > MIN_ALIGN, so we
+            // must allocate new aligned memory and copy.
+            let new_layout = unsafe { Layout::from_size_align_unchecked(new_size, layout.align()) };
+            let new_ptr = unsafe { self.alloc(new_layout) };
+            if !new_ptr.is_null() {
+                let copy_len = layout.size().min(new_size);
+                unsafe { core::ptr::copy_nonoverlapping(ptr, new_ptr, copy_len) };
+                unsafe { self.dealloc(ptr, layout) };
+            }
+            new_ptr
+        }
     }
 }
+
+/// Minimum alignment guaranteed by malloc on this platform.
+#[cfg(target_pointer_width = "64")]
+const MIN_ALIGN: usize = 16;
+#[cfg(target_pointer_width = "32")]
+const MIN_ALIGN: usize = 8;
 
 // TODO idea:
 // I noticed in the tmux code base there are many places an empty string is allocated so that

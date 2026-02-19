@@ -161,7 +161,7 @@ unsafe extern "C-unwind" fn server_tidy_event(_fd: i32, _events: i16, _data: *mu
 pub unsafe fn server_start(
     client: *mut tmuxproc,
     flags: client_flag,
-    base: *mut event_base,
+    #[cfg_attr(feature = "event-tokio", expect(unused))] base: *mut event_base,
     lockfd: c_int,
     lockfile: *mut u8,
 ) -> c_int {
@@ -220,9 +220,18 @@ pub unsafe fn server_start(
         }));
 
         // now in child process i.e. server
+        log_debug!("server_start: socketpair fd={fd}");
+
         proc_clear_signals(client, 0);
         SERVER_CLIENT_FLAGS = flags;
 
+        // With event-tokio, no runtime existed before fork -- create a
+        // fresh one. With libevent, reinit the inherited base as usual.
+        #[cfg(feature = "event-tokio")]
+        {
+            let _ = osdep_event_init();
+        }
+        #[cfg(not(feature = "event-tokio"))]
         if event_reinit(base) != 0 {
             fatalx("event_reinit failed");
         }
@@ -268,7 +277,7 @@ pub unsafe fn server_start(
         } else {
             options_set_number(GLOBAL_OPTIONS, "exit-empty", 0);
         }
-
+        log_debug!("server_start: closing lockfd={lockfd}");
         if lockfd >= 0 {
             unlink(lockfile);
             free_(lockfile);

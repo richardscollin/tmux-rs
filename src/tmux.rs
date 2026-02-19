@@ -221,8 +221,11 @@ unsafe fn make_label(mut label: *const u8) -> Result<CString, String> {
         let path = paths.pop().unwrap(); /* can only have one socket! */
 
         let base = format!("{}/tmux-rs-{}", path.to_string_lossy(), uid);
-        if let Err(mkdir_err) = std::fs::create_dir(&base) && mkdir_err.kind() != std::io::ErrorKind::AlreadyExists {
-            return Err(format!("couldn't create directory {base} ({mkdir_err:?})"));
+        {
+            use std::os::unix::fs::DirBuilderExt;
+            if let Err(mkdir_err) = std::fs::DirBuilder::new().mode(0o700).create(&base) && mkdir_err.kind() != std::io::ErrorKind::AlreadyExists {
+                return Err(format!("couldn't create directory {base} ({mkdir_err:?})"));
+            }
         }
 
         match std::fs::symlink_metadata(&base) {
@@ -563,6 +566,12 @@ pub unsafe fn tmux_main(mut argc: i32, mut argv: *mut *mut u8, _env: *mut *mut u
         free_(label);
 
         // Pass control to the client.
-        std::process::exit(client_main(osdep_event_init(), argc, argv, flags, feat))
+        // With event-tokio, defer event_init to after the fork (in server_start
+        // and client_main) so no tokio state exists at fork time.
+        #[cfg(not(feature = "event-tokio"))]
+        let base = osdep_event_init();
+        #[cfg(feature = "event-tokio")]
+        let base = std::ptr::null_mut();
+        std::process::exit(client_main(base, argc, argv, flags, feat))
     }
 }

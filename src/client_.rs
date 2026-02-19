@@ -302,6 +302,9 @@ tcsetattr,
         }
 
         CLIENT_PROC = proc_start(c"client");
+        // With event-tokio, defer proc_set_signals to after fork so no
+        // tokio tasks exist at fork time.
+        #[cfg(not(feature = "event-tokio"))]
         proc_set_signals(CLIENT_PROC, Some(client_signal));
 
         CLIENT_FLAGS = flags;
@@ -325,6 +328,14 @@ tcsetattr,
         #[cfg(not(feature = "systemd"))]
         {
             fd = client_connect(base, SOCKET_PATH, CLIENT_FLAGS);
+        }
+
+        // With event-tokio, init the event system and signals after the
+        // fork (server_start/client_connect have returned to the parent).
+        #[cfg(feature = "event-tokio")]
+        {
+            let _base = osdep_event_init();
+            proc_set_signals(CLIENT_PROC, Some(client_signal));
         }
         if fd == -1 {
             if errno!() == ECONNREFUSED {

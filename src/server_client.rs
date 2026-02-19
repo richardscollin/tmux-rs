@@ -3135,14 +3135,12 @@ pub unsafe fn server_client_dispatch_identify(c: *mut client, imsg: *mut imsg) {
                     fatalx("bad MSG_IDENTIFY_STDIN size");
                 }
                 (*c).fd = imsg_get_fd(imsg);
-                // log_debug("client %p IDENTIFY_STDIN %d", c, (*c).fd);
             }
             msgtype::MSG_IDENTIFY_STDOUT => {
                 if datalen != 0 {
                     fatalx("bad MSG_IDENTIFY_STDOUT size");
                 }
                 (*c).out_fd = imsg_get_fd(imsg);
-                // log_debug("client %p IDENTIFY_STDOUT %d", c, (*c).out_fd);
             }
             msgtype::MSG_IDENTIFY_ENVIRON => {
                 if datalen == 0 || *data.cast::<u8>().add((datalen - 1) as usize) != b'\0' {

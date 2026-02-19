@@ -2,7 +2,7 @@ fn main() {
     println!("cargo::rerun-if-changed=src/cmd_parse.lalrpop");
     lalrpop::process_root().unwrap();
 
-    #[cfg(target_os = "macos")]
+    #[cfg(all(target_os = "macos", not(feature = "event-tokio")))]
     {
         use std::path::PathBuf;
         use std::process::Command;
@@ -31,10 +31,12 @@ fn main() {
         }
     }
 
-    if is_static_linking() {
-        println!("cargo::rustc-link-lib=static=event_core");
-    } else {
-        println!("cargo::rustc-link-lib=event_core");
+    if !cfg!(feature = "event-tokio") {
+        if is_static_linking() {
+            println!("cargo::rustc-link-lib=static=event_core");
+        } else {
+            println!("cargo::rustc-link-lib=event_core");
+        }
     }
 }
 

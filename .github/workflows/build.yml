@@ -65,7 +65,12 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest, ubuntu-24.04-arm]
+         include:
+           - os: ubuntu-latest
+           - os: macos-latest
+           - os: ubuntu-24.04-arm
+           - os: windows-latest
+             cargo-flags: --features event-tokio
     steps:
       - name: Install system dependencies (ubuntu)
         if: startsWith(matrix.os, 'ubuntu')
@@ -73,5 +78,5 @@ jobs:
       - *mac-deps
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-      - run: cargo build
-      - run: cargo test
+      - run: cargo build ${{ matrix.cargo-flags }}
+      - run: cargo test ${{ matrix.cargo-flags }}

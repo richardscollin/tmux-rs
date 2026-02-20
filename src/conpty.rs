@@ -16,6 +16,7 @@ use std::collections::HashMap;
 use std::ffi::c_int;
 use std::mem::{size_of, zeroed};
 use std::sync::Mutex;
+use std::sync::atomic::{AtomicI32, Ordering};
 use std::thread::JoinHandle;
 
 use windows_sys::Win32::Foundation::{
@@ -29,9 +30,61 @@ use windows_sys::Win32::System::Pipes::CreatePipe;
 use windows_sys::Win32::System::Threading::{
     CREATE_UNICODE_ENVIRONMENT, CreateProcessW, EXTENDED_STARTUPINFO_PRESENT, GetExitCodeProcess,
     InitializeProcThreadAttributeList, PROC_THREAD_ATTRIBUTE_PSEUDOCONSOLE, PROCESS_INFORMATION,
-    STARTF_USESTDHANDLES, STARTUPINFOEXW, STARTUPINFOW, TerminateProcess,
-    UpdateProcThreadAttribute, WaitForSingleObject,
+    RegisterWaitForSingleObject, STARTF_USESTDHANDLES, STARTUPINFOEXW, STARTUPINFOW,
+    TerminateProcess, UnregisterWaitEx, UpdateProcThreadAttribute, WaitForSingleObject,
+    WT_EXECUTEONLYONCE,
 };
+
+// ---------------------------------------------------------------------------
+// Process-exit wake-up mechanism (Windows equivalent of SIGCHLD)
+// ---------------------------------------------------------------------------
+//
+// RegisterWaitForSingleObject registers a thread-pool callback that fires
+// when a process handle becomes signaled (i.e. the child exits).  The
+// callback writes a byte to a wake-up socket, which unblocks the libevent
+// event loop so server_loop → server_check_windows_processes can run.
+
+/// CRT fd of the wake-up socket's *write* end.  Set once at server init.
+static WAKE_FD: AtomicI32 = AtomicI32::new(-1);
+
+/// Set the wake-up socket fd.  Called from server_start_windows.
+pub fn set_process_exit_wake_fd(fd: c_int) {
+    WAKE_FD.store(fd, Ordering::Relaxed);
+}
+
+/// Thread-pool callback invoked by Windows when a child process exits.
+unsafe extern "system" fn process_exit_wake_cb(
+    _context: *mut std::ffi::c_void,
+    _timer_or_wait_fired: u8,
+) {
+    let fd = WAKE_FD.load(Ordering::Relaxed);
+    if fd >= 0 {
+        let byte: [u8; 1] = [1];
+        unsafe {
+            crate::libc::send(fd, byte.as_ptr().cast(), 1, 0);
+        }
+    }
+}
+
+/// Register a thread-pool wait on a process handle.  Returns the wait handle
+/// (for later cleanup with UnregisterWaitEx), or null on failure.
+fn register_process_exit_wait(process_handle: HANDLE) -> HANDLE {
+    unsafe {
+        let mut wait_handle: HANDLE = std::ptr::null_mut();
+        let ok = RegisterWaitForSingleObject(
+            &mut wait_handle,
+            process_handle,
+            Some(process_exit_wake_cb),
+            std::ptr::null_mut(),
+            0xFFFFFFFF, // INFINITE
+            WT_EXECUTEONLYONCE,
+        );
+        if ok == 0 {
+            return std::ptr::null_mut();
+        }
+        wait_handle
+    }
+}
 
 /// Encode a Rust string as a null-terminated UTF-16 vector.
 fn to_wide(s: &str) -> Vec<u16> {
@@ -105,6 +158,7 @@ struct ConPtyInner {
     relay_socket: c_int, // socketpair[1] — owned by relay threads
     reader_thread: Option<JoinHandle<()>>,
     writer_thread: Option<JoinHandle<()>>,
+    wait_handle: HANDLE, // from RegisterWaitForSingleObject
 }
 
 // HANDLE and socket are Send-safe for our dedicated thread usage.
@@ -289,7 +343,10 @@ pub fn conpty_spawn(
             })
             .map_err(|e| format!("Failed to spawn writer thread: {e}"))?;
 
-        // 9. Store in global table
+        // 9. Register process-exit notification (Windows SIGCHLD equivalent)
+        let wait_handle = register_process_exit_wait(pi.hProcess);
+
+        // 10. Store in global table
         let inner = ConPtyInner {
             hpc,
             input_write,
@@ -299,6 +356,7 @@ pub fn conpty_spawn(
             relay_socket: relay_fd,
             reader_thread: Some(reader_thread),
             writer_thread: Some(writer_thread),
+            wait_handle,
         };
 
         conpty_table()
@@ -428,6 +486,12 @@ pub fn conpty_cleanup(pid: u32) {
     let mut table = conpty_table();
     if let Some(mut inner) = table.as_mut().unwrap().remove(&pid) {
         unsafe {
+            // Unregister the process-exit wait callback
+            if !inner.wait_handle.is_null() {
+                // INVALID_HANDLE_VALUE = wait for any running callback to finish
+                UnregisterWaitEx(inner.wait_handle, INVALID_HANDLE_VALUE);
+            }
+
             // Close the pseudo console first (if present) — this will cause
             // ReadFile in the reader thread to fail, breaking its loop.
             if inner.hpc != 0 {
@@ -537,6 +601,9 @@ pub fn process_spawn_piped(cmd: &str, cwd: Option<&str>) -> Result<(c_int, u32),
             })
             .map_err(|e| format!("Failed to spawn reader thread: {e}"))?;
 
+        // Register process-exit notification
+        let wait_handle = register_process_exit_wait(pi.hProcess);
+
         // Store in table for cleanup
         let inner = ConPtyInner {
             hpc: 0, // no pseudo console for piped jobs
@@ -547,6 +614,7 @@ pub fn process_spawn_piped(cmd: &str, cwd: Option<&str>) -> Result<(c_int, u32),
             relay_socket: relay_fd,
             reader_thread: Some(reader_thread),
             writer_thread: None,
+            wait_handle,
         };
 
         conpty_table()

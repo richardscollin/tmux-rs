@@ -782,8 +782,12 @@ pub fn enable_vt_processing() {
     }
 }
 
+/// Saved original console input mode, for restoration on exit.
+static ORIGINAL_CONSOLE_MODE: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
+static CONSOLE_MODE_SAVED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
 /// Set console stdin to raw mode (disable line edit, echo, processed input).
-/// Returns the original mode for later restoration.
+/// Saves the original mode on the first call for later restoration.
 pub fn set_console_raw_mode() -> u32 {
     use windows_sys::Win32::Foundation::INVALID_HANDLE_VALUE;
     unsafe {
@@ -793,6 +797,11 @@ pub fn set_console_raw_mode() -> u32 {
             && !handle.is_null()
             && GetConsoleMode(handle, &mut orig_mode) != 0
         {
+            // Save the original mode only on the first call
+            if !CONSOLE_MODE_SAVED.load(std::sync::atomic::Ordering::Relaxed) {
+                ORIGINAL_CONSOLE_MODE.store(orig_mode, std::sync::atomic::Ordering::Relaxed);
+                CONSOLE_MODE_SAVED.store(true, std::sync::atomic::Ordering::Relaxed);
+            }
             let raw_mode = (orig_mode
                 & !(ENABLE_LINE_INPUT | ENABLE_ECHO_INPUT | ENABLE_PROCESSED_INPUT))
                 | ENABLE_WINDOW_INPUT
@@ -803,7 +812,7 @@ pub fn set_console_raw_mode() -> u32 {
     }
 }
 
-/// Restore console stdin mode.
+/// Restore console stdin mode to the original mode saved by `set_console_raw_mode`.
 pub fn restore_console_mode(mode: u32) {
     use windows_sys::Win32::Foundation::INVALID_HANDLE_VALUE;
     unsafe {
@@ -811,6 +820,13 @@ pub fn restore_console_mode(mode: u32) {
         if handle != INVALID_HANDLE_VALUE && !handle.is_null() {
             SetConsoleMode(handle, mode);
         }
+    }
+}
+
+/// Restore console stdin mode to the original mode captured on startup.
+pub fn restore_original_console_mode() {
+    if CONSOLE_MODE_SAVED.load(std::sync::atomic::Ordering::Relaxed) {
+        restore_console_mode(ORIGINAL_CONSOLE_MODE.load(std::sync::atomic::Ordering::Relaxed));
     }
 }
 

@@ -883,7 +883,7 @@ pub unsafe fn tty_stop_tty(tty: *mut tty) {
         tty_raw(tty, tty_term_string((*tty).term, tty_code_code::TTYC_RMCUP));
 
         // Restore console mode and set fd blocking
-        libc::restore_console_mode(0); // Restore default mode
+        libc::restore_original_console_mode();
         setblocking((*c).fd, 1);
     }
 }

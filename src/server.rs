@@ -29,6 +29,8 @@ pub static mut SERVER_CLIENT_FLAGS: client_flag = client_flag::empty();
 pub static mut SERVER_EXIT: c_int = 0;
 pub static mut SERVER_EV_ACCEPT: event = unsafe { zeroed() };
 pub static mut SERVER_EV_TIDY: event = unsafe { zeroed() };
+#[cfg(target_os = "windows")]
+static mut SERVER_EV_WAKE: event = unsafe { zeroed() };
 pub static mut MARKED_PANE: cmd_find_state = unsafe { zeroed() };
 pub static mut MESSAGE_NEXT: c_uint = 0;
 pub static mut MESSAGE_LOG: message_list = unsafe { zeroed() };
@@ -412,11 +414,52 @@ pub unsafe fn server_start_windows(
         evtimer_set_no_args(&raw mut SERVER_EV_TIDY, server_tidy_event);
         evtimer_add(&raw mut SERVER_EV_TIDY, &raw const tv);
 
+        // Set up wake-up socket for process-exit notifications.
+        // RegisterWaitForSingleObject callbacks write to wake_sv[1];
+        // the event loop watches wake_sv[0] so it unblocks promptly.
+        {
+            let mut wake_sv: [c_int; 2] = [-1, -1];
+            if socketpair(AF_UNIX, SOCK_STREAM, PF_UNSPEC, wake_sv.as_mut_ptr()) != 0 {
+                fatalx("socketpair failed for process exit wake");
+            }
+            setblocking(wake_sv[0], 0);
+            setblocking(wake_sv[1], 0);
+            crate::conpty::set_process_exit_wake_fd(wake_sv[1]);
+            event_set(
+                &raw mut SERVER_EV_WAKE,
+                wake_sv[0],
+                EV_READ | EV_PERSIST,
+                Some(server_wake_event),
+                null_mut(),
+            );
+            event_add(&raw mut SERVER_EV_WAKE, null_mut());
+        }
+
         server_acl_init();
         server_add_accept(0);
 
         // Return the client-side fd
         sv[1]
+    }
+}
+
+/// Wake-up event callback — drain bytes written by process-exit thread-pool
+/// callbacks.  The actual process reaping happens in server_check_windows_processes
+/// which runs every time server_loop is called.
+#[cfg(target_os = "windows")]
+unsafe extern "C-unwind" fn server_wake_event(
+    fd: c_int,
+    _events: c_short,
+    _data: *mut c_void,
+) {
+    unsafe {
+        let mut buf = [0u8; 64];
+        loop {
+            let n = libc::recv(fd, buf.as_mut_ptr().cast(), buf.len() as _, 0);
+            if n <= 0 {
+                break;
+            }
+        }
     }
 }
 

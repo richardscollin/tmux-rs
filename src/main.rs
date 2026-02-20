@@ -15,12 +15,24 @@ unsafe impl GlobalAlloc for MyAlloc {
             } else {
                 // malloc only guarantees MIN_ALIGN alignment; use
                 // aligned_alloc for larger alignment requirements.
-                libc::aligned_alloc(layout.align(), layout.size()) as *mut u8
+                #[cfg(unix)]
+                { libc::aligned_alloc(layout.align(), layout.size()) as *mut u8 }
+                #[cfg(windows)]
+                { libc::aligned_malloc(layout.size(), layout.align()) as *mut u8 }
             }
         }
     }
-    unsafe fn dealloc(&self, ptr: *mut u8, _layout: Layout) {
-        unsafe { libc::free(ptr.cast()) }
+    unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
+        unsafe {
+            if layout.align() <= MIN_ALIGN {
+                libc::free(ptr.cast())
+            } else {
+                #[cfg(unix)]
+                libc::free(ptr.cast());
+                #[cfg(windows)]
+                libc::aligned_free(ptr.cast());
+            }
+        }
     }
     unsafe fn alloc_zeroed(&self, layout: Layout) -> *mut u8 {
         if layout.align() <= MIN_ALIGN {

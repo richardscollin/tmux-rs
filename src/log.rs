@@ -82,12 +82,17 @@ pub fn log_close() {
     // If we drop the file when it's already closed it will panic in debug mode.
     // Because of this and our use of fork, extra care has to be made when closing the file.
     // see std::sys::pal::unix::fs::debug_assert_fd_is_open;
-    use std::os::fd::AsRawFd;
     if let Some(mut old_handle) = LOG_FILE.lock().unwrap().take() {
         let _flush_err = old_handle.flush(); // TODO
         match old_handle.into_inner() {
             Ok(file) => unsafe {
-                libc::close(file.as_raw_fd());
+                #[cfg(unix)]
+                {
+                    use std::os::fd::AsRawFd;
+                    libc::close(file.as_raw_fd());
+                }
+                #[cfg(windows)]
+                drop(file.sync_all());
                 std::mem::forget(file);
             },
             Err(err) => {

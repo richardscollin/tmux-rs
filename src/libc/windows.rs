@@ -784,7 +784,8 @@ pub fn enable_vt_processing() {
 
 /// Saved original console input mode, for restoration on exit.
 static ORIGINAL_CONSOLE_MODE: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
-static CONSOLE_MODE_SAVED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+static CONSOLE_MODE_SAVED: std::sync::atomic::AtomicBool =
+    std::sync::atomic::AtomicBool::new(false);
 
 /// Set console stdin to raw mode (disable line edit, echo, processed input).
 /// Saves the original mode on the first call for later restoration.

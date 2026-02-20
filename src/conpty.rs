@@ -31,8 +31,8 @@ use windows_sys::Win32::System::Threading::{
     CREATE_UNICODE_ENVIRONMENT, CreateProcessW, EXTENDED_STARTUPINFO_PRESENT, GetExitCodeProcess,
     InitializeProcThreadAttributeList, PROC_THREAD_ATTRIBUTE_PSEUDOCONSOLE, PROCESS_INFORMATION,
     RegisterWaitForSingleObject, STARTF_USESTDHANDLES, STARTUPINFOEXW, STARTUPINFOW,
-    TerminateProcess, UnregisterWaitEx, UpdateProcThreadAttribute, WaitForSingleObject,
-    WT_EXECUTEONLYONCE,
+    TerminateProcess, UnregisterWaitEx, UpdateProcThreadAttribute, WT_EXECUTEONLYONCE,
+    WaitForSingleObject,
 };
 
 // ---------------------------------------------------------------------------

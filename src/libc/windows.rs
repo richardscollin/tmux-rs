@@ -675,3 +675,40 @@ pub unsafe fn sysconf(_name: c_int) -> i64 {
 pub unsafe fn stat(_path: *const u8, _buf: *mut ::libc::stat) -> c_int {
     todo!("stat not available on Windows")
 }
+
+// ============================================================
+// POSIX globals / functions not available on Windows
+// ============================================================
+
+pub static mut environ: *mut *mut u8 = core::ptr::null_mut();
+
+/// Rust implementation of POSIX strsep for Windows.
+pub unsafe fn strsep(stringp: *mut *mut u8, delim: *const u8) -> *mut u8 {
+    unsafe {
+        let s = *stringp;
+        if s.is_null() {
+            return core::ptr::null_mut();
+        }
+        // Find the first occurrence of any delimiter character
+        let mut p = s;
+        while *p != 0 {
+            let mut d = delim;
+            while *d != 0 {
+                if *p == *d {
+                    *p = 0;
+                    *stringp = p.add(1);
+                    return s;
+                }
+                d = d.add(1);
+            }
+            p = p.add(1);
+        }
+        // No delimiter found
+        *stringp = core::ptr::null_mut();
+        s
+    }
+}
+
+pub unsafe fn wcwidth(_c: super::wchar_t) -> i32 {
+    todo!("wcwidth not available on Windows")
+}

@@ -276,8 +276,9 @@ pub unsafe fn shell_argv0(shell: *const u8, is_login: c_int) -> *mut u8 {
 }
 
 pub unsafe fn setblocking(fd: c_int, state: c_int) {
-    use crate::libc::{F_GETFL, F_SETFL, O_NONBLOCK, };
+    #[cfg(not(target_os = "windows"))]
     unsafe {
+        use crate::libc::{F_GETFL, F_SETFL, O_NONBLOCK};
         let mut mode = fcntl(fd, F_GETFL);
 
         if mode != -1 {
@@ -288,6 +289,11 @@ pub unsafe fn setblocking(fd: c_int, state: c_int) {
             }
             fcntl(fd, F_SETFL, mode);
         }
+    }
+    #[cfg(target_os = "windows")]
+    {
+        let _ = (fd, state);
+        todo!("setblocking not implemented for Windows");
     }
 }
 

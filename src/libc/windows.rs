@@ -18,6 +18,12 @@ use core::ffi::{c_char, c_int, c_uint, c_void};
 // Types (not in ::libc on Windows)
 // ============================================================
 
+/// Equivalent to C's `max_align_t` – guarantees maximum fundamental alignment.
+/// On MSVC x64 this is 8 bytes (double); we use `f64` to get the right size + alignment.
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct max_align_t(f64);
+
 pub type pid_t = i32;
 pub type uid_t = u32;
 pub type gid_t = u32;
@@ -196,6 +202,10 @@ pub const SOL_SOCKET: c_int = 1;
 // File constants
 // ============================================================
 
+pub const STDIN_FILENO: c_int = 0;
+pub const STDOUT_FILENO: c_int = 1;
+pub const STDERR_FILENO: c_int = 2;
+
 pub const O_NONBLOCK: c_int = 0x800;
 pub const X_OK: c_int = 1;
 pub const F_GETFL: c_int = 3;
@@ -371,6 +381,7 @@ unsafe extern "C" {
     pub fn snprintf(s: *mut c_char, n: usize, format: *const c_char, ...) -> c_int;
     pub fn fcntl(fd: c_int, cmd: c_int, ...) -> c_int;
     pub fn ioctl(fd: c_int, request: u64, ...) -> c_int;
+    #[link_name = "_execl"]
     pub fn execl(path: *const c_char, arg: *const c_char, ...) -> c_int;
     pub fn prctl(option: c_int, ...) -> c_int;
 }

@@ -105,7 +105,13 @@ pub unsafe extern "C-unwind" fn evbuffer_write(buffer: *mut evbuffer, fd: i32) -
     if inner.data.is_empty() {
         return 0;
     }
-    let n = unsafe { libc::write(fd, inner.data.as_ptr() as *const c_void, inner.data.len()) };
+    let n = unsafe {
+        libc::write(
+            fd,
+            inner.data.as_ptr() as *const c_void,
+            inner.data.len() as _,
+        )
+    };
     if n > 0 {
         inner.data.drain(..n as usize);
     }
@@ -126,7 +132,7 @@ pub unsafe extern "C-unwind" fn evbuffer_read(buffer: *mut evbuffer, fd: i32, ho
         libc::read(
             fd,
             inner.data[old_len..].as_mut_ptr() as *mut c_void,
-            howmuch,
+            howmuch as _,
         )
     };
     if n >= 0 {

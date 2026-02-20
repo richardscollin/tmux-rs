@@ -19,13 +19,16 @@ use crate::log::log_debug;
 // ---------------------------------------------------------------------------
 
 /// Maximum signal number we support (POSIX guarantees at most 64).
+#[cfg(unix)]
 const MAX_SIGNALS: usize = 64;
 
 /// Per-signal pipe write-end. The signal handler writes here.
 /// -1 means no pipe installed for that signal.
+#[cfg(unix)]
 static mut SIGNAL_WRITE_FDS: [c_int; MAX_SIGNALS] = [-1; MAX_SIGNALS];
 
 /// Async-signal-safe handler: writes the signal number to the self-pipe.
+#[cfg(unix)]
 unsafe extern "C" fn signal_handler_trampoline(signum: c_int) {
     unsafe {
         let fd = SIGNAL_WRITE_FDS[signum as usize];
@@ -209,8 +212,10 @@ pub unsafe extern "C-unwind" fn event_add(ev: *mut event, timeout: *const timeva
 
     let persist = (events & EV_PERSIST) != 0;
 
-    if (events & EV_SIGNAL) != 0 {
+    #[cfg(unix)]
+    let signal_handled = if (events & EV_SIGNAL) != 0 {
         // Signal event: fd is the signal number.
+        let tx = tx.clone();
         let signum = fd;
         if signum >= 0 && (signum as usize) < MAX_SIGNALS {
             // Create a pipe for this signal (close old one first if re-adding).
@@ -283,7 +288,14 @@ pub unsafe extern "C-unwind" fn event_add(ev: *mut event, timeout: *const timeva
                 base.registrations.insert(id, handle);
             }
         }
-    } else if fd >= 0 && (events & (EV_READ | EV_WRITE)) != 0 {
+        true
+    } else {
+        false
+    };
+    #[cfg(not(unix))]
+    let signal_handled = false;
+
+    if !signal_handled && fd >= 0 && (events & (EV_READ | EV_WRITE)) != 0 {
         // I/O event on a file descriptor
         let handle = base.local_set.spawn_local(async move {
             loop {
@@ -321,19 +333,21 @@ pub unsafe extern "C-unwind" fn event_add(ev: *mut event, timeout: *const timeva
             }
         });
         base.registrations.insert(id, handle);
-    } else if let Some(dur) = timeout_duration {
-        // Pure timer (fd == -1, timeout set)
-        let handle = base.local_set.spawn_local(async move {
-            tokio::time::sleep(dur).await;
-            let _ = tx.send(ReadyEvent {
-                id,
-                fd,
-                events: EV_TIMEOUT,
-                callback,
-                arg,
+    } else if !signal_handled {
+        if let Some(dur) = timeout_duration {
+            // Pure timer (fd == -1, timeout set)
+            let handle = base.local_set.spawn_local(async move {
+                tokio::time::sleep(dur).await;
+                let _ = tx.send(ReadyEvent {
+                    id,
+                    fd,
+                    events: EV_TIMEOUT,
+                    callback,
+                    arg,
+                });
             });
-        });
-        base.registrations.insert(id, handle);
+            base.registrations.insert(id, handle);
+        }
     }
 
     ev.added = true;
@@ -341,6 +355,7 @@ pub unsafe extern "C-unwind" fn event_add(ev: *mut event, timeout: *const timeva
 }
 
 /// Poll a file descriptor for readiness using tokio's AsyncFd.
+#[cfg(unix)]
 async fn poll_fd(fd: c_int, events: c_short, timeout: Option<Duration>) -> Option<c_short> {
     use std::os::fd::{FromRawFd, OwnedFd};
     use tokio::io::unix::AsyncFd;
@@ -424,6 +439,96 @@ async fn poll_fd(fd: c_int, events: c_short, timeout: Option<Duration>) -> Optio
     }
 }
 
+/// Poll a file descriptor for readiness using WSAPoll via spawn_blocking.
+#[cfg(windows)]
+async fn poll_fd(fd: c_int, events: c_short, timeout: Option<Duration>) -> Option<c_short> {
+    #[repr(C)]
+    #[derive(Clone, Copy)]
+    struct WsaPollFd {
+        fd: usize, // SOCKET (UINT_PTR)
+        events: c_short,
+        revents: c_short,
+    }
+
+    const POLLRDNORM: c_short = 0x0100;
+    const POLLWRNORM: c_short = 0x0010;
+    const POLLERR: c_short = 0x0001;
+    const POLLHUP: c_short = 0x0002;
+
+    // Maximum time (ms) to block in a single WSAPoll call.
+    // Keeps blocking threads short-lived so task cancellation is timely.
+    const MAX_POLL_MS: c_int = 500;
+
+    unsafe extern "system" {
+        fn WSAPoll(fdarray: *mut WsaPollFd, nfds: u32, timeout: c_int) -> c_int;
+    }
+
+    let socket = unsafe { libc::get_osfhandle(fd) as usize };
+
+    let mut wsa_events: c_short = 0;
+    if (events & EV_READ) != 0 {
+        wsa_events |= POLLRDNORM;
+    }
+    if (events & EV_WRITE) != 0 {
+        wsa_events |= POLLWRNORM;
+    }
+
+    let deadline = timeout.map(|d| std::time::Instant::now() + d);
+
+    loop {
+        let poll_ms = match deadline {
+            Some(dl) => {
+                let now = std::time::Instant::now();
+                if now >= dl {
+                    return None;
+                }
+                (dl - now).as_millis().min(MAX_POLL_MS as u128) as c_int
+            }
+            None => MAX_POLL_MS,
+        };
+
+        let poll_events = wsa_events;
+        let result = tokio::task::spawn_blocking(move || {
+            let mut pfd = WsaPollFd {
+                fd: socket,
+                events: poll_events,
+                revents: 0,
+            };
+            let ret = unsafe { WSAPoll(&mut pfd, 1, poll_ms) };
+            if ret > 0 {
+                let mut fired: c_short = 0;
+                if (pfd.revents & POLLRDNORM) != 0 {
+                    fired |= EV_READ;
+                }
+                if (pfd.revents & POLLWRNORM) != 0 {
+                    fired |= EV_WRITE;
+                }
+                if (pfd.revents & (POLLERR | POLLHUP)) != 0 {
+                    if (poll_events & POLLRDNORM) != 0 {
+                        fired |= EV_READ;
+                    }
+                    if (poll_events & POLLWRNORM) != 0 {
+                        fired |= EV_WRITE;
+                    }
+                }
+                if fired != 0 { Some(fired) } else { None }
+            } else {
+                None
+            }
+        })
+        .await;
+
+        match result {
+            Ok(Some(fired)) => return Some(fired),
+            Err(_) => return None,
+            Ok(None) => {
+                // No events yet; yield to allow task cancellation, then re-poll
+                tokio::task::yield_now().await;
+            }
+        }
+    }
+}
+
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn event_del(ev: *mut event) -> c_int {
     if ev.is_null() {
@@ -436,7 +541,9 @@ pub unsafe extern "C-unwind" fn event_del(ev: *mut event) -> c_int {
 
     log_debug!(
         "event_del: id={} fd={} events=0x{:x}",
-        ev.id, ev.ev_fd, ev.ev_events
+        ev.id,
+        ev.ev_fd,
+        ev.ev_events
     );
 
     let base_ptr = ev.ev_base as *mut EventBase;
@@ -448,6 +555,7 @@ pub unsafe extern "C-unwind" fn event_del(ev: *mut event) -> c_int {
     }
 
     // Clean up signal pipe if this was a signal event.
+    #[cfg(unix)]
     if (ev.ev_events & EV_SIGNAL) != 0 {
         let signum = ev.ev_fd;
         if signum >= 0 && (signum as usize) < MAX_SIGNALS {
@@ -578,10 +686,7 @@ pub unsafe extern "C-unwind" fn event_loop(flags: c_int) -> c_int {
         events.push(ev);
     }
 
-    log_debug!(
-        "event_loop: dispatching {} events",
-        events.len()
-    );
+    log_debug!("event_loop: dispatching {} events", events.len());
     for ready in events {
         // A previous callback in this batch may have called event_del,
         // freeing the event's data.  Check that the registration still
@@ -590,13 +695,17 @@ pub unsafe extern "C-unwind" fn event_loop(flags: c_int) -> c_int {
         if !base.registrations.contains_key(&ready.id) {
             log_debug!(
                 "event_loop: skipping stale id={} fd={} events=0x{:x}",
-                ready.id, ready.fd, ready.events
+                ready.id,
+                ready.fd,
+                ready.events
             );
             continue;
         }
         log_debug!(
             "event_loop: dispatch id={} fd={} events=0x{:x}",
-            ready.id, ready.fd, ready.events
+            ready.id,
+            ready.fd,
+            ready.events
         );
         if let Some(cb) = ready.callback {
             unsafe { cb(ready.fd, ready.events, ready.arg) };

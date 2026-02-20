@@ -16,9 +16,13 @@ unsafe impl GlobalAlloc for MyAlloc {
                 // malloc only guarantees MIN_ALIGN alignment; use
                 // aligned_alloc for larger alignment requirements.
                 #[cfg(unix)]
-                { libc::aligned_alloc(layout.align(), layout.size()) as *mut u8 }
+                {
+                    libc::aligned_alloc(layout.align(), layout.size()) as *mut u8
+                }
                 #[cfg(windows)]
-                { libc::aligned_malloc(layout.size(), layout.align()) as *mut u8 }
+                {
+                    libc::aligned_malloc(layout.size(), layout.align()) as *mut u8
+                }
             }
         }
     }

@@ -53,10 +53,27 @@ pub fn usage() -> ! {
 
 #[cfg(target_os = "windows")]
 unsafe fn getshell() -> Cow<'static, CStr> {
-    // 1. Try to detect parent process (like winmux): use whatever shell launched us
+    // 1. Try to detect parent process: use it only if it's a known shell
     if let Some(parent) = parent_process_exe() {
-        if let Ok(shell) = CString::new(parent) {
-            return Cow::Owned(shell);
+        let filename = parent
+            .rsplit(|c| c == '\\' || c == '/')
+            .next()
+            .unwrap_or("")
+            .to_ascii_lowercase();
+        let is_shell = matches!(
+            filename.as_str(),
+            "pwsh.exe"
+                | "powershell.exe"
+                | "cmd.exe"
+                | "bash.exe"
+                | "zsh.exe"
+                | "fish.exe"
+                | "nu.exe"
+        );
+        if is_shell {
+            if let Ok(shell) = CString::new(parent) {
+                return Cow::Owned(shell);
+            }
         }
     }
     // 2. Look for pwsh.exe on PATH

@@ -191,7 +191,7 @@ pub fn conpty_spawn(
             attr_list_ptr,
             0,
             PROC_THREAD_ATTRIBUTE_PSEUDOCONSOLE as usize,
-            &hpc as *const HPCON as *const _,
+            hpc as *const _,
             size_of::<HPCON>(),
             std::ptr::null_mut(),
             std::ptr::null_mut(),
@@ -207,12 +207,9 @@ pub fn conpty_spawn(
         }
 
         // Build STARTUPINFOEXW with typed struct — compiler-verified layout
+        // Don't set STARTF_USESTDHANDLES — ConPTY provides stdio via the pseudo console.
         let mut si: STARTUPINFOEXW = zeroed();
         si.StartupInfo.cb = size_of::<STARTUPINFOEXW>() as u32;
-        si.StartupInfo.dwFlags = STARTF_USESTDHANDLES;
-        si.StartupInfo.hStdInput = INVALID_HANDLE_VALUE;
-        si.StartupInfo.hStdOutput = INVALID_HANDLE_VALUE;
-        si.StartupInfo.hStdError = INVALID_HANDLE_VALUE;
         si.lpAttributeList = attr_list_ptr;
 
         // 5. Create the process

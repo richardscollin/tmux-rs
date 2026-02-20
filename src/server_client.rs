@@ -337,9 +337,12 @@ pub unsafe fn server_client_open(c: *mut client) -> Result<(), String> {
 
 /// Open client terminal if needed (Windows version).
 ///
-/// Sets c.fd to a CRT fd wrapping stdout for VT output, gets console
-/// dimensions, then calls tty_open to create the tty_term, evbuffers,
-/// and start rendering.
+/// Sets c.fd to a socket connected to stdout via a relay thread.
+///
+/// The event loop uses WSAPoll which only works with Winsock sockets,
+/// so we can't poll the console stdout handle directly. Instead, we
+/// create a socketpair and spawn a writer thread that reads from one
+/// end and writes to the actual console stdout.
 #[cfg(target_os = "windows")]
 pub unsafe fn server_client_open(c: *mut client) -> Result<(), String> {
     unsafe {
@@ -347,11 +350,36 @@ pub unsafe fn server_client_open(c: *mut client) -> Result<(), String> {
             return Ok(());
         }
 
-        // Set c.fd to a CRT fd wrapping stdout for VT output
-        (*c).fd = libc::stdout_as_fd();
-        if (*c).fd == -1 {
-            return Err("failed to open stdout as fd".to_string());
+        // Create socketpair: sv[0] goes to c.fd (polled by event loop),
+        // sv[1] is read by the writer thread which writes to stdout.
+        let mut sv: [c_int; 2] = [-1, -1];
+        if libc::socketpair(libc::AF_UNIX, libc::SOCK_STREAM, libc::PF_UNSPEC, sv.as_mut_ptr())
+            != 0
+        {
+            return Err("socketpair failed for stdout relay".to_string());
         }
+
+        (*c).fd = sv[0];
+
+        // The socketpair is full-duplex:
+        // - stdout writer thread: reads from sv[1], writes to console stdout
+        // - stdin reader thread: reads from console stdin, writes to sv[1]
+        // - event loop: reads from sv[0] (input events), writes to sv[0] (output)
+        let relay_fd = sv[1];
+        std::thread::Builder::new()
+            .name("stdout-writer".into())
+            .spawn(move || {
+                stdout_writer_thread(relay_fd);
+            })
+            .map_err(|e| format!("Failed to spawn stdout writer thread: {e}"))?;
+
+        let stdin_relay_fd = sv[1];
+        std::thread::Builder::new()
+            .name("stdin-reader".into())
+            .spawn(move || {
+                stdin_reader_thread(stdin_relay_fd);
+            })
+            .map_err(|e| format!("Failed to spawn stdin reader thread: {e}"))?;
 
         // Initialize tty struct fields (replaces tty_init which needs isatty/tcgetattr)
         let tty = &raw mut (*c).tty;
@@ -366,6 +394,93 @@ pub unsafe fn server_client_open(c: *mut client) -> Result<(), String> {
         (*c).flags |= client_flag::TERMINAL;
 
         Ok(())
+    }
+}
+
+/// Writer thread: reads from the relay socket and writes to console stdout.
+#[cfg(target_os = "windows")]
+fn stdout_writer_thread(relay_fd: c_int) {
+    use windows_sys::Win32::Foundation::INVALID_HANDLE_VALUE;
+    use windows_sys::Win32::Storage::FileSystem::WriteFile;
+    use windows_sys::Win32::System::Console::{GetStdHandle, STD_OUTPUT_HANDLE};
+
+    let stdout = unsafe { GetStdHandle(STD_OUTPUT_HANDLE) };
+    if stdout == INVALID_HANDLE_VALUE || stdout.is_null() {
+        return;
+    }
+
+    let mut buf = [0u8; 8192];
+    loop {
+        let received =
+            unsafe { libc::recv(relay_fd, buf.as_mut_ptr().cast(), buf.len() as _, 0) };
+        if received <= 0 {
+            break;
+        }
+        let mut offset = 0usize;
+        while offset < received as usize {
+            let mut written: u32 = 0;
+            let ok = unsafe {
+                WriteFile(
+                    stdout,
+                    buf[offset..].as_ptr(),
+                    (received as usize - offset) as u32,
+                    &mut written,
+                    std::ptr::null_mut(),
+                )
+            };
+            if ok == 0 || written == 0 {
+                return;
+            }
+            offset += written as usize;
+        }
+    }
+}
+
+/// Reader thread: reads from console stdin and sends to the relay socket.
+/// With ENABLE_VIRTUAL_TERMINAL_INPUT, ReadFile returns VT sequences for
+/// keypresses, which tmux's tty_keys_next() already knows how to parse.
+#[cfg(target_os = "windows")]
+fn stdin_reader_thread(relay_fd: c_int) {
+    use windows_sys::Win32::Foundation::INVALID_HANDLE_VALUE;
+    use windows_sys::Win32::Storage::FileSystem::ReadFile;
+    use windows_sys::Win32::System::Console::{GetStdHandle, STD_INPUT_HANDLE};
+
+    let stdin = unsafe { GetStdHandle(STD_INPUT_HANDLE) };
+    if stdin == INVALID_HANDLE_VALUE || stdin.is_null() {
+        return;
+    }
+
+    let mut buf = [0u8; 4096];
+    loop {
+        let mut bytes_read: u32 = 0;
+        let ok = unsafe {
+            ReadFile(
+                stdin,
+                buf.as_mut_ptr(),
+                buf.len() as u32,
+                &mut bytes_read,
+                std::ptr::null_mut(),
+            )
+        };
+        if ok == 0 || bytes_read == 0 {
+            break;
+        }
+        // Send to the event loop via the relay socket
+        let mut offset = 0usize;
+        while offset < bytes_read as usize {
+            let sent = unsafe {
+                libc::send(
+                    relay_fd,
+                    buf[offset..].as_ptr().cast(),
+                    (bytes_read as usize - offset) as _,
+                    0,
+                )
+            };
+            if sent <= 0 {
+                return;
+            }
+            offset += sent as usize;
+        }
     }
 }
 

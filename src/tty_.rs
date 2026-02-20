@@ -348,102 +348,104 @@ pub unsafe fn tty_open(tty: *mut tty) -> Result<(), String> {
 #[cfg(target_os = "windows")]
 fn windows_xterm256color_caps() -> Vec<std::ffi::CString> {
     use std::ffi::CString;
+    // Cap strings must contain raw bytes (actual ESC = 0x1B), not
+    // the terminfo source notation (\033).
     [
         // Screen clear and cursor positioning (required by tty_term_create)
-        "clear=\\033[H\\033[2J",
-        "cup=\\033[%i%p1%d;%p2%dH",
+        "clear=\x1b[H\x1b[2J",
+        "cup=\x1b[%i%p1%d;%p2%dH",
         // Attribute control
-        "sgr0=\\033(B\\033[m",
-        "bold=\\033[1m",
-        "dim=\\033[2m",
-        "sitm=\\033[3m",
-        "smul=\\033[4m",
-        "blink=\\033[5m",
-        "rev=\\033[7m",
-        "smxx=\\033[9m",
-        "ritm=\\033[23m",
-        "rmul=\\033[24m",
-        "rmxx=\\033[29m",
+        "sgr0=\x1b(B\x1b[m",
+        "bold=\x1b[1m",
+        "dim=\x1b[2m",
+        "sitm=\x1b[3m",
+        "smul=\x1b[4m",
+        "blink=\x1b[5m",
+        "rev=\x1b[7m",
+        "smxx=\x1b[9m",
+        "ritm=\x1b[23m",
+        "rmul=\x1b[24m",
+        "rmxx=\x1b[29m",
         // Color
-        "setaf=\\033[%?%p1%{8}%<%t3%p1%d%e%p1%{16}%<%t9%p1%{8}%-%d%e38;5;%p1%d%;m",
-        "setab=\\033[%?%p1%{8}%<%t4%p1%d%e%p1%{16}%<%t10%p1%{8}%-%d%e48;5;%p1%d%;m",
-        "op=\\033[39;49m",
+        "setaf=\x1b[%?%p1%{8}%<%t3%p1%d%e%p1%{16}%<%t9%p1%{8}%-%d%e38;5;%p1%d%;m",
+        "setab=\x1b[%?%p1%{8}%<%t4%p1%d%e%p1%{16}%<%t10%p1%{8}%-%d%e48;5;%p1%d%;m",
+        "op=\x1b[39;49m",
         "colors=256",
         "Tc=1",
-        "Setrgbf=\\033[38;2;%p1%d;%p2%d;%p3%dm",
-        "Setrgbb=\\033[48;2;%p1%d;%p2%d;%p3%dm",
+        "Setrgbf=\x1b[38;2;%p1%d;%p2%d;%p3%dm",
+        "Setrgbb=\x1b[48;2;%p1%d;%p2%d;%p3%dm",
         // Alternate screen
-        "smcup=\\033[?1049h",
-        "rmcup=\\033[?1049l",
+        "smcup=\x1b[?1049h",
+        "rmcup=\x1b[?1049l",
         // Keypad mode
-        "smkx=\\033[?1h\\033=",
-        "rmkx=\\033[?1l\\033>",
+        "smkx=\x1b[?1h\x1b=",
+        "rmkx=\x1b[?1l\x1b>",
         // Cursor visibility
-        "cnorm=\\033[?12l\\033[?25h",
-        "civis=\\033[?25l",
-        "cvvis=\\033[?12;25h",
+        "cnorm=\x1b[?12l\x1b[?25h",
+        "civis=\x1b[?25l",
+        "cvvis=\x1b[?12;25h",
         // Line operations
-        "el=\\033[K",
-        "el1=\\033[1K",
-        "ed=\\033[J",
-        "csr=\\033[%i%p1%d;%p2%dr",
-        "dl1=\\033[M",
-        "il1=\\033[L",
-        "dch1=\\033[P",
-        "ich1=\\033[@",
-        "ri=\\033M",
-        "ind=\\n",
+        "el=\x1b[K",
+        "el1=\x1b[1K",
+        "ed=\x1b[J",
+        "csr=\x1b[%i%p1%d;%p2%dr",
+        "dl1=\x1b[M",
+        "il1=\x1b[L",
+        "dch1=\x1b[P",
+        "ich1=\x1b[@",
+        "ri=\x1bM",
+        "ind=\n",
         // Cursor movement
-        "cuf1=\\033[C",
-        "cub1=\\010",
-        "cuu1=\\033[A",
-        "cuf=\\033[%p1%dC",
-        "cub=\\033[%p1%dD",
-        "cuu=\\033[%p1%dA",
-        "cud=\\033[%p1%dB",
+        "cuf1=\x1b[C",
+        "cub1=\x08",
+        "cuu1=\x1b[A",
+        "cuf=\x1b[%p1%dC",
+        "cub=\x1b[%p1%dD",
+        "cuu=\x1b[%p1%dA",
+        "cud=\x1b[%p1%dB",
         // Extended features
         "XT=1",
-        "kmous=\\033[M",
-        "Sync=\\033P=%p1%ds\\033\\\\",
-        "Smol=\\033[53m",
-        "Rmol=\\033[55m",
-        "Smulx=\\033[4:%p1%dm",
-        "Se=\\033[2 q",
-        "Ss=\\033[%p1%d q",
-        "enbp=\\033[?2004h",
-        "dsbp=\\033[?2004l",
+        "kmous=\x1b[M",
+        "Sync=\x1bP=%p1%ds\x1b\\",
+        "Smol=\x1b[53m",
+        "Rmol=\x1b[55m",
+        "Smulx=\x1b[4:%p1%dm",
+        "Se=\x1b[2 q",
+        "Ss=\x1b[%p1%d q",
+        "enbp=\x1b[?2004h",
+        "dsbp=\x1b[?2004l",
         // Insert/delete lines
-        "dl=\\033[%p1%dM",
-        "il=\\033[%p1%dL",
-        "dch=\\033[%p1%dP",
-        "ich=\\033[%p1%d@",
+        "dl=\x1b[%p1%dM",
+        "il=\x1b[%p1%dL",
+        "dch=\x1b[%p1%dP",
+        "ich=\x1b[%p1%d@",
         // Repeat
-        "rep=\\033[%p1%db",
+        "rep=\x1b[%p1%db",
         // ACS (alternate character set) - use UTF-8 instead
         "enacs=",
         // Key codes
-        "kcuu1=\\033OA",
-        "kcud1=\\033OB",
-        "kcuf1=\\033OC",
-        "kcub1=\\033OD",
-        "khome=\\033OH",
-        "kend=\\033OF",
-        "kpp=\\033[5~",
-        "knp=\\033[6~",
-        "kdch1=\\033[3~",
-        "kich1=\\033[2~",
-        "kf1=\\033OP",
-        "kf2=\\033OQ",
-        "kf3=\\033OR",
-        "kf4=\\033OS",
-        "kf5=\\033[15~",
-        "kf6=\\033[17~",
-        "kf7=\\033[18~",
-        "kf8=\\033[19~",
-        "kf9=\\033[20~",
-        "kf10=\\033[21~",
-        "kf11=\\033[23~",
-        "kf12=\\033[24~",
+        "kcuu1=\x1bOA",
+        "kcud1=\x1bOB",
+        "kcuf1=\x1bOC",
+        "kcub1=\x1bOD",
+        "khome=\x1bOH",
+        "kend=\x1bOF",
+        "kpp=\x1b[5~",
+        "knp=\x1b[6~",
+        "kdch1=\x1b[3~",
+        "kich1=\x1b[2~",
+        "kf1=\x1bOP",
+        "kf2=\x1bOQ",
+        "kf3=\x1bOR",
+        "kf4=\x1bOS",
+        "kf5=\x1b[15~",
+        "kf6=\x1b[17~",
+        "kf7=\x1b[18~",
+        "kf8=\x1b[19~",
+        "kf9=\x1b[20~",
+        "kf10=\x1b[21~",
+        "kf11=\x1b[23~",
+        "kf12=\x1b[24~",
     ]
     .iter()
     .map(|s| CString::new(*s).unwrap())
@@ -488,18 +490,20 @@ pub unsafe fn tty_open(tty: *mut tty) -> Result<(), String> {
             | tty_flags::TTY_BLOCK
             | tty_flags::TTY_TIMER);
 
-        // Allocate evbuffers for input and output
+        // Set up input event on c.fd (socketpair — stdin reader thread writes here)
+        event_set(
+            &raw mut (*tty).event_in,
+            (*c).fd,
+            EV_PERSIST | EV_READ,
+            Some(tty_read_callback),
+            tty.cast(),
+        );
         (*tty).in_ = evbuffer_new();
         if (*tty).in_.is_null() {
             fatal("out of memory");
         }
 
-        (*tty).out = evbuffer_new();
-        if (*tty).out.is_null() {
-            fatal("out of memory");
-        }
-
-        // Set up libevent write event on c.fd (stdout fd)
+        // Set up output event on c.fd (socketpair — stdout writer thread reads here)
         event_set(
             &raw mut (*tty).event_out,
             (*c).fd,
@@ -507,6 +511,10 @@ pub unsafe fn tty_open(tty: *mut tty) -> Result<(), String> {
             Some(tty_write_callback),
             tty.cast(),
         );
+        (*tty).out = evbuffer_new();
+        if (*tty).out.is_null() {
+            fatal("out of memory");
+        };
 
         evtimer_set(
             &raw mut (*tty).timer,
@@ -637,8 +645,9 @@ pub unsafe fn tty_start_tty(tty: *mut tty) {
         libc::enable_vt_processing();
         libc::set_console_raw_mode();
 
-        // Make the output fd non-blocking
+        // Make the fd non-blocking and start listening for input
         setblocking((*c).fd, 0);
+        event_add(&raw mut (*tty).event_in, null_mut());
 
         // Enter alternate screen, enable keypad mode, clear
         tty_putcode(tty, tty_code_code::TTYC_SMCUP);
@@ -654,12 +663,11 @@ pub unsafe fn tty_start_tty(tty: *mut tty) {
             tty_putcode(tty, tty_code_code::TTYC_ENBP);
         }
 
-        evtimer_set(
-            &raw mut (*tty).start_timer,
-            tty_start_timer_callback,
-            NonNull::new_unchecked(tty),
-        );
-        evtimer_add(&raw mut (*tty).start_timer, &raw const tv);
+        // On Windows, we know the terminal capabilities — skip VT probing
+        // (DA, XTVERSION, etc.) by marking all request flags as complete.
+        // This prevents unnecessary queries whose responses can delay initial
+        // rendering and interfere with the key parser.
+        (*tty).flags |= TTY_ALL_REQUEST_FLAGS;
 
         (*tty).flags |= tty_flags::TTY_STARTED;
         tty_invalidate(tty);

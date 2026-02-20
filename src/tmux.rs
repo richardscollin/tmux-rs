@@ -222,8 +222,13 @@ unsafe fn make_label(mut label: *const u8) -> Result<CString, String> {
 
         let base = format!("{}/tmux-rs-{}", path.to_string_lossy(), uid);
         {
-            use std::os::unix::fs::DirBuilderExt;
-            if let Err(mkdir_err) = std::fs::DirBuilder::new().mode(0o700).create(&base) && mkdir_err.kind() != std::io::ErrorKind::AlreadyExists {
+            let mut builder = std::fs::DirBuilder::new();
+            #[cfg(unix)]
+            {
+                use std::os::unix::fs::DirBuilderExt;
+                builder.mode(0o700);
+            }
+            if let Err(mkdir_err) = builder.create(&base) && mkdir_err.kind() != std::io::ErrorKind::AlreadyExists {
                 return Err(format!("couldn't create directory {base} ({mkdir_err:?})"));
             }
         }

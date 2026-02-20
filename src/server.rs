@@ -167,7 +167,9 @@ pub unsafe fn server_start(
 ) -> c_int {
     unsafe {
         let mut fd = 0;
+        #[cfg(not(target_os = "windows"))]
         let mut set: sigset_t = zeroed();
+        #[cfg(not(target_os = "windows"))]
         let mut oldset: sigset_t = zeroed();
 
         let mut c: *mut client = null_mut();
@@ -176,9 +178,13 @@ pub unsafe fn server_start(
             tv_usec: 0,
         };
 
-        sigfillset(&raw mut set);
-        sigprocmask(SIG_BLOCK, &raw const set, &raw mut oldset);
+        #[cfg(not(target_os = "windows"))]
+        {
+            sigfillset(&raw mut set);
+            sigprocmask(SIG_BLOCK, &raw const set, &raw mut oldset);
+        }
 
+        #[cfg(not(target_os = "windows"))]
         if !flags.intersects(client_flag::NOFORK) && proc_fork_and_daemon(&raw mut fd) != 0 {
             // in parent process i.e. client
             sigprocmask(SIG_SETMASK, &raw mut oldset, null_mut());
@@ -238,7 +244,10 @@ pub unsafe fn server_start(
         SERVER_PROC = proc_start(c"server");
 
         proc_set_signals(SERVER_PROC, Some(server_signal));
-        sigprocmask(SIG_SETMASK, &raw mut oldset, null_mut());
+        #[cfg(not(target_os = "windows"))]
+        {
+            sigprocmask(SIG_SETMASK, &raw mut oldset, null_mut());
+        }
 
         if log_get_level() > 1 {
             tty_create_log();
@@ -309,6 +318,108 @@ pub unsafe fn server_start(
     }
 }
 
+/// Windows server initialization. Initializes all server data structures,
+/// creates the accept socket, creates a socketpair for the embedded client,
+/// and returns the client-side fd. Does NOT enter proc_loop.
+#[cfg(target_os = "windows")]
+pub unsafe fn server_start_windows(
+    client: *mut tmuxproc,
+    flags: client_flag,
+) -> c_int {
+    unsafe {
+        let tv: timeval = timeval {
+            tv_sec: 3600,
+            tv_usec: 0,
+        };
+
+        std::panic::set_hook(Box::new(|panic_info| {
+            use std::fmt::Write;
+            let backtrace = std::backtrace::Backtrace::force_capture();
+            let location = panic_info.location();
+            let mut err_str = String::new();
+            if let Some(s) = panic_info.payload().downcast_ref::<&str>() {
+                _ = write!(&mut err_str, "panic! {s:?}\n{backtrace:#?}");
+                log_debug!(
+                    "panic{}: {s}",
+                    location
+                        .map(|loc| format!(" at {}:{}", loc.file(), loc.line()))
+                        .unwrap_or_default()
+                );
+            } else if let Some(s) = panic_info.payload().downcast_ref::<String>() {
+                _ = write!(&mut err_str, "panic! {s:?}\n{backtrace:#?}");
+                log_debug!(
+                    "panic{}: {s}",
+                    location
+                        .map(|loc| format!(" at {}:{}", loc.file(), loc.line()))
+                        .unwrap_or_default()
+                );
+            }
+            log_close();
+            if let Err(err) =
+                std::fs::write(format!("server-panic-{}.txt", std::process::id()), err_str)
+            {
+                eprintln!("error in panic handler! {err}");
+            }
+        }));
+
+        proc_clear_signals(client, 0);
+        SERVER_CLIENT_FLAGS = flags;
+
+        #[cfg(feature = "event-tokio")]
+        {
+            let _ = osdep_event_init();
+        }
+        SERVER_PROC = proc_start(c"server");
+        proc_set_signals(SERVER_PROC, Some(server_signal));
+
+        if log_get_level() > 1 {
+            tty_create_log();
+        }
+
+        input_key_build();
+        rb_init(&raw mut WINDOWS);
+        rb_init(&raw mut ALL_WINDOW_PANES);
+        tailq_init(&raw mut CLIENTS);
+        rb_init(&raw mut SESSIONS);
+        key_bindings_init();
+        tailq_init(&raw mut MESSAGE_LOG);
+        gettimeofday(&raw mut START_TIME, null_mut());
+
+        match server_create_socket(flags) {
+            Ok(fd) => {
+                SERVER_FD = fd;
+                server_update_socket();
+            }
+            Err(cause) => {
+                log_debug!("server_start_windows: socket creation failed: {}", cause);
+                SERVER_FD = -1;
+            }
+        }
+
+        // Create socketpair for internal client ↔ server communication
+        let mut sv: [c_int; 2] = [-1, -1];
+        if socketpair(AF_UNIX, SOCK_STREAM, PF_UNSPEC, sv.as_mut_ptr()) != 0 {
+            fatalx("socketpair failed for internal client");
+        }
+
+        // Server side: create a client struct listening on sv[0]
+        let c = server_client_create(sv[0]);
+        log_debug!("server_start_windows: internal client {:p}, fd={}", c, sv[0]);
+
+        // Don't exit on empty (single-process mode)
+        options_set_number(GLOBAL_OPTIONS, "exit-empty", 0);
+
+        evtimer_set_no_args(&raw mut SERVER_EV_TIDY, server_tidy_event);
+        evtimer_add(&raw mut SERVER_EV_TIDY, &raw const tv);
+
+        server_acl_init();
+        server_add_accept(0);
+
+        // Return the client-side fd
+        sv[1]
+    }
+}
+
 pub unsafe fn server_loop() -> i32 {
     unsafe {
         CURRENT_TIME = libc::time(null_mut());
@@ -325,6 +436,9 @@ pub unsafe fn server_loop() -> i32 {
                 break;
             }
         }
+
+        #[cfg(target_os = "windows")]
+        server_check_windows_processes();
 
         server_client_loop();
 
@@ -485,6 +599,58 @@ pub unsafe fn server_add_accept(timeout: c_int) {
                 null_mut(),
             );
             event_add(&raw mut SERVER_EV_ACCEPT, &raw mut tv);
+        }
+    }
+}
+
+/// Poll ConPTY processes for exit (Windows replacement for SIGCHLD).
+#[cfg(target_os = "windows")]
+unsafe fn server_check_windows_processes() {
+    unsafe {
+        // Check all panes
+        for w in rb_foreach(&raw mut WINDOWS).map(NonNull::as_ptr) {
+            for wp in tailq_foreach::<_, discr_entry>(&raw mut (*w).panes).map(NonNull::as_ptr) {
+                if (*wp).pid <= 0 || (*wp).flags.intersects(window_pane_flags::PANE_EXITED) {
+                    continue;
+                }
+                if let Some(exit_code) = crate::conpty::conpty_check_exit((*wp).pid as u32) {
+                    // Process exited — encode exit code as Unix-style status
+                    (*wp).status = (exit_code as i32) << 8;
+                    (*wp).flags |= window_pane_flags::PANE_STATUSREADY;
+
+                    log_debug!("%%{} exited (Windows)", (*wp).id);
+                    (*wp).flags |= window_pane_flags::PANE_EXITED;
+
+                    server_destroy_pane(wp, 1);
+                }
+            }
+        }
+
+        // Check all jobs
+        for job in list_foreach(&raw mut job_::ALL_JOBS).map(NonNull::as_ptr) {
+            if (*job).pid <= 0 || (*job).state != job_::job_state::JOB_RUNNING {
+                continue;
+            }
+            if let Some(exit_code) = crate::conpty::conpty_check_exit((*job).pid as u32) {
+                let status = (exit_code as i32) << 8;
+                log_debug!(
+                    "job died {:p}: {} pid {} (Windows)",
+                    job,
+                    _s((*job).cmd),
+                    (*job).pid as c_long
+                );
+
+                (*job).status = status;
+                if (*job).state == job_::job_state::JOB_CLOSED {
+                    if let Some(completecb) = (*job).completecb {
+                        completecb(job);
+                    }
+                    job_free(job);
+                } else {
+                    (*job).pid = -1;
+                    (*job).state = job_::job_state::JOB_DEAD;
+                }
+            }
         }
     }
 }

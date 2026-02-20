@@ -442,13 +442,7 @@ async fn poll_fd(fd: c_int, events: c_short, timeout: Option<Duration>) -> Optio
 /// Poll a file descriptor for readiness using WSAPoll via spawn_blocking.
 #[cfg(windows)]
 async fn poll_fd(fd: c_int, events: c_short, timeout: Option<Duration>) -> Option<c_short> {
-    #[repr(C)]
-    #[derive(Clone, Copy)]
-    struct WsaPollFd {
-        fd: usize, // SOCKET (UINT_PTR)
-        events: c_short,
-        revents: c_short,
-    }
+    use windows_sys::Win32::Networking::WinSock::{WSAPoll, WSAPOLLFD};
 
     const POLLRDNORM: c_short = 0x0100;
     const POLLWRNORM: c_short = 0x0010;
@@ -458,10 +452,6 @@ async fn poll_fd(fd: c_int, events: c_short, timeout: Option<Duration>) -> Optio
     // Maximum time (ms) to block in a single WSAPoll call.
     // Keeps blocking threads short-lived so task cancellation is timely.
     const MAX_POLL_MS: c_int = 500;
-
-    unsafe extern "system" {
-        fn WSAPoll(fdarray: *mut WsaPollFd, nfds: u32, timeout: c_int) -> c_int;
-    }
 
     let socket = unsafe { libc::get_osfhandle(fd) as usize };
 
@@ -489,7 +479,7 @@ async fn poll_fd(fd: c_int, events: c_short, timeout: Option<Duration>) -> Optio
 
         let poll_events = wsa_events;
         let result = tokio::task::spawn_blocking(move || {
-            let mut pfd = WsaPollFd {
+            let mut pfd = WSAPOLLFD {
                 fd: socket,
                 events: poll_events,
                 revents: 0,

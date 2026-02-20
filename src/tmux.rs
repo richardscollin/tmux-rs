@@ -20,9 +20,11 @@ use crate::compat::getopt::{OPTARG, OPTIND, getopt};
 use crate::compat::{fdforkpty::getptmfd, getprogname::getprogname};
 use crate::libc::{
     LC_TIME,
-    access, fcntl, getpwuid, getuid, 
+    access, getpwuid, getuid,
     nl_langinfo, setlocale, strchr, strcspn, strerror, strncmp, strrchr, timespec,
 };
+#[cfg(not(target_os = "windows"))]
+use crate::libc::fcntl;
 use crate::*;
 use crate::options_::{options, options_create, options_default, options_set_number, options_set_string};
 
@@ -51,31 +53,77 @@ pub fn usage() -> ! {
 
 #[cfg(target_os = "windows")]
 unsafe fn getshell() -> Cow<'static, CStr> {
-    // On Windows, try SHELL env var first (for MSYS2/Git Bash users),
-    // then look for pwsh, then fall back to ComSpec / cmd.exe
-    if let Ok(shell) = std::env::var("SHELL")
-        && let Ok(shell) = CString::new(shell)
-        && unsafe { checkshell(Some(&shell)) }
-    {
-        return Cow::Owned(shell);
+    // 1. Try to detect parent process (like winmux): use whatever shell launched us
+    if let Some(parent) = parent_process_exe() {
+        if let Ok(shell) = CString::new(parent) {
+            return Cow::Owned(shell);
+        }
     }
-    // Try to find pwsh.exe on PATH
-    if let Ok(output) = std::process::Command::new("where").arg("pwsh.exe").output()
-        && output.status.success()
-    {
-        let path = String::from_utf8_lossy(&output.stdout);
-        if let Some(line) = path.lines().next() {
-            if let Ok(shell) = CString::new(line.trim()) {
-                return Cow::Owned(shell);
+    // 2. Look for pwsh.exe on PATH
+    if let Ok(path) = std::env::var("PATH") {
+        for dir in path.split(';') {
+            if std::path::Path::new(dir).join("pwsh.exe").exists() {
+                return Cow::Owned(CString::new("pwsh.exe").unwrap());
             }
         }
     }
-    if let Ok(shell) = std::env::var("ComSpec")
-        && let Ok(shell) = CString::new(shell)
-    {
-        return Cow::Owned(shell);
+    // 3. Fall back to powershell.exe
+    Cow::Owned(CString::new("powershell.exe").unwrap())
+}
+
+/// Detect the parent process's executable path using Win32 Toolhelp + QueryFullProcessImageNameW.
+#[cfg(target_os = "windows")]
+fn parent_process_exe() -> Option<String> {
+    use windows_sys::Win32::Foundation::{CloseHandle, INVALID_HANDLE_VALUE};
+    use windows_sys::Win32::System::Diagnostics::ToolHelp::{
+        CreateToolhelp32Snapshot, Process32FirstW, Process32NextW, PROCESSENTRY32W,
+        TH32CS_SNAPPROCESS,
+    };
+    use windows_sys::Win32::System::Threading::{
+        GetCurrentProcessId, OpenProcess, QueryFullProcessImageNameW,
+        PROCESS_QUERY_LIMITED_INFORMATION,
+    };
+
+    unsafe {
+        let our_pid = GetCurrentProcessId();
+        let snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+        if snapshot == INVALID_HANDLE_VALUE {
+            return None;
+        }
+
+        let mut entry: PROCESSENTRY32W = std::mem::zeroed();
+        entry.dwSize = std::mem::size_of::<PROCESSENTRY32W>() as u32;
+
+        let mut parent_pid = None;
+        if Process32FirstW(snapshot, &mut entry) != 0 {
+            loop {
+                if entry.th32ProcessID == our_pid {
+                    parent_pid = Some(entry.th32ParentProcessID);
+                    break;
+                }
+                if Process32NextW(snapshot, &mut entry) == 0 {
+                    break;
+                }
+            }
+        }
+        CloseHandle(snapshot);
+
+        let parent_pid = parent_pid?;
+        let proc_handle = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, 0, parent_pid);
+        if proc_handle.is_null() {
+            return None;
+        }
+
+        let mut buf = [0u16; 260];
+        let mut len = buf.len() as u32;
+        let ok = QueryFullProcessImageNameW(proc_handle, 0, buf.as_mut_ptr(), &mut len);
+        CloseHandle(proc_handle);
+
+        if ok == 0 {
+            return None;
+        }
+        Some(String::from_utf16_lossy(&buf[..len as usize]))
     }
-    Cow::Owned(CString::new("C:\\Windows\\System32\\cmd.exe").unwrap())
 }
 
 #[cfg(not(target_os = "windows"))]
@@ -354,9 +402,8 @@ pub unsafe fn setblocking(fd: c_int, state: c_int) {
         }
     }
     #[cfg(target_os = "windows")]
-    {
-        let _ = (fd, state);
-        todo!("setblocking not implemented for Windows");
+    unsafe {
+        crate::libc::socket_set_nonblocking(fd, state == 0);
     }
 }
 

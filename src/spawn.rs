@@ -11,9 +11,12 @@
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+#[cfg(not(target_os = "windows"))]
 use std::path::Path;
 
+#[cfg(not(target_os = "windows"))]
 use crate::compat::fdforkpty::fdforkpty;
+#[cfg(not(target_os = "windows"))]
 use crate::libc::{
     _exit, SIG_BLOCK, SIG_SETMASK, STDERR_FILENO, STDIN_FILENO, TCSANOW, VERASE, close, execl,
     execvp, sigfillset, sigprocmask, strrchr, tcgetattr, tcsetattr,
@@ -227,6 +230,7 @@ pub unsafe fn spawn_window(sc: *mut spawn_context, cause: *mut *mut u8) -> *mut 
     }
 }
 
+#[cfg(not(target_os = "windows"))]
 pub unsafe fn spawn_pane(sc: *mut spawn_context, cause: *mut *mut u8) -> *mut window_pane {
     use crate::compat::closefrom::closefrom;
 
@@ -569,6 +573,268 @@ pub unsafe fn spawn_pane(sc: *mut spawn_context, cause: *mut *mut u8) -> *mut wi
         sigprocmask(SIG_SETMASK, &raw mut oldset, null_mut());
         window_pane_set_event(new_wp);
 
+        environ_free(child);
+
+        if (*sc).flags.intersects(SPAWN_RESPAWN) {
+            return new_wp;
+        }
+        if !(*sc).flags.intersects(SPAWN_DETACHED) || (*w).active.is_null() {
+            if (*sc).flags.intersects(SPAWN_NONOTIFY) {
+                window_set_active_pane(w, new_wp, 0);
+            } else {
+                window_set_active_pane(w, new_wp, 1);
+            }
+        }
+        if !(*sc).flags.intersects(SPAWN_NONOTIFY) {
+            notify_window(c"window-layout-changed", w);
+        }
+
+        new_wp
+    }
+}
+
+#[cfg(target_os = "windows")]
+pub unsafe fn spawn_pane(sc: *mut spawn_context, cause: *mut *mut u8) -> *mut window_pane {
+    unsafe {
+        let item = (*sc).item;
+        let target = cmdq_get_target(item);
+        let c = cmdq_get_client(item);
+        let s = (*sc).s;
+        let w = (*(*sc).wl).window;
+        let new_wp: *mut window_pane;
+        let child: *mut environ;
+        let ee: *mut environ_entry;
+        let argv: *mut *mut u8;
+        let mut cwd: *mut u8;
+        let new_cwd: *mut u8;
+        let mut cmd: *const u8;
+        let argc;
+        let mut idx: u32 = 0;
+        let hlimit: u32;
+
+        'complete: {
+            spawn_log("spawn_pane", sc);
+
+            if !(*sc).cwd.is_null() {
+                cwd = format_single(
+                    item,
+                    cstr_to_str((*sc).cwd),
+                    c,
+                    (*target).s,
+                    null_mut(),
+                    null_mut(),
+                );
+                // On Windows, check for absolute path (drive letter or UNC)
+                let first = *cwd;
+                let second = if first != 0 { *cwd.add(1) } else { 0 };
+                let is_absolute =
+                    (first == b'/' || first == b'\\') || (first.is_ascii_alphabetic() && second == b':');
+                if !is_absolute {
+                    new_cwd =
+                        format_nul!("{}/{}", _s(server_client_get_cwd(c, (*target).s)), _s(cwd));
+                    free_(cwd);
+                    cwd = new_cwd;
+                }
+            } else if !(*sc).flags.intersects(SPAWN_RESPAWN) {
+                cwd = xstrdup(server_client_get_cwd(c, (*target).s)).as_ptr();
+            } else {
+                cwd = null_mut();
+            }
+
+            // If we are respawning then get rid of the old process.
+            hlimit = options_get_number_((*s).options, "history-limit") as u32;
+            if (*sc).flags.intersects(SPAWN_RESPAWN) {
+                if (*(*sc).wp0).fd != -1 && !(*sc).flags.intersects(SPAWN_KILL) {
+                    window_pane_index((*sc).wp0, &raw mut idx);
+                    *cause = format_nul!(
+                        "pane {}:{}.{} still active",
+                        (*s).name,
+                        (*(*sc).wl).idx,
+                        idx
+                    );
+                    free_(cwd);
+                    return null_mut();
+                }
+                if (*(*sc).wp0).fd != -1 {
+                    bufferevent_free((*(*sc).wp0).event);
+                    crate::libc::close((*(*sc).wp0).fd);
+                }
+                window_pane_reset_mode_all((*sc).wp0);
+                screen_reinit(&raw mut (*(*sc).wp0).base);
+                input_free((*(*sc).wp0).ictx);
+                (*(*sc).wp0).ictx = null_mut();
+                new_wp = (*sc).wp0;
+                (*new_wp).flags &=
+                    !(window_pane_flags::PANE_STATUSREADY | window_pane_flags::PANE_STATUSDRAWN);
+            } else if (*sc).lc.is_null() {
+                new_wp = window_add_pane(w, null_mut(), hlimit, (*sc).flags);
+                layout_init(w, new_wp);
+            } else {
+                new_wp = window_add_pane(w, (*sc).wp0, hlimit, (*sc).flags);
+                if (*sc).flags.intersects(SPAWN_ZOOM) {
+                    layout_assign_pane((*sc).lc, new_wp, 1);
+                } else {
+                    layout_assign_pane((*sc).lc, new_wp, 0);
+                }
+            }
+
+            // Work out the command and arguments.
+            if (*sc).argc == 0 && !(*sc).flags.intersects(SPAWN_RESPAWN) {
+                cmd = options_get_string_((*s).options, "default-command");
+                if !cmd.is_null() && *cmd != b'\0' {
+                    argc = 1;
+                    argv = &raw mut cmd as *mut *mut u8;
+                } else {
+                    argc = 0;
+                    argv = null_mut();
+                }
+            } else {
+                argc = (*sc).argc;
+                argv = (*sc).argv;
+            }
+            if !cwd.is_null() {
+                free_((*new_wp).cwd);
+                (*new_wp).cwd = cwd;
+            }
+
+            // Replace the stored arguments if there are new ones.
+            if argc > 0 {
+                cmd_free_argv((*new_wp).argc, (*new_wp).argv);
+                (*new_wp).argc = argc;
+                (*new_wp).argv = cmd_copy_argv(argc, argv);
+            }
+
+            // Create an environment for this pane.
+            child = environ_for_session(s, 0);
+            if !(*sc).environ.is_null() {
+                environ_copy((*sc).environ, child);
+            }
+            environ_set!(
+                child,
+                c!("TMUX_PANE"),
+                environ_flags::empty(),
+                "%{}",
+                (*new_wp).id,
+            );
+
+            // PATH
+            if !c.is_null() && (*c).session.is_null() {
+                ee = environ_find((*c).environ, c!("PATH"));
+                if !ee.is_null() {
+                    environ_set!(
+                        child,
+                        c!("PATH"),
+                        environ_flags::empty(),
+                        "{}",
+                        _s(transmute_ptr((*ee).value))
+                    );
+                }
+            }
+            if environ_find(child, c!("PATH")).is_null() {
+                environ_set!(
+                    child,
+                    c!("PATH"),
+                    environ_flags::empty(),
+                    "{}",
+                    _s(_PATH_DEFPATH)
+                );
+            }
+
+            // Shell
+            if !(*sc).flags.intersects(SPAWN_RESPAWN) {
+                let mut tmp = options_get_string_((*s).options, "default-shell");
+                if !checkshell_(tmp) {
+                    tmp = _PATH_BSHELL;
+                }
+                free_((*new_wp).shell);
+                (*new_wp).shell = xstrdup(tmp).as_ptr();
+            }
+            environ_set!(
+                child,
+                c!("SHELL"),
+                environ_flags::empty(),
+                "{}",
+                _s((*new_wp).shell)
+            );
+
+            log_debug!("spawn_pane: shell={}", _s((*new_wp).shell));
+            if (*new_wp).argc != 0 {
+                let cp = cmd_stringify_argv((*new_wp).argc, (*new_wp).argv);
+                log_debug!("spawn_pane: cmd={}", cp);
+            }
+            log_debug!("spawn_pane: cwd={}", _s((*new_wp).cwd));
+            cmd_log_argv!((*new_wp).argc, (*new_wp).argv, "spawn_pan");
+            environ_log!(child, "spawn_pan: environment ");
+
+            // Initialize window size.
+            let cols = screen_size_x(&raw mut (*new_wp).base) as u16;
+            let rows = screen_size_y(&raw mut (*new_wp).base) as u16;
+
+            // If the command is empty, don't spawn a process.
+            if (*sc).flags.intersects(SPAWN_EMPTY) {
+                (*new_wp).flags |= window_pane_flags::PANE_EMPTY;
+                (*new_wp).base.mode &= !mode_flag::MODE_CURSOR;
+                (*new_wp).base.mode |= mode_flag::MODE_CRLF;
+                break 'complete;
+            }
+
+            // Build command line for ConPTY.
+            let cmd_line = if (*new_wp).argc != 0 {
+                cmd_stringify_argv((*new_wp).argc, (*new_wp).argv)
+            } else {
+                // No command — launch a login shell
+                _s((*new_wp).shell).to_string()
+            };
+
+            // Build cwd string for ConPTY.
+            let cwd_str = if !(*new_wp).cwd.is_null() {
+                Some(_s((*new_wp).cwd).to_string())
+            } else {
+                None
+            };
+
+            // Collect environment variables for the child process.
+            let mut env_vars: Vec<(String, String)> = Vec::new();
+            for envent in rb_foreach(child).map(std::ptr::NonNull::as_ptr) {
+                if (*envent).value.is_some()
+                    && *(*envent).name.unwrap().as_ptr() != b'\0'
+                    && !(*envent).flags.intersects(environ_flags::ENVIRON_HIDDEN)
+                {
+                    let key = _s(transmute_ptr((*envent).name)).to_string();
+                    let val = _s(transmute_ptr((*envent).value)).to_string();
+                    env_vars.push((key, val));
+                }
+            }
+
+            // Spawn via ConPTY.
+            match crate::conpty::conpty_spawn(
+                &cmd_line,
+                cols,
+                rows,
+                cwd_str.as_deref(),
+                Some(&env_vars),
+            ) {
+                Ok((fd, pid)) => {
+                    (*new_wp).fd = fd;
+                    (*new_wp).pid = pid as pid_t;
+                }
+                Err(err) => {
+                    *cause = format_nul!("conpty spawn failed: {}", err);
+                    (*new_wp).fd = -1;
+                    if !(*sc).flags.intersects(SPAWN_RESPAWN) {
+                        server_client_remove_pane(new_wp);
+                        layout_close_pane(new_wp);
+                        window_remove_pane(w, new_wp);
+                    }
+                    environ_free(child);
+                    return null_mut();
+                }
+            }
+        }
+
+        // complete:
+        (*new_wp).flags &= !window_pane_flags::PANE_EXITED;
+        window_pane_set_event(new_wp);
         environ_free(child);
 
         if (*sc).flags.intersects(SPAWN_RESPAWN) {

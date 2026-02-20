@@ -576,12 +576,6 @@ pub unsafe fn cmdq_find_flag(
     }
 }
 
-#[cfg(target_os = "windows")]
-pub unsafe fn cmdq_add_message(_item: *mut cmdq_item) {
-    todo!()
-}
-
-#[cfg(not(target_os = "windows"))]
 pub unsafe fn cmdq_add_message(item: *mut cmdq_item) {
     use crate::libc::{getpwuid, getuid};
 

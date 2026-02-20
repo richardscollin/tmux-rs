@@ -102,46 +102,45 @@ pub unsafe fn tty_init(tty: *mut tty, c: *mut client) -> i32 {
     }
 }
 
+#[cfg(not(target_os = "windows"))]
 pub unsafe fn tty_resize(tty: *mut tty) {
     unsafe {
         let c = (*tty).client;
         let mut ws: libc::winsize = zeroed();
-        let mut sx: u32;
-        let mut sy: u32;
+        let sx: u32;
+        let sy: u32;
         let xpixel: u32;
         let ypixel: u32;
 
-        #[cfg(not(target_os = "windows"))]
         if libc::ioctl((*c).fd, libc::TIOCGWINSZ, &raw mut ws) != -1 {
-            sx = ws.ws_col as u32;
-            if sx == 0 {
-                sx = 80;
-                xpixel = 0;
+            sx = if ws.ws_col == 0 { 80 } else { ws.ws_col as u32 };
+            xpixel = if ws.ws_col == 0 {
+                0
             } else {
-                xpixel = ws.ws_xpixel as u32 / sx;
-            }
-            sy = ws.ws_row as u32;
-            if sy == 0 {
-                sy = 24;
-                ypixel = 0;
+                ws.ws_xpixel as u32 / sx
+            };
+            sy = if ws.ws_row == 0 { 24 } else { ws.ws_row as u32 };
+            ypixel = if ws.ws_row == 0 {
+                0
             } else {
-                ypixel = ws.ws_ypixel as u32 / sy;
-            }
+                ws.ws_ypixel as u32 / sy
+            };
         } else {
             sx = 80;
             sy = 24;
             xpixel = 0;
             ypixel = 0;
         }
-        #[cfg(target_os = "windows")]
-        {
-            sx = 80;
-            sy = 24;
-            xpixel = 0;
-            ypixel = 0;
-        }
-        // log_debug("%s: %s now %ux%u (%ux%u)", __func__, (*c).name, sx, sy, xpixel, ypixel);
         tty_set_size(tty, sx, sy, xpixel, ypixel);
+        tty_invalidate(tty);
+    }
+}
+
+#[cfg(target_os = "windows")]
+pub unsafe fn tty_resize(tty: *mut tty) {
+    unsafe {
+        let (sx, sy) = libc::get_console_size();
+        tty_set_size(tty, sx.max(1), sy.max(1), 0, 0);
         tty_invalidate(tty);
     }
 }
@@ -275,6 +274,7 @@ pub unsafe extern "C-unwind" fn tty_write_callback(_fd: i32, _events: i16, data:
     }
 }
 
+#[cfg(not(target_os = "windows"))]
 pub unsafe fn tty_open(tty: *mut tty) -> Result<(), String> {
     unsafe {
         let c = (*tty).client;
@@ -340,6 +340,187 @@ pub unsafe fn tty_open(tty: *mut tty) -> Result<(), String> {
     }
 }
 
+/// Build hardcoded xterm-256color terminal capabilities for Windows.
+///
+/// Returns a list of "name=value" CStrings that tty_term_create can parse.
+/// These are the standard xterm-256color terminfo entries expressed as
+/// parameterized strings in the terminfo format tmux uses internally.
+#[cfg(target_os = "windows")]
+fn windows_xterm256color_caps() -> Vec<std::ffi::CString> {
+    use std::ffi::CString;
+    [
+        // Screen clear and cursor positioning (required by tty_term_create)
+        "clear=\\033[H\\033[2J",
+        "cup=\\033[%i%p1%d;%p2%dH",
+        // Attribute control
+        "sgr0=\\033(B\\033[m",
+        "bold=\\033[1m",
+        "dim=\\033[2m",
+        "sitm=\\033[3m",
+        "smul=\\033[4m",
+        "blink=\\033[5m",
+        "rev=\\033[7m",
+        "smxx=\\033[9m",
+        "ritm=\\033[23m",
+        "rmul=\\033[24m",
+        "rmxx=\\033[29m",
+        // Color
+        "setaf=\\033[%?%p1%{8}%<%t3%p1%d%e%p1%{16}%<%t9%p1%{8}%-%d%e38;5;%p1%d%;m",
+        "setab=\\033[%?%p1%{8}%<%t4%p1%d%e%p1%{16}%<%t10%p1%{8}%-%d%e48;5;%p1%d%;m",
+        "op=\\033[39;49m",
+        "colors=256",
+        "Tc=1",
+        "Setrgbf=\\033[38;2;%p1%d;%p2%d;%p3%dm",
+        "Setrgbb=\\033[48;2;%p1%d;%p2%d;%p3%dm",
+        // Alternate screen
+        "smcup=\\033[?1049h",
+        "rmcup=\\033[?1049l",
+        // Keypad mode
+        "smkx=\\033[?1h\\033=",
+        "rmkx=\\033[?1l\\033>",
+        // Cursor visibility
+        "cnorm=\\033[?12l\\033[?25h",
+        "civis=\\033[?25l",
+        "cvvis=\\033[?12;25h",
+        // Line operations
+        "el=\\033[K",
+        "el1=\\033[1K",
+        "ed=\\033[J",
+        "csr=\\033[%i%p1%d;%p2%dr",
+        "dl1=\\033[M",
+        "il1=\\033[L",
+        "dch1=\\033[P",
+        "ich1=\\033[@",
+        "ri=\\033M",
+        "ind=\\n",
+        // Cursor movement
+        "cuf1=\\033[C",
+        "cub1=\\010",
+        "cuu1=\\033[A",
+        "cuf=\\033[%p1%dC",
+        "cub=\\033[%p1%dD",
+        "cuu=\\033[%p1%dA",
+        "cud=\\033[%p1%dB",
+        // Extended features
+        "XT=1",
+        "kmous=\\033[M",
+        "Sync=\\033P=%p1%ds\\033\\\\",
+        "Smol=\\033[53m",
+        "Rmol=\\033[55m",
+        "Smulx=\\033[4:%p1%dm",
+        "Se=\\033[2 q",
+        "Ss=\\033[%p1%d q",
+        "enbp=\\033[?2004h",
+        "dsbp=\\033[?2004l",
+        // Insert/delete lines
+        "dl=\\033[%p1%dM",
+        "il=\\033[%p1%dL",
+        "dch=\\033[%p1%dP",
+        "ich=\\033[%p1%d@",
+        // Repeat
+        "rep=\\033[%p1%db",
+        // ACS (alternate character set) - use UTF-8 instead
+        "enacs=",
+        // Key codes
+        "kcuu1=\\033OA",
+        "kcud1=\\033OB",
+        "kcuf1=\\033OC",
+        "kcub1=\\033OD",
+        "khome=\\033OH",
+        "kend=\\033OF",
+        "kpp=\\033[5~",
+        "knp=\\033[6~",
+        "kdch1=\\033[3~",
+        "kich1=\\033[2~",
+        "kf1=\\033OP",
+        "kf2=\\033OQ",
+        "kf3=\\033OR",
+        "kf4=\\033OS",
+        "kf5=\\033[15~",
+        "kf6=\\033[17~",
+        "kf7=\\033[18~",
+        "kf8=\\033[19~",
+        "kf9=\\033[20~",
+        "kf10=\\033[21~",
+        "kf11=\\033[23~",
+        "kf12=\\033[24~",
+    ]
+    .iter()
+    .map(|s| CString::new(*s).unwrap())
+    .collect()
+}
+
+/// Open the tty for a Windows client.
+///
+/// Instead of reading terminfo from the system, we supply hardcoded
+/// xterm-256color capabilities. Output goes to the Windows console via
+/// VT escape sequences (ENABLE_VIRTUAL_TERMINAL_PROCESSING).
+#[cfg(target_os = "windows")]
+pub unsafe fn tty_open(tty: *mut tty) -> Result<(), String> {
+    unsafe {
+        let c = (*tty).client;
+
+        // Build caps and create tty_term
+        let caps = windows_xterm256color_caps();
+        let cap_ptrs: Vec<*mut u8> = caps.iter().map(|c| c.as_ptr() as *mut u8).collect();
+
+        match tty_term_create(
+            tty,
+            (*c).term_name,
+            cap_ptrs.as_ptr() as *mut *mut u8,
+            cap_ptrs.len() as u32,
+            &raw mut (*c).term_features,
+        ) {
+            Ok(term) => {
+                (*tty).term = term;
+            }
+            Err(cause) => {
+                (*tty).term = null_mut();
+                tty_close(tty);
+                return Err(cause);
+            }
+        }
+
+        (*tty).flags |= tty_flags::TTY_OPENED;
+
+        (*tty).flags &= !(tty_flags::TTY_NOCURSOR
+            | tty_flags::TTY_FREEZE
+            | tty_flags::TTY_BLOCK
+            | tty_flags::TTY_TIMER);
+
+        // Allocate evbuffers for input and output
+        (*tty).in_ = evbuffer_new();
+        if (*tty).in_.is_null() {
+            fatal("out of memory");
+        }
+
+        (*tty).out = evbuffer_new();
+        if (*tty).out.is_null() {
+            fatal("out of memory");
+        }
+
+        // Set up libevent write event on c.fd (stdout fd)
+        event_set(
+            &raw mut (*tty).event_out,
+            (*c).fd,
+            EV_WRITE,
+            Some(tty_write_callback),
+            tty.cast(),
+        );
+
+        evtimer_set(
+            &raw mut (*tty).timer,
+            tty_timer_callback,
+            NonNull::new_unchecked(tty),
+        );
+
+        tty_start_tty(tty);
+        tty_keys_build(tty);
+
+        Ok(())
+    }
+}
+
 pub unsafe extern "C-unwind" fn tty_start_timer_callback(
     _fd: i32,
     _events: i16,
@@ -360,6 +541,7 @@ pub unsafe extern "C-unwind" fn tty_start_timer_callback(
     }
 }
 
+#[cfg(not(target_os = "windows"))]
 pub unsafe fn tty_start_tty(tty: *mut tty) {
     unsafe {
         let c = (*tty).client;
@@ -438,6 +620,60 @@ pub unsafe fn tty_start_tty(tty: *mut tty) {
     }
 }
 
+/// Start the tty on Windows.
+///
+/// Sets console raw mode via SetConsoleMode, enables VT processing,
+/// and emits the same initialization escape sequences as the Unix version.
+#[cfg(target_os = "windows")]
+pub unsafe fn tty_start_tty(tty: *mut tty) {
+    unsafe {
+        let c = (*tty).client;
+        let tv = libc::timeval {
+            tv_sec: TTY_QUERY_TIMEOUT as _,
+            tv_usec: 0,
+        };
+
+        // Set console raw mode and enable VT processing
+        libc::enable_vt_processing();
+        libc::set_console_raw_mode();
+
+        // Make the output fd non-blocking
+        setblocking((*c).fd, 0);
+
+        // Enter alternate screen, enable keypad mode, clear
+        tty_putcode(tty, tty_code_code::TTYC_SMCUP);
+        tty_putcode(tty, tty_code_code::TTYC_SMKX);
+        tty_putcode(tty, tty_code_code::TTYC_CLEAR);
+
+        tty_putcode(tty, tty_code_code::TTYC_CNORM);
+        if tty_term_has((*tty).term, tty_code_code::TTYC_KMOUS) {
+            tty_puts(tty, c!("\x1b[?1000l\x1b[?1002l\x1b[?1003l"));
+            tty_puts(tty, c!("\x1b[?1006l\x1b[?1005l"));
+        }
+        if tty_term_has((*tty).term, tty_code_code::TTYC_ENBP) {
+            tty_putcode(tty, tty_code_code::TTYC_ENBP);
+        }
+
+        evtimer_set(
+            &raw mut (*tty).start_timer,
+            tty_start_timer_callback,
+            NonNull::new_unchecked(tty),
+        );
+        evtimer_add(&raw mut (*tty).start_timer, &raw const tv);
+
+        (*tty).flags |= tty_flags::TTY_STARTED;
+        tty_invalidate(tty);
+
+        if (*tty).ccolour != -1 {
+            tty_force_cursor_colour(tty, -1);
+        }
+
+        (*tty).mouse_drag_flag = 0;
+        (*tty).mouse_drag_update = None;
+        (*tty).mouse_drag_release = None;
+    }
+}
+
 pub unsafe fn tty_send_requests(tty: *mut tty) {
     unsafe {
         if !(*tty).flags.intersects(tty_flags::TTY_STARTED) {
@@ -484,6 +720,7 @@ pub unsafe fn tty_repeat_requests(tty: *mut tty) {
     }
 }
 
+#[cfg(not(target_os = "windows"))]
 pub unsafe fn tty_stop_tty(tty: *mut tty) {
     unsafe {
         let c = (*tty).client;
@@ -505,14 +742,11 @@ pub unsafe fn tty_stop_tty(tty: *mut tty) {
         // Be flexible about error handling and try not kill the server just
         // because the fd is invalid. Things like ssh -t can easily leave us
         // with a dead tty.
-        #[cfg(not(target_os = "windows"))]
-        {
-            if libc::ioctl((*c).fd, libc::TIOCGWINSZ, &ws) == -1 {
-                return;
-            }
-            if libc::tcsetattr((*c).fd, libc::TCSANOW, &(*tty).tio) == -1 {
-                return;
-            }
+        if libc::ioctl((*c).fd, libc::TIOCGWINSZ, &ws) == -1 {
+            return;
+        }
+        if libc::tcsetattr((*c).fd, libc::TCSANOW, &(*tty).tio) == -1 {
+            return;
         }
 
         tty_raw(
@@ -564,6 +798,84 @@ pub unsafe fn tty_stop_tty(tty: *mut tty) {
         }
         tty_raw(tty, tty_term_string((*tty).term, tty_code_code::TTYC_RMCUP));
 
+        setblocking((*c).fd, 1);
+    }
+}
+
+/// Stop the tty on Windows.
+///
+/// Restores console mode, emits teardown escape sequences (leave alternate
+/// screen, reset attributes, etc.), and clears TTY_STARTED.
+#[cfg(target_os = "windows")]
+pub unsafe fn tty_stop_tty(tty: *mut tty) {
+    unsafe {
+        let c = (*tty).client;
+
+        if !(*tty).flags.intersects(tty_flags::TTY_STARTED) {
+            return;
+        }
+        (*tty).flags &= !tty_flags::TTY_STARTED;
+
+        evtimer_del(&raw mut (*tty).start_timer);
+
+        event_del(&raw mut (*tty).timer);
+        (*tty).flags &= !tty_flags::TTY_BLOCK;
+
+        event_del(&raw mut (*tty).event_in);
+        event_del(&raw mut (*tty).event_out);
+
+        // Reset scroll region to full screen
+        tty_raw(
+            tty,
+            &tty_term_string_ii(
+                (*tty).term,
+                tty_code_code::TTYC_CSR,
+                0,
+                (*tty).sy as i32 - 1,
+            ),
+        );
+        if tty_acs_needed(tty) {
+            tty_raw(tty, tty_term_string((*tty).term, tty_code_code::TTYC_RMACS));
+        }
+        tty_raw(tty, tty_term_string((*tty).term, tty_code_code::TTYC_SGR0));
+        tty_raw(tty, tty_term_string((*tty).term, tty_code_code::TTYC_RMKX));
+        tty_raw(tty, tty_term_string((*tty).term, tty_code_code::TTYC_CLEAR));
+        if (*tty).cstyle != screen_cursor_style::SCREEN_CURSOR_DEFAULT {
+            if tty_term_has((*tty).term, tty_code_code::TTYC_SE) {
+                tty_raw(tty, tty_term_string((*tty).term, tty_code_code::TTYC_SE));
+            } else if tty_term_has((*tty).term, tty_code_code::TTYC_SS) {
+                tty_raw(
+                    tty,
+                    &tty_term_string_i((*tty).term, tty_code_code::TTYC_SS, 0),
+                );
+            }
+        }
+        if (*tty).ccolour != -1 {
+            tty_raw(tty, tty_term_string((*tty).term, tty_code_code::TTYC_CR));
+        }
+
+        tty_raw(tty, tty_term_string((*tty).term, tty_code_code::TTYC_CNORM));
+        if tty_term_has((*tty).term, tty_code_code::TTYC_KMOUS) {
+            tty_raw(tty, b"\x1b[?1000l\x1b[?1002l\x1b[?1003l");
+            tty_raw(tty, b"\x1b[?1006l\x1b[?1005l");
+        }
+        if tty_term_has((*tty).term, tty_code_code::TTYC_DSBP) {
+            tty_raw(tty, tty_term_string((*tty).term, tty_code_code::TTYC_DSBP));
+        }
+
+        if (*(*tty).term).flags.intersects(term_flags::TERM_VT100LIKE) {
+            tty_raw(tty, b"\x1b[?7727l");
+        }
+        tty_raw(tty, tty_term_string((*tty).term, tty_code_code::TTYC_DSFCS));
+        tty_raw(tty, tty_term_string((*tty).term, tty_code_code::TTYC_DSEKS));
+
+        if tty_use_margin(tty) {
+            tty_raw(tty, tty_term_string((*tty).term, tty_code_code::TTYC_DSMG));
+        }
+        tty_raw(tty, tty_term_string((*tty).term, tty_code_code::TTYC_RMCUP));
+
+        // Restore console mode and set fd blocking
+        libc::restore_console_mode(0); // Restore default mode
         setblocking((*c).fd, 1);
     }
 }

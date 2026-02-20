@@ -17,6 +17,7 @@ pub use windows::mode_t;
 
 pub type wchar_t = core::ffi::c_int;
 
+#[cfg(not(target_os = "windows"))]
 unsafe extern "C" {
     pub static mut environ: *mut *mut u8;
     pub fn strsep(_: *mut *mut u8, _delim: *const u8) -> *mut u8;
@@ -295,7 +296,7 @@ pub fn MB_CUR_MAX() -> usize {
     unsafe { __ctype_get_mb_cur_max() }
 }
 
-#[cfg(any(target_os = "macos", target_os = "windows"))]
+#[cfg(target_os = "macos")]
 #[expect(non_snake_case)]
 #[inline]
 pub fn MB_CUR_MAX() -> usize {
@@ -305,8 +306,23 @@ pub fn MB_CUR_MAX() -> usize {
     unsafe { ___mb_cur_max() as usize }
 }
 
+#[cfg(target_os = "windows")]
+#[expect(non_snake_case)]
+#[inline]
+pub fn MB_CUR_MAX() -> usize {
+    unsafe extern "C" {
+        // MinGW/MSVCRT: __mb_cur_max is a global int
+        static __mb_cur_max: i32;
+    }
+    unsafe { __mb_cur_max as usize }
+}
+
+#[cfg(not(target_os = "windows"))]
 unsafe extern "C" {
     pub fn wcwidth(c: wchar_t) -> i32;
+}
+
+unsafe extern "C" {
     pub fn mbtowc(pwc: *mut wchar_t, s: *const u8, n: usize) -> i32;
     pub fn wctomb(s: *mut u8, wc: wchar_t) -> i32;
 }

@@ -361,6 +361,7 @@ pub unsafe fn window_pane_destroy_ready(wp: *mut window_pane) -> bool {
             if EVBUFFER_LENGTH((*(*wp).pipe_event).output) != 0 {
                 return false;
             }
+            #[cfg(not(target_os = "windows"))]
             if ioctl((*wp).fd, FIONREAD, &raw mut n) != -1 && n > 0 {
                 return false;
             }

@@ -375,8 +375,14 @@ pub unsafe fn job_resize(job: *mut job, sx: c_uint, sy: c_uint) {
         (*ws).ws_col = sx as u16;
         (*ws).ws_row = sy as u16;
 
+        #[cfg(not(target_os = "windows"))]
         if ioctl((*job).fd, TIOCSWINSZ, ws) == -1 {
             fatal("ioctl failed");
+        }
+        #[cfg(target_os = "windows")]
+        {
+            let _ = ws;
+            todo!("job_resize not implemented for Windows");
         }
     }
 }

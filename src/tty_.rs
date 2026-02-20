@@ -73,6 +73,7 @@ pub unsafe fn tty_create_log() {
             TTY_LOG_FD = -1;
         }
 
+        #[cfg(not(target_os = "windows"))]
         if TTY_LOG_FD != -1 && libc::fcntl(TTY_LOG_FD, libc::F_SETFD, libc::FD_CLOEXEC) == -1 {
             fatal("fcntl failed");
         }
@@ -110,6 +111,7 @@ pub unsafe fn tty_resize(tty: *mut tty) {
         let xpixel: u32;
         let ypixel: u32;
 
+        #[cfg(not(target_os = "windows"))]
         if libc::ioctl((*c).fd, libc::TIOCGWINSZ, &raw mut ws) != -1 {
             sx = ws.ws_col as u32;
             if sx == 0 {
@@ -126,6 +128,13 @@ pub unsafe fn tty_resize(tty: *mut tty) {
                 ypixel = ws.ws_ypixel as u32 / sy;
             }
         } else {
+            sx = 80;
+            sy = 24;
+            xpixel = 0;
+            ypixel = 0;
+        }
+        #[cfg(target_os = "windows")]
+        {
             sx = 80;
             sy = 24;
             xpixel = 0;
@@ -496,11 +505,14 @@ pub unsafe fn tty_stop_tty(tty: *mut tty) {
         // Be flexible about error handling and try not kill the server just
         // because the fd is invalid. Things like ssh -t can easily leave us
         // with a dead tty.
-        if libc::ioctl((*c).fd, libc::TIOCGWINSZ, &ws) == -1 {
-            return;
-        }
-        if libc::tcsetattr((*c).fd, libc::TCSANOW, &(*tty).tio) == -1 {
-            return;
+        #[cfg(not(target_os = "windows"))]
+        {
+            if libc::ioctl((*c).fd, libc::TIOCGWINSZ, &ws) == -1 {
+                return;
+            }
+            if libc::tcsetattr((*c).fd, libc::TCSANOW, &(*tty).tio) == -1 {
+                return;
+            }
         }
 
         tty_raw(

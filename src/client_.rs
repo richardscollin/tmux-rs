@@ -252,6 +252,12 @@ pub unsafe extern "C-unwind" fn client_main(
     unsafe {
         flags |= client_flag::NOFORK | client_flag::STARTSERVER;
 
+        // Set console to raw mode and enable VT processing BEFORE anything
+        // spawns the stdin reader thread.  ReadFile() on a cooked-mode console
+        // blocks until Enter, so the mode must be set first.
+        libc::enable_vt_processing();
+        libc::set_console_raw_mode();
+
         CLIENT_PROC = proc_start(c"client");
         CLIENT_FLAGS = flags;
 
@@ -290,6 +296,9 @@ pub unsafe extern "C-unwind" fn client_main(
 
         // Enter the unified event loop (server + client events on the same base)
         proc_loop(SERVER_PROC, Some(crate::server::server_loop));
+
+        // Restore console to its original mode so the terminal isn't left broken
+        libc::restore_original_console_mode();
 
         job_kill_all();
         0

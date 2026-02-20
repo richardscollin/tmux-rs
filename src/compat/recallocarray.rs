@@ -22,8 +22,27 @@ pub unsafe fn recallocarray(
 ) -> *mut c_void {
     const MUL_NO_OVERFLOW: usize = 1usize << (size_of::<usize>() * 4);
 
+    #[cfg(not(target_os = "windows"))]
     unsafe extern "C" {
         fn getpagesize() -> i32;
+    }
+    #[cfg(target_os = "windows")]
+    unsafe fn getpagesize() -> i32 {
+        // MSVC doesn't have getpagesize; use GetSystemInfo instead
+        #[repr(C)]
+        struct SYSTEM_INFO {
+            _pad: [u8; 8],
+            dw_page_size: u32,
+            _rest: [u8; 36],
+        }
+        unsafe extern "system" {
+            fn GetSystemInfo(lp: *mut SYSTEM_INFO);
+        }
+        unsafe {
+            let mut si = core::mem::zeroed::<SYSTEM_INFO>();
+            GetSystemInfo(&raw mut si);
+            si.dw_page_size as i32
+        }
     }
 
     unsafe {

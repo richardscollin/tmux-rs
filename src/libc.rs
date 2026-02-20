@@ -67,8 +67,16 @@ pub unsafe fn strftime(s: *mut u8, max: usize, format: *const u8, tm: *const tm)
     unsafe { ::libc::strftime(s.cast(), max, format.cast(), tm.cast()) }
 }
 
+#[cfg(not(target_os = "windows"))]
 pub unsafe fn strdup(cs: *const u8) -> *mut u8 {
     unsafe { ::libc::strdup(cs.cast()).cast() }
+}
+#[cfg(target_os = "windows")]
+pub unsafe fn strdup(cs: *const u8) -> *mut u8 {
+    unsafe extern "C" {
+        fn _strdup(s: *const core::ffi::c_char) -> *mut core::ffi::c_char;
+    }
+    unsafe { _strdup(cs.cast()).cast() }
 }
 
 pub unsafe fn strndup(cs: *const u8, n: usize) -> *mut u8 {
@@ -250,11 +258,19 @@ pub fn time(t: *mut time_t) -> time_t {
         .as_secs() as time_t
 }
 
+#[cfg(not(target_os = "windows"))]
 pub unsafe fn tzset() {
     unsafe extern "C" {
         fn tzset();
     }
     unsafe { tzset() }
+}
+#[cfg(target_os = "windows")]
+pub unsafe fn tzset() {
+    unsafe extern "C" {
+        fn _tzset();
+    }
+    unsafe { _tzset() }
 }
 
 pub unsafe fn unlink(c: *const u8) -> i32 {
@@ -311,10 +327,9 @@ pub fn MB_CUR_MAX() -> usize {
 #[inline]
 pub fn MB_CUR_MAX() -> usize {
     unsafe extern "C" {
-        // MinGW/MSVCRT: __mb_cur_max is a global int
-        static __mb_cur_max: i32;
+        fn ___mb_cur_max_func() -> core::ffi::c_int;
     }
-    unsafe { __mb_cur_max as usize }
+    unsafe { ___mb_cur_max_func() as usize }
 }
 
 #[cfg(not(target_os = "windows"))]

@@ -635,6 +635,12 @@ pub unsafe fn tmux_main(mut argc: i32, mut argv: *mut *mut u8, _env: *mut *mut u
         // UTF-8, it is a safe assumption that either they are using a UTF-8
         // terminal, or if not they know that output from UTF-8-capable
         // programs may be wrong.
+        #[cfg(windows)]
+        {
+            // Windows Terminal / ConPTY always supports UTF-8.
+            flags |= client_flag::UTF8;
+        }
+        #[cfg(not(windows))]
         if std::env::var("TMUX").is_ok() {
             flags |= client_flag::UTF8;
         } else {

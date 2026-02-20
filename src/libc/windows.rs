@@ -731,8 +731,8 @@ pub use windows_sys::Win32::System::Console::{
     CONSOLE_SCREEN_BUFFER_INFO, DISABLE_NEWLINE_AUTO_RETURN, ENABLE_ECHO_INPUT, ENABLE_LINE_INPUT,
     ENABLE_PROCESSED_INPUT, ENABLE_PROCESSED_OUTPUT, ENABLE_VIRTUAL_TERMINAL_INPUT,
     ENABLE_VIRTUAL_TERMINAL_PROCESSING, ENABLE_WINDOW_INPUT, ENABLE_WRAP_AT_EOL_OUTPUT,
-    GetConsoleMode, GetConsoleScreenBufferInfo, GetStdHandle, STD_INPUT_HANDLE, STD_OUTPUT_HANDLE,
-    SetConsoleMode,
+    GetConsoleCP, GetConsoleMode, GetConsoleOutputCP, GetConsoleScreenBufferInfo, GetStdHandle,
+    STD_INPUT_HANDLE, STD_OUTPUT_HANDLE, SetConsoleCP, SetConsoleMode, SetConsoleOutputCP,
 };
 
 /// Get the console window dimensions (columns, rows).
@@ -766,10 +766,26 @@ pub fn stdout_as_fd() -> c_int {
     }
 }
 
-/// Enable VT sequence processing on the console output.
+/// Saved original console output codepage, for restoration on exit.
+static ORIGINAL_OUTPUT_CP: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
+static ORIGINAL_INPUT_CP: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
+static CODEPAGE_SAVED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+const CP_UTF8: u32 = 65001;
+
+/// Enable VT sequence processing on the console output and set UTF-8 codepage.
 pub fn enable_vt_processing() {
     use windows_sys::Win32::Foundation::INVALID_HANDLE_VALUE;
     unsafe {
+        // Set console codepage to UTF-8 so box-drawing characters render correctly.
+        if !CODEPAGE_SAVED.load(std::sync::atomic::Ordering::Relaxed) {
+            ORIGINAL_OUTPUT_CP.store(GetConsoleOutputCP(), std::sync::atomic::Ordering::Relaxed);
+            ORIGINAL_INPUT_CP.store(GetConsoleCP(), std::sync::atomic::Ordering::Relaxed);
+            CODEPAGE_SAVED.store(true, std::sync::atomic::Ordering::Relaxed);
+        }
+        SetConsoleOutputCP(CP_UTF8);
+        SetConsoleCP(CP_UTF8);
+
         let handle = GetStdHandle(STD_OUTPUT_HANDLE);
         if handle == INVALID_HANDLE_VALUE || handle.is_null() {
             return;
@@ -778,6 +794,16 @@ pub fn enable_vt_processing() {
         if GetConsoleMode(handle, &mut mode) != 0 {
             mode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING | DISABLE_NEWLINE_AUTO_RETURN;
             SetConsoleMode(handle, mode);
+        }
+    }
+}
+
+/// Restore the original console codepage.
+pub fn restore_console_codepage() {
+    if CODEPAGE_SAVED.load(std::sync::atomic::Ordering::Relaxed) {
+        unsafe {
+            SetConsoleOutputCP(ORIGINAL_OUTPUT_CP.load(std::sync::atomic::Ordering::Relaxed));
+            SetConsoleCP(ORIGINAL_INPUT_CP.load(std::sync::atomic::Ordering::Relaxed));
         }
     }
 }

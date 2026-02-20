@@ -323,6 +323,7 @@ pub unsafe extern "C-unwind" fn client_main(
 
         // Restore console to its original mode so the terminal isn't left broken
         libc::restore_original_console_mode();
+        libc::restore_console_codepage();
 
         job_kill_all();
         0

@@ -55,7 +55,7 @@ pub fn set_process_exit_wake_fd(fd: c_int) {
 /// Thread-pool callback invoked by Windows when a child process exits.
 unsafe extern "system" fn process_exit_wake_cb(
     _context: *mut std::ffi::c_void,
-    _timer_or_wait_fired: u8,
+    _timer_or_wait_fired: bool,
 ) {
     let fd = WAKE_FD.load(Ordering::Relaxed);
     if fd >= 0 {

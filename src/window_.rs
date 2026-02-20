@@ -455,6 +455,7 @@ pub unsafe fn window_resize(w: *mut window, sx: u32, sy: u32, mut xpixel: i32, m
     }
 }
 
+#[cfg(not(target_os = "windows"))]
 pub unsafe fn window_pane_send_resize(wp: *mut window_pane, sx: u32, sy: u32) {
     unsafe {
         let w = (*wp).window;
@@ -483,6 +484,28 @@ pub unsafe fn window_pane_send_resize(wp: *mut window_pane, sx: u32, sy: u32) {
 
         if ioctl((*wp).fd, TIOCSWINSZ, &ws) == -1 {
             fatal("ioctl failed");
+        }
+    }
+}
+
+#[cfg(target_os = "windows")]
+pub unsafe fn window_pane_send_resize(wp: *mut window_pane, sx: u32, sy: u32) {
+    unsafe {
+        if (*wp).fd == -1 {
+            return;
+        }
+
+        log_debug!(
+            "{}: %%{} resize to {},{}",
+            "window_pane_send_resize",
+            (*wp).id,
+            sx,
+            sy,
+        );
+
+        let pid = (*wp).pid as u32;
+        if let Err(e) = crate::conpty::conpty_resize(pid, sx as u16, sy as u16) {
+            log_debug!("window_pane_send_resize: {}", e);
         }
     }
 }

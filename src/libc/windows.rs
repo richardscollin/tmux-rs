@@ -1,6 +1,6 @@
 //! Windows shims for Unix types, constants, and functions that don't exist in the libc crate on Windows.
-//! These are used to allow the codebase to compile on Windows. Most function implementations
-//! use todo!() since they have no Windows equivalent.
+//! These provide real implementations where possible, noops for inapplicable Unix concepts,
+//! and todo!() only for functions that need proper Windows subsystem implementations (IPC, PTY, etc.).
 #![allow(
     nonstandard_style,
     non_camel_case_types,
@@ -386,68 +386,268 @@ unsafe extern "C" {
     pub fn prctl(option: c_int, ...) -> c_int;
 }
 
-// ============================================================
-// Function shims - todo! stubs for Unix-only functions
-// ============================================================
-
-pub unsafe fn fnmatch(_pattern: *const u8, _name: *const u8, _flags: c_int) -> c_int {
-    todo!("fnmatch not available on Windows")
+// MSVC CRT functions not in the libc crate
+unsafe extern "C" {
+    #[link_name = "strftime"]
+    fn msvc_strftime(s: *mut u8, max: usize, format: *const u8, tm: *const ::libc::tm) -> usize;
+    #[link_name = "localtime"]
+    fn msvc_localtime(time: *const ::libc::time_t) -> *mut ::libc::tm;
+    #[link_name = "_ctime64_s"]
+    fn ctime_s(buf: *mut c_char, bufsz: usize, time: *const ::libc::time_t) -> c_int;
 }
 
-pub unsafe fn gethostname(_name: *mut u8, _len: usize) -> c_int {
-    todo!("gethostname not available on Windows")
+// ============================================================
+// Function shims - implemented for Windows
+// ============================================================
+
+// -- String / pattern matching --
+
+/// Simple fnmatch implementation supporting * and ? wildcards.
+pub unsafe fn fnmatch(pattern: *const u8, name: *const u8, flags: c_int) -> c_int {
+    let case_fold = (flags & FNM_CASEFOLD) != 0;
+    unsafe { fnmatch_inner(pattern, name, case_fold) }
+}
+
+unsafe fn fnmatch_inner(mut p: *const u8, mut n: *const u8, case_fold: bool) -> c_int {
+    unsafe {
+        loop {
+            match *p {
+                0 => return if *n == 0 { 0 } else { 1 },
+                b'?' => {
+                    if *n == 0 { return 1; }
+                    p = p.add(1);
+                    n = n.add(1);
+                }
+                b'*' => {
+                    p = p.add(1);
+                    // skip consecutive stars
+                    while *p == b'*' { p = p.add(1); }
+                    if *p == 0 { return 0; }
+                    while *n != 0 {
+                        if fnmatch_inner(p, n, case_fold) == 0 { return 0; }
+                        n = n.add(1);
+                    }
+                    return 1;
+                }
+                pc => {
+                    let nc = *n;
+                    if nc == 0 { return 1; }
+                    let matches = if case_fold {
+                        pc.to_ascii_lowercase() == nc.to_ascii_lowercase()
+                    } else {
+                        pc == nc
+                    };
+                    if !matches { return 1; }
+                    p = p.add(1);
+                    n = n.add(1);
+                }
+            }
+        }
+    }
+}
+
+pub unsafe fn gethostname(name: *mut u8, len: usize) -> c_int {
+    if let Ok(hostname) = std::env::var("COMPUTERNAME") {
+        let bytes = hostname.as_bytes();
+        let copy_len = bytes.len().min(len.saturating_sub(1));
+        unsafe {
+            core::ptr::copy_nonoverlapping(bytes.as_ptr(), name, copy_len);
+            *name.add(copy_len) = 0;
+        }
+        0
+    } else {
+        -1
+    }
 }
 
 pub unsafe fn strftime(
-    _s: *mut u8,
-    _max: usize,
-    _format: *const u8,
-    _tm: *const ::libc::tm,
+    s: *mut u8,
+    max: usize,
+    format: *const u8,
+    tm: *const ::libc::tm,
 ) -> usize {
-    todo!("strftime not available on Windows")
+    unsafe { msvc_strftime(s, max, format, tm) }
 }
 
 pub unsafe fn ttyname(_fd: c_int) -> *mut u8 {
-    todo!("ttyname not available on Windows")
+    // No real tty names on Windows; return null
+    core::ptr::null_mut()
 }
 
-pub unsafe fn strncasecmp(_s1: *const u8, _s2: *const u8, _n: usize) -> c_int {
-    todo!("strncasecmp not available on Windows")
+pub unsafe fn strncasecmp(s1: *const u8, s2: *const u8, n: usize) -> c_int {
+    unsafe {
+        for i in 0..n {
+            let a = *s1.add(i);
+            let b = *s2.add(i);
+            if a == 0 && b == 0 { return 0; }
+            let diff = a.to_ascii_lowercase() as c_int - b.to_ascii_lowercase() as c_int;
+            if diff != 0 { return diff; }
+            if a == 0 { return 0; }
+        }
+        0
+    }
 }
 
-pub unsafe fn regcomp(_preg: *mut regex_t, _pattern: *const u8, _cflags: c_int) -> c_int {
-    todo!("regcomp not available on Windows")
+// -- Regex (bridged to regex crate) --
+
+const REG_NOMATCH: c_int = 1;
+
+/// Store a `Box<regex::Regex>` as a raw pointer in the first 8 bytes of regex_t._opaque.
+pub unsafe fn regcomp(preg: *mut regex_t, pattern: *const u8, cflags: c_int) -> c_int {
+    let pat_cstr = unsafe { core::ffi::CStr::from_ptr(pattern.cast()) };
+    let pat_str = match pat_cstr.to_str() {
+        Ok(s) => s,
+        Err(_) => return REG_NOMATCH,
+    };
+
+    let case_insensitive = (cflags & REG_ICASE) != 0;
+    let regex_pat = if case_insensitive {
+        format!("(?i){pat_str}")
+    } else {
+        pat_str.to_string()
+    };
+
+    match regex::Regex::new(&regex_pat) {
+        Ok(re) => {
+            let boxed = Box::new(re);
+            let ptr = Box::into_raw(boxed);
+            unsafe {
+                let opaque = &raw mut (*preg)._opaque;
+                core::ptr::write(opaque as *mut *mut regex::Regex, ptr);
+            }
+            0
+        }
+        Err(_) => REG_NOMATCH,
+    }
 }
 
 pub unsafe fn regexec(
-    _preg: *const regex_t,
-    _string: *const u8,
-    _nmatch: usize,
-    _pmatch: *mut regmatch_t,
+    preg: *const regex_t,
+    string: *const u8,
+    nmatch: usize,
+    pmatch: *mut regmatch_t,
     _eflags: c_int,
 ) -> c_int {
-    todo!("regexec not available on Windows")
+    let opaque = unsafe { &(*preg)._opaque };
+    let re_ptr: *mut regex::Regex = unsafe {
+        core::ptr::read(opaque.as_ptr() as *const *mut regex::Regex)
+    };
+    if re_ptr.is_null() { return REG_NOMATCH; }
+    let re = unsafe { &*re_ptr };
+
+    let s_cstr = unsafe { core::ffi::CStr::from_ptr(string.cast()) };
+    let s = match s_cstr.to_str() {
+        Ok(s) => s,
+        Err(_) => return REG_NOMATCH,
+    };
+
+    if nmatch == 0 || pmatch.is_null() {
+        // Just check if it matches
+        return if re.is_match(s) { 0 } else { REG_NOMATCH };
+    }
+
+    match re.find(s) {
+        Some(m) => {
+            unsafe {
+                (*pmatch.add(0)).rm_so = m.start() as i32;
+                (*pmatch.add(0)).rm_eo = m.end() as i32;
+                // Fill remaining match slots with -1
+                for i in 1..nmatch {
+                    (*pmatch.add(i)).rm_so = -1;
+                    (*pmatch.add(i)).rm_eo = -1;
+                }
+            }
+            0
+        }
+        None => REG_NOMATCH,
+    }
 }
 
-pub unsafe fn regfree(_preg: *mut regex_t) {
-    todo!("regfree not available on Windows")
+pub unsafe fn regfree(preg: *mut regex_t) {
+    let opaque = unsafe { &mut (*preg)._opaque };
+    let re_ptr: *mut regex::Regex = unsafe {
+        core::ptr::read(opaque.as_ptr() as *const *mut regex::Regex)
+    };
+    if !re_ptr.is_null() {
+        drop(unsafe { Box::from_raw(re_ptr) });
+        unsafe {
+            core::ptr::write(opaque.as_mut_ptr() as *mut *mut regex::Regex, core::ptr::null_mut());
+        }
+    }
 }
+
+// -- Glob (minimal implementation) --
 
 pub unsafe fn glob(
-    _pattern: *const u8,
+    pattern: *const u8,
     _flags: c_int,
     _errfunc: Option<extern "C" fn(epath: *const c_char, errno: c_int) -> c_int>,
-    _pglob: *mut glob_t,
+    pglob: *mut glob_t,
 ) -> c_int {
-    todo!("glob not available on Windows")
+    let pat_cstr = unsafe { core::ffi::CStr::from_ptr(pattern.cast()) };
+    let pat_str = match pat_cstr.to_str() {
+        Ok(s) => s,
+        Err(_) => return GLOB_NOMATCH,
+    };
+
+    let entries: Vec<std::path::PathBuf> = match ::glob::glob(pat_str) {
+        Ok(paths) => paths.filter_map(|r| r.ok()).collect(),
+        Err(_) => return GLOB_NOMATCH,
+    };
+
+    if entries.is_empty() {
+        unsafe {
+            (*pglob).gl_pathc = 0;
+            (*pglob).gl_pathv = core::ptr::null_mut();
+        }
+        return GLOB_NOMATCH;
+    }
+
+    // Allocate pathv array (null-terminated)
+    let count = entries.len();
+    let pathv = unsafe { ::libc::malloc((count + 1) * size_of::<*mut c_char>()) } as *mut *mut c_char;
+    if pathv.is_null() { return GLOB_NOSPACE; }
+
+    for (i, entry) in entries.iter().enumerate() {
+        let s = entry.to_string_lossy();
+        let bytes = s.as_bytes();
+        let dup = unsafe { ::libc::malloc(bytes.len() + 1) } as *mut c_char;
+        if !dup.is_null() {
+            unsafe {
+                core::ptr::copy_nonoverlapping(bytes.as_ptr(), dup.cast(), bytes.len());
+                *dup.cast::<u8>().add(bytes.len()) = 0;
+            }
+        }
+        unsafe { *pathv.add(i) = dup; }
+    }
+    unsafe { *pathv.add(count) = core::ptr::null_mut(); }
+
+    unsafe {
+        (*pglob).gl_pathc = count;
+        (*pglob).gl_pathv = pathv;
+    }
+    0
 }
 
-pub unsafe fn globfree(_pglob: *mut glob_t) {
-    todo!("globfree not available on Windows")
+pub unsafe fn globfree(pglob: *mut glob_t) {
+    unsafe {
+        if (*pglob).gl_pathv.is_null() { return; }
+        for i in 0..(*pglob).gl_pathc {
+            let p = *(*pglob).gl_pathv.add(i);
+            if !p.is_null() { ::libc::free(p.cast()); }
+        }
+        ::libc::free((*pglob).gl_pathv.cast());
+        (*pglob).gl_pathv = core::ptr::null_mut();
+        (*pglob).gl_pathc = 0;
+    }
 }
+
+// -- Process functions (no fork on Windows) --
 
 pub unsafe fn fork() -> pid_t {
-    todo!("fork not available on Windows")
+    // fork does not exist on Windows; callers must use #[cfg(windows)] paths
+    eprintln!("fork() called on Windows - this should never happen");
+    -1
 }
 
 pub unsafe fn forkpty(
@@ -456,20 +656,28 @@ pub unsafe fn forkpty(
     _tio: *mut termios,
     _ws: *mut winsize,
 ) -> pid_t {
-    todo!("forkpty not available on Windows")
+    eprintln!("forkpty() called on Windows - this should never happen");
+    -1
 }
 
 pub unsafe fn kill(_pid: pid_t, _sig: c_int) -> c_int {
-    todo!("kill not available on Windows")
+    // TODO: implement via TerminateProcess for SIGKILL, GenerateConsoleCtrlEvent for SIGINT
+    0
 }
 
 pub unsafe fn killpg(_pgrp: pid_t, _sig: c_int) -> c_int {
-    todo!("killpg not available on Windows")
+    0
 }
 
-pub unsafe fn waitpid(_pid: pid_t, _status: *mut c_int, _options: c_int) -> pid_t {
-    todo!("waitpid not available on Windows")
+pub unsafe fn waitpid(_pid: pid_t, status: *mut c_int, _options: c_int) -> pid_t {
+    // TODO: implement via WaitForSingleObject
+    if !status.is_null() {
+        unsafe { *status = 0; }
+    }
+    -1
 }
+
+// -- Socket functions (to be replaced by named pipes in Phase 5) --
 
 pub unsafe fn socketpair(
     _domain: c_int,
@@ -477,198 +685,422 @@ pub unsafe fn socketpair(
     _protocol: c_int,
     _sv: *mut c_int,
 ) -> c_int {
-    todo!("socketpair not available on Windows")
+    todo!("socketpair: will be replaced by named pipes")
 }
 
 pub unsafe fn socket(_domain: c_int, _type_: c_int, _protocol: c_int) -> c_int {
-    todo!("socket not available on Windows")
+    todo!("socket: will be replaced by named pipes")
 }
 
 pub unsafe fn bind(_sockfd: c_int, _addr: *const c_void, _addrlen: socklen_t) -> c_int {
-    todo!("bind not available on Windows")
+    todo!("bind: will be replaced by named pipes")
 }
 
 pub unsafe fn listen(_sockfd: c_int, _backlog: c_int) -> c_int {
-    todo!("listen not available on Windows")
+    todo!("listen: will be replaced by named pipes")
 }
 
 pub unsafe fn accept(_sockfd: c_int, _addr: *mut c_void, _addrlen: *mut socklen_t) -> c_int {
-    todo!("accept not available on Windows")
+    todo!("accept: will be replaced by named pipes")
 }
 
 pub unsafe fn connect(_sockfd: c_int, _addr: *const c_void, _addrlen: socklen_t) -> c_int {
-    todo!("connect not available on Windows")
+    todo!("connect: will be replaced by named pipes")
 }
 
 pub unsafe fn shutdown(_sockfd: c_int, _how: c_int) -> c_int {
-    todo!("shutdown not available on Windows")
+    todo!("shutdown: will be replaced by named pipes")
 }
 
 pub unsafe fn sendmsg(_sockfd: c_int, _msg: *const msghdr, _flags: c_int) -> isize {
-    todo!("sendmsg not available on Windows")
+    todo!("sendmsg: will be replaced by named pipes")
 }
 
 pub unsafe fn recvmsg(_sockfd: c_int, _msg: *mut msghdr, _flags: c_int) -> isize {
-    todo!("recvmsg not available on Windows")
+    todo!("recvmsg: will be replaced by named pipes")
 }
 
-pub unsafe fn writev(_fd: c_int, _iov: *const iovec, _iovcnt: c_int) -> isize {
-    todo!("writev not available on Windows")
+pub unsafe fn writev(fd: c_int, iov: *const iovec, iovcnt: c_int) -> isize {
+    unsafe {
+        let mut total: isize = 0;
+        for i in 0..iovcnt as usize {
+            let v = &*iov.add(i);
+            let n = ::libc::write(fd, v.iov_base, v.iov_len as c_uint);
+            if n < 0 { return -1; }
+            total += n as isize;
+        }
+        total
+    }
 }
 
 pub unsafe fn getdtablesize() -> c_int {
-    todo!("getdtablesize not available on Windows")
+    // Windows CRT default max open files
+    2048
 }
 
-pub unsafe fn sigfillset(_set: *mut sigset_t) -> c_int {
-    todo!("sigfillset not available on Windows")
+// -- Signal functions (noop on Windows) --
+
+pub unsafe fn sigfillset(set: *mut sigset_t) -> c_int {
+    if !set.is_null() { unsafe { *set = !0u64; } }
+    0
 }
 
 pub unsafe fn sigprocmask(_how: c_int, _set: *const sigset_t, _oldset: *mut sigset_t) -> c_int {
-    todo!("sigprocmask not available on Windows")
+    0
 }
 
-pub unsafe fn sigemptyset(_set: *mut sigset_t) -> c_int {
-    todo!("sigemptyset not available on Windows")
+pub unsafe fn sigemptyset(set: *mut sigset_t) -> c_int {
+    if !set.is_null() { unsafe { *set = 0; } }
+    0
 }
 
 pub unsafe fn sigaction(_signum: c_int, _act: *const sigaction, _oldact: *mut sigaction) -> c_int {
-    todo!("sigaction not available on Windows")
+    0
 }
 
-pub unsafe fn tcgetattr(_fd: c_int, _termios: *mut termios) -> c_int {
-    todo!("tcgetattr not available on Windows")
+// -- Terminal functions (stubs for now, Phase 4 will implement via Console API) --
+
+pub unsafe fn tcgetattr(_fd: c_int, termios: *mut termios) -> c_int {
+    // Return zeroed termios - will be replaced by GetConsoleMode in Phase 4
+    if !termios.is_null() {
+        unsafe { core::ptr::write_bytes(termios, 0, 1); }
+    }
+    0
 }
 
 pub unsafe fn tcsetattr(_fd: c_int, _optional_actions: c_int, _termios: *const termios) -> c_int {
-    todo!("tcsetattr not available on Windows")
+    0
 }
 
 pub unsafe fn tcflush(_fd: c_int, _queue_selector: c_int) -> c_int {
-    todo!("tcflush not available on Windows")
+    0
 }
 
 pub unsafe fn tcgetpgrp(_fd: c_int) -> pid_t {
-    todo!("tcgetpgrp not available on Windows")
+    -1
 }
 
 pub unsafe fn cfsetispeed(_termios: *mut termios, _speed: speed_t) -> c_int {
-    todo!("cfsetispeed not available on Windows")
+    0
 }
 
 pub unsafe fn cfsetospeed(_termios: *mut termios, _speed: speed_t) -> c_int {
-    todo!("cfsetospeed not available on Windows")
+    0
 }
 
 pub unsafe fn cfgetispeed(_termios: *const termios) -> speed_t {
-    todo!("cfgetispeed not available on Windows")
+    38400
 }
 
 pub unsafe fn cfgetospeed(_termios: *const termios) -> speed_t {
-    todo!("cfgetospeed not available on Windows")
+    38400
 }
 
-pub unsafe fn usleep(_usec: c_uint) -> c_int {
-    todo!("usleep not available on Windows")
+// -- User / passwd --
+
+pub unsafe fn usleep(usec: c_uint) -> c_int {
+    std::thread::sleep(std::time::Duration::from_micros(usec as u64));
+    0
+}
+
+/// Static passwd storage allocated on the heap via Box::leak.
+/// Populated from environment variables on first call.
+static PASSWD_PTR: std::sync::OnceLock<usize> = std::sync::OnceLock::new();
+
+#[repr(C)]
+struct PasswdStorage {
+    pw: passwd,
+    name_buf: [u8; 256],
+    dir_buf: [u8; 512],
+    shell_buf: [u8; 512],
+}
+
+fn get_passwd_ptr() -> *mut PasswdStorage {
+    *PASSWD_PTR.get_or_init(|| {
+        let storage = Box::leak(Box::new(PasswdStorage {
+            pw: passwd {
+                pw_name: core::ptr::null_mut(),
+                pw_passwd: core::ptr::null_mut(),
+                pw_uid: 0,
+                pw_gid: 0,
+                pw_gecos: core::ptr::null_mut(),
+                pw_dir: core::ptr::null_mut(),
+                pw_shell: core::ptr::null_mut(),
+            },
+            name_buf: [0; 256],
+            dir_buf: [0; 512],
+            shell_buf: [0; 512],
+        }));
+        let ptr: *mut PasswdStorage = storage;
+
+        unsafe {
+            // pw_name from USERNAME
+            if let Ok(name) = std::env::var("USERNAME") {
+                let bytes = name.as_bytes();
+                let len = bytes.len().min(255);
+                core::ptr::copy_nonoverlapping(bytes.as_ptr(), (*ptr).name_buf.as_mut_ptr(), len);
+                (*ptr).name_buf[len] = 0;
+            }
+            (*ptr).pw.pw_name = (*ptr).name_buf.as_mut_ptr().cast();
+            (*ptr).pw.pw_gecos = (*ptr).name_buf.as_mut_ptr().cast();
+
+            // pw_dir from USERPROFILE
+            if let Ok(dir) = std::env::var("USERPROFILE") {
+                let bytes = dir.as_bytes();
+                let len = bytes.len().min(511);
+                core::ptr::copy_nonoverlapping(bytes.as_ptr(), (*ptr).dir_buf.as_mut_ptr(), len);
+                (*ptr).dir_buf[len] = 0;
+            }
+            (*ptr).pw.pw_dir = (*ptr).dir_buf.as_mut_ptr().cast();
+
+            // pw_shell: prefer SHELL, then ComSpec, then cmd.exe
+            let shell = std::env::var("SHELL")
+                .or_else(|_| std::env::var("ComSpec"))
+                .unwrap_or_else(|_| "C:\\Windows\\System32\\cmd.exe".to_string());
+            let bytes = shell.as_bytes();
+            let len = bytes.len().min(511);
+            core::ptr::copy_nonoverlapping(bytes.as_ptr(), (*ptr).shell_buf.as_mut_ptr(), len);
+            (*ptr).shell_buf[len] = 0;
+            (*ptr).pw.pw_shell = (*ptr).shell_buf.as_mut_ptr().cast();
+
+            (*ptr).pw.pw_passwd = b"\0".as_ptr() as *mut c_char;
+        }
+
+        ptr as usize
+    }) as *mut PasswdStorage
 }
 
 pub unsafe fn getpwuid(_uid: uid_t) -> *mut passwd {
-    todo!("getpwuid not available on Windows")
+    let storage = get_passwd_ptr();
+    unsafe { &raw mut (*storage).pw }
 }
 
 pub unsafe fn getpwnam(_name: *const u8) -> *mut passwd {
-    todo!("getpwnam not available on Windows")
+    let storage = get_passwd_ptr();
+    unsafe { &raw mut (*storage).pw }
 }
 
 pub unsafe fn getuid() -> uid_t {
-    todo!("getuid not available on Windows")
+    0
 }
 
 pub unsafe fn geteuid() -> uid_t {
-    todo!("geteuid not available on Windows")
+    0
 }
 
 pub unsafe fn getegid() -> gid_t {
-    todo!("getegid not available on Windows")
+    0
 }
 
+// -- File permission functions (noop on Windows) --
+
 pub unsafe fn umask(_mask: mode_t) -> mode_t {
-    todo!("umask not available on Windows")
+    0o022
 }
 
 pub unsafe fn chmod(_path: *const u8, _mode: mode_t) -> c_int {
-    todo!("chmod not available on Windows")
+    0
 }
 
-pub unsafe fn gettimeofday(_tv: *mut ::libc::timeval, _tz: *mut c_void) -> c_int {
-    todo!("gettimeofday not available on Windows")
+// -- Time functions --
+
+pub unsafe fn gettimeofday(tv: *mut ::libc::timeval, _tz: *mut c_void) -> c_int {
+    if tv.is_null() { return -1; }
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default();
+    unsafe {
+        (*tv).tv_sec = now.as_secs() as ::libc::c_long;
+        (*tv).tv_usec = now.subsec_micros() as ::libc::c_long;
+    }
+    0
 }
 
-pub unsafe fn clock_gettime(_clockid: clockid_t, _tp: *mut ::libc::timespec) -> c_int {
-    todo!("clock_gettime not available on Windows")
+pub unsafe fn clock_gettime(clockid: clockid_t, tp: *mut ::libc::timespec) -> c_int {
+    if tp.is_null() { return -1; }
+    if clockid == CLOCK_MONOTONIC {
+        // Use QueryPerformanceCounter for monotonic time
+        static mut QPC_FREQ: i64 = 0;
+        static QPC_INIT: std::sync::Once = std::sync::Once::new();
+        unsafe {
+            QPC_INIT.call_once(|| {
+                let mut freq: i64 = 0;
+                QueryPerformanceFrequency(&mut freq);
+                QPC_FREQ = freq;
+            });
+            let mut count: i64 = 0;
+            QueryPerformanceCounter(&mut count);
+            (*tp).tv_sec = (count / QPC_FREQ) as ::libc::time_t;
+            (*tp).tv_nsec = ((count % QPC_FREQ) * 1_000_000_000 / QPC_FREQ) as i32;
+        }
+    } else {
+        // CLOCK_REALTIME
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default();
+        unsafe {
+            (*tp).tv_sec = now.as_secs() as ::libc::time_t;
+            (*tp).tv_nsec = now.subsec_nanos() as i32;
+        }
+    }
+    0
+}
+
+unsafe extern "C" {
+    fn QueryPerformanceFrequency(freq: *mut i64) -> c_int;
+    fn QueryPerformanceCounter(count: *mut i64) -> c_int;
 }
 
 pub unsafe fn localtime_r(
-    _time: *const ::libc::time_t,
-    _result: *mut ::libc::tm,
+    time: *const ::libc::time_t,
+    result: *mut ::libc::tm,
 ) -> *mut ::libc::tm {
-    todo!("localtime_r not available on Windows")
+    unsafe {
+        // MSVC localtime_s has reversed args: (result, time)
+        if ::libc::localtime_s(result, time) == 0 {
+            result
+        } else {
+            core::ptr::null_mut()
+        }
+    }
 }
 
-pub unsafe fn ctime_r(_time: *const ::libc::time_t, _buf: *mut u8) -> *mut u8 {
-    todo!("ctime_r not available on Windows")
+pub unsafe fn ctime_r(time: *const ::libc::time_t, buf: *mut u8) -> *mut u8 {
+    unsafe {
+        if ctime_s(buf.cast(), 26, time) == 0 {
+            buf
+        } else {
+            core::ptr::null_mut()
+        }
+    }
 }
 
-pub unsafe fn gmtime_r(_time: *const ::libc::time_t, _result: *mut ::libc::tm) -> *mut ::libc::tm {
-    todo!("gmtime_r not available on Windows")
+pub unsafe fn gmtime_r(time: *const ::libc::time_t, result: *mut ::libc::tm) -> *mut ::libc::tm {
+    unsafe {
+        if ::libc::gmtime_s(result, time) == 0 {
+            result
+        } else {
+            core::ptr::null_mut()
+        }
+    }
 }
 
-pub unsafe fn localtime(_time: *const ::libc::time_t) -> *mut ::libc::tm {
-    todo!("localtime not available on Windows")
+pub unsafe fn localtime(time: *const ::libc::time_t) -> *mut ::libc::tm {
+    unsafe { msvc_localtime(time) }
 }
 
-pub unsafe fn nl_langinfo(_item: nl_item) -> *mut u8 {
-    todo!("nl_langinfo not available on Windows")
+pub unsafe fn nl_langinfo(item: nl_item) -> *mut u8 {
+    if item == CODESET {
+        // Windows Terminal always uses UTF-8
+        static UTF8: &[u8] = b"UTF-8\0";
+        UTF8.as_ptr() as *mut u8
+    } else {
+        static EMPTY: &[u8] = b"\0";
+        EMPTY.as_ptr() as *mut u8
+    }
 }
 
-pub unsafe fn uname(_buf: *mut utsname) -> c_int {
-    todo!("uname not available on Windows")
+pub unsafe fn uname(buf: *mut utsname) -> c_int {
+    if buf.is_null() { return -1; }
+    unsafe {
+        core::ptr::write_bytes(buf, 0, 1);
+        let sysname = b"Windows\0";
+        core::ptr::copy_nonoverlapping(sysname.as_ptr(), (*buf).sysname.as_mut_ptr().cast(), sysname.len());
+
+        if let Ok(hostname) = std::env::var("COMPUTERNAME") {
+            let bytes = hostname.as_bytes();
+            let len = bytes.len().min(_UTSNAME_LENGTH - 1);
+            core::ptr::copy_nonoverlapping(bytes.as_ptr(), (*buf).nodename.as_mut_ptr().cast(), len);
+        }
+
+        let release = b"10.0\0";
+        core::ptr::copy_nonoverlapping(release.as_ptr(), (*buf).release.as_mut_ptr().cast(), release.len());
+
+        #[cfg(target_arch = "x86_64")]
+        {
+            let machine = b"x86_64\0";
+            core::ptr::copy_nonoverlapping(machine.as_ptr(), (*buf).machine.as_mut_ptr().cast(), machine.len());
+        }
+        #[cfg(target_arch = "aarch64")]
+        {
+            let machine = b"aarch64\0";
+            core::ptr::copy_nonoverlapping(machine.as_ptr(), (*buf).machine.as_mut_ptr().cast(), machine.len());
+        }
+    }
+    0
 }
 
 pub unsafe fn strsignal(_sig: c_int) -> *mut u8 {
-    todo!("strsignal not available on Windows")
+    static UNKNOWN: &[u8] = b"Unknown signal\0";
+    UNKNOWN.as_ptr() as *mut u8
 }
 
-pub unsafe fn dirname(_path: *mut u8) -> *mut u8 {
-    todo!("dirname not available on Windows")
+/// POSIX dirname: return directory component of path.
+/// Modifies the input buffer in place (like the real dirname).
+pub unsafe fn dirname(path: *mut u8) -> *mut u8 {
+    static DOT: [u8; 2] = [b'.', 0];
+    if path.is_null() || unsafe { *path } == 0 {
+        return DOT.as_ptr() as *mut u8;
+    }
+    unsafe {
+        let len = ::libc::strlen(path.cast());
+        // Strip trailing slashes
+        let mut end = len;
+        while end > 0 && (*path.add(end - 1) == b'/' || *path.add(end - 1) == b'\\') {
+            end -= 1;
+        }
+        if end == 0 {
+            *path = b'/';
+            *path.add(1) = 0;
+            return path;
+        }
+        // Find last slash
+        while end > 0 && *path.add(end - 1) != b'/' && *path.add(end - 1) != b'\\' {
+            end -= 1;
+        }
+        if end == 0 {
+            return DOT.as_ptr() as *mut u8;
+        }
+        // Strip trailing slashes from result
+        while end > 1 && (*path.add(end - 1) == b'/' || *path.add(end - 1) == b'\\') {
+            end -= 1;
+        }
+        *path.add(end) = 0;
+        path
+    }
 }
 
 pub unsafe fn readlink(_path: *const u8, _buf: *mut u8, _bufsiz: usize) -> isize {
-    todo!("readlink not available on Windows")
+    -1 // Not applicable on Windows
 }
 
 pub unsafe fn daemon(_nochdir: c_int, _noclose: c_int) -> c_int {
-    todo!("daemon not available on Windows")
+    -1 // Not applicable on Windows; always run in foreground
 }
 
 pub unsafe fn malloc_trim(_pad: usize) -> c_int {
-    todo!("malloc_trim not available on Windows")
+    0 // Noop on Windows
 }
 
-pub unsafe fn dup2(_oldfd: c_int, _newfd: c_int) -> c_int {
-    todo!("dup2 not available on Windows")
+pub unsafe fn dup2(oldfd: c_int, newfd: c_int) -> c_int {
+    unsafe { ::libc::dup2(oldfd, newfd) }
 }
 
 pub unsafe fn execvp(_file: *const u8, _argv: *const *const u8) -> c_int {
-    todo!("execvp not available on Windows")
+    eprintln!("execvp() called on Windows - this should never happen");
+    -1
 }
 
 pub unsafe fn setsid() -> pid_t {
-    todo!("setsid not available on Windows")
+    -1 // Not applicable on Windows
 }
 
-pub unsafe fn poll(_fds: *mut pollfd, _nfds: nfds_t, _timeout: c_int) -> c_int {
-    todo!("poll not available on Windows")
+pub unsafe fn poll(fds: *mut pollfd, nfds: nfds_t, timeout: c_int) -> c_int {
+    // WSAPoll has compatible layout with our pollfd struct
+    unsafe extern "system" {
+        fn WSAPoll(fdarray: *mut pollfd, nfds: u32, timeout: c_int) -> c_int;
+    }
+    unsafe { WSAPoll(fds, nfds as u32, timeout) }
 }
 
 pub unsafe fn fseeko(stream: *mut ::libc::FILE, offset: ::libc::off_t, whence: c_int) -> c_int {
@@ -680,11 +1112,12 @@ pub unsafe fn ftello(stream: *mut ::libc::FILE) -> ::libc::off_t {
 }
 
 pub unsafe fn sysconf(_name: c_int) -> i64 {
-    todo!("sysconf not available on Windows")
+    // _SC_MB_LEN_MAX = max bytes per multibyte character
+    16
 }
 
-pub unsafe fn stat(_path: *const u8, _buf: *mut ::libc::stat) -> c_int {
-    todo!("stat not available on Windows")
+pub unsafe fn stat(path: *const u8, buf: *mut ::libc::stat) -> c_int {
+    unsafe { ::libc::stat(path.cast(), buf) }
 }
 
 // ============================================================
@@ -720,6 +1153,11 @@ pub unsafe fn strsep(stringp: *mut *mut u8, delim: *const u8) -> *mut u8 {
     }
 }
 
-pub unsafe fn wcwidth(_c: super::wchar_t) -> i32 {
-    todo!("wcwidth not available on Windows")
+pub unsafe fn wcwidth(c: super::wchar_t) -> i32 {
+    use unicode_width::UnicodeWidthChar;
+    if let Some(ch) = char::from_u32(c as u32) {
+        ch.width().unwrap_or(0) as i32
+    } else {
+        -1
+    }
 }

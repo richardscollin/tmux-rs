@@ -1,6 +1,6 @@
 use core::ffi::c_int;
 
-pub extern "C" fn getptmfd() -> c_int {
+pub extern "C-unwind" fn getptmfd() -> c_int {
     c_int::MAX
 }
 

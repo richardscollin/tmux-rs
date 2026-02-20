@@ -49,6 +49,36 @@ pub fn usage() -> ! {
     std::process::exit(1)
 }
 
+#[cfg(target_os = "windows")]
+unsafe fn getshell() -> Cow<'static, CStr> {
+    // On Windows, try SHELL env var first (for MSYS2/Git Bash users),
+    // then look for pwsh, then fall back to ComSpec / cmd.exe
+    if let Ok(shell) = std::env::var("SHELL")
+        && let Ok(shell) = CString::new(shell)
+        && unsafe { checkshell(Some(&shell)) }
+    {
+        return Cow::Owned(shell);
+    }
+    // Try to find pwsh.exe on PATH
+    if let Ok(output) = std::process::Command::new("where").arg("pwsh.exe").output()
+        && output.status.success()
+    {
+        let path = String::from_utf8_lossy(&output.stdout);
+        if let Some(line) = path.lines().next() {
+            if let Ok(shell) = CString::new(line.trim()) {
+                return Cow::Owned(shell);
+            }
+        }
+    }
+    if let Ok(shell) = std::env::var("ComSpec")
+        && let Ok(shell) = CString::new(shell)
+    {
+        return Cow::Owned(shell);
+    }
+    Cow::Owned(CString::new("C:\\Windows\\System32\\cmd.exe").unwrap())
+}
+
+#[cfg(not(target_os = "windows"))]
 unsafe fn getshell() -> Cow<'static, CStr> {
     unsafe {
         if let Ok(shell) = std::env::var("SHELL")
@@ -74,12 +104,29 @@ pub unsafe fn checkshell(shell: Option<&CStr>) -> bool {
         let Some(shell) = shell else {
             return false;
         };
-        if shell.to_bytes()[0] != b'/' {
+        let bytes = shell.to_bytes();
+        if bytes.is_empty() {
+            return false;
+        }
+        // On Unix, must be an absolute path (starts with '/')
+        // On Windows, accept drive letters (e.g. C:\) or UNC paths (\\)
+        #[cfg(not(target_os = "windows"))]
+        if bytes[0] != b'/' {
+            return false;
+        }
+        #[cfg(target_os = "windows")]
+        if !(bytes[0] == b'/' || bytes[0] == b'\\' || (bytes.len() >= 3 && bytes[1] == b':')) {
             return false;
         }
         if areshell(shell) {
             return false;
         }
+        // On Windows, _access() doesn't support X_OK; use existence check (0) instead
+        #[cfg(target_os = "windows")]
+        if access(shell.as_ptr().cast(), 0) != 0 {
+            return false;
+        }
+        #[cfg(not(target_os = "windows"))]
         if access(shell.as_ptr().cast(), X_OK) != 0 {
             return false;
         }
@@ -202,6 +249,7 @@ unsafe fn expand_paths(s: &str, paths: &mut Vec<CString>, ignore_errors: i32) {
 }
 
 unsafe fn make_label(mut label: *const u8) -> Result<CString, String> {
+    #[cfg(not(target_os = "windows"))]
     use crate::libc::S_IRWXO;
 
     let mut paths: Vec<CString> = Vec::new();
@@ -210,9 +258,24 @@ unsafe fn make_label(mut label: *const u8) -> Result<CString, String> {
         if label.is_null() {
             label = c!("default");
         }
-        let uid = getuid();
 
-        expand_paths(TMUX_SOCK, &mut paths, 1);
+        #[cfg(target_os = "windows")]
+        let user_id = std::env::var("USERNAME").unwrap_or_else(|_| "0".to_string());
+        #[cfg(not(target_os = "windows"))]
+        let user_id = getuid().to_string();
+
+        #[cfg(target_os = "windows")]
+        {
+            let temp = std::env::temp_dir();
+            let temp_str = temp.to_string_lossy();
+            let path_cstr = CString::new(temp_str.as_ref()).unwrap();
+            paths.push(path_cstr);
+        }
+        #[cfg(not(target_os = "windows"))]
+        {
+            expand_paths(TMUX_SOCK, &mut paths, 1);
+        }
+
         if paths.is_empty() {
             return Err("no suitable socket path".to_string());
         }
@@ -220,7 +283,7 @@ unsafe fn make_label(mut label: *const u8) -> Result<CString, String> {
         paths.truncate(1);
         let path = paths.pop().unwrap(); /* can only have one socket! */
 
-        let base = format!("{}/tmux-rs-{}", path.to_string_lossy(), uid);
+        let base = format!("{}/tmux-rs-{}", path.to_string_lossy(), user_id);
         {
             let mut builder = std::fs::DirBuilder::new();
             #[cfg(unix)]
@@ -364,10 +427,16 @@ pub unsafe fn tmux_main(mut argc: i32, mut argv: *mut *mut u8, _env: *mut *mut u
         LC_CTYPE
     };
 
-    std::panic::set_hook(Box::new(|_panic_info| {
-        let backtrace = std::backtrace::Backtrace::capture();
-        let err_str = format!("{backtrace:#?}");
-        _ = std::fs::write("client-panic.txt", err_str);
+    std::panic::set_hook(Box::new(|panic_info| {
+        let backtrace = std::backtrace::Backtrace::force_capture();
+        let mut msg = String::new();
+        use std::fmt::Write;
+        _ = writeln!(msg, "{panic_info}");
+        _ = writeln!(msg);
+        _ = writeln!(msg, "Backtrace:");
+        _ = writeln!(msg, "{backtrace}");
+        eprintln!("{msg}");
+        _ = std::fs::write("client-panic.txt", &msg);
     }));
 
     unsafe {
@@ -401,10 +470,22 @@ pub unsafe fn tmux_main(mut argc: i32, mut argv: *mut *mut u8, _env: *mut *mut u
 
         GLOBAL_ENVIRON = environ_create().as_ptr();
 
-        let mut var = environ;
-        while !(*var).is_null() {
-            environ_put(GLOBAL_ENVIRON, *var, environ_flags::empty());
-            var = var.add(1);
+        #[cfg(not(target_os = "windows"))]
+        {
+            let mut var = environ;
+            while !(*var).is_null() {
+                environ_put(GLOBAL_ENVIRON, *var, environ_flags::empty());
+                var = var.add(1);
+            }
+        }
+        #[cfg(target_os = "windows")]
+        {
+            // On Windows, environ is null. Use std::env::vars() instead.
+            for (key, value) in std::env::vars() {
+                let env_str = std::ffi::CString::new(format!("{key}={value}")).unwrap();
+                let ptr = xstrdup(env_str.as_ptr().cast()).cast().as_ptr();
+                environ_put(GLOBAL_ENVIRON, ptr, environ_flags::empty());
+            }
         }
 
         if let Some(cwd) = find_cwd() {
@@ -521,14 +602,14 @@ pub unsafe fn tmux_main(mut argc: i32, mut argv: *mut *mut u8, _env: *mut *mut u
         }
 
         // The default shell comes from SHELL or from the user's passwd entry if available.
+        let shell = getshell();
         options_set_string!(
             GLOBAL_S_OPTIONS,
             "default-shell",
             false,
             "{}",
-            getshell().to_string_lossy(),
+            shell.to_string_lossy(),
         );
-
         // Override keys to vi if VISUAL or EDITOR are set.
         if let Ok(s) = std::env::var("VISUAL").or_else(|_| std::env::var("EDITOR")) {
             options_set_string!(GLOBAL_OPTIONS, "editor", false, "{s}");

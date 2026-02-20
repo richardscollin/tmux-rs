@@ -65,25 +65,148 @@ impl ListEntry<job, ()> for job {
 }
 
 type joblist = list_head<job>;
-static mut ALL_JOBS: joblist = list_head_initializer();
+pub(crate) static mut ALL_JOBS: joblist = list_head_initializer();
 
 #[cfg(target_os = "windows")]
 pub unsafe fn job_run(
-    _cmd: *const u8,
-    _argc: c_int,
-    _argv: *mut *mut u8,
-    _e: *mut environ,
-    _s: *mut session,
-    _cwd: *const u8,
-    _updatecb: job_update_cb,
-    _completecb: job_complete_cb,
-    _freecb: job_free_cb,
-    _data: *mut c_void,
-    _flags: job_flag,
-    _sx: c_int,
-    _sy: c_int,
+    cmd: *const u8,
+    argc: c_int,
+    argv: *mut *mut u8,
+    e: *mut environ,
+    s: *mut session,
+    cwd: *const u8,
+    updatecb: job_update_cb,
+    completecb: job_complete_cb,
+    freecb: job_free_cb,
+    data: *mut c_void,
+    flags: job_flag,
+    sx: c_int,
+    sy: c_int,
 ) -> *mut job {
-    todo!()
+    let __func__ = "job_run";
+    unsafe {
+        let env: *mut environ;
+        let mut shell: *const u8;
+        let oo: *mut options;
+
+        env = environ_for_session(s, !CFG_FINISHED.load(atomic::Ordering::Acquire) as i32);
+        if !e.is_null() {
+            environ_copy(e, env);
+        }
+
+        if !flags.intersects(job_flag::JOB_DEFAULTSHELL) {
+            shell = _PATH_BSHELL;
+        } else {
+            if !s.is_null() {
+                oo = (*s).options;
+            } else {
+                oo = GLOBAL_S_OPTIONS;
+            }
+            shell = options_get_string_(oo, "default-shell");
+            if !checkshell_(shell) {
+                shell = _PATH_BSHELL;
+            }
+        }
+
+        if !cmd.is_null() {
+            log_debug!(
+                "{} cmd={} cwd={} shell={}",
+                __func__,
+                _s(cmd),
+                _s(if cwd.is_null() { c!("") } else { cwd }),
+                _s(shell),
+            );
+        } else {
+            cmd_log_argv!(argc, argv, "{__func__}");
+            log_debug!(
+                "{} cwd={} shell={}",
+                __func__,
+                _s(if cwd.is_null() { c!("") } else { cwd }),
+                _s(shell),
+            );
+        }
+
+        // Build command line
+        let cmd_line = if !cmd.is_null() {
+            // Run via shell: "shell -c cmd"
+            let shell_str = _s(shell);
+            let cmd_str = _s(cmd);
+            format!("{shell_str} -c \"{cmd_str}\"")
+        } else {
+            cmd_stringify_argv(argc, argv)
+        };
+
+        let cwd_str = if !cwd.is_null() {
+            Some(_s(cwd).to_string())
+        } else {
+            None
+        };
+
+        // Spawn via ConPTY for PTY jobs, piped for non-PTY
+        let spawn_result = if flags.intersects(job_flag::JOB_PTY) {
+            crate::conpty::conpty_spawn(
+                &cmd_line,
+                sx as u16,
+                sy as u16,
+                cwd_str.as_deref(),
+                None,
+            )
+        } else {
+            crate::conpty::process_spawn_piped(&cmd_line, cwd_str.as_deref())
+        };
+
+        let (fd, pid) = match spawn_result {
+            Ok(result) => result,
+            Err(err) => {
+                log_debug!("{}: spawn failed: {}", __func__, err);
+                environ_free(env);
+                return null_mut();
+            }
+        };
+
+        environ_free(env);
+
+        let job: *mut job = Box::leak(Box::new(job {
+            state: job_state::JOB_RUNNING,
+            flags,
+            cmd: if !cmd.is_null() {
+                xstrdup(cmd).as_ptr()
+            } else {
+                CString::new(cmd_stringify_argv(argc, argv))
+                    .unwrap()
+                    .into_raw()
+                    .cast()
+            },
+            pid: pid as pid_t,
+            status: 0,
+            fd,
+            ..Default::default()
+        }));
+
+        list_insert_head(&raw mut ALL_JOBS, job);
+
+        (*job).updatecb = updatecb;
+        (*job).completecb = completecb;
+        (*job).freecb = freecb;
+        (*job).data = data;
+
+        setblocking((*job).fd, 0);
+
+        (*job).event = bufferevent_new(
+            (*job).fd,
+            Some(job_read_callback),
+            Some(job_write_callback),
+            Some(job_error_callback),
+            job as *mut c_void,
+        );
+        if (*job).event.is_null() {
+            fatalx("out of memory");
+        }
+        bufferevent_enable((*job).event, EV_READ | EV_WRITE);
+
+        log_debug!("run job {:p}: {} pid {}", job, _s((*job).cmd), (*job).pid);
+        job
+    }
 }
 
 #[cfg(not(target_os = "windows"))]
@@ -351,7 +474,10 @@ pub unsafe fn job_free(job: *mut job) {
             freecb((*job).data);
         }
         if (*job).pid != -1 {
+            #[cfg(not(target_os = "windows"))]
             kill((*job).pid, SIGTERM);
+            #[cfg(target_os = "windows")]
+            crate::conpty::conpty_kill((*job).pid as u32);
         }
         if !((*job).event).is_null() {
             bufferevent_free((*job).event);
@@ -382,7 +508,9 @@ pub unsafe fn job_resize(job: *mut job, sx: c_uint, sy: c_uint) {
         #[cfg(target_os = "windows")]
         {
             let _ = ws;
-            todo!("job_resize not implemented for Windows");
+            if let Err(e) = crate::conpty::conpty_resize((*job).pid as u32, sx as u16, sy as u16) {
+                log_debug!("job_resize: {}", e);
+            }
         }
     }
 }
@@ -494,7 +622,10 @@ pub unsafe fn job_kill_all() {
     unsafe {
         for job in list_foreach(&raw mut ALL_JOBS).map(NonNull::as_ptr) {
             if (*job).pid != -1 {
+                #[cfg(not(target_os = "windows"))]
                 kill((*job).pid, SIGTERM);
+                #[cfg(target_os = "windows")]
+                crate::conpty::conpty_kill((*job).pid as u32);
             }
         }
     }

@@ -68,7 +68,7 @@ static mut CLIENT_FILES: client_files = rb_initializer();
 
 #[cfg(target_os = "windows")]
 pub unsafe fn client_get_lock(_lockfile: *mut u8) -> i32 {
-    todo!()
+    -1 // Not used in NOFORK mode
 }
 
 #[cfg(not(target_os = "windows"))]
@@ -102,7 +102,7 @@ pub unsafe fn client_get_lock(lockfile: *mut u8) -> i32 {
 
 #[cfg(target_os = "windows")]
 pub unsafe fn client_connect(_base: *mut event_base, _path: *const u8, _flags: client_flag) -> i32 {
-    todo!()
+    -1 // Not used in NOFORK mode — server_start is called directly
 }
 
 #[cfg(not(target_os = "windows"))]
@@ -243,10 +243,156 @@ pub unsafe extern "C-unwind" fn client_main(
     _base: *mut event_base,
     _argc: i32,
     _argv: *mut *mut u8,
-    mut _flags: client_flag,
+    mut flags: client_flag,
     _feat: i32,
 ) -> i32 {
-    todo!()
+    use crate::compat::imsg::{IMSG_HEADER_SIZE, MAX_IMSGSIZE};
+    use crate::server::{SERVER_PROC, server_start_windows};
+
+    unsafe {
+        flags |= client_flag::NOFORK | client_flag::STARTSERVER;
+
+        CLIENT_PROC = proc_start(c"client");
+        CLIENT_FLAGS = flags;
+
+        // Initialize server and get the client-side fd of the internal socketpair
+        let client_fd = server_start_windows(CLIENT_PROC, flags);
+        if client_fd < 0 {
+            eprintln!("server_start_windows failed");
+            return 1;
+        }
+
+        // Create a peer on the client side for sending messages to the server
+        CLIENT_PEER = proc_add_peer(
+            SERVER_PROC,
+            client_fd,
+            Some(client_dispatch),
+            null_mut(),
+        );
+
+        // Send identification messages
+        client_send_identify_windows();
+
+        // Send MSG_COMMAND with argc=0 → triggers "new-session" on the server
+        let data: *mut msg_command = xmalloc(size_of::<msg_command>()).cast().as_ptr();
+        (*data).argc = 0;
+        proc_send(
+            CLIENT_PEER,
+            msgtype::MSG_COMMAND,
+            -1,
+            data as *const c_void,
+            size_of::<msg_command>(),
+        );
+        free_(data);
+
+        // Flush all messages so the server processes them on the first event loop iteration
+        proc_flush_peer(CLIENT_PEER);
+
+        // Enter the unified event loop (server + client events on the same base)
+        proc_loop(SERVER_PROC, Some(crate::server::server_loop));
+
+        job_kill_all();
+        0
+    }
+}
+
+/// Send identification messages for the Windows embedded client.
+/// Unlike Unix, we skip MSG_IDENTIFY_STDIN/STDOUT (no fd passing on Windows).
+#[cfg(target_os = "windows")]
+unsafe fn client_send_identify_windows() {
+    unsafe {
+        // Send flags
+        let mut longflags: u64 = (*&raw const CLIENT_FLAGS).bits();
+        proc_send(
+            CLIENT_PEER,
+            msgtype::MSG_IDENTIFY_LONGFLAGS,
+            -1,
+            &raw mut longflags as *mut _ as *const c_void,
+            size_of::<u64>(),
+        );
+
+        // Send terminal type
+        let term = c"xterm-256color";
+        proc_send(
+            CLIENT_PEER,
+            msgtype::MSG_IDENTIFY_TERM,
+            -1,
+            term.as_ptr() as *const c_void,
+            term.to_bytes_with_nul().len(),
+        );
+
+        // Send features (0 = no special features)
+        let mut feat: i32 = 0;
+        proc_send(
+            CLIENT_PEER,
+            msgtype::MSG_IDENTIFY_FEATURES,
+            -1,
+            &raw mut feat as *mut _ as *const c_void,
+            size_of::<i32>(),
+        );
+
+        // Send tty name (empty on Windows)
+        let ttyname = c"windows-console";
+        proc_send(
+            CLIENT_PEER,
+            msgtype::MSG_IDENTIFY_TTYNAME,
+            -1,
+            ttyname.as_ptr() as *const c_void,
+            ttyname.to_bytes_with_nul().len(),
+        );
+
+        // Send current working directory
+        let cwd = find_cwd()
+            .map(|e| CString::new(e.into_os_string().into_string().unwrap()).unwrap())
+            .or_else(|| find_home().map(|c| c.to_owned()));
+        let cwd = cwd.as_deref().unwrap_or(c"C:\\");
+        proc_send(
+            CLIENT_PEER,
+            msgtype::MSG_IDENTIFY_CWD,
+            -1,
+            cwd.as_ptr() as *const c_void,
+            cwd.to_bytes_with_nul().len(),
+        );
+
+        // Skip MSG_IDENTIFY_STDIN and MSG_IDENTIFY_STDOUT — fd passing doesn't
+        // work on Windows. The server will see fd=-1 for these.
+
+        // Send client PID
+        let mut pid = std::process::id() as i32;
+        proc_send(
+            CLIENT_PEER,
+            msgtype::MSG_IDENTIFY_CLIENTPID,
+            -1,
+            &raw mut pid as *mut _ as *const c_void,
+            size_of::<i32>(),
+        );
+
+        // Send environment variables
+        for (key, value) in std::env::vars() {
+            let entry = format!("{key}={value}");
+            if let Ok(cstr) = CString::new(entry) {
+                let bytes = cstr.to_bytes_with_nul();
+                if bytes.len() <= crate::compat::imsg::MAX_IMSGSIZE - crate::compat::imsg::IMSG_HEADER_SIZE {
+                    proc_send(
+                        CLIENT_PEER,
+                        msgtype::MSG_IDENTIFY_ENVIRON,
+                        -1,
+                        cstr.as_ptr() as *const c_void,
+                        bytes.len(),
+                    );
+                }
+            }
+        }
+
+        // Signal end of identification
+        proc_send(
+            CLIENT_PEER,
+            msgtype::MSG_IDENTIFY_DONE,
+            -1,
+            null_mut(),
+            0,
+        );
+    }
 }
 
 #[expect(clippy::deref_addrof)]
@@ -644,7 +790,7 @@ unsafe fn client_exec(shell: *mut u8, shellcmd: *mut u8) {
 
 #[cfg(target_os = "windows")]
 unsafe fn client_signal(_sig: i32) {
-    todo!()
+    // No Unix signals on Windows
 }
 
 #[cfg(not(target_os = "windows"))]

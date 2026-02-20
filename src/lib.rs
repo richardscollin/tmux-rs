@@ -49,6 +49,9 @@ macro_rules! cfg_pub_mods {
     };
 }
 
+#[cfg(target_os = "windows")]
+mod conpty;
+
 cfg_pub_mods! {
     mod alerts;
     mod arguments;

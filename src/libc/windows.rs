@@ -157,13 +157,8 @@ pub struct sigaction {
     pub sa_flags: c_int,
 }
 
-#[repr(C)]
-#[derive(Debug, Copy, Clone)]
-pub struct pollfd {
-    pub fd: c_int,
-    pub events: i16,
-    pub revents: i16,
-}
+/// WSAPOLLFD from windows-sys — correct SOCKET-sized fd field for WSAPoll on x64.
+pub type pollfd = windows_sys::Win32::Networking::WinSock::WSAPOLLFD;
 
 // ============================================================
 // Signal constants
@@ -379,12 +374,19 @@ pub unsafe fn CMSG_NXTHDR(msg: *const msghdr, cmsg: *const cmsghdr) -> *mut cmsg
 unsafe extern "C" {
     pub fn sscanf(s: *const c_char, format: *const c_char, ...) -> c_int;
     pub fn snprintf(s: *mut c_char, n: usize, format: *const c_char, ...) -> c_int;
-    pub fn fcntl(fd: c_int, cmd: c_int, ...) -> c_int;
-    pub fn ioctl(fd: c_int, request: u64, ...) -> c_int;
     #[link_name = "_execl"]
     pub fn execl(path: *const c_char, arg: *const c_char, ...) -> c_int;
-    pub fn prctl(option: c_int, ...) -> c_int;
 }
+
+// ioctl/fcntl/prctl don't exist on Windows MSVC.
+// These are never actually called on Windows (call sites are #[cfg]'d out or unreachable),
+// but they need to exist for the code to compile and link.
+pub unsafe fn ioctl<T>(_fd: c_int, _request: u64, _arg: T) -> c_int {
+    -1
+}
+
+// fcntl and prctl: all call sites are #[cfg(not(target_os = "windows"))],
+// so we don't define them here. If a call site needs them, it should be cfg'd.
 
 // MSVC CRT functions not in the libc crate
 unsafe extern "C" {
@@ -677,47 +679,392 @@ pub unsafe fn waitpid(_pid: pid_t, status: *mut c_int, _options: c_int) -> pid_t
     -1
 }
 
-// -- Socket functions (to be replaced by named pipes in Phase 5) --
+// -- Socket functions (AF_UNIX via Winsock) --
 
-pub unsafe fn socketpair(
-    _domain: c_int,
-    _type_: c_int,
-    _protocol: c_int,
-    _sv: *mut c_int,
-) -> c_int {
-    todo!("socketpair: will be replaced by named pipes")
+// Winsock functions and types (via windows-sys)
+use windows_sys::Win32::Networking::WinSock::{
+    self as ws,
+    FIONBIO, INVALID_SOCKET, SOCKET, WSADATA,
+};
+
+const WSAEWOULDBLOCK: c_int = 10035;
+
+unsafe extern "C" {
+    fn _open_osfhandle(osfhandle: isize, flags: c_int) -> c_int;
+    pub fn _get_osfhandle(fd: c_int) -> isize;
+    fn _errno() -> *mut c_int;
 }
 
-pub unsafe fn socket(_domain: c_int, _type_: c_int, _protocol: c_int) -> c_int {
-    todo!("socket: will be replaced by named pipes")
+// ============================================================
+// Win32 Console API (via windows-sys)
+// ============================================================
+
+pub use windows_sys::Win32::System::Console::{
+    GetConsoleMode, GetConsoleScreenBufferInfo, GetStdHandle, SetConsoleMode,
+    CONSOLE_SCREEN_BUFFER_INFO, DISABLE_NEWLINE_AUTO_RETURN, ENABLE_ECHO_INPUT,
+    ENABLE_LINE_INPUT, ENABLE_PROCESSED_INPUT, ENABLE_PROCESSED_OUTPUT,
+    ENABLE_VIRTUAL_TERMINAL_INPUT, ENABLE_VIRTUAL_TERMINAL_PROCESSING,
+    ENABLE_WINDOW_INPUT, ENABLE_WRAP_AT_EOL_OUTPUT, STD_INPUT_HANDLE, STD_OUTPUT_HANDLE,
+};
+
+/// Get the console window dimensions (columns, rows).
+pub fn get_console_size() -> (u32, u32) {
+    use windows_sys::Win32::Foundation::INVALID_HANDLE_VALUE;
+    unsafe {
+        let mut csbi: CONSOLE_SCREEN_BUFFER_INFO = core::mem::zeroed();
+        let handle = GetStdHandle(STD_OUTPUT_HANDLE);
+        if handle != INVALID_HANDLE_VALUE
+            && !handle.is_null()
+            && GetConsoleScreenBufferInfo(handle, &mut csbi) != 0
+        {
+            let sx = (csbi.srWindow.Right - csbi.srWindow.Left + 1) as u32;
+            let sy = (csbi.srWindow.Bottom - csbi.srWindow.Top + 1) as u32;
+            (sx.max(1), sy.max(1))
+        } else {
+            (80, 24)
+        }
+    }
 }
 
-pub unsafe fn bind(_sockfd: c_int, _addr: *const c_void, _addrlen: socklen_t) -> c_int {
-    todo!("bind: will be replaced by named pipes")
+/// Open stdout as a CRT file descriptor for VT output.
+pub fn stdout_as_fd() -> c_int {
+    use windows_sys::Win32::Foundation::INVALID_HANDLE_VALUE;
+    unsafe {
+        let handle = GetStdHandle(STD_OUTPUT_HANDLE);
+        if handle == INVALID_HANDLE_VALUE || handle.is_null() {
+            return -1;
+        }
+        _open_osfhandle(handle as isize, 0)
+    }
 }
 
-pub unsafe fn listen(_sockfd: c_int, _backlog: c_int) -> c_int {
-    todo!("listen: will be replaced by named pipes")
+/// Enable VT sequence processing on the console output.
+pub fn enable_vt_processing() {
+    use windows_sys::Win32::Foundation::INVALID_HANDLE_VALUE;
+    unsafe {
+        let handle = GetStdHandle(STD_OUTPUT_HANDLE);
+        if handle == INVALID_HANDLE_VALUE || handle.is_null() {
+            return;
+        }
+        let mut mode: u32 = 0;
+        if GetConsoleMode(handle, &mut mode) != 0 {
+            mode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING | DISABLE_NEWLINE_AUTO_RETURN;
+            SetConsoleMode(handle, mode);
+        }
+    }
 }
 
-pub unsafe fn accept(_sockfd: c_int, _addr: *mut c_void, _addrlen: *mut socklen_t) -> c_int {
-    todo!("accept: will be replaced by named pipes")
+/// Set console stdin to raw mode (disable line edit, echo, processed input).
+/// Returns the original mode for later restoration.
+pub fn set_console_raw_mode() -> u32 {
+    use windows_sys::Win32::Foundation::INVALID_HANDLE_VALUE;
+    unsafe {
+        let handle = GetStdHandle(STD_INPUT_HANDLE);
+        let mut orig_mode: u32 = 0;
+        if handle != INVALID_HANDLE_VALUE
+            && !handle.is_null()
+            && GetConsoleMode(handle, &mut orig_mode) != 0
+        {
+            let raw_mode = (orig_mode
+                & !(ENABLE_LINE_INPUT | ENABLE_ECHO_INPUT | ENABLE_PROCESSED_INPUT))
+                | ENABLE_WINDOW_INPUT;
+            SetConsoleMode(handle, raw_mode);
+        }
+        orig_mode
+    }
 }
 
-pub unsafe fn connect(_sockfd: c_int, _addr: *const c_void, _addrlen: socklen_t) -> c_int {
-    todo!("connect: will be replaced by named pipes")
+/// Restore console stdin mode.
+pub fn restore_console_mode(mode: u32) {
+    use windows_sys::Win32::Foundation::INVALID_HANDLE_VALUE;
+    unsafe {
+        let handle = GetStdHandle(STD_INPUT_HANDLE);
+        if handle != INVALID_HANDLE_VALUE && !handle.is_null() {
+            SetConsoleMode(handle, mode);
+        }
+    }
 }
 
-pub unsafe fn shutdown(_sockfd: c_int, _how: c_int) -> c_int {
-    todo!("shutdown: will be replaced by named pipes")
+fn ensure_winsock_init() {
+    use std::sync::Once;
+    static INIT: Once = Once::new();
+    INIT.call_once(|| unsafe {
+        let mut data: WSADATA = core::mem::zeroed();
+        ws::WSAStartup(0x0202, &mut data);
+    });
 }
 
-pub unsafe fn sendmsg(_sockfd: c_int, _msg: *const msghdr, _flags: c_int) -> isize {
-    todo!("sendmsg: will be replaced by named pipes")
+/// Convert a Winsock SOCKET to a CRT file descriptor.
+unsafe fn socket_to_fd(sock: usize) -> c_int {
+    if sock == INVALID_SOCKET {
+        return -1;
+    }
+    unsafe {
+        let fd = _open_osfhandle(sock as isize, 0);
+        if fd == -1 {
+            ws::closesocket(sock);
+        }
+        fd
+    }
 }
 
-pub unsafe fn recvmsg(_sockfd: c_int, _msg: *mut msghdr, _flags: c_int) -> isize {
-    todo!("recvmsg: will be replaced by named pipes")
+/// Get the Winsock SOCKET from a CRT file descriptor.
+unsafe fn fd_to_socket(fd: c_int) -> usize {
+    unsafe { _get_osfhandle(fd) as usize }
+}
+
+/// Set a socket to non-blocking mode.
+pub unsafe fn socket_set_nonblocking(fd: c_int, nonblocking: bool) {
+    unsafe {
+        let sock = fd_to_socket(fd);
+        let mut mode: u32 = if nonblocking { 1 } else { 0 };
+        ws::ioctlsocket(sock, FIONBIO, &mut mode);
+    }
+}
+
+fn set_winsock_errno() {
+    unsafe {
+        let wsa_err = ws::WSAGetLastError();
+        // Map common Winsock errors to errno values
+        let err = match wsa_err {
+            10004 => EINTR,          // WSAEINTR
+            10013 => EACCES,         // WSAEACCES
+            10022 => EINVAL,         // WSAEINVAL
+            10024 => EMFILE,         // WSAEMFILE
+            10035 => EAGAIN,         // WSAEWOULDBLOCK
+            10036 => EINPROGRESS,    // WSAEINPROGRESS
+            10048 => EADDRINUSE,     // WSAEADDRINUSE
+            10054 => ECONNRESET,     // WSAECONNRESET
+            10056 => EISCONN,        // WSAEISCONN
+            10057 => ENOTCONN,       // WSAENOTCONN
+            10060 => ETIMEDOUT,      // WSAETIMEDOUT
+            10061 => ECONNREFUSED,   // WSAECONNREFUSED
+            _ => wsa_err,
+        };
+        *_errno() = err;
+    }
+}
+
+pub unsafe fn socket(domain: c_int, type_: c_int, protocol: c_int) -> c_int {
+    ensure_winsock_init();
+    unsafe {
+        let sock = ws::socket(domain, type_, protocol);
+        if sock == INVALID_SOCKET {
+            set_winsock_errno();
+            return -1;
+        }
+        let fd = socket_to_fd(sock);
+        if fd == -1 {
+            *_errno() = EMFILE;
+        }
+        fd
+    }
+}
+
+pub unsafe fn bind(sockfd: c_int, addr: *const c_void, addrlen: socklen_t) -> c_int {
+    unsafe {
+        let sock = fd_to_socket(sockfd);
+        let ret = ws::bind(sock, addr.cast(), addrlen as c_int);
+        if ret != 0 {
+            set_winsock_errno();
+            return -1;
+        }
+        0
+    }
+}
+
+pub unsafe fn listen(sockfd: c_int, backlog: c_int) -> c_int {
+    unsafe {
+        let sock = fd_to_socket(sockfd);
+        let ret = ws::listen(sock, backlog);
+        if ret != 0 {
+            set_winsock_errno();
+            return -1;
+        }
+        0
+    }
+}
+
+pub unsafe fn accept(sockfd: c_int, addr: *mut c_void, addrlen: *mut socklen_t) -> c_int {
+    unsafe {
+        let sock = fd_to_socket(sockfd);
+        let new_sock = ws::accept(sock, addr.cast(), addrlen.cast());
+        if new_sock == INVALID_SOCKET {
+            set_winsock_errno();
+            return -1;
+        }
+        let fd = socket_to_fd(new_sock);
+        if fd == -1 {
+            *_errno() = EMFILE;
+        }
+        fd
+    }
+}
+
+pub unsafe fn connect(sockfd: c_int, addr: *const c_void, addrlen: socklen_t) -> c_int {
+    unsafe {
+        let sock = fd_to_socket(sockfd);
+        let ret = ws::connect(sock, addr.cast(), addrlen as c_int);
+        if ret != 0 {
+            set_winsock_errno();
+            return -1;
+        }
+        0
+    }
+}
+
+pub unsafe fn shutdown(sockfd: c_int, how: c_int) -> c_int {
+    unsafe {
+        let sock = fd_to_socket(sockfd);
+        let ret = ws::shutdown(sock, how);
+        if ret != 0 {
+            set_winsock_errno();
+            return -1;
+        }
+        0
+    }
+}
+
+pub unsafe fn socketpair(domain: c_int, type_: c_int, protocol: c_int, sv: *mut c_int) -> c_int {
+    // Emulate socketpair using AF_UNIX: create listener, connect, accept
+    ensure_winsock_init();
+    unsafe {
+        let listener = ws::socket(domain, type_, protocol);
+        if listener == INVALID_SOCKET {
+            set_winsock_errno();
+            return -1;
+        }
+
+        let mut addr: sockaddr_un = core::mem::zeroed();
+        addr.sun_family = domain as u16;
+        // Use a temp path for the ephemeral listener
+        let tmp = std::env::temp_dir();
+        let path = format!(
+            "{}/tmux-rs-sockpair-{}",
+            tmp.to_string_lossy(),
+            std::process::id()
+        );
+        let path_bytes = path.as_bytes();
+        if path_bytes.len() >= UNIX_PATH_MAX {
+            ws::closesocket(listener);
+            *_errno() = ENAMETOOLONG;
+            return -1;
+        }
+        core::ptr::copy_nonoverlapping(
+            path_bytes.as_ptr(),
+            addr.sun_path.as_mut_ptr().cast(),
+            path_bytes.len(),
+        );
+        addr.sun_path[path_bytes.len()] = 0;
+
+        // Clean up any stale socket file
+        let _ = std::fs::remove_file(&path);
+
+        if ws::bind(listener, &raw const addr as _, core::mem::size_of::<sockaddr_un>() as _) != 0
+            || ws::listen(listener, 1) != 0
+        {
+            set_winsock_errno();
+            ws::closesocket(listener);
+            let _ = std::fs::remove_file(&path);
+            return -1;
+        }
+
+        let connector = ws::socket(domain, type_, protocol);
+        if connector == INVALID_SOCKET {
+            set_winsock_errno();
+            ws::closesocket(listener);
+            let _ = std::fs::remove_file(&path);
+            return -1;
+        }
+
+        if ws::connect(connector, &raw const addr as _, core::mem::size_of::<sockaddr_un>() as _) != 0 {
+            set_winsock_errno();
+            ws::closesocket(connector);
+            ws::closesocket(listener);
+            let _ = std::fs::remove_file(&path);
+            return -1;
+        }
+
+        let acceptor = ws::accept(listener, core::ptr::null_mut(), core::ptr::null_mut());
+        ws::closesocket(listener);
+        let _ = std::fs::remove_file(&path);
+
+        if acceptor == INVALID_SOCKET {
+            set_winsock_errno();
+            ws::closesocket(connector);
+            return -1;
+        }
+
+        *sv = socket_to_fd(connector);
+        *sv.add(1) = socket_to_fd(acceptor);
+        if *sv == -1 || *sv.add(1) == -1 {
+            if *sv != -1 { ::libc::close(*sv); }
+            if *sv.add(1) != -1 { ::libc::close(*sv.add(1)); }
+            *_errno() = EMFILE;
+            return -1;
+        }
+        0
+    }
+}
+
+pub unsafe fn sendmsg(sockfd: c_int, msg: *const msghdr, _flags: c_int) -> isize {
+    // Send data from iovec array. Ignore control messages (no SCM_RIGHTS on Windows).
+    unsafe {
+        let sock = fd_to_socket(sockfd);
+        let msg = &*msg;
+        let mut total: isize = 0;
+        for i in 0..msg.msg_iovlen {
+            let iov = &*msg.msg_iov.add(i);
+            if iov.iov_len == 0 {
+                continue;
+            }
+            let n = ws::send(sock, iov.iov_base.cast(), iov.iov_len as c_int, 0);
+            if n < 0 {
+                if total > 0 {
+                    return total;
+                }
+                set_winsock_errno();
+                return -1;
+            }
+            total += n as isize;
+            if (n as usize) < iov.iov_len {
+                break; // partial write
+            }
+        }
+        total
+    }
+}
+
+pub unsafe fn recvmsg(sockfd: c_int, msg: *mut msghdr, _flags: c_int) -> isize {
+    // Receive data into iovec array. Ignore control messages (no SCM_RIGHTS on Windows).
+    unsafe {
+        let sock = fd_to_socket(sockfd);
+        let msg = &mut *msg;
+        msg.msg_controllen = 0; // No control data on Windows
+        let mut total: isize = 0;
+        for i in 0..msg.msg_iovlen {
+            let iov = &*msg.msg_iov.add(i);
+            if iov.iov_len == 0 {
+                continue;
+            }
+            let n = ws::recv(sock, iov.iov_base.cast(), iov.iov_len as c_int, 0);
+            if n < 0 {
+                if total > 0 {
+                    return total;
+                }
+                set_winsock_errno();
+                return -1;
+            }
+            if n == 0 {
+                return total; // EOF
+            }
+            total += n as isize;
+            if (n as usize) < iov.iov_len {
+                break; // partial read
+            }
+        }
+        total
+    }
 }
 
 pub unsafe fn writev(fd: c_int, iov: *const iovec, iovcnt: c_int) -> isize {
@@ -730,6 +1077,30 @@ pub unsafe fn writev(fd: c_int, iov: *const iovec, iovcnt: c_int) -> isize {
             total += n as isize;
         }
         total
+    }
+}
+
+pub unsafe fn send(sockfd: c_int, buf: *const c_void, len: usize, flags: c_int) -> isize {
+    unsafe {
+        let sock = fd_to_socket(sockfd);
+        let n = ws::send(sock, buf.cast(), len as c_int, flags);
+        if n < 0 {
+            set_winsock_errno();
+            return -1;
+        }
+        n as isize
+    }
+}
+
+pub unsafe fn recv(sockfd: c_int, buf: *mut c_void, len: usize, flags: c_int) -> isize {
+    unsafe {
+        let sock = fd_to_socket(sockfd);
+        let n = ws::recv(sock, buf.cast(), len as c_int, flags);
+        if n < 0 {
+            set_winsock_errno();
+            return -1;
+        }
+        n as isize
     }
 }
 
@@ -946,10 +1317,9 @@ pub unsafe fn clock_gettime(clockid: clockid_t, tp: *mut ::libc::timespec) -> c_
     0
 }
 
-unsafe extern "C" {
-    fn QueryPerformanceFrequency(freq: *mut i64) -> c_int;
-    fn QueryPerformanceCounter(count: *mut i64) -> c_int;
-}
+use windows_sys::Win32::System::Performance::{
+    QueryPerformanceCounter, QueryPerformanceFrequency,
+};
 
 pub unsafe fn localtime_r(
     time: *const ::libc::time_t,
@@ -1096,11 +1466,7 @@ pub unsafe fn setsid() -> pid_t {
 }
 
 pub unsafe fn poll(fds: *mut pollfd, nfds: nfds_t, timeout: c_int) -> c_int {
-    // WSAPoll has compatible layout with our pollfd struct
-    unsafe extern "system" {
-        fn WSAPoll(fdarray: *mut pollfd, nfds: u32, timeout: c_int) -> c_int;
-    }
-    unsafe { WSAPoll(fds, nfds as u32, timeout) }
+    unsafe { ws::WSAPoll(fds, nfds as u32, timeout) }
 }
 
 pub unsafe fn fseeko(stream: *mut ::libc::FILE, offset: ::libc::off_t, whence: c_int) -> c_int {

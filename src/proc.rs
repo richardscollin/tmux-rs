@@ -276,6 +276,7 @@ pub unsafe fn proc_exit(tp: *mut tmuxproc) {
     }
 }
 
+#[cfg(not(target_os = "windows"))]
 pub unsafe fn proc_set_signals(tp: *mut tmuxproc, signalcb: Option<unsafe fn(i32)>) {
     unsafe {
         let mut sa: sigaction = zeroed();
@@ -351,6 +352,14 @@ pub unsafe fn proc_set_signals(tp: *mut tmuxproc, signalcb: Option<unsafe fn(i32
     }
 }
 
+#[cfg(target_os = "windows")]
+pub unsafe fn proc_set_signals(tp: *mut tmuxproc, signalcb: Option<unsafe fn(i32)>) {
+    unsafe {
+        (*tp).signalcb = signalcb;
+    }
+}
+
+#[cfg(not(target_os = "windows"))]
 pub unsafe fn proc_clear_signals(tp: *mut tmuxproc, defaults: i32) {
     unsafe {
         let mut sa: sigaction = zeroed();
@@ -383,6 +392,11 @@ pub unsafe fn proc_clear_signals(tp: *mut tmuxproc, defaults: i32) {
             sigaction(SIGWINCH, &sa, null_mut());
         }
     }
+}
+
+#[cfg(target_os = "windows")]
+pub unsafe fn proc_clear_signals(_tp: *mut tmuxproc, _defaults: i32) {
+    // No Unix signals on Windows
 }
 
 pub unsafe fn proc_add_peer(
@@ -451,6 +465,7 @@ pub unsafe fn proc_toggle_log(tp: *mut tmuxproc) {
     }
 }
 
+#[cfg(not(target_os = "windows"))]
 #[cfg_attr(target_os = "macos", expect(deprecated))]
 /// On success, the PID of the child process is returned in the parent, and 0 is returned in the child.
 pub unsafe fn proc_fork_and_daemon(fd: *mut i32) -> pid_t {

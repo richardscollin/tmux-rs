@@ -295,6 +295,7 @@ pub unsafe fn server_client_create(fd: i32) -> *mut client {
 }
 
 /// Open client terminal if needed.
+#[cfg(not(target_os = "windows"))]
 pub unsafe fn server_client_open(c: *mut client) -> Result<(), String> {
     unsafe {
         let mut ttynam = _PATH_TTY;
@@ -331,6 +332,40 @@ pub unsafe fn server_client_open(c: *mut client) -> Result<(), String> {
         }
 
         tty_open(&raw mut (*c).tty)
+    }
+}
+
+/// Open client terminal if needed (Windows version).
+///
+/// Sets c.fd to a CRT fd wrapping stdout for VT output, gets console
+/// dimensions, then calls tty_open to create the tty_term, evbuffers,
+/// and start rendering.
+#[cfg(target_os = "windows")]
+pub unsafe fn server_client_open(c: *mut client) -> Result<(), String> {
+    unsafe {
+        if (*c).flags.intersects(client_flag::CONTROL) {
+            return Ok(());
+        }
+
+        // Set c.fd to a CRT fd wrapping stdout for VT output
+        (*c).fd = libc::stdout_as_fd();
+        if (*c).fd == -1 {
+            return Err("failed to open stdout as fd".to_string());
+        }
+
+        // Initialize tty struct fields (replaces tty_init which needs isatty/tcgetattr)
+        let tty = &raw mut (*c).tty;
+        (*tty).client = c;
+        (*tty).cstyle = screen_cursor_style::SCREEN_CURSOR_DEFAULT;
+        (*tty).ccolour = -1;
+        (*tty).fg = -1;
+        (*tty).bg = -1;
+
+        tty_open(tty)?;
+        tty_resize(tty);
+        (*c).flags |= client_flag::TERMINAL;
+
+        Ok(())
     }
 }
 
@@ -2402,6 +2437,12 @@ pub unsafe fn server_client_check_pane_buffer(wp: *mut window_pane) {
 pub unsafe fn server_client_reset_state(c: *mut client) {
     unsafe {
         let tty = &raw mut (*c).tty;
+
+        // Guard: skip if tty is not opened (term is null)
+        if (*tty).term.is_null() {
+            return;
+        }
+
         let w = (*(*(*c).session).curw).window;
         let wp = server_client_get_pane(c);
         let mut s = null_mut();
@@ -2663,6 +2704,12 @@ pub unsafe fn server_client_check_redraw(c: *mut client) {
     unsafe {
         let s = (*c).session;
         let tty = &raw mut (*c).tty;
+
+        // Guard: skip redraw if tty is not opened (term is null)
+        if (*tty).term.is_null() {
+            return;
+        }
+
         let w = (*(*(*c).session).curw).window;
 
         let mode = (*tty).mode;
@@ -3121,7 +3168,12 @@ pub unsafe fn server_client_dispatch_identify(c: *mut client, imsg: *mut imsg) {
                 if datalen == 0 || *data.cast::<u8>().add((datalen - 1) as usize) != b'\0' {
                     // fatalx("bad MSG_IDENTIFY_CWD string");
                 }
-                if libc::access(data.cast(), libc::X_OK) == 0 {
+                // On Windows, _access does not support X_OK; use F_OK (0) instead
+                #[cfg(target_os = "windows")]
+                let access_ok = libc::access(data.cast(), 0) == 0;
+                #[cfg(not(target_os = "windows"))]
+                let access_ok = libc::access(data.cast(), libc::X_OK) == 0;
+                if access_ok {
                     (*c).cwd = xstrdup(data.cast()).as_ptr();
                 } else if let Some(home) = find_home() {
                     (*c).cwd = xstrdup_(home).as_ptr();

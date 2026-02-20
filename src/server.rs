@@ -443,6 +443,13 @@ pub unsafe fn server_loop() -> i32 {
         server_client_loop();
 
         if options_get_number_(GLOBAL_OPTIONS, "exit-empty") == 0 && SERVER_EXIT == 0 {
+            // In NOFORK mode (Windows), exit when all sessions are gone.
+            #[cfg(target_os = "windows")]
+            if rb_empty(&raw mut SESSIONS) {
+                SERVER_EXIT = 1;
+                server_send_exit();
+                return 1;
+            }
             return 0;
         }
 

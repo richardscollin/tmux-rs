@@ -767,7 +767,8 @@ pub fn set_console_raw_mode() -> u32 {
         {
             let raw_mode = (orig_mode
                 & !(ENABLE_LINE_INPUT | ENABLE_ECHO_INPUT | ENABLE_PROCESSED_INPUT))
-                | ENABLE_WINDOW_INPUT;
+                | ENABLE_WINDOW_INPUT
+                | ENABLE_VIRTUAL_TERMINAL_INPUT;
             SetConsoleMode(handle, raw_mode);
         }
         orig_mode

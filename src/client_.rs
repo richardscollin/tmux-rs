@@ -297,6 +297,30 @@ pub unsafe extern "C-unwind" fn client_main(
         // Enter the unified event loop (server + client events on the same base)
         proc_loop(SERVER_PROC, Some(crate::server::server_loop));
 
+        // tty_stop_tty wrote cleanup sequences (RMCUP etc.) to the relay socket,
+        // but the stdout writer thread may not have flushed them to the console
+        // before we exit and kill all threads.  Write the essential sequences
+        // directly to the console stdout handle to guarantee cleanup.
+        {
+            use windows_sys::Win32::Foundation::INVALID_HANDLE_VALUE;
+            use windows_sys::Win32::Storage::FileSystem::WriteFile;
+            use windows_sys::Win32::System::Console::{GetStdHandle, STD_OUTPUT_HANDLE};
+
+            let stdout = GetStdHandle(STD_OUTPUT_HANDLE);
+            if stdout != INVALID_HANDLE_VALUE && !stdout.is_null() {
+                // Leave alternate screen, show cursor, reset attributes
+                let cleanup = b"\x1b[?1049l\x1b[?25h\x1b[0m";
+                let mut written: u32 = 0;
+                WriteFile(
+                    stdout,
+                    cleanup.as_ptr(),
+                    cleanup.len() as u32,
+                    &mut written,
+                    std::ptr::null_mut(),
+                );
+            }
+        }
+
         // Restore console to its original mode so the terminal isn't left broken
         libc::restore_original_console_mode();
 

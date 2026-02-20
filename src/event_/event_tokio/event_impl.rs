@@ -442,7 +442,7 @@ async fn poll_fd(fd: c_int, events: c_short, timeout: Option<Duration>) -> Optio
 /// Poll a file descriptor for readiness using WSAPoll via spawn_blocking.
 #[cfg(windows)]
 async fn poll_fd(fd: c_int, events: c_short, timeout: Option<Duration>) -> Option<c_short> {
-    use windows_sys::Win32::Networking::WinSock::{WSAPoll, WSAPOLLFD};
+    use windows_sys::Win32::Networking::WinSock::{WSAPOLLFD, WSAPoll};
 
     const POLLRDNORM: c_short = 0x0100;
     const POLLWRNORM: c_short = 0x0010;

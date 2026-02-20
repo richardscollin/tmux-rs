@@ -416,30 +416,42 @@ unsafe fn fnmatch_inner(mut p: *const u8, mut n: *const u8, case_fold: bool) -> 
             match *p {
                 0 => return if *n == 0 { 0 } else { 1 },
                 b'?' => {
-                    if *n == 0 { return 1; }
+                    if *n == 0 {
+                        return 1;
+                    }
                     p = p.add(1);
                     n = n.add(1);
                 }
                 b'*' => {
                     p = p.add(1);
                     // skip consecutive stars
-                    while *p == b'*' { p = p.add(1); }
-                    if *p == 0 { return 0; }
+                    while *p == b'*' {
+                        p = p.add(1);
+                    }
+                    if *p == 0 {
+                        return 0;
+                    }
                     while *n != 0 {
-                        if fnmatch_inner(p, n, case_fold) == 0 { return 0; }
+                        if fnmatch_inner(p, n, case_fold) == 0 {
+                            return 0;
+                        }
                         n = n.add(1);
                     }
                     return 1;
                 }
                 pc => {
                     let nc = *n;
-                    if nc == 0 { return 1; }
+                    if nc == 0 {
+                        return 1;
+                    }
                     let matches = if case_fold {
                         pc.to_ascii_lowercase() == nc.to_ascii_lowercase()
                     } else {
                         pc == nc
                     };
-                    if !matches { return 1; }
+                    if !matches {
+                        return 1;
+                    }
                     p = p.add(1);
                     n = n.add(1);
                 }
@@ -462,12 +474,7 @@ pub unsafe fn gethostname(name: *mut u8, len: usize) -> c_int {
     }
 }
 
-pub unsafe fn strftime(
-    s: *mut u8,
-    max: usize,
-    format: *const u8,
-    tm: *const ::libc::tm,
-) -> usize {
+pub unsafe fn strftime(s: *mut u8, max: usize, format: *const u8, tm: *const ::libc::tm) -> usize {
     unsafe { msvc_strftime(s, max, format, tm) }
 }
 
@@ -481,10 +488,16 @@ pub unsafe fn strncasecmp(s1: *const u8, s2: *const u8, n: usize) -> c_int {
         for i in 0..n {
             let a = *s1.add(i);
             let b = *s2.add(i);
-            if a == 0 && b == 0 { return 0; }
+            if a == 0 && b == 0 {
+                return 0;
+            }
             let diff = a.to_ascii_lowercase() as c_int - b.to_ascii_lowercase() as c_int;
-            if diff != 0 { return diff; }
-            if a == 0 { return 0; }
+            if diff != 0 {
+                return diff;
+            }
+            if a == 0 {
+                return 0;
+            }
         }
         0
     }
@@ -531,10 +544,11 @@ pub unsafe fn regexec(
     _eflags: c_int,
 ) -> c_int {
     let opaque = unsafe { &(*preg)._opaque };
-    let re_ptr: *mut regex::Regex = unsafe {
-        core::ptr::read(opaque.as_ptr() as *const *mut regex::Regex)
-    };
-    if re_ptr.is_null() { return REG_NOMATCH; }
+    let re_ptr: *mut regex::Regex =
+        unsafe { core::ptr::read(opaque.as_ptr() as *const *mut regex::Regex) };
+    if re_ptr.is_null() {
+        return REG_NOMATCH;
+    }
     let re = unsafe { &*re_ptr };
 
     let s_cstr = unsafe { core::ffi::CStr::from_ptr(string.cast()) };
@@ -567,13 +581,15 @@ pub unsafe fn regexec(
 
 pub unsafe fn regfree(preg: *mut regex_t) {
     let opaque = unsafe { &mut (*preg)._opaque };
-    let re_ptr: *mut regex::Regex = unsafe {
-        core::ptr::read(opaque.as_ptr() as *const *mut regex::Regex)
-    };
+    let re_ptr: *mut regex::Regex =
+        unsafe { core::ptr::read(opaque.as_ptr() as *const *mut regex::Regex) };
     if !re_ptr.is_null() {
         drop(unsafe { Box::from_raw(re_ptr) });
         unsafe {
-            core::ptr::write(opaque.as_mut_ptr() as *mut *mut regex::Regex, core::ptr::null_mut());
+            core::ptr::write(
+                opaque.as_mut_ptr() as *mut *mut regex::Regex,
+                core::ptr::null_mut(),
+            );
         }
     }
 }
@@ -607,8 +623,11 @@ pub unsafe fn glob(
 
     // Allocate pathv array (null-terminated)
     let count = entries.len();
-    let pathv = unsafe { ::libc::malloc((count + 1) * size_of::<*mut c_char>()) } as *mut *mut c_char;
-    if pathv.is_null() { return GLOB_NOSPACE; }
+    let pathv =
+        unsafe { ::libc::malloc((count + 1) * size_of::<*mut c_char>()) } as *mut *mut c_char;
+    if pathv.is_null() {
+        return GLOB_NOSPACE;
+    }
 
     for (i, entry) in entries.iter().enumerate() {
         let s = entry.to_string_lossy();
@@ -620,9 +639,13 @@ pub unsafe fn glob(
                 *dup.cast::<u8>().add(bytes.len()) = 0;
             }
         }
-        unsafe { *pathv.add(i) = dup; }
+        unsafe {
+            *pathv.add(i) = dup;
+        }
     }
-    unsafe { *pathv.add(count) = core::ptr::null_mut(); }
+    unsafe {
+        *pathv.add(count) = core::ptr::null_mut();
+    }
 
     unsafe {
         (*pglob).gl_pathc = count;
@@ -633,10 +656,14 @@ pub unsafe fn glob(
 
 pub unsafe fn globfree(pglob: *mut glob_t) {
     unsafe {
-        if (*pglob).gl_pathv.is_null() { return; }
+        if (*pglob).gl_pathv.is_null() {
+            return;
+        }
         for i in 0..(*pglob).gl_pathc {
             let p = *(*pglob).gl_pathv.add(i);
-            if !p.is_null() { ::libc::free(p.cast()); }
+            if !p.is_null() {
+                ::libc::free(p.cast());
+            }
         }
         ::libc::free((*pglob).gl_pathv.cast());
         (*pglob).gl_pathv = core::ptr::null_mut();
@@ -674,7 +701,9 @@ pub unsafe fn killpg(_pgrp: pid_t, _sig: c_int) -> c_int {
 pub unsafe fn waitpid(_pid: pid_t, status: *mut c_int, _options: c_int) -> pid_t {
     // TODO: implement via WaitForSingleObject
     if !status.is_null() {
-        unsafe { *status = 0; }
+        unsafe {
+            *status = 0;
+        }
     }
     -1
 }
@@ -683,8 +712,7 @@ pub unsafe fn waitpid(_pid: pid_t, status: *mut c_int, _options: c_int) -> pid_t
 
 // Winsock functions and types (via windows-sys)
 use windows_sys::Win32::Networking::WinSock::{
-    self as ws,
-    FIONBIO, INVALID_SOCKET, SOCKET, WSADATA,
+    self as ws, FIONBIO, INVALID_SOCKET, SOCKET, WSADATA,
 };
 
 const WSAEWOULDBLOCK: c_int = 10035;
@@ -700,11 +728,11 @@ unsafe extern "C" {
 // ============================================================
 
 pub use windows_sys::Win32::System::Console::{
-    GetConsoleMode, GetConsoleScreenBufferInfo, GetStdHandle, SetConsoleMode,
-    CONSOLE_SCREEN_BUFFER_INFO, DISABLE_NEWLINE_AUTO_RETURN, ENABLE_ECHO_INPUT,
-    ENABLE_LINE_INPUT, ENABLE_PROCESSED_INPUT, ENABLE_PROCESSED_OUTPUT,
-    ENABLE_VIRTUAL_TERMINAL_INPUT, ENABLE_VIRTUAL_TERMINAL_PROCESSING,
-    ENABLE_WINDOW_INPUT, ENABLE_WRAP_AT_EOL_OUTPUT, STD_INPUT_HANDLE, STD_OUTPUT_HANDLE,
+    CONSOLE_SCREEN_BUFFER_INFO, DISABLE_NEWLINE_AUTO_RETURN, ENABLE_ECHO_INPUT, ENABLE_LINE_INPUT,
+    ENABLE_PROCESSED_INPUT, ENABLE_PROCESSED_OUTPUT, ENABLE_VIRTUAL_TERMINAL_INPUT,
+    ENABLE_VIRTUAL_TERMINAL_PROCESSING, ENABLE_WINDOW_INPUT, ENABLE_WRAP_AT_EOL_OUTPUT,
+    GetConsoleMode, GetConsoleScreenBufferInfo, GetStdHandle, STD_INPUT_HANDLE, STD_OUTPUT_HANDLE,
+    SetConsoleMode,
 };
 
 /// Get the console window dimensions (columns, rows).
@@ -828,18 +856,18 @@ fn set_winsock_errno() {
         let wsa_err = ws::WSAGetLastError();
         // Map common Winsock errors to errno values
         let err = match wsa_err {
-            10004 => EINTR,          // WSAEINTR
-            10013 => EACCES,         // WSAEACCES
-            10022 => EINVAL,         // WSAEINVAL
-            10024 => EMFILE,         // WSAEMFILE
-            10035 => EAGAIN,         // WSAEWOULDBLOCK
-            10036 => EINPROGRESS,    // WSAEINPROGRESS
-            10048 => EADDRINUSE,     // WSAEADDRINUSE
-            10054 => ECONNRESET,     // WSAECONNRESET
-            10056 => EISCONN,        // WSAEISCONN
-            10057 => ENOTCONN,       // WSAENOTCONN
-            10060 => ETIMEDOUT,      // WSAETIMEDOUT
-            10061 => ECONNREFUSED,   // WSAECONNREFUSED
+            10004 => EINTR,        // WSAEINTR
+            10013 => EACCES,       // WSAEACCES
+            10022 => EINVAL,       // WSAEINVAL
+            10024 => EMFILE,       // WSAEMFILE
+            10035 => EAGAIN,       // WSAEWOULDBLOCK
+            10036 => EINPROGRESS,  // WSAEINPROGRESS
+            10048 => EADDRINUSE,   // WSAEADDRINUSE
+            10054 => ECONNRESET,   // WSAECONNRESET
+            10056 => EISCONN,      // WSAEISCONN
+            10057 => ENOTCONN,     // WSAENOTCONN
+            10060 => ETIMEDOUT,    // WSAETIMEDOUT
+            10061 => ECONNREFUSED, // WSAECONNREFUSED
             _ => wsa_err,
         };
         *_errno() = err;
@@ -961,7 +989,11 @@ pub unsafe fn socketpair(domain: c_int, type_: c_int, protocol: c_int, sv: *mut 
         // Clean up any stale socket file
         let _ = std::fs::remove_file(&path);
 
-        if ws::bind(listener, &raw const addr as _, core::mem::size_of::<sockaddr_un>() as _) != 0
+        if ws::bind(
+            listener,
+            &raw const addr as _,
+            core::mem::size_of::<sockaddr_un>() as _,
+        ) != 0
             || ws::listen(listener, 1) != 0
         {
             set_winsock_errno();
@@ -978,7 +1010,12 @@ pub unsafe fn socketpair(domain: c_int, type_: c_int, protocol: c_int, sv: *mut 
             return -1;
         }
 
-        if ws::connect(connector, &raw const addr as _, core::mem::size_of::<sockaddr_un>() as _) != 0 {
+        if ws::connect(
+            connector,
+            &raw const addr as _,
+            core::mem::size_of::<sockaddr_un>() as _,
+        ) != 0
+        {
             set_winsock_errno();
             ws::closesocket(connector);
             ws::closesocket(listener);
@@ -999,8 +1036,12 @@ pub unsafe fn socketpair(domain: c_int, type_: c_int, protocol: c_int, sv: *mut 
         *sv = socket_to_fd(connector);
         *sv.add(1) = socket_to_fd(acceptor);
         if *sv == -1 || *sv.add(1) == -1 {
-            if *sv != -1 { ::libc::close(*sv); }
-            if *sv.add(1) != -1 { ::libc::close(*sv.add(1)); }
+            if *sv != -1 {
+                ::libc::close(*sv);
+            }
+            if *sv.add(1) != -1 {
+                ::libc::close(*sv.add(1));
+            }
             *_errno() = EMFILE;
             return -1;
         }
@@ -1074,7 +1115,9 @@ pub unsafe fn writev(fd: c_int, iov: *const iovec, iovcnt: c_int) -> isize {
         for i in 0..iovcnt as usize {
             let v = &*iov.add(i);
             let n = ::libc::write(fd, v.iov_base, v.iov_len as c_uint);
-            if n < 0 { return -1; }
+            if n < 0 {
+                return -1;
+            }
             total += n as isize;
         }
         total
@@ -1113,7 +1156,11 @@ pub unsafe fn getdtablesize() -> c_int {
 // -- Signal functions (noop on Windows) --
 
 pub unsafe fn sigfillset(set: *mut sigset_t) -> c_int {
-    if !set.is_null() { unsafe { *set = !0u64; } }
+    if !set.is_null() {
+        unsafe {
+            *set = !0u64;
+        }
+    }
     0
 }
 
@@ -1122,7 +1169,11 @@ pub unsafe fn sigprocmask(_how: c_int, _set: *const sigset_t, _oldset: *mut sigs
 }
 
 pub unsafe fn sigemptyset(set: *mut sigset_t) -> c_int {
-    if !set.is_null() { unsafe { *set = 0; } }
+    if !set.is_null() {
+        unsafe {
+            *set = 0;
+        }
+    }
     0
 }
 
@@ -1135,7 +1186,9 @@ pub unsafe fn sigaction(_signum: c_int, _act: *const sigaction, _oldact: *mut si
 pub unsafe fn tcgetattr(_fd: c_int, termios: *mut termios) -> c_int {
     // Return zeroed termios - will be replaced by GetConsoleMode in Phase 4
     if !termios.is_null() {
-        unsafe { core::ptr::write_bytes(termios, 0, 1); }
+        unsafe {
+            core::ptr::write_bytes(termios, 0, 1);
+        }
     }
     0
 }
@@ -1277,7 +1330,9 @@ pub unsafe fn chmod(_path: *const u8, _mode: mode_t) -> c_int {
 // -- Time functions --
 
 pub unsafe fn gettimeofday(tv: *mut ::libc::timeval, _tz: *mut c_void) -> c_int {
-    if tv.is_null() { return -1; }
+    if tv.is_null() {
+        return -1;
+    }
     let now = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap_or_default();
@@ -1289,7 +1344,9 @@ pub unsafe fn gettimeofday(tv: *mut ::libc::timeval, _tz: *mut c_void) -> c_int 
 }
 
 pub unsafe fn clock_gettime(clockid: clockid_t, tp: *mut ::libc::timespec) -> c_int {
-    if tp.is_null() { return -1; }
+    if tp.is_null() {
+        return -1;
+    }
     if clockid == CLOCK_MONOTONIC {
         // Use QueryPerformanceCounter for monotonic time
         static mut QPC_FREQ: i64 = 0;
@@ -1318,14 +1375,9 @@ pub unsafe fn clock_gettime(clockid: clockid_t, tp: *mut ::libc::timespec) -> c_
     0
 }
 
-use windows_sys::Win32::System::Performance::{
-    QueryPerformanceCounter, QueryPerformanceFrequency,
-};
+use windows_sys::Win32::System::Performance::{QueryPerformanceCounter, QueryPerformanceFrequency};
 
-pub unsafe fn localtime_r(
-    time: *const ::libc::time_t,
-    result: *mut ::libc::tm,
-) -> *mut ::libc::tm {
+pub unsafe fn localtime_r(time: *const ::libc::time_t, result: *mut ::libc::tm) -> *mut ::libc::tm {
     unsafe {
         // MSVC localtime_s has reversed args: (result, time)
         if ::libc::localtime_s(result, time) == 0 {
@@ -1372,30 +1424,52 @@ pub unsafe fn nl_langinfo(item: nl_item) -> *mut u8 {
 }
 
 pub unsafe fn uname(buf: *mut utsname) -> c_int {
-    if buf.is_null() { return -1; }
+    if buf.is_null() {
+        return -1;
+    }
     unsafe {
         core::ptr::write_bytes(buf, 0, 1);
         let sysname = b"Windows\0";
-        core::ptr::copy_nonoverlapping(sysname.as_ptr(), (*buf).sysname.as_mut_ptr().cast(), sysname.len());
+        core::ptr::copy_nonoverlapping(
+            sysname.as_ptr(),
+            (*buf).sysname.as_mut_ptr().cast(),
+            sysname.len(),
+        );
 
         if let Ok(hostname) = std::env::var("COMPUTERNAME") {
             let bytes = hostname.as_bytes();
             let len = bytes.len().min(_UTSNAME_LENGTH - 1);
-            core::ptr::copy_nonoverlapping(bytes.as_ptr(), (*buf).nodename.as_mut_ptr().cast(), len);
+            core::ptr::copy_nonoverlapping(
+                bytes.as_ptr(),
+                (*buf).nodename.as_mut_ptr().cast(),
+                len,
+            );
         }
 
         let release = b"10.0\0";
-        core::ptr::copy_nonoverlapping(release.as_ptr(), (*buf).release.as_mut_ptr().cast(), release.len());
+        core::ptr::copy_nonoverlapping(
+            release.as_ptr(),
+            (*buf).release.as_mut_ptr().cast(),
+            release.len(),
+        );
 
         #[cfg(target_arch = "x86_64")]
         {
             let machine = b"x86_64\0";
-            core::ptr::copy_nonoverlapping(machine.as_ptr(), (*buf).machine.as_mut_ptr().cast(), machine.len());
+            core::ptr::copy_nonoverlapping(
+                machine.as_ptr(),
+                (*buf).machine.as_mut_ptr().cast(),
+                machine.len(),
+            );
         }
         #[cfg(target_arch = "aarch64")]
         {
             let machine = b"aarch64\0";
-            core::ptr::copy_nonoverlapping(machine.as_ptr(), (*buf).machine.as_mut_ptr().cast(), machine.len());
+            core::ptr::copy_nonoverlapping(
+                machine.as_ptr(),
+                (*buf).machine.as_mut_ptr().cast(),
+                machine.len(),
+            );
         }
     }
     0

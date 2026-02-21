@@ -16,7 +16,7 @@ use crate::libc::{
     AF_UNIX, ECHILD, ENAMETOOLONG, S_IRGRP, S_IROTH, S_IRUSR, S_IRWXG, S_IRWXO, S_IXGRP, S_IXOTH,
     S_IXUSR, SIG_BLOCK, SIG_SETMASK, SIGCONT, SIGTTIN, SIGTTOU, SOCK_STREAM, WIFEXITED,
     WIFSIGNALED, WIFSTOPPED, WNOHANG, WSTOPSIG, WUNTRACED, accept, bind, chmod, close,
-    gettimeofday, kill, killpg, listen, sigfillset, sigprocmask, sigset_t, sockaddr_storage,
+    kill, killpg, listen, sigfillset, sigprocmask, sigset_t, sockaddr_storage,
     sockaddr_un, socket, socklen_t, stat, strerror, strsignal, umask, unlink, waitpid,
 };
 use crate::*;
@@ -146,10 +146,8 @@ unsafe extern "C-unwind" fn server_tidy_event(_fd: i32, _events: i16, _data: *mu
 
         format_tidy_jobs();
 
-        #[cfg(not(target_os = "macos"))]
-        {
-            libc::malloc_trim(0);
-        }
+        #[cfg(target_os = "linux")]
+        libc::malloc_trim(0);
 
         log_debug!(
             "{}: took {} milliseconds",
@@ -264,7 +262,7 @@ pub unsafe fn server_start(
         rb_init(&raw mut SESSIONS);
         key_bindings_init();
         tailq_init(&raw mut MESSAGE_LOG);
-        gettimeofday(&raw mut START_TIME, null_mut());
+        START_TIME = libc::gettimeofday_();
 
         // if cfg!(feature = "systemd") {
         //     // TODO we could be truncating important bits
@@ -385,7 +383,7 @@ pub unsafe fn server_start_windows(
         rb_init(&raw mut SESSIONS);
         key_bindings_init();
         tailq_init(&raw mut MESSAGE_LOG);
-        gettimeofday(&raw mut START_TIME, null_mut());
+        START_TIME = libc::gettimeofday_();
 
         match server_create_socket(flags) {
             Ok(fd) => {
@@ -817,7 +815,7 @@ pub unsafe fn server_add_message_(args: std::fmt::Arguments) {
         log_debug!("message: {}", _s(s));
 
         let msg: *mut message_entry = xcalloc1::<message_entry>() as *mut message_entry;
-        gettimeofday(&raw mut (*msg).msg_time, null_mut());
+        (*msg).msg_time = libc::gettimeofday_();
         (*msg).msg_num = MESSAGE_NEXT + 1;
         MESSAGE_NEXT += 1;
         (*msg).msg = s;

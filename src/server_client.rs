@@ -205,9 +205,7 @@ pub unsafe fn server_client_set_key_table(c: *mut client, mut name: *const u8) {
         key_bindings_unref_table((*c).keytable);
         (*c).keytable = key_bindings_get_table(name, true);
         (*(*c).keytable).references += 1;
-        if libc::gettimeofday(&raw mut (*(*c).keytable).activity_time, null_mut()) != 0 {
-            fatal("gettimeofday failed");
-        }
+        (*(*c).keytable).activity_time = libc::gettimeofday_();
     }
 }
 
@@ -536,7 +534,7 @@ pub unsafe fn server_client_set_session(c: *mut client, s: *mut session) {
             recalculate_sizes();
             window_update_focus((*(*s).curw).window);
             session_update_activity(s, null_mut());
-            libc::gettimeofday(&raw mut (*s).last_attached_time, null_mut());
+            (*s).last_attached_time = libc::gettimeofday_();
             (*(*s).curw).flags &= !WINLINK_ALERTFLAGS;
             (*(*(*s).curw).window).latest = c.cast();
             alerts_check_session(&*s);
@@ -1987,9 +1985,7 @@ pub unsafe fn server_client_key_callback(item: *mut cmdq_item, data: *mut c_void
                 wl = (*s).curw;
 
                 // Update the activity timer.
-                if libc::gettimeofday(&raw mut (*c).activity_time, null_mut()) != 0 {
-                    fatal("gettimeofday failed");
-                }
+                (*c).activity_time = libc::gettimeofday_();
                 session_update_activity(s, &raw mut (*c).activity_time);
 
                 // Check for mouse keys.
@@ -3081,9 +3077,7 @@ pub unsafe fn server_client_dispatch(imsg: *mut imsg, arg: *mut c_void) {
                 } /* exited already */
                 let s = (*c).session;
 
-                if libc::gettimeofday(&raw mut (*c).activity_time, null_mut()) != 0 {
-                    fatal("gettimeofday failed");
-                }
+                (*c).activity_time = libc::gettimeofday_();
 
                 tty_start_tty(&raw mut (*c).tty);
                 server_redraw_client(c);

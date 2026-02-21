@@ -12,7 +12,7 @@
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 use crate::compat::imsg::{IMSG_HEADER_SIZE, MAX_IMSGSIZE};
-use crate::libc::{WEXITSTATUS, WIFEXITED, close, gettimeofday};
+use crate::libc::{WEXITSTATUS, WIFEXITED, close};
 use crate::*;
 use crate::options_::*;
 
@@ -345,7 +345,7 @@ pub unsafe fn server_destroy_pane(wp: *mut window_pane, notify: i32) {
                     }
                     (*wp).flags |= window_pane_flags::PANE_STATUSDRAWN;
 
-                    gettimeofday(&raw mut (*wp).dead_time, null_mut());
+                    (*wp).dead_time = libc::gettimeofday_();
                     if notify != 0 {
                         notify_pane(c"pane-died", wp);
                     }

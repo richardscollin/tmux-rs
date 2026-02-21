@@ -13,7 +13,7 @@
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 use crate::compat::HOST_NAME_MAX;
 use crate::libc::{
-    FIONREAD, FNM_CASEFOLD, TIOCSWINSZ, close, fnmatch, free, gethostname, gettimeofday, ioctl,
+    FIONREAD, FNM_CASEFOLD, TIOCSWINSZ, close, fnmatch, free, gethostname, ioctl,
     isspace, memset, regcomp, regex_t, regexec, regfree, strlen, winsize,
 };
 #[cfg(feature = "utempter")]
@@ -257,7 +257,7 @@ pub unsafe fn window_find_by_id(id: u32) -> *mut window {
 
 pub unsafe fn window_update_activity(w: NonNull<window>) {
     unsafe {
-        gettimeofday(&raw mut (*w.as_ptr()).activity_time, null_mut());
+        (*w.as_ptr()).activity_time = libc::gettimeofday_();
         alerts_queue(w, window_flag::ACTIVITY);
     }
 }

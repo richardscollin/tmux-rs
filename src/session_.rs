@@ -121,9 +121,7 @@ impl session {
 
             log_debug!("new session {} ${}", s.name, s.id);
 
-            if libc::gettimeofday(&raw mut s.creation_time, null_mut()) != 0 {
-                fatal("gettimeofday failed");
-            }
+            s.creation_time = libc::gettimeofday_();
             session_update_activity(s.as_mut(), &raw mut s.creation_time);
 
             s
@@ -284,7 +282,7 @@ pub unsafe fn session_update_activity(s: *mut session, from: *mut timeval) {
 
         memcpy__(last, &raw mut (*s).activity_time);
         if from.is_null() {
-            libc::gettimeofday(&raw mut (*s).activity_time, null_mut());
+            (*s).activity_time = libc::gettimeofday_();
         } else {
             memcpy__(&raw mut (*s).activity_time, from);
         }

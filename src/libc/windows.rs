@@ -1372,20 +1372,6 @@ pub unsafe fn chmod(_path: *const u8, _mode: mode_t) -> c_int {
 
 // -- Time functions --
 
-pub unsafe fn gettimeofday(tv: *mut ::libc::timeval, _tz: *mut c_void) -> c_int {
-    if tv.is_null() {
-        return -1;
-    }
-    let now = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .unwrap_or_default();
-    unsafe {
-        (*tv).tv_sec = now.as_secs() as ::libc::c_long;
-        (*tv).tv_usec = now.subsec_micros() as ::libc::c_long;
-    }
-    0
-}
-
 pub unsafe fn clock_gettime(clockid: clockid_t, tp: *mut ::libc::timespec) -> c_int {
     if tp.is_null() {
         return -1;
@@ -1558,29 +1544,8 @@ pub unsafe fn dirname(path: *mut u8) -> *mut u8 {
     }
 }
 
-pub unsafe fn readlink(_path: *const u8, _buf: *mut u8, _bufsiz: usize) -> isize {
-    -1 // Not applicable on Windows
-}
-
-pub unsafe fn daemon(_nochdir: c_int, _noclose: c_int) -> c_int {
-    -1 // Not applicable on Windows; always run in foreground
-}
-
-pub unsafe fn malloc_trim(_pad: usize) -> c_int {
-    0 // Noop on Windows
-}
-
 pub unsafe fn dup2(oldfd: c_int, newfd: c_int) -> c_int {
     unsafe { ::libc::dup2(oldfd, newfd) }
-}
-
-pub unsafe fn execvp(_file: *const u8, _argv: *const *const u8) -> c_int {
-    eprintln!("execvp() called on Windows - this should never happen");
-    -1
-}
-
-pub unsafe fn setsid() -> pid_t {
-    -1 // Not applicable on Windows
 }
 
 pub unsafe fn poll(fds: *mut pollfd, nfds: nfds_t, timeout: c_int) -> c_int {

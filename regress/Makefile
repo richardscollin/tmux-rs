@@ -6,6 +6,5 @@ TESTS!= echo *.sh
 all: $(TESTS)
 
 $(TESTS):
-	# broken tests are ignored for now
-	TEST_TMUX=../target/debug/tmux-rs sh $*.sh || true
+	TEST_TMUX=../target/debug/tmux-rs sh $*.sh
 	sleep 1

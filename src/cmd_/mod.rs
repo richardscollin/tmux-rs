@@ -602,7 +602,7 @@ pub unsafe fn cmd_copy(cmd: *mut cmd, argc: c_int, argv: *mut *mut u8) -> *mut c
 
 pub unsafe fn cmd_print(cmd: *mut cmd) -> *mut u8 {
     unsafe {
-        let s = args_print((*cmd).args);
+        let s = args_print(&*(*cmd).args);
         if !s.is_empty() {
             format_nul!("{} {}", (*cmd).entry.name, s)
         } else {

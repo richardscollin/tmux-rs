@@ -408,7 +408,7 @@ pub unsafe fn cmdq_insert_hook_(
         );
         cmdq_add_format!(new_state, c!("hook"), "{}", name);
 
-        let arguments = args_print(args);
+        let arguments = args_print(&*args);
         cmdq_add_format!(new_state, c!("hook_arguments"), "{}", arguments);
 
         for i in 0..args_count(&*args) {

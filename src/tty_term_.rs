@@ -732,24 +732,29 @@ pub unsafe fn tty_term_read_list(
     _fd: i32,
     caps: *mut *mut *mut u8,
     ncaps: *mut u32,
-    cause: *mut *mut u8,
-) -> i32 {
+) -> Result<(), String> {
     unsafe {
         let mut tmp = [0u8; 11];
 
         let Ok(terminfo_path) = locate(cstr_to_str(name)) else {
-            *cause = format_nul!("can't find terminfo database for terminal: {}", _s(name));
-            return -1;
+            return Err(format!(
+                "can't find terminfo database for terminal: {}",
+                _s(name)
+            ));
         };
 
         let Ok(terminfo_buffer) = std::fs::read(terminfo_path) else {
-            *cause = format_nul!("can't read terminfo database for terminal: {}", _s(name));
-            return -1;
+            return Err(format!(
+                "can't read terminfo database for terminal: {}",
+                _s(name)
+            ));
         };
 
         let Ok(terminfo) = parse(&terminfo_buffer) else {
-            *cause = format_nul!("can't parse terminfo database for terminal: {}", _s(name));
-            return -1;
+            return Err(format!(
+                "can't parse terminfo database for terminal: {}",
+                _s(name)
+            ));
         };
 
         *ncaps = 0;
@@ -788,7 +793,7 @@ pub unsafe fn tty_term_read_list(
             (*ncaps) += 1;
         }
 
-        0
+        Ok(())
     }
 }
 

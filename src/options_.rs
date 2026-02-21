@@ -965,84 +965,80 @@ pub unsafe fn options_scope_from_name(
     name: &str,
     fs: *mut cmd_find_state,
     oo: *mut *mut options,
-    cause: *mut *mut u8,
-) -> i32 {
+) -> Result<i32, String> {
     unsafe {
         let s = (*fs).s;
         let wl = (*fs).wl;
         let wp = (*fs).wp;
         let target = args_get_(args, 't');
-        let mut scope = OPTIONS_TABLE_NONE;
 
         if name.starts_with('@') {
-            return options_scope_from_flags(args, window, fs, oo, cause);
+            return options_scope_from_flags(args, window, fs, oo);
         }
 
         let Some(oe) = OPTIONS_TABLE.iter().find(|oe| oe.name == name) else {
-            *cause = format_nul!("unknown option: {name}");
-            return OPTIONS_TABLE_NONE;
+            return Err(format!("unknown option: {name}"));
         };
 
         const OPTIONS_TABLE_WINDOW_AND_PANE: i32 = OPTIONS_TABLE_WINDOW | OPTIONS_TABLE_PANE;
         match oe.scope {
             OPTIONS_TABLE_SERVER => {
                 *oo = GLOBAL_OPTIONS;
-                scope = OPTIONS_TABLE_SERVER;
+                Ok(OPTIONS_TABLE_SERVER)
             }
             OPTIONS_TABLE_SESSION => {
                 if args_has(args, 'g') {
                     *oo = GLOBAL_S_OPTIONS;
-                    scope = OPTIONS_TABLE_SESSION;
+                    Ok(OPTIONS_TABLE_SESSION)
                 } else if s.is_null() && !target.is_null() {
-                    *cause = format_nul!("no such session: {}", _s(target));
+                    Err(format!("no such session: {}", _s(target)))
                 } else if s.is_null() {
-                    *cause = format_nul!("no current session");
+                    Err("no current session".into())
                 } else {
                     *oo = (*s).options;
-                    scope = OPTIONS_TABLE_SESSION;
+                    Ok(OPTIONS_TABLE_SESSION)
                 }
             }
             OPTIONS_TABLE_WINDOW_AND_PANE => {
                 if args_has(args, 'p') {
                     if wp.is_null() && !target.is_null() {
-                        *cause = format_nul!("no such pane: {}", _s(target));
+                        Err(format!("no such pane: {}", _s(target)))
                     } else if wp.is_null() {
-                        *cause = format_nul!("no current pane");
+                        Err("no current pane".into())
                     } else {
                         *oo = (*wp).options;
-                        scope = OPTIONS_TABLE_PANE;
+                        Ok(OPTIONS_TABLE_PANE)
                     }
                 } else {
                     // FALLTHROUGH same as OPTIONS_TABLE_WINDOW case
                     if args_has(args, 'g') {
                         *oo = GLOBAL_W_OPTIONS;
-                        scope = OPTIONS_TABLE_WINDOW;
+                        Ok(OPTIONS_TABLE_WINDOW)
                     } else if wl.is_null() && !target.is_null() {
-                        *cause = format_nul!("no such window: {}", _s(target));
+                        Err(format!("no such window: {}", _s(target)))
                     } else if wl.is_null() {
-                        *cause = format_nul!("no current window");
+                        Err("no current window".into())
                     } else {
                         *oo = (*(*wl).window).options;
-                        scope = OPTIONS_TABLE_WINDOW;
+                        Ok(OPTIONS_TABLE_WINDOW)
                     }
                 }
             }
             OPTIONS_TABLE_WINDOW => {
                 if args_has(args, 'g') {
                     *oo = GLOBAL_W_OPTIONS;
-                    scope = OPTIONS_TABLE_WINDOW;
+                    Ok(OPTIONS_TABLE_WINDOW)
                 } else if wl.is_null() && !target.is_null() {
-                    *cause = format_nul!("no such window: {}", _s(target));
+                    Err(format!("no such window: {}", _s(target)))
                 } else if wl.is_null() {
-                    *cause = format_nul!("no current window");
+                    Err("no current window".into())
                 } else {
                     *oo = (*(*wl).window).options;
-                    scope = OPTIONS_TABLE_WINDOW;
+                    Ok(OPTIONS_TABLE_WINDOW)
                 }
             }
-            _ => {}
+            _ => Ok(OPTIONS_TABLE_NONE),
         }
-        scope
     }
 }
 
@@ -1051,8 +1047,7 @@ pub unsafe fn options_scope_from_flags(
     window: i32,
     fs: *mut cmd_find_state,
     oo: *mut *mut options,
-    cause: *mut *mut u8,
-) -> i32 {
+) -> Result<i32, String> {
     unsafe {
         let s = (*fs).s;
         let wl = (*fs).wl;
@@ -1061,50 +1056,47 @@ pub unsafe fn options_scope_from_flags(
 
         if args_has(args, 's') {
             *oo = GLOBAL_OPTIONS;
-            return OPTIONS_TABLE_SERVER;
+            return Ok(OPTIONS_TABLE_SERVER);
         }
 
         if args_has(args, 'p') {
             if wp.is_null() {
                 if !target.is_null() {
-                    *cause = format_nul!("no such pane: {}", _s(target));
+                    return Err(format!("no such pane: {}", _s(target)));
                 } else {
-                    *cause = format_nul!("no current pane");
+                    return Err("no current pane".into());
                 }
-                return OPTIONS_TABLE_NONE;
             }
             *oo = (*wp).options;
-            OPTIONS_TABLE_PANE
+            Ok(OPTIONS_TABLE_PANE)
         } else if window != 0 || args_has(args, 'w') {
             if args_has(args, 'g') {
                 *oo = GLOBAL_W_OPTIONS;
-                return OPTIONS_TABLE_WINDOW;
+                return Ok(OPTIONS_TABLE_WINDOW);
             }
             if wl.is_null() {
                 if !target.is_null() {
-                    *cause = format_nul!("no such window: {}", _s(target));
+                    return Err(format!("no such window: {}", _s(target)));
                 } else {
-                    *cause = format_nul!("no current window");
+                    return Err("no current window".into());
                 }
-                return OPTIONS_TABLE_NONE;
             }
             *oo = (*(*wl).window).options;
-            OPTIONS_TABLE_WINDOW
+            Ok(OPTIONS_TABLE_WINDOW)
         } else {
             if args_has(args, 'g') {
                 *oo = GLOBAL_S_OPTIONS;
-                return OPTIONS_TABLE_SESSION;
+                return Ok(OPTIONS_TABLE_SESSION);
             }
             if s.is_null() {
                 if !target.is_null() {
-                    *cause = format_nul!("no such session: {}", _s(target));
+                    return Err(format!("no such session: {}", _s(target)));
                 } else {
-                    *cause = format_nul!("no current session");
+                    return Err("no current session".into());
                 }
-                return OPTIONS_TABLE_NONE;
             }
             *oo = (*s).options;
-            OPTIONS_TABLE_SESSION
+            Ok(OPTIONS_TABLE_SESSION)
         }
     }
 }

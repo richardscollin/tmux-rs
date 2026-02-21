@@ -1483,18 +1483,18 @@ pub unsafe fn mode_tree_run_command(
     name: Option<&str>,
 ) {
     unsafe {
-        let mut error: *mut u8 = null_mut();
-
         let command = cmd_template_replace(template, name, 1);
         if !command.is_null() && *command != b'\0' {
             let state = cmdq_new_state(fs, null_mut(), cmdq_state_flags::empty());
-            let status = cmd_parse_and_append(cstr_to_str(command), None, c, state, &raw mut error);
-            if status == cmd_parse_status::CMD_PARSE_ERROR {
+            if let Err(mut error) = cmd_parse_and_append(cstr_to_str(command), None, c, state) {
                 if !c.is_null() {
-                    *error = (*error).to_ascii_uppercase();
-                    status_message_set!(c, -1, 1, false, "{}", _s(error));
+                    // Uppercase the first character
+                    if let Some(first) = error.get(..1) {
+                        let upper = first.to_ascii_uppercase();
+                        error.replace_range(..1, &upper);
+                    }
+                    status_message_set!(c, -1, 1, false, "{}", error);
                 }
-                free_(error);
             }
             cmdq_free_state(state);
         }

@@ -39,8 +39,6 @@ unsafe fn cmd_respawn_window_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
         let tc = cmdq_get_target_client(item);
         let s = (*target).s;
         let wl = (*target).wl;
-        let mut cause: *mut u8 = null_mut();
-
         sc.item = item;
         sc.s = s;
         sc.wl = wl;
@@ -63,9 +61,8 @@ unsafe fn cmd_respawn_window_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
             sc.flags |= SPAWN_KILL;
         }
 
-        if spawn_window(&raw mut sc, &raw mut cause).is_null() {
-            cmdq_error!(item, "respawn window failed: {}", _s(cause));
-            free_(cause);
+        if let Err(cause) = spawn_window(&raw mut sc) {
+            cmdq_error!(item, "respawn window failed: {}", cause);
             if !sc.argv.is_null() {
                 cmd_free_argv(sc.argc, sc.argv);
             }

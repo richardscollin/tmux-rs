@@ -549,8 +549,6 @@ pub unsafe extern "C-unwind" fn control_read_callback(_bufev: *mut bufferevent, 
     unsafe {
         let cs = (*c).control_state;
         let buffer = (*(*cs).read_event).input;
-        let mut error = null_mut();
-
         loop {
             let line = evbuffer_readln(buffer, null_mut(), evbuffer_eol_style::EVBUFFER_EOL_LF);
             if line.is_null() {
@@ -565,8 +563,8 @@ pub unsafe extern "C-unwind" fn control_read_callback(_bufev: *mut bufferevent, 
 
             let state =
                 cmdq_new_state(null_mut(), null_mut(), cmdq_state_flags::CMDQ_STATE_CONTROL);
-            let status = cmd_parse_and_append(cstr_to_str(line), None, c, state, &raw mut error);
-            if status == cmd_parse_status::CMD_PARSE_ERROR {
+            if let Err(error) = cmd_parse_and_append(cstr_to_str(line), None, c, state) {
+                let error = xstrdup__(error.as_str());
                 cmdq_append(c, cmdq_get_callback!(control_error, error).as_ptr());
             }
             cmdq_free_state(state);

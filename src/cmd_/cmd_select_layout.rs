@@ -125,10 +125,8 @@ unsafe fn cmd_select_layout_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
                 }
 
                 if !layoutname.is_null() {
-                    let mut cause = null_mut();
-                    if layout_parse(w, layoutname, &raw mut cause) == -1 {
-                        cmdq_error!(item, "{}: {}", _s(cause), _s(layoutname));
-                        free_(cause);
+                    if let Err(cause) = layout_parse(w, layoutname) {
+                        cmdq_error!(item, "{}: {}", cause, _s(layoutname));
                         break 'error;
                     }
                     break 'changed;

@@ -318,12 +318,13 @@ unsafe fn cmd_new_session_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
 
             sc.flags = spawn_flags::empty();
 
-            let mut cause = null_mut();
-            if spawn_window(&raw mut sc, &raw mut cause).is_null() {
-                session_destroy(s, 0, __func__);
-                cmdq_error!(item, "create window failed: {}", _s(cause));
-                free_(cause);
-                break 'fail;
+            match spawn_window(&raw mut sc) {
+                Err(cause) => {
+                    session_destroy(s, 0, __func__);
+                    cmdq_error!(item, "create window failed: {}", cause);
+                    break 'fail;
+                }
+                Ok(_) => {}
             }
 
             // If a target session is given, this is to be part of a session group,

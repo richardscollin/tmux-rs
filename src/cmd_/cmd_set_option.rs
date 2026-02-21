@@ -132,24 +132,23 @@ pub unsafe fn cmd_set_option_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
                     value = expanded;
                 }
 
-                let mut cause = null_mut();
                 // Get the scope and table for the option .
-                scope = options_scope_from_name(
+                scope = match options_scope_from_name(
                     args,
                     window,
                     &name,
                     target,
                     &raw mut oo,
-                    &raw mut cause,
-                );
-                if scope == OPTIONS_TABLE_NONE {
-                    if args_has(args, 'q') {
-                        break 'out;
+                ) {
+                    Err(cause) => {
+                        if args_has(args, 'q') {
+                            break 'out;
+                        }
+                        cmdq_error!(item, "{}", cause);
+                        break 'fail;
                     }
-                    cmdq_error!(item, "{}", _s(cause));
-                    free_(cause);
-                    break 'fail;
-                }
+                    Ok(val) => val,
+                };
                 o = options_get_only(oo, &name);
                 parent = options_get(&mut *oo, &name);
 

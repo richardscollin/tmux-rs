@@ -59,16 +59,12 @@ unsafe fn cmd_load_buffer_done(
         } else if bsize != 0 {
             let copy = xmalloc(bsize).as_ptr();
             memcpy_(copy, bdata as _, bsize);
-            let mut cause = null_mut();
-            if paste_set(
+            if let Err(cause) = paste_set(
                 copy as _,
                 bsize,
                 cstr_to_str_((*cdata).name),
-                &raw mut cause,
-            ) != 0
-            {
-                cmdq_error!(item, "{}", _s(cause));
-                free_(cause);
+            ) {
+                cmdq_error!(item, "{}", cause);
                 free_(copy);
             } else if !tc.is_null()
                 && !(*tc).session.is_null()

@@ -362,21 +362,19 @@ pub unsafe fn session_attach(
     s: *mut session,
     w: *mut window,
     idx: i32,
-    cause: *mut *mut u8,
-) -> *mut winlink {
+) -> Result<*mut winlink, String> {
     unsafe {
         let wl = winlink_add(&raw mut (*s).windows, idx);
 
         if wl.is_null() {
-            *cause = format_nul!("index in use: {}", idx);
-            return null_mut();
+            return Err(format!("index in use: {}", idx));
         }
         (*wl).session = s;
         winlink_set_window(wl, w);
         notify_session_window(c"window-linked", s, w);
 
         session_group_synchronize_from(s);
-        wl
+        Ok(wl)
     }
 }
 

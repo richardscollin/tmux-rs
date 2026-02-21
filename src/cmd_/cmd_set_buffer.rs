@@ -46,7 +46,6 @@ unsafe fn cmd_set_buffer_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retv
         let args = cmd_get_args(self_);
         let tc = cmdq_get_target_client(item);
         let mut pb;
-        let mut cause = null_mut();
         let olddata;
 
         let mut bufname = cstr_to_str_(args_get_(args, 'b'));
@@ -84,9 +83,8 @@ unsafe fn cmd_set_buffer_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retv
                 cmdq_error!(item, "no buffer");
                 return cmd_retval::CMD_RETURN_ERROR;
             }
-            if paste_rename(bufname, cstr_to_str_(args_get_(args, 'n')), &raw mut cause) != 0 {
-                cmdq_error!(item, "{}", _s(cause));
-                free_(cause);
+            if let Err(cause) = paste_rename(bufname, cstr_to_str_(args_get_(args, 'n'))) {
+                cmdq_error!(item, "{}", cause);
                 return cmd_retval::CMD_RETURN_ERROR;
             }
             return cmd_retval::CMD_RETURN_NORMAL;
@@ -116,10 +114,9 @@ unsafe fn cmd_set_buffer_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retv
         memcpy_(bufdata.add(bufsize), args_string(args, 0), newsize);
         bufsize += newsize;
 
-        if paste_set(bufdata, bufsize, bufname, &raw mut cause) != 0 {
-            cmdq_error!(item, "{}", _s(cause));
+        if let Err(cause) = paste_set(bufdata, bufsize, bufname) {
+            cmdq_error!(item, "{}", cause);
             free_(bufdata);
-            free_(cause);
             return cmd_retval::CMD_RETURN_ERROR;
         }
         if args_has(args, 'w') && !tc.is_null() {

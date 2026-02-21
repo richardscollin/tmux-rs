@@ -1786,23 +1786,21 @@ unsafe fn window_pane_input_callback(
 pub unsafe fn window_pane_start_input(
     wp: *mut window_pane,
     item: *mut cmdq_item,
-    cause: *mut *mut u8,
-) -> i32 {
+) -> Result<i32, String> {
     unsafe {
         let c: *mut client = cmdq_get_client(item);
 
         if !(*wp).flags.intersects(window_pane_flags::PANE_EMPTY) {
-            *cause = xstrdup(c!("pane is not empty")).cast().as_ptr();
-            return -1;
+            return Err("pane is not empty".into());
         }
         if (*c)
             .flags
             .intersects(client_flag::DEAD | client_flag::EXITED)
         {
-            return 1;
+            return Ok(1);
         }
         if !(*c).session.is_null() {
-            return 1;
+            return Ok(1);
         }
 
         let cdata = Box::leak(Box::new(window_pane_input_data {
@@ -1813,7 +1811,7 @@ pub unsafe fn window_pane_start_input(
         (*cdata).file = file_read(c, c!("-"), Some(window_pane_input_callback), cdata as _);
         (*c).references += 1;
 
-        0
+        Ok(0)
     }
 }
 

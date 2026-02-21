@@ -2007,14 +2007,6 @@ enum cmd_retval {
 }
 
 // Command parse result.
-#[repr(i32)]
-#[derive(Copy, Clone, Default, Eq, PartialEq)]
-enum cmd_parse_status {
-    #[default]
-    CMD_PARSE_ERROR,
-    CMD_PARSE_SUCCESS,
-}
-
 type cmd_parse_result = Result<*mut cmd_list /* cmdlist */, *mut u8 /* error */>;
 
 bitflags::bitflags! {

@@ -451,7 +451,6 @@ tcsetattr,
         let mut tio: termios = zeroed();
         let mut saved_tio: termios = zeroed();
         let mut caps: *mut *mut u8 = null_mut();
-        let mut cause: *mut u8 = null_mut();
         let mut ncaps: u32 = 0;
         let values: *mut args_value;
 
@@ -550,19 +549,16 @@ tcsetattr,
             }
         */
 
-        if isatty(STDIN_FILENO) != 0
-            && !termname.is_empty()
-            && tty_term_read_list(
+        if isatty(STDIN_FILENO) != 0 && !termname.is_empty() {
+            if let Err(cause) = tty_term_read_list(
                 termname.as_ptr().cast(),
                 STDIN_FILENO,
                 &raw mut caps,
                 &raw mut ncaps,
-                &raw mut cause,
-            ) != 0
-        {
-            eprintln!("{}", _s(cause));
-            free_(cause);
-            return 1;
+            ) {
+                eprintln!("{}", cause);
+                return 1;
+            }
         }
 
         if PTM_FD != -1 {

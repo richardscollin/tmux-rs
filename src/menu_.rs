@@ -306,8 +306,6 @@ pub unsafe fn menu_key_cb(c: *mut client, data: *mut c_void, mut event: *mut key
         let count = (*menu).items.len();
         let mut old = (*md).choice;
 
-        let mut error = null_mut();
-
         'chosen: {
             if KEYC_IS_MOUSE((*event).key) {
                 if (*md).flags.intersects(menu_flags::MENU_NOMOUSE) {
@@ -534,10 +532,10 @@ pub unsafe fn menu_key_cb(c: *mut client, data: *mut c_void, mut event: *mut key
         let ptr = item.command.as_ptr();
         let cmd_str =
             std::str::from_utf8(std::slice::from_raw_parts(ptr.cast(), libc::strlen(ptr))).unwrap();
-        let status = cmd_parse_and_append(cmd_str, None, c, state, &raw mut error);
-        if status == cmd_parse_status::CMD_PARSE_ERROR {
-            cmdq_append(c, cmdq_get_error(error).as_ptr());
-            free_(error);
+        if let Err(error) = cmd_parse_and_append(cmd_str, None, c, state) {
+            let error_cstr = xstrdup__(error.as_str());
+            cmdq_append(c, cmdq_get_error(error_cstr).as_ptr());
+            free_(error_cstr);
         }
         cmdq_free_state(state);
     }

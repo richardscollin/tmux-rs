@@ -5555,7 +5555,7 @@ pub unsafe fn window_copy_append_selection(wme: *mut window_mode_entry) {
             libc::memcpy(buf.cast(), bufdata.cast(), bufsize);
             len += bufsize;
         }
-        if paste_set(buf, len, bufname, null_mut()) != 0 {
+        if paste_set(buf, len, bufname).is_err() {
             free_(buf);
         }
     }

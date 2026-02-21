@@ -47,8 +47,6 @@ unsafe fn cmd_new_window_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retv
         let mut new_wl: *mut winlink = null_mut();
         let mut idx = (*target).idx;
         // before;
-        let mut cause = null_mut();
-
         // If -S and -n are given and -t is not and a single window with this
         // name already exists, select it.
         let name = args_get(args, b'n');
@@ -116,16 +114,17 @@ unsafe fn cmd_new_window_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retv
             sc.flags |= SPAWN_KILL;
         }
 
-        let new_wl = spawn_window(&raw mut sc, &raw mut cause);
-        if new_wl.is_null() {
-            cmdq_error!(item, "create window failed: {}", _s(cause));
-            free_(cause);
-            if !sc.argv.is_null() {
-                cmd_free_argv(sc.argc, sc.argv);
+        let new_wl = match spawn_window(&raw mut sc) {
+            Err(cause) => {
+                cmdq_error!(item, "create window failed: {}", cause);
+                if !sc.argv.is_null() {
+                    cmd_free_argv(sc.argc, sc.argv);
+                }
+                environ_free(sc.environ);
+                return cmd_retval::CMD_RETURN_ERROR;
             }
-            environ_free(sc.environ);
-            return cmd_retval::CMD_RETURN_ERROR;
-        }
+            Ok(wl) => wl,
+        };
         if !args_has(args, 'd') || new_wl == (*s).curw {
             cmd_find_from_winlink(current, new_wl, cmd_find_flags::empty());
             server_redraw_session_group(s);

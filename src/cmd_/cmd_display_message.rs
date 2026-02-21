@@ -52,7 +52,6 @@ unsafe fn cmd_display_message_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd
         let s = (*target).s;
         let wl = (*target).wl;
         let wp = (*target).wp;
-        let mut cause: *mut u8 = null_mut();
         let mut delay = -1;
         let nflag = args_has(args, 'N');
         let count = args_count(args);
@@ -61,16 +60,15 @@ unsafe fn cmd_display_message_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd
             if wp.is_null() {
                 return cmd_retval::CMD_RETURN_NORMAL;
             }
-            match window_pane_start_input(wp, item, &raw mut cause) {
-                -1 => {
-                    cmdq_error!(item, "{}", _s(cause));
-                    free_(cause);
+            match window_pane_start_input(wp, item) {
+                Err(cause) => {
+                    cmdq_error!(item, "{}", cause);
                     return cmd_retval::CMD_RETURN_ERROR;
                 }
-                1 => {
+                Ok(1) => {
                     return cmd_retval::CMD_RETURN_NORMAL;
                 }
-                0 => {
+                Ok(0) => {
                     return cmd_retval::CMD_RETURN_WAIT;
                 }
                 _ => (),

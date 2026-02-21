@@ -240,16 +240,14 @@ pub unsafe fn server_link_window(
     mut dstidx: i32,
     killflag: bool,
     mut selectflag: bool,
-    cause: *mut *mut u8,
-) -> i32 {
+) -> Result<(), String> {
     unsafe {
         let mut dstwl = null_mut();
 
         let srcsg = session_group_contains(src);
         let dstsg = session_group_contains(dst);
         if src != dst && !srcsg.is_null() && !dstsg.is_null() && srcsg == dstsg {
-            *cause = format_nul!("sessions are grouped");
-            return -1;
+            return Err("sessions are grouped".into());
         }
 
         if dstidx != -1 {
@@ -257,8 +255,7 @@ pub unsafe fn server_link_window(
         }
         if !dstwl.is_null() {
             if (*dstwl).window == (*srcwl).window {
-                *cause = format_nul!("same index: {}", dstidx);
-                return -1;
+                return Err(format!("same index: {}", dstidx));
             }
             if killflag {
                 // Can't use session_detach as it will destroy session
@@ -279,17 +276,14 @@ pub unsafe fn server_link_window(
         if dstidx == -1 {
             dstidx = -1 - options_get_number_((*dst).options, "base-index") as i32;
         }
-        dstwl = session_attach(dst, (*srcwl).window, dstidx, cause);
-        if dstwl.is_null() {
-            return -1;
-        }
+        dstwl = session_attach(dst, (*srcwl).window, dstidx)?;
 
         if selectflag {
             session_select(dst, (*dstwl).idx);
         }
         server_redraw_session_group(dst);
 
-        0
+        Ok(())
     }
 }
 

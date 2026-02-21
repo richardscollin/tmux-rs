@@ -36,8 +36,6 @@ unsafe fn cmd_respawn_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
         let s = (*target).s;
         let wl = (*target).wl;
         let wp = (*target).wp;
-        let mut cause = null_mut();
-
         sc.item = item;
         sc.s = s;
         sc.wl = wl;
@@ -61,9 +59,8 @@ unsafe fn cmd_respawn_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
             sc.flags |= SPAWN_KILL;
         }
 
-        if spawn_pane(&raw mut sc, &raw mut cause).is_null() {
-            cmdq_error!(item, "respawn pane failed: {}", _s(cause));
-            free_(cause);
+        if let Err(cause) = spawn_pane(&raw mut sc) {
+            cmdq_error!(item, "respawn pane failed: {}", cause);
             if !sc.argv.is_null() {
                 cmd_free_argv(sc.argc, sc.argv);
             }

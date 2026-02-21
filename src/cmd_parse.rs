@@ -509,23 +509,19 @@ pub unsafe fn cmd_parse_and_append(
     pi: Option<&cmd_parse_input>,
     c: *mut client,
     state: *mut cmdq_state,
-    error: *mut *mut u8,
-) -> cmd_parse_status {
+) -> Result<(), String> {
     unsafe {
         match cmd_parse_from_string(s, pi) {
             Err(err) => {
-                if !error.is_null() {
-                    *error = err;
-                } else {
-                    free_(err);
-                }
-                cmd_parse_status::CMD_PARSE_ERROR
+                let msg = format!("{}", _s(err));
+                free_(err);
+                Err(msg)
             }
             Ok(cmdlist) => {
                 let item = cmdq_get_command(cmdlist, state);
                 cmdq_append(c, item);
                 cmd_list_free(cmdlist);
-                cmd_parse_status::CMD_PARSE_SUCCESS
+                Ok(())
             }
         }
     }

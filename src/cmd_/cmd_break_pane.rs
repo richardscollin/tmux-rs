@@ -46,7 +46,6 @@ pub unsafe fn cmd_break_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
         let mut w = (*wl).window;
 
         let name: *mut u8;
-        let mut cause: *mut u8 = null_mut();
         let cp: *mut u8;
         let mut idx = (*target).idx;
         let mut template: *const u8;
@@ -65,18 +64,15 @@ pub unsafe fn cmd_break_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
         server_unzoom_window(w);
 
         if window_count_panes(w) == 1 {
-            if server_link_window(
+            if let Err(cause) = server_link_window(
                 src_s,
                 wl,
                 dst_s,
                 idx,
                 false,
                 !args_has(args, 'd'),
-                &raw mut cause,
-            ) != 0
-            {
-                cmdq_error!(item, "{}", _s(cause));
-                free_(cause);
+            ) {
+                cmdq_error!(item, "{}", cause);
                 return cmd_retval::CMD_RETURN_ERROR;
             }
             if args_has(args, 'n') {
@@ -124,7 +120,13 @@ pub unsafe fn cmd_break_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
         if idx == -1 {
             idx = -1 - options_get_number___::<i32>(&*(*dst_s).options, "base-index");
         }
-        wl = session_attach(dst_s, w, idx, &raw mut cause);
+        wl = match session_attach(dst_s, w, idx) {
+            Ok(wl) => wl,
+            Err(cause) => {
+                cmdq_error!(item, "{}", cause);
+                return cmd_retval::CMD_RETURN_ERROR;
+            }
+        };
         if !args_has(args, 'd') {
             session_select(dst_s, (*wl).idx);
             cmd_find_from_session(current, dst_s, cmd_find_flags::empty());

@@ -1367,7 +1367,6 @@ unsafe fn tty_keys_extended_key(
 ) -> i32 {
     unsafe {
         let c = (*tty).client;
-        let end: usize = 0;
         let mut number: u32 = 0;
         let mut modifiers: u32 = 0;
         const SIZE_OF_TMP: usize = 64;
@@ -1394,13 +1393,15 @@ unsafe fn tty_keys_extended_key(
 
         // Look for a terminator. Stop at either '~' or anything that isn't a
         // number or ';'.
-        for end in 2..len.min(SIZE_OF_TMP) {
+        let mut end: usize = 2;
+        while end < len && end < SIZE_OF_TMP {
             if *buf.add(end) == b'~' {
                 break;
             }
             if !(*buf.add(end)).is_ascii_digit() && *buf.add(end) != b';' {
                 break;
             }
+            end += 1;
         }
         if end == len {
             return 1;
@@ -1410,8 +1411,8 @@ unsafe fn tty_keys_extended_key(
         }
 
         // Copy to the buffer.
-        libc::memcpy(tmp.as_mut_ptr().cast(), buf.add(2).cast(), end);
-        tmp[end] = 0;
+        libc::memcpy(tmp.as_mut_ptr().cast(), buf.add(2).cast(), end - 2);
+        tmp[end - 2] = 0;
 
         // Try to parse either form of key.
         if *buf.add(end) == b'~' {

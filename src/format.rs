@@ -99,6 +99,8 @@ bitflags::bitflags! {
         const FORMAT_CHARACTER = 0x10000;
         const FORMAT_COLOUR = 0x20000;
         const FORMAT_CLIENTS = 0x40000;
+        const FORMAT_NOT = 0x80000;
+        const FORMAT_NOT_NOT = 0x100000;
     }
 }
 
@@ -3578,6 +3580,7 @@ pub unsafe fn format_unescape(mut s: *const u8) -> *mut u8 {
                 s = s.add(1);
                 *cp = *s;
                 cp = cp.add(1);
+                s = s.add(1);
                 continue;
             }
             if *s == b'}' {
@@ -3759,7 +3762,7 @@ pub unsafe fn format_build_modifiers(
             }
 
             // Check single character modifiers with no arguments.
-            if !strchr(c!("labcdnwETSWPL<>"), *cp as i32).is_null() && format_is_end(*cp.add(1)) {
+            if !strchr(c!("labcdnwETSWPL!<>"), *cp as i32).is_null() && format_is_end(*cp.add(1)) {
                 format_add_modifier(&raw mut list, count, cp, 1, null_mut(), 0);
                 cp = cp.add(1);
                 continue;
@@ -3768,6 +3771,7 @@ pub unsafe fn format_build_modifiers(
             // Then try double character with no arguments.
             if (memcmp(c!("||").cast(), cp.cast(), 2) == 0
                 || memcmp(c!("&&").cast(), cp.cast(), 2) == 0
+                || memcmp(c!("!!").cast(), cp.cast(), 2) == 0
                 || memcmp(c!("!=").cast(), cp.cast(), 2) == 0
                 || memcmp(c!("==").cast(), cp.cast(), 2) == 0
                 || memcmp(c!("<=").cast(), cp.cast(), 2) == 0
@@ -4329,6 +4333,64 @@ pub unsafe fn format_replace_expression(
     }
 }
 
+/// Handle unary boolean operators, "!" and "!!".
+unsafe fn format_bool_op_1(
+    es: *mut format_expand_state,
+    fmt: *const u8,
+    not: bool,
+) -> *mut u8 {
+    unsafe {
+        let expanded = format_expand1(es, fmt);
+        let mut result = format_true(expanded);
+        if not {
+            result = !result;
+        }
+        free_(expanded);
+        xstrdup(if result { c!("1") } else { c!("0") })
+            .as_ptr()
+    }
+}
+
+/// Handle n-ary boolean operators, "&&" and "||".
+unsafe fn format_bool_op_n(
+    es: *mut format_expand_state,
+    fmt: *const u8,
+    and: bool,
+) -> *mut u8 {
+    unsafe {
+        let mut result = and;
+        let mut cp1 = fmt;
+
+        while if and { result } else { !result } {
+            let cp2 = format_skip(cp1, c!(","));
+
+            let raw = if cp2.is_null() {
+                xstrdup(cp1).as_ptr()
+            } else {
+                xstrndup(cp1, cp2.offset_from(cp1) as usize).as_ptr()
+            };
+            let expanded = format_expand1(es, raw);
+            free_(raw);
+
+            if and {
+                result = result && format_true(expanded);
+            } else {
+                result = result || format_true(expanded);
+            }
+            free_(expanded);
+
+            if cp2.is_null() {
+                break;
+            } else {
+                cp1 = cp2.add(1);
+            }
+        }
+
+        xstrdup(if result { c!("1") } else { c!("0") })
+            .as_ptr()
+    }
+}
+
 /// Replace a key.
 pub unsafe fn format_replace(
     es: *mut format_expand_state,
@@ -4344,13 +4406,13 @@ pub unsafe fn format_replace(
         let ft = (*es).ft;
         let wp = (*ft).wp;
         let mut copy: *const u8;
-        let cp: *const u8;
+        let mut cp: *const u8;
         let mut marker: *const u8 = null();
 
         let mut time_format: *const u8 = null();
 
         let copy0: *mut u8;
-        let condition: *mut u8;
+        let mut condition: *mut u8;
         let mut found: *mut u8;
         let mut new: *mut u8;
         let mut value: *mut u8 = null_mut();
@@ -4367,6 +4429,7 @@ pub unsafe fn format_replace(
 
         let list: *mut format_modifier;
         let mut cmp: *mut format_modifier = null_mut();
+        let mut bool_op_n: *mut format_modifier = null_mut();
         let mut search: *mut format_modifier = null_mut();
 
         let mut sub: *mut *mut format_modifier = null_mut();
@@ -4484,18 +4547,24 @@ pub unsafe fn format_replace(
                             b'S' => modifiers |= format_modifiers::FORMAT_SESSIONS,
                             b'W' => modifiers |= format_modifiers::FORMAT_WINDOWS,
                             b'P' => modifiers |= format_modifiers::FORMAT_PANES,
+                            b'!' => modifiers |= format_modifiers::FORMAT_NOT,
                             b'L' => modifiers |= format_modifiers::FORMAT_CLIENTS,
                             _ => (),
                         }
-                    } else if (*fm).size == 2
-                        && (streq_((*fm).modifier.as_ptr(), "||")
+                    } else if (*fm).size == 2 {
+                        if streq_((*fm).modifier.as_ptr(), "||")
                             || streq_((*fm).modifier.as_ptr(), "&&")
-                            || streq_((*fm).modifier.as_ptr(), "==")
+                        {
+                            bool_op_n = fm;
+                        } else if streq_((*fm).modifier.as_ptr(), "!!") {
+                            modifiers |= format_modifiers::FORMAT_NOT_NOT;
+                        } else if streq_((*fm).modifier.as_ptr(), "==")
                             || streq_((*fm).modifier.as_ptr(), "!=")
                             || streq_((*fm).modifier.as_ptr(), ">=")
-                            || streq_((*fm).modifier.as_ptr(), "<="))
-                    {
-                        cmp = fm;
+                            || streq_((*fm).modifier.as_ptr(), "<=")
+                        {
+                            cmp = fm;
+                        }
                     }
                 }
 
@@ -4576,6 +4645,17 @@ pub unsafe fn format_replace(
                         value = format_search(search, wp, new);
                     }
                     free_(new);
+                } else if modifiers.intersects(format_modifiers::FORMAT_NOT) {
+                    value = format_bool_op_1(es, copy, true);
+                } else if modifiers.intersects(format_modifiers::FORMAT_NOT_NOT) {
+                    value = format_bool_op_1(es, copy, false);
+                } else if !bool_op_n.is_null() {
+                    // N-ary boolean operator.
+                    if streq_((*bool_op_n).modifier.as_ptr(), "||") {
+                        value = format_bool_op_n(es, copy, false);
+                    } else if streq_((*bool_op_n).modifier.as_ptr(), "&&") {
+                        value = format_bool_op_n(es, copy, true);
+                    }
                 } else if !cmp.is_null() {
                     // Comparison of left and right.
                     if format_choose(es, copy, &raw mut left, &raw mut right, 1) != 0 {
@@ -4603,19 +4683,7 @@ pub unsafe fn format_replace(
                         _s(right),
                     );
 
-                    if streq_((*cmp).modifier.as_ptr(), "||") {
-                        if format_true(left) || format_true(right) {
-                            value = xstrdup(c!("1")).as_ptr();
-                        } else {
-                            value = xstrdup(c!("0")).as_ptr();
-                        }
-                    } else if streq_((*cmp).modifier.as_ptr(), "&&") {
-                        if format_true(left) && format_true(right) {
-                            value = xstrdup(c!("1")).as_ptr();
-                        } else {
-                            value = xstrdup(c!("0")).as_ptr();
-                        }
-                    } else if streq_((*cmp).modifier.as_ptr(), "==") {
+                    if streq_((*cmp).modifier.as_ptr(), "==") {
                         if strcmp(left, right) == 0 {
                             value = xstrdup(c!("1")).as_ptr();
                         } else {
@@ -4658,65 +4726,98 @@ pub unsafe fn format_replace(
                     free_(right);
                     free_(left);
                 } else if *copy == b'?' {
-                    // Conditional: check first and choose second or third.
-                    cp = format_skip(copy.add(1), c!(","));
-                    if cp.is_null() {
-                        format_log1!(es, __func__, "condition syntax error: {}", _s(copy.add(1)),);
-                        break 'fail;
-                    }
-                    condition =
-                        xstrndup(copy.add(1), cp.offset_from(copy.add(1)) as usize).as_ptr();
-                    format_log1!(es, __func__, "condition is: {}", _s(condition));
-
-                    found = format_find(ft, condition, modifiers, time_format);
-                    if found.is_null() {
-                        // If the condition not found, try to expand it. If
-                        // the expansion doesn't have any effect, then assume
-                        // false.
-                        found = format_expand1(es, condition);
-                        if strcmp(found, condition) == 0 {
-                            free_(found);
-                            found = xstrdup(c!("")).as_ptr();
+                    // Conditional: For each pair of (condition, value), check
+                    // the condition and return the value if true. If no
+                    // condition matches, return the last unpaired arg if there
+                    // is one, or the empty string if not.
+                    cp = copy.add(1);
+                    loop {
+                        let cp2 = format_skip(cp, c!(","));
+                        if cp2.is_null() {
                             format_log1!(
                                 es,
                                 __func__,
-                                "condition '{}' not found; assuming false",
+                                "no condition matched in '{}'; using last arg",
+                                _s(copy.add(1)),
+                            );
+                            value = format_expand1(es, cp);
+                            break;
+                        }
+
+                        condition =
+                            xstrndup(cp, cp2.offset_from(cp) as usize).as_ptr();
+                        format_log1!(es, __func__, "condition is: {}", _s(condition));
+
+                        found = format_find(ft, condition, modifiers, time_format);
+                        if found.is_null() {
+                            // If the condition not found, try to expand it. If
+                            // the expansion doesn't have any effect, then assume
+                            // false.
+                            found = format_expand1(es, condition);
+                            if strcmp(found, condition) == 0 {
+                                free_(found);
+                                found = xstrdup(c!("")).as_ptr();
+                                format_log1!(
+                                    es,
+                                    __func__,
+                                    "condition '{}' not found; assuming false",
+                                    _s(condition),
+                                );
+                            }
+                        } else {
+                            format_log1!(
+                                es,
+                                __func__,
+                                "condition '{}' found: {}",
+                                _s(condition),
+                                _s(found),
+                            );
+                        }
+
+                        cp = cp2.add(1);
+                        let cp2 = format_skip(cp, c!(","));
+                        if format_true(found) {
+                            format_log1!(
+                                es,
+                                __func__,
+                                "condition '{}' is true",
+                                _s(condition),
+                            );
+                            if cp2.is_null() {
+                                value = format_expand1(es, cp);
+                            } else {
+                                right = xstrndup(cp, cp2.offset_from(cp) as usize).as_ptr();
+                                value = format_expand1(es, right);
+                                free_(right);
+                            }
+                            free_(condition);
+                            free_(found);
+                            break;
+                        } else {
+                            format_log1!(
+                                es,
+                                __func__,
+                                "condition '{}' is false",
                                 _s(condition),
                             );
                         }
-                    } else {
-                        format_log1!(
-                            es,
-                            __func__,
-                            "condition '{}' found: {}",
-                            _s(condition),
-                            _s(found),
-                        );
-                    }
 
-                    if format_choose(es, cp.add(1), &raw mut left, &raw mut right, 0) != 0 {
-                        format_log1!(
-                            es,
-                            __func__,
-                            "condition '{}' syntax error: {}",
-                            _s(condition),
-                            _s(cp.add(1)),
-                        );
+                        free_(condition);
                         free_(found);
-                        break 'fail;
-                    }
-                    if format_true(found) {
-                        format_log1!(es, __func__, "condition '{}' is true", _s(condition));
-                        value = format_expand1(es, left);
-                    } else {
-                        format_log1!(es, __func__, "condition '{}' is false", _s(condition));
-                        value = format_expand1(es, right);
-                    }
-                    free_(right);
-                    free_(left);
 
-                    free_(condition);
-                    free_(found);
+                        if cp2.is_null() {
+                            format_log1!(
+                                es,
+                                __func__,
+                                "no condition matched in '{}'; using empty string",
+                                _s(copy.add(1)),
+                            );
+                            value = xstrdup(c!("")).as_ptr();
+                            break;
+                        }
+
+                        cp = cp2.add(1);
+                    }
                 } else if !mexp.is_null() {
                     value = format_replace_expression(mexp, es, copy);
                     if value.is_null() {

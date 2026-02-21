@@ -222,7 +222,7 @@ pub unsafe fn grid_reader_cursor_next_word(gr: *mut grid_reader, separators: *co
                 loop {
                     (*gr).cx += 1;
                     if !(grid_reader_handle_wrap(gr, &raw mut xx, &raw mut yy) != 0
-                        && (!grid_reader_in_set(gr, separators)
+                        && !(grid_reader_in_set(gr, separators)
                             || grid_reader_in_set(gr, WHITESPACE)))
                     {
                         break;

@@ -88,6 +88,9 @@ unsafe fn grid_need_extended_cell(gce: *const grid_cell_entry, gc: *const grid_c
         if (*gc).attr.bits() > 0xff {
             return true;
         }
+        if (*gc).flags.intersects(grid_flag::TAB) {
+            return true;
+        }
         if (*gc).data.size != 1 || (*gc).data.width != 1 {
             return true;
         }
@@ -140,7 +143,11 @@ unsafe fn grid_extended_cell(
 
         let mut uc = MaybeUninit::<utf8_char>::uninit();
         let uc = uc.as_mut_ptr();
-        utf8_from_data(&raw const (*gc).data, uc);
+        if flags.intersects(grid_flag::TAB) {
+            *uc = (*gc).data.width as utf8_char;
+        } else {
+            utf8_from_data(&raw const (*gc).data, uc);
+        }
 
         let gee = &mut *(*gl).extddata.offset((*gce).union_.offset as isize);
         gee.data = *uc;
@@ -280,6 +287,21 @@ pub unsafe fn grid_cells_equal(gc1: *const grid_cell, gc2: *const grid_cell) -> 
             (*gc2).data.data.as_ptr().cast(),
             (*gc1).data.size as usize,
         ) == 0
+    }
+}
+
+/// Set grid cell to a tab.
+pub unsafe fn grid_set_tab(gc: *mut grid_cell, width: u32) {
+    unsafe {
+        (*gc).data.data = [0; UTF8_SIZE];
+        (*gc).flags |= grid_flag::TAB;
+        (*gc).flags -= (*gc).flags & grid_flag::PADDING;
+        (*gc).data.width = width as u8;
+        (*gc).data.size = width as u8;
+        (*gc).data.have = width as u8;
+        for i in 0..width as usize {
+            (*gc).data.data[i] = b' ';
+        }
     }
 }
 
@@ -551,7 +573,11 @@ unsafe fn grid_get_cell1(gl: *mut grid_line, px: c_uint, gc: *mut grid_cell) {
                 (*gc).bg = (*gee).bg;
                 (*gc).us = (*gee).us;
                 (*gc).link = (*gee).link;
-                (*gc).data = utf8_to_data((*gee).data);
+                if (*gc).flags.intersects(grid_flag::TAB) {
+                    grid_set_tab(gc, (*gee).data);
+                } else {
+                    (*gc).data = utf8_to_data((*gee).data);
+                }
             }
             return;
         }

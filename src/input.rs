@@ -1292,7 +1292,7 @@ unsafe fn input_print(ictx: *mut input_ctx) -> i32 {
     unsafe {
         let sctx = &raw mut (*ictx).ctx;
 
-        (*ictx).utf8started = 0; /* can't be valid UTF-8 */
+        input_stop_utf8(ictx); /* can't be valid UTF-8 */
 
         let set = if (*ictx).cell.set == 0 {
             (*ictx).cell.g0set
@@ -1377,7 +1377,7 @@ unsafe fn input_c0_dispatch(ictx: *mut input_ctx) -> i32 {
         let wp = (*ictx).wp;
         let s = (*sctx).s;
 
-        (*ictx).utf8started = 0; /* can't be valid UTF-8 */
+        input_stop_utf8(ictx); /* can't be valid UTF-8 */
 
         log_debug!("{}: '{}'", "input_c0_dispatch", (*ictx).ch as u8 as char);
 
@@ -1402,12 +1402,41 @@ unsafe fn input_c0_dispatch(ictx: *mut input_ctx) -> i32 {
             }
             BS => screen_write_backspace(sctx),
             HT => {
-                while (*s).cx < screen_size_x(s) - 1 {
-                    // Don't tab beyond the end of the line.
+                // Don't tab beyond the end of the line.
+                let mut cx = (*s).cx;
+                if cx < screen_size_x(s) - 1 {
+                    let line = (*s).cy + (*(*s).grid).hsize;
+                    let mut first_gc: grid_cell = zeroed();
+                    let mut gc: grid_cell = zeroed();
+                    let mut has_content = false;
+                    grid_get_cell((*s).grid, cx, line, &raw mut first_gc);
                     // Find the next tab point, or use the last column if none.
-                    (*s).cx += 1;
-                    if (*s).tabs.as_ref().unwrap().borrow().bit_test((*s).cx) {
-                        break;
+                    loop {
+                        if !has_content {
+                            grid_get_cell((*s).grid, cx, line, &raw mut gc);
+                            if gc.data.size != 1
+                                || gc.data.data[0] != b' '
+                                || grid_cells_look_equal(&raw const gc, &raw const first_gc) == 0
+                            {
+                                has_content = true;
+                            }
+                        }
+                        cx += 1;
+                        if (*s).tabs.as_ref().unwrap().borrow().bit_test(cx) {
+                            break;
+                        }
+                        if cx >= screen_size_x(s) - 1 {
+                            break;
+                        }
+                    }
+
+                    let width = cx - (*s).cx;
+                    if has_content || width as usize > size_of::<[u8; UTF8_SIZE]>() {
+                        (*s).cx = cx;
+                    } else {
+                        grid_get_cell((*s).grid, (*s).cx, line, &raw mut gc);
+                        grid_set_tab(&raw mut gc, width);
+                        screen_write_collect_add(sctx, &raw const gc);
                     }
                 }
             }
@@ -2543,6 +2572,26 @@ unsafe fn input_exit_rename(ictx: *mut input_ctx) {
     }
 }
 
+/// Stop UTF-8 and enter an invalid character.
+unsafe fn input_stop_utf8(ictx: *mut input_ctx) {
+    unsafe {
+        static RC: utf8_data = utf8_data {
+            data: [
+                0xef, 0xbf, 0xbd, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            ],
+            have: 3,
+            size: 3,
+            width: 1,
+        };
+        let sctx = &raw mut (*ictx).ctx;
+        if (*ictx).utf8started != 0 {
+            utf8_copy(&raw mut (*ictx).cell.cell.data, &raw const RC);
+            screen_write_collect_add(sctx, &raw mut (*ictx).cell.cell);
+        }
+        (*ictx).utf8started = 0;
+    }
+}
+
 /// Open UTF-8 character.
 unsafe fn input_top_bit_set(ictx: *mut input_ctx) -> i32 {
     unsafe {
@@ -2552,17 +2601,17 @@ unsafe fn input_top_bit_set(ictx: *mut input_ctx) -> i32 {
         (*ictx).flags &= !input_flags::INPUT_LAST;
 
         if (*ictx).utf8started == 0 {
-            if utf8_open(ud, (*ictx).ch as u8) != utf8_state::UTF8_MORE {
-                return 0;
-            }
             (*ictx).utf8started = 1;
+            if utf8_open(ud, (*ictx).ch as u8) != utf8_state::UTF8_MORE {
+                input_stop_utf8(ictx);
+            }
             return 0;
         }
 
         match utf8_append(ud, (*ictx).ch as u8) {
             utf8_state::UTF8_MORE => return 0,
             utf8_state::UTF8_ERROR => {
-                (*ictx).utf8started = 0;
+                input_stop_utf8(ictx);
                 return 0;
             }
             utf8_state::UTF8_DONE => (),

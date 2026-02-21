@@ -5613,7 +5613,11 @@ pub unsafe fn window_copy_copy_line(
                 if gc.flags.intersects(grid_flag::PADDING) {
                     continue;
                 }
-                utf8_copy(&raw mut ud, &raw mut gc.data);
+                if gc.flags.intersects(grid_flag::TAB) {
+                    utf8_set(&raw mut ud, b'\t');
+                } else {
+                    utf8_copy(&raw mut ud, &raw mut gc.data);
+                }
                 if ud.size == 1 && gc.attr.intersects(grid_attr::GRID_ATTR_CHARSET) {
                     let s = tty_acs_get(null_mut(), ud.data[0]);
                     if !s.is_null() && strlen(s) <= UTF8_SIZE {

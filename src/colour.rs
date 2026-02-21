@@ -872,13 +872,13 @@ pub fn colour_byname(name: &str) -> i32 {
 
     if name.starts_with("grey") || name.starts_with("gray") {
         if name.len() == 4 {
-            return -1;
+            return 0xbebebe | COLOUR_FLAG_RGB;
         }
 
         let Ok(c) = strtonum_(&name[4..], 0, 100) else {
             return -1;
         };
-        let c = (2.55f32 * (c as f32)).round() as i32;
+        let c = (2.55f64 * (c as f64)).round() as i32;
 
         if !(0..=255).contains(&c) {
             return -1;

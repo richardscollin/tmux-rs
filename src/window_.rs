@@ -360,17 +360,21 @@ pub unsafe fn window_pane_destroy_ready(wp: *mut window_pane) -> bool {
             if EVBUFFER_LENGTH((*(*wp).pipe_event).output) != 0 {
                 return false;
             }
-            #[cfg(not(target_os = "windows"))]
-            {
-                let mut n = 0;
-                if crate::libc::ioctl((*wp).fd, FIONREAD, &raw mut n) != -1 && n > 0 {
-                    return false;
-                }
-            }
         }
 
         if !(*wp).flags.intersects(window_pane_flags::PANE_EXITED) {
             return false;
+        }
+
+        // Check if there is still unread data in the pty buffer. If so, delay
+        // destruction so the bufferevent can drain it. This prevents data loss
+        // when SIGCHLD races with pty reads.
+        #[cfg(not(target_os = "windows"))]
+        if (*wp).fd != -1 {
+            let mut n = 0;
+            if crate::libc::ioctl((*wp).fd, FIONREAD, &raw mut n) != -1 && n > 0 {
+                return false;
+            }
         }
     }
 

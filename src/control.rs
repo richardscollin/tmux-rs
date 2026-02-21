@@ -348,20 +348,18 @@ pub unsafe fn control_vwrite(c: *mut client, args: std::fmt::Arguments) {
 
         let mut s = args.to_string();
         s.push('\0');
-        let s: *mut u8 = s.as_mut_ptr().cast();
 
         log_debug!(
             "{}: {}: writing line: {}",
             "control_vwrite",
             _s((*c).name),
-            _s(s)
+            _s(s.as_ptr())
         );
 
-        bufferevent_write((*cs).write_event, s.cast(), strlen(s));
+        bufferevent_write((*cs).write_event, s.as_ptr().cast(), s.len() - 1);
         bufferevent_write((*cs).write_event, c!("\n").cast(), 1);
 
         bufferevent_enable((*cs).write_event, EV_WRITE);
-        free_(s);
     }
 }
 

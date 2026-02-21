@@ -386,6 +386,10 @@ pub unsafe fn utf8_towc(ud: *const utf8_data, wc: *mut wchar_t) -> utf8_state {
             0 => return utf8_state::UTF8_ERROR,
             _ => (),
         }
+        // Reject codepoints beyond Unicode range (glibc mbtowc accepts them)
+        if *wc > 0x10FFFF {
+            return utf8_state::UTF8_ERROR;
+        }
         log_debug!(
             "UTF-8 {1:0$} is {2:5X}",
             (*ud).size as usize,

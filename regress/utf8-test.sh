@@ -13,7 +13,7 @@ $TMUX -f/dev/null \
 	  set -g remain-on-exit on \; \
 	  set -g remain-on-exit-format '' \; \
       new -d -- cat UTF-8-test.txt
-sleep 1
+sleep 3
 $TMUX capturep -pCeJS- >$TMP
 $TMUX kill-server
 

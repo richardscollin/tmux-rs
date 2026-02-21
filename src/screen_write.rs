@@ -2097,6 +2097,7 @@ pub unsafe fn screen_write_collect_add(ctx: *mut screen_write_ctx, gc: *const gr
         // a plain character is encountered.
 
         if ((*gc).data.width != 1 || (*gc).data.size != 1 || (*gc).data.data[0] >= 0x7f)
+            || (*gc).flags.intersects(grid_flag::TAB)
             || (*gc).attr.intersects(grid_attr::GRID_ATTR_CHARSET)
             || !(*s).mode.intersects(mode_flag::MODE_WRAP)
             || (*s).mode.intersects(mode_flag::MODE_INSERT)
@@ -2443,7 +2444,17 @@ pub unsafe fn screen_write_overwrite(
                     break;
                 }
                 // log_debug("%s: overwrite at %u,%u", __func__, xx, (*s).cy);
-                grid_view_set_cell(gd, xx, (*s).cy, &raw const GRID_DEFAULT_CELL);
+                if (*gc).flags.intersects(grid_flag::TAB) {
+                    tmp_gc = *gc;
+                    tmp_gc.data.data = [0; UTF8_SIZE];
+                    tmp_gc.data.data[0] = b' ';
+                    tmp_gc.data.width = 1;
+                    tmp_gc.data.size = 1;
+                    tmp_gc.data.have = 1;
+                    grid_view_set_cell(gd, xx, (*s).cy, &raw const tmp_gc);
+                } else {
+                    grid_view_set_cell(gd, xx, (*s).cy, &raw const GRID_DEFAULT_CELL);
+                }
                 done = 1;
             }
         }

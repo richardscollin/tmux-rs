@@ -21,12 +21,11 @@ use crate::compat::{
 #[cfg_attr(target_os = "windows", expect(unused_imports))]
 use crate::libc::{
     EAGAIN, ECHILD, ECONNREFUSED, EINTR, ENAMETOOLONG, ENOENT,
-    O_CREAT, O_WRONLY,
     STDERR_FILENO, STDIN_FILENO,
     STDOUT_FILENO,
     close, connect, dup, execl, memcpy,
-    memset, open, sockaddr, socket, strerror, strlen,
-    system, unlink,
+    memset, sockaddr, socket, strerror, strlen,
+    system,
 };
 use crate::*;
 #[cfg_attr(target_os = "windows", expect(unused_imports))]
@@ -65,17 +64,27 @@ static mut CLIENT_ATTACHED: i32 = 0;
 static mut CLIENT_FILES: client_files = rb_initializer();
 
 #[cfg(not(target_os = "windows"))]
-pub unsafe fn client_get_lock(lockfile: *mut u8) -> i32 {
-    use crate::libc::{flock, LOCK_EX,LOCK_NB};
+pub unsafe fn client_get_lock(lockfile: &str) -> i32 {
+    use crate::libc::{flock, LOCK_EX, LOCK_NB};
+    use crate::compat::FileIntoRawFd;
+    use std::os::unix::fs::OpenOptionsExt;
 
     unsafe {
-        log_debug!("lock file is {}", _s(lockfile));
+        log_debug!("lock file is {}", lockfile);
 
-        let lockfd = open(lockfile, O_WRONLY | O_CREAT, 0o600);
-        if lockfd == -1 {
-            log_debug!("open failed: {}", strerror(errno!()));
-            return -1;
-        }
+        let lockfd = match std::fs::OpenOptions::new()
+            .write(true)
+            .create(true)
+            .truncate(false)
+            .mode(0o600)
+            .open(lockfile)
+        {
+            Ok(file) => file.into_fd(),
+            Err(e) => {
+                log_debug!("open failed: {}", e);
+                return -1;
+            }
+        };
 
         if flock(lockfd, LOCK_EX | LOCK_NB) == -1 {
             log_debug!("flock failed: {}", strerror(errno!()));
@@ -94,7 +103,7 @@ pub unsafe fn client_get_lock(lockfile: *mut u8) -> i32 {
 
 
 #[cfg(not(target_os = "windows"))]
-pub unsafe fn client_connect(base: *mut event_base, path: *const u8, flags: client_flag) -> i32 {
+pub unsafe fn client_connect(base: *mut event_base, path: &str, flags: client_flag) -> i32 {
     use crate::libc::{AF_UNIX,SOCK_STREAM,sockaddr_un};
 
     unsafe {
@@ -102,15 +111,21 @@ pub unsafe fn client_connect(base: *mut event_base, path: *const u8, flags: clie
         let mut fd;
         let mut lockfd = -1;
         let mut locked: i32 = 0;
-        let mut lockfile: *mut u8 = null_mut();
+        let mut lockfile: Option<String> = None;
 
         sa.sun_family = AF_UNIX as libc::sa_family_t;
-        let size = strlcpy(&raw mut sa.sun_path as _, path, size_of_val(&sa.sun_path));
-        if size >= size_of_val(&sa.sun_path) {
+        let path_bytes = path.as_bytes();
+        if path_bytes.len() >= size_of_val(&sa.sun_path) {
             errno!() = ENAMETOOLONG;
             return -1;
         }
-        log_debug!("socket is {}", _s(path));
+        std::ptr::copy_nonoverlapping(
+            path_bytes.as_ptr(),
+            sa.sun_path.as_mut_ptr().cast(),
+            path_bytes.len(),
+        );
+        sa.sun_path[path_bytes.len()] = 0;
+        log_debug!("socket is {}", path);
 
         'failed: {
             'retry: loop {
@@ -139,13 +154,10 @@ pub unsafe fn client_connect(base: *mut event_base, path: *const u8, flags: clie
                     close(fd);
 
                     if locked == 0 {
-                        lockfile = format_nul!("{}.lock", _s(path));
-                        lockfd = client_get_lock(lockfile);
+                        lockfile = Some(format!("{path}.lock"));
+                        lockfd = client_get_lock(lockfile.as_ref().unwrap());
                         if lockfd < 0 {
                             log_debug!("didn't get lock ({})", lockfd);
-
-                            free_(lockfile);
-                            lockfile = null_mut();
 
                             if lockfd == -2 {
                                 continue 'retry;
@@ -157,19 +169,19 @@ pub unsafe fn client_connect(base: *mut event_base, path: *const u8, flags: clie
                         continue 'retry;
                     }
 
-                    if lockfd >= 0 && unlink(path) != 0 && errno!() != ENOENT {
-                        free_(lockfile);
+                    if lockfd >= 0
+                        && matches!(std::fs::remove_file(path), Err(e) if e.kind() != std::io::ErrorKind::NotFound)
+                    {
                         close(lockfd);
                         return -1;
                     }
-                    fd = server_start(CLIENT_PROC, flags, base, lockfd, lockfile);
+                    fd = server_start(CLIENT_PROC, flags, base, lockfd, lockfile.as_deref());
                 }
 
                 break 'retry;
             }
 
             if locked != 0 && lockfd >= 0 {
-                free_(lockfile);
                 close(lockfd);
             }
             setblocking(fd, 0);
@@ -178,7 +190,6 @@ pub unsafe fn client_connect(base: *mut event_base, path: *const u8, flags: clie
 
         // failed:
         if locked != 0 {
-            free_(lockfile as _);
             close(lockfd);
         }
         close(fd);
@@ -246,7 +257,7 @@ pub unsafe extern "C-unwind" fn client_main(
         libc::enable_vt_processing();
         libc::set_console_raw_mode();
 
-        CLIENT_PROC = proc_start(c"client");
+        CLIENT_PROC = proc_start("client");
         CLIENT_FLAGS = flags;
 
         // Initialize server and get the client-side fd of the internal socketpair
@@ -469,7 +480,7 @@ tcsetattr,
             free_(values);
         }
 
-        CLIENT_PROC = proc_start(c"client");
+        CLIENT_PROC = proc_start("client");
         // With event-tokio, defer proc_set_signals to after fork so no
         // tokio tasks exist at fork time.
         #[cfg(not(feature = "event-tokio"))]
@@ -488,14 +499,14 @@ tcsetattr,
                 fn systemd_activated() -> i32;
             }
             if systemd_activated() != 0 {
-                fd = server_start(CLIENT_PROC, flags, base, 0, null_mut());
+                fd = server_start(CLIENT_PROC, flags, base, 0, None);
             } else {
-                fd = client_connect(base, SOCKET_PATH, CLIENT_FLAGS);
+                fd = client_connect(base, SOCKET_PATH.get().unwrap(), CLIENT_FLAGS);
             }
         }
         #[cfg(not(feature = "systemd"))]
         {
-            fd = client_connect(base, SOCKET_PATH, CLIENT_FLAGS);
+            fd = client_connect(base, SOCKET_PATH.get().unwrap(), CLIENT_FLAGS);
         }
 
         // With event-tokio, init the event system and signals after the
@@ -507,11 +518,11 @@ tcsetattr,
         }
         if fd == -1 {
             if errno!() == ECONNREFUSED {
-                eprintln!("no server running on {}", _s(SOCKET_PATH));
+                eprintln!("no server running on {}", SOCKET_PATH.get().unwrap());
             } else {
                 eprintln!(
                     "error connecting to {} ({})",
-                    _s(SOCKET_PATH),
+                    SOCKET_PATH.get().unwrap(),
                     strerror(errno!())
                 );
             }

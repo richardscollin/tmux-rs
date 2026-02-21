@@ -344,8 +344,8 @@ pub unsafe fn job_run(
                         }
                         close(out[0]);
 
-                        use std::os::unix::io::IntoRawFd;
-                        let nullfd= std::fs::OpenOptions::new().read(true).write(true).open(PATH_DEVNULL).expect("open failed").into_raw_fd();
+                        use crate::compat::FileIntoRawFd;
+                        let nullfd = std::fs::OpenOptions::new().read(true).write(true).open(PATH_DEVNULL).expect("open failed").into_fd();
                         if dup2(nullfd, STDERR_FILENO) == -1 {
                             fatal("dup2 failed");
                         }

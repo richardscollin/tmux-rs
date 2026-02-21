@@ -27,15 +27,6 @@ pub unsafe fn free_<T>(p: *mut T) {
     unsafe { ::libc_sys::free(p as *mut c_void) }
 }
 
-#[allow(clippy::allow_attributes)]
-#[allow(
-    clippy::unnecessary_cast,
-    reason = "mode_t is u16 on macos so cast is required for some platforms only (should be allow, not expect)"
-)]
-pub unsafe fn open(path: *const u8, oflag: i32, mode: mode_t) -> i32 {
-    unsafe { ::libc_sys::open(path.cast(), oflag, mode as u32) }
-}
-
 pub unsafe fn fopen(filename: *const u8, mode: *const u8) -> *mut FILE {
     unsafe { ::libc_sys::fopen(filename.cast(), mode.cast()) }
 }

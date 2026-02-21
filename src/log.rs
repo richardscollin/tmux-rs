@@ -45,10 +45,10 @@ pub fn log_get_level() -> i32 {
     LOG_LEVEL.load(DEFAULT_ORDERING)
 }
 
-pub fn log_open(name: &CStr) {
+pub fn log_open(name: &str) {
     let level = LOG_LEVEL.load(DEFAULT_ORDERING);
     let pid = std::process::id();
-    let filename = format!("tmux-{}-{}.log", name.to_str().unwrap(), pid);
+    let filename = format!("tmux-{name}-{pid}.log");
 
     if level == 0 {
         return;
@@ -68,7 +68,7 @@ pub fn log_open(name: &CStr) {
     unsafe { event_set_log_callback(Some(log_event_cb)) };
 }
 
-pub fn log_toggle(name: &CStr) {
+pub fn log_toggle(name: &str) {
     if LOG_LEVEL.fetch_xor(1, DEFAULT_ORDERING) == 0 {
         log_open(name);
         log_debug!("log opened");

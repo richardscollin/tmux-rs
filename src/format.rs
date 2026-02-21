@@ -2433,7 +2433,7 @@ pub unsafe fn format_cb_session_windows(ft: *mut format_tree) -> format_table_ty
 
 /// Callback for `socket_path`.
 pub unsafe fn format_cb_socket_path(_ft: *mut format_tree) -> format_table_type {
-    unsafe { format!("{}", _s(SOCKET_PATH)).into() }
+    SOCKET_PATH.get().unwrap().clone().into()
 }
 
 /// Callback for version.

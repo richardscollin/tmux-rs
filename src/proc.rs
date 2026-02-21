@@ -195,11 +195,11 @@ pub unsafe fn proc_send(
     }
 }
 
-pub fn proc_start(name: &CStr) -> *mut tmuxproc {
+pub fn proc_start(name: &str) -> *mut tmuxproc {
     unsafe {
         log_open(name);
-        let name: *const u8 = name.as_ptr().cast();
-        setproctitle_(c"%s (%s)".as_ptr().cast(), name, SOCKET_PATH);
+        let socket_path = SOCKET_PATH.get().unwrap();
+        setproctitle_(format!("tmux: {name} ({socket_path})"));
 
         let mut u = MaybeUninit::<utsname>::uninit();
         if uname(u.as_mut_ptr()) < 0 {
@@ -209,10 +209,10 @@ pub fn proc_start(name: &CStr) -> *mut tmuxproc {
 
         log_debug!(
             "{} started ({}): version {}, socket {}, protocol {}",
-            _s(name),
+            name,
             std::process::id(),
             getversion(),
-            _s(SOCKET_PATH),
+            socket_path,
             PROTOCOL_VERSION,
         );
         log_debug!(
@@ -232,7 +232,7 @@ pub fn proc_start(name: &CStr) -> *mut tmuxproc {
         }
 
         let tp = xcalloc1::<tmuxproc>();
-        tp.name = xstrdup(name).as_ptr();
+        tp.name = xstrdup__(name);
         tailq_init(&raw mut tp.peers);
 
         tp
@@ -461,7 +461,7 @@ pub unsafe fn proc_flush_peer(peer: *mut tmuxpeer) {
 
 pub unsafe fn proc_toggle_log(tp: *mut tmuxproc) {
     unsafe {
-        log_toggle(CStr::from_ptr((*tp).name.cast()));
+        log_toggle(cstr_to_str((*tp).name));
     }
 }
 

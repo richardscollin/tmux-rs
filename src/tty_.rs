@@ -59,16 +59,8 @@ pub unsafe fn tty_create_log() {
     unsafe {
         if let Ok(file) = open_options.open(format!("tmux-out-{}.log", std::process::id()))
         {
-            #[cfg(not(target_os = "windows"))]
-            {
-                use std::os::fd::IntoRawFd;
-                TTY_LOG_FD = file.into_raw_fd();
-            }
-            #[cfg(target_os = "windows")]
-            {
-                use std::os::windows::io::IntoRawHandle;
-                TTY_LOG_FD = file.into_raw_handle() as i32;
-            }
+            use crate::compat::FileIntoRawFd;
+            TTY_LOG_FD = file.into_fd();
         } else {
             TTY_LOG_FD = -1;
         }

@@ -21,7 +21,7 @@ use crate::compat::{fdforkpty::getptmfd, getprogname::getprogname};
 use crate::libc::{
     LC_TIME,
     access, getpwuid, getuid,
-    nl_langinfo, setlocale, strchr, strcspn, strerror, strncmp, strrchr, timespec,
+    nl_langinfo, setlocale, strchr, strerror, strncmp, strrchr, timespec,
 };
 #[cfg(not(target_os = "windows"))]
 use crate::libc::fcntl;
@@ -38,10 +38,8 @@ pub static mut START_TIME: timeval = timeval {
     tv_usec: 0,
 };
 
-pub static mut SOCKET_PATH: *const u8 = null_mut();
-
+pub static SOCKET_PATH: std::sync::OnceLock<String> = std::sync::OnceLock::new();
 pub static mut PTM_FD: c_int = -1;
-
 pub static mut SHELL_COMMAND: *mut u8 = null_mut();
 
 pub fn usage() -> ! {
@@ -313,7 +311,7 @@ unsafe fn expand_paths(s: &str, paths: &mut Vec<CString>, ignore_errors: i32) {
     }
 }
 
-unsafe fn make_label(mut label: *const u8) -> Result<CString, String> {
+unsafe fn make_label(mut label: *const u8) -> Result<String, String> {
     #[cfg(not(target_os = "windows"))]
     use crate::libc::S_IRWXO;
 
@@ -382,7 +380,7 @@ unsafe fn make_label(mut label: *const u8) -> Result<CString, String> {
             }
         }
 
-        Ok(CString::new(format!("{}/{}", base, _s(label))).unwrap())
+        Ok(format!("{}/{}", base, _s(label)))
     }
 }
 
@@ -505,7 +503,7 @@ pub unsafe fn tmux_main(mut argc: i32, mut argv: *mut *mut u8, _env: *mut *mut u
 
     unsafe {
         // setproctitle_init(argc, argv.cast(), env.cast());
-        let mut path: *const u8 = null_mut();
+        let mut path: Option<String> = None;
         let mut label: *mut u8 = null_mut();
         let mut feat: i32 = 0;
         let mut fflag: i32 = 0;
@@ -598,8 +596,7 @@ pub unsafe fn tmux_main(mut argc: i32, mut argv: *mut *mut u8, _env: *mut *mut u
                 b'N' => flags |= client_flag::NOSTARTSERVER,
                 b'q' => (),
                 b'S' => {
-                    free(path as _);
-                    path = xstrdup(OPTARG.cast()).cast().as_ptr();
+                    path = Some(cstr_to_str(OPTARG.cast()).to_string());
                 }
                 b'T' => tty_add_features(&raw mut feat, cstr_to_str(OPTARG.cast()), c!(":,")),
                 b'u' => flags |= client_flag::UTF8,
@@ -702,20 +699,18 @@ pub unsafe fn tmux_main(mut argc: i32, mut argv: *mut *mut u8, _env: *mut *mut u
         // If socket is specified on the command-line with -S or -L, it is
         // used. Otherwise, $TMUX is checked and if that fails "default" is
         // used.
-        if path.is_null()
+        if path.is_none()
             && label.is_null()
             && let Ok(s) = std::env::var("TMUX")
             && !s.is_empty()
             && s.as_bytes()[0] != b','
         {
-            let tmp: *mut u8 = xstrdup__(&s);
-            *tmp.add(strcspn(tmp, c!(","))) = b'\0';
-            path = tmp;
+            path = s.split(',').next().map(std::string::ToString::to_string);
         }
-        if path.is_null() {
+        if path.is_none() {
             match make_label(label.cast()) {
                 Ok(p) => {
-                    path = p.into_raw().cast();
+                    path = Some(p);
                 }
                 Err(cause) => {
                     eprintln!("{cause}");
@@ -724,7 +719,7 @@ pub unsafe fn tmux_main(mut argc: i32, mut argv: *mut *mut u8, _env: *mut *mut u
             }
             flags |= client_flag::DEFAULTSOCKET;
         }
-        SOCKET_PATH = path;
+        SOCKET_PATH.set(path.unwrap()).ok();
         free_(label);
 
         // Pass control to the client.

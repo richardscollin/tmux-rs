@@ -14,9 +14,9 @@
 use crate::compat::ACCESSPERMS;
 use crate::libc::{
     AF_UNIX, ENAMETOOLONG, S_IRGRP, S_IROTH, S_IRUSR, S_IRWXG, S_IRWXO, S_IXGRP, S_IXOTH,
-    S_IXUSR, SOCK_STREAM, accept, bind, chmod, close,
+    S_IXUSR, SOCK_STREAM, accept, bind, close,
     listen, sockaddr_storage,
-    sockaddr_un, socket, socklen_t, stat, strerror, strsignal, umask, unlink,
+    sockaddr_un, socket, socklen_t, strerror, strsignal, umask, unlink,
 };
 use crate::*;
 use crate::options_::*;
@@ -73,18 +73,21 @@ pub unsafe fn server_check_marked() -> bool {
 
 pub unsafe fn server_create_socket(flags: client_flag) -> Result<i32, String> {
     unsafe {
+        let socket_path = SOCKET_PATH.get().unwrap();
+        let socket_path_c = CString::new(socket_path.as_str()).unwrap();
+
         let mut sa: sockaddr_un = zeroed();
         sa.sun_family = AF_UNIX as _;
         let size = strlcpy(
             sa.sun_path.as_mut_ptr().cast(),
-            SOCKET_PATH,
+            socket_path_c.as_ptr().cast(),
             size_of_val(&sa.sun_path),
         );
         if size >= size_of_val(&sa.sun_path) {
             errno!() = ENAMETOOLONG;
             return Err(format!(
                 "error creating {} ({})",
-                _s(SOCKET_PATH),
+                socket_path,
                 strerror(errno!())
             ));
         }
@@ -94,7 +97,7 @@ pub unsafe fn server_create_socket(flags: client_flag) -> Result<i32, String> {
         if fd == -1 {
             return Err(format!(
                 "error creating {} ({})",
-                _s(SOCKET_PATH),
+                socket_path,
                 strerror(errno!())
             ));
         }
@@ -112,7 +115,7 @@ pub unsafe fn server_create_socket(flags: client_flag) -> Result<i32, String> {
             errno!() = saved_errno;
             return Err(format!(
                 "error creating {} ({})",
-                _s(SOCKET_PATH),
+                socket_path,
                 strerror(errno!())
             ));
         }
@@ -124,7 +127,7 @@ pub unsafe fn server_create_socket(flags: client_flag) -> Result<i32, String> {
             errno!() = saved_errno;
             return Err(format!(
                 "error creating {} ({})",
-                _s(SOCKET_PATH),
+                socket_path,
                 strerror(errno!())
             ));
         }
@@ -163,7 +166,7 @@ pub unsafe fn server_start(
     flags: client_flag,
     #[cfg_attr(feature = "event-tokio", expect(unused))] base: *mut event_base,
     lockfd: c_int,
-    lockfile: *mut u8,
+    lockfile: Option<&str>,
 ) -> c_int {
     unsafe {
         let mut fd = 0;
@@ -241,7 +244,7 @@ pub unsafe fn server_start(
         if event_reinit(base) != 0 {
             fatalx("event_reinit failed");
         }
-        SERVER_PROC = proc_start(c"server");
+        SERVER_PROC = proc_start("server");
 
         proc_set_signals(SERVER_PROC, Some(server_signal));
         #[cfg(not(target_os = "windows"))]
@@ -288,8 +291,9 @@ pub unsafe fn server_start(
         }
         log_debug!("server_start: closing lockfd={lockfd}");
         if lockfd >= 0 {
-            unlink(lockfile);
-            free_(lockfile);
+            if let Some(lockfile) = lockfile {
+                let _ = std::fs::remove_file(lockfile);
+            }
             close(lockfd);
         }
 
@@ -369,7 +373,7 @@ pub unsafe fn server_start_windows(
         {
             let _ = osdep_event_init();
         }
-        SERVER_PROC = proc_start(c"server");
+        SERVER_PROC = proc_start("server");
         proc_set_signals(SERVER_PROC, Some(server_signal));
 
         if log_get_level() > 1 {
@@ -544,8 +548,6 @@ unsafe fn server_send_exit() {
 pub unsafe fn server_update_socket() {
     static mut LAST: c_int = -1;
     unsafe {
-        let mut sb: stat = zeroed(); // TODO remove unecessary init
-
         let mut n = 0;
         for s in rb_foreach(&raw mut SESSIONS).map(std::ptr::NonNull::as_ptr) {
             if (*s).attached != 0 {
@@ -557,24 +559,29 @@ pub unsafe fn server_update_socket() {
         if n != LAST {
             LAST = n;
 
-            if stat(SOCKET_PATH.cast(), &raw mut sb) != 0 {
-                return;
+            #[cfg(unix)]
+            {
+                use std::os::unix::fs::{MetadataExt, PermissionsExt};
+                let socket_path = SOCKET_PATH.get().unwrap();
+                let Ok(metadata) = std::fs::metadata(socket_path) else {
+                    return;
+                };
+                let mut mode = metadata.mode() & ACCESSPERMS;
+                if n != 0 {
+                    if mode & S_IRUSR != 0 {
+                        mode |= S_IXUSR;
+                    }
+                    if mode & S_IRGRP != 0 {
+                        mode |= S_IXGRP;
+                    }
+                    if mode & S_IROTH != 0 {
+                        mode |= S_IXOTH;
+                    }
+                } else {
+                    mode &= !(S_IXUSR | S_IXGRP | S_IXOTH);
+                }
+                std::fs::set_permissions(socket_path, std::fs::Permissions::from_mode(mode)).ok();
             }
-            let mut mode = sb.st_mode & ACCESSPERMS;
-            if n != 0 {
-                if mode & S_IRUSR != 0 {
-                    mode |= S_IXUSR;
-                }
-                if mode & S_IRGRP != 0 {
-                    mode |= S_IXGRP;
-                }
-                if mode & S_IROTH != 0 {
-                    mode |= S_IXOTH;
-                }
-            } else {
-                mode &= !(S_IXUSR | S_IXGRP | S_IXOTH);
-            }
-            chmod(SOCKET_PATH.cast(), mode);
         }
     }
 }

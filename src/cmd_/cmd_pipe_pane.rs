@@ -132,7 +132,8 @@ pub unsafe fn cmd_pipe_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
                 sigprocmask(SIG_SETMASK, &oldset, null_mut());
                 close(pipe_fd[0]);
 
-                let null_fd = std::fs::OpenOptions::new().write(true).open(PATH_DEVNULL).map(std::os::fd::IntoRawFd::into_raw_fd).unwrap_or(-1);
+                use crate::compat::FileIntoRawFd;
+                let null_fd = std::fs::OpenOptions::new().write(true).open(PATH_DEVNULL).map(FileIntoRawFd::into_fd).unwrap_or(-1);
                 #[expect(clippy::collapsible_else_if)]
                 if out {
                     if dup2(pipe_fd[1], STDIN_FILENO) == -1 {

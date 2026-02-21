@@ -11,7 +11,7 @@
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-use crate::libc::{O_APPEND, O_TRUNC};
+use crate::tmux_protocol::FileOpenFlags;
 use crate::*;
 
 pub static CMD_SAVE_BUFFER_ENTRY: cmd_entry = cmd_entry {
@@ -102,9 +102,9 @@ unsafe fn cmd_save_buffer_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
             path = format_single_from_target(item, args_string(args, 0));
         }
         let flags = if args_has(args, 'a') {
-            O_APPEND
+            FileOpenFlags::Append
         } else {
-            O_TRUNC
+            FileOpenFlags::Truncate
         };
         file_write(
             cmdq_get_client(item),

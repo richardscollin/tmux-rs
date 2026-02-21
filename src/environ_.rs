@@ -281,7 +281,7 @@ pub unsafe fn environ_for_session(s: *mut session, no_term: c_int) -> *mut envir
             c!("TMUX"),
             environ_flags::empty(),
             "{},{},{}",
-            _s(SOCKET_PATH),
+            SOCKET_PATH.get().unwrap(),
             std::process::id(),
             idx,
         );

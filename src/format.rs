@@ -3585,6 +3585,7 @@ pub unsafe fn format_unescape(mut s: *const u8) -> *mut u8 {
             }
             *cp = *s;
             cp = cp.add(1);
+            s = s.add(1);
         }
         *cp = b'\0';
         out

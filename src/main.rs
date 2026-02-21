@@ -29,7 +29,7 @@ unsafe impl GlobalAlloc for MyAlloc {
     unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
         unsafe {
             if layout.align() <= MIN_ALIGN {
-                libc::free(ptr.cast())
+                libc::free(ptr.cast());
             } else {
                 #[cfg(unix)]
                 libc::free(ptr.cast());

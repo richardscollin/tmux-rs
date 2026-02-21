@@ -201,9 +201,9 @@ pub unsafe extern "C-unwind" fn input_key_build() {
             }
         }
 
-        for ike in rb_foreach(&raw mut INPUT_KEY_TREE).map(NonNull::as_ptr) {
+        // for ike in rb_foreach(&raw mut INPUT_KEY_TREE).map(NonNull::as_ptr) {
             // log_debug!( "{}:{} : 0x{:x} ({}) is {}", file!(), line!(), (*ike).key, _s(key_string_lookup_key((*ike).key, 1)), _s((*ike).data));
-        }
+        // }
     }
 }
 

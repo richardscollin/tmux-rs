@@ -12,11 +12,11 @@
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-use std::cmp::Ordering;
+use std::cell::RefCell;
+use std::collections::BTreeMap;
 
-use crate::compat::{
-    queue::{tailq_empty, tailq_first, tailq_foreach, tailq_init, tailq_insert_tail, tailq_remove},
-    tree::{rb_find, rb_foreach, rb_initializer, rb_insert, rb_remove},
+use crate::compat::queue::{
+    tailq_empty, tailq_first, tailq_foreach, tailq_init, tailq_insert_tail, tailq_remove,
 };
 use crate::*;
 
@@ -49,45 +49,32 @@ pub struct wait_channel {
 
     pub waiters: tailq_head<wait_item>,
     pub lockers: tailq_head<wait_item>,
-
-    pub entry: rb_entry<wait_channel>,
 }
 
-pub type wait_channels = rb_head<wait_channel>;
-
-static mut WAIT_CHANNELS: wait_channels = rb_initializer();
-
-RB_GENERATE!(
-    wait_channels,
-    wait_channel,
-    entry,
-    discr_entry,
-    wait_channel_cmp
-);
-
-pub fn wait_channel_cmp(wc1: &wait_channel, wc2: &wait_channel) -> Ordering {
-    unsafe { i32_to_ordering(libc::strcmp(wc1.name, wc2.name)) }
+thread_local! {
+    static WAIT_CHANNELS: RefCell<BTreeMap<Box<str>, Box<wait_channel>>> = const { RefCell::new(BTreeMap::new()) };
 }
 
 pub unsafe fn cmd_wait_for_add(name: *const u8) -> *mut wait_channel {
     unsafe {
-        let wc = Box::leak(Box::new(wait_channel {
+        let key: Box<str> = cstr_to_str(name).into();
+        let mut wc = Box::new(wait_channel {
             name: xstrdup(name).as_ptr(),
             locked: false,
             woken: false,
             waiters: zeroed(),
             lockers: zeroed(),
-            entry: zeroed(),
-        })) as *mut wait_channel;
+        });
 
-        tailq_init(&raw mut (*wc).waiters);
-        tailq_init(&raw mut (*wc).lockers);
+        tailq_init(&raw mut wc.waiters);
+        tailq_init(&raw mut wc.lockers);
 
-        rb_insert(&raw mut WAIT_CHANNELS, wc);
+        log_debug!("add wait channel {}", _s(wc.name));
 
-        log_debug!("add wait channel {}", _s((*wc).name));
-
-        wc
+        WAIT_CHANNELS.with_borrow_mut(|channels| {
+            let entry = channels.entry(key).or_insert(wc);
+            &mut **entry as *mut wait_channel
+        })
     }
 }
 
@@ -102,10 +89,12 @@ pub unsafe fn cmd_wait_for_remove(wc: *mut wait_channel) {
 
         log_debug!("remove wait channel {}", _s((*wc).name));
 
-        rb_remove(&raw mut WAIT_CHANNELS, wc);
-
-        free_((*wc).name);
-        free_(wc);
+        let key: Box<str> = cstr_to_str((*wc).name).into();
+        WAIT_CHANNELS.with_borrow_mut(|channels| {
+            if let Some(removed) = channels.remove(key.as_ref()) {
+                free_(removed.name);
+            }
+        });
     }
 }
 
@@ -113,11 +102,12 @@ pub unsafe fn cmd_wait_for_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
     unsafe {
         let args = cmd_get_args(self_);
         let name = args_string(args, 0);
-        // struct wait_channel *wc, find;
 
-        let mut find: wait_channel = zeroed();
-        find.name = name as *mut u8; // TODO casting away const
-        let wc = rb_find(&raw mut WAIT_CHANNELS, &raw mut find);
+        let key = cstr_to_str(name);
+        let wc = WAIT_CHANNELS.with_borrow_mut(|channels| match channels.get_mut(key) {
+            Some(wc) => &mut **wc as *mut wait_channel,
+            None => null_mut(),
+        });
 
         if args_has(args, 'S') {
             return cmd_wait_for_signal(item, name, wc);
@@ -246,7 +236,17 @@ pub unsafe fn cmd_wait_for_unlock(
 
 pub unsafe fn cmd_wait_for_flush() {
     unsafe {
-        for wc in rb_foreach(&raw mut WAIT_CHANNELS).map(NonNull::as_ptr) {
+        let keys: Vec<Box<str>> =
+            WAIT_CHANNELS.with_borrow(|channels| channels.keys().cloned().collect());
+        for key in keys {
+            let wc = WAIT_CHANNELS.with_borrow_mut(|channels| match channels.get_mut(key.as_ref())
+            {
+                Some(wc) => &mut **wc as *mut wait_channel,
+                None => null_mut(),
+            });
+            if wc.is_null() {
+                continue;
+            }
             for wi in tailq_foreach(&raw mut (*wc).waiters).map(NonNull::as_ptr) {
                 cmdq_continue((*wi).item);
                 tailq_remove(&raw mut (*wc).waiters, wi);

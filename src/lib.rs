@@ -1917,7 +1917,7 @@ struct args_value {
     // #[entry]
     entry: tailq_entry<args_value>,
 }
-type args_tree = rb_head<args_entry>;
+type args_tree = std::collections::BTreeMap<u8, Box<args_entry>>;
 
 /// Arguments parsing type.
 #[repr(C)]

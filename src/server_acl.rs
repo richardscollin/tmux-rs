@@ -12,6 +12,9 @@
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+use std::cell::RefCell;
+use std::collections::BTreeMap;
+
 use crate::libc::{getpwuid, getuid};
 use crate::*;
 
@@ -27,117 +30,100 @@ pub struct server_acl_user {
     pub uid: uid_t,
 
     pub flags: server_acl_user_flags,
-
-    pub entry: rb_entry<server_acl_user>,
 }
 
-pub fn server_acl_cmp(user1: &server_acl_user, user2: &server_acl_user) -> cmp::Ordering {
-    user1.uid.cmp(&user2.uid)
+thread_local! {
+    static SERVER_ACL_ENTRIES: RefCell<BTreeMap<uid_t, Box<server_acl_user>>> = const { RefCell::new(BTreeMap::new()) };
 }
 
-pub type server_acl_entries = rb_head<server_acl_user>;
-static mut SERVER_ACL_ENTRIES: server_acl_entries = unsafe { zeroed() };
-
-RB_GENERATE!(
-    server_acl_entries,
-    server_acl_user,
-    entry,
-    discr_entry,
-    server_acl_cmp
-);
-
-pub unsafe fn server_acl_init() {
-    unsafe {
-        rb_init(&raw mut SERVER_ACL_ENTRIES);
-
-        if getuid() != 0 {
-            server_acl_user_allow(0);
-        }
-        server_acl_user_allow(getuid());
+pub fn server_acl_init() {
+    let uid = unsafe { getuid() };
+    if uid != 0 {
+        server_acl_user_allow(0);
     }
+    server_acl_user_allow(uid);
 }
 
-pub unsafe fn server_acl_user_find(uid: uid_t) -> *mut server_acl_user {
-    unsafe {
-        let mut find: server_acl_user = server_acl_user { uid, ..zeroed() };
+pub fn server_acl_user_exists(uid: uid_t) -> bool {
+    SERVER_ACL_ENTRIES.with_borrow(|entries| entries.contains_key(&uid))
+}
 
-        rb_find::<_, _>(&raw mut SERVER_ACL_ENTRIES, &raw mut find)
-    }
+pub fn server_acl_user_is_readonly(uid: uid_t) -> Option<bool> {
+    SERVER_ACL_ENTRIES.with_borrow(|entries| {
+        entries
+            .get(&uid)
+            .map(|user| user.flags.contains(server_acl_user_flags::SERVER_ACL_READONLY))
+    })
 }
 
 pub unsafe fn server_acl_display(item: *mut cmdq_item) {
-    unsafe {
-        // server_acl_entries
-        for loop_ in rb_foreach(&raw mut SERVER_ACL_ENTRIES).map(NonNull::as_ptr) {
-            if (*loop_).uid == 0 {
+    SERVER_ACL_ENTRIES.with_borrow(|entries| {
+        for user in entries.values() {
+            if user.uid == 0 {
                 continue;
             }
-            let pw = getpwuid((*loop_).uid);
-            let name: *const u8 = if !pw.is_null() {
-                (*pw).pw_name.cast()
-            } else {
-                c!("unknown")
-            };
-            if (*loop_).flags == server_acl_user_flags::SERVER_ACL_READONLY {
-                cmdq_print!(item, "{} (R)", _s(name));
-            } else {
-                cmdq_print!(item, "{} (W)", _s(name));
+            unsafe {
+                let pw = getpwuid(user.uid);
+                let name: *const u8 = if !pw.is_null() {
+                    (*pw).pw_name.cast()
+                } else {
+                    c!("unknown")
+                };
+                if user.flags == server_acl_user_flags::SERVER_ACL_READONLY {
+                    cmdq_print!(item, "{} (R)", _s(name));
+                } else {
+                    cmdq_print!(item, "{} (W)", _s(name));
+                }
             }
         }
-    }
+    });
 }
 
-pub unsafe fn server_acl_user_allow(uid: uid_t) {
-    unsafe {
-        let mut user = server_acl_user_find(uid);
-        if user.is_null() {
-            user = xcalloc1();
-            (*user).uid = uid;
-            // server_acl_entries
-            rb_insert(&raw mut SERVER_ACL_ENTRIES, user);
-        }
-    }
+pub fn server_acl_user_allow(uid: uid_t) {
+    SERVER_ACL_ENTRIES.with_borrow_mut(|entries| {
+        entries.entry(uid).or_insert_with(|| {
+            Box::new(server_acl_user {
+                uid,
+                flags: server_acl_user_flags::empty(),
+            })
+        });
+    });
 }
 
-pub unsafe fn server_acl_user_deny(uid: uid_t) {
-    unsafe {
-        let user = server_acl_user_find(uid);
-        if !user.is_null() {
-            // server_acl_entries
-            rb_remove(&raw mut SERVER_ACL_ENTRIES, user);
-            free_(user);
-        }
-    }
+pub fn server_acl_user_deny(uid: uid_t) {
+    SERVER_ACL_ENTRIES.with_borrow_mut(|entries| {
+        entries.remove(&uid);
+    });
 }
 
-pub unsafe fn server_acl_user_allow_write(mut uid: uid_t) {
-    unsafe {
-        let user = server_acl_user_find(uid);
-        if user.is_null() {
-            return;
+pub unsafe fn server_acl_user_allow_write(uid: uid_t) {
+    SERVER_ACL_ENTRIES.with_borrow_mut(|entries| {
+        if let Some(user) = entries.get_mut(&uid) {
+            user.flags &= !server_acl_user_flags::SERVER_ACL_READONLY;
         }
-        (*user).flags &= !server_acl_user_flags::SERVER_ACL_READONLY;
+    });
 
+    unsafe {
         for c in tailq_foreach(&raw mut CLIENTS).map(NonNull::as_ptr) {
-            uid = proc_get_peer_uid((*c).peer);
-            if uid != -1i32 as uid_t && uid == (*user).uid {
+            let peer_uid = proc_get_peer_uid((*c).peer);
+            if peer_uid != -1i32 as uid_t && peer_uid == uid {
                 (*c).flags &= !client_flag::READONLY;
             }
         }
     }
 }
 
-pub unsafe fn server_acl_user_deny_write(mut uid: uid_t) {
-    unsafe {
-        let user = server_acl_user_find(uid);
-        if user.is_null() {
-            return;
+pub unsafe fn server_acl_user_deny_write(uid: uid_t) {
+    SERVER_ACL_ENTRIES.with_borrow_mut(|entries| {
+        if let Some(user) = entries.get_mut(&uid) {
+            user.flags |= server_acl_user_flags::SERVER_ACL_READONLY;
         }
-        (*user).flags |= server_acl_user_flags::SERVER_ACL_READONLY;
+    });
 
+    unsafe {
         for c in tailq_foreach(&raw mut CLIENTS).map(NonNull::as_ptr) {
-            uid = proc_get_peer_uid((*c).peer);
-            if uid != -1i32 as uid_t && uid == (*user).uid {
+            let peer_uid = proc_get_peer_uid((*c).peer);
+            if peer_uid != -1i32 as uid_t && peer_uid == uid {
                 (*c).flags &= !client_flag::READONLY;
             }
         }
@@ -151,20 +137,13 @@ pub unsafe fn server_acl_join(c: *mut client) -> c_int {
             return 0;
         }
 
-        let user = server_acl_user_find(uid);
-        if user.is_null() {
-            return 0;
+        match server_acl_user_is_readonly(uid) {
+            None => 0,
+            Some(true) => {
+                (*c).flags |= client_flag::READONLY;
+                1
+            }
+            Some(false) => 1,
         }
-        if (*user)
-            .flags
-            .contains(server_acl_user_flags::SERVER_ACL_READONLY)
-        {
-            (*c).flags |= client_flag::READONLY;
-        }
-        1
     }
-}
-
-pub unsafe fn server_acl_get_uid(user: *mut server_acl_user) -> uid_t {
-    unsafe { (*user).uid }
 }

@@ -16,18 +16,14 @@ use crate::*;
 pub type args_values = tailq_head<args_value>;
 
 const ARGS_ENTRY_OPTIONAL_VALUE: c_int = 1;
-#[repr(C)]
 pub struct args_entry {
     pub flag: c_uchar,
     pub values: args_values,
     pub count: c_uint,
 
     pub flags: c_int,
-
-    pub entry: rb_entry<args_entry>,
 }
 
-#[repr(C)]
 pub struct args {
     pub tree: args_tree,
     pub count: u32,
@@ -41,17 +37,12 @@ pub struct args_command_state<'a> {
     pub pi: cmd_parse_input<'a>,
 }
 
-RB_GENERATE!(args_tree, args_entry, entry, discr_entry, args_cmp);
-
-fn args_cmp(a1: &args_entry, a2: &args_entry) -> cmp::Ordering {
-    a1.flag.cmp(&a2.flag)
-}
-
 pub unsafe fn args_find(args: *mut args, flag: c_uchar) -> *mut args_entry {
     unsafe {
-        let mut entry: args_entry = args_entry { flag, ..zeroed() };
-
-        rb_find(&raw mut (*args).tree, &raw mut entry)
+        match (*args).tree.get_mut(&flag) {
+            Some(entry) => &mut **entry as *mut args_entry,
+            None => null_mut(),
+        }
     }
 }
 
@@ -97,7 +88,7 @@ pub unsafe fn args_value_as_string(value: *mut args_value) -> *const u8 {
 impl args {
     fn create() -> Box<Self> {
         Box::new(Self {
-            tree: rb_head::rb_init(),
+            tree: args_tree::new(),
             count: 0,
             values: null_mut(),
         })
@@ -372,7 +363,8 @@ pub unsafe fn args_copy(args: *mut args, argc: i32, argv: *mut *mut u8) -> *mut 
         cmd_log_argv!(argc, argv, "{__func__}");
 
         let new_args = args_create();
-        for entry in rb_foreach(&raw mut (*args).tree).map(NonNull::as_ptr) {
+        for entry in (*args).tree.values_mut() {
+            let entry = &mut **entry as *mut args_entry;
             if tailq_empty(&raw mut (*entry).values) {
                 for _ in 0..(*entry).count {
                     args_set(new_args, (*entry).flag, null_mut(), 0);
@@ -423,16 +415,15 @@ pub unsafe fn args_free(args: *mut args) {
         args_free_values((*args).values, (*args).count);
         free_((*args).values);
 
-        for entry in rb_foreach(&raw mut (*args).tree).map(NonNull::as_ptr) {
-            rb_remove(&raw mut (*args).tree, entry);
-            for value in tailq_foreach(&raw mut (*entry).values).map(NonNull::as_ptr) {
-                tailq_remove(&raw mut (*entry).values, value);
+        for entry in (*args).tree.values_mut() {
+            for value in tailq_foreach(&raw mut entry.values).map(NonNull::as_ptr) {
+                tailq_remove(&raw mut entry.values, value);
                 args_free_value(value);
                 free_(value);
             }
-            free_(entry);
         }
-
+        // Drop the BTreeMap (frees the Box<args_entry> nodes) before freeing the struct.
+        std::ptr::drop_in_place(&raw mut (*args).tree);
         free_(args);
     }
 }
@@ -517,7 +508,8 @@ pub unsafe fn args_print(args: *mut args) -> *mut u8 {
         let mut buf: *mut u8 = xcalloc(1, len).cast().as_ptr();
 
         // Process the flags first.
-        for entry in rb_foreach(&raw mut (*args).tree).map(NonNull::as_ptr) {
+        for entry in (*args).tree.values_mut() {
+            let entry = &mut **entry as *mut args_entry;
             if (*entry).flags & ARGS_ENTRY_OPTIONAL_VALUE != 0 {
                 continue;
             }
@@ -534,7 +526,8 @@ pub unsafe fn args_print(args: *mut args) -> *mut u8 {
         }
 
         // Then the flags with arguments.
-        for entry in rb_foreach(&raw mut (*args).tree).map(NonNull::as_ptr) {
+        for entry in (*args).tree.values_mut() {
+            let entry = &mut **entry as *mut args_entry;
             if (*entry).flags & ARGS_ENTRY_OPTIONAL_VALUE != 0 {
                 if *buf != b'\0' {
                     args_print_add!(&raw mut buf, &raw mut len, " -{}", (*entry).flag as char);
@@ -649,20 +642,19 @@ pub unsafe fn args_has(args: *mut args, flag: char) -> bool {
 
 pub unsafe fn args_set(args: *mut args, flag: c_uchar, value: *mut args_value, flags: i32) {
     unsafe {
-        let mut entry: *mut args_entry = args_find(args, flag);
-
-        if entry.is_null() {
-            entry = xcalloc1();
-            (*entry).flag = flag;
-            (*entry).count = 1;
-            (*entry).flags = flags;
-            tailq_init(&raw mut (*entry).values);
-            rb_insert(&raw mut (*args).tree, entry);
-        } else {
-            (*entry).count += 1;
-        }
+        let entry = (*args).tree.entry(flag).or_insert_with(|| {
+            let mut e = Box::new(args_entry {
+                flag,
+                values: zeroed(),
+                count: 0,
+                flags,
+            });
+            tailq_init(&raw mut e.values);
+            e
+        });
+        entry.count += 1;
         if !value.is_null() && (*value).type_ != args_type::ARGS_NONE {
-            tailq_insert_tail(&raw mut (*entry).values, value);
+            tailq_insert_tail(&raw mut entry.values, value);
         } else {
             free_(value);
         }
@@ -685,22 +677,38 @@ pub unsafe fn args_get(args: *mut args, flag: u8) -> *const u8 {
 
 pub unsafe fn args_first(args: *mut args, entry: *mut *mut args_entry) -> u8 {
     unsafe {
-        *entry = rb_min(&raw mut (*args).tree);
-        if (*entry).is_null() {
-            return 0;
+        match (*args).tree.first_key_value() {
+            Some((_, e)) => {
+                *entry = &**e as *const args_entry as *mut args_entry;
+                e.flag
+            }
+            None => {
+                *entry = null_mut();
+                0
+            }
         }
-        (*(*entry)).flag
     }
 }
 
 /// Get next argument.
-pub unsafe fn args_next(entry: *mut *mut args_entry) -> u8 {
+pub unsafe fn args_next(args: *mut args, entry: *mut *mut args_entry) -> u8 {
     unsafe {
-        *entry = rb_next(*entry);
-        if (*entry).is_null() {
-            return 0;
+        use std::ops::Bound;
+        let cur_flag = (**entry).flag;
+        match (*args)
+            .tree
+            .range((Bound::Excluded(cur_flag), Bound::Unbounded))
+            .next()
+        {
+            Some((_, e)) => {
+                *entry = &**e as *const args_entry as *mut args_entry;
+                e.flag
+            }
+            None => {
+                *entry = null_mut();
+                0
+            }
         }
-        (*(*entry)).flag
     }
 }
 

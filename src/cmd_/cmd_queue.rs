@@ -438,7 +438,7 @@ pub unsafe fn cmdq_insert_hook_(
                 av = args_next_value(av);
             }
 
-            flag = args_next(&raw mut ae);
+            flag = args_next(args, &raw mut ae);
         }
 
         let mut a = options_array_first(o);

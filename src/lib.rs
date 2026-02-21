@@ -1930,7 +1930,7 @@ enum args_parse_type {
     ARGS_PARSE_COMMANDS,
 }
 
-type args_parse_cb = Option<unsafe fn(*mut args, u32, *mut *mut u8) -> args_parse_type>;
+type args_parse_cb = Option<unsafe fn(*mut args, u32) -> args_parse_type>;
 #[repr(C)]
 struct args_parse {
     template: &'static str,

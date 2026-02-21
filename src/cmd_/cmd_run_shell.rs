@@ -49,7 +49,6 @@ pub struct cmd_run_shell_data<'a> {
 pub unsafe fn cmd_run_shell_args_parse(
     args: *mut args,
     _idx: u32,
-    _cause: *mut *mut u8,
 ) -> args_parse_type {
     unsafe {
         if args_has(args, 'C') {
@@ -193,8 +192,6 @@ pub unsafe extern "C-unwind" fn cmd_run_shell_timer(
         let c = (*cdata).client;
         let cmd = (*cdata).cmd;
         let item = (*cdata).item;
-        let mut error = null_mut::<u8>();
-
         if (*cdata).state.is_null() {
             if cmd.is_null() {
                 if !(*cdata).item.is_null() {
@@ -225,21 +222,26 @@ pub unsafe extern "C-unwind" fn cmd_run_shell_timer(
             return;
         }
 
-        let cmdlist = args_make_commands((*cdata).state, 0, null_mut(), &raw mut error);
-        if cmdlist.is_null() {
-            if (*cdata).item.is_null() {
-                *error = (*error).to_ascii_uppercase();
-                status_message_set!(c, -1, 1, false, "{}", _s(error));
-            } else {
-                cmdq_error!((*cdata).item, "{}", _s(error));
+        match args_make_commands((*cdata).state, 0, null_mut()) {
+            Err(mut error) => {
+                if (*cdata).item.is_null() {
+                    // Uppercase first character for status message
+                    if let Some(first) = error.as_bytes_mut().first_mut() {
+                        first.make_ascii_uppercase();
+                    }
+                    status_message_set!(c, -1, 1, false, "{}", error);
+                } else {
+                    cmdq_error!((*cdata).item, "{}", error);
+                }
             }
-            free_(error);
-        } else if item.is_null() {
-            let new_item = cmdq_get_command(cmdlist, null_mut());
-            cmdq_append(c, new_item);
-        } else {
-            let new_item = cmdq_get_command(cmdlist, cmdq_get_state(item));
-            cmdq_insert_after(item, new_item);
+            Ok(cmdlist) if item.is_null() => {
+                let new_item = cmdq_get_command(cmdlist, null_mut());
+                cmdq_append(c, new_item);
+            }
+            Ok(cmdlist) => {
+                let new_item = cmdq_get_command(cmdlist, cmdq_get_state(item));
+                cmdq_insert_after(item, new_item);
+            }
         }
 
         if !(*cdata).item.is_null() {

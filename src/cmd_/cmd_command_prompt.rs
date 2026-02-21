@@ -50,7 +50,6 @@ struct cmd_command_prompt_cdata<'a> {
 fn cmd_command_prompt_args_parse(
     _args: *mut args,
     _idx: u32,
-    _cause: *mut *mut u8,
 ) -> args_parse_type {
     args_parse_type::ARGS_PARSE_COMMANDS_OR_STRING
 }
@@ -189,7 +188,6 @@ unsafe fn cmd_command_prompt_callback(
 ) -> i32 {
     unsafe {
         let cdata = cdata.as_ptr();
-        let mut error: *mut u8 = null_mut();
         let item: *mut cmdq_item = (*cdata).item;
 
         'out: {
@@ -222,16 +220,19 @@ unsafe fn cmd_command_prompt_callback(
                 (*cdata).argv = cmd_copy_argv(argc, argv);
             }
 
-            let cmdlist = args_make_commands((*cdata).state, argc, argv, &raw mut error);
-            if cmdlist.is_null() {
-                cmdq_append(c, cmdq_get_error(error).as_ptr());
-                free_(error);
-            } else if item.is_null() {
-                let new_item = cmdq_get_command(cmdlist, null_mut());
-                cmdq_append(c, new_item);
-            } else {
-                let new_item = cmdq_get_command(cmdlist, cmdq_get_state(item));
-                cmdq_insert_after(item, new_item);
+            match args_make_commands((*cdata).state, argc, argv) {
+                Err(error) => {
+                    let error = CString::new(error).unwrap();
+                    cmdq_append(c, cmdq_get_error(error.as_ptr().cast()).as_ptr());
+                }
+                Ok(cmdlist) if item.is_null() => {
+                    let new_item = cmdq_get_command(cmdlist, null_mut());
+                    cmdq_append(c, new_item);
+                }
+                Ok(cmdlist) => {
+                    let new_item = cmdq_get_command(cmdlist, cmdq_get_state(item));
+                    cmdq_insert_after(item, new_item);
+                }
             }
             cmd_free_argv(argc, argv);
 

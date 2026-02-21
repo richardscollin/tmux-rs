@@ -39,7 +39,6 @@ unsafe fn cmd_resize_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
         let w = (*wl).window;
         let c = cmdq_get_client(item);
         let mut s = (*target).s;
-        let mut cause: *mut u8 = null_mut();
         let mut adjust;
         let x: i32;
         let mut y: i32;
@@ -95,34 +94,22 @@ unsafe fn cmd_resize_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
         };
 
         if args_has(args, 'x') {
-            x = args_percentage(
-                args,
-                b'x',
-                0,
-                i32::MAX as i64,
-                (*w).sx as i64,
-                &raw mut cause,
-            ) as i32;
-            if !cause.is_null() {
-                cmdq_error!(item, "width {}", _s(cause));
-                free_(cause);
-                return cmd_retval::CMD_RETURN_ERROR;
+            match args_percentage(args, b'x', 0, i32::MAX as i64, (*w).sx as i64) {
+                Ok(v) => x = v as i32,
+                Err(cause) => {
+                    cmdq_error!(item, "width {}", cause);
+                    return cmd_retval::CMD_RETURN_ERROR;
+                }
             }
             layout_resize_pane_to(wp, layout_type::LAYOUT_LEFTRIGHT, x as u32);
         }
         if args_has(args, 'y') {
-            y = args_percentage(
-                args,
-                b'y',
-                0,
-                i32::MAX as i64,
-                (*w).sy as i64,
-                &raw mut cause,
-            ) as i32;
-            if !cause.is_null() {
-                cmdq_error!(item, "height {}", _s(cause));
-                free_(cause);
-                return cmd_retval::CMD_RETURN_ERROR;
+            match args_percentage(args, b'y', 0, i32::MAX as i64, (*w).sy as i64) {
+                Ok(v) => y = v as i32,
+                Err(cause) => {
+                    cmdq_error!(item, "height {}", cause);
+                    return cmd_retval::CMD_RETURN_ERROR;
+                }
             }
 
             let status: i32 = options_get_number___(&*(*w).options, "pane-border-status");

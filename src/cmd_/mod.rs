@@ -531,22 +531,20 @@ pub unsafe fn cmd_parse(
     line: c_uint,
 ) -> Result<*mut cmd, String> {
     unsafe {
-        let mut error: *mut u8 = null_mut();
-
         if count == 0 || (*values).type_ != args_type::ARGS_STRING {
             return Err("no command".to_string());
         }
         let entry = cmd_find(cstr_to_str((*values).union_.string))?;
 
-        let args = args_parse(&entry.args, values, count, &raw mut error);
-        if args.is_null() && error.is_null() {
-            return Err(format!("usage: {} {}", entry.name, entry.usage));
-        }
-        if args.is_null() {
-            let cause = format!("command {}: {}", entry.name, _s(error));
-            free(error as _);
-            return Err(cause);
-        }
+        let args = match args_parse(&entry.args, values, count) {
+            Ok(args) => args,
+            Err(None) => {
+                return Err(format!("usage: {} {}", entry.name, entry.usage));
+            }
+            Err(Some(msg)) => {
+                return Err(format!("command {}: {}", entry.name, msg));
+            }
+        };
 
         let cmd: *mut cmd = Box::leak(Box::new(cmd {
             entry,

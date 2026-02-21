@@ -50,7 +50,6 @@ pub static CMD_DISPLAY_POPUP_ENTRY: cmd_entry = cmd_entry {
 unsafe fn cmd_display_menu_args_parse(
     args: *mut args,
     idx: u32,
-    _cause: *mut *mut u8,
 ) -> args_parse_type {
     let mut i: u32 = 0;
 
@@ -333,7 +332,6 @@ unsafe fn cmd_display_menu_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
         let selected_style = args_get_(args, 'H');
         let lines = box_lines::BOX_LINES_DEFAULT;
 
-        let mut cause = null_mut();
         let mut flags = menu_flags::empty();
         let mut starting_choice: i32 = 0;
         let mut px: u32 = 0;
@@ -349,12 +347,12 @@ unsafe fn cmd_display_menu_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
             if streq_(args_get(args, b'C'), "-") {
                 starting_choice = -1;
             } else {
-                starting_choice =
-                    args_strtonum(args, b'C', 0, u32::MAX as i64, &raw mut cause) as i32;
-                if !cause.is_null() {
-                    cmdq_error!(item, "starting choice {}", _s(cause));
-                    free_(cause);
-                    return cmd_retval::CMD_RETURN_ERROR;
+                match args_strtonum(args, b'C', 0, u32::MAX as i64) {
+                    Ok(v) => starting_choice = v as i32,
+                    Err(cause) => {
+                        cmdq_error!(item, "starting choice {}", cause);
+                        return cmd_retval::CMD_RETURN_ERROR;
+                    }
                 }
             }
         }
@@ -462,7 +460,6 @@ unsafe fn cmd_display_popup_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
         let tty = &raw mut (*tc).tty;
         let style = args_get(args, b's');
         let border_style = args_get(args, b'S');
-        let mut cause: *mut u8 = null_mut();
         let mut argc = 0;
         let mut lines = box_lines::BOX_LINES_DEFAULT as i32;
         let mut px = 0;
@@ -481,35 +478,23 @@ unsafe fn cmd_display_popup_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
 
         let mut h: u32 = (*tty).sy / 2;
         if args_has(args, 'h') {
-            h = args_percentage(
-                args,
-                b'h',
-                1,
-                (*tty).sy as i64,
-                (*tty).sy as i64,
-                &raw mut cause,
-            ) as u32;
-            if !cause.is_null() {
-                cmdq_error!(item, "height {}", _s(cause));
-                free_(cause);
-                return cmd_retval::CMD_RETURN_ERROR;
+            match args_percentage(args, b'h', 1, (*tty).sy as i64, (*tty).sy as i64) {
+                Ok(v) => h = v as u32,
+                Err(cause) => {
+                    cmdq_error!(item, "height {}", cause);
+                    return cmd_retval::CMD_RETURN_ERROR;
+                }
             }
         }
 
         let mut w = (*tty).sx / 2;
         if args_has(args, 'w') {
-            w = args_percentage(
-                args,
-                b'w',
-                1,
-                (*tty).sx as i64,
-                (*tty).sx as i64,
-                &raw mut cause,
-            ) as u32;
-            if !cause.is_null() {
-                cmdq_error!(item, "width {}", _s(cause));
-                free_(cause);
-                return cmd_retval::CMD_RETURN_ERROR;
+            match args_percentage(args, b'w', 1, (*tty).sx as i64, (*tty).sx as i64) {
+                Ok(v) => w = v as u32,
+                Err(cause) => {
+                    cmdq_error!(item, "width {}", cause);
+                    return cmd_retval::CMD_RETURN_ERROR;
+                }
             }
         }
 

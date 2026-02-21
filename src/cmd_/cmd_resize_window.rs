@@ -39,7 +39,6 @@ unsafe fn cmd_resize_window_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
         let wl = (*target).wl;
         let w = (*wl).window;
         let s = (*target).s;
-        let mut cause = null_mut();
         let mut xpixel = 0u32;
         let mut ypixel = 0u32;
 
@@ -59,31 +58,21 @@ unsafe fn cmd_resize_window_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
         let mut sy = (*w).sy;
 
         if args_has(args, 'x') {
-            sx = args_strtonum(
-                args,
-                b'x',
-                WINDOW_MINIMUM as _,
-                WINDOW_MAXIMUM as _,
-                &raw mut cause,
-            ) as u32;
-            if !cause.is_null() {
-                cmdq_error!(item, "width {}", _s(cause));
-                free_(cause);
-                return cmd_retval::CMD_RETURN_ERROR;
+            match args_strtonum(args, b'x', WINDOW_MINIMUM as _, WINDOW_MAXIMUM as _) {
+                Ok(v) => sx = v as u32,
+                Err(cause) => {
+                    cmdq_error!(item, "width {}", cause);
+                    return cmd_retval::CMD_RETURN_ERROR;
+                }
             }
         }
         if args_has(args, 'y') {
-            sy = args_strtonum(
-                args,
-                b'y',
-                WINDOW_MINIMUM as _,
-                WINDOW_MAXIMUM as _,
-                &raw mut cause,
-            ) as u32;
-            if !cause.is_null() {
-                cmdq_error!(item, "height {}", _s(cause));
-                free_(cause);
-                return cmd_retval::CMD_RETURN_ERROR;
+            match args_strtonum(args, b'y', WINDOW_MINIMUM as _, WINDOW_MAXIMUM as _) {
+                Ok(v) => sy = v as u32,
+                Err(cause) => {
+                    cmdq_error!(item, "height {}", cause);
+                    return cmd_retval::CMD_RETURN_ERROR;
+                }
             }
         }
 

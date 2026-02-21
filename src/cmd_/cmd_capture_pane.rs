@@ -106,12 +106,10 @@ unsafe fn cmd_capture_pane_history(
         let gd: *mut grid;
         let mut gl: *const grid_line;
         let mut gc: *mut grid_cell = null_mut();
-        let mut n;
         let mut flags = grid_string_flags::empty();
 
         let tmp: u32;
         let mut bottom: u32;
-        let mut cause: *mut u8 = null_mut();
         let mut line: *mut u8;
 
         let mut linelen: usize;
@@ -135,21 +133,16 @@ unsafe fn cmd_capture_pane_history(
         if !sflag.is_null() && streq_(sflag, "-") {
             top = 0;
         } else {
-            n = args_strtonum_and_expand(
-                args,
-                b'S',
-                i32::MIN as i64,
-                i16::MAX as i64,
-                item,
-                &raw mut cause,
-            );
-            if !cause.is_null() {
-                top = (*gd).hsize;
-                free_(cause);
-            } else if n < 0 && (-n) as u32 > (*gd).hsize {
-                top = 0;
-            } else {
-                top = (*gd).hsize + n as u32;
+            match args_strtonum_and_expand(args, b'S', i32::MIN as i64, i16::MAX as i64, item) {
+                Err(_) => {
+                    top = (*gd).hsize;
+                }
+                Ok(n) if n < 0 && (-n) as u32 > (*gd).hsize => {
+                    top = 0;
+                }
+                Ok(n) => {
+                    top = (*gd).hsize + n as u32;
+                }
             }
             if top > (*gd).hsize + (*gd).sy - 1 {
                 top = (*gd).hsize + (*gd).sy - 1;
@@ -160,21 +153,16 @@ unsafe fn cmd_capture_pane_history(
         if !eflag.is_null() && streq_(eflag, "-") {
             bottom = (*gd).hsize + (*gd).sy - 1;
         } else {
-            n = args_strtonum_and_expand(
-                args,
-                b'E',
-                i32::MIN as i64,
-                i16::MAX as i64,
-                item,
-                &raw mut cause,
-            );
-            if !cause.is_null() {
-                bottom = (*gd).hsize + (*gd).sy - 1;
-                free_(cause);
-            } else if n < 0 && (-n) as u32 > (*gd).hsize {
-                bottom = 0;
-            } else {
-                bottom = (*gd).hsize + n as u32;
+            match args_strtonum_and_expand(args, b'E', i32::MIN as i64, i16::MAX as i64, item) {
+                Err(_) => {
+                    bottom = (*gd).hsize + (*gd).sy - 1;
+                }
+                Ok(n) if n < 0 && (-n) as u32 > (*gd).hsize => {
+                    bottom = 0;
+                }
+                Ok(n) => {
+                    bottom = (*gd).hsize + n as u32;
+                }
             }
             if bottom > (*gd).hsize + (*gd).sy - 1 {
                 bottom = (*gd).hsize + (*gd).sy - 1;

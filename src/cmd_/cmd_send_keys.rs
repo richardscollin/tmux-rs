@@ -163,15 +163,13 @@ pub unsafe fn cmd_send_keys_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
         let mut after: *mut cmdq_item = item;
         let mut np: u32 = 1;
         let count = args_count(args);
-        let mut cause: *mut u8 = null_mut();
-
         if args_has(args, 'N') {
-            np = args_strtonum_and_expand(args, b'N', 1, u32::MAX as i64, item, &raw mut cause)
-                as u32;
-            if !cause.is_null() {
-                cmdq_error!(item, "repeat count {}", _s(cause));
-                free_(cause);
-                return cmd_retval::CMD_RETURN_ERROR;
+            match args_strtonum_and_expand(args, b'N', 1, u32::MAX as i64, item) {
+                Ok(v) => np = v as u32,
+                Err(cause) => {
+                    cmdq_error!(item, "repeat count {}", cause);
+                    return cmd_retval::CMD_RETURN_ERROR;
+                }
             }
             if !wme.is_null() && (args_has(args, 'X') || count == 0) {
                 if (*(*wme).mode).command.is_none() {

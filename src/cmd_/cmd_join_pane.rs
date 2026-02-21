@@ -58,7 +58,7 @@ unsafe fn cmd_join_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retva
         let current = cmdq_get_current(item);
         let target = cmdq_get_target(item);
         let source = cmdq_get_source(item);
-        let mut cause = null_mut();
+
         let mut type_: layout_type;
 
         let mut curval: u32 = 0;
@@ -102,25 +102,21 @@ unsafe fn cmd_join_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retva
 
         let mut size: i32 = -1;
         if args_has(args, 'l') {
-            size = args_percentage_and_expand(
-                args,
-                b'l',
-                0,
-                i32::MAX as i64,
-                curval as i64,
-                item,
-                &raw mut cause,
-            ) as _;
-        } else if args_has(args, 'p') {
-            size = args_strtonum_and_expand(args, b'l', 0, 100, item, &raw mut cause) as _;
-            if cause.is_null() {
-                size = curval as i32 * size / 100;
+            match args_percentage_and_expand(args, b'l', 0, i32::MAX as i64, curval as i64, item) {
+                Ok(v) => size = v as _,
+                Err(cause) => {
+                    cmdq_error!(item, "size {}", cause);
+                    return cmd_retval::CMD_RETURN_ERROR;
+                }
             }
-        }
-        if !cause.is_null() {
-            cmdq_error!(item, "size {}", _s(cause));
-            free_(cause);
-            return cmd_retval::CMD_RETURN_ERROR;
+        } else if args_has(args, 'p') {
+            match args_strtonum_and_expand(args, b'l', 0, 100, item) {
+                Ok(v) => size = curval as i32 * v as i32 / 100,
+                Err(cause) => {
+                    cmdq_error!(item, "size {}", cause);
+                    return cmd_retval::CMD_RETURN_ERROR;
+                }
+            }
         }
 
         let mut flags: spawn_flags = spawn_flags::empty();

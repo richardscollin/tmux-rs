@@ -199,7 +199,6 @@ pub unsafe fn layout_set_main_h(w: *mut window) {
         // u_int n, mainh, otherh, sx, sy;
         // char *cause;
         // const char *s;
-        let mut cause = null_mut();
 
         layout_print_cell((*w).layout_root, __func__, 1);
 
@@ -215,11 +214,8 @@ pub unsafe fn layout_set_main_h(w: *mut window) {
 
         // Get the main pane height.
         let mut s = options_get_string_((*w).options, "main-pane-height");
-        let mut mainh = args_string_percentage(s, 0, sy as i64, sy as i64, &raw mut cause) as u32;
-        if !cause.is_null() {
-            mainh = 24;
-            free_(cause);
-        }
+        let mut mainh = args_string_percentage(s, 0, sy as i64, sy as i64)
+            .unwrap_or(24) as u32;
 
         let mut otherh: u32;
         // Work out the other pane height.
@@ -232,10 +228,11 @@ pub unsafe fn layout_set_main_h(w: *mut window) {
             otherh = PANE_MINIMUM;
         } else {
             s = options_get_string_((*w).options, "other-pane-height");
-            otherh = args_string_percentage(s, 0, sy as i64, sy as i64, &raw mut cause) as u32;
-            if !cause.is_null() || otherh == 0 {
+            otherh = args_string_percentage(s, 0, sy as i64, sy as i64)
+                .map(|v| v as u32)
+                .unwrap_or(0);
+            if otherh == 0 {
                 otherh = sy - mainh;
-                free_(cause);
             } else if otherh > sy || sy - otherh < mainh {
                 otherh = sy - mainh;
             } else {
@@ -302,8 +299,6 @@ pub unsafe fn layout_set_main_h_mirrored(w: *mut window) {
     let __func__ = c!("layout_set_main_h_mirrored");
     unsafe {
         let mut otherh: u32;
-        let mut cause: *mut u8 = null_mut();
-
         layout_print_cell((*w).layout_root, __func__, 1);
 
         // Get number of panes.
@@ -318,11 +313,8 @@ pub unsafe fn layout_set_main_h_mirrored(w: *mut window) {
 
         // Get the main pane height.
         let s = options_get_string_((*w).options, "main-pane-height");
-        let mut mainh = args_string_percentage(s, 0, sy as i64, sy as i64, &raw mut cause) as u32;
-        if !cause.is_null() {
-            mainh = 24;
-            free_(cause);
-        }
+        let mut mainh = args_string_percentage(s, 0, sy as i64, sy as i64)
+            .unwrap_or(24) as u32;
 
         // Work out the other pane height.
         if mainh + PANE_MINIMUM >= sy {
@@ -334,10 +326,11 @@ pub unsafe fn layout_set_main_h_mirrored(w: *mut window) {
             otherh = PANE_MINIMUM;
         } else {
             let s = options_get_string_((*w).options, "other-pane-height");
-            otherh = args_string_percentage(s, 0, sy as i64, sy as i64, &raw mut cause) as u32;
-            if !cause.is_null() || otherh == 0 {
+            otherh = args_string_percentage(s, 0, sy as i64, sy as i64)
+                .map(|v| v as u32)
+                .unwrap_or(0);
+            if otherh == 0 {
                 otherh = sy - mainh;
-                free_(cause);
             } else if otherh > sy || sy - otherh < mainh {
                 otherh = sy - mainh;
             } else {
@@ -402,8 +395,6 @@ pub unsafe fn layout_set_main_h_mirrored(w: *mut window) {
 
 pub unsafe fn layout_set_main_v(w: *mut window) {
     let __func__ = c!("layout_set_main_v");
-    let mut cause = null_mut();
-
     unsafe {
         layout_print_cell((*w).layout_root, __func__, 1);
 
@@ -419,12 +410,8 @@ pub unsafe fn layout_set_main_v(w: *mut window) {
 
         // Get the main pane width.
         let s = options_get_string_((*w).options, "main-pane-width");
-        let mut mainw: u32 =
-            args_string_percentage(s, 0, sx as i64, sx as i64, &raw mut cause) as u32;
-        if cause.is_null() {
-            mainw = 80;
-            free_(cause);
-        }
+        let mut mainw = args_string_percentage(s, 0, sx as i64, sx as i64)
+            .unwrap_or(80) as u32;
 
         // Work out the other pane width.
         let mut otherw;
@@ -437,10 +424,11 @@ pub unsafe fn layout_set_main_v(w: *mut window) {
             otherw = PANE_MINIMUM;
         } else {
             let s = options_get_string_((*w).options, "other-pane-width");
-            otherw = args_string_percentage(s, 0, sx as i64, sx as i64, &raw mut cause) as u32;
-            if !cause.is_null() || otherw == 0 {
+            otherw = args_string_percentage(s, 0, sx as i64, sx as i64)
+                .map(|v| v as u32)
+                .unwrap_or(0);
+            if otherw == 0 {
                 otherw = sx - mainw;
-                free_(cause);
             } else if otherw > sx || sx - otherw < mainw {
                 otherw = sx - mainw;
             } else {
@@ -506,8 +494,6 @@ pub unsafe fn layout_set_main_v(w: *mut window) {
 pub unsafe fn layout_set_main_v_mirrored(w: *mut window) {
     let __func__ = c!("layout_set_main_v_mirrored");
     unsafe {
-        let mut cause: *mut u8 = null_mut();
-
         layout_print_cell((*w).layout_root, __func__, 1);
 
         // Get number of panes.
@@ -522,11 +508,8 @@ pub unsafe fn layout_set_main_v_mirrored(w: *mut window) {
 
         // Get the main pane width.
         let s = options_get_string_((*w).options, "main-pane-width");
-        let mut mainw = args_string_percentage(s, 0, sx as i64, sx as i64, &raw mut cause) as u32;
-        if !cause.is_null() {
-            mainw = 80;
-            free_(cause);
-        }
+        let mut mainw = args_string_percentage(s, 0, sx as i64, sx as i64)
+            .unwrap_or(80) as u32;
 
         // Work out the other pane width.
         let mut otherw: u32;
@@ -539,10 +522,11 @@ pub unsafe fn layout_set_main_v_mirrored(w: *mut window) {
             otherw = PANE_MINIMUM;
         } else {
             let s = options_get_string_((*w).options, "other-pane-width");
-            otherw = args_string_percentage(s, 0, sx as i64, sx as i64, &raw mut cause) as u32;
-            if !cause.is_null() || otherw == 0 {
+            otherw = args_string_percentage(s, 0, sx as i64, sx as i64)
+                .map(|v| v as u32)
+                .unwrap_or(0);
+            if otherw == 0 {
                 otherw = sx - mainw;
-                free_(cause);
             } else if otherw > sx || sx - otherw < mainw {
                 otherw = sx - mainw;
             } else {

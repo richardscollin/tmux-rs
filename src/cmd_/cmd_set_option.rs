@@ -72,7 +72,6 @@ pub static CMD_SET_HOOK_ENTRY: cmd_entry = cmd_entry {
 pub fn cmd_set_option_args_parse(
     _args: *mut args,
     idx: u32,
-    _cause: *mut *mut u8,
 ) -> args_parse_type {
     match idx {
         1 => args_parse_type::ARGS_PARSE_COMMANDS_OR_STRING,

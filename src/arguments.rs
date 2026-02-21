@@ -102,13 +102,12 @@ pub fn args_create<'a>() -> &'a mut args {
 pub unsafe fn args_parse_flag_argument(
     values: *const args_value,
     count: u32,
-    cause: *mut *mut u8,
     args: *mut args,
     i: *mut u32,
     string: *const u8,
     flag: i32,
     optional_argument: bool,
-) -> i32 {
+) -> Result<i32, String> {
     let argument: *const args_value;
     let new: *mut args_value;
     unsafe {
@@ -126,10 +125,9 @@ pub unsafe fn args_parse_flag_argument(
             } else {
                 argument = values.add(*i as usize);
                 if (*argument).type_ != args_type::ARGS_STRING {
-                    *cause = format_nul!("-{} argument must be a string", flag as u8 as char);
                     args_free_value(new);
                     free(new as _);
-                    return -1;
+                    return Err(format!("-{} argument must be a string", flag as u8 as char));
                 }
             }
 
@@ -139,10 +137,9 @@ pub unsafe fn args_parse_flag_argument(
                 if optional_argument {
                     log_debug!("{}: -{} (optional)", "args_parse_flag_argument", flag);
                     args_set(args, flag as c_uchar, null_mut(), ARGS_ENTRY_OPTIONAL_VALUE);
-                    return 0; /* either - or end */
+                    return Ok(0); /* either - or end */
                 }
-                *cause = format_nul!("-{} expects an argument", flag as u8 as char);
-                return -1;
+                return Err(format!("-{} expects an argument", flag as u8 as char));
             }
 
             args_copy_value(new, argument);
@@ -156,7 +153,7 @@ pub unsafe fn args_parse_flag_argument(
         args_set(args, flag as c_uchar, new, 0);
     }
 
-    0
+    Ok(0)
 }
 
 #[expect(clippy::needless_borrow, reason = "false positive")]
@@ -164,15 +161,14 @@ pub unsafe fn args_parse_flags(
     parse: *const args_parse,
     values: *const args_value,
     count: u32,
-    cause: *mut *mut u8,
     args: *mut args,
     i: *mut u32,
-) -> i32 {
+) -> Result<i32, Option<String>> {
     let __func__ = "args_parse_flags";
     unsafe {
         let value = values.add(*i as usize);
         if (*value).type_ != args_type::ARGS_STRING {
-            return 1;
+            return Ok(1);
         }
 
         let mut string = (*value).union_.string;
@@ -183,30 +179,28 @@ pub unsafe fn args_parse_flags(
             tmp
         }) || *string == b'\0'
         {
-            return 1;
+            return Ok(1);
         }
         (*i) += 1;
         if *string == b'-' && *string.add(1) == b'\0' {
-            return 1;
+            return Ok(1);
         }
 
         loop {
             let flag = *string as c_uchar;
             string = string.add(1);
             if flag == b'\0' {
-                return 0;
+                return Ok(0);
             }
             if flag == b'?' {
-                return -1;
+                return Err(None);
             }
             if !flag.is_ascii_alphanumeric() {
-                *cause = format_nul!("invalid flag -{}", flag as char);
-                return -1;
+                return Err(Some(format!("invalid flag -{}", flag as char)));
             }
 
             let Some(found) = (*parse).template.bytes().position(|ch| ch == flag) else {
-                *cause = format_nul!("unknown flag -{}", flag as char);
-                return -1;
+                return Err(Some(format!("unknown flag -{}", flag as char)));
             };
             if found + 1 >= (&(*parse).template).len() || (*parse).template.as_bytes()[found + 1] != b':' {
                 log_debug!("{}: -{}", __func__, flag as char);
@@ -217,13 +211,13 @@ pub unsafe fn args_parse_flags(
             return args_parse_flag_argument(
                 values,
                 count,
-                cause,
                 args,
                 i,
                 string,
                 flag as i32,
                 optional_argument,
-            );
+            )
+            .map_err(Some);
         }
     }
 }
@@ -233,27 +227,26 @@ pub unsafe fn args_parse(
     parse: *const args_parse,
     values: *mut args_value,
     count: u32,
-    cause: *mut *mut u8,
-) -> *mut args {
+) -> Result<*mut args, Option<String>> {
     let __func__ = "args_parse";
     unsafe {
         let mut type_: args_parse_type;
 
         if count == 0 {
-            return args_create();
+            return Ok(args_create());
         }
 
         let args = args_create();
 
         let mut i: u32 = 1;
         while i < count {
-            let stop = args_parse_flags(parse, values, count, cause, args, &raw mut i);
-            if stop == -1 {
-                args_free(args);
-                return null_mut();
-            }
-            if stop == 1 {
-                break;
+            match args_parse_flags(parse, values, count, args, &raw mut i) {
+                Ok(1) => break,
+                Ok(_) => {}
+                Err(e) => {
+                    args_free(args);
+                    return Err(e);
+                }
             }
         }
         log_debug!("{}: flags end at {} of {}", __func__, i, count);
@@ -271,10 +264,10 @@ pub unsafe fn args_parse(
                 );
 
                 if let Some(cb) = (*parse).cb {
-                    type_ = cb(args, args.count, cause);
+                    type_ = cb(args, args.count);
                     if type_ == args_parse_type::ARGS_PARSE_INVALID {
                         args_free(args);
-                        return null_mut();
+                        return Err(None);
                     }
                 } else {
                     type_ = args_parse_type::ARGS_PARSE_STRING;
@@ -295,18 +288,18 @@ pub unsafe fn args_parse(
                     args_parse_type::ARGS_PARSE_INVALID => fatalx("unexpected argument type"),
                     args_parse_type::ARGS_PARSE_STRING => {
                         if (*value).type_ != args_type::ARGS_STRING {
-                            *cause = format_nul!("argument {} must be \"string\"", args.count);
+                            let msg = format!("argument {} must be \"string\"", args.count);
                             args_free(args);
-                            return null_mut();
+                            return Err(Some(msg));
                         }
                         args_copy_value(new, value);
                     }
                     args_parse_type::ARGS_PARSE_COMMANDS_OR_STRING => args_copy_value(new, value),
                     args_parse_type::ARGS_PARSE_COMMANDS => {
                         if (*value).type_ != args_type::ARGS_COMMANDS {
-                            *cause = format_nul!("argument {} must be {{ commands }}", args.count,);
+                            let msg = format!("argument {} must be {{ commands }}", args.count);
                             args_free(args);
-                            return null_mut();
+                            return Err(Some(msg));
                         }
                         args_copy_value(new, value);
                     }
@@ -316,16 +309,16 @@ pub unsafe fn args_parse(
         }
 
         if (*parse).lower != -1 && args.count < (*parse).lower as u32 {
-            *cause = format_nul!("too few arguments (need at least {})", (*parse).lower);
+            let msg = format!("too few arguments (need at least {})", (*parse).lower);
             args_free(args);
-            return null_mut();
+            return Err(Some(msg));
         }
         if (*parse).upper != -1 && args.count > (*parse).upper as u32 {
-            *cause = format_nul!("too many arguments (need at most {})", (*parse).upper);
+            let msg = format!("too many arguments (need at most {})", (*parse).upper);
             args_free(args);
-            return null_mut();
+            return Err(Some(msg));
         }
-        args
+        Ok(args)
     }
 }
 
@@ -750,15 +743,17 @@ pub unsafe fn args_make_commands_now(
     expand: bool,
 ) -> *mut cmd_list {
     unsafe {
-        let mut error = null_mut();
         let state = args_make_commands_prepare(self_, item, idx, null_mut(), false, expand);
-        let cmdlist = args_make_commands(state, 0, null_mut(), &raw mut error);
-        if cmdlist.is_null() {
-            cmdq_error!(item, "{}", _s(error));
-            free_(error);
-        } else {
-            (*cmdlist).references += 1;
-        }
+        let cmdlist = match args_make_commands(state, 0, null_mut()) {
+            Err(error) => {
+                cmdq_error!(item, "{}", error);
+                null_mut()
+            }
+            Ok(cmdlist) => {
+                (*cmdlist).references += 1;
+                cmdlist
+            }
+        };
         args_make_commands_free(state);
         cmdlist
     }
@@ -826,15 +821,14 @@ pub unsafe fn args_make_commands(
     state: *mut args_command_state,
     argc: i32,
     argv: *mut *mut u8,
-    error: *mut *mut u8,
-) -> *mut cmd_list {
+) -> Result<*mut cmd_list, String> {
     let __func__ = "args_make_commands";
     unsafe {
         if !(*state).cmdlist.is_null() {
             if argc == 0 {
-                return (*state).cmdlist;
+                return Ok((*state).cmdlist);
             }
-            return cmd_list_copy(&*(*state).cmdlist, argc, argv);
+            return Ok(cmd_list_copy(&*(*state).cmdlist, argc, argv));
         }
 
         let mut cmd = xstrdup((*state).cmd).as_ptr();
@@ -857,13 +851,11 @@ pub unsafe fn args_make_commands(
         let pr = cmd_parse_from_string(cstr_to_str(cmd), Some(&(*state).pi));
         free_(cmd);
 
-        match pr {
-            Err(err) => {
-                *error = err;
-                null_mut()
-            }
-            Ok(cmdlist) => cmdlist,
-        }
+        pr.map_err(|err| {
+            let s = _s(err).to_string();
+            free_(err);
+            s
+        })
     }
 }
 
@@ -930,33 +922,21 @@ pub unsafe fn args_strtonum(
     flag: u8,
     minval: i64,
     maxval: i64,
-    cause: *mut *mut u8,
-) -> i64 {
+) -> Result<i64, String> {
     unsafe {
         let entry = args_find(args, flag);
         if entry.is_null() {
-            *cause = xstrdup_(c"missing").as_ptr();
-            return 0;
+            return Err("missing".into());
         }
         let value = tailq_last(&raw mut (*entry).values);
         if value.is_null()
             || (*value).type_ != args_type::ARGS_STRING
             || (*value).union_.string.is_null()
         {
-            *cause = xstrdup_(c"missing").as_ptr();
-            return 0;
+            return Err("missing".into());
         }
 
-        match strtonum((*value).union_.string, minval, maxval) {
-            Ok(ll) => {
-                *cause = null_mut();
-                ll
-            }
-            Err(errstr) => {
-                *cause = xstrdup(errstr.as_ptr().cast()).as_ptr();
-                0
-            }
-        }
+        strtonum((*value).union_.string, minval, maxval).map_err(|errstr| _s(errstr.as_ptr()).to_string())
     }
 }
 
@@ -967,36 +947,24 @@ pub unsafe fn args_strtonum_and_expand(
     minval: c_longlong,
     maxval: c_longlong,
     item: *mut cmdq_item,
-    cause: *mut *mut u8,
-) -> c_longlong {
+) -> Result<c_longlong, String> {
     unsafe {
         let entry = args_find(args, flag);
         if entry.is_null() {
-            *cause = xstrdup_(c"missing").as_ptr();
-            return 0;
+            return Err("missing".into());
         }
         let value = tailq_last(&raw mut (*entry).values);
         if value.is_null()
             || (*value).type_ != args_type::ARGS_STRING
             || (*value).union_.string.is_null()
         {
-            *cause = xstrdup_(c"missing").as_ptr();
-            return 0;
+            return Err("missing".into());
         }
 
         let formatted = format_single_from_target(item, (*value).union_.string);
         let tmp = strtonum(formatted, minval, maxval);
         free_(formatted);
-        match tmp {
-            Ok(ll) => {
-                *cause = null_mut();
-                ll
-            }
-            Err(errstr) => {
-                *cause = xstrdup_(errstr).as_ptr();
-                0
-            }
-        }
+        tmp.map_err(|errstr| _s(errstr.as_ptr()).to_string())
     }
 }
 
@@ -1007,20 +975,17 @@ pub unsafe fn args_percentage(
     minval: i64,
     maxval: i64,
     curval: i64,
-    cause: *mut *mut u8,
-) -> i64 {
+) -> Result<i64, String> {
     unsafe {
         let entry = args_find(args, flag);
         if entry.is_null() {
-            *cause = xstrdup_(c"missing").as_ptr();
-            return 0;
+            return Err("missing".into());
         }
         if tailq_empty(&raw mut (*entry).values) {
-            *cause = xstrdup_(c"empty").as_ptr();
-            return 0;
+            return Err("empty".into());
         }
         let value = (*tailq_last(&raw mut (*entry).values)).union_.string;
-        args_string_percentage(value, minval, maxval, curval, cause)
+        args_string_percentage(value, minval, maxval, curval)
     }
 }
 
@@ -1030,51 +995,34 @@ pub unsafe fn args_string_percentage(
     minval: i64,
     maxval: i64,
     curval: i64,
-    cause: *mut *mut u8,
-) -> i64 {
+) -> Result<i64, String> {
     unsafe {
-        let mut ll: i64;
         let valuelen: usize = strlen(value);
-        let copy;
 
         if valuelen == 0 {
-            *cause = xstrdup_(c"empty").as_ptr();
-            return 0;
+            return Err("empty".into());
         }
+        let ll;
         if *value.add(valuelen - 1) == b'%' {
-            copy = xstrdup(value).as_ptr();
+            let copy = xstrdup(value).as_ptr();
             *copy.add(valuelen - 1) = b'\0';
 
             let tmp = strtonum(copy, 0, 100);
             free_(copy);
-            ll = match tmp {
-                Ok(n) => n,
-                Err(errstr) => {
-                    *cause = xstrdup_(errstr).as_ptr();
-                    return 0;
-                }
-            };
-            ll = (curval * ll) / 100;
+            let pct = tmp.map_err(|errstr| _s(errstr.as_ptr()).to_string())?;
+            ll = (curval * pct) / 100;
             if ll < minval {
-                *cause = xstrdup_(c"too small").as_ptr();
-                return 0;
+                return Err("too small".into());
             }
             if ll > maxval {
-                *cause = xstrdup_(c"too large").as_ptr();
-                return 0;
+                return Err("too large".into());
             }
         } else {
-            ll = match strtonum(value, minval, maxval) {
-                Ok(n) => n,
-                Err(errstr) => {
-                    *cause = xstrdup_(errstr).as_ptr();
-                    return 0;
-                }
-            };
+            ll = strtonum(value, minval, maxval)
+                .map_err(|errstr| _s(errstr.as_ptr()).to_string())?;
         }
 
-        *cause = null_mut();
-        ll
+        Ok(ll)
     }
 }
 
@@ -1086,20 +1034,17 @@ pub unsafe fn args_percentage_and_expand(
     maxval: i64,
     curval: i64,
     item: *mut cmdq_item,
-    cause: *mut *mut u8,
-) -> i64 {
+) -> Result<i64, String> {
     unsafe {
         let entry = args_find(args, flag);
         if entry.is_null() {
-            *cause = xstrdup_(c"missing").as_ptr();
-            return 0;
+            return Err("missing".into());
         }
         if tailq_empty(&raw mut (*entry).values) {
-            *cause = xstrdup_(c"empty").as_ptr();
-            return 0;
+            return Err("empty".into());
         }
         let value = (*tailq_last(&raw mut (*entry).values)).union_.string;
-        args_string_percentage_and_expand(value, minval, maxval, curval, item, cause)
+        args_string_percentage_and_expand(value, minval, maxval, curval, item)
     }
 }
 
@@ -1110,51 +1055,34 @@ pub unsafe fn args_string_percentage_and_expand(
     maxval: i64,
     curval: i64,
     item: *mut cmdq_item,
-    cause: *mut *mut u8,
-) -> i64 {
+) -> Result<i64, String> {
     unsafe {
         let valuelen = strlen(value);
-        let mut ll: i64;
-        let f: *mut u8;
+        let ll;
 
         if *value.add(valuelen - 1) == b'%' {
             let copy = xstrdup(value).as_ptr();
             *copy.add(valuelen - 1) = b'\0';
 
-            f = format_single_from_target(item, copy);
+            let f = format_single_from_target(item, copy);
             let tmp = strtonum(f, 0, 100);
             free_(f);
             free_(copy);
-            ll = match tmp {
-                Ok(n) => n,
-                Err(errstr) => {
-                    *cause = xstrdup_(errstr).as_ptr();
-                    return 0;
-                }
-            };
-            ll = (curval * ll) / 100;
+            let pct = tmp.map_err(|errstr| _s(errstr.as_ptr()).to_string())?;
+            ll = (curval * pct) / 100;
             if ll < minval {
-                *cause = xstrdup_(c"too small").as_ptr();
-                return 0;
+                return Err("too small".into());
             }
             if ll > maxval {
-                *cause = xstrdup_(c"too large").as_ptr();
-                return 0;
+                return Err("too large".into());
             }
         } else {
-            f = format_single_from_target(item, value);
+            let f = format_single_from_target(item, value);
             let tmp = strtonum(f, minval, maxval);
             free_(f);
-            ll = match tmp {
-                Ok(n) => n,
-                Err(errstr) => {
-                    *cause = xstrdup_(errstr).as_ptr();
-                    return 0;
-                }
-            };
+            ll = tmp.map_err(|errstr| _s(errstr.as_ptr()).to_string())?;
         }
 
-        *cause = null_mut();
-        ll
+        Ok(ll)
     }
 }

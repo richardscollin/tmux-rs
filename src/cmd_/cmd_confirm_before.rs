@@ -34,7 +34,7 @@ pub struct cmd_confirm_before_data {
     default_yes: bool,
 }
 
-unsafe fn cmd_confirm_before_args_parse(_: *mut args, _: u32, _: *mut *mut u8) -> args_parse_type {
+unsafe fn cmd_confirm_before_args_parse(_: *mut args, _: u32) -> args_parse_type {
     args_parse_type::ARGS_PARSE_COMMANDS_OR_STRING
 }
 

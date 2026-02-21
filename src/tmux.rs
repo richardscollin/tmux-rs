@@ -327,7 +327,7 @@ unsafe fn make_label(mut label: *const u8) -> Result<CString, String> {
         #[cfg(target_os = "windows")]
         let user_id = std::env::var("USERNAME").unwrap_or_else(|_| "0".to_string());
         #[cfg(not(target_os = "windows"))]
-        let user_id = getuid().to_string();
+        let user_id = getuid();
 
         #[cfg(target_os = "windows")]
         {
@@ -375,7 +375,7 @@ unsafe fn make_label(mut label: *const u8) -> Result<CString, String> {
                 #[cfg(not(target_os = "windows"))]
                 {
                     use std::os::unix::fs::MetadataExt;
-                    if md.uid() != uid || (md.mode() & S_IRWXO) != 0 {
+                    if md.uid() != user_id || (md.mode() & S_IRWXO) != 0 {
                         return Err(format!("directory {base} has unsafe permissions"));
                     }
                 }

@@ -11,10 +11,14 @@
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+use terminfo_lean::expand::Parameter;
+use terminfo_lean::locate::locate;
+use terminfo_lean::parse::parse;
+
 use crate::compat::{strnvis, strunvis};
 use crate::libc::{fnmatch, memset, strchr, strcmp, strcspn, strncmp};
-use crate::*;
 use crate::options_::*;
+use crate::*;
 
 pub static mut TTY_TERMS: tty_terms = list_head_initializer();
 
@@ -468,7 +472,6 @@ pub unsafe fn tty_term_apply(term: *mut tty_term, capabilities: &str, quiet: i32
 pub unsafe fn tty_term_apply_overrides(term: *mut tty_term) {
     let mut ov: *mut options_value;
     let mut s: *const u8;
-    let mut acs: *const u8;
     let mut offset: usize;
     let mut first: *mut u8;
 
@@ -562,14 +565,14 @@ pub unsafe fn tty_term_apply_overrides(term: *mut tty_term) {
             0,
             size_of::<[[i8; 2]; 256]>(),
         );
-        if tty_term_has(term, tty_code_code::TTYC_ACSC) {
-            acs = tty_term_string(term, tty_code_code::TTYC_ACSC);
+        let mut acs = if tty_term_has(term, tty_code_code::TTYC_ACSC) {
+            tty_term_string(term, tty_code_code::TTYC_ACSC)
         } else {
-            acs = c!("a#j+k+l+m+n+o-p-q-r-s-t+u+v+w+x|y<z>~.");
-        }
-        while *acs != b'\0' && *acs.add(1) != b'\0' {
-            (*term).acs[*acs as usize][0] = *acs.add(1);
-            acs = acs.add(2);
+            b"a#j+k+l+m+n+o-p-q-r-s-t+u+v+w+x|y<z>~."
+        };
+        while acs.len() >= 2 {
+            (*term).acs[acs[0] as usize][0] = acs[1];
+            acs = &acs[2..];
         }
     }
 }
@@ -588,6 +591,7 @@ pub unsafe fn tty_term_create(
         (*term).tty = tty;
         (*term).name = xstrdup(name).as_ptr();
         (*term).codes = xcalloc_(tty_term_ncodes() as usize).as_ptr();
+        (*term).expand_context = ExpandContext::new();
         list_insert_head(&raw mut TTY_TERMS, term);
         'error: {
             // Fill in codes.
@@ -650,11 +654,6 @@ pub unsafe fn tty_term_create(
                 a = options_array_next(a);
             }
 
-            // Delete curses data.
-            // #if !defined(NCURSES_VERSION_MAJOR) || NCURSES_VERSION_MAJOR > 5 || (NCURSES_VERSION_MAJOR == 5 && NCURSES_VERSION_MINOR > 6)
-            del_curterm(cur_term);
-            // #endif
-
             // Apply overrides so any capabilities used for features are changed.
             tty_term_apply_overrides(term);
 
@@ -679,7 +678,7 @@ pub unsafe fn tty_term_create(
             // Also add few features that VT100-like terminals should either
             // support or safely ignore.
             let s = tty_term_string(term, tty_code_code::TTYC_CLEAR);
-            if tty_term_flag(term, tty_code_code::TTYC_XT) != 0 || strncmp(s, c!("\x1b["), 2) == 0 {
+            if tty_term_flag(term, tty_code_code::TTYC_XT) != 0 || &s[0..2] == b"\x1b[" {
                 (*term).flags |= term_flags::TERM_VT100LIKE;
                 tty_add_features(feat, "bpaste,focus,title", c!(","));
             }
@@ -735,59 +734,58 @@ pub unsafe fn tty_term_free(term: *mut tty_term) {
 
 pub unsafe fn tty_term_read_list(
     name: *const u8,
-    fd: i32,
+    _fd: i32,
     caps: *mut *mut *mut u8,
     ncaps: *mut u32,
     cause: *mut *mut u8,
 ) -> i32 {
     unsafe {
-        let mut error = 0;
-        let mut tmp: [u8; 11] = [0; 11];
-        let sizeof_tmp = 11;
+        let mut tmp = [0u8; 11];
 
-        if setupterm(name.cast(), fd, &raw mut error) != OK {
-            match error {
-                1 => *cause = format_nul!("can't use hardcopy terminal: {}", _s(name)),
-                0 => *cause = format_nul!("missing or unsuitable terminal: {}", _s(name)),
-                -1 => *cause = format_nul!("can't find terminfo database"),
-                _ => *cause = format_nul!("unknown error"),
-            }
+        let Ok(terminfo_path) = locate(cstr_to_str(name)) else {
+            *cause = format_nul!("can't find terminfo database for terminal: {}", _s(name));
             return -1;
-        }
+        };
+
+        let Ok(terminfo_buffer) = std::fs::read(terminfo_path) else {
+            *cause = format_nul!("can't read terminfo database for terminal: {}", _s(name));
+            return -1;
+        };
+
+        let Ok(terminfo) = parse(&terminfo_buffer) else {
+            *cause = format_nul!("can't parse terminfo database for terminal: {}", _s(name));
+            return -1;
+        };
 
         *ncaps = 0;
         *caps = null_mut();
 
-        let mut s = null();
         for ent in &TTY_TERM_CODES {
-            match ent.type_ {
-                tty_code_type::None => (),
+            let mut v;
+            let s = match ent.type_ {
+                tty_code_type::None => continue,
                 tty_code_type::String => {
-                    s = tigetstr(ent.name.as_ptr());
-                    if s.is_null() || s == (-1i32 as *const u8) {
+                    let Some(s) = terminfo.strings.get(cstr_to_str(ent.name.as_ptr())) else {
                         continue;
-                    }
+                    };
+                    v = s.to_vec();
+                    v.push(b'\0');
+                    v.as_ptr()
                 }
                 tty_code_type::Number => {
-                    let n = tigetnum(ent.name.as_ptr());
-                    if n == -1 || n == -2 {
+                    let Some(n) = terminfo.numbers.get(cstr_to_str(ent.name.as_ptr())) else {
                         continue;
-                    }
-                    _ = xsnprintf_!(&raw mut tmp as *mut u8, sizeof_tmp, "{}", n);
-                    s = &raw mut tmp as *const u8;
+                    };
+                    _ = xsnprintf_!(&raw mut tmp as *mut u8, tmp.len(), "{}", n);
+                    &raw mut tmp as *const u8
                 }
                 tty_code_type::Flag => {
-                    let n = tigetflag(ent.name.as_ptr());
-                    if n == -1 {
+                    if !terminfo.booleans.contains(cstr_to_str(ent.name.as_ptr())) {
                         continue;
                     }
-                    if n != 0 {
-                        s = c!("1");
-                    } else {
-                        s = c!("0");
-                    }
+                    c!("1")
                 }
-            }
+            };
             *caps = xreallocarray((*caps).cast(), (*ncaps) as usize + 1, size_of::<*mut u8>())
                 .as_ptr()
                 .cast();
@@ -795,9 +793,6 @@ pub unsafe fn tty_term_read_list(
             (*ncaps) += 1;
         }
 
-        // #if !defined(NCURSES_VERSION_MAJOR) || NCURSES_VERSION_MAJOR > 5 || (NCURSES_VERSION_MAJOR == 5 && NCURSES_VERSION_MINOR > 6)
-        del_curterm(cur_term);
-        // #endif
         0
     }
 }
@@ -815,37 +810,33 @@ pub unsafe fn tty_term_has(term: *mut tty_term, code: tty_code_code) -> bool {
     unsafe { (*(*term).codes.add(code as usize)).type_ != tty_code_type::None }
 }
 
-pub unsafe fn tty_term_string(term: *mut tty_term, code: tty_code_code) -> *const u8 {
+pub unsafe fn tty_term_string(term: *mut tty_term, code: tty_code_code) -> &'static [u8] {
     unsafe {
         if !tty_term_has(term, code) {
-            return c!("");
+            return &[];
         }
         if (*(*term).codes.add(code as usize)).type_ != tty_code_type::String {
             fatalx_!("not a string: {}", code as u32);
         }
-        (*(*term).codes.add(code as usize)).value.string
+        let ret = (*(*term).codes.add(code as usize)).value.string;
+        std::slice::from_raw_parts(ret, libc::strlen(ret))
     }
 }
 
-pub unsafe fn tty_term_string_i(term: *mut tty_term, code: tty_code_code, a: i32) -> *const u8 {
+pub unsafe fn tty_term_string_i(term: *mut tty_term, code: tty_code_code, a: i32) -> Vec<u8> {
     unsafe {
         let x = tty_term_string(term, code);
-
-        // #if defined(HAVE_TIPARM_S)
-        // s = tiparm_s(1, 0, x, a);
-        // #elif defined(HAVE_TIPARM)
-        // s = tiparm(x, a);
-        // #else
-        let s = tparm(x, a, 0, 0, 0, 0, 0, 0, 0, 0);
-        // #endif
-        if s.is_null() {
-            log_debug!(
-                "could not expand {}",
-                _s(TTY_TERM_CODES[code as usize].name.as_ptr())
-            );
-            return c!("c");
+        let parameters = [Parameter::from(a)];
+        match (*term).expand_context.expand(x, &parameters) {
+            Ok(buf) => buf,
+            Err(err) => {
+                log_debug!(
+                    "could not expand {}: {err}",
+                    _s(TTY_TERM_CODES[code as usize].name),
+                );
+                vec![]
+            }
         }
-        s
     }
 }
 
@@ -854,27 +845,20 @@ pub unsafe fn tty_term_string_ii(
     code: tty_code_code,
     a: i32,
     b: i32,
-) -> *const u8 {
+) -> Vec<u8> {
     unsafe {
         let x = tty_term_string(term, code);
-
-        // TODO
-        // #if defined(HAVE_TIPARM_S)
-        // s = tiparm_s(2, 0, x, a, b);
-        // #elif defined(HAVE_TIPARM)
-        // s = tiparm(x, a, b);
-        // #else
-        let s = tparm(x, a, b, 0, 0, 0, 0, 0, 0, 0);
-        // #endif
-        if s.is_null() {
-            log_debug!(
-                "could not expand {}",
-                _s(TTY_TERM_CODES[code as usize].name)
-            );
-            return c!("");
+        let parameters = [Parameter::from(a), Parameter::from(b)];
+        match (*term).expand_context.expand(x, &parameters) {
+            Ok(buf) => buf,
+            Err(err) => {
+                log_debug!(
+                    "could not expand {}: {err}",
+                    _s(TTY_TERM_CODES[code as usize].name),
+                );
+                vec![]
+            }
         }
-
-        s
     }
 }
 
@@ -884,54 +868,40 @@ pub unsafe fn tty_term_string_iii(
     a: i32,
     b: i32,
     c: i32,
-) -> *const u8 {
+) -> Vec<u8> {
     unsafe {
         let x = tty_term_string(term, code);
-
-        // TODO
-        // #if defined(HAVE_TIPARM_S)
-        // s = tiparm_s(3, 0, x, a, b, c);
-        // #elif defined(HAVE_TIPARM)
-        // s = tiparm(x, a, b, c);
-        // #else
-        let s = tparm(x, a, b, c, 0, 0, 0, 0, 0, 0);
-        // #endif
-        if s.is_null() {
-            log_debug!(
-                "could not expand {}",
-                _s(TTY_TERM_CODES[code as usize].name)
-            );
-            return c!("");
+        let parameters = [Parameter::from(a), Parameter::from(b), Parameter::from(c)];
+        match (*term).expand_context.expand(x, &parameters) {
+            Ok(buf) => buf,
+            Err(err) => {
+                log_debug!(
+                    "could not expand {}: {err}",
+                    _s(TTY_TERM_CODES[code as usize].name),
+                );
+                vec![]
+            }
         }
-        s
     }
 }
 
-pub unsafe fn tty_term_string_s(
-    term: *mut tty_term,
-    code: tty_code_code,
-    a: *const u8,
-) -> *const u8 {
+pub unsafe fn tty_term_string_s(term: *mut tty_term, code: tty_code_code, a: *const u8) -> Vec<u8> {
     unsafe {
         let x = tty_term_string(term, code);
-
-        // TODO
-        // #if defined(HAVE_TIPARM_S)
-        // s = tiparm_s(1, 1, x, a);
-        // #elif defined(HAVE_TIPARM)
-        // s = tiparm(x, a);
-        // #else
-        let s: *mut u8 = tparm(x.cast(), a as c_long, 0, 0, 0, 0, 0, 0, 0, 0);
-        // #endif
-        if s.is_null() {
-            log_debug!(
-                "could not expand {}",
-                _s(TTY_TERM_CODES[code as usize].name)
-            );
-            return c!("");
+        let parameters = [Parameter::from(std::slice::from_raw_parts(
+            a,
+            libc::strlen(a),
+        ))];
+        match (*term).expand_context.expand(x, &parameters) {
+            Ok(buf) => buf,
+            Err(err) => {
+                log_debug!(
+                    "could not expand {}: {err}",
+                    _s(TTY_TERM_CODES[code as usize].name),
+                );
+                vec![]
+            }
         }
-
-        s
     }
 }
 
@@ -940,28 +910,23 @@ pub unsafe fn tty_term_string_ss(
     code: tty_code_code,
     a: *const u8,
     b: *const u8,
-) -> *const u8 {
+) -> Vec<u8> {
     unsafe {
         let x = tty_term_string(term, code);
-        // *s;
-
-        // #if defined(HAVE_TIPARM_S)
-        // let s = tiparm_s(2, 3, x, a, b);
-        // #elif defined(HAVE_TIPARM)
-        // let s = tiparm(x, a, b);
-        // #else
-        // TODO
-        let s = tparm(x.cast(), a as c_long, b as c_long, 0, 0, 0, 0, 0, 0, 0).cast::<u8>();
-        // #endif
-        if s.is_null() {
-            log_debug!(
-                "could not expand {}",
-                _s(TTY_TERM_CODES[code as usize].name)
-            );
-            return c!("");
+        let parameters = [
+            Parameter::from(std::slice::from_raw_parts(a, libc::strlen(a))),
+            Parameter::from(std::slice::from_raw_parts(b, libc::strlen(b))),
+        ];
+        match (*term).expand_context.expand(x, &parameters) {
+            Ok(buf) => buf,
+            Err(err) => {
+                log_debug!(
+                    "could not expand {}: {err}",
+                    _s(TTY_TERM_CODES[code as usize].name),
+                );
+                vec![]
+            }
         }
-
-        s
     }
 }
 

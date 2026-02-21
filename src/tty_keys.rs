@@ -768,41 +768,58 @@ static TTY_DEFAULT_CODE_KEYS: [tty_default_key_code; 136] = [
 ];
 
 /// Add key to tree.
-unsafe fn tty_keys_add(tty: *mut tty, s: *const u8, key: key_code) {
+unsafe fn tty_keys_add(tty: *mut tty, s: &[u8], key: key_code) {
     unsafe {
         let mut size: usize = 0;
 
         let keystr = key_string_lookup_key(key, 1);
-        let tk = tty_keys_find(tty, s, strlen(s), &raw mut size);
+        let tk = tty_keys_find(tty, s.as_ptr(), s.len(), &raw mut size);
         if tk.is_null() {
-            log_debug!("new key {}: 0x{:x} ({})", _s(s), key, _s(keystr));
+            log_debug!(
+                "new key {}: 0x{:x} ({})",
+                String::from_utf8_lossy(s),
+                key,
+                _s(keystr)
+            );
             tty_keys_add1(&raw mut (*tty).key_tree, s, key);
         } else {
-            log_debug!("replacing key {}: 0x{:x} ({})", _s(s), key, _s(keystr));
+            log_debug!(
+                "replacing key {}: 0x{:x} ({})",
+                String::from_utf8_lossy(s),
+                key,
+                _s(keystr)
+            );
             (*tk).key = key;
         }
     }
 }
 
+unsafe fn tty_keys_add_(tty: *mut tty, s: *const u8, key: key_code) {
+    unsafe {
+        let s = std::slice::from_raw_parts(s, strlen(s));
+        tty_keys_add(tty, s, key);
+    }
+}
+
 /// Add next node to the tree.
-unsafe fn tty_keys_add1(mut tkp: *mut *mut tty_key, mut s: *const u8, key: key_code) {
+unsafe fn tty_keys_add1(mut tkp: *mut *mut tty_key, mut s: &[u8], key: key_code) {
     unsafe {
         // Allocate a tree entry if there isn't one already.
         let mut tk = *tkp;
         if tk.is_null() {
             *tkp = xcalloc1() as *mut tty_key;
             tk = *tkp;
-            (*tk).ch = *s;
+            (*tk).ch = s[0];
             (*tk).key = KEYC_UNKNOWN;
         }
 
-        tkp = match (*s).cmp(&(*tk).ch) {
+        tkp = match s[0].cmp(&(*tk).ch) {
             cmp::Ordering::Equal => {
                 // Move forward in string.
-                s = s.add(1);
+                s = &s[1..];
 
                 // If this is the end of the string, no more is necessary.
-                if *s == b'\0' {
+                if s.is_empty() {
                     (*tk).key = key;
                     return;
                 }
@@ -844,20 +861,20 @@ pub unsafe fn tty_keys_build(tty: *mut tty) {
                 copy[libc::strcspn(copy.as_ptr(), c!("_"))] = b'0' + j as u8;
 
                 let key = tdkx.key | tty_default_xterm_modifiers_j;
-                tty_keys_add(tty, copy.as_ptr(), key);
+                tty_keys_add_(tty, copy.as_ptr(), key);
             }
         }
 
         for tdkr in &TTY_DEFAULT_RAW_KEYS {
             let s = tdkr.string.as_ptr();
             if *s != 0 {
-                tty_keys_add(tty, s, tdkr.key);
+                tty_keys_add_(tty, s, tdkr.key);
             }
         }
 
         for tdkc in &TTY_DEFAULT_CODE_KEYS {
             let s = tty_term_string((*tty).term, tdkc.code);
-            if *s != 0 {
+            if !s.is_empty() {
                 tty_keys_add(tty, s, tdkc.key);
             }
         }
@@ -868,7 +885,7 @@ pub unsafe fn tty_keys_build(tty: *mut tty) {
             while !a.is_null() {
                 let i = options_array_item_index(a) as u64;
                 let ov = options_array_item_value(a);
-                tty_keys_add(tty, (*ov).string, KEYC_USER + i);
+                tty_keys_add_(tty, (*ov).string, KEYC_USER + i);
                 a = options_array_next(a);
             }
         }

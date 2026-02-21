@@ -386,8 +386,8 @@ pub unsafe fn window_copy_init(
             (*data).oy = 0;
         }
 
-        (*data).scroll_exit = args_has(args, 'e');
-        (*data).hide_position = args_has(args, 'H');
+        (*data).scroll_exit = args_has(&*args, 'e');
+        (*data).hide_position = args_has(&*args, 'H');
 
         if !(*base).hyperlinks.is_null() {
             (*data).screen.hyperlinks = hyperlinks_copy((*base).hyperlinks);
@@ -915,7 +915,7 @@ pub unsafe fn window_copy_expand_search_string(cs: *mut window_copy_cmd_state) -
             return false;
         }
 
-        if args_has((*cs).args, 'F') {
+        if args_has(&*(*cs).args, 'F') {
             let expanded = format_single(
                 null_mut(),
                 cstr_to_str(ss),
@@ -1053,7 +1053,7 @@ pub unsafe fn window_copy_do_copy_end_of_line(
         let s = (*cs).s;
         let wl = (*cs).wl;
         let wp = (*wme).wp;
-        let count = args_count((*cs).args);
+        let count = args_count(&*(*cs).args);
         let mut np = (*wme).prefix;
         let data: *mut window_copy_mode_data = (*wme).data.cast();
         let mut prefix = null_mut();
@@ -1144,7 +1144,7 @@ pub unsafe fn window_copy_do_copy_line(
         let wl = (*cs).wl;
         let wp = (*wme).wp;
         let data: *mut window_copy_mode_data = (*wme).data.cast();
-        let count = args_count((*cs).args);
+        let count = args_count(&*(*cs).args);
         let mut np = (*wme).prefix;
         // ocx, ocy, ooy;
         let mut prefix = null_mut();
@@ -3407,7 +3407,7 @@ pub unsafe fn window_copy_command(
         let data: *mut window_copy_mode_data = (*wme).data.cast();
         let mut cs: window_copy_cmd_state = zeroed();
         let mut clear = window_copy_cmd_clear::WINDOW_COPY_CMD_CLEAR_NEVER;
-        let count = args_count(args);
+        let count = args_count(&*args);
 
         if count == 0 {
             return;

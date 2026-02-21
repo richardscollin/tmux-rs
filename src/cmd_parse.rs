@@ -402,7 +402,7 @@ pub unsafe fn cmd_parse_build_command(
         }
         // out:
         for idx in 0..count {
-            args_free_value(values.add(idx as usize));
+            args_free_value(&mut *values.add(idx as usize));
         }
         free_(values);
     }

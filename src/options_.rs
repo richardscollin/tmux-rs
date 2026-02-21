@@ -987,7 +987,7 @@ pub unsafe fn options_scope_from_name(
                 Ok(OPTIONS_TABLE_SERVER)
             }
             OPTIONS_TABLE_SESSION => {
-                if args_has(args, 'g') {
+                if args_has(&*args, 'g') {
                     *oo = GLOBAL_S_OPTIONS;
                     Ok(OPTIONS_TABLE_SESSION)
                 } else if s.is_null() && !target.is_null() {
@@ -1000,7 +1000,7 @@ pub unsafe fn options_scope_from_name(
                 }
             }
             OPTIONS_TABLE_WINDOW_AND_PANE => {
-                if args_has(args, 'p') {
+                if args_has(&*args, 'p') {
                     if wp.is_null() && !target.is_null() {
                         Err(format!("no such pane: {}", _s(target)))
                     } else if wp.is_null() {
@@ -1011,7 +1011,7 @@ pub unsafe fn options_scope_from_name(
                     }
                 } else {
                     // FALLTHROUGH same as OPTIONS_TABLE_WINDOW case
-                    if args_has(args, 'g') {
+                    if args_has(&*args, 'g') {
                         *oo = GLOBAL_W_OPTIONS;
                         Ok(OPTIONS_TABLE_WINDOW)
                     } else if wl.is_null() && !target.is_null() {
@@ -1025,7 +1025,7 @@ pub unsafe fn options_scope_from_name(
                 }
             }
             OPTIONS_TABLE_WINDOW => {
-                if args_has(args, 'g') {
+                if args_has(&*args, 'g') {
                     *oo = GLOBAL_W_OPTIONS;
                     Ok(OPTIONS_TABLE_WINDOW)
                 } else if wl.is_null() && !target.is_null() {
@@ -1054,12 +1054,12 @@ pub unsafe fn options_scope_from_flags(
         let wp = (*fs).wp;
         let target = args_get_(args, 't');
 
-        if args_has(args, 's') {
+        if args_has(&*args, 's') {
             *oo = GLOBAL_OPTIONS;
             return Ok(OPTIONS_TABLE_SERVER);
         }
 
-        if args_has(args, 'p') {
+        if args_has(&*args, 'p') {
             if wp.is_null() {
                 if !target.is_null() {
                     return Err(format!("no such pane: {}", _s(target)));
@@ -1069,8 +1069,8 @@ pub unsafe fn options_scope_from_flags(
             }
             *oo = (*wp).options;
             Ok(OPTIONS_TABLE_PANE)
-        } else if window != 0 || args_has(args, 'w') {
-            if args_has(args, 'g') {
+        } else if window != 0 || args_has(&*args, 'w') {
+            if args_has(&*args, 'g') {
                 *oo = GLOBAL_W_OPTIONS;
                 return Ok(OPTIONS_TABLE_WINDOW);
             }
@@ -1084,7 +1084,7 @@ pub unsafe fn options_scope_from_flags(
             *oo = (*(*wl).window).options;
             Ok(OPTIONS_TABLE_WINDOW)
         } else {
-            if args_has(args, 'g') {
+            if args_has(&*args, 'g') {
                 *oo = GLOBAL_S_OPTIONS;
                 return Ok(OPTIONS_TABLE_SESSION);
             }

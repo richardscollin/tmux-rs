@@ -367,7 +367,7 @@ pub unsafe fn session_attach(
         let wl = winlink_add(&raw mut (*s).windows, idx);
 
         if wl.is_null() {
-            return Err(format!("index in use: {}", idx));
+            return Err(format!("index in use: {idx}"));
         }
         (*wl).session = s;
         winlink_set_window(wl, w);

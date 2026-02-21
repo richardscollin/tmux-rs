@@ -42,7 +42,7 @@ pub static CMD_CLEAR_PROMPT_HISTORY_ENTRY: cmd_entry = cmd_entry {
 unsafe fn cmd_show_prompt_history_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retval {
     unsafe {
         let args = cmd_get_args(self_);
-        let typestr = args_get(args, b'T');
+        let typestr = args_get(&*args, b'T');
         let type_: prompt_type;
 
         if std::ptr::eq(cmd_get_entry(self_), &CMD_CLEAR_PROMPT_HISTORY_ENTRY) {

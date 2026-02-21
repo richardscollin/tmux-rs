@@ -1,5 +1,8 @@
 // Copyright (c) 2009 Nicholas Marriott <nicholas.marriott@gmail.com>
 //
+// Ported from C: the if/else-if branches intentionally share bodies for different conditions.
+#![expect(clippy::if_same_then_else)]
+//
 // Permission to use, copy, modify, and distribute this software for any
 // purpose with or without fee is hereby granted, provided that the above
 // copyright notice and this permission notice appear in all copies.

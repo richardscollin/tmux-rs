@@ -415,7 +415,7 @@ pub unsafe fn mode_tree_start(
             modedata,
             menu,
             sort_list,
-            preview: !args_has(args, 'N'),
+            preview: !args_has(&*args, 'N'),
 
             buildcb,
             drawcb,
@@ -436,7 +436,7 @@ pub unsafe fn mode_tree_start(
             current: Default::default(),
             screen: zeroed(),
             search: Default::default(),
-            filter: if args_has(args, 'f') {
+            filter: if args_has(&*args, 'f') {
                 xstrdup(args_get_(args, 'f')).as_ptr()
             } else {
                 null_mut()
@@ -451,7 +451,7 @@ pub unsafe fn mode_tree_start(
         {
             mtd.sort_crit.field = pos as u32;
         }
-        mtd.sort_crit.reversed = args_has(args, 'r');
+        mtd.sort_crit.reversed = args_has(&*args, 'r');
 
         tailq_init(&mut mtd.children);
 
@@ -472,7 +472,7 @@ pub unsafe fn mode_tree_zoom(mtd: *mut mode_tree_data, args: *mut args) {
     unsafe {
         let wp: *mut window_pane = (*mtd).wp;
 
-        if args_has(args, 'Z') {
+        if args_has(&*args, 'Z') {
             (*mtd).zoomed = ((*(*wp).window).flags & window_flag::ZOOMED).bits();
             if (*mtd).zoomed == 0 && window_zoom(wp) == 0 {
                 server_redraw_window((*wp).window);
@@ -1486,15 +1486,15 @@ pub unsafe fn mode_tree_run_command(
         let command = cmd_template_replace(template, name, 1);
         if !command.is_null() && *command != b'\0' {
             let state = cmdq_new_state(fs, null_mut(), cmdq_state_flags::empty());
-            if let Err(mut error) = cmd_parse_and_append(cstr_to_str(command), None, c, state) {
-                if !c.is_null() {
-                    // Uppercase the first character
-                    if let Some(first) = error.get(..1) {
-                        let upper = first.to_ascii_uppercase();
-                        error.replace_range(..1, &upper);
-                    }
-                    status_message_set!(c, -1, 1, false, "{}", error);
+            if let Err(mut error) = cmd_parse_and_append(cstr_to_str(command), None, c, state)
+                && !c.is_null()
+            {
+                // Uppercase the first character
+                if let Some(first) = error.get(..1) {
+                    let upper = first.to_ascii_uppercase();
+                    error.replace_range(..1, &upper);
                 }
+                status_message_set!(c, -1, 1, false, "{}", error);
             }
             cmdq_free_state(state);
         }

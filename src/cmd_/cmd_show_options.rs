@@ -85,10 +85,10 @@ unsafe fn cmd_show_options_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
 
         'fail: {
             'out: {
-                if args_count(args) == 0 {
+                if args_count(&*args) == 0 {
                     let scope = match options_scope_from_flags(args, window, target, &raw mut oo) {
                         Err(cause) => {
-                            if args_has(args, 'q') {
+                            if args_has(&*args, 'q') {
                                 return cmd_retval::CMD_RETURN_NORMAL;
                             }
                             cmdq_error!(item, "{}", cause);
@@ -101,7 +101,7 @@ unsafe fn cmd_show_options_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
                 argument = format_single_from_target(item, args_string(args, 0));
 
                 let Some(name) = options_match(cstr_to_str(argument), &raw mut idx, &raw mut ambiguous) else {
-                    if args_has(args, 'q') {
+                    if args_has(&*args, 'q') {
                         break 'out;
                     }
                     if ambiguous != 0 {
@@ -119,7 +119,7 @@ unsafe fn cmd_show_options_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
                     &raw mut oo,
                 ) {
                     Err(cause) => {
-                        if args_has(args, 'q') {
+                        if args_has(&*args, 'q') {
                             break 'out;
                         }
                         cmdq_error!(item, "{}", cause);
@@ -128,7 +128,7 @@ unsafe fn cmd_show_options_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
                     Ok(val) => val,
                 };
                 o = options_get_only(oo, &name);
-                if args_has(args, 'A') && o.is_null() {
+                if args_has(&*args, 'A') && o.is_null() {
                     o = options_get(&mut *oo, &name);
                     parent = 1;
                 } else {
@@ -137,7 +137,7 @@ unsafe fn cmd_show_options_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
                 if !o.is_null() {
                     cmd_show_options_print(self_, item, o, idx, parent);
                 } else if name.starts_with('@') {
-                    if args_has(args, 'q') {
+                    if args_has(&*args, 'q') {
                         break 'out;
                     }
                     cmdq_error!(item, "invalid option: {}", _s(argument));
@@ -174,7 +174,7 @@ pub unsafe fn cmd_show_options_print(
         } else if options_is_array(o) {
             a = options_array_first(o);
             if a.is_null() {
-                if !args_has(args, 'v') {
+                if !args_has(&*args, 'v') {
                     cmdq_print!(item, "{}", name);
                 }
                 return;
@@ -188,7 +188,7 @@ pub unsafe fn cmd_show_options_print(
         }
 
         let value = options_to_string(o, idx, 0);
-        if args_has(args, 'v') {
+        if args_has(&*args, 'v') {
             cmdq_print!(item, "{}", _s(value));
         } else if options_is_string(o) {
             escaped = args_escape(value);
@@ -234,7 +234,7 @@ pub unsafe fn cmd_show_options_all(
             }
 
             if !std::ptr::eq(cmd_get_entry(self_), &CMD_SHOW_HOOKS_ENTRY)
-                && !args_has(args, 'H')
+                && !args_has(&*args, 'H')
                 && (oe.flags & OPTIONS_TABLE_IS_HOOK != 0)
                 || (std::ptr::eq(cmd_get_entry(self_), &CMD_SHOW_HOOKS_ENTRY)
                     && (!oe.flags & OPTIONS_TABLE_IS_HOOK != 0))
@@ -244,7 +244,7 @@ pub unsafe fn cmd_show_options_all(
 
             o = options_get_only(oo, oe.name);
             if o.is_null() {
-                if !args_has(args, 'A') {
+                if !args_has(&*args, 'A') {
                     continue;
                 }
                 o = options_get(&mut *oo, oe.name);
@@ -265,7 +265,7 @@ pub unsafe fn cmd_show_options_all(
                     cmd_show_options_print(self_, item, o, idx as i32, parent);
                     a = options_array_next(a);
                 }
-            } else if !args_has(args, 'v') {
+            } else if !args_has(&*args, 'v') {
                 let name = options_name(o);
                 if parent != 0 {
                     cmdq_print!(item, "{name}*");

@@ -41,17 +41,17 @@ unsafe fn cmd_list_clients_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
         let args = cmd_get_args(self_);
         let target = cmdq_get_target(item);
 
-        let s = if args_has(args, 't') {
+        let s = if args_has(&*args, 't') {
             (*target).s
         } else {
             null_mut()
         };
 
-        let mut template = args_get(args, b'F');
+        let mut template = args_get(&*args, b'F');
         if template.is_null() {
             template = LIST_CLIENTS_TEMPLATE;
         }
-        let filter = args_get(args, b'f');
+        let filter = args_get(&*args, b'f');
 
         let mut idx = 0;
         for c in tailq_foreach(&raw mut CLIENTS).map(NonNull::as_ptr) {

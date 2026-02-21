@@ -24,6 +24,7 @@ pub fn setproctitle_(mut title: String) {
     }
     title.push('\0');
     unsafe {
+        #[expect(clippy::disallowed_methods, reason = "CString has guaranteed nul terminator")]
         crate::libc::prctl(crate::libc::PR_SET_NAME, title.as_ptr());
     }
 }

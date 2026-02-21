@@ -311,14 +311,14 @@ unsafe fn cmd_display_panes_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
         let tc = cmdq_get_target_client(item);
         let s = (*tc).session;
         let delay: u32;
-        let wait = !args_has(args, 'b');
+        let wait = !args_has(&*args, 'b');
 
         if (*tc).overlay_draw.is_some() {
             return cmd_retval::CMD_RETURN_NORMAL;
         }
 
-        if args_has(args, 'd') {
-            match args_strtonum(args, b'd', 0, u32::MAX as i64) {
+        if args_has(&*args, 'd') {
+            match args_strtonum(&*args, b'd', 0, u32::MAX as i64) {
                 Ok(v) => delay = v as u32,
                 Err(cause) => {
                     cmdq_error!(item, "delay {}", cause);
@@ -336,7 +336,7 @@ unsafe fn cmd_display_panes_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
         (*cdata).state =
             args_make_commands_prepare(self_, item, 0, c!("select-pane -t \"%%%\""), wait, false);
 
-        if args_has(args, 'N') {
+        if args_has(&*args, 'N') {
             server_client_set_overlay(
                 tc,
                 delay,

@@ -34,9 +34,9 @@ fn cmd_bind_key_args_parse(_args: *mut args, _idx: u32) -> args_parse_type {
 unsafe fn cmd_bind_key_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retval {
     unsafe {
         let args: *mut args = cmd_get_args(self_);
-        let note = args_get(args, b'N');
+        let note = args_get(&*args, b'N');
 
-        let count: u32 = args_count(args);
+        let count: u32 = args_count(&*args);
 
         let key: key_code = key_string_lookup_string(args_string(args, 0));
         if key == KEYC_NONE || key == KEYC_UNKNOWN {
@@ -44,14 +44,14 @@ unsafe fn cmd_bind_key_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retval
             return cmd_retval::CMD_RETURN_ERROR;
         }
 
-        let tablename: *const u8 = if args_has(args, 'T') {
-            args_get(args, b'T')
-        } else if args_has(args, 'n') {
+        let tablename: *const u8 = if args_has(&*args, 'T') {
+            args_get(&*args, b'T')
+        } else if args_has(&*args, 'n') {
             c!("root")
         } else {
             c!("prefix")
         };
-        let repeat = args_has(args, 'r');
+        let repeat = args_has(&*args, 'r');
 
         if count == 1 {
             key_bindings_add(tablename, key, note, repeat, null_mut());

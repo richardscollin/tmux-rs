@@ -1039,31 +1039,31 @@ unsafe fn window_tree_init(
         (*data).wp = wp;
         (*data).references = 1;
 
-        if args_has(args, 's') {
+        if args_has(&*args, 's') {
             (*data).type_ = window_tree_type::WINDOW_TREE_SESSION;
-        } else if args_has(args, 'w') {
+        } else if args_has(&*args, 'w') {
             (*data).type_ = window_tree_type::WINDOW_TREE_WINDOW;
         } else {
             (*data).type_ = window_tree_type::WINDOW_TREE_PANE;
         }
         memcpy__(&raw mut (*data).fs, fs);
 
-        if args.is_null() || !args_has(args, 'F') {
+        if args.is_null() || !args_has(&*args, 'F') {
             (*data).format = xstrdup__(WINDOW_TREE_DEFAULT_FORMAT);
         } else {
             (*data).format = xstrdup(args_get_(args, 'F')).as_ptr();
         }
-        if args.is_null() || !args_has(args, 'K') {
+        if args.is_null() || !args_has(&*args, 'K') {
             (*data).key_format = xstrdup_(WINDOW_TREE_DEFAULT_KEY_FORMAT).as_ptr();
         } else {
             (*data).key_format = xstrdup(args_get_(args, 'K')).as_ptr();
         }
-        if args.is_null() || args_count(args) == 0 {
+        if args.is_null() || args_count(&*args) == 0 {
             (*data).command = xstrdup__(WINDOW_TREE_DEFAULT_COMMAND);
         } else {
             (*data).command = xstrdup(args_string(args, 0)).as_ptr();
         }
-        (*data).squash_groups = !args_has(args, 'G');
+        (*data).squash_groups = !args_has(&*args, 'G');
 
         (*data).data = mode_tree_start(
             wp,

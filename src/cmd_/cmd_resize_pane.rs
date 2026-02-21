@@ -44,7 +44,7 @@ unsafe fn cmd_resize_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
         let mut y: i32;
         let gd = (*wp).base.grid;
 
-        if args_has(args, 'T') {
+        if args_has(&*args, 'T') {
             if !tailq_empty(&raw mut (*wp).modes) {
                 return cmd_retval::CMD_RETURN_NORMAL;
             }
@@ -58,7 +58,7 @@ unsafe fn cmd_resize_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
             return cmd_retval::CMD_RETURN_NORMAL;
         }
 
-        if args_has(args, 'M') {
+        if args_has(&*args, 'M') {
             if !(*event).m.valid || cmd_mouse_window(&raw mut (*event).m, &raw mut s).is_none() {
                 return cmd_retval::CMD_RETURN_NORMAL;
             }
@@ -70,7 +70,7 @@ unsafe fn cmd_resize_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
             return cmd_retval::CMD_RETURN_NORMAL;
         }
 
-        if args_has(args, 'Z') {
+        if args_has(&*args, 'Z') {
             if (*w).flags.intersects(window_flag::ZOOMED) {
                 window_unzoom(w, 1);
             } else {
@@ -81,7 +81,7 @@ unsafe fn cmd_resize_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
         }
         server_unzoom_window(w);
 
-        let adjust = if args_count(args) == 0 {
+        let adjust = if args_count(&*args) == 0 {
             1
         } else {
             match strtonum(args_string(args, 0), 1, i32::MAX) {
@@ -93,8 +93,8 @@ unsafe fn cmd_resize_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
             }
         };
 
-        if args_has(args, 'x') {
-            match args_percentage(args, b'x', 0, i32::MAX as i64, (*w).sx as i64) {
+        if args_has(&*args, 'x') {
+            match args_percentage(&*args, b'x', 0, i32::MAX as i64, (*w).sx as i64) {
                 Ok(v) => x = v as i32,
                 Err(cause) => {
                     cmdq_error!(item, "width {}", cause);
@@ -103,8 +103,8 @@ unsafe fn cmd_resize_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
             }
             layout_resize_pane_to(wp, layout_type::LAYOUT_LEFTRIGHT, x as u32);
         }
-        if args_has(args, 'y') {
-            match args_percentage(args, b'y', 0, i32::MAX as i64, (*w).sy as i64) {
+        if args_has(&*args, 'y') {
+            match args_percentage(&*args, b'y', 0, i32::MAX as i64, (*w).sy as i64) {
                 Ok(v) => y = v as i32,
                 Err(cause) => {
                     cmdq_error!(item, "height {}", cause);
@@ -129,13 +129,13 @@ unsafe fn cmd_resize_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
             layout_resize_pane_to(wp, layout_type::LAYOUT_TOPBOTTOM, y as u32);
         }
 
-        if args_has(args, 'L') {
+        if args_has(&*args, 'L') {
             layout_resize_pane(wp, layout_type::LAYOUT_LEFTRIGHT, -(adjust as i32), 1);
-        } else if args_has(args, 'R') {
+        } else if args_has(&*args, 'R') {
             layout_resize_pane(wp, layout_type::LAYOUT_LEFTRIGHT, adjust as i32, 1);
-        } else if args_has(args, 'U') {
+        } else if args_has(&*args, 'U') {
             layout_resize_pane(wp, layout_type::LAYOUT_TOPBOTTOM, -(adjust as i32), 1);
-        } else if args_has(args, 'D') {
+        } else if args_has(&*args, 'D') {
             layout_resize_pane(wp, layout_type::LAYOUT_TOPBOTTOM, adjust as i32, 1);
         }
         server_redraw_window((*wl).window);

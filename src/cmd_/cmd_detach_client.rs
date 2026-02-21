@@ -50,20 +50,20 @@ pub unsafe fn cmd_detach_client_exec(self_: *mut cmd, item: *mut cmdq_item) -> c
         let args = cmd_get_args(self_);
         let source = cmdq_get_source(item);
         let tc = cmdq_get_target_client(item);
-        let cmd = args_get(args, b'E');
+        let cmd = args_get(&*args, b'E');
 
         if std::ptr::eq(cmd_get_entry(self_), &CMD_SUSPEND_CLIENT_ENTRY) {
             server_client_suspend(tc);
             return cmd_retval::CMD_RETURN_NORMAL;
         }
 
-        let msgtype = if args_has(args, 'P') {
+        let msgtype = if args_has(&*args, 'P') {
             msgtype::MSG_DETACHKILL
         } else {
             msgtype::MSG_DETACH
         };
 
-        if args_has(args, 's') {
+        if args_has(&*args, 's') {
             let s = (*source).s;
             if s.is_null() {
                 return cmd_retval::CMD_RETURN_NORMAL;
@@ -80,7 +80,7 @@ pub unsafe fn cmd_detach_client_exec(self_: *mut cmd, item: *mut cmdq_item) -> c
             return cmd_retval::CMD_RETURN_STOP;
         }
 
-        if args_has(args, 'a') {
+        if args_has(&*args, 'a') {
             for loop_ in tailq_foreach(&raw mut CLIENTS).map(NonNull::as_ptr) {
                 if !(*loop_).session.is_null() && loop_ != tc {
                     if !cmd.is_null() {

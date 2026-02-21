@@ -354,17 +354,17 @@ pub unsafe fn window_buffer_init(
         data.wp = wp;
         cmd_find_copy_state(&raw mut data.fs, fs);
 
-        if args.is_null() || !args_has(args, 'F') {
+        if args.is_null() || !args_has(&*args, 'F') {
             data.format = xstrdup__(WINDOW_BUFFER_DEFAULT_FORMAT);
         } else {
             data.format = xstrdup(args_get_(args, 'F')).as_ptr();
         }
-        if args.is_null() || !args_has(args, 'K') {
+        if args.is_null() || !args_has(&*args, 'K') {
             data.key_format = xstrdup__(WINDOW_BUFFER_DEFAULT_KEY_FORMAT);
         } else {
             data.key_format = xstrdup(args_get_(args, 'K')).as_ptr();
         }
-        if args.is_null() || args_count(args) == 0 {
+        if args.is_null() || args_count(&*args) == 0 {
             data.command = xstrdup__(WINDOW_BUFFER_DEFAULT_COMMAND);
         } else {
             data.command = xstrdup(args_string(args, 0)).as_ptr();

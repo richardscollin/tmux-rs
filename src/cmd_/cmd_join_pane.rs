@@ -81,13 +81,13 @@ unsafe fn cmd_join_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retva
         }
 
         type_ = layout_type::LAYOUT_TOPBOTTOM;
-        if args_has(args, 'h') {
+        if args_has(&*args, 'h') {
             type_ = layout_type::LAYOUT_LEFTRIGHT;
         }
 
         // If the 'p' flag is dropped then this bit can be moved into 'l'.
-        if args_has(args, 'l') || args_has(args, 'p') {
-            if args_has(args, 'f') {
+        if args_has(&*args, 'l') || args_has(&*args, 'p') {
+            if args_has(&*args, 'f') {
                 match type_ {
                     layout_type::LAYOUT_TOPBOTTOM => curval = (*dst_w).sy,
                     _ => curval = (*dst_w).sx,
@@ -101,16 +101,16 @@ unsafe fn cmd_join_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retva
         }
 
         let mut size: i32 = -1;
-        if args_has(args, 'l') {
-            match args_percentage_and_expand(args, b'l', 0, i32::MAX as i64, curval as i64, item) {
+        if args_has(&*args, 'l') {
+            match args_percentage_and_expand(&*args, b'l', 0, i32::MAX as i64, curval as i64, item) {
                 Ok(v) => size = v as _,
                 Err(cause) => {
                     cmdq_error!(item, "size {}", cause);
                     return cmd_retval::CMD_RETURN_ERROR;
                 }
             }
-        } else if args_has(args, 'p') {
-            match args_strtonum_and_expand(args, b'l', 0, 100, item) {
+        } else if args_has(&*args, 'p') {
+            match args_strtonum_and_expand(&*args, b'l', 0, 100, item) {
                 Ok(v) => size = curval as i32 * v as i32 / 100,
                 Err(cause) => {
                     cmdq_error!(item, "size {}", cause);
@@ -120,10 +120,10 @@ unsafe fn cmd_join_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retva
         }
 
         let mut flags: spawn_flags = spawn_flags::empty();
-        if args_has(args, 'b') {
+        if args_has(&*args, 'b') {
             flags |= SPAWN_BEFORE;
         }
-        if args_has(args, 'f') {
+        if args_has(&*args, 'f') {
             flags |= SPAWN_FULLSIZE;
         }
 
@@ -155,7 +155,7 @@ unsafe fn cmd_join_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retva
         server_redraw_window(src_w);
         server_redraw_window(dst_w);
 
-        if !args_has(args, 'd') {
+        if !args_has(&*args, 'd') {
             window_set_active_pane(dst_w, src_wp, 1);
             session_select(dst_s, dst_idx);
             cmd_find_from_session(current, dst_s, cmd_find_flags::empty());

@@ -1907,15 +1907,11 @@ union args_value_union {
     cmdlist: *mut cmd_list,
 }
 
-impl_tailq_entry!(args_value, entry, tailq_entry<args_value>);
 /// Argument value.
-#[repr(C)]
 struct args_value {
     type_: args_type,
     union_: args_value_union,
-    cached: *mut u8,
-    // #[entry]
-    entry: tailq_entry<args_value>,
+    cached: std::cell::Cell<*mut u8>,
 }
 type args_tree = std::collections::BTreeMap<u8, Box<args_entry>>;
 
@@ -2637,7 +2633,7 @@ bitflags::bitflags! {
 // unsafe fn args_get(_: *mut args, _: c_uchar) -> *const c_char;
 unsafe fn args_get_(args: *mut args, flag: char) -> *const u8 {
     debug_assert!(flag.is_ascii());
-    unsafe { args_get(args, flag as u8) }
+    unsafe { args_get(&*args, flag as u8) }
 }
 
 unsafe impl Sync for SyncCharPtr {}

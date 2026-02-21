@@ -2751,6 +2751,7 @@ pub unsafe fn server_client_check_exit(c: *mut client) {
                 let data = xmalloc(size).as_ptr();
                 libc::memcpy(data, (&raw mut (*c).retval).cast(), size_of::<i32>());
                 if let Some(exit_message) = (*c).exit_message.as_deref() {
+                    #[expect(clippy::disallowed_methods, reason = "memcpy with explicit len, nul added below")]
                     libc::memcpy(
                         data.add(size_of::<i32>()).cast(),
                         exit_message.as_ptr().cast(),

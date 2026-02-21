@@ -109,13 +109,13 @@ pub unsafe fn cmd_wait_for_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
             None => null_mut(),
         });
 
-        if args_has(args, 'S') {
+        if args_has(&*args, 'S') {
             return cmd_wait_for_signal(item, name, wc);
         }
-        if args_has(args, 'L') {
+        if args_has(&*args, 'L') {
             return cmd_wait_for_lock(item, name, wc);
         }
-        if args_has(args, 'U') {
+        if args_has(&*args, 'U') {
             return cmd_wait_for_unlock(item, name, wc);
         }
 

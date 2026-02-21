@@ -132,7 +132,7 @@ pub unsafe fn spawn_window(sc: *mut spawn_context) -> Result<*mut winlink, Strin
         if !(*sc).flags.intersects(SPAWN_RESPAWN) && idx != -1 {
             let wl = winlink_find_by_index(&raw mut (*s).windows, idx);
             if !wl.is_null() && !(*sc).flags.intersects(SPAWN_KILL) {
-                return Err(format!("index {} in use", idx));
+                return Err(format!("index {idx} in use"));
             }
             if !wl.is_null() {
                 // Can't use session_detach as it will destroy session
@@ -156,7 +156,7 @@ pub unsafe fn spawn_window(sc: *mut spawn_context) -> Result<*mut winlink, Strin
             }
             (*sc).wl = winlink_add(&raw mut (*s).windows, idx);
             if (*sc).wl.is_null() {
-                return Err(format!("couldn't add window {}", idx));
+                return Err(format!("couldn't add window {idx}"));
             }
             let mut sx = 0u32;
             let mut sy = 0u32;

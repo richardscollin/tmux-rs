@@ -60,7 +60,7 @@ pub unsafe fn cmd_send_keys_inject_key(
         let wl = (*target).wl;
         let wp = (*target).wp;
 
-        if args_has(args, 'K') {
+        if args_has(&*args, 'K') {
             if tc.is_null() {
                 return item;
             }
@@ -108,7 +108,7 @@ pub unsafe fn cmd_send_keys_inject_string(
         let mut key: key_code;
         let mut endptr: *mut u8 = null_mut();
 
-        if args_has(args, 'H') {
+        if args_has(&*args, 'H') {
             let n = strtol(s, &raw mut endptr, 16);
             if *s == b'\0' || !(0..=0xff).contains(&n) || *endptr != b'\0' {
                 return item;
@@ -116,7 +116,7 @@ pub unsafe fn cmd_send_keys_inject_string(
             return cmd_send_keys_inject_key(item, after, args, KEYC_LITERAL | n as u64);
         }
 
-        let mut literal = args_has(args, 'l');
+        let mut literal = args_has(&*args, 'l');
         if !literal {
             key = key_string_lookup_string(s);
             if key != KEYC_NONE && key != KEYC_UNKNOWN {
@@ -162,16 +162,16 @@ pub unsafe fn cmd_send_keys_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
         let wme = tailq_first(&raw mut (*wp).modes);
         let mut after: *mut cmdq_item = item;
         let mut np: u32 = 1;
-        let count = args_count(args);
-        if args_has(args, 'N') {
-            match args_strtonum_and_expand(args, b'N', 1, u32::MAX as i64, item) {
+        let count = args_count(&*args);
+        if args_has(&*args, 'N') {
+            match args_strtonum_and_expand(&*args, b'N', 1, u32::MAX as i64, item) {
                 Ok(v) => np = v as u32,
                 Err(cause) => {
                     cmdq_error!(item, "repeat count {}", cause);
                     return cmd_retval::CMD_RETURN_ERROR;
                 }
             }
-            if !wme.is_null() && (args_has(args, 'X') || count == 0) {
+            if !wme.is_null() && (args_has(&*args, 'X') || count == 0) {
                 if (*(*wme).mode).command.is_none() {
                     cmdq_error!(item, "not in a mode");
                     return cmd_retval::CMD_RETURN_ERROR;
@@ -180,7 +180,7 @@ pub unsafe fn cmd_send_keys_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
             }
         }
 
-        if args_has(args, 'X') {
+        if args_has(&*args, 'X') {
             if wme.is_null() || (*(*wme).mode).command.is_none() {
                 cmdq_error!(item, "not in a mode");
                 return cmd_retval::CMD_RETURN_ERROR;
@@ -192,7 +192,7 @@ pub unsafe fn cmd_send_keys_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
             return cmd_retval::CMD_RETURN_NORMAL;
         }
 
-        if args_has(args, 'M') {
+        if args_has(&*args, 'M') {
             wp = transmute_ptr(cmd_mouse_pane(m, &raw mut s, null_mut()));
             if wp.is_null() {
                 cmdq_error!(item, "no mouse target");
@@ -203,7 +203,7 @@ pub unsafe fn cmd_send_keys_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
         }
 
         if std::ptr::eq(cmd_get_entry(self_), &CMD_SEND_PREFIX_ENTRY) {
-            let key = if args_has(args, '2') {
+            let key = if args_has(&*args, '2') {
                 options_get_number___::<u64>(&*(*s).options, "prefix2")
             } else {
                 options_get_number___::<u64>(&*(*s).options, "prefix")
@@ -212,14 +212,14 @@ pub unsafe fn cmd_send_keys_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
             return cmd_retval::CMD_RETURN_NORMAL;
         }
 
-        if args_has(args, 'R') {
+        if args_has(&*args, 'R') {
             colour_palette_clear(Some(&mut (*wp).palette));
             input_reset((*wp).ictx, 1);
             (*wp).flags |= window_pane_flags::PANE_STYLECHANGED | window_pane_flags::PANE_REDRAW;
         }
 
         if count == 0 {
-            if args_has(args, 'N') || args_has(args, 'R') {
+            if args_has(&*args, 'N') || args_has(&*args, 'R') {
                 return cmd_retval::CMD_RETURN_NORMAL;
             }
             while np != 0 {

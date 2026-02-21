@@ -78,7 +78,7 @@ unsafe fn cmd_capture_pane_pending(
         let linelen = EVBUFFER_LENGTH(pending);
 
         let mut buf = xstrdup(c!("")).as_ptr();
-        if args_has(args, 'C') {
+        if args_has(&*args, 'C') {
             for i in 0usize..linelen {
                 if *line.add(i) >= b' ' && *line.add(i) != b'\\' {
                     tmp[0] = *line.add(i) as _;
@@ -115,10 +115,10 @@ unsafe fn cmd_capture_pane_history(
         let mut linelen: usize;
 
         let sx = screen_size_x(&raw mut (*wp).base);
-        if args_has(args, 'a') {
+        if args_has(&*args, 'a') {
             gd = (*wp).base.saved_grid;
             if gd.is_null() {
-                if !args_has(args, 'q') {
+                if !args_has(&*args, 'q') {
                     cmdq_error!(item, "no alternate screen");
                     return null_mut();
                 }
@@ -128,12 +128,12 @@ unsafe fn cmd_capture_pane_history(
             gd = (*wp).base.grid;
         }
 
-        let sflag: *const u8 = args_get(args, b'S');
+        let sflag: *const u8 = args_get(&*args, b'S');
         let mut top;
         if !sflag.is_null() && streq_(sflag, "-") {
             top = 0;
         } else {
-            match args_strtonum_and_expand(args, b'S', i32::MIN as i64, i16::MAX as i64, item) {
+            match args_strtonum_and_expand(&*args, b'S', i32::MIN as i64, i16::MAX as i64, item) {
                 Err(_) => {
                     top = (*gd).hsize;
                 }
@@ -149,11 +149,11 @@ unsafe fn cmd_capture_pane_history(
             }
         }
 
-        let eflag: *const u8 = args_get(args, b'E');
+        let eflag: *const u8 = args_get(&*args, b'E');
         if !eflag.is_null() && streq_(eflag, "-") {
             bottom = (*gd).hsize + (*gd).sy - 1;
         } else {
-            match args_strtonum_and_expand(args, b'E', i32::MIN as i64, i16::MAX as i64, item) {
+            match args_strtonum_and_expand(&*args, b'E', i32::MIN as i64, i16::MAX as i64, item) {
                 Err(_) => {
                     bottom = (*gd).hsize + (*gd).sy - 1;
                 }
@@ -175,17 +175,17 @@ unsafe fn cmd_capture_pane_history(
             top = tmp;
         }
 
-        let join_lines = args_has(args, 'J');
-        if args_has(args, 'e') {
+        let join_lines = args_has(&*args, 'J');
+        if args_has(&*args, 'e') {
             flags |= grid_string_flags::GRID_STRING_WITH_SEQUENCES;
         }
-        if args_has(args, 'C') {
+        if args_has(&*args, 'C') {
             flags |= grid_string_flags::GRID_STRING_ESCAPE_SEQUENCES;
         }
-        if !join_lines && !args_has(args, 'T') {
+        if !join_lines && !args_has(&*args, 'T') {
             flags |= grid_string_flags::GRID_STRING_EMPTY_CELLS;
         }
-        if !join_lines && !args_has(args, 'N') {
+        if !join_lines && !args_has(&*args, 'N') {
             flags |= grid_string_flags::GRID_STRING_TRIM_SPACES;
         }
 
@@ -217,14 +217,14 @@ unsafe fn cmd_capture_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
         if std::ptr::eq(cmd_get_entry(self_), &CMD_CLEAR_HISTORY_ENTRY) {
             window_pane_reset_mode_all(wp);
             grid_clear_history((*wp).base.grid);
-            if args_has(args, 'H') {
+            if args_has(&*args, 'H') {
                 screen_reset_hyperlinks((*wp).screen);
             }
             return cmd_retval::CMD_RETURN_NORMAL;
         }
 
         let mut len = 0;
-        let buf = if args_has(args, 'P') {
+        let buf = if args_has(&*args, 'P') {
             cmd_capture_pane_pending(args, wp, &raw mut len)
         } else {
             cmd_capture_pane_history(args, item, wp, &raw mut len)
@@ -233,7 +233,7 @@ unsafe fn cmd_capture_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
             return cmd_retval::CMD_RETURN_ERROR;
         }
 
-        if args_has(args, 'p') {
+        if args_has(&*args, 'p') {
             if len > 0 && *buf.add(len - 1) == b'\n' {
                 len -= 1;
             }
@@ -251,8 +251,8 @@ unsafe fn cmd_capture_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
             }
         } else {
             let mut bufname = None;
-            if args_has(args, 'b') {
-                bufname = cstr_to_str_(args_get(args, b'b'));
+            if args_has(&*args, 'b') {
+                bufname = cstr_to_str_(args_get(&*args, b'b'));
             }
 
             if let Err(cause) = paste_set(buf, len, bufname) {

@@ -43,7 +43,7 @@ unsafe fn cmd_confirm_before_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
         let args = cmd_get_args(self_);
         let tc = cmdq_get_target_client(item);
         let target = cmdq_get_target(item);
-        let wait = !args_has(args, 'b');
+        let wait = !args_has(&*args, 'b');
 
         let mut cdata: Box<cmd_confirm_before_data> = Box::default();
         cdata.cmdlist = args_make_commands_now(self_, item, 0, true);
@@ -56,8 +56,8 @@ unsafe fn cmd_confirm_before_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
             cdata.item = item;
         }
 
-        cdata.default_yes = args_has(args, 'y');
-        let confirm_key = args_get(args, b'c');
+        cdata.default_yes = args_has(&*args, 'y');
+        let confirm_key = args_get(&*args, b'c');
         if !confirm_key.is_null() {
             if *confirm_key.add(1) == b'\0' && *confirm_key > 31 && *confirm_key < 127 {
                 cdata.confirm_key = *confirm_key as _;
@@ -70,7 +70,7 @@ unsafe fn cmd_confirm_before_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
             cdata.confirm_key = b'y';
         }
 
-        let prompt = args_get(args, b'p');
+        let prompt = args_get(&*args, b'p');
         let new_prompt = if !prompt.is_null() {
             format_nul!("{} ", _s(prompt))
         } else {

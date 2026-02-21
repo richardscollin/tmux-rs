@@ -255,7 +255,7 @@ pub unsafe fn server_link_window(
         }
         if !dstwl.is_null() {
             if (*dstwl).window == (*srcwl).window {
-                return Err(format!("same index: {}", dstidx));
+                return Err(format!("same index: {dstidx}"));
             }
             if killflag {
                 // Can't use session_detach as it will destroy session

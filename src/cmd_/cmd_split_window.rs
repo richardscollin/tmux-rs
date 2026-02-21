@@ -39,17 +39,17 @@ unsafe fn cmd_split_window_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
         let wl = (*target).wl;
         let w = (*wl).window;
         let wp = (*target).wp;
-        let count = args_count(args);
+        let count = args_count(&*args);
         let mut curval = 0;
 
         let mut type_ = layout_type::LAYOUT_TOPBOTTOM;
-        if args_has(args, 'h') {
+        if args_has(&*args, 'h') {
             type_ = layout_type::LAYOUT_LEFTRIGHT;
         }
 
         // If the 'p' flag is dropped then this bit can be moved into 'l'.
-        if args_has(args, 'l') || args_has(args, 'p') {
-            if args_has(args, 'f') {
+        if args_has(&*args, 'l') || args_has(&*args, 'p') {
+            if args_has(&*args, 'f') {
                 match type_ {
                     layout_type::LAYOUT_TOPBOTTOM => curval = (*w).sy,
                     _ => curval = (*w).sx,
@@ -63,16 +63,16 @@ unsafe fn cmd_split_window_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
         }
 
         let mut size: i32 = -1;
-        if args_has(args, 'l') {
-            match args_percentage_and_expand(args, b'l', 0, i32::MAX as i64, curval as _, item) {
+        if args_has(&*args, 'l') {
+            match args_percentage_and_expand(&*args, b'l', 0, i32::MAX as i64, curval as _, item) {
                 Ok(v) => size = v as _,
                 Err(cause) => {
                     cmdq_error!(item, "size {}", cause);
                     return cmd_retval::CMD_RETURN_ERROR;
                 }
             }
-        } else if args_has(args, 'p') {
-            match args_strtonum_and_expand(args, b'p', 0, 100, item) {
+        } else if args_has(&*args, 'p') {
+            match args_strtonum_and_expand(&*args, b'p', 0, 100, item) {
                 Ok(v) => size = curval as i32 * v as i32 / 100,
                 Err(cause) => {
                     cmdq_error!(item, "size {}", cause);
@@ -81,14 +81,14 @@ unsafe fn cmd_split_window_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
             }
         }
 
-        window_push_zoom((*wp).window, true, args_has(args, 'Z'));
-        let mut input = args_has(args, 'I') && count == 0;
+        window_push_zoom((*wp).window, true, args_has(&*args, 'Z'));
+        let mut input = args_has(&*args, 'I') && count == 0;
 
         let mut flags = spawn_flags::empty();
-        if args_has(args, 'b') {
+        if args_has(&*args, 'b') {
             flags |= SPAWN_BEFORE;
         }
-        if args_has(args, 'f') {
+        if args_has(&*args, 'f') {
             flags |= SPAWN_FULLSIZE;
         }
         if input || (count == 1 && *args_string(args, 0) == b'\0') {
@@ -112,20 +112,18 @@ unsafe fn cmd_split_window_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
         args_to_vector(args, &raw mut sc.argc, &raw mut sc.argv);
         sc.environ = environ_create().as_ptr();
 
-        let mut av = args_first_value(args, b'e');
-        while !av.is_null() {
-            environ_put(sc.environ, (*av).union_.string, environ_flags::empty());
-            av = args_next_value(av);
+        for av in args_entry_values(&*args, b'e') {
+            environ_put(sc.environ, av.union_.string, environ_flags::empty());
         }
 
         sc.idx = -1;
         sc.cwd = args_get_(args, 'c');
 
         sc.flags = flags;
-        if args_has(args, 'd') {
+        if args_has(&*args, 'd') {
             sc.flags |= SPAWN_DETACHED;
         }
-        if args_has(args, 'Z') {
+        if args_has(&*args, 'Z') {
             sc.flags |= SPAWN_ZOOM;
         }
 
@@ -159,14 +157,14 @@ unsafe fn cmd_split_window_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
                 _ => (),
             }
         }
-        if !args_has(args, 'd') {
+        if !args_has(&*args, 'd') {
             cmd_find_from_winlink_pane(current, wl, new_wp, cmd_find_flags::empty());
         }
         window_pop_zoom((*wp).window);
         server_redraw_window((*wp).window);
         server_status_session(s);
 
-        if args_has(args, 'P') {
+        if args_has(&*args, 'P') {
             let mut template = args_get_(args, 'F');
             if template.is_null() {
                 template = SPLIT_WINDOW_TEMPLATE;

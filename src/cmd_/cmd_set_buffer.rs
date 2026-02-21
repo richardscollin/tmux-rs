@@ -71,7 +71,7 @@ unsafe fn cmd_set_buffer_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retv
             return cmd_retval::CMD_RETURN_NORMAL;
         }
 
-        if args_has(args, 'n') {
+        if args_has(&*args, 'n') {
             if pb.is_null() {
                 if let Some(bufname) = bufname {
                     cmdq_error!(item, "unknown buffer: {}", bufname);
@@ -90,7 +90,7 @@ unsafe fn cmd_set_buffer_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retv
             return cmd_retval::CMD_RETURN_NORMAL;
         }
 
-        if args_count(args) != 1 {
+        if args_count(&*args) != 1 {
             cmdq_error!(item, "no data specified");
             return cmd_retval::CMD_RETURN_ERROR;
         }
@@ -103,7 +103,7 @@ unsafe fn cmd_set_buffer_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retv
         let mut bufdata = null_mut();
 
         if let Some(pb_non_null) = NonNull::new(pb)
-            && args_has(args, 'a')
+            && args_has(&*args, 'a')
         {
             olddata = paste_buffer_data_(pb_non_null, &mut bufsize);
             bufdata = xmalloc(bufsize).as_ptr().cast();
@@ -119,7 +119,7 @@ unsafe fn cmd_set_buffer_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retv
             free_(bufdata);
             return cmd_retval::CMD_RETURN_ERROR;
         }
-        if args_has(args, 'w') && !tc.is_null() {
+        if args_has(&*args, 'w') && !tc.is_null() {
             tty_set_selection(&raw mut (*tc).tty, c!(""), bufdata, bufsize);
         }
 

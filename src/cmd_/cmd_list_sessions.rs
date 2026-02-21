@@ -35,11 +35,11 @@ unsafe fn cmd_list_sessions_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
     unsafe {
         let args = cmd_get_args(self_);
 
-        let mut template = args_get(args, b'F');
+        let mut template = args_get(&*args, b'F');
         if template.is_null() {
             template = LIST_SESSIONS_TEMPLATE;
         }
-        let filter = args_get(args, b'f');
+        let filter = args_get(&*args, b'f');
 
         for (n, s) in rb_foreach(&raw mut SESSIONS).enumerate() {
             let ft = format_create(

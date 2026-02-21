@@ -65,14 +65,14 @@ unsafe fn cmd_command_prompt_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
         let mut tmp;
         let mut inputs = null_mut();
         let mut next_input;
-        let count = args_count(args);
-        let mut wait = !args_has(args, 'b');
+        let count = args_count(&*args);
+        let mut wait = !args_has(&*args, 'b');
         let mut space = 1;
 
         if !(*tc).prompt_string.is_null() {
             return cmd_retval::CMD_RETURN_NORMAL;
         }
-        if args_has(args, 'i') {
+        if args_has(&*args, 'i') {
             wait = false;
         }
 
@@ -81,9 +81,9 @@ unsafe fn cmd_command_prompt_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
             cdata.item = item;
         }
         cdata.state =
-            args_make_commands_prepare(self_, item, 0, c!("%1"), wait, args_has(args, 'F'));
+            args_make_commands_prepare(self_, item, 0, c!("%1"), wait, args_has(&*args, 'F'));
 
-        let mut s = args_get(args, b'p');
+        let mut s = args_get(&*args, b'p');
         if s.is_null() {
             if count != 0 {
                 let tmp = args_make_commands_get_command(cdata.state);
@@ -98,7 +98,7 @@ unsafe fn cmd_command_prompt_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
             prompts = xstrdup(s).as_ptr();
             next_prompt = prompts;
         }
-        s = args_get(args, b'I');
+        s = args_get(&*args, b'I');
         if !s.is_null() {
             inputs = xstrdup(s).as_ptr();
             next_input = inputs;
@@ -137,7 +137,7 @@ unsafe fn cmd_command_prompt_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
         free_(inputs);
         free_(prompts);
 
-        let type_ = args_get(args, b'T');
+        let type_ = args_get(&*args, b'T');
         if !type_.is_null() {
             cdata.prompt_type = status_prompt_type(type_);
             if cdata.prompt_type == prompt_type::PROMPT_TYPE_INVALID {
@@ -149,13 +149,13 @@ unsafe fn cmd_command_prompt_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
             cdata.prompt_type = prompt_type::PROMPT_TYPE_COMMAND;
         }
 
-        if args_has(args, '1') {
+        if args_has(&*args, '1') {
             cdata.flags |= prompt_flags::PROMPT_SINGLE;
-        } else if args_has(args, 'N') {
+        } else if args_has(&*args, 'N') {
             cdata.flags |= prompt_flags::PROMPT_NUMERIC;
-        } else if args_has(args, 'i') {
+        } else if args_has(&*args, 'i') {
             cdata.flags |= prompt_flags::PROMPT_INCREMENTAL;
-        } else if args_has(args, 'k') {
+        } else if args_has(&*args, 'k') {
             cdata.flags |= prompt_flags::PROMPT_KEY;
         }
 

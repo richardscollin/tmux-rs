@@ -32,9 +32,9 @@ unsafe fn cmd_unbind_key_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retv
         let args = cmd_get_args(self_);
         let mut tablename: *const u8;
         let keystr = args_string(args, 0);
-        let quiet = args_has(args, 'q');
+        let quiet = args_has(&*args, 'q');
 
-        if args_has(args, 'a') {
+        if args_has(&*args, 'a') {
             if !keystr.is_null() {
                 if !quiet {
                     cmdq_error!(item, "key given with -a");
@@ -42,9 +42,9 @@ unsafe fn cmd_unbind_key_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retv
                 return cmd_retval::CMD_RETURN_ERROR;
             }
 
-            tablename = args_get(args, b'T');
+            tablename = args_get(&*args, b'T');
             if tablename.is_null() {
-                if args_has(args, 'n') {
+                if args_has(&*args, 'n') {
                     tablename = c!("root");
                 } else {
                     tablename = c!("prefix");
@@ -76,15 +76,15 @@ unsafe fn cmd_unbind_key_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retv
             return cmd_retval::CMD_RETURN_ERROR;
         }
 
-        if args_has(args, 'T') {
-            tablename = args_get(args, b'T');
+        if args_has(&*args, 'T') {
+            tablename = args_get(&*args, b'T');
             if key_bindings_get_table(tablename, false).is_null() {
                 if !quiet {
                     cmdq_error!(item, "table {} doesn't exist", _s(tablename));
                 }
                 return cmd_retval::CMD_RETURN_ERROR;
             }
-        } else if args_has(args, 'n') {
+        } else if args_has(&*args, 'n') {
             tablename = c!("root");
         } else {
             tablename = c!("prefix");

@@ -115,7 +115,6 @@ pub unsafe fn imsg_init(imsgbuf: *mut imsgbuf, fd: c_int) {
     }
 }
 
-#[allow(unused_unsafe)]
 pub unsafe fn imsg_read(imsgbuf: *mut imsgbuf) -> isize {
     const BUFSIZE: usize = unsafe { CMSG_SPACE(size_of::<c_int>() as u32) } as usize;
     union cmsgbuf {

@@ -50,8 +50,8 @@ pub unsafe fn cmd_break_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
         let mut idx = (*target).idx;
         let mut template: *const u8;
 
-        let before = args_has(args, 'b');
-        if args_has(args, 'a') || before {
+        let before = args_has(&*args, 'b');
+        if args_has(&*args, 'a') || before {
             idx = if !(*target).wl.is_null() {
                 winlink_shuffle_up(dst_s, (*target).wl, before)
             } else {
@@ -70,13 +70,13 @@ pub unsafe fn cmd_break_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
                 dst_s,
                 idx,
                 false,
-                !args_has(args, 'd'),
+                !args_has(&*args, 'd'),
             ) {
                 cmdq_error!(item, "{}", cause);
                 return cmd_retval::CMD_RETURN_ERROR;
             }
-            if args_has(args, 'n') {
-                window_set_name(w, args_get(args, b'n'));
+            if args_has(&*args, 'n') {
+                window_set_name(w, args_get(&*args, b'n'));
                 options_set_number((*w).options, "automatic-rename", 0);
             }
             server_unlink_window(src_s, wl);
@@ -101,7 +101,7 @@ pub unsafe fn cmd_break_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
         (*w).active = wp;
         (*w).latest = tc as *mut c_void;
 
-        if !args_has(args, 'n') {
+        if !args_has(&*args, 'n') {
             name = CString::new(default_window_name(w))
                 .unwrap()
                 .into_raw()
@@ -109,7 +109,7 @@ pub unsafe fn cmd_break_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
             window_set_name(w, name);
             free_(name);
         } else {
-            window_set_name(w, args_get(args, b'n'));
+            window_set_name(w, args_get(&*args, b'n'));
             options_set_number((*w).options, "automatic-rename", 0);
         }
 
@@ -127,7 +127,7 @@ pub unsafe fn cmd_break_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
                 return cmd_retval::CMD_RETURN_ERROR;
             }
         };
-        if !args_has(args, 'd') {
+        if !args_has(&*args, 'd') {
             session_select(dst_s, (*wl).idx);
             cmd_find_from_session(current, dst_s, cmd_find_flags::empty());
         }
@@ -141,8 +141,8 @@ pub unsafe fn cmd_break_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
             server_status_session_group(dst_s);
         }
 
-        if args_has(args, 'P') {
-            template = args_get(args, b'F');
+        if args_has(&*args, 'P') {
+            template = args_get(&*args, b'F');
             if template.is_null() {
                 template = c!("#{session_name}:#{window_index}.#{pane_index}");
             }

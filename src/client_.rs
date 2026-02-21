@@ -549,16 +549,17 @@ tcsetattr,
             }
         */
 
-        if isatty(STDIN_FILENO) != 0 && !termname.is_empty() {
-            if let Err(cause) = tty_term_read_list(
+        if isatty(STDIN_FILENO) != 0
+            && !termname.is_empty()
+            && let Err(cause) = tty_term_read_list(
                 termname.as_ptr().cast(),
                 STDIN_FILENO,
                 &raw mut caps,
                 &raw mut ncaps,
-            ) {
-                eprintln!("{}", cause);
-                return 1;
-            }
+            )
+        {
+            eprintln!("{cause}");
+            return 1;
         }
 
         if PTM_FD != -1 {

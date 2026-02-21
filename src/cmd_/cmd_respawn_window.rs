@@ -47,17 +47,15 @@ unsafe fn cmd_respawn_window_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
         args_to_vector(args, &raw mut sc.argc, &raw mut sc.argv);
         sc.environ = environ_create().as_ptr();
 
-        let mut av = args_first_value(args, b'e');
-        while !av.is_null() {
-            environ_put(sc.environ, (*av).union_.string, environ_flags::empty());
-            av = args_next_value(av);
+        for av in args_entry_values(&*args, b'e') {
+            environ_put(sc.environ, av.union_.string, environ_flags::empty());
         }
 
         sc.idx = -1;
-        sc.cwd = args_get(args, b'c');
+        sc.cwd = args_get(&*args, b'c');
 
         sc.flags = SPAWN_RESPAWN;
-        if args_has(args, 'k') {
+        if args_has(&*args, 'k') {
             sc.flags |= SPAWN_KILL;
         }
 

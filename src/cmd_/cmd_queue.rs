@@ -414,13 +414,13 @@ pub unsafe fn cmdq_insert_hook_(
         cmdq_add_format!(new_state, c!("hook_arguments"), "{}", _s(arguments),);
         free_(arguments);
 
-        for i in 0..args_count(args) {
+        for i in 0..args_count(&*args) {
             _ = xsnprintf_!(tmp, SIZEOF_TMP, "hook_argument_{}", i);
             cmdq_add_format!(new_state, tmp, "{}", _s(args_string(args, i)));
         }
         flag = args_first(args, &raw mut ae);
         while flag != 0 {
-            let value = args_get(args, flag);
+            let value = args_get(&*args, flag);
             if value.is_null() {
                 _ = xsnprintf_!(tmp, SIZEOF_TMP, "hook_flag_{}", flag as char);
                 cmdq_add_format!(new_state, tmp, "1");
@@ -429,13 +429,9 @@ pub unsafe fn cmdq_insert_hook_(
                 cmdq_add_format!(new_state, tmp, "{}", _s(value));
             }
 
-            let mut i = 0;
-            let mut av = args_first_value(args, flag);
-            while !av.is_null() {
+            for (i, av) in args_entry_values(&*args, flag).iter().enumerate() {
                 _ = xsnprintf_!(tmp, SIZEOF_TMP, "hook_flag_{}_{}", flag as char, i);
-                cmdq_add_format!(new_state, tmp, "{}", _s((*av).union_.string));
-                i += 1;
-                av = args_next_value(av);
+                cmdq_add_format!(new_state, tmp, "{}", _s(av.union_.string));
             }
 
             flag = args_next(args, &raw mut ae);
@@ -566,7 +562,7 @@ pub unsafe fn cmdq_find_flag(
             return cmd_retval::CMD_RETURN_NORMAL;
         }
 
-        let value = args_get(cmd_get_args((*item).cmd), (*flag).flag);
+        let value = args_get(&*cmd_get_args((*item).cmd), (*flag).flag);
         if cmd_find_target(fs, item, cstr_to_str_(value), (*flag).type_, (*flag).flags) != 0 {
             cmd_find_clear_state(fs, cmd_find_flags::empty());
             return cmd_retval::CMD_RETURN_ERROR;

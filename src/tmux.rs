@@ -719,7 +719,7 @@ pub unsafe fn tmux_main(mut argc: i32, mut argv: *mut *mut u8, _env: *mut *mut u
             }
             flags |= client_flag::DEFAULTSOCKET;
         }
-        SOCKET_PATH.set(path.unwrap()).ok();
+        let _ = SOCKET_PATH.set(path.unwrap());
         free_(label);
 
         // Pass control to the client.

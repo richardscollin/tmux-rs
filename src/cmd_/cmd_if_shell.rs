@@ -55,11 +55,11 @@ unsafe fn cmd_if_shell_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retval
         let target = cmdq_get_target(item);
         let tc = cmdq_get_target_client(item);
         let s = (*target).s;
-        let count = args_count(args);
-        let wait = !args_has(args, 'b');
+        let count = args_count(&*args);
+        let wait = !args_has(&*args, 'b');
 
         let shellcmd = format_single_from_target(item, args_string(args, 0));
-        if args_has(args, 'F') {
+        if args_has(&*args, 'F') {
             let cmdlist = if *shellcmd != b'0' && *shellcmd != b'\0' {
                 args_make_commands_now(self_, item, 1, false)
             } else if count == 3 {

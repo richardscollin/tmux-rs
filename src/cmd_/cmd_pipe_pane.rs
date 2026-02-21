@@ -78,7 +78,7 @@ pub unsafe fn cmd_pipe_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
         }
 
         // If no pipe command, that is enough.
-        if args_count(args) == 0 || *args_string(args, 0) == b'\0' {
+        if args_count(&*args) == 0 || *args_string(args, 0) == b'\0' {
             return cmd_retval::CMD_RETURN_NORMAL;
         }
 
@@ -86,14 +86,14 @@ pub unsafe fn cmd_pipe_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
         // allows a pipe to be toggled with a single key, for example:
         //
         // 	bind ^p pipep -o 'cat >>~/output'
-        if args_has(args, 'o') && old_fd != -1 {
+        if args_has(&*args, 'o') && old_fd != -1 {
             return cmd_retval::CMD_RETURN_NORMAL;
         }
 
         // What do we want to do? Neither -I or -O is -O.
-        if args_has(args, 'I') {
+        if args_has(&*args, 'I') {
             in_ = true;
-            out = args_has(args, 'O');
+            out = args_has(&*args, 'O');
         } else {
             in_ = false;
             out = true;

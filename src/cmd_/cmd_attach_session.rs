@@ -175,13 +175,13 @@ unsafe fn cmd_attach_session_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
 
         cmd_attach_session(
             item,
-            cstr_to_str_(args_get(args, b't')),
-            args_has(args, 'd'),
-            args_has(args, 'x'),
-            args_has(args, 'r'),
-            args_get(args, b'c'),
-            args_has(args, 'E'),
-            args_get(args, b'f'),
+            cstr_to_str_(args_get(&*args, b't')),
+            args_has(&*args, 'd'),
+            args_has(&*args, 'x'),
+            args_has(&*args, 'r'),
+            args_get(&*args, b'c'),
+            args_has(&*args, 'E'),
+            args_get(&*args, b'f'),
         )
     }
 }

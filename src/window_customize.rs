@@ -1181,7 +1181,7 @@ pub unsafe fn window_customize_init(
 
         memcpy__(&raw mut (*data).fs, fs);
 
-        if args.is_null() || !args_has(args, 'F') {
+        if args.is_null() || !args_has(&*args, 'F') {
             (*data).format = xstrdup__(WINDOW_CUSTOMIZE_DEFAULT_FORMAT);
         } else {
             (*data).format = xstrdup(args_get_(args, 'F')).as_ptr();

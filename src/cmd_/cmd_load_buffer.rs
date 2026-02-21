@@ -87,14 +87,14 @@ unsafe fn cmd_load_buffer_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
     unsafe {
         let args = cmd_get_args(self_);
         let tc = cmdq_get_target_client(item);
-        let bufname = args_get(args, b'b');
+        let bufname = args_get(&*args, b'b');
 
         let cdata = xcalloc_::<cmd_load_buffer_data>(1).as_ptr();
         (*cdata).item = item;
         if !bufname.is_null() {
             (*cdata).name = xstrdup(bufname).as_ptr();
         }
-        if args_has(args, 'w') && !tc.is_null() {
+        if args_has(&*args, 'w') && !tc.is_null() {
             (*cdata).client = tc;
             (*(*cdata).client).references += 1;
         }

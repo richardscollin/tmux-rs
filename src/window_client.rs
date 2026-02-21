@@ -284,17 +284,17 @@ pub unsafe fn window_client_init(
         (*wme.as_ptr()).data = data.cast();
         (*data).wp = wp;
 
-        if args.is_null() || !args_has(args, 'F') {
+        if args.is_null() || !args_has(&*args, 'F') {
             (*data).format = xstrdup__(WINDOW_CLIENT_DEFAULT_FORMAT);
         } else {
             (*data).format = xstrdup(args_get_(args, 'F')).as_ptr();
         }
-        if args.is_null() || !args_has(args, 'K') {
+        if args.is_null() || !args_has(&*args, 'K') {
             (*data).key_format = xstrdup__(WINDOW_CLIENT_DEFAULT_KEY_FORMAT);
         } else {
             (*data).key_format = xstrdup(args_get_(args, 'K')).as_ptr();
         }
-        if args.is_null() || args_count(args) == 0 {
+        if args.is_null() || args_count(&*args) == 0 {
             (*data).command = xstrdup__(WINDOW_CLIENT_DEFAULT_COMMAND);
         } else {
             (*data).command = xstrdup(args_string(args, 0)).as_ptr();

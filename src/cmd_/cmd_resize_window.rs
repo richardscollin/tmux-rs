@@ -42,7 +42,7 @@ unsafe fn cmd_resize_window_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
         let mut xpixel = 0u32;
         let mut ypixel = 0u32;
 
-        let adjust = if args_count(args) == 0 {
+        let adjust = if args_count(&*args) == 0 {
             1
         } else {
             match strtonum(args_string(args, 0), 1, i32::MAX) {
@@ -57,8 +57,8 @@ unsafe fn cmd_resize_window_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
         let mut sx = (*w).sx;
         let mut sy = (*w).sy;
 
-        if args_has(args, 'x') {
-            match args_strtonum(args, b'x', WINDOW_MINIMUM as _, WINDOW_MAXIMUM as _) {
+        if args_has(&*args, 'x') {
+            match args_strtonum(&*args, b'x', WINDOW_MINIMUM as _, WINDOW_MAXIMUM as _) {
                 Ok(v) => sx = v as u32,
                 Err(cause) => {
                     cmdq_error!(item, "width {}", cause);
@@ -66,8 +66,8 @@ unsafe fn cmd_resize_window_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
                 }
             }
         }
-        if args_has(args, 'y') {
-            match args_strtonum(args, b'y', WINDOW_MINIMUM as _, WINDOW_MAXIMUM as _) {
+        if args_has(&*args, 'y') {
+            match args_strtonum(&*args, b'y', WINDOW_MINIMUM as _, WINDOW_MAXIMUM as _) {
                 Ok(v) => sy = v as u32,
                 Err(cause) => {
                     cmdq_error!(item, "height {}", cause);
@@ -76,21 +76,21 @@ unsafe fn cmd_resize_window_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
             }
         }
 
-        if args_has(args, 'L') {
+        if args_has(&*args, 'L') {
             if sx >= adjust {
                 sx -= adjust;
             }
-        } else if args_has(args, 'R') {
+        } else if args_has(&*args, 'R') {
             sx += adjust;
-        } else if args_has(args, 'U') {
+        } else if args_has(&*args, 'U') {
             if sy >= adjust {
                 sy -= adjust;
             }
-        } else if args_has(args, 'D') {
+        } else if args_has(&*args, 'D') {
             sy += adjust;
         }
 
-        if args_has(args, 'A') {
+        if args_has(&*args, 'A') {
             default_window_size(
                 null_mut(),
                 s,
@@ -101,7 +101,7 @@ unsafe fn cmd_resize_window_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
                 &raw mut ypixel,
                 Some(window_size_option::WINDOW_SIZE_LARGEST),
             );
-        } else if args_has(args, 'a') {
+        } else if args_has(&*args, 'a') {
             default_window_size(
                 null_mut(),
                 s,

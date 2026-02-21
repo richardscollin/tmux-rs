@@ -221,7 +221,7 @@ pub unsafe fn strtol(s: *const u8, endp: *mut *mut u8, base: i32) -> i64 {
 }
 
 pub unsafe fn strtoul(s: *const u8, endp: *mut *mut u8, base: i32) -> u64 {
-    unsafe { ::libc_sys::strtoul(s.cast(), endp.cast(), base).into() }
+    unsafe { ::libc_sys::strtoul(s.cast(), endp.cast(), base) }
 }
 
 pub unsafe fn strtod(s: *const u8, endp: *mut *mut u8) -> f64 {

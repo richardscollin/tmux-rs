@@ -190,7 +190,7 @@ pub unsafe fn layout_parse(w: *mut window, mut layout: *const u8) -> Result<(), 
                 let npanes = window_count_panes(w);
                 let ncells = layout_count_cells(lc);
                 if npanes > ncells {
-                    let msg = format!("have {} panes but need {}", npanes, ncells);
+                    let msg = format!("have {npanes} panes but need {ncells}");
                     layout_free_cell(lc);
                     return Err(msg);
                 }

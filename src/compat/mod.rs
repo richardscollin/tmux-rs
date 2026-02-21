@@ -38,9 +38,9 @@ pub use vis::*;
 //     pub fn bsd_getopt(argc: c_int, argv: *const *mut c_char, shortopts: *const c_char) -> c_int;
 // }
 
-/// Portable trait to extract a raw file descriptor (c_int) from a File.
-/// On unix, delegates to std::os::unix::io::IntoRawFd.
-/// On windows, uses IntoRawHandle and casts to c_int.
+/// Portable trait to extract a raw file descriptor (`c_int`) from a `File`.
+/// On unix, delegates to `std::os::unix::io::IntoRawFd`.
+/// On windows, uses `IntoRawHandle` and casts to `c_int`.
 pub trait FileIntoRawFd {
     fn into_fd(self) -> core::ffi::c_int;
 }

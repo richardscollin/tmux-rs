@@ -580,7 +580,7 @@ pub unsafe fn server_update_socket() {
                 } else {
                     mode &= !(S_IXUSR | S_IXGRP | S_IXOTH);
                 }
-                std::fs::set_permissions(socket_path, std::fs::Permissions::from_mode(mode)).ok();
+                let _ = std::fs::set_permissions(socket_path, std::fs::Permissions::from_mode(mode));
             }
         }
     }

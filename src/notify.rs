@@ -43,9 +43,8 @@ pub unsafe fn notify_insert_one_hook(
                 "{}: hook {}: {}",
                 "notify_insert_one_hook",
                 _s((*ne).name),
-                _s(s)
+                _s(s.as_ptr())
             );
-            free_(s);
         }
         let new_item = cmdq_get_command(cmdlist, state);
         cmdq_insert_after(item, new_item)

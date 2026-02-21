@@ -231,9 +231,8 @@ pub unsafe fn key_bindings_add(
             "key_bindings_add",
             (*bd).key,
             _s(key_string_lookup_key((*bd).key, 1)),
-            _s(s),
+            _s(s.as_ptr()),
         );
-        free_(s);
     }
 }
 

@@ -99,7 +99,7 @@ unsafe fn cmd_save_buffer_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
             }
             path = xstrdup_(c"-").as_ptr();
         } else {
-            path = format_single_from_target(item, args_string(args, 0));
+            path = format_single_from_target(item, args_string(&*args, 0).unwrap().as_ptr().cast());
         }
         let flags = if args_has(&*args, 'a') {
             FileOpenFlags::Append

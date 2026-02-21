@@ -367,7 +367,7 @@ pub unsafe fn window_buffer_init(
         if args.is_null() || args_count(&*args) == 0 {
             data.command = xstrdup__(WINDOW_BUFFER_DEFAULT_COMMAND);
         } else {
-            data.command = xstrdup(args_string(args, 0)).as_ptr();
+            data.command = xstrdup(args_string(&*args, 0).unwrap().as_ptr().cast()).as_ptr();
         }
 
         data.data = mode_tree_start(

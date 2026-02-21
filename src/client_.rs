@@ -452,8 +452,6 @@ tcsetattr,
         let mut saved_tio: termios = zeroed();
         let mut caps: *mut *mut u8 = null_mut();
         let mut ncaps: u32 = 0;
-        let values: *mut args_value;
-
         if !SHELL_COMMAND.is_null() {
             msg = msgtype::MSG_SHELL;
             flags |= client_flag::STARTSERVER;
@@ -463,8 +461,8 @@ tcsetattr,
         } else {
             msg = msgtype::MSG_COMMAND;
 
-            values = args_from_vector(argc, argv);
-            match cmd_parse_from_arguments(values, argc as u32, None) {
+            let values = args_from_vector(argc, argv);
+            match cmd_parse_from_arguments(&values, None) {
                 Ok(cmdlist) => {
                     if cmd_list_any_have(cmdlist, cmd_flag::CMD_STARTSERVER) {
                         flags |= client_flag::STARTSERVER;
@@ -475,8 +473,6 @@ tcsetattr,
                     free_(error);
                 }
             }
-            args_free_values(values, argc as u32);
-            free_(values);
         }
 
         CLIENT_PROC = proc_start("client");

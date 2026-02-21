@@ -31,11 +31,11 @@ unsafe fn cmd_unbind_key_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retv
     unsafe {
         let args = cmd_get_args(self_);
         let mut tablename: *const u8;
-        let keystr = args_string(args, 0);
+        let keystr_opt = args_string(&*args, 0);
         let quiet = args_has(&*args, 'q');
 
         if args_has(&*args, 'a') {
-            if !keystr.is_null() {
+            if keystr_opt.is_some() {
                 if !quiet {
                     cmdq_error!(item, "key given with -a");
                 }
@@ -61,13 +61,14 @@ unsafe fn cmd_unbind_key_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retv
             return cmd_retval::CMD_RETURN_NORMAL;
         }
 
-        if keystr.is_null() {
+        if keystr_opt.is_none() {
             if !quiet {
                 cmdq_error!(item, "missing key");
             }
             return cmd_retval::CMD_RETURN_ERROR;
         }
 
+        let keystr: *const u8 = keystr_opt.unwrap().as_ptr().cast();
         let key = key_string_lookup_string(keystr);
         if key == KEYC_NONE || key == KEYC_UNKNOWN {
             if !quiet {

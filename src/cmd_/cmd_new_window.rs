@@ -98,7 +98,8 @@ unsafe fn cmd_new_window_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retv
         sc.environ = environ_create().as_ptr();
 
         for av in args_entry_values(&*args, b'e') {
-            environ_put(sc.environ, av.union_.string, environ_flags::empty());
+            let args_value::String { string } = av else { continue };
+            environ_put(sc.environ, string.as_ptr().cast(), environ_flags::empty());
         }
 
         sc.idx = idx;

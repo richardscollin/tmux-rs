@@ -61,7 +61,7 @@ unsafe fn cmd_display_menu_args_parse(
         }
 
         unsafe {
-            if *args_string(args, i) == b'\0' {
+            if args_string(&*args, i).unwrap().is_empty() {
                 i += 1;
                 continue;
             }
@@ -367,7 +367,7 @@ unsafe fn cmd_display_menu_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
 
         let mut i: u32 = 0;
         while i != count {
-            let name = args_string(args, i);
+            let name = args_string(&*args, i).unwrap().as_ptr().cast();
             i += 1;
             if *name == b'\0' {
                 menu_add_item(menu, None, item, tc, target);
@@ -379,13 +379,13 @@ unsafe fn cmd_display_menu_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
                 menu_free(menu);
                 return cmd_retval::CMD_RETURN_ERROR;
             }
-            let key = args_string(args, i);
+            let key = args_string(&*args, i).unwrap().as_ptr().cast();
             i += 1;
 
             let menu_item: menu_item = menu_item {
                 name: Cow::Borrowed(cstr_to_str::<'static>(name)),
                 key: key_string_lookup_string(key),
-                command: SyncCharPtr::from_ptr(args_string(args, i)),
+                command: SyncCharPtr::from_ptr(args_string(&*args, i).unwrap().as_ptr().cast()),
             };
             i += 1;
 
@@ -532,7 +532,7 @@ unsafe fn cmd_display_popup_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
         if count == 0 {
             shellcmd = options_get_string_((*s).options, "default-command");
         } else if count == 1 {
-            shellcmd = args_string(args, 0);
+            shellcmd = args_string(&*args, 0).unwrap().as_ptr().cast();
         }
 
         let mut argv = null_mut();
@@ -551,7 +551,8 @@ unsafe fn cmd_display_popup_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
         if args_has(&*args, 'e') {
             env = environ_create().as_ptr();
             for av in args_entry_values(&*args, b'e') {
-                environ_put(env, av.union_.string, environ_flags::empty());
+                let args_value::String { string } = av else { continue };
+                environ_put(env, string.as_ptr().cast(), environ_flags::empty());
             }
         }
 

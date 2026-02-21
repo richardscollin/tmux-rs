@@ -16,7 +16,6 @@ use crate::compat::{
         tailq_concat, tailq_first, tailq_foreach, tailq_init_, tailq_insert_tail, tailq_next,
         tailq_remove,
     },
-    strlcat
 };
 use crate::libc::{strchr, strlen, strncmp};
 use crate::xmalloc::{xrealloc_, xreallocarray_};
@@ -525,18 +524,18 @@ pub fn cmd_find(name: &str) -> Result<&'static cmd_entry, String> {
 }
 
 pub unsafe fn cmd_parse(
-    values: *mut args_value,
-    count: c_uint,
+    values: &[args_value],
     file: Option<&str>,
     line: c_uint,
 ) -> Result<*mut cmd, String> {
     unsafe {
-        if count == 0 || (*values).type_ != args_type::ARGS_STRING {
+        if values.is_empty() || !matches!(&values[0], args_value::String { .. }) {
             return Err("no command".to_string());
         }
-        let entry = cmd_find(cstr_to_str((*values).union_.string))?;
+        let args_value::String { string } = &values[0] else { unreachable!() };
+        let entry = cmd_find(cstr_to_str(string.as_ptr().cast()))?;
 
-        let args = match args_parse(&entry.args, values, count) {
+        let args = match args_parse(&entry.args, values) {
             Ok(args) => args,
             Err(None) => {
                 return Err(format!("usage: {} {}", entry.name, entry.usage));
@@ -604,14 +603,11 @@ pub unsafe fn cmd_copy(cmd: *mut cmd, argc: c_int, argv: *mut *mut u8) -> *mut c
 pub unsafe fn cmd_print(cmd: *mut cmd) -> *mut u8 {
     unsafe {
         let s = args_print((*cmd).args);
-        let out = if *s != b'\0' {
-            format_nul!("{} {}", (*cmd).entry.name, _s(s))
+        if !s.is_empty() {
+            format_nul!("{} {}", (*cmd).entry.name, s)
         } else {
             xstrdup__((*cmd).entry.name)
-        };
-        free(s as _);
-
-        out
+        }
     }
 }
 
@@ -678,8 +674,7 @@ pub unsafe fn cmd_list_copy(
     unsafe {
         let mut group: u32 = cmdlist.group;
         let s = cmd_list_print(cmdlist, 0);
-        log_debug!("{}: {}", "cmd_list_copy", _s(s));
-        free(s as _);
+        log_debug!("{}: {}", "cmd_list_copy", _s(s.as_ptr()));
 
         let new_cmdlist = cmd_list_new();
         for cmd in tailq_foreach_const(cmdlist.list).map(NonNull::as_ptr) {
@@ -693,32 +688,24 @@ pub unsafe fn cmd_list_copy(
         }
 
         let s = cmd_list_print(new_cmdlist, 0);
-        log_debug!("{}: {}", "cmd_list_copy", _s(s));
-        free(s as _);
+        log_debug!("{}: {}", "cmd_list_copy", _s(s.as_ptr()));
 
         new_cmdlist
     }
 }
 
-pub fn cmd_list_print(cmdlist: &cmd_list, escaped: c_int) -> *mut u8 {
+pub fn cmd_list_print(cmdlist: &cmd_list, escaped: c_int) -> std::ffi::CString {
+    use std::fmt::Write;
     unsafe {
-        let mut len = 1;
-        let mut buf: *mut u8 = xcalloc(1, len).cast().as_ptr();
+        let single_separator = if escaped != 0 { " \\; " } else { " ; " };
+        let double_separator = if escaped != 0 { " \\;\\; " } else { " ;; " };
 
-        let single_separator = if escaped != 0 { c!(" \\; ") } else { c!(" ; ") };
-        let double_separator = if escaped != 0 {
-            c!(" \\;\\; ")
-        } else {
-            c!(" ;; ")
-        };
+        let mut buf = String::new();
 
         for cmd in tailq_foreach_const::<_, qentry>(cmdlist.list).map(NonNull::as_ptr) {
             let this = cmd_print(cmd);
-
-            len += strlen(this) + 6;
-            buf = xrealloc_(buf, len).as_ptr();
-
-            strlcat(buf, this, len);
+            let _ = write!(buf, "{}", _s(this));
+            free_(this);
 
             let next = tailq_next::<_, _, qentry>(cmd);
             if !next.is_null() {
@@ -727,13 +714,11 @@ pub fn cmd_list_print(cmdlist: &cmd_list, escaped: c_int) -> *mut u8 {
                 } else {
                     single_separator
                 };
-                strlcat(buf, separator, len);
+                buf.push_str(separator);
             }
-
-            free_(this);
         }
 
-        buf
+        std::ffi::CString::new(buf).expect("cmd_list_print: interior nul")
     }
 }
 

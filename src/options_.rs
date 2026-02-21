@@ -152,7 +152,7 @@ unsafe fn options_value_to_string(
 ) -> *mut u8 {
     unsafe {
         if OPTIONS_IS_COMMAND(o) {
-            return cmd_list_print(&*(*ov).cmdlist, 0);
+            return cmd_list_print(&*(*ov).cmdlist, 0).into_raw().cast();
         }
 
         if OPTIONS_IS_NUMBER(o) {

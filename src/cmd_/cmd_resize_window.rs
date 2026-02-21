@@ -45,7 +45,7 @@ unsafe fn cmd_resize_window_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
         let adjust = if args_count(&*args) == 0 {
             1
         } else {
-            match strtonum(args_string(args, 0), 1, i32::MAX) {
+            match strtonum(args_string(&*args, 0).unwrap().as_ptr().cast(), 1, i32::MAX) {
                 Ok(n) => n as u32,
                 Err(errstr) => {
                     cmdq_error!(item, "adjustment {}", _s(errstr.as_ptr()));

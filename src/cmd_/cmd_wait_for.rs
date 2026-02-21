@@ -101,7 +101,7 @@ pub unsafe fn cmd_wait_for_remove(wc: *mut wait_channel) {
 pub unsafe fn cmd_wait_for_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retval {
     unsafe {
         let args = cmd_get_args(self_);
-        let name = args_string(args, 0);
+        let name: *const u8 = args_string(&*args, 0).unwrap().as_ptr().cast();
 
         let key = cstr_to_str(name);
         let wc = WAIT_CHANNELS.with_borrow_mut(|channels| match channels.get_mut(key) {

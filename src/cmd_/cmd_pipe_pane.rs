@@ -78,7 +78,7 @@ pub unsafe fn cmd_pipe_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
         }
 
         // If no pipe command, that is enough.
-        if args_count(&*args) == 0 || *args_string(args, 0) == b'\0' {
+        if args_count(&*args) == 0 || args_string(&*args, 0).unwrap().is_empty() {
             return cmd_retval::CMD_RETURN_NORMAL;
         }
 
@@ -113,7 +113,7 @@ pub unsafe fn cmd_pipe_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
             format_flags::empty(),
         );
         format_defaults(ft, tc, NonNull::new(s), NonNull::new(wl), NonNull::new(wp));
-        let cmd = format_expand_time(ft, args_string(args, 0));
+        let cmd = format_expand_time(ft, args_string(&*args, 0).unwrap().as_ptr().cast());
         format_free(ft);
 
         // Fork the child.

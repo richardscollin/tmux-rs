@@ -101,7 +101,7 @@ pub unsafe fn cmd_set_option_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
                     std::ptr::eq(cmd_get_entry(self_), &CMD_SET_WINDOW_OPTION_ENTRY) as i32;
 
                 // Expand argument.
-                argument = format_single_from_target(item, args_string(args, 0));
+                argument = format_single_from_target(item, args_string(&*args, 0).unwrap().as_ptr().cast());
 
                 // If set-hook -R, fire the hook straight away.
                 if std::ptr::eq(cmd_get_entry(self_), &CMD_SET_HOOK_ENTRY) && args_has(&*args, 'R') {
@@ -125,7 +125,7 @@ pub unsafe fn cmd_set_option_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
                 if args_count(&*args) < 2 {
                     value = null_mut();
                 } else {
-                    value = args_string(args, 1);
+                    value = args_string(&*args, 1).unwrap().as_ptr().cast();
                 }
                 if !value.is_null() && args_has(&*args, 'F') {
                     expanded = format_single_from_target(item, value);

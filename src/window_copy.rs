@@ -909,11 +909,12 @@ pub unsafe fn window_copy_expand_search_string(cs: *mut window_copy_cmd_state) -
     unsafe {
         let wme: *mut window_mode_entry = (*cs).wme;
         let data: *mut window_copy_mode_data = (*wme).data.cast();
-        let ss = args_string((*cs).args, 1);
+        let ss = args_string(&*(*cs).args, 1);
 
-        if ss.is_null() || *ss == b'\0' {
+        if ss.is_none() || ss.unwrap().is_empty() {
             return false;
         }
+        let ss = ss.unwrap().as_ptr().cast::<u8>();
 
         if args_has(&*(*cs).args, 'F') {
             let expanded = format_single(
@@ -1058,8 +1059,8 @@ pub unsafe fn window_copy_do_copy_end_of_line(
         let data: *mut window_copy_mode_data = (*wme).data.cast();
         let mut prefix = null_mut();
         let mut command = null_mut();
-        let arg1 = args_string((*cs).args, 1);
-        let arg2 = args_string((*cs).args, 2);
+        let arg1 = args_string(&*(*cs).args, 1).unwrap().as_ptr().cast::<u8>();
+        let arg2 = args_string(&*(*cs).args, 2).unwrap().as_ptr().cast::<u8>();
 
         if pipe != 0 {
             if count == 3 {
@@ -1150,8 +1151,8 @@ pub unsafe fn window_copy_do_copy_line(
         let mut prefix = null_mut();
         let mut command = null_mut();
 
-        let arg1 = args_string((*cs).args, 1);
-        let arg2 = args_string((*cs).args, 2);
+        let arg1 = args_string(&*(*cs).args, 1).unwrap().as_ptr().cast::<u8>();
+        let arg2 = args_string(&*(*cs).args, 2).unwrap().as_ptr().cast::<u8>();
 
         if pipe != 0 {
             if count == 3 {
@@ -1234,10 +1235,10 @@ pub unsafe fn window_copy_cmd_copy_selection_no_clear(
         let wl: *mut winlink = (*cs).wl;
         let wp: *mut window_pane = (*wme).wp;
         let mut prefix = null_mut();
-        let arg1 = args_string((*cs).args, 1);
+        let arg1 = args_string(&*(*cs).args, 1);
 
-        if !arg1.is_null() {
-            prefix = format_single(null_mut(), cstr_to_str(arg1), c, s, wl, wp);
+        if let Some(arg1) = arg1 {
+            prefix = format_single(null_mut(), cstr_to_str(arg1.as_ptr().cast()), c, s, wl, wp);
         }
 
         if !s.is_null() {
@@ -2327,15 +2328,18 @@ pub unsafe fn window_copy_cmd_copy_pipe_no_clear(
         let wp: *mut window_pane = (*wme).wp;
         let mut command = null_mut();
         let mut prefix = null_mut();
-        let arg1 = args_string((*cs).args, 1);
-        let arg2 = args_string((*cs).args, 2);
+        let arg1 = args_string(&*(*cs).args, 1);
+        let arg2 = args_string(&*(*cs).args, 2);
 
-        if !arg2.is_null() {
-            prefix = format_single(null_mut(), cstr_to_str(arg2), c, s, wl, wp);
+        if let Some(arg2) = arg2 {
+            prefix = format_single(null_mut(), cstr_to_str(arg2.as_ptr().cast()), c, s, wl, wp);
         }
 
-        if !s.is_null() && !arg1.is_null() && *arg1 != b'\0' {
-            command = format_single(null_mut(), cstr_to_str(arg1), c, s, wl, wp);
+        if !s.is_null()
+            && let Some(arg1) = arg1
+            && !arg1.is_empty()
+        {
+            command = format_single(null_mut(), cstr_to_str(arg1.as_ptr().cast()), c, s, wl, wp);
         }
         window_copy_copy_pipe(wme, s, prefix, command);
         free_(command);
@@ -2377,10 +2381,13 @@ pub unsafe fn window_copy_cmd_pipe_no_clear(
         let wl: *mut winlink = (*cs).wl;
         let wp: *mut window_pane = (*wme).wp;
         let mut command = null_mut();
-        let arg1 = args_string((*cs).args, 1);
+        let arg1 = args_string(&*(*cs).args, 1);
 
-        if !s.is_null() && !arg1.is_null() && *arg1 != b'\0' {
-            command = format_single(null_mut(), cstr_to_str(arg1), c, s, wl, wp);
+        if !s.is_null()
+            && let Some(arg1) = arg1
+            && !arg1.is_empty()
+        {
+            command = format_single(null_mut(), cstr_to_str(arg1.as_ptr().cast()), c, s, wl, wp);
         }
         window_copy_pipe(wme, s, command);
         free_(command);
@@ -2414,7 +2421,7 @@ pub unsafe fn window_copy_cmd_pipe_and_cancel(
 pub unsafe fn window_copy_cmd_goto_line(cs: *mut window_copy_cmd_state) -> window_copy_cmd_action {
     unsafe {
         let wme: *mut window_mode_entry = (*cs).wme;
-        let arg1 = args_string((*cs).args, 1);
+        let arg1 = args_string(&*(*cs).args, 1).unwrap().as_ptr().cast::<u8>();
 
         if *arg1 != b'\0' {
             window_copy_goto_line(wme, arg1);
@@ -2430,7 +2437,7 @@ pub unsafe fn window_copy_cmd_jump_backward(
         let wme: *mut window_mode_entry = (*cs).wme;
         let data: *mut window_copy_mode_data = (*wme).data.cast();
         let mut np = (*wme).prefix;
-        let arg1 = args_string((*cs).args, 1);
+        let arg1 = args_string(&*(*cs).args, 1).unwrap().as_ptr().cast::<u8>();
 
         if *arg1 != b'\0' {
             (*data).jumptype = window_copy::WINDOW_COPY_JUMPBACKWARD;
@@ -2452,7 +2459,7 @@ pub unsafe fn window_copy_cmd_jump_forward(
         let wme: *mut window_mode_entry = (*cs).wme;
         let data: *mut window_copy_mode_data = (*wme).data.cast();
         let mut np = (*wme).prefix;
-        let arg1 = args_string((*cs).args, 1);
+        let arg1 = args_string(&*(*cs).args, 1).unwrap().as_ptr().cast::<u8>();
 
         if *arg1 != b'\0' {
             (*data).jumptype = window_copy::WINDOW_COPY_JUMPFORWARD;
@@ -2474,7 +2481,7 @@ pub unsafe fn window_copy_cmd_jump_to_backward(
         let wme: *mut window_mode_entry = (*cs).wme;
         let data: *mut window_copy_mode_data = (*wme).data.cast();
         let mut np = (*wme).prefix;
-        let arg1 = args_string((*cs).args, 1);
+        let arg1 = args_string(&*(*cs).args, 1).unwrap().as_ptr().cast::<u8>();
 
         if *arg1 != b'\0' {
             (*data).jumptype = window_copy::WINDOW_COPY_JUMPTOBACKWARD;
@@ -2496,7 +2503,7 @@ pub unsafe fn window_copy_cmd_jump_to_forward(
         let wme: *mut window_mode_entry = (*cs).wme;
         let data: *mut window_copy_mode_data = (*wme).data.cast();
         let mut np = (*wme).prefix;
-        let arg1 = args_string((*cs).args, 1);
+        let arg1 = args_string(&*(*cs).args, 1).unwrap().as_ptr().cast::<u8>();
 
         if *arg1 != b'\0' {
             (*data).jumptype = window_copy::WINDOW_COPY_JUMPTOFORWARD;
@@ -2527,7 +2534,7 @@ pub unsafe fn window_copy_cmd_next_prompt(
 ) -> window_copy_cmd_action {
     unsafe {
         let wme: *mut window_mode_entry = (*cs).wme;
-        let arg1 = args_string((*cs).args, 1);
+        let arg1 = args_string(&*(*cs).args, 1).unwrap().as_ptr().cast();
 
         window_copy_cursor_prompt(wme, 1, arg1);
         window_copy_cmd_action::WINDOW_COPY_CMD_NOTHING
@@ -2539,7 +2546,7 @@ pub unsafe fn window_copy_cmd_previous_prompt(
 ) -> window_copy_cmd_action {
     unsafe {
         let wme: *mut window_mode_entry = (*cs).wme;
-        let arg1 = args_string((*cs).args, 1);
+        let arg1 = args_string(&*(*cs).args, 1).unwrap().as_ptr().cast();
 
         window_copy_cursor_prompt(wme, 0, arg1);
         window_copy_cmd_action::WINDOW_COPY_CMD_NOTHING
@@ -2652,7 +2659,7 @@ pub unsafe fn window_copy_cmd_search_backward_incremental(
     unsafe {
         let wme: *mut window_mode_entry = (*cs).wme;
         let data: *mut window_copy_mode_data = (*wme).data.cast();
-        let mut arg1 = args_string((*cs).args, 1);
+        let mut arg1 = args_string(&*(*cs).args, 1).unwrap().as_ptr().cast::<u8>();
         let ss = (*data).searchstr;
         let mut action = window_copy_cmd_action::WINDOW_COPY_CMD_NOTHING;
 
@@ -2709,7 +2716,7 @@ pub unsafe fn window_copy_cmd_search_forward_incremental(
     unsafe {
         let wme: *mut window_mode_entry = (*cs).wme;
         let data: *mut window_copy_mode_data = (*wme).data.cast();
-        let mut arg1 = args_string((*cs).args, 1);
+        let mut arg1 = args_string(&*(*cs).args, 1).unwrap().as_ptr().cast::<u8>();
         let ss = (*data).searchstr;
         let mut action = window_copy_cmd_action::WINDOW_COPY_CMD_NOTHING;
 
@@ -3412,7 +3419,7 @@ pub unsafe fn window_copy_command(
         if count == 0 {
             return;
         }
-        let command = args_string(args, 0);
+        let command = args_string(&*args, 0).unwrap().as_ptr().cast::<u8>();
 
         if !m.is_null() && (*m).valid && !MOUSE_WHEEL((*m).b) {
             window_copy_move_mouse(m);

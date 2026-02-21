@@ -289,7 +289,7 @@ pub unsafe fn cmd_refresh_client_exec(self_: *mut cmd, item: *mut cmdq_item) -> 
                 let adjust = if args_count(&*args) == 0 {
                     1
                 } else {
-                    match strtonum(args_string(args, 0), 1, i32::MAX) {
+                    match strtonum(args_string(&*args, 0).unwrap().as_ptr().cast(), 1, i32::MAX) {
                         Ok(n) => n as u32,
                         Err(errstr) => {
                             cmdq_error!(item, "adjustment {}", _s(errstr.as_ptr()));
@@ -355,7 +355,8 @@ pub unsafe fn cmd_refresh_client_exec(self_: *mut cmd, item: *mut cmdq_item) -> 
                     break 'not_control_client;
                 }
                 for av in args_entry_values(&*args, b'A') {
-                    cmd_refresh_client_update_offset(tc, av.union_.string);
+                    let args_value::String { string } = av else { continue };
+                    cmd_refresh_client_update_offset(tc, string.as_ptr().cast());
                 }
                 return cmd_retval::CMD_RETURN_NORMAL;
             }
@@ -364,7 +365,8 @@ pub unsafe fn cmd_refresh_client_exec(self_: *mut cmd, item: *mut cmdq_item) -> 
                     break 'not_control_client;
                 }
                 for av in args_entry_values(&*args, b'B') {
-                    cmd_refresh_client_update_subscription(tc, av.union_.string);
+                    let args_value::String { string } = av else { continue };
+                    cmd_refresh_client_update_subscription(tc, string.as_ptr().cast());
                 }
                 return cmd_retval::CMD_RETURN_NORMAL;
             }

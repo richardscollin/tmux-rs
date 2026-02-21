@@ -94,7 +94,7 @@ unsafe fn cmd_set_buffer_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retv
             cmdq_error!(item, "no data specified");
             return cmd_retval::CMD_RETURN_ERROR;
         }
-        let newsize = strlen(args_string(args, 0));
+        let newsize = strlen(args_string(&*args, 0).unwrap().as_ptr().cast());
         if newsize == 0 {
             return cmd_retval::CMD_RETURN_NORMAL;
         }
@@ -111,7 +111,7 @@ unsafe fn cmd_set_buffer_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retv
         }
 
         bufdata = xrealloc_(bufdata, bufsize + newsize).as_ptr();
-        memcpy_(bufdata.add(bufsize), args_string(args, 0), newsize);
+        memcpy_(bufdata.add(bufsize), args_string(&*args, 0).unwrap().as_ptr().cast(), newsize);
         bufsize += newsize;
 
         if let Err(cause) = paste_set(bufdata, bufsize, bufname) {

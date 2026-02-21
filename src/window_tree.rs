@@ -1061,7 +1061,7 @@ unsafe fn window_tree_init(
         if args.is_null() || args_count(&*args) == 0 {
             (*data).command = xstrdup__(WINDOW_TREE_DEFAULT_COMMAND);
         } else {
-            (*data).command = xstrdup(args_string(args, 0)).as_ptr();
+            (*data).command = xstrdup(args_string(&*args, 0).unwrap().as_ptr().cast()).as_ptr();
         }
         (*data).squash_groups = !args_has(&*args, 'G');
 

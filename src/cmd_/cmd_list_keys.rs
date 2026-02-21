@@ -11,6 +11,7 @@
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+use std::ffi::CString;
 use crate::compat::strlcat;
 use crate::libc::strcmp;
 use crate::*;
@@ -102,17 +103,16 @@ unsafe fn cmd_list_keys_print_notes(
             let note = if (*bd).note.is_null() || *(*bd).note == b'\0' {
                 cmd_list_print(&*(*bd).cmdlist, 1)
             } else {
-                xstrdup((*bd).note).as_ptr()
+                CString::from(std::ffi::CStr::from_ptr((*bd).note.cast()))
             };
 
             let tmp = utf8_padcstr(key, keywidth + 1);
             if args_has(&*args, '1') && !tc.is_null() {
-                status_message_set!(tc, -1, 1, false, "{}{}{}", _s(prefix), _s(tmp), _s(note));
+                status_message_set!(tc, -1, 1, false, "{}{}{}", _s(prefix), _s(tmp), _s(note.as_ptr()));
             } else {
-                cmdq_print!(item, "{}{}{}", _s(prefix), _s(tmp), _s(note));
+                cmdq_print!(item, "{}{}{}", _s(prefix), _s(tmp), _s(note.as_ptr()));
             }
             free_(tmp);
-            free_(note);
 
             if args_has(&*args, '1') {
                 break;
@@ -155,8 +155,9 @@ unsafe fn cmd_list_keys_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retva
         }
 
         'out: {
-            let keystr = args_string(args, 0);
-            if !keystr.is_null() {
+            let keystr = args_string(&*args, 0);
+            if let Some(keystr_cstr) = keystr {
+                let keystr = keystr_cstr.as_ptr().cast();
                 only = key_string_lookup_string(keystr);
                 if only == KEYC_UNKNOWN {
                     cmdq_error!(item, "invalid key: {}", _s(keystr));
@@ -311,14 +312,13 @@ unsafe fn cmd_list_keys_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retva
                     tmpused = strlcat(tmp.as_ptr(), c!(" "), tmpsize);
                     free_(cp);
 
-                    cp = cmd_list_print(&*(*bd).cmdlist, 1);
-                    cplen = strlen(cp);
+                    let cp2 = cmd_list_print(&*(*bd).cmdlist, 1);
+                    cplen = cp2.as_bytes().len();
                     while tmpused + cplen + 1 >= tmpsize {
                         tmpsize *= 2;
                         tmp = xrealloc_(tmp.as_ptr(), tmpsize);
                     }
-                    strlcat(tmp.as_ptr(), cp, tmpsize);
-                    free_(cp);
+                    strlcat(tmp.as_ptr(), cp2.as_ptr().cast(), tmpsize);
 
                     if args_has(&*args, '1') && tc.is_null() {
                         status_message_set!(tc, -1, 1, false, "bind-key {}", _s(tmp.as_ptr()));
@@ -339,7 +339,7 @@ unsafe fn cmd_list_keys_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retva
         }
 
         if only != KEYC_UNKNOWN && found == 0 {
-            cmdq_error!(item, "unknown key list: {}", _s(args_string(args, 0)));
+            cmdq_error!(item, "unknown key list: {}", _s(args_string(&*args, 0).unwrap().as_ptr()));
             return cmd_retval::CMD_RETURN_ERROR;
         }
         cmd_retval::CMD_RETURN_NORMAL
@@ -369,12 +369,12 @@ unsafe fn cmd_list_keys_commands(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
         );
         format_defaults(ft, null_mut(), None, None, None);
 
-        let command = args_string(args, 0);
+        let command = args_string(&*args, 0);
 
         for entry in CMD_TABLE {
-            if !command.is_null()
-                && (!streq_(command, entry.name)
-                    && entry.alias.is_none_or(|alias| !streq_(command, alias)))
+            if command.is_some()
+                && (!streq_(command.unwrap().as_ptr().cast(), entry.name)
+                    && entry.alias.is_none_or(|alias| !streq_(command.unwrap().as_ptr().cast(), alias)))
             {
                 continue;
             }

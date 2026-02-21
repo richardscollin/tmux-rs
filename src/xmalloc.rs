@@ -88,6 +88,7 @@ pub unsafe fn xreallocarray_<T>(ptr: *mut T, nmemb: usize) -> NonNull<T> {
     }
 }
 
+#[expect(dead_code)]
 pub unsafe fn xrecallocarray(
     ptr: *mut c_void,
     oldnmemb: usize,

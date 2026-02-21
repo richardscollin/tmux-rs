@@ -105,7 +105,7 @@ unsafe fn cmd_select_layout_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
                 }
 
                 let layoutname = if args_count(&*args) != 0 {
-                    args_string(args, 0)
+                    args_string(&*args, 0).unwrap().as_ptr().cast()
                 } else if args_has(&*args, 'o') {
                     oldlayout
                 } else {

@@ -98,7 +98,7 @@ unsafe fn cmd_show_options_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
                     };
                     return cmd_show_options_all(self_, item, scope, oo);
                 }
-                argument = format_single_from_target(item, args_string(args, 0));
+                argument = format_single_from_target(item, args_string(&*args, 0).unwrap().as_ptr().cast());
 
                 let Some(name) = options_match(cstr_to_str(argument), &raw mut idx, &raw mut ambiguous) else {
                     if args_has(&*args, 'q') {

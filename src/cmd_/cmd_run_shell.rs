@@ -125,9 +125,8 @@ pub unsafe fn cmd_run_shell_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
 
         let cdata = xcalloc1::<cmd_run_shell_data>() as *mut cmd_run_shell_data;
         if !args_has(&*args, 'C') {
-            let cmd = args_string(args, 0);
-            if !cmd.is_null() {
-                (*cdata).cmd = format_single_from_target(item, cmd);
+            if let Some(cmd) = args_string(&*args, 0) {
+                (*cdata).cmd = format_single_from_target(item, cmd.as_ptr().cast());
             }
         } else {
             (*cdata).state = args_make_commands_prepare(self_, item, 0, null_mut(), wait, true);

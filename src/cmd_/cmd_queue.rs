@@ -375,8 +375,6 @@ pub unsafe fn cmdq_insert_hook_(
         let state = (*item).state;
         let cmd = (*item).cmd;
         let args = cmd_get_args(cmd);
-        let mut ae: *mut args_entry = null_mut();
-        let mut flag: u8;
         const SIZEOF_TMP: usize = 32;
         let mut buf: [u8; 32] = zeroed();
         let tmp = &raw mut buf as *mut u8;
@@ -411,15 +409,14 @@ pub unsafe fn cmdq_insert_hook_(
         cmdq_add_format!(new_state, c!("hook"), "{}", name);
 
         let arguments = args_print(args);
-        cmdq_add_format!(new_state, c!("hook_arguments"), "{}", _s(arguments),);
-        free_(arguments);
+        cmdq_add_format!(new_state, c!("hook_arguments"), "{}", arguments);
 
         for i in 0..args_count(&*args) {
             _ = xsnprintf_!(tmp, SIZEOF_TMP, "hook_argument_{}", i);
-            cmdq_add_format!(new_state, tmp, "{}", _s(args_string(args, i)));
+            cmdq_add_format!(new_state, tmp, "{}", _s(args_string(&*args, i).unwrap().as_ptr()));
         }
-        flag = args_first(args, &raw mut ae);
-        while flag != 0 {
+        for entry in (*args).tree.values() {
+            let flag = entry.flag;
             let value = args_get(&*args, flag);
             if value.is_null() {
                 _ = xsnprintf_!(tmp, SIZEOF_TMP, "hook_flag_{}", flag as char);
@@ -430,11 +427,10 @@ pub unsafe fn cmdq_insert_hook_(
             }
 
             for (i, av) in args_entry_values(&*args, flag).iter().enumerate() {
+                let args_value::String { string } = av else { continue };
                 _ = xsnprintf_!(tmp, SIZEOF_TMP, "hook_flag_{}_{}", flag as char, i);
-                cmdq_add_format!(new_state, tmp, "{}", _s(av.union_.string));
+                cmdq_add_format!(new_state, tmp, "{}", _s(string.as_ptr()));
             }
-
-            flag = args_next(args, &raw mut ae);
         }
 
         let mut a = options_array_first(o);

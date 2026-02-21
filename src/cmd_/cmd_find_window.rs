@@ -33,7 +33,7 @@ unsafe fn cmd_find_window_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
         let args = cmd_get_args(self_);
         let target = cmdq_get_target(item);
         let wp = (*target).wp;
-        let s = args_string(args, 0);
+        let s: *const u8 = args_string(&*args, 0).unwrap().as_ptr().cast();
         let mut suffix = c!("");
         let mut star = c!("*");
 
@@ -58,10 +58,7 @@ unsafe fn cmd_find_window_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
             t = true;
         }
 
-        let filter = xcalloc_::<args_value>(1).as_ptr();
-        (*filter).type_ = args_type::ARGS_STRING;
-
-        (*filter).union_.string = if c && n && t {
+        let filter_string = if c && n && t {
             format_nul!(
                 "#{{||:#{{C{}:{}}},#{{||:#{{m{}:{}{}{},#{{window_name}}}},#{{m{}:{}{}{},#{{pane_title}}}}}}}}",
                 _s(suffix),
@@ -126,12 +123,13 @@ unsafe fn cmd_find_window_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
                 _s(star),
             )
         };
+        let filter = args_value::new_string(filter_string);
 
         let new_args = args_create();
         if args_has(&*args, 'Z') {
-            args_set(new_args, b'Z', null_mut(), 0);
+            args_set(new_args, b'Z', None, 0);
         }
-        args_set(new_args, b'f', filter, 0);
+        args_set(new_args, b'f', Some(filter), 0);
 
         window_pane_set_mode(
             wp,

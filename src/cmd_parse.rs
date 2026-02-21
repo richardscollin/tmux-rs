@@ -15,7 +15,6 @@ use std::io::Read as _;
 use std::ops::BitAndAssign as _;
 use std::ops::BitOrAssign as _;
 
-use crate::xmalloc::xrecallocarray__;
 use crate::*;
 
 #[expect(unused_imports)]
@@ -132,17 +131,16 @@ pub fn cmd_parse_print_commands(pi: &cmd_parse_input, cmdlist: &cmd_list) {
                 "{}:{}: {}",
                 file,
                 pi.line.load(atomic::Ordering::SeqCst),
-                _s(s)
+                _s(s.as_ptr())
             );
         } else {
             cmdq_print!(
                 pi.item,
                 "{}: {}",
                 pi.line.load(atomic::Ordering::SeqCst),
-                _s(s)
+                _s(s.as_ptr())
             );
         }
-        free_(s);
     }
 }
 
@@ -254,8 +252,7 @@ pub unsafe fn cmd_parse_log_commands(cmds: *mut cmd_parse_commands, prefix: *con
                     }
                     cmd_parse_argument_type::ParsedCommands(cmdlist) => {
                         let s = cmd_list_print(&**cmdlist, 0);
-                        log_debug!("{} {}:{}: {}", _s(prefix), i, j, _s(s));
-                        free_(s);
+                        log_debug!("{} {}:{}: {}", _s(prefix), i, j, _s(s.as_ptr()));
                     }
                 }
             }
@@ -341,8 +338,7 @@ pub unsafe fn cmd_parse_build_command(
     pr: &mut cmd_parse_result,
 ) {
     unsafe {
-        let mut values: *mut args_value = null_mut();
-        let mut count: u32 = 0;
+        let mut values: Vec<args_value> = Vec::new();
         *pr = cmd_parse_result::Err(null_mut());
 
         if cmd_parse_expand_alias(cmd, pi, pr) {
@@ -351,35 +347,36 @@ pub unsafe fn cmd_parse_build_command(
 
         'out: {
             for arg in tailq_foreach(&raw mut (*cmd).arguments).map(NonNull::as_ptr) {
-                values = xrecallocarray__::<args_value>(values, count as usize, count as usize + 1)
-                    .as_ptr();
                 match &mut (*arg).type_ {
                     cmd_parse_argument_type::String(string) => {
-                        (*values.add(count as usize)).type_ = args_type::ARGS_STRING;
-                        (*values.add(count as usize)).union_.string = xstrdup(*string).as_ptr();
+                        values.push(args_value::new_string(
+                            xstrdup(*string).as_ptr(),
+                        ));
                     }
                     cmd_parse_argument_type::Commands(commands) => {
                         cmd_parse_build_commands(commands, pi, pr);
                         match *pr {
                             Err(_) => break 'out,
                             Ok(cmdlist) => {
-                                (*values.add(count as _)).type_ = args_type::ARGS_COMMANDS;
-                                (*values.add(count as _)).union_.cmdlist = cmdlist;
+                                values.push(args_value::Commands {
+                                    cmdlist,
+                                    cached: std::cell::OnceCell::new(),
+                                });
                             }
                         }
                     }
                     cmd_parse_argument_type::ParsedCommands(cmdlist) => {
-                        (*values.add(count as _)).type_ = args_type::ARGS_COMMANDS;
-                        (*values.add(count as _)).union_.cmdlist = *cmdlist;
-                        (*(*values.add(count as _)).union_.cmdlist).references += 1;
+                        (**cmdlist).references += 1;
+                        values.push(args_value::Commands {
+                            cmdlist: *cmdlist,
+                            cached: std::cell::OnceCell::new(),
+                        });
                     }
                 }
-                count += 1;
             }
 
             match cmd_parse(
-                values,
-                count,
+                &values,
                 pi.file,
                 pi.line.load(atomic::Ordering::SeqCst),
             ) {
@@ -400,11 +397,6 @@ pub unsafe fn cmd_parse_build_command(
                 }
             }
         }
-        // out:
-        for idx in 0..count {
-            args_free_value(&mut *values.add(idx as usize));
-        }
-        free_(values);
     }
 }
 
@@ -471,8 +463,7 @@ pub unsafe fn cmd_parse_build_commands(
         }
 
         let s = cmd_list_print(result, 0);
-        log_debug!("cmd_parse_build_commands: {}", _s(s));
-        free_(s);
+        log_debug!("cmd_parse_build_commands: {}", _s(s.as_ptr()));
 
         *pr = Ok(result);
     }
@@ -550,8 +541,7 @@ pub unsafe fn cmd_parse_from_buffer(buf: &[u8], pi: Option<&cmd_parse_input>) ->
 }
 
 pub unsafe fn cmd_parse_from_arguments(
-    values: *mut args_value,
-    count: u32,
+    values: &[args_value],
     pi: Option<&mut cmd_parse_input>,
 ) -> cmd_parse_result {
     unsafe {
@@ -564,35 +554,36 @@ pub unsafe fn cmd_parse_from_arguments(
         (*cmd).line = pi.line.load(atomic::Ordering::SeqCst);
         tailq_init(&raw mut (*cmd).arguments);
 
-        for i in 0..count {
+        for value in values {
             let mut end = 0;
-            if (*values.add(i as usize)).type_ == args_type::ARGS_STRING {
-                let copy = xstrdup((*values.add(i as usize)).union_.string).as_ptr();
-                let mut size = strlen(copy);
-                if size != 0 && *copy.add(size - 1) == b';' {
-                    size -= 1;
-                    *copy.add(size) = b'\0' as _;
-                    if size > 0 && *copy.add(size - 1) == b'\\' {
-                        *copy.add(size - 1) = b';' as _;
+            match value {
+                args_value::String { string } => {
+                    let copy = xstrdup(string.as_ptr().cast()).as_ptr();
+                    let mut size = strlen(copy);
+                    if size != 0 && *copy.add(size - 1) == b';' {
+                        size -= 1;
+                        *copy.add(size) = b'\0' as _;
+                        if size > 0 && *copy.add(size - 1) == b'\\' {
+                            *copy.add(size - 1) = b';' as _;
+                        } else {
+                            end = 1;
+                        }
+                    }
+                    if end == 0 || size != 0 {
+                        let arg = xcalloc1::<cmd_parse_argument>() as *mut cmd_parse_argument;
+                        (*arg).type_ = cmd_parse_argument_type::String(copy);
+                        tailq_insert_tail(&raw mut (*cmd).arguments, arg);
                     } else {
-                        end = 1;
+                        free_(copy);
                     }
                 }
-                if end == 0 || size != 0 {
+                args_value::Commands { cmdlist, .. } => {
                     let arg = xcalloc1::<cmd_parse_argument>() as *mut cmd_parse_argument;
-                    (*arg).type_ = cmd_parse_argument_type::String(copy);
+                    (**cmdlist).references += 1;
+                    (*arg).type_ = cmd_parse_argument_type::ParsedCommands(*cmdlist);
                     tailq_insert_tail(&raw mut (*cmd).arguments, arg);
-                } else {
-                    free_(copy);
                 }
-            } else if (*values.add(i as usize)).type_ == args_type::ARGS_COMMANDS {
-                let arg = xcalloc1::<cmd_parse_argument>() as *mut cmd_parse_argument;
-                let cmdlist = (*values.add(i as usize)).union_.cmdlist;
-                (*cmdlist).references += 1;
-                (*arg).type_ = cmd_parse_argument_type::ParsedCommands(cmdlist);
-                tailq_insert_tail(&raw mut (*cmd).arguments, arg);
-            } else {
-                fatalx("unknown argument type");
+                args_value::None => fatalx("unknown argument type"),
             }
             if end != 0 {
                 tailq_insert_tail(cmds, cmd);

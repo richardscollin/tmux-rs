@@ -189,7 +189,7 @@ unsafe fn cmd_source_file_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
         let cwd = cmd_source_file_quote_for_glob(server_client_get_cwd(c, null_mut()));
 
         for i in 0..args_count(&*args) {
-            let mut path = args_string(args, i);
+            let mut path: *const u8 = args_string(&*args, i).unwrap().as_ptr().cast();
             if args_has(&*args, 'F') {
                 free_(expanded);
                 expanded = format_single_from_target(item, path);

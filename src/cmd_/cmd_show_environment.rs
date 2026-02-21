@@ -108,7 +108,7 @@ unsafe fn cmd_show_environment_exec(self_: *mut cmd, item: *mut cmdq_item) -> cm
         let args = cmd_get_args(self_);
         let target = cmdq_get_target(item);
         let env: *mut environ;
-        let name = args_string(args, 0);
+        let name = args_string(&*args, 0);
 
         let mut tflag = args_get_(args, 't');
         if !tflag.is_null() && (*target).s.is_null() {
@@ -132,7 +132,8 @@ unsafe fn cmd_show_environment_exec(self_: *mut cmd, item: *mut cmdq_item) -> cm
         }
 
         let mut envent;
-        if !name.is_null() {
+        if let Some(name) = name {
+            let name = name.as_ptr().cast();
             envent = environ_find(env, name);
             if envent.is_null() {
                 cmdq_error!(item, "unknown variable: {}", _s(name));

@@ -91,7 +91,7 @@ unsafe fn cmd_display_message_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd
         }
 
         let mut template = if count != 0 {
-            args_string(args, 0)
+            args_string(&*args, 0).unwrap().as_ptr().cast()
         } else {
             args_get_(args, 'F')
         };

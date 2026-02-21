@@ -1892,26 +1892,61 @@ struct message_entry {
 }
 type message_list = tailq_head<message_entry>;
 
-/// Argument type.
-#[repr(i32)]
-#[derive(Copy, Clone, Eq, PartialEq)]
-enum args_type {
-    ARGS_NONE,
-    ARGS_STRING,
-    ARGS_COMMANDS,
-}
-
-#[repr(C)]
-union args_value_union {
-    string: *mut u8,
-    cmdlist: *mut cmd_list,
-}
-
 /// Argument value.
-struct args_value {
-    type_: args_type,
-    union_: args_value_union,
-    cached: std::cell::Cell<*mut u8>,
+enum args_value {
+    #[expect(dead_code)]
+    None,
+    String {
+        string: std::ffi::CString,
+    },
+    Commands {
+        cmdlist: *mut cmd_list,
+        cached: std::cell::OnceCell<std::ffi::CString>,
+    },
+}
+
+impl args_value {
+    /// Create a `String` variant by taking ownership of a raw `*mut u8` (C string).
+    ///
+    /// # Safety
+    /// `ptr` must be a valid, nul-terminated, malloc'd C string.
+    unsafe fn new_string(ptr: *mut u8) -> Self {
+        args_value::String {
+            string: unsafe { std::ffi::CString::from_raw(ptr.cast()) },
+        }
+    }
+}
+
+impl Clone for args_value {
+    fn clone(&self) -> Self {
+        unsafe {
+            match self {
+                args_value::None => args_value::None,
+                args_value::String { string } => args_value::String {
+                    string: string.clone(),
+                },
+                args_value::Commands { cmdlist, .. } => {
+                    (**cmdlist).references += 1;
+                    args_value::Commands {
+                        cmdlist: *cmdlist,
+                        cached: std::cell::OnceCell::new(),
+                    }
+                }
+            }
+        }
+    }
+}
+
+impl Drop for args_value {
+    fn drop(&mut self) {
+        // CString/OnceCell<CString> handle their own deallocation.
+        // Only Commands.cmdlist needs manual cleanup.
+        if let args_value::Commands { cmdlist, .. } = self {
+            unsafe {
+                cmd_list_free(*cmdlist);
+            }
+        }
+    }
 }
 type args_tree = std::collections::BTreeMap<u8, Box<args_entry>>;
 

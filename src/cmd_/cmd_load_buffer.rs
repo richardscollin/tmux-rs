@@ -99,7 +99,7 @@ unsafe fn cmd_load_buffer_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
             (*(*cdata).client).references += 1;
         }
 
-        let path = format_single_from_target(item, args_string(args, 0));
+        let path = format_single_from_target(item, args_string(&*args, 0).unwrap().as_ptr().cast());
         file_read(
             cmdq_get_client(item),
             path,

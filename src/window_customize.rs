@@ -544,8 +544,7 @@ unsafe fn window_customize_build_keys(
             free_(expanded);
 
             let tmp = cmd_list_print(&*(*bd).cmdlist, 0);
-            let mut text = format_nul!("#[ignore]{}", _s(tmp));
-            free_(tmp);
+            let mut text = format_nul!("#[ignore]{}", _s(tmp.as_ptr()));
             let mut mti = mode_tree_add(
                 (*data).data,
                 child,
@@ -779,15 +778,14 @@ unsafe fn window_customize_draw_key(
             0,
             &raw const GRID_DEFAULT_CELL,
             "Command: {}",
-            _s(cmd),
+            _s(cmd.as_ptr()),
         ) {
-            free_(cmd);
             return;
         }
         let default_bd = key_bindings_get_default(kt, (*bd).key);
         if !default_bd.is_null() {
             let default_cmd = cmd_list_print(&*(*default_bd).cmdlist, 0);
-            if libc::strcmp(cmd, default_cmd) != 0
+            if cmd != default_cmd
                 && !screen_write_text!(
                     ctx,
                     cx,
@@ -796,16 +794,10 @@ unsafe fn window_customize_draw_key(
                     0,
                     &GRID_DEFAULT_CELL,
                     "The default is: {}",
-                    _s(default_cmd),
+                    _s(default_cmd.as_ptr()),
                 )
-            {
-                free_(default_cmd);
-                free_(cmd);
-                return;
-            }
-            free_(default_cmd);
+            {}
         }
-        free_(cmd);
     }
 }
 
@@ -1596,13 +1588,12 @@ pub unsafe fn window_customize_set_key(
         }
 
         let prompt: *mut u8;
-        let value: *mut u8;
         let s = mode_tree_get_current_name((*data).data);
         if streq_(s, "Repeat") {
             (*bd).flags ^= KEY_BINDING_REPEAT;
         } else if streq_(s, "Command") {
             prompt = format_nul!("({}) ", _s(key_string_lookup_key(key, 0)));
-            value = cmd_list_print(&*(*bd).cmdlist, 0);
+            let value = cmd_list_print(&*(*bd).cmdlist, 0);
 
             let new_item = Box::new(window_customize_itemdata {
                 data,
@@ -1619,7 +1610,7 @@ pub unsafe fn window_customize_set_key(
                 c,
                 null_mut(),
                 prompt,
-                value,
+                value.as_ptr().cast(),
                 window_customize_set_command_callback,
                 window_customize_free_item_callback,
                 Box::into_raw(new_item),
@@ -1627,7 +1618,6 @@ pub unsafe fn window_customize_set_key(
                 prompt_type::PROMPT_TYPE_COMMAND,
             );
             free_(prompt);
-            free_(value);
         } else if streq_(s, "Note") {
             prompt = format_nul!("({}) ", _s(key_string_lookup_key(key, 0)));
 

@@ -36,7 +36,7 @@ unsafe fn cmd_set_environment_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd
         let args = cmd_get_args(self_);
         let target = cmdq_get_target(item);
         let env: *mut environ;
-        let name = args_string(args, 0);
+        let name = args_string(&*args, 0).unwrap().as_ptr().cast();
         let mut value: *const u8;
         let tflag;
         let mut expanded = null_mut();
@@ -55,7 +55,7 @@ unsafe fn cmd_set_environment_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd
             if args_count(&*args) < 2 {
                 value = null_mut();
             } else {
-                value = args_string(args, 1);
+                value = args_string(&*args, 1).unwrap().as_ptr().cast();
             }
             if !value.is_null() && args_has(&*args, 'F') {
                 expanded = format_single_from_target(item, value);

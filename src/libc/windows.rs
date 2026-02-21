@@ -378,13 +378,6 @@ unsafe extern "C" {
     pub fn execl(path: *const c_char, arg: *const c_char, ...) -> c_int;
 }
 
-// ioctl/fcntl/prctl don't exist on Windows MSVC.
-// These are never actually called on Windows (call sites are #[cfg]'d out or unreachable),
-// but they need to exist for the code to compile and link.
-pub unsafe fn ioctl<T>(_fd: c_int, _request: u64, _arg: T) -> c_int {
-    -1
-}
-
 // fcntl and prctl: all call sites are #[cfg(not(target_os = "windows"))],
 // so we don't define them here. If a call site needs them, it should be cfg'd.
 

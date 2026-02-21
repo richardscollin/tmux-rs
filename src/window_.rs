@@ -13,7 +13,7 @@
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 use crate::compat::HOST_NAME_MAX;
 use crate::libc::{
-    FIONREAD, FNM_CASEFOLD, TIOCSWINSZ, close, fnmatch, free, gethostname, ioctl,
+    FIONREAD, FNM_CASEFOLD, TIOCSWINSZ, close, fnmatch, free, gethostname,
     isspace, memset, regcomp, regex_t, regexec, regfree, strlen, winsize,
 };
 #[cfg(feature = "utempter")]
@@ -362,7 +362,7 @@ pub unsafe fn window_pane_destroy_ready(wp: *mut window_pane) -> bool {
                 return false;
             }
             #[cfg(not(target_os = "windows"))]
-            if ioctl((*wp).fd, FIONREAD, &raw mut n) != -1 && n > 0 {
+            if crate::libc::ioctl((*wp).fd, FIONREAD, &raw mut n) != -1 && n > 0 {
                 return false;
             }
         }
@@ -482,7 +482,7 @@ pub unsafe fn window_pane_send_resize(wp: *mut window_pane, sx: u32, sy: u32) {
 
         // TODO sun ifdef
 
-        if ioctl((*wp).fd, TIOCSWINSZ, &ws) == -1 {
+        if crate::libc::ioctl((*wp).fd, TIOCSWINSZ, &ws) == -1 {
             fatal("ioctl failed");
         }
     }

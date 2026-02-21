@@ -17,7 +17,7 @@ use crate::compat::fdforkpty::fdforkpty;
 use crate::libc::{
     AF_UNIX, PF_UNSPEC, SHUT_WR, SIG_BLOCK, SIG_SETMASK, SIGCONT, SIGTERM, SIGTTIN,
     SIGTTOU, SOCK_STREAM, STDERR_FILENO, STDIN_FILENO, STDOUT_FILENO, TIOCSWINSZ, WIFSTOPPED,
-    WSTOPSIG, close, dup2, execl, execvp, fork, ioctl, kill, killpg, memset, shutdown,
+    WSTOPSIG, close, dup2, execl, execvp, fork, kill, killpg, memset, shutdown,
     sigfillset, sigprocmask, sigset_t, socketpair, winsize,
 };
 use crate::*;
@@ -502,7 +502,7 @@ pub unsafe fn job_resize(job: *mut job, sx: c_uint, sy: c_uint) {
         (*ws).ws_row = sy as u16;
 
         #[cfg(not(target_os = "windows"))]
-        if ioctl((*job).fd, TIOCSWINSZ, ws) == -1 {
+        if crate::libc::ioctl((*job).fd, TIOCSWINSZ, ws) == -1 {
             fatal("ioctl failed");
         }
         #[cfg(target_os = "windows")]

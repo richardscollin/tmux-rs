@@ -16,7 +16,7 @@ use crate::compat::{
         tailq_concat, tailq_first, tailq_foreach, tailq_init_, tailq_insert_tail, tailq_next,
         tailq_remove,
     },
-    strlcat, strlcpy,
+    strlcat
 };
 use crate::libc::{strchr, strlen, strncmp};
 use crate::xmalloc::{xrealloc_, xreallocarray_};
@@ -311,12 +311,14 @@ pub unsafe fn cmd_append_argv(argc: *mut c_int, argv: *mut *mut *mut u8, arg: *c
     }
 }
 
+#[cfg(not(target_os = "windows"))]
 pub unsafe fn cmd_pack_argv(
     argc: c_int,
     argv: *mut *mut u8,
     mut buf: *mut u8,
     mut len: usize,
 ) -> c_int {
+    use crate::compat::strlcpy;
     unsafe {
         //
         if argc == 0 {
@@ -751,6 +753,7 @@ pub unsafe fn cmd_list_all_have(cmdlist: *mut cmd_list, flag: cmd_flag) -> bool 
     }
 }
 
+#[cfg(not(target_os = "windows"))]
 pub unsafe fn cmd_list_any_have(cmdlist: *mut cmd_list, flag: cmd_flag) -> bool {
     unsafe {
         tailq_foreach((*cmdlist).list).any(|cmd| (*cmd.as_ptr()).entry.flags.intersects(flag))

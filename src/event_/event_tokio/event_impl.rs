@@ -2,7 +2,6 @@ use std::collections::HashMap;
 use std::ffi::{c_int, c_short, c_void};
 use std::time::Duration;
 
-use ::libc::timeval;
 use tokio::runtime::Runtime;
 use tokio::sync::mpsc;
 use tokio::task::{JoinHandle, LocalSet};
@@ -12,6 +11,7 @@ use super::super::{
     event_base, event_log_cb,
 };
 use super::event;
+use crate::libc::{self, timeval};
 use crate::log::log_debug;
 
 // ---------------------------------------------------------------------------

@@ -1,6 +1,6 @@
 use std::ffi::{c_int, c_short, c_void};
 
-use ::libc::timeval;
+use crate::libc::{self, timeval};
 
 use super::super::{
     EV_PERSIST, EV_READ, EV_WRITE, bufferevent_data_cb, bufferevent_event_cb, evbuffer, event_base,

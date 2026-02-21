@@ -2,7 +2,7 @@
 
 use std::ffi::{c_int, c_short, c_void};
 
-use ::libc::timeval;
+use crate::libc::timeval;
 
 use super::{
     bufferevent_data_cb, bufferevent_event_cb, evbuffer, evbuffer_eol_style, event_base,

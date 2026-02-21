@@ -8,7 +8,7 @@ use std::{
     ptr::NonNull,
 };
 
-use ::libc::timeval;
+use crate::libc::timeval;
 
 macro_rules! evbuffer_add_printf {
    ($buf:expr, $fmt:literal $(, $args:expr)* $(,)?) => {
@@ -127,7 +127,7 @@ pub unsafe fn evtimer_del(ev: *mut event) -> c_int {
 }
 
 // #define evtimer_pending(ev, tv)		event_pending((ev), EV_TIMEOUT, (tv))
-pub unsafe fn evtimer_pending(ev: *const event, tv: *mut libc::timeval) -> c_int {
+pub unsafe fn evtimer_pending(ev: *const event, tv: *mut timeval) -> c_int {
     unsafe { event_pending(ev, EV_TIMEOUT, tv) }
 }
 

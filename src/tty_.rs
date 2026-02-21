@@ -529,6 +529,7 @@ pub unsafe fn tty_open(tty: *mut tty) -> Result<(), String> {
     }
 }
 
+#[cfg(not(target_os = "windows"))]
 pub unsafe extern "C-unwind" fn tty_start_timer_callback(
     _fd: i32,
     _events: i16,

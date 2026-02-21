@@ -11,17 +11,17 @@ unsafe impl GlobalAlloc for MyAlloc {
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
         unsafe {
             if layout.align() <= MIN_ALIGN {
-                libc::malloc(layout.size()) as *mut u8
+                ::libc_sys::malloc(layout.size()) as *mut u8
             } else {
                 // malloc only guarantees MIN_ALIGN alignment; use
                 // aligned_alloc for larger alignment requirements.
                 #[cfg(unix)]
                 {
-                    libc::aligned_alloc(layout.align(), layout.size()) as *mut u8
+                    ::libc_sys::aligned_alloc(layout.align(), layout.size()) as *mut u8
                 }
                 #[cfg(windows)]
                 {
-                    libc::aligned_malloc(layout.size(), layout.align()) as *mut u8
+                    ::libc_sys::aligned_malloc(layout.size(), layout.align()) as *mut u8
                 }
             }
         }
@@ -29,12 +29,12 @@ unsafe impl GlobalAlloc for MyAlloc {
     unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
         unsafe {
             if layout.align() <= MIN_ALIGN {
-                libc::free(ptr.cast());
+                ::libc_sys::free(ptr.cast());
             } else {
                 #[cfg(unix)]
-                libc::free(ptr.cast());
+                ::libc_sys::free(ptr.cast());
                 #[cfg(windows)]
-                libc::aligned_free(ptr.cast());
+                ::libc_sys::aligned_free(ptr.cast());
             }
         }
     }
@@ -43,7 +43,7 @@ unsafe impl GlobalAlloc for MyAlloc {
             let align = layout.align();
             // exploit we know align must be a non-zero power of 2 to do a faster division
             let nmemb = (layout.size() + align - 1) >> align.trailing_zeros();
-            unsafe { libc::calloc(nmemb, align) as *mut u8 }
+            unsafe { ::libc_sys::calloc(nmemb, align) as *mut u8 }
         } else {
             let ptr = unsafe { self.alloc(layout) };
             if !ptr.is_null() {
@@ -54,7 +54,7 @@ unsafe impl GlobalAlloc for MyAlloc {
     }
     unsafe fn realloc(&self, ptr: *mut u8, layout: Layout, new_size: usize) -> *mut u8 {
         if layout.align() <= MIN_ALIGN {
-            unsafe { libc::realloc(ptr.cast(), new_size) as *mut u8 }
+            unsafe { ::libc_sys::realloc(ptr.cast(), new_size) as *mut u8 }
         } else {
             // realloc doesn't guarantee alignment > MIN_ALIGN, so we
             // must allocate new aligned memory and copy.

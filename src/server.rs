@@ -13,11 +13,10 @@
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 use crate::compat::ACCESSPERMS;
 use crate::libc::{
-    AF_UNIX, ECHILD, ENAMETOOLONG, S_IRGRP, S_IROTH, S_IRUSR, S_IRWXG, S_IRWXO, S_IXGRP, S_IXOTH,
-    S_IXUSR, SIG_BLOCK, SIG_SETMASK, SIGCONT, SIGTTIN, SIGTTOU, SOCK_STREAM, WIFEXITED,
-    WIFSIGNALED, WIFSTOPPED, WNOHANG, WSTOPSIG, WUNTRACED, accept, bind, chmod, close,
-    kill, killpg, listen, sigfillset, sigprocmask, sigset_t, sockaddr_storage,
-    sockaddr_un, socket, socklen_t, stat, strerror, strsignal, umask, unlink, waitpid,
+    AF_UNIX, ENAMETOOLONG, S_IRGRP, S_IROTH, S_IRUSR, S_IRWXG, S_IRWXO, S_IXGRP, S_IXOTH,
+    S_IXUSR, SOCK_STREAM, accept, bind, chmod, close,
+    listen, sockaddr_storage,
+    sockaddr_un, socket, socklen_t, stat, strerror, strsignal, umask, unlink,
 };
 use crate::*;
 use crate::options_::*;
@@ -158,6 +157,7 @@ unsafe extern "C-unwind" fn server_tidy_event(_fd: i32, _events: i16, _data: *mu
     }
 }
 
+#[cfg(not(target_os = "windows"))]
 pub unsafe fn server_start(
     client: *mut tmuxproc,
     flags: client_flag,
@@ -712,6 +712,7 @@ unsafe fn server_signal(sig: i32) {
                 SERVER_EXIT = 1;
                 server_send_exit();
             }
+            #[cfg(not(target_os = "windows"))]
             libc::SIGCHLD => server_child_signal(),
             libc::SIGUSR1 => {
                 event_del(&raw mut SERVER_EV_ACCEPT);
@@ -732,7 +733,12 @@ unsafe fn server_signal(sig: i32) {
 
 // handle SIGCHLD
 
+#[cfg(not(target_os = "windows"))]
 unsafe fn server_child_signal() {
+    use crate::libc::{
+        ECHILD, WIFEXITED, WIFSIGNALED, WIFSTOPPED, WNOHANG,
+        WUNTRACED, waitpid,
+    };
     let mut status = 0i32;
     unsafe {
         loop {
@@ -761,6 +767,7 @@ unsafe fn server_child_signal() {
     }
 }
 
+#[cfg(not(target_os = "windows"))]
 unsafe fn server_child_exited(pid: pid_t, status: i32) {
     unsafe {
         for w in rb_foreach(&raw mut WINDOWS).map(NonNull::as_ptr) {
@@ -783,16 +790,17 @@ unsafe fn server_child_exited(pid: pid_t, status: i32) {
     }
 }
 
+#[cfg(not(target_os = "windows"))]
 unsafe fn server_child_stopped(pid: pid_t, status: i32) {
     unsafe {
-        if WSTOPSIG(status) == SIGTTIN || WSTOPSIG(status) == SIGTTOU {
+        if WSTOPSIG(status) == libc::SIGTTIN || WSTOPSIG(status) == libc::SIGTTOU {
             return;
         }
 
         for w in rb_foreach(&raw mut WINDOWS).map(NonNull::as_ptr) {
             for wp in tailq_foreach::<_, discr_entry>(&raw mut (*w).panes).map(NonNull::as_ptr) {
-                if (*wp).pid == pid && killpg(pid, SIGCONT) != 0 {
-                    kill(pid, SIGCONT);
+                if (*wp).pid == pid && killpg(pid, libc::SIGCONT) != 0 {
+                    kill(pid, libc::SIGCONT);
                 }
             }
         }

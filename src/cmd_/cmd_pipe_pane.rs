@@ -203,6 +203,7 @@ pub unsafe fn cmd_pipe_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
     }
 }
 
+#[cfg(not(target_os = "windows"))]
 pub unsafe extern "C-unwind" fn cmd_pipe_pane_read_callback(
     _bufev: *mut bufferevent,
     data: *mut c_void,
@@ -223,6 +224,7 @@ pub unsafe extern "C-unwind" fn cmd_pipe_pane_read_callback(
     }
 }
 
+#[cfg(not(target_os = "windows"))]
 pub unsafe extern "C-unwind" fn cmd_pipe_pane_write_callback(
     _bufev: *mut bufferevent,
     data: *mut c_void,
@@ -238,6 +240,7 @@ pub unsafe extern "C-unwind" fn cmd_pipe_pane_write_callback(
     }
 }
 
+#[cfg(not(target_os = "windows"))]
 pub unsafe extern "C-unwind" fn cmd_pipe_pane_error_callback(
     _bufev: *mut bufferevent,
     _what: i16,

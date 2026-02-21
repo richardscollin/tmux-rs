@@ -16,14 +16,13 @@ use std::io::Write;
 
 #[cfg_attr(target_os = "windows", expect(unused_imports))]
 use crate::compat::{
-    WAIT_ANY,
     imsg::{IMSG_HEADER_SIZE, MAX_IMSGSIZE, imsg},
 };
 #[cfg_attr(target_os = "windows", expect(unused_imports))]
 use crate::libc::{
     EAGAIN, ECHILD, ECONNREFUSED, EINTR, ENAMETOOLONG, ENOENT,
-    O_CREAT, O_WRONLY, SIG_DFL, SIG_IGN,
-    SIGTERM, STDERR_FILENO, STDIN_FILENO,
+    O_CREAT, O_WRONLY,
+    STDERR_FILENO, STDIN_FILENO,
     STDOUT_FILENO,
     close, connect, dup, execl, memcpy,
     memset, open, sockaddr, socket, strerror, strlen,
@@ -33,12 +32,11 @@ use crate::*;
 #[cfg_attr(target_os = "windows", expect(unused_imports))]
 use crate::options_::options_free;
 
-#[cfg(not(target_os = "windows"))]
-use crate::libc::{ SIGHUP, SIGTSTP, sigaction, sigemptyset };
 
 pub static mut CLIENT_PROC: *mut tmuxproc = null_mut();
 pub static mut CLIENT_PEER: *mut tmuxpeer = null_mut();
 pub static mut CLIENT_FLAGS: client_flag = client_flag::empty();
+#[cfg(not(target_os = "windows"))]
 pub static mut CLIENT_SUSPENDED: i32 = 0;
 
 #[repr(i32)]
@@ -65,11 +63,6 @@ static mut CLIENT_EXECSHELL: *mut u8 = null_mut();
 static mut CLIENT_EXECCMD: *mut u8 = null_mut();
 static mut CLIENT_ATTACHED: i32 = 0;
 static mut CLIENT_FILES: client_files = rb_initializer();
-
-#[cfg(target_os = "windows")]
-pub unsafe fn client_get_lock(_lockfile: *mut u8) -> i32 {
-    -1 // Not used in NOFORK mode
-}
 
 #[cfg(not(target_os = "windows"))]
 pub unsafe fn client_get_lock(lockfile: *mut u8) -> i32 {
@@ -99,11 +92,6 @@ pub unsafe fn client_get_lock(lockfile: *mut u8) -> i32 {
     }
 }
 
-
-#[cfg(target_os = "windows")]
-pub unsafe fn client_connect(_base: *mut event_base, _path: *const u8, _flags: client_flag) -> i32 {
-    -1 // Not used in NOFORK mode — server_start is called directly
-}
 
 #[cfg(not(target_os = "windows"))]
 pub unsafe fn client_connect(base: *mut event_base, path: *const u8, flags: client_flag) -> i32 {
@@ -198,6 +186,7 @@ pub unsafe fn client_connect(base: *mut event_base, path: *const u8, flags: clie
     }
 }
 
+#[cfg(not(target_os = "windows"))]
 pub unsafe fn client_exit_message() -> Cow<'static, str> {
     match unsafe { CLIENT_EXITREASON } {
         client_exitreason::CLIENT_EXIT_DETACHED => {
@@ -246,7 +235,6 @@ pub unsafe extern "C-unwind" fn client_main(
     mut flags: client_flag,
     _feat: i32,
 ) -> i32 {
-    use crate::compat::imsg::{IMSG_HEADER_SIZE, MAX_IMSGSIZE};
     use crate::server::{SERVER_PROC, server_start_windows};
 
     unsafe {
@@ -646,9 +634,12 @@ tcsetattr,
                 println!("[{}]", client_exit_message());
             }
 
-            let ppid = getppid();
-            if CLIENT_EXITTYPE == msgtype::MSG_DETACHKILL && ppid > 1 {
-                kill(ppid, SIGHUP);
+            #[cfg(not(target_os = "windows"))]
+            {
+                let ppid = getppid();
+                if CLIENT_EXITTYPE == msgtype::MSG_DETACHKILL && ppid > 1 {
+                    kill(ppid, libc::SIGHUP);
+                }
             }
         } else if (*&raw const CLIENT_FLAGS).intersects(client_flag::CONTROL) {
             if CLIENT_EXITREASON != client_exitreason::CLIENT_EXIT_NONE {
@@ -683,6 +674,7 @@ tcsetattr,
     }
 }
 
+#[cfg(not(target_os = "windows"))]
 unsafe fn client_send_identify(
     ttynam: *const u8,
     termname: &CStr,
@@ -822,22 +814,18 @@ unsafe fn client_exec(shell: *mut u8, shellcmd: *mut u8) {
     }
 }
 
-#[cfg(target_os = "windows")]
-unsafe fn client_signal(_sig: i32) {
-    // No Unix signals on Windows
-}
-
 #[cfg(not(target_os = "windows"))]
 unsafe fn client_signal(sig: i32) {
-    use crate::libc::{SA_RESTART, SIGCHLD, SIGCONT, SIGWINCH, WNOHANG, strsignal, waitpid};
-    
+    use crate::libc::{WNOHANG, strsignal, waitpid};
+    use crate::compat::WAIT_ANY;
+
     unsafe {
-        let mut sigact: sigaction = zeroed();
+        let mut sigact: libc::sigaction = zeroed();
         let mut status: i32 = 0;
         let mut pid: pid_t;
 
         log_debug!("{}: {}", "client_signal", _s(strsignal(sig).cast::<u8>()));
-        if sig == SIGCHLD {
+        if sig == libc::SIGCHLD {
             loop {
                 pid = waitpid(WAIT_ANY, &raw mut status, WNOHANG);
                 if pid == 0 {
@@ -851,32 +839,32 @@ unsafe fn client_signal(sig: i32) {
                 }
             }
         } else if CLIENT_ATTACHED == 0 {
-            if sig == SIGTERM || sig == SIGHUP {
+            if sig == libc::SIGTERM || sig == libc::SIGHUP {
                 proc_exit(CLIENT_PROC);
             }
         } else {
             match sig {
-                SIGHUP => {
+                libc::SIGHUP => {
                     CLIENT_EXITREASON = client_exitreason::CLIENT_EXIT_LOST_TTY;
                     CLIENT_EXITVAL = 1;
                     proc_send(CLIENT_PEER, msgtype::MSG_EXITING, -1, null_mut(), 0);
                 }
-                SIGTERM => {
+                libc::SIGTERM => {
                     if CLIENT_SUSPENDED == 0 {
                         CLIENT_EXITREASON = client_exitreason::CLIENT_EXIT_TERMINATED;
                     }
                     CLIENT_EXITVAL = 1;
                     proc_send(CLIENT_PEER, msgtype::MSG_EXITING, -1, null_mut(), 0);
                 }
-                SIGWINCH => {
+                libc::SIGWINCH => {
                     proc_send(CLIENT_PEER, msgtype::MSG_RESIZE, -1, null_mut(), 0);
                 }
-                SIGCONT => {
-                    memset(&raw mut sigact as _, 0, size_of::<sigaction>());
-                    sigemptyset(&raw mut sigact.sa_mask);
-                    sigact.sa_flags = SA_RESTART;
-                    sigact.sa_sigaction = SIG_IGN;
-                    if sigaction(SIGTSTP, &raw mut sigact, null_mut()) != 0 {
+                libc::SIGCONT => {
+                    memset(&raw mut sigact as _, 0, size_of::<libc::sigaction>());
+                    libc::sigemptyset(&raw mut sigact.sa_mask);
+                    sigact.sa_flags = libc::SA_RESTART;
+                    sigact.sa_sigaction = libc::SIG_IGN;
+                    if libc::sigaction(libc::SIGTSTP, &raw mut sigact, null_mut()) != 0 {
                         fatal("sigaction failed");
                     }
                     proc_send(CLIENT_PEER, msgtype::MSG_WAKEUP, -1, null_mut(), 0);
@@ -1058,7 +1046,8 @@ unsafe fn client_dispatch_wait(imsg: *mut imsg) {
 #[expect(clippy::deref_addrof)]
 unsafe fn client_dispatch_attached(imsg: *mut imsg) {
     unsafe {
-        let mut sigact: sigaction = zeroed();
+        #[cfg(not(target_os = "windows"))]
+        let mut sigact: libc::sigaction = zeroed();
         let data: *mut u8 = (*imsg).data as _;
         let datalen = (*imsg).hdr.len as usize - IMSG_HEADER_SIZE;
 
@@ -1127,20 +1116,21 @@ unsafe fn client_dispatch_attached(imsg: *mut imsg) {
                 CLIENT_EXITREASON = client_exitreason::CLIENT_EXIT_SERVER_EXITED;
                 CLIENT_EXITVAL = 1;
             }
+            #[cfg(not(target_os = "windows"))]
             msgtype::MSG_SUSPEND => {
                 if datalen != 0 {
                     fatalx("bad MSG_SUSPEND size");
                 }
 
-                memset(&raw mut sigact as _, 0, size_of::<sigaction>());
-                sigemptyset(&raw mut sigact.sa_mask);
-                sigact.sa_flags = SA_RESTART;
-                sigact.sa_sigaction = SIG_DFL;
-                if sigaction(SIGTSTP, &raw mut sigact, null_mut()) != 0 {
+                memset(&raw mut sigact as _, 0, size_of::<libc::sigaction>());
+                libc::sigemptyset(&raw mut sigact.sa_mask);
+                sigact.sa_flags = libc::SA_RESTART;
+                sigact.sa_sigaction = libc::SIG_DFL;
+                if libc::sigaction(libc::SIGTSTP, &raw mut sigact, null_mut()) != 0 {
                     fatal("sigaction failed");
                 }
                 CLIENT_SUSPENDED = 1;
-                kill(std::process::id() as i32, SIGTSTP);
+                kill(std::process::id() as i32, libc::SIGTSTP);
             }
             msgtype::MSG_LOCK => {
                 if datalen == 0 || *data.add(datalen - 1) != b'\0' {

@@ -24,7 +24,6 @@
     non_camel_case_types,
     reason = "this lint is here instead of in Cargo.toml because of a bug in rust analyzer"
 )]
-#![cfg_attr(target_os = "windows", allow(unused))]
 
 mod libc;
 pub(crate) use crate::libc::errno;

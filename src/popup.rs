@@ -827,7 +827,7 @@ pub unsafe fn popup_display(
 
         (*pd).cb = cb;
         (*pd).arg = arg;
-        (*pd).status = 128 + SIGHUP;
+        (*pd).status = 128 + libc::SIGHUP;
 
         (*pd).border_lines = lines;
         memcpy__(&raw mut (*pd).border_cell, &raw const GRID_DEFAULT_CELL);

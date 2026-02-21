@@ -1,3 +1,5 @@
+use crate::libc;
+
 #[cfg(not(target_os = "windows"))]
 pub unsafe fn getpeereid(_s: i32, uid: *mut libc::uid_t, gid: *mut libc::gid_t) -> i32 {
     unsafe {

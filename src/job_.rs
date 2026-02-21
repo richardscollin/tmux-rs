@@ -11,14 +11,18 @@
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+#[cfg(not(target_os = "windows"))]
 use std::path::Path;
 
+#[cfg(not(target_os = "windows"))]
 use crate::compat::fdforkpty::fdforkpty;
+use crate::libc::{SHUT_WR, close, shutdown, winsize};
+#[cfg(not(target_os = "windows"))]
 use crate::libc::{
-    AF_UNIX, PF_UNSPEC, SHUT_WR, SIG_BLOCK, SIG_SETMASK, SIGCONT, SIGTERM, SIGTTIN,
-    SIGTTOU, SOCK_STREAM, STDERR_FILENO, STDIN_FILENO, STDOUT_FILENO, TIOCSWINSZ, WIFSTOPPED,
-    WSTOPSIG, close, dup2, execl, execvp, fork, kill, killpg, memset, shutdown,
-    sigfillset, sigprocmask, sigset_t, socketpair, winsize,
+    AF_UNIX, PF_UNSPEC,
+    SOCK_STREAM, STDERR_FILENO, STDIN_FILENO, STDOUT_FILENO, TIOCSWINSZ, WIFSTOPPED,
+    WSTOPSIG, dup2, execl, execvp, fork, kill, killpg, memset,
+    socketpair,
 };
 use crate::*;
 use crate::options_::{options, options_get_string_};
@@ -235,8 +239,8 @@ pub unsafe fn job_run(
         let mut out: [i32; 2] = [0; 2];
         let mut master: i32 = 0;
         let mut shell: *const u8;
-        let mut set = MaybeUninit::<sigset_t>::uninit();
-        let mut oldset = MaybeUninit::<sigset_t>::uninit();
+        let mut set = MaybeUninit::<libc::sigset_t>::uninit();
+        let mut oldset = MaybeUninit::<libc::sigset_t>::uninit();
         let mut ws = MaybeUninit::<winsize>::uninit();
         let argvp: *mut *mut u8;
         // let mut tty = MaybeUninit::<[c_char; TTY_NAME_MAX]>::uninit();
@@ -265,8 +269,8 @@ pub unsafe fn job_run(
             }
             argv0 = shell_argv0(shell, 0);
 
-            sigfillset(set.as_mut_ptr());
-            sigprocmask(SIG_BLOCK, set.as_mut_ptr(), oldset.as_mut_ptr());
+            libc::sigfillset(set.as_mut_ptr());
+            libc::sigprocmask(libc::SIG_BLOCK, set.as_mut_ptr(), oldset.as_mut_ptr());
 
             if flags.intersects(job_flag::JOB_PTY) {
                 memset(ws.as_mut_ptr().cast(), 0, size_of::<winsize>());
@@ -314,7 +318,7 @@ pub unsafe fn job_run(
                 }
                 0 => {
                     proc_clear_signals(SERVER_PROC, 1);
-                    sigprocmask(SIG_SETMASK, oldset.as_mut_ptr(), null_mut());
+                    libc::sigprocmask(libc::SIG_SETMASK, oldset.as_mut_ptr(), null_mut());
 
                     if (cwd.is_null() || std::env::set_current_dir(cstr_to_str(cwd)).is_err())
                         && find_home().is_none_or(|home| {
@@ -370,7 +374,7 @@ pub unsafe fn job_run(
                 _ => (),
             }
 
-            sigprocmask(SIG_SETMASK, oldset.as_ptr(), null_mut());
+            libc::sigprocmask(libc::SIG_SETMASK, oldset.as_ptr(), null_mut());
             environ_free(env);
             free_(argv0);
 
@@ -423,7 +427,7 @@ pub unsafe fn job_run(
             return job;
         }
 
-        sigprocmask(SIG_SETMASK, oldset.as_ptr(), null_mut());
+        libc::sigprocmask(libc::SIG_SETMASK, oldset.as_ptr(), null_mut());
         environ_free(env);
         free_(argv0);
         null_mut()
@@ -475,7 +479,7 @@ pub unsafe fn job_free(job: *mut job) {
         }
         if (*job).pid != -1 {
             #[cfg(not(target_os = "windows"))]
-            kill((*job).pid, SIGTERM);
+            kill((*job).pid, libc::SIGTERM);
             #[cfg(target_os = "windows")]
             crate::conpty::conpty_kill((*job).pid as u32);
         }
@@ -570,6 +574,7 @@ unsafe extern "C-unwind" fn job_error_callback(
     }
 }
 
+#[cfg(not(target_os = "windows"))]
 pub unsafe fn job_check_died(pid: pid_t, status: i32) {
     unsafe {
         let Some(job) = list_foreach(&raw mut ALL_JOBS).find(|job| pid == (*job.as_ptr()).pid)
@@ -579,10 +584,10 @@ pub unsafe fn job_check_died(pid: pid_t, status: i32) {
         let job = job.as_ptr();
 
         if WIFSTOPPED(status) {
-            if WSTOPSIG(status) == SIGTTIN || WSTOPSIG(status) == SIGTTOU {
+            if WSTOPSIG(status) == libc::SIGTTIN || WSTOPSIG(status) == libc::SIGTTOU {
                 return;
             }
-            killpg((*job).pid, SIGCONT);
+            killpg((*job).pid, libc::SIGCONT);
             return;
         }
         log_debug!(
@@ -623,7 +628,7 @@ pub unsafe fn job_kill_all() {
         for job in list_foreach(&raw mut ALL_JOBS).map(NonNull::as_ptr) {
             if (*job).pid != -1 {
                 #[cfg(not(target_os = "windows"))]
-                kill((*job).pid, SIGTERM);
+                kill((*job).pid, libc::SIGTERM);
                 #[cfg(target_os = "windows")]
                 crate::conpty::conpty_kill((*job).pid as u32);
             }

@@ -10,7 +10,8 @@
 )]
 
 // Re-export everything from ::libc first, then our definitions shadow what we override
-pub use ::libc::*;
+pub use ::libc_sys::*;
+pub use ::libc_sys::{self as libc};
 
 use core::ffi::{c_char, c_int, c_uint, c_void};
 
@@ -32,13 +33,10 @@ pub type suseconds_t = i32;
 pub type cc_t = u8;
 pub type speed_t = u32;
 pub type tcflag_t = u32;
-pub type sigset_t = u64;
 pub type socklen_t = i32;
 pub type sa_family_t = u16;
 pub type clockid_t = i32;
 pub type nl_item = i32;
-pub type nfds_t = u64;
-
 pub const NCCS: usize = 32;
 
 #[repr(C)]
@@ -149,38 +147,13 @@ pub struct cmsghdr {
     pub cmsg_type: c_int,
 }
 
-#[repr(C)]
-#[derive(Debug, Copy, Clone)]
-pub struct sigaction {
-    pub sa_sigaction: usize,
-    pub sa_mask: sigset_t,
-    pub sa_flags: c_int,
-}
-
-/// WSAPOLLFD from windows-sys — correct SOCKET-sized fd field for WSAPoll on x64.
-pub type pollfd = windows_sys::Win32::Networking::WinSock::WSAPOLLFD;
-
 // ============================================================
 // Signal constants
 // ============================================================
 
 pub const SIGHUP: c_int = 1;
-pub const SIGQUIT: c_int = 3;
-pub const SIGPIPE: c_int = 13;
-pub const SIGCHLD: c_int = 17;
-pub const SIGCONT: c_int = 18;
-pub const SIGTSTP: c_int = 20;
-pub const SIGTTIN: c_int = 21;
-pub const SIGTTOU: c_int = 22;
 pub const SIGUSR1: c_int = 10;
 pub const SIGUSR2: c_int = 12;
-pub const SIGWINCH: c_int = 28;
-
-pub const SA_RESTART: c_int = 0x10000000;
-pub const SIG_BLOCK: c_int = 0;
-pub const SIG_SETMASK: c_int = 2;
-pub const SIG_DFL: usize = 0;
-pub const SIG_IGN: usize = 1;
 
 // ============================================================
 // Socket constants
@@ -203,10 +176,6 @@ pub const STDERR_FILENO: c_int = 2;
 
 pub const O_NONBLOCK: c_int = 0x800;
 pub const X_OK: c_int = 1;
-pub const F_GETFL: c_int = 3;
-pub const F_SETFL: c_int = 4;
-pub const F_SETFD: c_int = 2;
-pub const FD_CLOEXEC: c_int = 1;
 
 pub const S_IRUSR: mode_t = 0o400;
 pub const S_IWUSR: mode_t = 0o200;
@@ -227,7 +196,6 @@ pub const S_IRWXO: mode_t = 0o007;
 
 pub const TIOCSWINSZ: u64 = 0x5414;
 pub const TIOCGWINSZ: u64 = 0x5413;
-pub const TIOCGSID: u64 = 0x5429;
 pub const TCSANOW: c_int = 0;
 pub const TCSAFLUSH: c_int = 2;
 pub const TCOFLUSH: c_int = 1;
@@ -270,11 +238,9 @@ pub const HUPCL: tcflag_t = 0o002000;
 pub const _POSIX_VDISABLE: cc_t = 0;
 
 // ============================================================
-// Wait constants and macros
+// Wait macros (WIFEXITED, WIFSIGNALED, WEXITSTATUS, WTERMSIG
+// are used for interpreting process exit status on Windows too)
 // ============================================================
-
-pub const WNOHANG: c_int = 1;
-pub const WUNTRACED: c_int = 2;
 
 #[inline]
 pub fn WIFEXITED(status: c_int) -> bool {
@@ -285,20 +251,12 @@ pub fn WIFSIGNALED(status: c_int) -> bool {
     ((status & 0x7f) + 1) as i8 >= 2
 }
 #[inline]
-pub fn WIFSTOPPED(status: c_int) -> bool {
-    (status & 0xff) == 0x7f
-}
-#[inline]
 pub fn WEXITSTATUS(status: c_int) -> c_int {
     (status >> 8) & 0xff
 }
 #[inline]
 pub fn WTERMSIG(status: c_int) -> c_int {
     status & 0x7f
-}
-#[inline]
-pub fn WSTOPSIG(status: c_int) -> c_int {
-    (status >> 8) & 0xff
 }
 
 // ============================================================
@@ -327,8 +285,6 @@ pub const CLOCK_MONOTONIC: clockid_t = 1;
 pub const CLOCK_REALTIME: clockid_t = 0;
 pub const _SC_MB_LEN_MAX: c_int = 6;
 pub const PATH_DEVNULL: &str = "NUL";
-
-pub const PR_SET_NAME: c_int = 15;
 
 // ============================================================
 // CMSG macros (const fn shims)
@@ -384,11 +340,11 @@ unsafe extern "C" {
 // MSVC CRT functions not in the libc crate
 unsafe extern "C" {
     #[link_name = "strftime"]
-    fn msvc_strftime(s: *mut u8, max: usize, format: *const u8, tm: *const ::libc::tm) -> usize;
+    fn msvc_strftime(s: *mut u8, max: usize, format: *const u8, tm: *const libc::tm) -> usize;
     #[link_name = "localtime"]
-    fn msvc_localtime(time: *const ::libc::time_t) -> *mut ::libc::tm;
+    fn msvc_localtime(time: *const libc::time_t) -> *mut libc::tm;
     #[link_name = "_ctime64_s"]
-    fn ctime_s(buf: *mut c_char, bufsz: usize, time: *const ::libc::time_t) -> c_int;
+    fn ctime_s(buf: *mut c_char, bufsz: usize, time: *const libc::time_t) -> c_int;
 }
 
 // ============================================================
@@ -467,7 +423,7 @@ pub unsafe fn gethostname(name: *mut u8, len: usize) -> c_int {
     }
 }
 
-pub unsafe fn strftime(s: *mut u8, max: usize, format: *const u8, tm: *const ::libc::tm) -> usize {
+pub unsafe fn strftime(s: *mut u8, max: usize, format: *const u8, tm: *const libc::tm) -> usize {
     unsafe { msvc_strftime(s, max, format, tm) }
 }
 
@@ -616,8 +572,7 @@ pub unsafe fn glob(
 
     // Allocate pathv array (null-terminated)
     let count = entries.len();
-    let pathv =
-        unsafe { ::libc::malloc((count + 1) * size_of::<*mut c_char>()) } as *mut *mut c_char;
+    let pathv = unsafe { libc::malloc((count + 1) * size_of::<*mut c_char>()) } as *mut *mut c_char;
     if pathv.is_null() {
         return GLOB_NOSPACE;
     }
@@ -625,7 +580,7 @@ pub unsafe fn glob(
     for (i, entry) in entries.iter().enumerate() {
         let s = entry.to_string_lossy();
         let bytes = s.as_bytes();
-        let dup = unsafe { ::libc::malloc(bytes.len() + 1) } as *mut c_char;
+        let dup = unsafe { libc::malloc(bytes.len() + 1) } as *mut c_char;
         if !dup.is_null() {
             unsafe {
                 core::ptr::copy_nonoverlapping(bytes.as_ptr(), dup.cast(), bytes.len());
@@ -655,50 +610,13 @@ pub unsafe fn globfree(pglob: *mut glob_t) {
         for i in 0..(*pglob).gl_pathc {
             let p = *(*pglob).gl_pathv.add(i);
             if !p.is_null() {
-                ::libc::free(p.cast());
+                libc::free(p.cast());
             }
         }
-        ::libc::free((*pglob).gl_pathv.cast());
+        libc::free((*pglob).gl_pathv.cast());
         (*pglob).gl_pathv = core::ptr::null_mut();
         (*pglob).gl_pathc = 0;
     }
-}
-
-// -- Process functions (no fork on Windows) --
-
-pub unsafe fn fork() -> pid_t {
-    // fork does not exist on Windows; callers must use #[cfg(windows)] paths
-    eprintln!("fork() called on Windows - this should never happen");
-    -1
-}
-
-pub unsafe fn forkpty(
-    _master: *mut c_int,
-    _name: *mut u8,
-    _tio: *mut termios,
-    _ws: *mut winsize,
-) -> pid_t {
-    eprintln!("forkpty() called on Windows - this should never happen");
-    -1
-}
-
-pub unsafe fn kill(_pid: pid_t, _sig: c_int) -> c_int {
-    // TODO: implement via TerminateProcess for SIGKILL, GenerateConsoleCtrlEvent for SIGINT
-    0
-}
-
-pub unsafe fn killpg(_pgrp: pid_t, _sig: c_int) -> c_int {
-    0
-}
-
-pub unsafe fn waitpid(_pid: pid_t, status: *mut c_int, _options: c_int) -> pid_t {
-    // TODO: implement via WaitForSingleObject
-    if !status.is_null() {
-        unsafe {
-            *status = 0;
-        }
-    }
-    -1
 }
 
 // -- Socket functions (AF_UNIX via Winsock) --
@@ -1073,10 +991,10 @@ pub unsafe fn socketpair(domain: c_int, type_: c_int, protocol: c_int, sv: *mut 
         *sv.add(1) = socket_to_fd(acceptor);
         if *sv == -1 || *sv.add(1) == -1 {
             if *sv != -1 {
-                ::libc::close(*sv);
+                libc::close(*sv);
             }
             if *sv.add(1) != -1 {
-                ::libc::close(*sv.add(1));
+                libc::close(*sv.add(1));
             }
             *_errno() = EMFILE;
             return -1;
@@ -1150,7 +1068,7 @@ pub unsafe fn writev(fd: c_int, iov: *const iovec, iovcnt: c_int) -> isize {
         let mut total: isize = 0;
         for i in 0..iovcnt as usize {
             let v = &*iov.add(i);
-            let n = ::libc::write(fd, v.iov_base, v.iov_len as c_uint);
+            let n = libc::write(fd, v.iov_base, v.iov_len as c_uint);
             if n < 0 {
                 return -1;
             }
@@ -1187,34 +1105,6 @@ pub unsafe fn recv(sockfd: c_int, buf: *mut c_void, len: usize, flags: c_int) ->
 pub unsafe fn getdtablesize() -> c_int {
     // Windows CRT default max open files
     2048
-}
-
-// -- Signal functions (noop on Windows) --
-
-pub unsafe fn sigfillset(set: *mut sigset_t) -> c_int {
-    if !set.is_null() {
-        unsafe {
-            *set = !0u64;
-        }
-    }
-    0
-}
-
-pub unsafe fn sigprocmask(_how: c_int, _set: *const sigset_t, _oldset: *mut sigset_t) -> c_int {
-    0
-}
-
-pub unsafe fn sigemptyset(set: *mut sigset_t) -> c_int {
-    if !set.is_null() {
-        unsafe {
-            *set = 0;
-        }
-    }
-    0
-}
-
-pub unsafe fn sigaction(_signum: c_int, _act: *const sigaction, _oldact: *mut sigaction) -> c_int {
-    0
 }
 
 // -- Terminal functions (stubs for now, Phase 4 will implement via Console API) --
@@ -1365,7 +1255,7 @@ pub unsafe fn chmod(_path: *const u8, _mode: mode_t) -> c_int {
 
 // -- Time functions --
 
-pub unsafe fn clock_gettime(clockid: clockid_t, tp: *mut ::libc::timespec) -> c_int {
+pub unsafe fn clock_gettime(clockid: clockid_t, tp: *mut libc::timespec) -> c_int {
     if tp.is_null() {
         return -1;
     }
@@ -1381,7 +1271,7 @@ pub unsafe fn clock_gettime(clockid: clockid_t, tp: *mut ::libc::timespec) -> c_
             });
             let mut count: i64 = 0;
             QueryPerformanceCounter(&mut count);
-            (*tp).tv_sec = (count / QPC_FREQ) as ::libc::time_t;
+            (*tp).tv_sec = (count / QPC_FREQ) as libc::time_t;
             (*tp).tv_nsec = ((count % QPC_FREQ) * 1_000_000_000 / QPC_FREQ) as i32;
         }
     } else {
@@ -1390,7 +1280,7 @@ pub unsafe fn clock_gettime(clockid: clockid_t, tp: *mut ::libc::timespec) -> c_
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap_or_default();
         unsafe {
-            (*tp).tv_sec = now.as_secs() as ::libc::time_t;
+            (*tp).tv_sec = now.as_secs() as libc::time_t;
             (*tp).tv_nsec = now.subsec_nanos() as i32;
         }
     }
@@ -1399,10 +1289,10 @@ pub unsafe fn clock_gettime(clockid: clockid_t, tp: *mut ::libc::timespec) -> c_
 
 use windows_sys::Win32::System::Performance::{QueryPerformanceCounter, QueryPerformanceFrequency};
 
-pub unsafe fn localtime_r(time: *const ::libc::time_t, result: *mut ::libc::tm) -> *mut ::libc::tm {
+pub unsafe fn localtime_r(time: *const libc::time_t, result: *mut libc::tm) -> *mut libc::tm {
     unsafe {
         // MSVC localtime_s has reversed args: (result, time)
-        if ::libc::localtime_s(result, time) == 0 {
+        if libc::localtime_s(result, time) == 0 {
             result
         } else {
             core::ptr::null_mut()
@@ -1410,7 +1300,7 @@ pub unsafe fn localtime_r(time: *const ::libc::time_t, result: *mut ::libc::tm) 
     }
 }
 
-pub unsafe fn ctime_r(time: *const ::libc::time_t, buf: *mut u8) -> *mut u8 {
+pub unsafe fn ctime_r(time: *const libc::time_t, buf: *mut u8) -> *mut u8 {
     unsafe {
         if ctime_s(buf.cast(), 26, time) == 0 {
             buf
@@ -1420,9 +1310,9 @@ pub unsafe fn ctime_r(time: *const ::libc::time_t, buf: *mut u8) -> *mut u8 {
     }
 }
 
-pub unsafe fn gmtime_r(time: *const ::libc::time_t, result: *mut ::libc::tm) -> *mut ::libc::tm {
+pub unsafe fn gmtime_r(time: *const libc::time_t, result: *mut libc::tm) -> *mut libc::tm {
     unsafe {
-        if ::libc::gmtime_s(result, time) == 0 {
+        if libc::gmtime_s(result, time) == 0 {
             result
         } else {
             core::ptr::null_mut()
@@ -1430,7 +1320,7 @@ pub unsafe fn gmtime_r(time: *const ::libc::time_t, result: *mut ::libc::tm) -> 
     }
 }
 
-pub unsafe fn localtime(time: *const ::libc::time_t) -> *mut ::libc::tm {
+pub unsafe fn localtime(time: *const libc::time_t) -> *mut libc::tm {
     unsafe { msvc_localtime(time) }
 }
 
@@ -1510,7 +1400,7 @@ pub unsafe fn dirname(path: *mut u8) -> *mut u8 {
         return DOT.as_ptr() as *mut u8;
     }
     unsafe {
-        let len = ::libc::strlen(path.cast());
+        let len = libc::strlen(path.cast());
         // Strip trailing slashes
         let mut end = len;
         while end > 0 && (*path.add(end - 1) == b'/' || *path.add(end - 1) == b'\\') {
@@ -1538,28 +1428,19 @@ pub unsafe fn dirname(path: *mut u8) -> *mut u8 {
 }
 
 pub unsafe fn dup2(oldfd: c_int, newfd: c_int) -> c_int {
-    unsafe { ::libc::dup2(oldfd, newfd) }
+    unsafe { libc::dup2(oldfd, newfd) }
 }
 
-pub unsafe fn poll(fds: *mut pollfd, nfds: nfds_t, timeout: c_int) -> c_int {
-    unsafe { ws::WSAPoll(fds, nfds as u32, timeout) }
+pub unsafe fn fseeko(stream: *mut libc::FILE, offset: libc::off_t, whence: c_int) -> c_int {
+    unsafe { libc::fseek(stream, offset as core::ffi::c_long, whence) as c_int }
 }
 
-pub unsafe fn fseeko(stream: *mut ::libc::FILE, offset: ::libc::off_t, whence: c_int) -> c_int {
-    unsafe { ::libc::fseek(stream, offset as core::ffi::c_long, whence) as c_int }
+pub unsafe fn ftello(stream: *mut libc::FILE) -> libc::off_t {
+    unsafe { libc::ftell(stream) as libc::off_t }
 }
 
-pub unsafe fn ftello(stream: *mut ::libc::FILE) -> ::libc::off_t {
-    unsafe { ::libc::ftell(stream) as ::libc::off_t }
-}
-
-pub unsafe fn sysconf(_name: c_int) -> i64 {
-    // _SC_MB_LEN_MAX = max bytes per multibyte character
-    16
-}
-
-pub unsafe fn stat(path: *const u8, buf: *mut ::libc::stat) -> c_int {
-    unsafe { ::libc::stat(path.cast(), buf) }
+pub unsafe fn stat(path: *const u8, buf: *mut libc::stat) -> c_int {
+    unsafe { libc::stat(path.cast(), buf) }
 }
 
 // ============================================================

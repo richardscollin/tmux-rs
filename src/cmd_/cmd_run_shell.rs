@@ -60,6 +60,7 @@ pub unsafe fn cmd_run_shell_args_parse(
     args_parse_type::ARGS_PARSE_STRING
 }
 
+#[cfg(not(target_os = "windows"))]
 pub unsafe fn cmd_run_shell_print(job: *mut job, msg: *const u8) {
     unsafe {
         let cdata: *mut cmd_run_shell_data = job_get_data(job) as *mut cmd_run_shell_data;

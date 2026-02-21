@@ -14,6 +14,8 @@
 use core::ffi::c_void;
 use core::ptr::null_mut;
 
+use crate::libc;
+
 pub unsafe fn recallocarray(
     ptr: *mut c_void,
     oldnmemb: usize,

@@ -21,11 +21,10 @@ use crate::compat::{
     queue::{tailq_foreach, tailq_init, tailq_insert_tail, tailq_remove},
     setproctitle_,
 };
+#[cfg(not(target_os = "windows"))]
 use crate::event_::{signal_add, signal_set};
 use crate::libc::{
-    AF_UNIX, EAGAIN, PF_UNSPEC, SA_RESTART, SIG_DFL, SIG_IGN, SIGCHLD, SIGCONT, SIGHUP, SIGINT,
-    SIGPIPE, SIGQUIT, SIGTERM, SIGTSTP, SIGTTIN, SIGTTOU, SIGUSR1, SIGUSR2, SIGWINCH, close, gid_t,
-    sigaction, sigemptyset, socketpair, uname, utsname,
+    AF_UNIX, EAGAIN, PF_UNSPEC, close, gid_t, socketpair, uname, utsname,
 };
 use crate::*;
 
@@ -127,6 +126,7 @@ pub unsafe extern "C-unwind" fn proc_event_cb(fd: i32, events: i16, arg: *mut c_
     }
 }
 
+#[cfg(not(target_os = "windows"))]
 pub unsafe extern "C-unwind" fn proc_signal_cb(signo: i32, _events: i16, arg: *mut c_void) {
     unsafe {
         let tp = arg as *mut tmuxproc;
@@ -279,72 +279,72 @@ pub unsafe fn proc_exit(tp: *mut tmuxproc) {
 #[cfg(not(target_os = "windows"))]
 pub unsafe fn proc_set_signals(tp: *mut tmuxproc, signalcb: Option<unsafe fn(i32)>) {
     unsafe {
-        let mut sa: sigaction = zeroed();
+        let mut sa: libc::sigaction = zeroed();
 
         (*tp).signalcb = signalcb;
 
-        sigemptyset(&raw mut sa.sa_mask);
-        sa.sa_flags = SA_RESTART;
-        sa.sa_sigaction = SIG_IGN;
+        libc::sigemptyset(&raw mut sa.sa_mask);
+        sa.sa_flags = libc::SA_RESTART;
+        sa.sa_sigaction = libc::SIG_IGN;
 
-        sigaction(SIGPIPE, &sa, null_mut());
-        sigaction(SIGTSTP, &sa, null_mut());
-        sigaction(SIGTTIN, &sa, null_mut());
-        sigaction(SIGTTOU, &sa, null_mut());
-        sigaction(SIGQUIT, &sa, null_mut());
+        libc::sigaction(libc::SIGPIPE, &sa, null_mut());
+        libc::sigaction(libc::SIGTSTP, &sa, null_mut());
+        libc::sigaction(libc::SIGTTIN, &sa, null_mut());
+        libc::sigaction(libc::SIGTTOU, &sa, null_mut());
+        libc::sigaction(libc::SIGQUIT, &sa, null_mut());
 
         signal_set(
             &raw mut (*tp).ev_sigint,
-            SIGINT,
+            libc::SIGINT,
             Some(proc_signal_cb),
             tp.cast(),
         );
         signal_add(&raw mut (*tp).ev_sigint, null_mut());
         signal_set(
             &raw mut (*tp).ev_sighup,
-            SIGHUP,
+            libc::SIGHUP,
             Some(proc_signal_cb),
             tp.cast(),
         );
         signal_add(&raw mut (*tp).ev_sighup, null_mut());
         signal_set(
             &raw mut (*tp).ev_sigchld,
-            SIGCHLD,
+            libc::SIGCHLD,
             Some(proc_signal_cb),
             tp.cast(),
         );
         signal_add(&raw mut (*tp).ev_sigchld, null_mut());
         signal_set(
             &raw mut (*tp).ev_sigcont,
-            SIGCONT,
+            libc::SIGCONT,
             Some(proc_signal_cb),
             tp.cast(),
         );
         signal_add(&raw mut (*tp).ev_sigcont, null_mut());
         signal_set(
             &raw mut (*tp).ev_sigterm,
-            SIGTERM,
+            libc::SIGTERM,
             Some(proc_signal_cb),
             tp.cast(),
         );
         signal_add(&raw mut (*tp).ev_sigterm, null_mut());
         signal_set(
             &raw mut (*tp).ev_sigusr1,
-            SIGUSR1,
+            libc::SIGUSR1,
             Some(proc_signal_cb),
             tp.cast(),
         );
         signal_add(&raw mut (*tp).ev_sigusr1, null_mut());
         signal_set(
             &raw mut (*tp).ev_sigusr2,
-            SIGUSR2,
+            libc::SIGUSR2,
             Some(proc_signal_cb),
             tp.cast(),
         );
         signal_add(&raw mut (*tp).ev_sigusr2, null_mut());
         signal_set(
             &raw mut (*tp).ev_sigwinch,
-            SIGWINCH,
+            libc::SIGWINCH,
             Some(proc_signal_cb),
             tp.cast(),
         );
@@ -362,14 +362,14 @@ pub unsafe fn proc_set_signals(tp: *mut tmuxproc, signalcb: Option<unsafe fn(i32
 #[cfg(not(target_os = "windows"))]
 pub unsafe fn proc_clear_signals(tp: *mut tmuxproc, defaults: i32) {
     unsafe {
-        let mut sa: sigaction = zeroed();
+        let mut sa: libc::sigaction = zeroed();
 
-        sigemptyset(&raw mut sa.sa_mask);
-        sa.sa_flags = SA_RESTART;
-        sa.sa_sigaction = SIG_DFL;
+        libc::sigemptyset(&raw mut sa.sa_mask);
+        sa.sa_flags = libc::SA_RESTART;
+        sa.sa_sigaction = libc::SIG_DFL;
 
-        sigaction(SIGPIPE, &raw mut sa, null_mut());
-        sigaction(SIGTSTP, &raw mut sa, null_mut());
+        libc::sigaction(libc::SIGPIPE, &raw mut sa, null_mut());
+        libc::sigaction(libc::SIGTSTP, &raw mut sa, null_mut());
 
         event_del(&raw mut (*tp).ev_sigint);
         event_del(&raw mut (*tp).ev_sighup);
@@ -381,15 +381,15 @@ pub unsafe fn proc_clear_signals(tp: *mut tmuxproc, defaults: i32) {
         event_del(&raw mut (*tp).ev_sigwinch);
 
         if defaults != 0 {
-            sigaction(SIGINT, &sa, null_mut());
-            sigaction(SIGQUIT, &sa, null_mut());
-            sigaction(SIGHUP, &sa, null_mut());
-            sigaction(SIGCHLD, &sa, null_mut());
-            sigaction(SIGCONT, &sa, null_mut());
-            sigaction(SIGTERM, &sa, null_mut());
-            sigaction(SIGUSR1, &sa, null_mut());
-            sigaction(SIGUSR2, &sa, null_mut());
-            sigaction(SIGWINCH, &sa, null_mut());
+            libc::sigaction(libc::SIGINT, &sa, null_mut());
+            libc::sigaction(libc::SIGQUIT, &sa, null_mut());
+            libc::sigaction(libc::SIGHUP, &sa, null_mut());
+            libc::sigaction(libc::SIGCHLD, &sa, null_mut());
+            libc::sigaction(libc::SIGCONT, &sa, null_mut());
+            libc::sigaction(libc::SIGTERM, &sa, null_mut());
+            libc::sigaction(libc::SIGUSR1, &sa, null_mut());
+            libc::sigaction(libc::SIGUSR2, &sa, null_mut());
+            libc::sigaction(libc::SIGWINCH, &sa, null_mut());
         }
     }
 }

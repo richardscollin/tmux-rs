@@ -116,6 +116,7 @@ pub fn status_prompt_load_history() {
 }
 
 /// Save status prompt history to file.
+#[cfg(not(target_os = "windows"))]
 pub unsafe fn status_prompt_save_history() {
     unsafe {
         let Some(history_file) = status_prompt_find_history_file() else {

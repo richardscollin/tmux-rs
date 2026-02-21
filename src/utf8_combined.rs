@@ -13,7 +13,7 @@
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 use core::ffi::c_void;
 
-use libc::memcmp;
+use crate::libc::memcmp;
 
 use crate::{utf8_data, utf8_in_table, utf8_state, utf8_towc, wchar_t};
 

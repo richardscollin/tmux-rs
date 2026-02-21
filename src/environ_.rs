@@ -197,6 +197,7 @@ pub unsafe fn environ_update(oo: *mut options, src: *mut environ, dst: *mut envi
     }
 }
 
+#[cfg(not(target_os = "windows"))]
 pub unsafe fn environ_push(env: *mut environ) {
     unsafe {
         environ = xcalloc_::<*mut u8>(1).as_ptr();

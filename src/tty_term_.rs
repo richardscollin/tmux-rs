@@ -726,6 +726,7 @@ pub unsafe fn tty_term_free(term: *mut tty_term) {
     }
 }
 
+#[cfg(not(target_os = "windows"))]
 pub unsafe fn tty_term_read_list(
     name: *const u8,
     _fd: i32,

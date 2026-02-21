@@ -355,15 +355,17 @@ unsafe fn window_destroy(w: *mut window) {
 }
 
 pub unsafe fn window_pane_destroy_ready(wp: *mut window_pane) -> bool {
-    let mut n = 0;
     unsafe {
         if (*wp).pipe_fd != -1 {
             if EVBUFFER_LENGTH((*(*wp).pipe_event).output) != 0 {
                 return false;
             }
             #[cfg(not(target_os = "windows"))]
-            if crate::libc::ioctl((*wp).fd, FIONREAD, &raw mut n) != -1 && n > 0 {
-                return false;
+            {
+                let mut n = 0;
+                if crate::libc::ioctl((*wp).fd, FIONREAD, &raw mut n) != -1 && n > 0 {
+                    return false;
+                }
             }
         }
 

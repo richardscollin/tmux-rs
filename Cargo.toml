@@ -36,7 +36,7 @@ dynamic = []
 [dependencies]
 bitflags = { version = "2.9.1" }
 lalrpop-util = { version = "0.22.2", default-features = false, features = ["unicode"] }
-libc = { version = "0.2.174" }
+libc_sys = { package = "libc", version = "0.2.174" } # imports must go through libc module
 memchr = { version = "2.7.6" }
 num_enum = { version = "0.7.4" }
 paste = { version = "1.0.15" }

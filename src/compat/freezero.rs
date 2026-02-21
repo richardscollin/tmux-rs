@@ -16,8 +16,8 @@ use core::ffi::c_void;
 pub unsafe fn freezero(ptr: *mut c_void, size: usize) {
     unsafe {
         if !ptr.is_null() {
-            libc::memset(ptr, 0, size);
-            libc::free(ptr);
+            crate::libc::memset(ptr, 0, size);
+            crate::libc::free(ptr);
         }
     }
 }

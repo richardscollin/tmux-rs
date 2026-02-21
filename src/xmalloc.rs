@@ -36,7 +36,7 @@ pub fn xmalloc(size: usize) -> NonNull<c_void> {
 pub fn xcalloc(nmemb: usize, size: usize) -> NonNull<c_void> {
     debug_assert!(size != 0 && nmemb != 0, "xcalloc: zero size");
 
-    NonNull::new(unsafe { ::libc::calloc(nmemb, size) })
+    NonNull::new(unsafe { crate::libc::calloc(nmemb, size) })
         .unwrap_or_else(|| panic!("xcalloc: allocating {nmemb} * {size}"))
 }
 

@@ -22,7 +22,7 @@ use crate::*;
 
 // Choice option type lists.
 static OPTIONS_TABLE_MODE_KEYS_LIST: [&str; 2] = ["emacs", "vi"];
-static OPTIONS_TABLE_CLOCK_MODE_STYLE_LIST: [&str; 2] = ["12", "24"];
+static OPTIONS_TABLE_CLOCK_MODE_STYLE_LIST: [&str; 4] = ["12", "24", "12-with-seconds", "24-with-seconds"];
 static OPTIONS_TABLE_STATUS_LIST: [&str; 6] = ["off", "on", "2", "3", "4", "5"];
 static OPTIONS_TABLE_MESSAGE_LINE_LIST: [&str; 5] = ["0", "1", "2", "3", "4"];
 static OPTIONS_TABLE_STATUS_KEYS_LIST: [&str; 2] = ["emacs", "vi"];

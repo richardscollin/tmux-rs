@@ -827,6 +827,7 @@ pub unsafe fn status_prompt_redraw(c: *mut client) -> i32 {
         let s = (*c).session;
 
         let offset: u32;
+        let mut n: i32;
 
         let mut gc: grid_cell = zeroed();
         let mut old_screen: screen;
@@ -842,6 +843,15 @@ pub unsafe fn status_prompt_redraw(c: *mut client) -> i32 {
                 lines = 1;
             }
             screen_init((*sl).active, (*c).tty.sx, lines, 0);
+
+            n = options_get_number_((*s).options, "prompt-cursor-colour") as i32;
+            (*(*sl).active).default_ccolour = n;
+            n = options_get_number_((*s).options, "prompt-cursor-style") as i32;
+            screen_set_cursor_style(
+                n as u32,
+                &raw mut (*(*sl).active).default_cstyle,
+                &raw mut (*(*sl).active).default_mode,
+            );
 
             let mut promptline = status_prompt_line_at(c);
             if promptline > lines - 1 {

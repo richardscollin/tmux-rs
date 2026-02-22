@@ -2633,8 +2633,10 @@ pub unsafe fn server_client_reset_state(c: *mut client) {
             if let Some(overlay_mode) = (*c).overlay_mode {
                 s = overlay_mode(c, (*c).overlay_data, &raw mut cx, &raw mut cy);
             }
-        } else {
+        } else if (*c).prompt_string.is_null() {
             s = (*wp).screen;
+        } else {
+            s = (*c).status.active;
         }
         if !s.is_null() {
             mode = (*s).mode;
@@ -2661,45 +2663,25 @@ pub unsafe fn server_client_reset_state(c: *mut client) {
                 }
             }
             cx = (*c).prompt_cursor as u32;
+        } else if (*c).overlay_draw.is_none() {
+            cursor = 0;
+            tty_window_offset(tty, &raw mut ox, &raw mut oy, &raw mut sx, &raw mut sy);
+            if (*wp).xoff + (*s).cx >= ox
+                && (*wp).xoff + (*s).cx <= ox + sx
+                && (*wp).yoff + (*s).cy >= oy
+                && (*wp).yoff + (*s).cy <= oy + sy
+            {
+                cursor = 1;
 
-            n = options_get_number_(oo, "prompt-cursor-colour") as i32;
-            (*s).default_ccolour = n;
-            n = options_get_number_(oo, "prompt-cursor-style") as i32;
-            screen_set_cursor_style(
-                n as u32,
-                &raw mut (*s).default_cstyle,
-                &raw mut (*s).default_mode,
-            );
-        } else {
-            n = options_get_number_((*wp).options, "cursor-colour") as i32;
-            (*s).default_ccolour = n;
-            n = options_get_number_((*wp).options, "cursor-style") as i32;
-            screen_set_cursor_style(
-                n as u32,
-                &raw mut (*s).default_cstyle,
-                &raw mut (*s).default_mode,
-            );
+                cx = (*wp).xoff + (*s).cx - ox;
+                cy = (*wp).yoff + (*s).cy - oy;
 
-            if (*c).overlay_draw.is_none() {
-                cursor = 0;
-                tty_window_offset(tty, &raw mut ox, &raw mut oy, &raw mut sx, &raw mut sy);
-                if (*wp).xoff + (*s).cx >= ox
-                    && (*wp).xoff + (*s).cx <= ox + sx
-                    && (*wp).yoff + (*s).cy >= oy
-                    && (*wp).yoff + (*s).cy <= oy + sy
-                {
-                    cursor = 1;
-
-                    cx = (*wp).xoff + (*s).cx - ox;
-                    cy = (*wp).yoff + (*s).cy - oy;
-
-                    if status_at_line(c) == 0 {
-                        cy += status_line_size(c);
-                    }
+                if status_at_line(c) == 0 {
+                    cy += status_line_size(c);
                 }
-                if cursor == 0 {
-                    mode &= !mode_flag::MODE_CURSOR;
-                }
+            }
+            if cursor == 0 {
+                mode &= !mode_flag::MODE_CURSOR;
             }
         }
         // log_debug!("%s: cursor to %u,%u", __func__, cx, cy);

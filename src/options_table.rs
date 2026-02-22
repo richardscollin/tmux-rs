@@ -610,7 +610,7 @@ pub static OPTIONS_TABLE: [options_table_entry; 194] = [
         type_: options_table_type::OPTIONS_TABLE_NUMBER,
         scope: OPTIONS_TABLE_SESSION,
         minimum: 0,
-        maximum: 10000,
+        maximum: 2000000,
         default_num: 0,
         unit: c!("milliseconds"),
         text: c!(
@@ -715,7 +715,7 @@ pub static OPTIONS_TABLE: [options_table_entry; 194] = [
         type_: options_table_type::OPTIONS_TABLE_NUMBER,
         scope: OPTIONS_TABLE_SESSION,
         minimum: 0,
-        maximum: 10000,
+        maximum: 2000000,
         default_num: 500,
         unit: c!("milliseconds"),
         text: c!("Time to wait for a key binding to repeat, if it is bound with the '-r' flag."),

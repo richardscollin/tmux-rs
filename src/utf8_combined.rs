@@ -57,17 +57,99 @@ pub unsafe fn utf8_is_vs(ud: *const utf8_data) -> bool {
     }
 }
 
-pub unsafe fn utf8_is_modifier(ud: *const utf8_data) -> bool {
-    let mut wc: wchar_t = 0;
+pub unsafe fn utf8_is_hangul_filler(ud: *const utf8_data) -> bool {
     unsafe {
-        if utf8_towc(ud, &raw mut wc) != utf8_state::UTF8_DONE {
+        (*ud).size == 3
+            && (*ud).data[0] == 0xe3
+            && (*ud).data[1] == 0x85
+            && (*ud).data[2] == 0xa4
+    }
+}
+
+pub unsafe fn utf8_should_combine(with: *const utf8_data, add: *const utf8_data) -> bool {
+    let mut w: wchar_t = 0;
+    let mut a: wchar_t = 0;
+    unsafe {
+        if utf8_towc(with, &raw mut w) != utf8_state::UTF8_DONE {
+            return false;
+        }
+        if utf8_towc(add, &raw mut a) != utf8_state::UTF8_DONE {
             return false;
         }
     }
-    matches!(
-        wc,
-        0x1F1E6..=0x1F1FF | 0x1F3FB..=0x1F3FF
-    )
+
+    // Regional indicators.
+    if (0x1F1E6..=0x1F1FF).contains(&a) && (0x1F1E6..=0x1F1FF).contains(&w) {
+        return true;
+    }
+
+    // Emoji skin tone modifiers.
+    if matches!(
+        a,
+        0x1F44B
+            | 0x1F44C
+            | 0x1F44D
+            | 0x1F44E
+            | 0x1F44F
+            | 0x1F450
+            | 0x1F466
+            | 0x1F467
+            | 0x1F468
+            | 0x1F469
+            | 0x1F46E
+            | 0x1F470
+            | 0x1F471
+            | 0x1F472
+            | 0x1F473
+            | 0x1F474
+            | 0x1F475
+            | 0x1F476
+            | 0x1F477
+            | 0x1F478
+            | 0x1F47C
+            | 0x1F481
+            | 0x1F482
+            | 0x1F483
+            | 0x1F485
+            | 0x1F486
+            | 0x1F487
+            | 0x1F4AA
+            | 0x1F575
+            | 0x1F57A
+            | 0x1F590
+            | 0x1F595
+            | 0x1F596
+            | 0x1F645
+            | 0x1F646
+            | 0x1F647
+            | 0x1F64B
+            | 0x1F64C
+            | 0x1F64D
+            | 0x1F64E
+            | 0x1F64F
+            | 0x1F6B4
+            | 0x1F6B5
+            | 0x1F6B6
+            | 0x1F926
+            | 0x1F937
+            | 0x1F938
+            | 0x1F939
+            | 0x1F93D
+            | 0x1F93E
+            | 0x1F9B5
+            | 0x1F9B6
+            | 0x1F9B8
+            | 0x1F9B9
+            | 0x1F9CD
+            | 0x1F9CE
+            | 0x1F9CF
+            | 0x1F9D1..=0x1F9DF
+    ) && (0x1F3FB..=0x1F3FF).contains(&w)
+    {
+        return true;
+    }
+
+    false
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

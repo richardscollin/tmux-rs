@@ -2321,6 +2321,11 @@ pub unsafe fn screen_write_combine(ctx: *mut screen_write_ctx, gc: *const grid_c
         let mut force_wide = 0;
         let mut zero_width = 0;
 
+        // Ignore U+3164 HANGUL_FILLER entirely.
+        if utf8_is_hangul_filler(ud) {
+            return 1;
+        }
+
         // Is this character which makes no sense without being combined? If
         // this is true then flag it here and discard the character (return 1)
         // if we cannot combine it.
@@ -2361,10 +2366,7 @@ pub unsafe fn screen_write_combine(ctx: *mut screen_write_ctx, gc: *const grid_c
                 hanguljamo_state::Choseong => return 0,
                 hanguljamo_state::Composable => {}
                 hanguljamo_state::NotHangulJamo => {
-                    if utf8_is_modifier(ud) {
-                        if last.data.size < 2 {
-                            return 0;
-                        }
+                    if utf8_should_combine(&raw const last.data, ud) {
                         force_wide = 1;
                     } else if !utf8_has_zwj(&raw mut last.data) {
                         return 0;

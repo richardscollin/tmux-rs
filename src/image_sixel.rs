@@ -498,7 +498,7 @@ pub unsafe fn sixel_scale(
             }
         }
 
-        if colours != 0 {
+        if colours != 0 && !(*si).colours.is_empty() {
             (*new).colours.clone_from(&(*si).colours);
         }
         new

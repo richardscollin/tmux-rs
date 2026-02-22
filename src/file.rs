@@ -25,15 +25,23 @@ pub static FILE_NEXT_STREAM: atomic::AtomicI32 = atomic::AtomicI32::new(3);
 
 pub unsafe fn file_get_path(c: *mut client, file: *const u8) -> NonNull<u8> {
     unsafe {
-        if *file == b'/' {
+        let path = if libc::strncmp(file.cast(), c!("~/").cast(), 2) != 0 {
             xstrdup(file)
         } else {
-            NonNull::new(format_nul!(
+            let home = find_home().map_or(c!(""), |h| h.as_ptr().cast());
+            NonNull::new(format_nul!("{}{}", _s(home), _s(file.add(1)))).unwrap()
+        };
+        if *path.as_ptr() == b'/' {
+            path
+        } else {
+            let full_path = NonNull::new(format_nul!(
                 "{}/{}",
                 _s(server_client_get_cwd(c, null_mut())),
-                _s(file)
+                _s(path.as_ptr())
             ))
-            .unwrap()
+            .unwrap();
+            free_(path.as_ptr());
+            full_path
         }
     }
 }

@@ -278,6 +278,9 @@ pub unsafe fn server_link_window(
         }
         dstwl = session_attach(dst, (*srcwl).window, dstidx)?;
 
+        if MARKED_PANE.wl == srcwl {
+            MARKED_PANE.wl = dstwl;
+        }
         if selectflag {
             session_select(dst, (*dstwl).idx);
         }

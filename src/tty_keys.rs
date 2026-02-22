@@ -1216,6 +1216,23 @@ pub unsafe fn tty_keys_next(tty: *mut tty) -> i32 {
                                 _ => (),
                             }
 
+                            // Is this a palette response?
+                            match tty_keys_palette(
+                                tty,
+                                buf.cast(),
+                                len,
+                                &raw mut size,
+                            ) {
+                                0 => {
+                                    // yes
+                                    key = KEYC_UNKNOWN;
+                                    break 'complete_key;
+                                }
+                                -1 => (), // no, or not valid
+                                1 => break 'partial_key, // partial
+                                _ => (),
+                            }
+
                             // Is this a mouse key press?
                             #[expect(unused_assignments)]
                             match tty_keys_mouse(tty, buf.cast(), len, &raw mut size, &raw mut m) {
@@ -2328,6 +2345,98 @@ pub unsafe fn tty_keys_colours(
             *bg = n;
             (*tty).flags &= !tty_flags::TTY_WAITBG;
         }
+
+        0
+    }
+}
+
+/// Handle OSC 4 palette colour responses.
+unsafe fn tty_keys_palette(
+    tty: *mut tty,
+    buf: *const u8,
+    len: usize,
+    size: *mut usize,
+) -> i32 {
+    unsafe {
+        let c = (*tty).client;
+        let mut tmp: [u8; 128] = [0; 128];
+
+        *size = 0;
+
+        // First three bytes are always \x1b]4.
+        if *buf != b'\x1b' {
+            return -1;
+        }
+        if len == 1 {
+            return 1;
+        }
+        if *buf.add(1) != b']' {
+            return -1;
+        }
+        if len == 2 {
+            return 1;
+        }
+        if *buf.add(2) != b'4' {
+            return -1;
+        }
+        if len == 3 {
+            return 1;
+        }
+        if *buf.add(3) != b';' {
+            return -1;
+        }
+        if len == 4 {
+            return 1;
+        }
+
+        // Parse index.
+        let mut endptr: *mut u8 = null_mut();
+        let idx = strtol(buf.add(4), &raw mut endptr, 10);
+        if endptr == buf.add(4) as *mut u8 || *endptr != b';' {
+            return -1;
+        }
+        if idx < 0 || idx > 255 {
+            return -1;
+        }
+
+        // Copy the rest up to \x1b\ or \x07.
+        let start = endptr.offset_from(buf) as usize + 1;
+        let mut i = start;
+        while i < len && i - start < tmp.len() {
+            if *buf.add(i - 1) == b'\x1b' && *buf.add(i) == b'\\' {
+                break;
+            }
+            if *buf.add(i) == b'\x07' {
+                break;
+            }
+            tmp[i - start] = *buf.add(i);
+            i += 1;
+        }
+        if i - start == tmp.len() {
+            return -1;
+        }
+        if i == len {
+            return 1;
+        }
+        if i > start && *buf.add(i - 1) == b'\x1b' {
+            tmp[i - start - 1] = b'\0';
+        } else {
+            tmp[i - start] = b'\0';
+        }
+        *size = i + 1;
+
+        // Work out the colour.
+        let mut pd = input_request_palette_data { idx: 0, c: 0 };
+        pd.c = colour_parse_x11(tmp.as_ptr());
+        if pd.c == -1 {
+            return 0;
+        }
+        pd.idx = idx as i32;
+        input_request_reply(
+            c,
+            input_request_type::INPUT_REQUEST_PALETTE,
+            (&raw mut pd).cast(),
+        );
 
         0
     }

@@ -1290,6 +1290,59 @@ struct window_mode_entry {
     entry: tailq_entry<window_mode_entry>,
 }
 
+/// Type of request to client.
+#[repr(u32)]
+#[derive(Copy, Clone, Eq, PartialEq)]
+enum input_request_type {
+    INPUT_REQUEST_PALETTE = 0,
+}
+const INPUT_REQUEST_TYPES: usize = 1;
+
+/// Palette request reply data.
+#[repr(C)]
+struct input_request_palette_data {
+    idx: i32,
+    c: i32,
+}
+
+/// Request sent to client on behalf of pane.
+type input_requests = tailq_head<input_request>;
+
+#[repr(C)]
+struct input_request_list {
+    c: *mut client,
+    type_: input_request_type,
+    requests: input_requests,
+}
+
+struct InputRequestEntry;
+struct InputRequestCEntry;
+
+#[repr(C)]
+struct input_request {
+    c: *mut client,
+    ictx: *mut input_ctx,
+
+    type_: input_request_type,
+    idx: i32,
+    t: libc::time_t,
+
+    entry: tailq_entry<input_request>,
+    centry: tailq_entry<input_request>,
+}
+
+impl compat::queue::Entry<input_request, InputRequestEntry> for input_request {
+    unsafe fn entry(this: *mut Self) -> *mut tailq_entry<input_request> {
+        unsafe { &raw mut (*this).entry }
+    }
+}
+
+impl compat::queue::Entry<input_request, InputRequestCEntry> for input_request {
+    unsafe fn entry(this: *mut Self) -> *mut tailq_entry<input_request> {
+        unsafe { &raw mut (*this).centry }
+    }
+}
+
 /// Offsets into pane buffer.
 #[repr(C)]
 #[derive(Copy, Clone)]
@@ -2453,6 +2506,8 @@ struct client {
 
     status: status_line,
     theme: client_theme,
+
+    input_requests: [input_request_list; INPUT_REQUEST_TYPES],
 
     flags: client_flag,
 

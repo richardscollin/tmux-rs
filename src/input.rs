@@ -122,14 +122,16 @@ pub struct input_ctx {
     ch: i32,
     last: utf8_data,
 
+    state: *const input_state,
     flags: input_flags,
 
-    state: *const input_state,
-
-    timer: event,
+    requests: [input_requests; INPUT_REQUEST_TYPES],
+    request_count: u32,
+    request_timer: event,
 
     /// All input received since we were last in the ground state. Sent to control clients on connection.
     since_ground: *mut evbuffer,
+    ground_timer: event,
 }
 
 // Command table entry.
@@ -870,30 +872,30 @@ unsafe fn input_table_compare(
     }
 }
 
-/// Timer
+/// Ground timer
 ///
 /// if this expires then have been waiting for a terminator for too long, so reset to ground.
-unsafe extern "C-unwind" fn input_timer_callback(_fd: i32, _events: i16, ictx: NonNull<input_ctx>) {
+unsafe extern "C-unwind" fn input_ground_timer_callback(_fd: i32, _events: i16, ictx: NonNull<input_ctx>) {
     unsafe {
         log_debug!(
             "{}: {} expired",
-            "input_timer_callback",
+            "input_ground_timer_callback",
             _s((*(*ictx.as_ptr()).state).name.as_ptr())
         );
         input_reset(ictx.as_ptr(), 0);
     }
 }
 
-/// Start the timer.
-unsafe fn input_start_timer(ictx: *mut input_ctx) {
+/// Start the ground timer.
+unsafe fn input_start_ground_timer(ictx: *mut input_ctx) {
     unsafe {
         let tv: timeval = timeval {
             tv_sec: 5,
             tv_usec: 0,
         };
 
-        event_del(&raw mut (*ictx).timer);
-        event_add(&raw mut (*ictx).timer, &raw const tv);
+        event_del(&raw mut (*ictx).ground_timer);
+        event_add(&raw mut (*ictx).ground_timer, &raw const tv);
     }
 }
 
@@ -959,10 +961,18 @@ pub unsafe fn input_init(
         if (*ictx).since_ground.is_null() {
             fatalx("out of memory");
         }
-
         evtimer_set(
-            &raw mut (*ictx).timer,
-            input_timer_callback,
+            &raw mut (*ictx).ground_timer,
+            input_ground_timer_callback,
+            NonNull::new(ictx).unwrap(),
+        );
+
+        for i in 0..INPUT_REQUEST_TYPES {
+            tailq_init(&raw mut (*ictx).requests[i]);
+        }
+        evtimer_set(
+            &raw mut (*ictx).request_timer,
+            input_request_timer_callback,
             NonNull::new(ictx).unwrap(),
         );
 
@@ -980,10 +990,36 @@ pub unsafe fn input_free(ictx: *mut input_ctx) {
             }
         }
 
-        event_del(&raw mut (*ictx).timer);
+        for i in 0..INPUT_REQUEST_TYPES {
+            let mut ir = tailq_first(&raw mut (*ictx).requests[i]);
+            while !ir.is_null() {
+                let ir1 = tailq_next::<input_request, input_request, InputRequestEntry>(ir);
+                log_debug!(
+                    "{}: req {:p}: client {}, pane %{}, type {}",
+                    "input_free",
+                    ir,
+                    _s((*(*ir).c).name),
+                    (*(*ictx).wp).id,
+                    i,
+                );
+                let irl = &raw mut (*(*ir).c).input_requests[i];
+                tailq_remove::<input_request, InputRequestEntry>(
+                    &raw mut (*ictx).requests[i],
+                    ir,
+                );
+                tailq_remove::<input_request, InputRequestCEntry>(
+                    &raw mut (*irl).requests,
+                    ir,
+                );
+                free_(ir);
+                ir = ir1;
+            }
+        }
+        event_del(&raw mut (*ictx).request_timer);
 
         free_((*ictx).input_buf);
         evbuffer_free((*ictx).since_ground);
+        event_del(&raw mut (*ictx).ground_timer);
 
         free_(ictx);
     }
@@ -1264,7 +1300,7 @@ unsafe fn input_reply_(ictx: *mut input_ctx, args: std::fmt::Arguments) {
 /// Clear saved state.
 unsafe fn input_clear(ictx: *mut input_ctx) {
     unsafe {
-        event_del(&raw mut (*ictx).timer);
+        event_del(&raw mut (*ictx).ground_timer);
 
         (*ictx).interm_buf[0] = b'\0';
         (*ictx).interm_len = 0;
@@ -1284,7 +1320,7 @@ unsafe fn input_clear(ictx: *mut input_ctx) {
 /// Reset for ground state.
 unsafe fn input_ground(ictx: *mut input_ctx) {
     unsafe {
-        event_del(&raw mut (*ictx).timer);
+        event_del(&raw mut (*ictx).ground_timer);
         evbuffer_drain((*ictx).since_ground, EVBUFFER_LENGTH((*ictx).since_ground));
 
         if (*ictx).input_space > INPUT_BUF_START {
@@ -2410,7 +2446,7 @@ unsafe fn input_enter_dcs(ictx: *mut input_ctx) {
         log_debug!("input_enter_dcs");
 
         input_clear(ictx);
-        input_start_timer(ictx);
+        input_start_ground_timer(ictx);
         (*ictx).flags &= !input_flags::INPUT_LAST;
     }
 }
@@ -2552,7 +2588,7 @@ unsafe fn input_enter_osc(ictx: *mut input_ctx) {
         log_debug!("input_enter_osc");
 
         input_clear(ictx);
-        input_start_timer(ictx);
+        input_start_ground_timer(ictx);
         (*ictx).flags &= !input_flags::INPUT_LAST;
     }
 }
@@ -2636,7 +2672,7 @@ unsafe fn input_enter_apc(ictx: *mut input_ctx) {
         log_debug!("input_enter_apc");
 
         input_clear(ictx);
-        input_start_timer(ictx);
+        input_start_ground_timer(ictx);
         (*ictx).flags &= !input_flags::INPUT_LAST;
     }
 }
@@ -2669,7 +2705,7 @@ unsafe fn input_enter_rename(ictx: *mut input_ctx) {
         log_debug!("input_enter_rename");
 
         input_clear(ictx);
-        input_start_timer(ictx);
+        input_start_ground_timer(ictx);
         (*ictx).flags &= !input_flags::INPUT_LAST;
     }
 }
@@ -2857,7 +2893,14 @@ unsafe fn input_osc_4(ictx: *mut input_ctx, p: *const u8) {
                 );
                 if c != -1 {
                     input_osc_colour_reply(ictx, 4, idx as i32, c);
+                    s = next;
+                    continue;
                 }
+                input_add_request(
+                    ictx,
+                    input_request_type::INPUT_REQUEST_PALETTE,
+                    idx as i32,
+                );
                 s = next;
                 continue;
             }
@@ -3269,4 +3312,218 @@ pub fn input_set_buffer_size(buffer_size: usize) {
     let old = INPUT_BUFFER_SIZE.load(std::sync::atomic::Ordering::Relaxed);
     log_debug!("input_set_buffer_size: {} -> {}", old, buffer_size);
     INPUT_BUFFER_SIZE.store(buffer_size, std::sync::atomic::Ordering::Relaxed);
+}
+
+const INPUT_REQUEST_TIMEOUT: libc::time_t = 5;
+
+/// Request timer. Remove any requests that are too old.
+unsafe extern "C-unwind" fn input_request_timer_callback(
+    _fd: i32,
+    _events: i16,
+    ictx: NonNull<input_ctx>,
+) {
+    unsafe {
+        let ictx = ictx.as_ptr();
+        let t = libc::time(null_mut());
+
+        for i in 0..INPUT_REQUEST_TYPES {
+            let mut ir = tailq_first(&raw mut (*ictx).requests[i]);
+            while !ir.is_null() {
+                let ir1 = tailq_next::<input_request, input_request, InputRequestEntry>(ir);
+                if (*ir).t >= t - INPUT_REQUEST_TIMEOUT {
+                    ir = ir1;
+                    continue;
+                }
+                log_debug!(
+                    "{}: req {:p}: client {}, pane %{}, type {}",
+                    "input_request_timer_callback",
+                    ir,
+                    _s((*(*ir).c).name),
+                    (*(*ictx).wp).id,
+                    (*ir).type_ as u32,
+                );
+                let irl = &raw mut (*(*ir).c).input_requests[i];
+                tailq_remove::<input_request, InputRequestEntry>(
+                    &raw mut (*ictx).requests[i],
+                    ir,
+                );
+                tailq_remove::<input_request, InputRequestCEntry>(
+                    &raw mut (*irl).requests,
+                    ir,
+                );
+                (*ictx).request_count -= 1;
+                free_(ir);
+                ir = ir1;
+            }
+        }
+        if (*ictx).request_count != 0 {
+            input_start_request_timer(ictx);
+        }
+    }
+}
+
+/// Start the request timer.
+unsafe fn input_start_request_timer(ictx: *mut input_ctx) {
+    unsafe {
+        let tv: timeval = timeval {
+            tv_sec: 1,
+            tv_usec: 0,
+        };
+
+        event_del(&raw mut (*ictx).request_timer);
+        event_add(&raw mut (*ictx).request_timer, &raw const tv);
+    }
+}
+
+/// Add a request.
+unsafe fn input_add_request(
+    ictx: *mut input_ctx,
+    type_: input_request_type,
+    idx: i32,
+) -> i32 {
+    unsafe {
+        let wp = (*ictx).wp;
+        if wp.is_null() {
+            return -1;
+        }
+        let w = (*wp).window;
+
+        let mut c: *mut client = null_mut();
+        for loop_ in tailq_foreach(&raw mut CLIENTS).map(NonNull::as_ptr) {
+            if (*loop_).flags.intersects(CLIENT_UNATTACHEDFLAGS) {
+                continue;
+            }
+            if (*loop_).session.is_null() || !session_has((*loop_).session, w) {
+                continue;
+            }
+            if !(*loop_).tty.flags.intersects(tty_flags::TTY_STARTED) {
+                continue;
+            }
+            if c.is_null() {
+                c = loop_;
+            } else if timer::new(&raw const (*loop_).activity_time)
+                > timer::new(&raw const (*c).activity_time)
+            {
+                c = loop_;
+            }
+        }
+        if c.is_null() {
+            return -1;
+        }
+
+        let ir: *mut input_request = xcalloc1();
+        (*ir).c = c;
+        (*ir).ictx = ictx;
+        (*ir).type_ = type_;
+        (*ir).idx = idx;
+        (*ir).t = libc::time(null_mut());
+        tailq_insert_tail::<input_request, InputRequestEntry>(
+            &raw mut (*ictx).requests[type_ as usize],
+            ir,
+        );
+        tailq_insert_tail::<input_request, InputRequestCEntry>(
+            &raw mut (*c).input_requests[type_ as usize].requests,
+            ir,
+        );
+        (*ictx).request_count += 1;
+        if (*ictx).request_count == 1 {
+            input_start_request_timer(ictx);
+        }
+        log_debug!(
+            "{}: req {:p}: client {}, pane %{}, type {}",
+            "input_add_request",
+            ir,
+            _s((*c).name),
+            (*wp).id,
+            type_ as u32,
+        );
+
+        match type_ {
+            input_request_type::INPUT_REQUEST_PALETTE => {
+                let mut s: [u8; 64] = [0; 64];
+                if xsnprintf_!(s.as_mut_ptr(), s.len(), "\x1b]4;{};?\x1b\\", idx).is_ok() {
+                    tty_puts(&raw mut (*c).tty, s.as_ptr());
+                }
+            }
+        }
+
+        0
+    }
+}
+
+/// Handle a reply to a request.
+pub unsafe fn input_request_reply(
+    c: *mut client,
+    type_: input_request_type,
+    data: *mut c_void,
+) {
+    unsafe {
+        let irl = &raw mut (*c).input_requests[type_ as usize];
+        let pd = data.cast::<input_request_palette_data>();
+
+        let mut ir = tailq_first(&raw mut (*irl).requests);
+        while !ir.is_null() {
+            let ir1 = tailq_next::<input_request, input_request, InputRequestCEntry>(ir);
+            log_debug!(
+                "{}: req {:p}: client {}, pane %{}, type {}",
+                "input_request_reply",
+                ir,
+                _s((*c).name),
+                (*(*ir).ictx).wp.as_ref().map_or(0, |wp| wp.id),
+                (*ir).type_ as u32,
+            );
+            match type_ {
+                input_request_type::INPUT_REQUEST_PALETTE => {
+                    if (*pd).idx != (*ir).idx {
+                        ir = ir1;
+                        continue;
+                    }
+                    input_osc_colour_reply((*ir).ictx, 4, (*pd).idx, (*pd).c);
+                }
+            }
+            tailq_remove::<input_request, InputRequestEntry>(
+                &raw mut (*(*ir).ictx).requests[type_ as usize],
+                ir,
+            );
+            tailq_remove::<input_request, InputRequestCEntry>(
+                &raw mut (*irl).requests,
+                ir,
+            );
+            (*(*ir).ictx).request_count -= 1;
+            free_(ir);
+            break;
+        }
+    }
+}
+
+/// Cancel pending requests for client.
+pub unsafe fn input_cancel_requests(c: *mut client) {
+    unsafe {
+        for i in 0..INPUT_REQUEST_TYPES {
+            let irl = &raw mut (*c).input_requests[i];
+            let mut ir = tailq_first(&raw mut (*irl).requests);
+            while !ir.is_null() {
+                let ir1 = tailq_next::<input_request, input_request, InputRequestCEntry>(ir);
+                log_debug!(
+                    "{}: req {:p}: client {}, pane %{}, type {}",
+                    "input_cancel_requests",
+                    ir,
+                    _s((*c).name),
+                    (*(*ir).ictx).wp.as_ref().map_or(0, |wp| wp.id),
+                    (*ir).type_ as u32,
+                );
+                tailq_remove::<input_request, InputRequestEntry>(
+                    &raw mut (*(*ir).ictx).requests[i],
+                    ir,
+                );
+                tailq_remove::<input_request, InputRequestCEntry>(
+                    &raw mut (*irl).requests,
+                    ir,
+                );
+                (*(*ir).ictx).request_count -= 1;
+                free_(ir);
+                ir = ir1;
+            }
+        }
+    }
 }

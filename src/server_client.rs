@@ -292,6 +292,15 @@ pub unsafe fn server_client_create(fd: i32) -> *mut client {
             NonNull::new_unchecked(c),
         );
 
+        for i in 0..INPUT_REQUEST_TYPES {
+            (*c).input_requests[i].c = c;
+            (*c).input_requests[i].type_ = match i {
+                0 => input_request_type::INPUT_REQUEST_PALETTE,
+                _ => unreachable!(),
+            };
+            tailq_init(&raw mut (*c).input_requests[i].requests);
+        }
+
         tailq_insert_tail(&raw mut CLIENTS, c);
         log_debug!("new client {:p}", c);
         c
@@ -596,6 +605,7 @@ pub unsafe fn server_client_lost(c: *mut client) {
         tty_term_free_list((*c).term_caps, (*c).term_ncaps);
 
         status_free(c);
+        input_cancel_requests(c);
 
         free_((*c).title);
         free_((*c).cwd.cast_mut()); // TODO cast away const

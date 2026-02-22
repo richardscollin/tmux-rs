@@ -653,6 +653,24 @@ pub unsafe fn tty_term_create(
             a = options_array_next(a);
         }
 
+        // Check for COLORTERM.
+        let envent = environ_find((*(*tty).client).environ, c!("COLORTERM"));
+        if !envent.is_null() {
+            if let Some(value) = (*envent).value {
+                let value = value.as_ptr();
+                log_debug!(
+                    "{} COLORTERM={}",
+                    _s((*(*tty).client).name),
+                    _s(value)
+                );
+                if strcaseeq_(value, "truecolor") || strcaseeq_(value, "24bit") {
+                    tty_add_features(feat, "RGB", c!(","));
+                } else if !strstr(value, c!("256")).is_null() {
+                    tty_add_features(feat, "256", c!(","));
+                }
+            }
+        }
+
         // Apply overrides so any capabilities used for features are changed.
         tty_term_apply_overrides(term);
 

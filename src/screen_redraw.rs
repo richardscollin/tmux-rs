@@ -487,6 +487,12 @@ pub unsafe fn screen_redraw_make_pane_status(
         let mut ctx: MaybeUninit<screen_write_ctx> = MaybeUninit::uninit();
         let mut old: screen;
         let pane_status = (*rctx).pane_status;
+        let pane_scrollbars = (*rctx).pane_scrollbars;
+        let mut sb_w: u32 = 0;
+
+        if window_pane_show_scrollbar(wp.as_ptr(), pane_scrollbars) {
+            sb_w = ((*wp.as_ptr()).scrollbar_style.width + (*wp.as_ptr()).scrollbar_style.pad) as u32;
+        }
 
         let ft = format_create(
             c,
@@ -515,8 +521,8 @@ pub unsafe fn screen_redraw_make_pane_status(
             (*wp).status_size = 0;
             width = 0;
         } else {
-            (*wp).status_size = (*wp).sx as usize - 4;
-            width = (*wp).sx - 4;
+            (*wp).status_size = ((*wp).sx + sb_w - 2) as usize;
+            width = (*wp).sx + sb_w - 2;
         }
 
         old = (*wp).status_screen.clone();

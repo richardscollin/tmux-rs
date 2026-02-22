@@ -5541,10 +5541,16 @@ pub unsafe fn format_grid_line(gd: *mut grid, y: u32) -> String {
         for x in 0..grid_line_length(gd, y) {
             grid_get_cell(gd, x, y, gc);
             if (*gc).flags.intersects(grid_flag::PADDING) {
-                break;
+                continue;
             }
 
-            ud.push((*gc).data);
+            if (*gc).flags.intersects(grid_flag::TAB) {
+                let mut tab_ud: utf8_data = zeroed();
+                utf8_set(&raw mut tab_ud, b'\t');
+                ud.push(tab_ud);
+            } else {
+                ud.push((*gc).data);
+            }
         }
         utf8_to_string(&ud)
     }

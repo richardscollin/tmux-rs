@@ -427,12 +427,13 @@ pub unsafe fn input_key(s: *mut screen, bev: *mut bufferevent, mut key: key_code
             if newkey == keyc::KEYC_BSPACE as u64 {
                 newkey = c0::C0_BS as u64;
             }
+            newkey |= key & (KEYC_MASK_FLAGS | KEYC_MASK_MODIFIERS);
             log_debug!(
                 "input_key: key 0x{:x} is backspace -> 0x{:x}",
                 key,
-                newkey | (key & KEYC_MASK_FLAGS)
+                newkey
             );
-            key = newkey | (key & KEYC_MASK_FLAGS);
+            key = newkey;
         }
 
         // Is this backtab?
@@ -494,7 +495,7 @@ pub unsafe fn input_key(s: *mut screen, bev: *mut bufferevent, mut key: key_code
                 key,
                 _s((*ike).data)
             );
-            if (key == keyc::KEYC_PASTE_START as u64 || key == keyc::KEYC_PASTE_END as u64)
+            if KEYC_IS_PASTE(key)
                 && !(*s).mode.intersects(mode_flag::MODE_BRACKETPASTE)
             {
                 return 0;

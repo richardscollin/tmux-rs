@@ -75,6 +75,10 @@ pub unsafe fn screen_redraw_border_set(
                 (*gc).attr &= !grid_attr::GRID_ATTR_CHARSET;
                 utf8_set(&mut (*gc).data, SIMPLE_BORDERS[cell_type as usize]);
             }
+            pane_lines::PANE_LINES_SPACES => {
+                (*gc).attr &= !grid_attr::GRID_ATTR_CHARSET;
+                utf8_set(&mut (*gc).data, b' ');
+            }
             _ => {
                 (*gc).attr |= grid_attr::GRID_ATTR_CHARSET;
                 utf8_set(&mut (*gc).data, CELL_BORDERS[cell_type as usize]);

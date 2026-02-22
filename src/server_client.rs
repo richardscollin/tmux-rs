@@ -739,7 +739,7 @@ pub unsafe fn server_client_exec(c: *mut client, cmd: *const u8) {
     }
 }
 
-/// Mouse position type returned by server_client_check_mouse_in_pane.
+/// Mouse position type returned by `server_client_check_mouse_in_pane`.
 #[derive(Copy, Clone, Eq, PartialEq)]
 enum mouse_where {
     Nowhere,
@@ -3429,14 +3429,12 @@ pub unsafe fn server_client_dispatch(imsg: *mut imsg, arg: *mut c_void) {
                 if server_client_dispatch_identify(c, imsg).is_err() {
                     log_debug!("client {:?} invalid message type {}", c, (*imsg).hdr.type_);
                     proc_kill_peer((*c).peer);
-                    return;
                 }
             }
             msgtype::MSG_COMMAND => {
                 if server_client_dispatch_command(c, imsg).is_err() {
                     log_debug!("client {:?} invalid message type {}", c, (*imsg).hdr.type_);
                     proc_kill_peer((*c).peer);
-                    return;
                 }
             }
             msgtype::MSG_RESIZE => {
@@ -3509,7 +3507,6 @@ pub unsafe fn server_client_dispatch(imsg: *mut imsg, arg: *mut c_void) {
                 if server_client_dispatch_shell(c).is_err() {
                     log_debug!("client {:?} invalid message type {}", c, (*imsg).hdr.type_);
                     proc_kill_peer((*c).peer);
-                    return;
                 }
             }
             msgtype::MSG_WRITE_READY => file_write_ready(&raw mut (*c).files, imsg),
@@ -4073,14 +4070,12 @@ pub unsafe fn server_client_print(c: *mut client, parse: i32, evb: *mut evbuffer
                     size,
                     vis_flags::VIS_OCTAL | vis_flags::VIS_CSTYLE | vis_flags::VIS_NOSLASH,
                 );
+            } else if size == 0 {
+                msg = &raw mut empty;
             } else {
-                if size == 0 {
-                    msg = &raw mut empty as *mut u8;
-                } else {
-                    msg = EVBUFFER_DATA(evb).cast();
-                    if *msg.add(size - 1) != b'\0' {
-                        evbuffer_add(evb, c!("").cast(), 1);
-                    }
+                msg = EVBUFFER_DATA(evb).cast();
+                if *msg.add(size - 1) != b'\0' {
+                    evbuffer_add(evb, c!("").cast(), 1);
                 }
             }
             log_debug!("server_client_print: {}", _s(msg));

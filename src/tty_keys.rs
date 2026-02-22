@@ -2392,10 +2392,10 @@ unsafe fn tty_keys_palette(
         // Parse index.
         let mut endptr: *mut u8 = null_mut();
         let idx = strtol(buf.add(4), &raw mut endptr, 10);
-        if endptr == buf.add(4) as *mut u8 || *endptr != b';' {
+        if std::ptr::eq(endptr, buf.add(4)) || *endptr != b';' {
             return -1;
         }
-        if idx < 0 || idx > 255 {
+        if !(0..=255).contains(&idx) {
             return -1;
         }
 

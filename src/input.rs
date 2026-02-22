@@ -1734,10 +1734,11 @@ unsafe fn input_csi_dispatch(ictx: *mut input_ctx) -> i32 {
                     screen_write_deleteline(sctx, n as u32, bg);
                 }
             }
-            Ok(input_csi_type::INPUT_CSI_DSR_PRIVATE) => match input_get(ictx, 0, 0, 0) {
-                996 => input_report_current_theme(ictx),
-                _ => (),
-            },
+            Ok(input_csi_type::INPUT_CSI_DSR_PRIVATE) => {
+                if input_get(ictx, 0, 0, 0) == 996 {
+                    input_report_current_theme(ictx);
+                }
+            }
             Ok(input_csi_type::INPUT_CSI_QUERY_PRIVATE) => match input_get(ictx, 0, 0, 0) {
                 12 => {
                     // cursor blink: 1 = blink, 2 = steady
@@ -2478,7 +2479,7 @@ unsafe fn input_handle_decrqss(ictx: *mut input_ctx) -> i32 {
             let oo = if !wp.is_null() { (*wp).options } else { GLOBAL_OPTIONS };
             let opt_ps = options_get_number_(oo, "cursor-style") as i32;
             // Sanity clamp: valid Ps are 0..6 per DECSCUSR.
-            if opt_ps < 0 || opt_ps > 6 { 0 } else { opt_ps }
+            if !(0..=6).contains(&opt_ps) { 0 } else { opt_ps }
         };
 
         log_debug!(
@@ -3046,18 +3047,16 @@ unsafe fn input_osc_11(ictx: *mut input_ctx, p: *const u8) {
     unsafe {
         let wp = (*ictx).wp;
 
-        let mut c;
-
         if streq_(p, "?") {
             if wp.is_null() {
                 return;
             }
-            c = window_pane_get_bg(wp);
+            let c = window_pane_get_bg(wp);
             input_osc_colour_reply(ictx, 1, 11, 0, c, (*ictx).input_end);
             return;
         }
 
-        c = colour_parse_x11(p);
+        let c = colour_parse_x11(p);
         if c == -1 {
             log_debug!("bad OSC 11: {}", _s(p));
             return;
@@ -3420,10 +3419,9 @@ unsafe fn input_add_request(
             if !(*loop_).tty.flags.intersects(tty_flags::TTY_STARTED) {
                 continue;
             }
-            if c.is_null() {
-                c = loop_;
-            } else if timer::new(&raw const (*loop_).activity_time)
-                > timer::new(&raw const (*c).activity_time)
+            if c.is_null()
+                || timer::new(&raw const (*loop_).activity_time)
+                    > timer::new(&raw const (*c).activity_time)
             {
                 c = loop_;
             }

@@ -788,7 +788,7 @@ pub unsafe fn session_renumber_windows(s: *mut session) {
     }
 }
 
-/// Set the PANE_THEMECHANGED flag for every pane in this session.
+/// Set the `PANE_THEMECHANGED` flag for every pane in this session.
 pub unsafe fn session_theme_changed(s: *mut session) {
     unsafe {
         if s.is_null() {

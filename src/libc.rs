@@ -121,7 +121,24 @@ pub unsafe fn strstr(cs: *const u8, ct: *const u8) -> *mut u8 {
 }
 
 pub unsafe fn strcasestr(cs: *const u8, ct: *const u8) -> *mut u8 {
-    unsafe { ::libc_sys::strcasestr(cs.cast(), ct.cast()).cast() }
+    unsafe {
+        let haystack = core::ffi::CStr::from_ptr(cs.cast());
+        let needle = core::ffi::CStr::from_ptr(ct.cast());
+        let h = haystack.to_bytes();
+        let n = needle.to_bytes();
+        if n.is_empty() {
+            return cs as *mut u8;
+        }
+        for i in 0..h.len() {
+            if h.len() - i < n.len() {
+                break;
+            }
+            if h[i..i + n.len()].eq_ignore_ascii_case(n) {
+                return cs.add(i) as *mut u8;
+            }
+        }
+        core::ptr::null_mut()
+    }
 }
 
 /// Idiomatic Rust version of strtol - parses an i64 from a string and returns remaining string
@@ -225,7 +242,7 @@ pub unsafe fn strtol(s: *const u8, endp: *mut *mut u8, base: i32) -> i64 {
 }
 
 pub unsafe fn strtoul(s: *const u8, endp: *mut *mut u8, base: i32) -> u64 {
-    unsafe { ::libc_sys::strtoul(s.cast(), endp.cast(), base) }
+    unsafe { ::libc_sys::strtoul(s.cast(), endp.cast(), base) as u64 }
 }
 
 pub unsafe fn strtod(s: *const u8, endp: *mut *mut u8) -> f64 {

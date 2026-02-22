@@ -655,19 +655,19 @@ pub unsafe fn tty_term_create(
 
         // Check for COLORTERM.
         let envent = environ_find((*(*tty).client).environ, c!("COLORTERM"));
-        if !envent.is_null() {
-            if let Some(value) = (*envent).value {
-                let value = value.as_ptr();
-                log_debug!(
-                    "{} COLORTERM={}",
-                    _s((*(*tty).client).name),
-                    _s(value)
-                );
-                if strcaseeq_(value, "truecolor") || strcaseeq_(value, "24bit") {
-                    tty_add_features(feat, "RGB", c!(","));
-                } else if !strstr(value, c!("256")).is_null() {
-                    tty_add_features(feat, "256", c!(","));
-                }
+        if !envent.is_null()
+            && let Some(value) = (*envent).value
+        {
+            let value = value.as_ptr();
+            log_debug!(
+                "{} COLORTERM={}",
+                _s((*(*tty).client).name),
+                _s(value)
+            );
+            if strcaseeq_(value, "truecolor") || strcaseeq_(value, "24bit") {
+                tty_add_features(feat, "RGB", c!(","));
+            } else if !strstr(value, c!("256")).is_null() {
+                tty_add_features(feat, "256", c!(","));
             }
         }
 

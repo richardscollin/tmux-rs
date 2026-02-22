@@ -890,7 +890,7 @@ pub unsafe fn status_prompt_redraw(c: *mut client) -> i32 {
 
         let mut gc: grid_cell = zeroed();
         let mut old_screen: screen;
-        let mut prompt: *mut u8 = null_mut();
+        let prompt: *mut u8;
 
         'finished: {
             if (*c).tty.sx == 0 || (*c).tty.sy == 0 {

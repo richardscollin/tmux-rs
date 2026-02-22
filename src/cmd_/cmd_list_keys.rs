@@ -394,12 +394,7 @@ unsafe fn cmd_list_keys_commands(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
         format_defaults(ft, null_mut(), None, None, None);
 
         let command = args_string(&*args, 0);
-        if command.is_none() {
-            for entry in CMD_TABLE {
-                cmd_list_single_command(entry, ft, template, item);
-            }
-        } else {
-            let command = command.unwrap();
+        if let Some(command) = command {
             match cmd_find(command.to_str().unwrap()) {
                 Ok(entry) => {
                     cmd_list_single_command(entry, ft, template, item);
@@ -409,6 +404,10 @@ unsafe fn cmd_list_keys_commands(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
                     format_free(ft);
                     return cmd_retval::CMD_RETURN_ERROR;
                 }
+            }
+        } else {
+            for entry in CMD_TABLE {
+                cmd_list_single_command(entry, ft, template, item);
             }
         }
 

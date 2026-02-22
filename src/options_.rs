@@ -1307,23 +1307,21 @@ pub unsafe fn options_from_string(
                     return Err(err);
                 }
                 free_(old);
-                return Ok(());
+                Ok(())
             }
 
             options_table_type::OPTIONS_TABLE_NUMBER => {
                 match strtonum(value, (*oe).minimum as i64, (*oe).maximum as i64) {
                     Ok(number) => {
                         options_set_number(oo, name, number);
-                        return Ok(());
+                        Ok(())
                     }
-                    Err(errstr) => {
-                        return Err(CString::new(format!(
-                            "value is {}: {}",
-                            _s(errstr.as_ptr()),
-                            _s(value)
-                        ))
-                        .unwrap());
-                    }
+                    Err(errstr) => Err(CString::new(format!(
+                        "value is {}: {}",
+                        _s(errstr.as_ptr()),
+                        _s(value)
+                    ))
+                    .unwrap()),
                 }
             }
 
@@ -1333,7 +1331,7 @@ pub unsafe fn options_from_string(
                     return Err(CString::new(format!("bad key: {}", _s(value))).unwrap());
                 }
                 options_set_number(oo, name, key as i64);
-                return Ok(());
+                Ok(())
             }
 
             options_table_type::OPTIONS_TABLE_COLOUR => {
@@ -1342,28 +1340,28 @@ pub unsafe fn options_from_string(
                     return Err(CString::new(format!("bad colour: {}", _s(value))).unwrap());
                 }
                 options_set_number(oo, name, number);
-                return Ok(());
+                Ok(())
             }
 
             options_table_type::OPTIONS_TABLE_FLAG => {
-                return options_from_string_flag(oo, name, value);
+                options_from_string_flag(oo, name, value)
             }
 
             options_table_type::OPTIONS_TABLE_CHOICE => {
-                return options_from_string_choice(oe, oo, name, value);
+                options_from_string_choice(oe, oo, name, value)
             }
 
             options_table_type::OPTIONS_TABLE_COMMAND => {
                 match cmd_parse_from_string(cstr_to_str(value), None) {
                     Ok(cmdlist) => {
                         options_set_command(oo, name, cmdlist);
-                        return Ok(());
+                        Ok(())
                     }
                     Err(err) => {
                         let cause =
                             CString::new(_s(err).to_string()).unwrap();
                         free_(err);
-                        return Err(cause);
+                        Err(cause)
                     }
                 }
             }

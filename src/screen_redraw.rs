@@ -155,14 +155,15 @@ pub unsafe fn screen_redraw_pane_border(
         // Left/right borders
         if ((*wp).yoff == 0 || py >= (*wp).yoff - 1) && py <= ey {
             if sb_pos == PANE_SCROLLBARS_LEFT {
-                if (*wp).xoff - sb_w == 0 && px == (*wp).sx + sb_w {
-                    if !hsplit || (hsplit && py <= (*wp).sy / 2) {
-                        return screen_redraw_border_type::SCREEN_REDRAW_BORDER_RIGHT;
-                    }
+                if (*wp).xoff - sb_w == 0
+                    && px == (*wp).sx + sb_w
+                    && (!hsplit || py <= (*wp).sy / 2)
+                {
+                    return screen_redraw_border_type::SCREEN_REDRAW_BORDER_RIGHT;
                 }
                 if (*wp).xoff - sb_w != 0 {
                     if px == (*wp).xoff - sb_w - 1
-                        && (!hsplit || (hsplit && py > (*wp).sy / 2))
+                        && (!hsplit || py > (*wp).sy / 2)
                     {
                         return screen_redraw_border_type::SCREEN_REDRAW_BORDER_LEFT;
                     }
@@ -172,14 +173,15 @@ pub unsafe fn screen_redraw_pane_border(
                 }
             } else {
                 // PANE_SCROLLBARS_RIGHT or disabled
-                if (*wp).xoff == 0 && px == (*wp).sx + sb_w {
-                    if !hsplit || (hsplit && py <= (*wp).sy / 2) {
-                        return screen_redraw_border_type::SCREEN_REDRAW_BORDER_RIGHT;
-                    }
+                if (*wp).xoff == 0
+                    && px == (*wp).sx + sb_w
+                    && (!hsplit || py <= (*wp).sy / 2)
+                {
+                    return screen_redraw_border_type::SCREEN_REDRAW_BORDER_RIGHT;
                 }
                 if (*wp).xoff != 0 {
                     if px == (*wp).xoff - 1
-                        && (!hsplit || (hsplit && py > (*wp).sy / 2))
+                        && (!hsplit || py > (*wp).sy / 2)
                     {
                         return screen_redraw_border_type::SCREEN_REDRAW_BORDER_LEFT;
                     }
@@ -198,29 +200,27 @@ pub unsafe fn screen_redraw_pane_border(
             if (*wp).yoff != 0 && py == (*wp).yoff - 1 && px > (*wp).sx / 2 {
                 return screen_redraw_border_type::SCREEN_REDRAW_BORDER_TOP;
             }
-        } else {
-            if sb_pos == PANE_SCROLLBARS_LEFT {
-                if ((*wp).xoff - sb_w == 0 || px >= (*wp).xoff - sb_w)
-                    && (px <= ex || (sb_w != 0 && px < ex + sb_w))
-                {
-                    if (*wp).yoff != 0 && py == (*wp).yoff - 1 {
-                        return screen_redraw_border_type::SCREEN_REDRAW_BORDER_TOP;
-                    }
-                    if py == ey {
-                        return screen_redraw_border_type::SCREEN_REDRAW_BORDER_BOTTOM;
-                    }
+        } else if sb_pos == PANE_SCROLLBARS_LEFT {
+            if ((*wp).xoff - sb_w == 0 || px >= (*wp).xoff - sb_w)
+                && (px <= ex || (sb_w != 0 && px < ex + sb_w))
+            {
+                if (*wp).yoff != 0 && py == (*wp).yoff - 1 {
+                    return screen_redraw_border_type::SCREEN_REDRAW_BORDER_TOP;
                 }
-            } else {
-                // PANE_SCROLLBARS_RIGHT
-                if ((*wp).xoff == 0 || px >= (*wp).xoff)
-                    && (px <= ex || (sb_w != 0 && px < ex + sb_w))
-                {
-                    if (*wp).yoff != 0 && py == (*wp).yoff - 1 {
-                        return screen_redraw_border_type::SCREEN_REDRAW_BORDER_TOP;
-                    }
-                    if py == ey {
-                        return screen_redraw_border_type::SCREEN_REDRAW_BORDER_BOTTOM;
-                    }
+                if py == ey {
+                    return screen_redraw_border_type::SCREEN_REDRAW_BORDER_BOTTOM;
+                }
+            }
+        } else {
+            // PANE_SCROLLBARS_RIGHT
+            if ((*wp).xoff == 0 || px >= (*wp).xoff)
+                && (px <= ex || (sb_w != 0 && px < ex + sb_w))
+            {
+                if (*wp).yoff != 0 && py == (*wp).yoff - 1 {
+                    return screen_redraw_border_type::SCREEN_REDRAW_BORDER_TOP;
+                }
+                if py == ey {
+                    return screen_redraw_border_type::SCREEN_REDRAW_BORDER_BOTTOM;
                 }
             }
         }
@@ -434,19 +434,17 @@ pub unsafe fn screen_redraw_check_cell(
                         ((*wp).yoff + (*wp).sy) as i32
                     };
 
-                    if (pane_status != pane_status::PANE_STATUS_OFF && py as i32 != line)
+                    if ((pane_status != pane_status::PANE_STATUS_OFF && py as i32 != line)
                         || ((*wp).yoff == 0 && py < (*wp).sy)
-                        || (py >= (*wp).yoff && py < (*wp).yoff + (*wp).sy)
-                    {
-                        if (sb_pos == PANE_SCROLLBARS_RIGHT
+                        || (py >= (*wp).yoff && py < (*wp).yoff + (*wp).sy))
+                        && ((sb_pos == PANE_SCROLLBARS_RIGHT
                             && px >= (*wp).xoff + (*wp).sx
                             && px < (*wp).xoff + (*wp).sx + sb_w as u32)
                             || (sb_pos == PANE_SCROLLBARS_LEFT
                                 && px >= (*wp).xoff - sb_w as u32
-                                && px < (*wp).xoff)
-                        {
-                            return cell_type::CELL_SCROLLBAR;
-                        }
+                                && px < (*wp).xoff))
+                    {
+                        return cell_type::CELL_SCROLLBAR;
                     }
                 }
 
@@ -1190,8 +1188,8 @@ pub unsafe fn screen_redraw_draw_pane_scrollbar(
             let mut cm_size: i32 = 0;
             if window_copy_get_current_offset(
                 wp,
-                &raw mut cm_y as *mut i32 as *mut u32,
-                &raw mut cm_size as *mut i32 as *mut u32,
+                &raw mut cm_y as *mut u32,
+                &raw mut cm_size as *mut u32,
             ) == 0
             {
                 return;
@@ -1234,8 +1232,6 @@ unsafe fn screen_redraw_draw_scrollbar(
     unsafe {
         let c = (*ctx).c;
         let tty = &raw mut (*c).tty;
-        let gc: grid_cell;
-        let slgc: grid_cell;
         let sb_style = &raw const (*wp).scrollbar_style;
         let sb_w = (*sb_style).width as u32;
         let sb_pad = (*sb_style).pad as u32;
@@ -1247,15 +1243,15 @@ unsafe fn screen_redraw_draw_scrollbar(
         let yoff = (*wp).yoff as i32;
 
         // Set up style for slider.
-        gc = (*sb_style).gc;
-        slgc = grid_cell {
+        let gc: grid_cell = (*sb_style).gc;
+        let slgc: grid_cell = grid_cell {
             fg: gc.bg,
             bg: gc.fg,
             ..gc
         };
 
         let mut imax = sb_w + sb_pad;
-        if sb_x as i32 + imax as i32 > sx {
+        if sb_x + imax as i32 > sx {
             imax = (sx - sb_x) as u32;
         }
         let mut jmax = sb_h;

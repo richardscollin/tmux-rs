@@ -356,10 +356,10 @@ unsafe fn window_destroy(w: *mut window) {
 
 pub unsafe fn window_pane_destroy_ready(wp: *mut window_pane) -> bool {
     unsafe {
-        if (*wp).pipe_fd != -1 {
-            if EVBUFFER_LENGTH((*(*wp).pipe_event).output) != 0 {
-                return false;
-            }
+        if (*wp).pipe_fd != -1
+            && EVBUFFER_LENGTH((*(*wp).pipe_event).output) != 0
+        {
+            return false;
         }
 
         if !(*wp).flags.intersects(window_pane_flags::PANE_EXITED) {

@@ -666,7 +666,6 @@ pub(crate) unsafe fn sixel_print(
             );
         }
 
-        let ncolours = colours.len();
         let chunks: *mut sixel_chunk = xcalloc_(used_colours).as_ptr();
         let active: *mut u32 = xcalloc_(used_colours).as_ptr();
 

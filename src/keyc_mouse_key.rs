@@ -14,6 +14,7 @@
 
 // Special key codes.
 #[repr(u64)]
+#[expect(dead_code)]
 pub(crate) enum keyc {
     // Focus events.
     KEYC_FOCUS_IN = KEYC_BASE,

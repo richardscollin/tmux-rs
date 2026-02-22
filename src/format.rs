@@ -131,9 +131,9 @@ pub enum format_type {
 // Format loop sort type.
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum format_loop_sort_type {
-    ByIndex,
-    ByName,
-    ByTime,
+    Index,
+    Name,
+    Time,
 }
 
 // Entry in format tree.
@@ -1423,7 +1423,7 @@ pub unsafe fn format_cb_buffer_full(ft: *mut format_tree) -> format_table_type {
             let mut size = 0usize;
             let s = paste_buffer_data((*ft).pb, &mut size);
             if !s.is_null() {
-                let data = std::slice::from_raw_parts(s as *const u8, size);
+                let data = std::slice::from_raw_parts(s, size);
                 return String::from_utf8_lossy(data).into_owned().into();
             }
         }
@@ -2451,13 +2451,15 @@ pub unsafe fn format_cb_session_active(ft: *mut format_tree) -> format_table_typ
 /// Callback for `session_activity_flag`.
 pub unsafe fn format_cb_session_activity_flag(ft: *mut format_tree) -> format_table_type {
     unsafe {
-        if !(*ft).s.is_null() {
-            for wl in rb_foreach(&raw mut (*(*ft).s).windows).map(NonNull::as_ptr) {
-                if (*wl).flags.intersects(winlink_flags::WINLINK_ACTIVITY) {
-                    return "1".into();
-                }
-                return "0".into();
+        if !(*ft).s.is_null()
+            && rb_foreach(&raw mut (*(*ft).s).windows)
+                .next()
+                .is_some()
+        {
+            if (*(*ft).wl).flags.intersects(winlink_flags::WINLINK_ACTIVITY) {
+                return "1".into();
             }
+            return "0".into();
         }
         format_table_type::None
     }
@@ -2466,13 +2468,15 @@ pub unsafe fn format_cb_session_activity_flag(ft: *mut format_tree) -> format_ta
 /// Callback for `session_bell_flag`.
 pub unsafe fn format_cb_session_bell_flag(ft: *mut format_tree) -> format_table_type {
     unsafe {
-        if !(*ft).s.is_null() {
-            for wl in rb_foreach(&raw mut (*(*ft).s).windows).map(NonNull::as_ptr) {
-                if (*wl).flags.intersects(winlink_flags::WINLINK_BELL) {
-                    return "1".into();
-                }
-                return "0".into();
+        if !(*ft).s.is_null()
+            && rb_foreach(&raw mut (*(*ft).s).windows)
+                .next()
+                .is_some()
+        {
+            if (*(*ft).wl).flags.intersects(winlink_flags::WINLINK_BELL) {
+                return "1".into();
             }
+            return "0".into();
         }
         format_table_type::None
     }
@@ -2481,13 +2485,15 @@ pub unsafe fn format_cb_session_bell_flag(ft: *mut format_tree) -> format_table_
 /// Callback for `session_silence_flag`.
 pub unsafe fn format_cb_session_silence_flag(ft: *mut format_tree) -> format_table_type {
     unsafe {
-        if !(*ft).s.is_null() {
-            for wl in rb_foreach(&raw mut (*(*ft).s).windows).map(NonNull::as_ptr) {
-                if (*wl).flags.intersects(winlink_flags::WINLINK_SILENCE) {
-                    return "1".into();
-                }
-                return "0".into();
+        if !(*ft).s.is_null()
+            && rb_foreach(&raw mut (*(*ft).s).windows)
+                .next()
+                .is_some()
+        {
+            if (*(*ft).wl).flags.intersects(winlink_flags::WINLINK_SILENCE) {
+                return "1".into();
             }
+            return "0".into();
         }
         format_table_type::None
     }
@@ -2657,7 +2663,7 @@ pub fn format_cb_version(_ft: *mut format_tree) -> format_table_type {
     getversion().into()
 }
 
-/// Callback for sixel_support.
+/// Callback for `sixel_support`.
 pub fn format_cb_sixel_support(_ft: *mut format_tree) -> format_table_type {
     if cfg!(feature = "sixel") {
         "1"
@@ -4242,8 +4248,8 @@ pub unsafe fn format_loop_sessions(
             let sa = *a;
             let sb = *b;
             let result = match sort_field {
-                format_loop_sort_type::ByIndex => (*sa).id.cmp(&(*sb).id),
-                format_loop_sort_type::ByTime => {
+                format_loop_sort_type::Index => (*sa).id.cmp(&(*sb).id),
+                format_loop_sort_type::Time => {
                     let ta = &(*sa).activity_time;
                     let tb = &(*sb).activity_time;
                     match (tb.tv_sec, tb.tv_usec).cmp(&(ta.tv_sec, ta.tv_usec)) {
@@ -4251,7 +4257,7 @@ pub unsafe fn format_loop_sessions(
                         other => other,
                     }
                 }
-                format_loop_sort_type::ByName => (*sa).name.cmp(&(*sb).name),
+                format_loop_sort_type::Name => (*sa).name.cmp(&(*sb).name),
             };
             if sort_reversed {
                 result.reverse()
@@ -4342,14 +4348,14 @@ pub unsafe fn format_loop_windows(
             .map(NonNull::as_ptr)
             .collect();
 
-        if sort_field != format_loop_sort_type::ByIndex {
+        if sort_field != format_loop_sort_type::Index {
             l.sort_by(|a, b| {
                 use std::cmp::Ordering;
                 let wa = (*(*a)).window;
                 let wb = (*(*b)).window;
                 let result = match sort_field {
-                    format_loop_sort_type::ByIndex => unreachable!(),
-                    format_loop_sort_type::ByTime => {
+                    format_loop_sort_type::Index => unreachable!(),
+                    format_loop_sort_type::Time => {
                         let ta = &(*wa).activity_time;
                         let tb = &(*wb).activity_time;
                         match (tb.tv_sec, tb.tv_usec).cmp(&(ta.tv_sec, ta.tv_usec)) {
@@ -4357,7 +4363,7 @@ pub unsafe fn format_loop_windows(
                             other => other,
                         }
                     }
-                    format_loop_sort_type::ByName => strcmp((*wa).name, (*wb).name).cmp(&0),
+                    format_loop_sort_type::Name => strcmp((*wa).name, (*wb).name).cmp(&0),
                 };
                 if sort_reversed {
                     result.reverse()
@@ -4520,14 +4526,14 @@ pub unsafe fn format_loop_clients(
         let mut l: Vec<*mut client> =
             tailq_foreach(&raw mut CLIENTS).map(NonNull::as_ptr).collect();
 
-        if sort_field != format_loop_sort_type::ByIndex {
+        if sort_field != format_loop_sort_type::Index {
             l.sort_by(|a, b| {
                 use std::cmp::Ordering;
                 let ca = *a;
                 let cb = *b;
                 let result = match sort_field {
-                    format_loop_sort_type::ByIndex => Ordering::Equal,
-                    format_loop_sort_type::ByTime => {
+                    format_loop_sort_type::Index => Ordering::Equal,
+                    format_loop_sort_type::Time => {
                         let ta = &(*ca).activity_time;
                         let tb = &(*cb).activity_time;
                         match (tb.tv_sec, tb.tv_usec).cmp(&(ta.tv_sec, ta.tv_usec)) {
@@ -4535,7 +4541,7 @@ pub unsafe fn format_loop_clients(
                             other => other,
                         }
                     }
-                    format_loop_sort_type::ByName => strcmp((*ca).name, (*cb).name).cmp(&0),
+                    format_loop_sort_type::Name => strcmp((*ca).name, (*cb).name).cmp(&0),
                 };
                 if sort_reversed {
                     result.reverse()
@@ -4869,7 +4875,7 @@ pub unsafe fn format_replace(
         // let mut i = 0u32;
         let mut count = 0u32;
         let mut nsub = 0u32;
-        let mut sort_field = format_loop_sort_type::ByIndex;
+        let mut sort_field = format_loop_sort_type::Index;
         let mut sort_reversed = false;
 
         let mut next = MaybeUninit::<format_expand_state>::uninit();
@@ -4980,17 +4986,17 @@ pub unsafe fn format_replace(
                             b'S' => {
                                 modifiers |= format_modifiers::FORMAT_SESSIONS;
                                 if (*fm).argc < 1 {
-                                    sort_field = format_loop_sort_type::ByIndex;
+                                    sort_field = format_loop_sort_type::Index;
                                     sort_reversed = false;
                                 } else {
                                     if !strchr(*(*fm).argv, b'i' as i32).is_null() {
-                                        sort_field = format_loop_sort_type::ByIndex;
+                                        sort_field = format_loop_sort_type::Index;
                                     } else if !strchr(*(*fm).argv, b'n' as i32).is_null() {
-                                        sort_field = format_loop_sort_type::ByName;
+                                        sort_field = format_loop_sort_type::Name;
                                     } else if !strchr(*(*fm).argv, b't' as i32).is_null() {
-                                        sort_field = format_loop_sort_type::ByTime;
+                                        sort_field = format_loop_sort_type::Time;
                                     } else {
-                                        sort_field = format_loop_sort_type::ByIndex;
+                                        sort_field = format_loop_sort_type::Index;
                                     }
                                     sort_reversed =
                                         !strchr(*(*fm).argv, b'r' as i32).is_null();
@@ -4999,17 +5005,17 @@ pub unsafe fn format_replace(
                             b'W' => {
                                 modifiers |= format_modifiers::FORMAT_WINDOWS;
                                 if (*fm).argc < 1 {
-                                    sort_field = format_loop_sort_type::ByIndex;
+                                    sort_field = format_loop_sort_type::Index;
                                     sort_reversed = false;
                                 } else {
                                     if !strchr(*(*fm).argv, b'i' as i32).is_null() {
-                                        sort_field = format_loop_sort_type::ByIndex;
+                                        sort_field = format_loop_sort_type::Index;
                                     } else if !strchr(*(*fm).argv, b'n' as i32).is_null() {
-                                        sort_field = format_loop_sort_type::ByName;
+                                        sort_field = format_loop_sort_type::Name;
                                     } else if !strchr(*(*fm).argv, b't' as i32).is_null() {
-                                        sort_field = format_loop_sort_type::ByTime;
+                                        sort_field = format_loop_sort_type::Time;
                                     } else {
-                                        sort_field = format_loop_sort_type::ByIndex;
+                                        sort_field = format_loop_sort_type::Index;
                                     }
                                     sort_reversed =
                                         !strchr(*(*fm).argv, b'r' as i32).is_null();
@@ -5028,17 +5034,17 @@ pub unsafe fn format_replace(
                             b'L' => {
                                 modifiers |= format_modifiers::FORMAT_CLIENTS;
                                 if (*fm).argc < 1 {
-                                    sort_field = format_loop_sort_type::ByIndex;
+                                    sort_field = format_loop_sort_type::Index;
                                     sort_reversed = false;
                                 } else {
                                     if !strchr(*(*fm).argv, b'i' as i32).is_null() {
-                                        sort_field = format_loop_sort_type::ByIndex;
+                                        sort_field = format_loop_sort_type::Index;
                                     } else if !strchr(*(*fm).argv, b'n' as i32).is_null() {
-                                        sort_field = format_loop_sort_type::ByName;
+                                        sort_field = format_loop_sort_type::Name;
                                     } else if !strchr(*(*fm).argv, b't' as i32).is_null() {
-                                        sort_field = format_loop_sort_type::ByTime;
+                                        sort_field = format_loop_sort_type::Time;
                                     } else {
-                                        sort_field = format_loop_sort_type::ByIndex;
+                                        sort_field = format_loop_sort_type::Index;
                                     }
                                     sort_reversed =
                                         !strchr(*(*fm).argv, b'r' as i32).is_null();

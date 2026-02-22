@@ -353,10 +353,10 @@ pub unsafe fn control_vwrite(c: *mut client, args: std::fmt::Arguments) {
             "{}: {}: writing line: {}",
             "control_vwrite",
             _s((*c).name),
-            _s(s.as_ptr())
+            _s(s.as_bytes().as_ptr())
         );
 
-        bufferevent_write((*cs).write_event, s.as_ptr().cast(), s.len() - 1);
+        bufferevent_write((*cs).write_event, s.as_bytes().as_ptr().cast(), s.len() - 1);
         bufferevent_write((*cs).write_event, c!("\n").cast(), 1);
 
         bufferevent_enable((*cs).write_event, EV_WRITE);

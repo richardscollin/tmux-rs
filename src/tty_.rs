@@ -545,6 +545,7 @@ pub unsafe extern "C-unwind" fn tty_start_timer_callback(
     }
 }
 
+#[cfg(not(target_os = "windows"))]
 unsafe fn tty_start_start_timer(tty: *mut tty) {
     unsafe {
         let c = (*tty).client;
@@ -740,6 +741,7 @@ pub unsafe fn tty_repeat_requests(tty: *mut tty, force: bool) {
             tty_puts(tty, c!("\x1b]10;?\x1b\\\x1b]11;?\x1b\\"));
             (*tty).flags |= tty_flags::TTY_WAITBG | tty_flags::TTY_WAITFG;
         }
+        #[cfg(not(target_os = "windows"))]
         tty_start_start_timer(tty);
     }
 }

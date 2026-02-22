@@ -177,10 +177,10 @@ pub fn colour_totheme(c: i32) -> client_theme {
         0 | 90 => client_theme::THEME_DARK,
         7 | 97 => client_theme::THEME_LIGHT,
         _ => {
-            if c >= 0 && c <= 7 {
+            if (0..=7).contains(&c) {
                 return colour_totheme(colour_256_to_rgb(c));
             }
-            if c >= 90 && c <= 97 {
+            if (90..=97).contains(&c) {
                 return colour_totheme(colour_256_to_rgb(8 + c - 90));
             }
             client_theme::THEME_UNKNOWN

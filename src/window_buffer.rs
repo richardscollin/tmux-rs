@@ -323,14 +323,14 @@ pub unsafe fn window_buffer_search(
             }
             let mut bufsize = 0;
             let bufdata = paste_buffer_data_(pb, &mut bufsize);
-            return window_buffer_find(bufdata, bufsize, ss, strlen(ss), icase);
+            window_buffer_find(bufdata, bufsize, ss, strlen(ss), icase)
         } else {
             if (*item.as_ptr()).name.contains(cstr_to_str(ss)) {
                 return true;
             }
             let mut bufsize = 0;
             let bufdata = paste_buffer_data_(pb, &mut bufsize);
-            return window_buffer_find(bufdata, bufsize, ss, strlen(ss), icase);
+            window_buffer_find(bufdata, bufsize, ss, strlen(ss), icase)
         }
     }
 }

@@ -1193,10 +1193,8 @@ pub unsafe fn window_copy_do_copy_end_of_line(
             if !s.is_null() && count > 0 && *arg0 != b'\0' {
                 command = format_single(null_mut(), cstr_to_str(arg0), c, s, wl, wp);
             }
-        } else {
-            if count == 1 {
-                prefix = format_single(null_mut(), cstr_to_str(arg0), c, s, wl, wp);
-            }
+        } else if count == 1 {
+            prefix = format_single(null_mut(), cstr_to_str(arg0), c, s, wl, wp);
         }
 
         let ocx = (*data).cx;
@@ -2447,20 +2445,21 @@ pub unsafe fn window_copy_cmd_selection_mode(
         let data: *mut window_copy_mode_data = (*wme).data.cast();
         let s = args_string(&*(*cs).wargs, 0);
 
-        if s.is_none()
-            || libc::strcaseeq_(s.unwrap().as_ptr().cast::<u8>(), "char")
-            || libc::strcaseeq_(s.unwrap().as_ptr().cast::<u8>(), "c")
-        {
-            (*data).selflag = selflag::SEL_CHAR;
-        } else if libc::strcaseeq_(s.unwrap().as_ptr().cast::<u8>(), "word")
-            || libc::strcaseeq_(s.unwrap().as_ptr().cast::<u8>(), "w")
-        {
-            (*data).separators = options_get_string_(so, "word-separators");
-            (*data).selflag = selflag::SEL_WORD;
-        } else if libc::strcaseeq_(s.unwrap().as_ptr().cast::<u8>(), "line")
-            || libc::strcaseeq_(s.unwrap().as_ptr().cast::<u8>(), "l")
-        {
-            (*data).selflag = selflag::SEL_LINE;
+        match s {
+            Some(s) if libc::strcaseeq_(s.as_ptr().cast::<u8>(), "word")
+                || libc::strcaseeq_(s.as_ptr().cast::<u8>(), "w") =>
+            {
+                (*data).separators = options_get_string_(so, "word-separators");
+                (*data).selflag = selflag::SEL_WORD;
+            }
+            Some(s) if libc::strcaseeq_(s.as_ptr().cast::<u8>(), "line")
+                || libc::strcaseeq_(s.as_ptr().cast::<u8>(), "l") =>
+            {
+                (*data).selflag = selflag::SEL_LINE;
+            }
+            _ => {
+                (*data).selflag = selflag::SEL_CHAR;
+            }
         }
         window_copy_cmd_action::WINDOW_COPY_CMD_NOTHING
     }
@@ -3561,7 +3560,6 @@ pub unsafe fn window_copy_command(
                 clear = window_copy_cmd_table_i.clear;
                 action = (window_copy_cmd_table_i.f)(&raw mut cs);
                 args_free(cs.wargs);
-                cs.wargs = null_mut();
                 break;
             }
         }

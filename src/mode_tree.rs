@@ -331,7 +331,7 @@ unsafe fn mode_tree_swap(mtd: *mut mode_tree_data, direction: i32) {
                 return;
             }
             if direction > 0
-                && (swap_with + direction) as u32 >= (&(*mtd).line_list).len() as u32
+                && (swap_with + direction) as u32 >= (*mtd).line_list.len() as u32
             {
                 return;
             }

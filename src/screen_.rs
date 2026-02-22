@@ -644,7 +644,12 @@ pub unsafe fn screen_select_cell(s: *mut screen, dst: *mut grid_cell, src: *cons
         }
 
         memcpy__(dst, &raw const (*(*s).sel).cell);
-
+        if COLOUR_DEFAULT((*dst).fg) {
+            (*dst).fg = (*src).fg;
+        }
+        if COLOUR_DEFAULT((*dst).bg) {
+            (*dst).bg = (*src).bg;
+        }
         utf8_copy(&mut (*dst).data, &(*src).data);
         (*dst).attr &= !grid_attr::GRID_ATTR_CHARSET;
         (*dst).attr |= (*src).attr & grid_attr::GRID_ATTR_CHARSET;

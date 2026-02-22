@@ -117,6 +117,7 @@ struct window_tree_modedata {
     key_format: *mut u8,
     command: *mut u8,
     squash_groups: bool,
+    prompt_flags: prompt_flags,
 
     item_list: *mut *mut window_tree_itemdata,
     item_size: u32,
@@ -1064,6 +1065,9 @@ unsafe fn window_tree_init(
             (*data).command = xstrdup(args_string(&*args, 0).unwrap().as_ptr().cast()).as_ptr();
         }
         (*data).squash_groups = !args_has(&*args, 'G');
+        if args_has(&*args, 'y') {
+            (*data).prompt_flags = prompt_flags::PROMPT_ACCEPT;
+        }
 
         (*data).data = mode_tree_start(
             wp,
@@ -1530,7 +1534,7 @@ unsafe fn window_tree_key(
                         window_tree_kill_current_callback,
                         window_tree_command_free,
                         data,
-                        prompt_flags::PROMPT_SINGLE | prompt_flags::PROMPT_NOFORMAT,
+                        prompt_flags::PROMPT_SINGLE | prompt_flags::PROMPT_NOFORMAT | (*data).prompt_flags,
                         prompt_type::PROMPT_TYPE_COMMAND,
                     );
                     free_(prompt);
@@ -1550,7 +1554,7 @@ unsafe fn window_tree_key(
                         window_tree_kill_tagged_callback,
                         window_tree_command_free,
                         data,
-                        prompt_flags::PROMPT_SINGLE | prompt_flags::PROMPT_NOFORMAT,
+                        prompt_flags::PROMPT_SINGLE | prompt_flags::PROMPT_NOFORMAT | (*data).prompt_flags,
                         prompt_type::PROMPT_TYPE_COMMAND,
                     );
                     free_(prompt);

@@ -95,6 +95,8 @@ pub struct window_customize_modedata {
     item_list: *mut *mut window_customize_itemdata,
     item_size: u32,
 
+    prompt_flags: prompt_flags,
+
     fs: cmd_find_state,
     change: window_customize_change,
 }
@@ -1178,6 +1180,9 @@ pub unsafe fn window_customize_init(
         } else {
             (*data).format = xstrdup(args_get_(args, 'F')).as_ptr();
         }
+        if !args.is_null() && args_has(&*args, 'y') {
+            (*data).prompt_flags = prompt_flags::PROMPT_ACCEPT;
+        }
 
         (*data).data = mode_tree_start(
             wp,
@@ -1872,7 +1877,7 @@ pub unsafe fn window_customize_key(
                         window_customize_change_current_callback,
                         window_customize_free_callback,
                         data,
-                        prompt_flags::PROMPT_SINGLE | prompt_flags::PROMPT_NOFORMAT,
+                        prompt_flags::PROMPT_SINGLE | prompt_flags::PROMPT_NOFORMAT | (*data).prompt_flags,
                         prompt_type::PROMPT_TYPE_COMMAND,
                     );
                     free_(prompt);
@@ -1892,7 +1897,7 @@ pub unsafe fn window_customize_key(
                         window_customize_change_tagged_callback,
                         window_customize_free_callback,
                         data,
-                        prompt_flags::PROMPT_SINGLE | prompt_flags::PROMPT_NOFORMAT,
+                        prompt_flags::PROMPT_SINGLE | prompt_flags::PROMPT_NOFORMAT | (*data).prompt_flags,
                         prompt_type::PROMPT_TYPE_COMMAND,
                     );
                     free_(prompt);
@@ -1916,7 +1921,7 @@ pub unsafe fn window_customize_key(
                         window_customize_change_current_callback,
                         window_customize_free_callback,
                         data,
-                        prompt_flags::PROMPT_SINGLE | prompt_flags::PROMPT_NOFORMAT,
+                        prompt_flags::PROMPT_SINGLE | prompt_flags::PROMPT_NOFORMAT | (*data).prompt_flags,
                         prompt_type::PROMPT_TYPE_COMMAND,
                     );
                     free_(prompt);
@@ -1936,7 +1941,7 @@ pub unsafe fn window_customize_key(
                         window_customize_change_tagged_callback,
                         window_customize_free_callback,
                         data,
-                        prompt_flags::PROMPT_SINGLE | prompt_flags::PROMPT_NOFORMAT,
+                        prompt_flags::PROMPT_SINGLE | prompt_flags::PROMPT_NOFORMAT | (*data).prompt_flags,
                         prompt_type::PROMPT_TYPE_COMMAND,
                     );
                     free_(prompt);

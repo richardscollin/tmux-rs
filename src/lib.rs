@@ -2339,6 +2339,7 @@ bitflags::bitflags! {
         const PROMPT_INCREMENTAL = 0x4;
         const PROMPT_NOFORMAT = 0x8;
         const PROMPT_KEY = 0x10;
+        const PROMPT_ACCEPT = 0x20;
     }
 }
 

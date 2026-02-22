@@ -658,6 +658,18 @@ pub unsafe fn status_message_redraw(c: *mut client) -> i32 {
     }
 }
 
+/// Accept prompt immediately.
+unsafe fn status_prompt_accept(_item: *mut cmdq_item, data: *mut c_void) -> cmd_retval {
+    unsafe {
+        let c: *mut client = data.cast();
+        if !(*c).prompt_string.is_null() {
+            (*c).prompt_inputcb.unwrap()(c, NonNull::new((*c).prompt_data).unwrap(), c!("y"), 1);
+            status_prompt_clear(c);
+        }
+        cmd_retval::CMD_RETURN_NORMAL
+    }
+}
+
 /// Enable status line prompt.
 pub unsafe fn status_prompt_set<T>(
     c: *mut client,
@@ -727,6 +739,15 @@ pub unsafe fn status_prompt_set<T>(
             (*c).tty.flags |= tty_flags::TTY_NOCURSOR | tty_flags::TTY_FREEZE;
         }
         (*c).flags |= client_flag::REDRAWSTATUS;
+
+        if flags.intersects(prompt_flags::PROMPT_SINGLE)
+            && flags.intersects(prompt_flags::PROMPT_ACCEPT)
+        {
+            cmdq_append(
+                c,
+                cmdq_get_callback!(status_prompt_accept, c.cast()).as_ptr(),
+            );
+        }
 
         if flags.intersects(prompt_flags::PROMPT_INCREMENTAL) {
             (*c).prompt_inputcb.unwrap()(c, NonNull::new((*c).prompt_data).unwrap(), c!("="), 0);

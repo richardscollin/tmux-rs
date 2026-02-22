@@ -4825,7 +4825,7 @@ pub unsafe fn format_replace(
         let mut cp: *const u8;
         let mut marker: *const u8 = null();
 
-        let mut time_format: *const u8 = null();
+        let mut time_format: *mut u8 = null_mut();
 
         let copy0: *mut u8;
         let mut condition: *mut u8;
@@ -5469,6 +5469,7 @@ pub unsafe fn format_replace(
             free_(sub);
             format_free_modifiers(list, count);
             free_(copy0);
+            free_(time_format);
             return 0;
         }
 
@@ -5478,6 +5479,7 @@ pub unsafe fn format_replace(
         free_(sub);
         format_free_modifiers(list, count);
         free_(copy0);
+        free_(time_format);
         -1
     }
 }

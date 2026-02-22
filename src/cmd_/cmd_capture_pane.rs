@@ -259,8 +259,8 @@ unsafe fn cmd_capture_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
                 }
                 file_print_buffer(c, buf as _, len);
                 file_print!(c, "\n");
-                free_(buf);
             }
+            free_(buf);
         } else {
             let mut bufname = None;
             if args_has(&*args, 'b') {

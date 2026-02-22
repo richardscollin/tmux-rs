@@ -1201,6 +1201,10 @@ pub unsafe fn screen_redraw_draw_pane_scrollbar(
         let slider_y = if slider_y >= sb_h { sb_h - 1 } else { slider_y };
 
         screen_redraw_draw_scrollbar(ctx, wp, sb_pos, sb_x, sb_y, sb_h, slider_h, slider_y);
+
+        // Store current position and height of the slider.
+        (*wp).sb_slider_y = slider_y;
+        (*wp).sb_slider_h = slider_h;
     }
 }
 

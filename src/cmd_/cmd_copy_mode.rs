@@ -18,8 +18,8 @@ pub static CMD_COPY_MODE_ENTRY: cmd_entry = cmd_entry {
     name: "copy-mode",
     alias: None,
 
-    args: args_parse::new("deHMs:t:uq", 0, 0, None),
-    usage: "[-deHMuq] [-s src-pane] [-t target-pane]",
+    args: args_parse::new("deHMqSs:t:u", 0, 0, None),
+    usage: "[-deHMqSu] [-s src-pane] [-t target-pane]",
 
     source: cmd_entry_flag::new(b's', cmd_find_type::CMD_FIND_PANE, cmd_find_flags::empty()),
     target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_PANE, cmd_find_flags::empty()),
@@ -93,6 +93,15 @@ unsafe fn cmd_copy_mode_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retva
         }
         if args_has(&*args, 'd') {
             window_copy_pagedown(wp, 0, args_has(&*args, 'e'));
+        }
+        if args_has(&*args, 'S') {
+            window_copy_scroll(
+                wp,
+                (*c).tty.mouse_slider_mpos,
+                (*event).m.y,
+                args_has(&*args, 'e'),
+            );
+            return cmd_retval::CMD_RETURN_NORMAL;
         }
 
         cmd_retval::CMD_RETURN_NORMAL

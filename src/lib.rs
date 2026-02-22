@@ -1336,6 +1336,9 @@ struct window_pane {
 
     flags: window_pane_flags,
 
+    sb_slider_y: u32,
+    sb_slider_h: u32,
+
     argc: i32,
     argv: *mut *mut u8,
     shell: *mut u8,
@@ -1846,6 +1849,8 @@ struct tty {
     mouse_last_y: u32,
     mouse_last_b: u32,
     mouse_drag_flag: i32,
+    mouse_scrolling_flag: i32,
+    mouse_slider_mpos: i32,
     mouse_drag_update: Option<unsafe fn(*mut client, *mut mouse_event)>,
     mouse_drag_release: Option<unsafe fn(*mut client, *mut mouse_event)>,
 

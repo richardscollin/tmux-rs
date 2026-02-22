@@ -547,6 +547,116 @@ pub unsafe fn window_copy_vadd(wp: *mut window_pane, parse: i32, args: std::fmt:
     }
 }
 
+pub unsafe fn window_copy_scroll(wp: *mut window_pane, sl_mpos: i32, my: u32, scroll_exit: bool) {
+    unsafe {
+        let wme = tailq_first(&raw mut (*wp).modes);
+        if !wme.is_null() {
+            window_set_active_pane((*wp).window, wp, 0);
+            window_copy_scroll1(wme, wp, sl_mpos, my, scroll_exit);
+        }
+    }
+}
+
+unsafe fn window_copy_scroll1(
+    wme: *mut window_mode_entry,
+    wp: *mut window_pane,
+    sl_mpos: i32,
+    my: u32,
+    scroll_exit: bool,
+) {
+    unsafe {
+        let data: *mut window_copy_mode_data = (*wme).data.cast();
+        let _slider_y = (*wp).sb_slider_y;
+        let slider_height = (*wp).sb_slider_h;
+        let sb_height = (*wp).sy;
+        let sb_top = (*wp).yoff;
+        let sy = screen_size_y((*data).backing);
+
+        // sl_mpos is where in the slider the user is dragging.
+        let new_slider_y: i32 = if my <= sb_top + sl_mpos as u32 {
+            // Slider banged into top.
+            sb_top as i32 - (*wp).yoff as i32
+        } else if my as i32 - sl_mpos > (sb_top + sb_height - slider_height) as i32 {
+            // Slider banged into bottom.
+            sb_top as i32 - (*wp).yoff as i32 + (sb_height - slider_height) as i32
+        } else {
+            // Slider is somewhere in the middle.
+            my as i32 - (*wp).yoff as i32 - sl_mpos + 1
+        };
+
+        let mut offset: u32 = 0;
+        let mut size: u32 = 0;
+        if tailq_first(&raw mut (*wp).modes).is_null()
+            || window_copy_get_current_offset(wp, &raw mut offset, &raw mut size) == 0
+        {
+            return;
+        }
+
+        // Inverse of the formula in screen_redraw_draw_pane_scrollbar.
+        let new_offset =
+            (new_slider_y as f64 * ((size + sb_height) as f64 / sb_height as f64)) as u32;
+        let delta = offset as i32 - new_offset as i32;
+
+        // Move pane view around based on delta relative to the cursor.
+        let oy = screen_hsize((*data).backing) + (*data).cy - (*data).oy;
+        let ox = window_copy_find_length(wme, oy);
+
+        if (*data).cx != ox {
+            (*data).lastcx = (*data).cx;
+            (*data).lastsx = ox;
+        }
+        (*data).cx = (*data).lastcx;
+
+        if delta >= 0 {
+            let n = delta as u32;
+            if (*data).oy + n > screen_hsize((*data).backing) {
+                (*data).oy = screen_hsize((*data).backing);
+                if (*data).cy < n {
+                    (*data).cy = 0;
+                } else {
+                    (*data).cy -= n;
+                }
+            } else {
+                (*data).oy += n;
+            }
+        } else {
+            let n = (-delta) as u32;
+            if (*data).oy < n {
+                (*data).oy = 0;
+                if (*data).cy + (n - (*data).oy) >= sy {
+                    (*data).cy = sy - 1;
+                } else {
+                    (*data).cy += n - (*data).oy;
+                }
+            } else {
+                (*data).oy -= n;
+            }
+        }
+
+        // Don't also drag tail when dragging a scrollbar, it looks weird.
+        (*data).cursordrag = cursordrag::CURSORDRAG_NONE;
+
+        if (*data).screen.sel.is_null() || !(*data).rectflag {
+            let py = screen_hsize((*data).backing) + (*data).cy - (*data).oy;
+            let px = window_copy_find_length(wme, py);
+            if ((*data).cx >= (*data).lastsx && (*data).cx != px) || (*data).cx > px {
+                window_copy_cursor_end_of_line(wme);
+            }
+        }
+
+        if scroll_exit && (*data).oy == 0 {
+            window_pane_reset_mode(wp);
+            return;
+        }
+
+        if !(*data).searchmark.is_null() && (*data).timeout == 0 {
+            window_copy_search_marks(wme, null_mut(), (*data).searchregex, 1);
+        }
+        window_copy_update_selection(wme, 1, 0);
+        window_copy_redraw_screen(wme);
+    }
+}
+
 pub unsafe fn window_copy_pageup(wp: *mut window_pane, half_page: i32) {
     unsafe {
         window_copy_pageup1(tailq_first(&raw mut (*wp).modes), half_page);

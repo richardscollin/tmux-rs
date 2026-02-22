@@ -1417,6 +1417,20 @@ pub unsafe fn format_cb_buffer_name(ft: *mut format_tree) -> format_table_type {
     }
 }
 
+pub unsafe fn format_cb_buffer_full(ft: *mut format_tree) -> format_table_type {
+    unsafe {
+        if !(*ft).pb.is_null() {
+            let mut size = 0usize;
+            let s = paste_buffer_data((*ft).pb, &mut size);
+            if !s.is_null() {
+                let data = std::slice::from_raw_parts(s as *const u8, size);
+                return String::from_utf8_lossy(data).into_owned().into();
+            }
+        }
+        format_table_type::None
+    }
+}
+
 pub unsafe fn format_cb_buffer_sample(ft: *mut format_tree) -> format_table_type {
     unsafe {
         if !(*ft).pb.is_null() {
@@ -3177,6 +3191,7 @@ static FORMAT_TABLE: &[format_table_entry] = &[
     format_table_entry::new("alternate_saved_x", format_cb_alternate_saved_x),
     format_table_entry::new("alternate_saved_y", format_cb_alternate_saved_y),
     format_table_entry::new("buffer_created", format_cb_buffer_created),
+    format_table_entry::new("buffer_full", format_cb_buffer_full),
     format_table_entry::new("buffer_mode_format", format_cb_buffer_mode_format),
     format_table_entry::new("buffer_name", format_cb_buffer_name),
     format_table_entry::new("buffer_sample", format_cb_buffer_sample),

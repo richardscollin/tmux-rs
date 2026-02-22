@@ -408,7 +408,7 @@ pub unsafe fn server_find_session(
     unsafe {
         let mut s_out: *mut session = null_mut();
         for s_loop in rb_foreach(&raw mut SESSIONS).map(NonNull::as_ptr) {
-            if s_loop != s && (s_out.is_null() || f(s_loop, s_out) != 0) {
+            if s_loop != s && f(s_loop, s_out) != 0 {
                 s_out = s_loop;
             }
         }
@@ -418,6 +418,9 @@ pub unsafe fn server_find_session(
 
 pub unsafe fn server_newer_session(s_loop: *mut session, s_out: *mut session) -> i32 {
     unsafe {
+        if s_out.is_null() {
+            return 1;
+        }
         (timer::new(&raw const (*s_loop).activity_time)
             > timer::new(&raw const (*s_out).activity_time)) as i32
     }

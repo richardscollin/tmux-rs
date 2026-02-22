@@ -1502,7 +1502,7 @@ unsafe fn grid_reflow_join(
                 break;
             }
         }
-        if lines == 0 {
+        if lines == 0 || from.is_null() {
             return;
         }
 

@@ -696,7 +696,6 @@ pub unsafe fn tty_send_requests(tty: *mut tty) {
         }
 
         if (*(*tty).term).flags.intersects(term_flags::TERM_VT100LIKE) {
-            // TODO I think the original C code has a bug and it should be as follows, double check
             if !(*tty).flags.intersects(tty_flags::TTY_HAVEDA) {
                 tty_puts(tty, c!("\x1b[c"));
             }

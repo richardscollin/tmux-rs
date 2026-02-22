@@ -262,7 +262,7 @@ unsafe fn expand_path(path: *const u8, home: Option<&CStr>) -> Option<CString> {
     }
 }
 
-unsafe fn expand_paths(s: &str, paths: &mut Vec<CString>, ignore_errors: i32) {
+unsafe fn expand_paths(s: &str, paths: &mut Vec<CString>, no_realpath: bool) {
     unsafe {
         let home = find_home();
         let mut path: CString;
@@ -283,22 +283,22 @@ unsafe fn expand_paths(s: &str, paths: &mut Vec<CString>, ignore_errors: i32) {
                 continue;
             };
 
-            match PathBuf::from(expanded.to_str().unwrap()).canonicalize() {
-                Ok(resolved) => {
-                    path = CString::new(resolved.into_os_string().into_string().unwrap()).unwrap();
-                    // free_(expanded);
-                }
-                Err(_) => {
-                    log_debug!(
-                        "{func}: realpath(\"{}\") failed: {}",
-                        expanded.to_string_lossy(),
-                        strerror(errno!()),
-                    );
-                    if ignore_errors != 0 {
-                        // free_(expanded);
+            if no_realpath {
+                path = expanded;
+            } else {
+                match PathBuf::from(expanded.to_str().unwrap()).canonicalize() {
+                    Ok(resolved) => {
+                        path =
+                            CString::new(resolved.into_os_string().into_string().unwrap()).unwrap();
+                    }
+                    Err(_) => {
+                        log_debug!(
+                            "{func}: realpath(\"{}\") failed: {}",
+                            expanded.to_string_lossy(),
+                            strerror(errno!()),
+                        );
                         continue;
                     }
-                    path = expanded;
                 }
             }
 
@@ -336,7 +336,7 @@ unsafe fn make_label(mut label: *const u8) -> Result<String, String> {
         }
         #[cfg(not(target_os = "windows"))]
         {
-            expand_paths(TMUX_SOCK, &mut paths, 1);
+            expand_paths(TMUX_SOCK, &mut paths, false);
         }
 
         if paths.is_empty() {
@@ -559,7 +559,7 @@ pub unsafe fn tmux_main(mut argc: i32, mut argv: *mut *mut u8, _env: *mut *mut u
                 cwd.to_str().unwrap()
             );
         }
-        expand_paths(TMUX_CONF, &mut CFG_FILES.lock().unwrap(), 1);
+        expand_paths(TMUX_CONF, &mut CFG_FILES.lock().unwrap(), true);
 
         while let Some(opt) = getopt(argc, argv.cast(), c!("2c:CDdf:hlL:NqS:T:uUvV")) {
             match opt {

@@ -144,7 +144,6 @@ pub struct window_copy_mode_data {
 
     backing: *mut screen,
     backing_written: i32, // backing display started
-    writing: *mut screen,
     ictx: *mut input_ctx,
 
     viewmode: i32, // view mode entered
@@ -430,8 +429,6 @@ pub unsafe fn window_copy_view_init(
 
         (*data).backing = Box::leak(Box::new(zeroed())) as *mut screen;
         screen_init((*data).backing, sx, screen_size_y(base), u32::MAX);
-        (*data).writing = Box::leak(Box::new(zeroed())) as *mut screen;
-        screen_init((*data).writing, sx, screen_size_y(base), 0);
         (*data).ictx = input_init(null_mut(), null_mut(), null_mut());
         (*data).mx = (*data).cx;
         (*data).my = screen_hsize((*data).backing) + (*data).cy - (*data).oy;
@@ -452,10 +449,6 @@ pub unsafe fn window_copy_free(wme: NonNull<window_mode_entry>) {
         free_((*data).searchstr);
         free_((*data).jumpchar);
 
-        if !(*data).writing.is_null() {
-            screen_free((*data).writing);
-            free_((*data).writing);
-        }
         if !(*data).ictx.is_null() {
             input_free((*data).ictx);
         }
@@ -489,29 +482,11 @@ pub unsafe fn window_copy_vadd(wp: *mut window_pane, parse: i32, args: std::fmt:
         let wme: *mut window_mode_entry = tailq_first(&raw mut (*wp).modes);
         let data: *mut window_copy_mode_data = (*wme).data.cast();
         let backing: *mut screen = (*data).backing;
-        let writing: *mut screen = (*data).writing;
 
-        let mut writing_ctx: screen_write_ctx = zeroed();
         let mut backing_ctx: screen_write_ctx = zeroed();
         let mut ctx: screen_write_ctx = zeroed();
 
         let mut gc: grid_cell = zeroed();
-        let sx = screen_size_x(backing);
-
-        if parse != 0 {
-            let mut text = args.to_string();
-            text.push('\0');
-            screen_write_start(&raw mut writing_ctx, writing);
-            screen_write_reset(&raw mut writing_ctx);
-            input_parse_screen(
-                (*data).ictx,
-                writing,
-                Some(window_copy_init_ctx_cb),
-                data.cast(),
-                text.as_mut_ptr(),
-                text.len(),
-            );
-        }
 
         let old_hsize = screen_hsize((*data).backing);
         screen_write_start(&raw mut backing_ctx, backing);
@@ -525,7 +500,16 @@ pub unsafe fn window_copy_vadd(wp: *mut window_pane, parse: i32, args: std::fmt:
         }
         let old_cy = (*backing).cy;
         if parse != 0 {
-            screen_write_fast_copy(&raw mut backing_ctx, writing, 0, 0, sx, 1);
+            let mut text = args.to_string();
+            text.push('\0');
+            input_parse_screen(
+                (*data).ictx,
+                backing,
+                Some(window_copy_init_ctx_cb),
+                data.cast(),
+                text.as_mut_ptr(),
+                text.len(),
+            );
         } else {
             memcpy__(&raw mut gc, &raw const GRID_DEFAULT_CELL);
             screen_write_vnputs_(&raw mut backing_ctx, 0, &raw const gc, args);

@@ -110,7 +110,7 @@ unsafe fn cmd_source_file_done(
         }
 
         if error != 0 {
-            cmdq_error!(item, "{}: {}", _s(path), strerror(error));
+            cmdq_error!(item, "{}: {}", strerror(error), _s(path));
         } else if bsize != 0 {
             if load_cfg_from_buffer(
                 std::slice::from_raw_parts(bdata, bsize),
@@ -144,19 +144,8 @@ unsafe fn cmd_source_file_done(
     }
 }
 
-unsafe fn cmd_source_file_add(cdata: *mut cmd_source_file_data, mut path: *const u8) {
+unsafe fn cmd_source_file_add(cdata: *mut cmd_source_file_data, path: *const u8) {
     unsafe {
-        let mut resolved: [u8; libc::PATH_MAX as usize] = zeroed();
-        if libc::realpath(path.cast(), resolved.as_mut_ptr().cast()).is_null() {
-            log_debug!(
-                "cmd_source_file_add: realpath(\"{}\") failed: {}",
-                _s(path),
-                strerror(errno!())
-            );
-        } else {
-            path = resolved.as_ptr();
-        }
-
         log_debug!("cmd_source_file_add: {}", _s(path));
         (*cdata).files = xreallocarray_((*cdata).files, ((*cdata).nfiles + 1) as usize).as_ptr();
         *(*cdata).files.add((*cdata).nfiles as usize) = xstrdup(path).as_ptr();
@@ -265,7 +254,7 @@ unsafe fn cmd_source_file_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
                     } else {
                         strerror(EINVAL)
                     };
-                    cmdq_error!(item, "{}: {}", _s(path), error);
+                    cmdq_error!(item, "{}: {}", error, _s(path));
                     retval = cmd_retval::CMD_RETURN_ERROR;
                 }
                 globfree(g.as_mut_ptr());

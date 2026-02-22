@@ -56,7 +56,7 @@ unsafe fn cmd_save_buffer_done(
 
     unsafe {
         if error != 0 {
-            cmdq_error!(item, "{}: {}", _s(path), strerror(error));
+            cmdq_error!(item, "{}: {}", strerror(error), _s(path));
         }
         cmdq_continue(item);
     }

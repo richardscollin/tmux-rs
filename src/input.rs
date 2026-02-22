@@ -2652,7 +2652,10 @@ unsafe fn input_exit_apc(ictx: *mut input_ctx) {
         }
         log_debug!("input_exit_apc: \"{}\"", _s((*ictx).input_buf.cast::<u8>()));
 
-        if screen_set_title((*sctx).s, (*ictx).input_buf.cast()) != 0 && !wp.is_null() {
+        if !wp.is_null()
+            && options_get_number_((*wp).options, "allow-set-title") != 0
+            && screen_set_title((*sctx).s, (*ictx).input_buf.cast()) != 0
+        {
             notify_pane(c"pane-title-changed", wp);
             server_redraw_window_borders((*wp).window);
             server_status_window((*wp).window);

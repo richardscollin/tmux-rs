@@ -380,9 +380,14 @@ pub unsafe fn input_key_mode1(bev: *mut bufferevent, key: key_code) -> i32 {
     unsafe {
         log_debug!("{}: key in {}", "input_key_mode1", key);
 
+        // A regular or shifted key + Meta.
+        if (key & (KEYC_CTRL | KEYC_META)) == KEYC_META {
+            return input_key_vt10x(bev, key);
+        }
+
         // As per https://invisible-island.net/xterm/modified-keys-us-pc105.html.
         let onlykey = key & KEYC_MASK_KEY;
-        if (key & (KEYC_META | KEYC_CTRL)) == KEYC_CTRL
+        if (key & KEYC_CTRL) != 0
             && (onlykey == ' ' as u64
                 || onlykey == '/' as u64
                 || onlykey == '@' as u64
@@ -390,11 +395,6 @@ pub unsafe fn input_key_mode1(bev: *mut bufferevent, key: key_code) -> i32 {
                 || (onlykey >= '2' as u64 && onlykey <= '8' as u64)
                 || (onlykey >= '@' as u64 && onlykey <= '~' as u64))
         {
-            return input_key_vt10x(bev, key);
-        }
-
-        // A regular key + Meta. In the absence of a standard to back this, we mimic what iTerm 2 does.
-        if (key & (KEYC_CTRL | KEYC_META)) == KEYC_META {
             return input_key_vt10x(bev, key);
         }
     }

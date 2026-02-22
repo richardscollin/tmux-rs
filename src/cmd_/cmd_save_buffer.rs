@@ -93,7 +93,7 @@ unsafe fn cmd_save_buffer_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
                     fatalx("out of memory");
                 }
                 evbuffer_add(evb, bufdata as _, bufsize);
-                cmdq_print_data(item, 1, evb);
+                cmdq_print_data(item, evb);
                 evbuffer_free(evb);
                 return cmd_retval::CMD_RETURN_NORMAL;
             }

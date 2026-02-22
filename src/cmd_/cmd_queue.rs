@@ -856,9 +856,9 @@ pub unsafe fn cmdq_guard(item: *mut cmdq_item, guard: *const u8, flags: bool) {
     }
 }
 
-pub unsafe fn cmdq_print_data(item: *mut cmdq_item, parse: i32, evb: *mut evbuffer) {
+pub unsafe fn cmdq_print_data(item: *mut cmdq_item, evb: *mut evbuffer) {
     unsafe {
-        server_client_print((*item).client, parse, evb);
+        server_client_print((*item).client, 1, evb);
     }
 }
 
@@ -877,7 +877,7 @@ pub unsafe fn cmdq_print_(item: *mut cmdq_item, args: std::fmt::Arguments) {
 
         evbuffer_add_vprintf(evb, args);
 
-        cmdq_print_data(item, 0, evb);
+        cmdq_print_data(item, evb);
         evbuffer_free(evb);
     }
 }

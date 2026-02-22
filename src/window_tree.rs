@@ -947,6 +947,7 @@ unsafe fn window_tree_search(
     _modedata: *mut c_void,
     itemdata: NonNull<c_void>,
     ss: *const u8,
+    icase: i32,
 ) -> bool {
     unsafe {
         let item: NonNull<window_tree_itemdata> = itemdata.cast();
@@ -959,12 +960,29 @@ unsafe fn window_tree_search(
             window_tree_type::WINDOW_TREE_NONE => return false,
             window_tree_type::WINDOW_TREE_SESSION => {
                 if let Some(s) = s {
+                    if icase != 0 {
+                        return (*s.as_ptr())
+                            .name
+                            .to_ascii_lowercase()
+                            .contains(&cstr_to_str(ss).to_ascii_lowercase());
+                    }
                     return (*s.as_ptr()).name.find(cstr_to_str(ss)).is_some();
                 }
             }
             window_tree_type::WINDOW_TREE_WINDOW => {
                 if let (Some(_s), Some(wl)) = (s, wl) {
-                    return !libc::strstr((*(*wl.as_ptr()).window).name, ss).is_null();
+                    if icase != 0 {
+                        return !libc::strcasestr(
+                            (*(*wl.as_ptr()).window).name,
+                            ss,
+                        )
+                        .is_null();
+                    }
+                    return !libc::strstr(
+                        (*(*wl.as_ptr()).window).name,
+                        ss,
+                    )
+                    .is_null();
                 }
             }
             window_tree_type::WINDOW_TREE_PANE => {
@@ -975,7 +993,11 @@ unsafe fn window_tree_search(
                         free_(cmd);
                         return false;
                     } else {
-                        let retval = !libc::strstr(cmd, ss).is_null();
+                        let retval = if icase != 0 {
+                            !libc::strcasestr(cmd, ss).is_null()
+                        } else {
+                            !libc::strstr(cmd, ss).is_null()
+                        };
                         free_(cmd);
                         return retval;
                     }

@@ -268,25 +268,70 @@ pub unsafe fn window_buffer_draw(
     }
 }
 
+unsafe fn window_buffer_find(
+    data: *const u8,
+    datalen: usize,
+    find: *const u8,
+    findlen: usize,
+    icase: i32,
+) -> bool {
+    unsafe {
+        if findlen == 0 || datalen < findlen {
+            return false;
+        }
+        for i in 0..=(datalen - findlen) {
+            let mut matched = true;
+            for j in 0..findlen {
+                if icase == 0 && *data.add(i + j) != *find.add(j) {
+                    matched = false;
+                    break;
+                }
+                if icase != 0
+                    && libc::tolower(*data.add(i + j) as i32)
+                        != libc::tolower(*find.add(j) as i32)
+                {
+                    matched = false;
+                    break;
+                }
+            }
+            if matched {
+                return true;
+            }
+        }
+        false
+    }
+}
+
 pub unsafe fn window_buffer_search(
     _modedata: *mut c_void,
     itemdata: NonNull<c_void>,
     ss: *const u8,
+    icase: i32,
 ) -> bool {
     unsafe {
         let item: NonNull<window_buffer_itemdata> = itemdata.cast();
         let Some(pb) = NonNull::new(paste_get_name(Some(&(*item.as_ptr()).name))) else {
             return false;
         };
-        if (*item.as_ptr()).name.contains(cstr_to_str(ss)) {
-            return true;
+        if icase != 0 {
+            if (*item.as_ptr())
+                .name
+                .to_ascii_lowercase()
+                .contains(&cstr_to_str(ss).to_ascii_lowercase())
+            {
+                return true;
+            }
+            let mut bufsize = 0;
+            let bufdata = paste_buffer_data_(pb, &mut bufsize);
+            return window_buffer_find(bufdata, bufsize, ss, strlen(ss), icase);
+        } else {
+            if (*item.as_ptr()).name.contains(cstr_to_str(ss)) {
+                return true;
+            }
+            let mut bufsize = 0;
+            let bufdata = paste_buffer_data_(pb, &mut bufsize);
+            return window_buffer_find(bufdata, bufsize, ss, strlen(ss), icase);
         }
-        let mut bufsize = 0;
-        let bufdata = paste_buffer_data_(pb, &mut bufsize);
-        let buf = std::slice::from_raw_parts(bufdata, bufsize);
-        let s = std::slice::from_raw_parts(ss, strlen(ss));
-
-        memchr::memmem::find(buf, s).is_some()
     }
 }
 

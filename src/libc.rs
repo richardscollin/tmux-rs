@@ -120,6 +120,10 @@ pub unsafe fn strstr(cs: *const u8, ct: *const u8) -> *mut u8 {
     unsafe { ::libc_sys::strstr(cs.cast(), ct.cast()).cast() }
 }
 
+pub unsafe fn strcasestr(cs: *const u8, ct: *const u8) -> *mut u8 {
+    unsafe { ::libc_sys::strcasestr(cs.cast(), ct.cast()).cast() }
+}
+
 /// Idiomatic Rust version of strtol - parses an i64 from a string and returns remaining string
 pub fn strtol_(s: &str, base: i32) -> (i64, &str) {
     let mut chars = s.chars();

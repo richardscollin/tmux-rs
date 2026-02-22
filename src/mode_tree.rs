@@ -26,7 +26,7 @@ pub type mode_tree_draw_cb = Option<
     ),
 >;
 pub type mode_tree_search_cb =
-    Option<unsafe fn(_: *mut c_void, _: NonNull<c_void>, _: *const u8) -> bool>;
+    Option<unsafe fn(_: *mut c_void, _: NonNull<c_void>, _: *const u8, _: i32) -> bool>;
 pub type mode_tree_menu_cb = Option<unsafe fn(_: NonNull<c_void>, _: *mut client, _: key_code)>;
 pub type mode_tree_height_cb = Option<unsafe fn(_: *mut c_void, _: c_uint) -> c_uint>;
 pub type mode_tree_key_cb =
@@ -95,6 +95,7 @@ pub struct mode_tree_data {
     filter: *mut u8,
     no_matches: i32,
     search_dir: mode_tree_search_dir,
+    search_icase: i32,
 }
 
 #[repr(C)]
@@ -144,6 +145,19 @@ static MODE_TREE_MENU_ITEMS: [menu_item; 4] = [
     menu_item::new("", KEYC_NONE, null_mut()),
     menu_item::new("Cancel", 'q' as u64, null_mut()),
 ];
+
+unsafe fn mode_tree_is_lowercase(ptr: *const u8) -> i32 {
+    unsafe {
+        let mut p = ptr;
+        while *p != b'\0' {
+            if *p as i32 != libc::tolower(*p as i32) {
+                return 0;
+            }
+            p = p.add(1);
+        }
+        1
+    }
+}
 
 unsafe fn mode_tree_find_item(mtl: *mut mode_tree_list, tag: u64) -> *mut mode_tree_item {
     unsafe {
@@ -515,6 +529,7 @@ pub unsafe fn mode_tree_start(
             },
             no_matches: Default::default(),
             search_dir: zeroed(),
+            search_icase: Default::default(),
         });
 
         let sort = args_get_(args, 'O');
@@ -1006,6 +1021,8 @@ pub unsafe fn mode_tree_draw(mtd: &mut mode_tree_data) {
 
 pub unsafe fn mode_tree_search_backward(mtd: *mut mode_tree_data) -> *mut mode_tree_item {
     unsafe {
+        let icase = (*mtd).search_icase;
+
         if (*mtd).search.is_null() {
             return null_mut();
         }
@@ -1039,7 +1056,14 @@ pub unsafe fn mode_tree_search_backward(mtd: *mut mode_tree_data) -> *mut mode_t
             }
 
             let Some(searchcb) = (*mtd).searchcb else {
-                if cstr_to_str((*mti).name).contains(cstr_to_str((*mtd).search)) {
+                if icase == 0
+                    && !libc::strstr((*mti).name, (*mtd).search).is_null()
+                {
+                    return mti;
+                }
+                if icase != 0
+                    && !libc::strcasestr((*mti).name, (*mtd).search).is_null()
+                {
                     return mti;
                 }
                 continue;
@@ -1048,6 +1072,7 @@ pub unsafe fn mode_tree_search_backward(mtd: *mut mode_tree_data) -> *mut mode_t
                 (*mtd).modedata,
                 NonNull::new((*mti).itemdata).unwrap(),
                 (*mtd).search,
+                icase,
             ) {
                 return mti;
             }
@@ -1058,6 +1083,8 @@ pub unsafe fn mode_tree_search_backward(mtd: *mut mode_tree_data) -> *mut mode_t
 
 pub unsafe fn mode_tree_search_forward(mtd: *mut mode_tree_data) -> *mut mode_tree_item {
     unsafe {
+        let icase = (*mtd).search_icase;
+
         if (*mtd).search.is_null() {
             return null_mut();
         }
@@ -1090,7 +1117,14 @@ pub unsafe fn mode_tree_search_forward(mtd: *mut mode_tree_data) -> *mut mode_tr
             }
 
             let Some(searchcb) = (*mtd).searchcb else {
-                if cstr_to_str((*mti).name).contains(cstr_to_str((*mtd).search)) {
+                if icase == 0
+                    && !libc::strstr((*mti).name, (*mtd).search).is_null()
+                {
+                    return mti;
+                }
+                if icase != 0
+                    && !libc::strcasestr((*mti).name, (*mtd).search).is_null()
+                {
                     return mti;
                 }
                 continue;
@@ -1099,6 +1133,7 @@ pub unsafe fn mode_tree_search_forward(mtd: *mut mode_tree_data) -> *mut mode_tr
                 (*mtd).modedata,
                 NonNull::new((*mti).itemdata).unwrap(),
                 (*mtd).search,
+                icase,
             ) {
                 return mti;
             }
@@ -1150,6 +1185,7 @@ pub unsafe fn mode_tree_search_callback(
             return 0;
         }
         (*mtd).search = xstrdup(s).as_ptr();
+        (*mtd).search_icase = mode_tree_is_lowercase(s);
         mode_tree_search_set(mtd);
 
         0
@@ -1555,6 +1591,7 @@ pub unsafe fn mode_tree_key(
             }
             code::QUESTION_MARK | code::SLASH | code::S_CTRL => {
                 (*mtd).references += 1;
+                (*mtd).search_dir = mode_tree_search_dir::MODE_TREE_SEARCH_FORWARD;
                 status_prompt_set(
                     c,
                     null_mut(),

@@ -17,8 +17,8 @@ pub static CMD_COMMAND_PROMPT_ENTRY: cmd_entry = cmd_entry {
     name: "command-prompt",
     alias: None,
 
-    args: args_parse::new("1bFkiI:Np:t:T:", 0, 1, Some(cmd_command_prompt_args_parse)),
-    usage: "[-1bFkiN] [-I inputs] [-p prompts] [-t target-pane] [-T prompt-type] [template]",
+    args: args_parse::new("1bFkliI:Np:t:T:", 0, 1, Some(cmd_command_prompt_args_parse)),
+    usage: "[-1bFkliN] [-I inputs] [-p prompts] [-t target-pane] [-T prompt-type] [template]",
 
     flags: cmd_flag::CMD_CLIENT_TFLAG,
     exec: cmd_command_prompt_exec,
@@ -105,37 +105,44 @@ unsafe fn cmd_command_prompt_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
         } else {
             next_input = null_mut();
         }
-        while {
-            prompt = strsep(&raw mut next_prompt as _, c!(","));
-            !prompt.is_null()
-        } {
-            cdata.prompts = xreallocarray_::<cmd_command_prompt_prompt>(
-                cdata.prompts,
-                cdata.count as usize + 1,
-            )
-            .as_ptr();
-            tmp = if space == 0 {
-                xstrdup(prompt).as_ptr()
-            } else {
-                format_nul!("{} ", _s(prompt))
-            };
-            (*cdata.prompts.add(cdata.count as usize)).prompt = tmp;
+        if args_has(&*args, 'l') {
+            cdata.prompts = xcalloc_::<cmd_command_prompt_prompt>(1).as_ptr();
+            (*cdata.prompts).prompt = prompts;
+            (*cdata.prompts).input = inputs;
+            cdata.count = 1;
+        } else {
+            while {
+                prompt = strsep(&raw mut next_prompt as _, c!(","));
+                !prompt.is_null()
+            } {
+                cdata.prompts = xreallocarray_::<cmd_command_prompt_prompt>(
+                    cdata.prompts,
+                    cdata.count as usize + 1,
+                )
+                .as_ptr();
+                tmp = if space == 0 {
+                    xstrdup(prompt).as_ptr()
+                } else {
+                    format_nul!("{} ", _s(prompt))
+                };
+                (*cdata.prompts.add(cdata.count as usize)).prompt = tmp;
 
-            let mut input: *const u8;
-            if !next_input.is_null() {
-                input = strsep(&raw mut next_input as _, c!(","));
-                if input.is_null() {
+                let mut input: *const u8;
+                if !next_input.is_null() {
+                    input = strsep(&raw mut next_input as _, c!(","));
+                    if input.is_null() {
+                        input = c!("");
+                    }
+                } else {
                     input = c!("");
                 }
-            } else {
-                input = c!("");
-            }
-            (*cdata.prompts.add(cdata.count as usize)).input = xstrdup(input).as_ptr();
+                (*cdata.prompts.add(cdata.count as usize)).input = xstrdup(input).as_ptr();
 
-            cdata.count += 1;
+                cdata.count += 1;
+            }
+            free_(inputs);
+            free_(prompts);
         }
-        free_(inputs);
-        free_(prompts);
 
         let type_ = args_get(&*args, b'T');
         if !type_.is_null() {

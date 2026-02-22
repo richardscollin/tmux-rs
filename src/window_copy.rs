@@ -1547,6 +1547,32 @@ pub unsafe fn window_copy_cmd_cursor_up(cs: *mut window_copy_cmd_state) -> windo
     }
 }
 
+pub unsafe fn window_copy_cmd_centre_vertical(
+    cs: *mut window_copy_cmd_state,
+) -> window_copy_cmd_action {
+    unsafe {
+        let wme: *mut window_mode_entry = (*cs).wme;
+        let data: *mut window_copy_mode_data = (*wme).data.cast();
+
+        window_copy_update_cursor(wme, (*data).cx, (*(*wme).wp).sy / 2);
+        window_copy_update_selection(wme, 1, 0);
+        window_copy_cmd_action::WINDOW_COPY_CMD_REDRAW
+    }
+}
+
+pub unsafe fn window_copy_cmd_centre_horizontal(
+    cs: *mut window_copy_cmd_state,
+) -> window_copy_cmd_action {
+    unsafe {
+        let wme: *mut window_mode_entry = (*cs).wme;
+        let data: *mut window_copy_mode_data = (*wme).data.cast();
+
+        window_copy_update_cursor(wme, (*(*wme).wp).sx / 2, (*data).cy);
+        window_copy_update_selection(wme, 1, 0);
+        window_copy_cmd_action::WINDOW_COPY_CMD_REDRAW
+    }
+}
+
 pub unsafe fn window_copy_cmd_end_of_line(
     cs: *mut window_copy_cmd_state,
 ) -> window_copy_cmd_action {
@@ -2929,7 +2955,7 @@ struct window_copy_cmd_table_entry {
     f: unsafe fn(*mut window_copy_cmd_state) -> window_copy_cmd_action,
 }
 
-static WINDOW_COPY_CMD_TABLE: [window_copy_cmd_table_entry; 85] = [
+static WINDOW_COPY_CMD_TABLE: [window_copy_cmd_table_entry; 87] = [
     window_copy_cmd_table_entry {
         command: "append-selection",
         args: args_parse::new("", 0, 0, None),
@@ -3055,6 +3081,18 @@ static WINDOW_COPY_CMD_TABLE: [window_copy_cmd_table_entry; 85] = [
         args: args_parse::new("CP", 0, 1, None),
         clear: window_copy_cmd_clear::WINDOW_COPY_CMD_CLEAR_ALWAYS,
         f: window_copy_cmd_copy_selection_and_cancel,
+    },
+    window_copy_cmd_table_entry {
+        command: "cursor-centre-horizontal",
+        args: args_parse::new("", 0, 0, None),
+        clear: window_copy_cmd_clear::WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
+        f: window_copy_cmd_centre_horizontal,
+    },
+    window_copy_cmd_table_entry {
+        command: "cursor-centre-vertical",
+        args: args_parse::new("", 0, 0, None),
+        clear: window_copy_cmd_clear::WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
+        f: window_copy_cmd_centre_vertical,
     },
     window_copy_cmd_table_entry {
         command: "cursor-down",

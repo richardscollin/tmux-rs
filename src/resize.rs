@@ -303,18 +303,12 @@ pub unsafe fn clients_calculate_size(
 
 pub unsafe fn default_window_size_skip_client(
     loop_: *mut client,
-    type_: window_size_option,
+    _type: window_size_option,
     _current: bool,
     s: *mut session,
     w: *mut window,
 ) -> bool {
     unsafe {
-        // Latest checks separately, so do not check here. Otherwise only
-        // include clients where the session contains the window or where the
-        // session is the given session.
-        if type_ == window_size_option::WINDOW_SIZE_LATEST {
-            return false;
-        }
         if !w.is_null() && !session_has((*loop_).session, w) {
             return true;
         }

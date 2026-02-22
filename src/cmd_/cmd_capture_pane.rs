@@ -19,8 +19,8 @@ pub static CMD_CAPTURE_PANE_ENTRY: cmd_entry = cmd_entry {
     name: "capture-pane",
     alias: Some("capturep"),
 
-    args: args_parse::new("ab:CeE:JNpPqS:Tt:", 0, 0, None),
-    usage: "[-aCeJNpPqT] [-b buffer-name] [-E end-line] [-S start-line] [-t target-pane]",
+    args: args_parse::new("ab:CeE:JMNpPqS:Tt:", 0, 0, None),
+    usage: "[-aCeJMNpPqT] [-b buffer-name] [-E end-line] [-S start-line] [-t target-pane]",
 
     source: cmd_entry_flag::zeroed(),
     target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_PANE, cmd_find_flags::empty()),
@@ -105,6 +105,7 @@ unsafe fn cmd_capture_pane_history(
     unsafe {
         let gd: *mut grid;
         let mut gl: *const grid_line;
+        let s: *mut screen;
         let mut gc: *mut grid_cell = null_mut();
         let mut flags = grid_string_flags::empty();
 
@@ -124,7 +125,18 @@ unsafe fn cmd_capture_pane_history(
                 }
                 return xstrdup(c!("")).as_ptr();
             }
+            s = &raw mut (*wp).base;
+        } else if args_has(&*args, 'M') {
+            let wme = tailq_first(&raw mut (*wp).modes);
+            if !wme.is_null() && (*(*wme).mode).get_screen.is_some() {
+                s = (*(*wme).mode).get_screen.unwrap()(wme);
+                gd = (*s).grid;
+            } else {
+                s = &raw mut (*wp).base;
+                gd = (*wp).base.grid;
+            }
         } else {
+            s = &raw mut (*wp).base;
             gd = (*wp).base.grid;
         }
 
@@ -191,7 +203,7 @@ unsafe fn cmd_capture_pane_history(
 
         let mut buf = null_mut();
         for i in top..=bottom {
-            line = grid_string_cells(gd, 0, i, sx, &raw mut gc, flags, (*wp).screen);
+            line = grid_string_cells(gd, 0, i, sx, &raw mut gc, flags, s);
             linelen = strlen(line);
 
             buf = cmd_capture_pane_append(buf, len, line, linelen);

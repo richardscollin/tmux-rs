@@ -22,6 +22,7 @@ pub static WINDOW_COPY_MODE: window_mode = window_mode {
     key_table: Some(window_copy_key_table),
     command: Some(window_copy_command),
     formats: Some(window_copy_formats),
+    get_screen: Some(window_copy_get_screen),
     default_format: None,
     update: None,
     key: None,
@@ -35,6 +36,7 @@ pub static WINDOW_VIEW_MODE: window_mode = window_mode {
     key_table: Some(window_copy_key_table),
     command: Some(window_copy_command),
     formats: Some(window_copy_formats),
+    get_screen: Some(window_copy_get_screen),
     default_format: None,
     update: None,
     key: None,
@@ -943,6 +945,13 @@ pub unsafe fn window_copy_formats(wme: *mut window_mode_entry, ft: *mut format_t
             c!("copy_cursor_hyperlink"),
             window_copy_cursor_hyperlink_cb,
         );
+    }
+}
+
+unsafe fn window_copy_get_screen(wme: *mut window_mode_entry) -> *mut screen {
+    unsafe {
+        let data: *mut window_copy_mode_data = (*wme).data.cast();
+        (*data).backing
     }
 }
 

@@ -42,6 +42,7 @@ pub static WINDOW_CLIENT_MODE: window_mode = window_mode {
     key_table: None,
     command: None,
     formats: None,
+    get_screen: None,
 };
 
 #[derive(num_enum::TryFromPrimitive)]

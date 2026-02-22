@@ -1266,6 +1266,7 @@ struct window_mode {
         ),
     >,
     formats: Option<unsafe fn(*mut window_mode_entry, *mut format_tree)>,
+    get_screen: Option<unsafe fn(*mut window_mode_entry) -> *mut screen>,
 }
 
 // Active window mode.

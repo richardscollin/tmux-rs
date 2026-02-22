@@ -618,6 +618,8 @@ pub unsafe fn screen_write_fast_copy(
 ) {
     unsafe {
         let s = (*ctx).s;
+        let wp = (*ctx).wp;
+        let mut ttyctx: tty_ctx = zeroed();
         let gd = (*src).grid;
         let mut gc: grid_cell = zeroed();
 
@@ -625,12 +627,16 @@ pub unsafe fn screen_write_fast_copy(
             return;
         }
 
-        let mut cy = (*s).cy;
+        let cx = (*s).cx;
+        let cy = (*s).cy;
         for yy in py..(py + ny) {
             if yy >= (*gd).hsize + (*gd).sy {
                 break;
             }
-            let mut cx = (*s).cx;
+            (*s).cx = cx;
+            if !wp.is_null() {
+                screen_write_initctx(ctx, &raw mut ttyctx, 0);
+            }
             for xx in px..(px + nx) {
                 if xx >= (*grid_get_line(gd, yy)).cellsize {
                     break;
@@ -639,11 +645,19 @@ pub unsafe fn screen_write_fast_copy(
                 if xx + gc.data.width as u32 > px + nx {
                     break;
                 }
-                grid_view_set_cell((*(*ctx).s).grid, cx, cy, &gc);
-                cx += 1;
+                grid_view_set_cell((*(*ctx).s).grid, (*s).cx, (*s).cy, &gc);
+                if !wp.is_null() {
+                    ttyctx.cell = &gc;
+                    tty_write(tty_cmd_cell, &raw mut ttyctx);
+                    ttyctx.ocx += 1;
+                }
+                (*s).cx += 1;
             }
-            cy += 1;
+            (*s).cy += 1;
         }
+
+        (*s).cx = cx;
+        (*s).cy = cy;
     }
 }
 

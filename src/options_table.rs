@@ -205,7 +205,7 @@ macro_rules! options_table_window_hook {
     };
 }
 
-pub static OPTIONS_TABLE: [options_table_entry; 190] = [
+pub static OPTIONS_TABLE: [options_table_entry; 191] = [
     options_table_entry {
         name: "backspace",
         type_: options_table_type::OPTIONS_TABLE_KEY,
@@ -1040,6 +1040,21 @@ pub static OPTIONS_TABLE: [options_table_entry; 190] = [
         flags: OPTIONS_TABLE_IS_STYLE,
         separator: c!(","),
         text: c!("Style of the marked line in copy mode."),
+        ..options_table_entry::const_default()
+    },
+    options_table_entry {
+        name: "copy-mode-position-format",
+        type_: options_table_type::OPTIONS_TABLE_STRING,
+        scope: OPTIONS_TABLE_WINDOW | OPTIONS_TABLE_PANE,
+        default_str: Some(
+            "#[align=right]\
+             #{t/p:top_line_time}#{?#{e|>:#{top_line_time},0}, ,}\
+             [#{scroll_position}/#{history_size}]\
+             #{?search_timed_out, (timed out),\
+             #{?search_count, (#{search_count}\
+             #{?search_count_partial,+,} results),}}",
+        ),
+        text: c!("Format of the position indicator in copy mode."),
         ..options_table_entry::const_default()
     },
     options_table_entry {

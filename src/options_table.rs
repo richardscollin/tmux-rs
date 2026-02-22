@@ -209,7 +209,7 @@ macro_rules! options_table_window_hook {
     };
 }
 
-pub static OPTIONS_TABLE: [options_table_entry; 197] = [
+pub static OPTIONS_TABLE: [options_table_entry; 198] = [
     options_table_entry {
         name: "backspace",
         type_: options_table_type::OPTIONS_TABLE_KEY,
@@ -348,6 +348,16 @@ pub static OPTIONS_TABLE: [options_table_entry; 197] = [
         text: c!(
             "Location of the command prompt history file. Empty does not write a history file."
         ),
+        ..options_table_entry::const_default()
+    },
+    options_table_entry {
+        name: "input-buffer-size",
+        type_: options_table_type::OPTIONS_TABLE_NUMBER,
+        scope: OPTIONS_TABLE_SERVER,
+        minimum: INPUT_BUF_DEFAULT_SIZE as u32,
+        maximum: u32::MAX,
+        default_num: INPUT_BUF_DEFAULT_SIZE as i64,
+        text: c!("Number of bytes accepted in a single input before dropping."),
         ..options_table_entry::const_default()
     },
     options_table_entry {

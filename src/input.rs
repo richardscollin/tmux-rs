@@ -67,7 +67,10 @@ struct input_param {
 }
 
 const INPUT_BUF_START: usize = 32;
-const INPUT_BUF_LIMIT: usize = 1048576;
+pub const INPUT_BUF_DEFAULT_SIZE: usize = 1048576;
+
+static INPUT_BUFFER_SIZE: std::sync::atomic::AtomicUsize =
+    std::sync::atomic::AtomicUsize::new(INPUT_BUF_DEFAULT_SIZE);
 
 bitflags::bitflags! {
     #[repr(C)]
@@ -1354,7 +1357,7 @@ unsafe fn input_input(ictx: *mut input_ctx) -> i32 {
         let mut available: usize = (*ictx).input_space;
         while (*ictx).input_len + 1 >= available {
             available *= 2;
-            if available > INPUT_BUF_LIMIT {
+            if available > INPUT_BUFFER_SIZE.load(std::sync::atomic::Ordering::Relaxed) {
                 (*ictx).flags |= input_flags::INPUT_DISCARD;
                 return 0;
             }
@@ -3193,4 +3196,11 @@ pub unsafe fn input_reply_clipboard(
         bufferevent_write(bev, end.cast(), strlen(end));
         free_(out);
     }
+}
+
+/// Set input buffer size.
+pub fn input_set_buffer_size(buffer_size: usize) {
+    let old = INPUT_BUFFER_SIZE.load(std::sync::atomic::Ordering::Relaxed);
+    log_debug!("input_set_buffer_size: {} -> {}", old, buffer_size);
+    INPUT_BUFFER_SIZE.store(buffer_size, std::sync::atomic::Ordering::Relaxed);
 }

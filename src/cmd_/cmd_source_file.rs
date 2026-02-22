@@ -128,8 +128,19 @@ unsafe fn cmd_source_file_done(
     }
 }
 
-unsafe fn cmd_source_file_add(cdata: *mut cmd_source_file_data, path: *const u8) {
+unsafe fn cmd_source_file_add(cdata: *mut cmd_source_file_data, mut path: *const u8) {
     unsafe {
+        let mut resolved: [u8; libc::PATH_MAX as usize] = zeroed();
+        if libc::realpath(path.cast(), resolved.as_mut_ptr().cast()).is_null() {
+            log_debug!(
+                "cmd_source_file_add: realpath(\"{}\") failed: {}",
+                _s(path),
+                strerror(errno!())
+            );
+        } else {
+            path = resolved.as_ptr();
+        }
+
         log_debug!("cmd_source_file_add: {}", _s(path));
         (*cdata).files = xreallocarray_((*cdata).files, ((*cdata).nfiles + 1) as usize).as_ptr();
         *(*cdata).files.add((*cdata).nfiles as usize) = xstrdup(path).as_ptr();

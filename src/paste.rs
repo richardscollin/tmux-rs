@@ -225,7 +225,11 @@ pub unsafe fn paste_rename(
             return Err(format!("no buffer {}", oldname.unwrap()));
         }
 
-        if let Some(pb_new) = NonNull::new(paste_get_name(newname)) {
+        let pb_new = paste_get_name(newname);
+        if pb_new == pb {
+            return Ok(());
+        }
+        if let Some(pb_new) = NonNull::new(pb_new) {
             paste_free(pb_new);
         }
 

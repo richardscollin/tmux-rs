@@ -2016,6 +2016,9 @@ unsafe fn tty_keys_device_attributes(
                 if p[i as usize] == 28 {
                     tty_add_features(features, "rectfill", c!(","));
                 }
+                if p[i as usize] == 52 {
+                    tty_add_features(features, "clipboard", c!(","));
+                }
             }
         }
         // log_debug( c!("%s: received primary DA %.*s\0"), (*c).name, *size as i32, buf);

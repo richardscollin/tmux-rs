@@ -209,7 +209,7 @@ macro_rules! options_table_window_hook {
     };
 }
 
-pub static OPTIONS_TABLE: [options_table_entry; 204] = [
+pub static OPTIONS_TABLE: [options_table_entry; 205] = [
     options_table_entry {
         name: "backspace",
         type_: options_table_type::OPTIONS_TABLE_KEY,
@@ -494,6 +494,16 @@ pub static OPTIONS_TABLE: [options_table_entry; 204] = [
         separator: c!(","),
         text: c!(
             "User key assignments. Each sequence in the list is translated into a key: 'User0', 'User1' and so on."
+        ),
+        ..options_table_entry::const_default()
+    },
+    options_table_entry {
+        name: "variation-selector-always-wide",
+        type_: options_table_type::OPTIONS_TABLE_FLAG,
+        scope: OPTIONS_TABLE_SERVER,
+        default_num: 1,
+        text: c!(
+            "If the Unicode VS16 codepoint should always be treated as a wide character."
         ),
         ..options_table_entry::const_default()
     },

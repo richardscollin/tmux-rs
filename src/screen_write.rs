@@ -2323,7 +2323,9 @@ pub unsafe fn screen_write_combine(ctx: *mut screen_write_ctx, gc: *const grid_c
             zero_width = 1;
         } else if utf8_is_vs(ud) {
             zero_width = 1;
-            force_wide = 1;
+            if options_get_number_(GLOBAL_OPTIONS, "variation-selector-always-wide") != 0 {
+                force_wide = 1;
+            }
         } else if (*ud).width == 0 {
             zero_width = 1;
         }

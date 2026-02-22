@@ -19,8 +19,8 @@ pub static CMD_RUN_SHELL_ENTRY: cmd_entry = cmd_entry {
     name: "run-shell",
     alias: Some("run"),
 
-    args: args_parse::new("bd:Ct:c:", 0, 1, Some(cmd_run_shell_args_parse)),
-    usage: "[-bC] [-c start-directory] [-d delay] [-t target-pane] [shell-command]",
+    args: args_parse::new("bd:Ct:Es:c:", 0, 1, Some(cmd_run_shell_args_parse)),
+    usage: "[-bCE] [-c start-directory] [-d delay] [-t target-pane] [shell-command]",
 
     target: cmd_entry_flag::new(
         b't',
@@ -138,6 +138,9 @@ pub unsafe fn cmd_run_shell_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
             (*cdata).wp_id = -1;
         }
 
+        if args_has(&*args, 'E') {
+            (*cdata).flags |= job_flag::JOB_SHOWSTDERR;
+        }
         if wait {
             (*cdata).client = c;
             (*cdata).item = item;

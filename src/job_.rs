@@ -333,25 +333,39 @@ pub unsafe fn job_run(
                     environ_free(env);
 
                     if !flags.intersects(job_flag::JOB_PTY) {
+                        let mut do_close = true;
                         if dup2(out[1], STDIN_FILENO) == -1 {
                             fatal("dup2 failed");
                         }
+                        do_close = do_close && out[1] != STDIN_FILENO;
                         if dup2(out[1], STDOUT_FILENO) == -1 {
                             fatal("dup2 failed");
                         }
-                        if out[1] != STDIN_FILENO && out[1] != STDOUT_FILENO {
+                        do_close = do_close && out[1] != STDOUT_FILENO;
+                        if flags.intersects(job_flag::JOB_SHOWSTDERR) {
+                            if dup2(out[1], STDERR_FILENO) == -1 {
+                                fatal("dup2 failed");
+                            }
+                            do_close = do_close && out[1] != STDERR_FILENO;
+                        } else {
+                            use crate::compat::FileIntoRawFd;
+                            let nullfd = std::fs::OpenOptions::new()
+                                .read(true)
+                                .write(true)
+                                .open(PATH_DEVNULL)
+                                .expect("open failed")
+                                .into_fd();
+                            if dup2(nullfd, STDERR_FILENO) == -1 {
+                                fatal("dup2 failed");
+                            }
+                            if nullfd != STDERR_FILENO {
+                                close(nullfd);
+                            }
+                        }
+                        if do_close {
                             close(out[1]);
                         }
                         close(out[0]);
-
-                        use crate::compat::FileIntoRawFd;
-                        let nullfd = std::fs::OpenOptions::new().read(true).write(true).open(PATH_DEVNULL).expect("open failed").into_fd();
-                        if dup2(nullfd, STDERR_FILENO) == -1 {
-                            fatal("dup2 failed");
-                        }
-                        if nullfd != STDERR_FILENO {
-                            close(nullfd);
-                        }
                     }
                     closefrom(STDERR_FILENO + 1);
 

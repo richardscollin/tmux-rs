@@ -2737,6 +2737,7 @@ bitflags::bitflags! {
         const JOB_KEEPWRITE = 2;
         const JOB_PTY = 4;
         const JOB_DEFAULTSHELL = 8;
+        const JOB_SHOWSTDERR = 16;
     }
 }
 

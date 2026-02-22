@@ -1071,7 +1071,7 @@ pub unsafe fn window_copy_do_copy_end_of_line(
                 prefix = format_single(null_mut(), cstr_to_str(arg1), c, s, wl, wp);
             }
             if !s.is_null() && count > 0 && *arg0 != b'\0' {
-                command = format_single(null_mut(), cstr_to_str(arg1), c, s, wl, wp);
+                command = format_single(null_mut(), cstr_to_str(arg0), c, s, wl, wp);
             }
         } else {
             if count == 1 {
@@ -1151,24 +1151,24 @@ pub unsafe fn window_copy_do_copy_line(
         let wl = (*cs).wl;
         let wp = (*wme).wp;
         let data: *mut window_copy_mode_data = (*wme).data.cast();
-        let count = args_count(&*(*cs).args);
+        let count = args_count(&*(*cs).wargs);
         let mut np = (*wme).prefix;
-        // ocx, ocy, ooy;
         let mut prefix = null_mut();
         let mut command = null_mut();
-
-        let arg1 = args_string(&*(*cs).args, 1).unwrap().as_ptr().cast::<u8>();
-        let arg2 = args_string(&*(*cs).args, 2).unwrap().as_ptr().cast::<u8>();
+        let arg0 = args_string(&*(*cs).wargs, 0);
+        let arg1 = args_string(&*(*cs).wargs, 1);
+        let set_paste = !args_has(&*(*cs).wargs, 'P');
+        let set_clip = !args_has(&*(*cs).wargs, 'C');
 
         if pipe != 0 {
-            if count == 3 {
-                prefix = format_single(null_mut(), cstr_to_str(arg2), c, s, wl, wp);
+            if count == 2 {
+                prefix = format_single(null_mut(), arg1.unwrap().to_str().unwrap(), c, s, wl, wp);
             }
-            if !s.is_null() && count > 1 && *arg1 != b'\0' {
-                command = format_single(null_mut(), cstr_to_str(arg1), c, s, wl, wp);
+            if !s.is_null() && count > 0 && *arg0.unwrap().as_ptr().cast::<u8>() != b'\0' {
+                command = format_single(null_mut(), arg0.unwrap().to_str().unwrap(), c, s, wl, wp);
             }
-        } else if count == 2 {
-            prefix = format_single(null_mut(), cstr_to_str(arg1), c, s, wl, wp);
+        } else if count == 1 {
+            prefix = format_single(null_mut(), arg0.unwrap().to_str().unwrap(), c, s, wl, wp);
         }
 
         let ocx = (*data).cx;
@@ -1186,9 +1186,9 @@ pub unsafe fn window_copy_do_copy_line(
 
         if !s.is_null() {
             if pipe != 0 {
-                window_copy_copy_pipe(wme, s, prefix, command, true, true);
+                window_copy_copy_pipe(wme, s, prefix, command, set_paste, set_clip);
             } else {
-                window_copy_copy_selection(wme, prefix, true, true);
+                window_copy_copy_selection(wme, prefix, set_paste, set_clip);
             }
 
             if cancel != 0 {
@@ -1241,12 +1241,12 @@ pub unsafe fn window_copy_cmd_copy_selection_no_clear(
         let wl: *mut winlink = (*cs).wl;
         let wp: *mut window_pane = (*wme).wp;
         let mut prefix = null_mut();
-        let arg0 = args_string(&*(*cs).args, 0);
+        let arg0 = args_string(&*(*cs).wargs, 0);
         let set_paste = !args_has(&*(*cs).wargs, 'P');
         let set_clip = !args_has(&*(*cs).wargs, 'C');
 
         if let Some(arg0) = arg0 {
-            prefix = format_single(null_mut(), cstr_to_str(arg0.as_ptr().cast()), c, s, wl, wp);
+            prefix = format_single(null_mut(), arg0.to_str().unwrap(), c, s, wl, wp);
         }
 
         if !s.is_null() {
@@ -2336,20 +2336,20 @@ pub unsafe fn window_copy_cmd_copy_pipe_no_clear(
         let wp: *mut window_pane = (*wme).wp;
         let mut command = null_mut();
         let mut prefix = null_mut();
-        let arg0 = args_string(&*(*cs).args, 0);
-        let arg1 = args_string(&*(*cs).args, 1);
+        let arg0 = args_string(&*(*cs).wargs, 0);
+        let arg1 = args_string(&*(*cs).wargs, 1);
         let set_paste = !args_has(&*(*cs).wargs, 'P');
         let set_clip = !args_has(&*(*cs).wargs, 'C');
 
         if let Some(arg1) = arg1 {
-            prefix = format_single(null_mut(), cstr_to_str(arg1.as_ptr().cast()), c, s, wl, wp);
+            prefix = format_single(null_mut(), arg1.to_str().unwrap(), c, s, wl, wp);
         }
 
         if !s.is_null()
             && let Some(arg0) = arg0
             && !arg0.is_empty()
         {
-            command = format_single(null_mut(), cstr_to_str(arg0.as_ptr().cast()), c, s, wl, wp);
+            command = format_single(null_mut(), arg0.to_str().unwrap(), c, s, wl, wp);
         }
         window_copy_copy_pipe(wme, s, prefix, command, set_paste, set_clip);
         free_(command);
@@ -2391,13 +2391,13 @@ pub unsafe fn window_copy_cmd_pipe_no_clear(
         let wl: *mut winlink = (*cs).wl;
         let wp: *mut window_pane = (*wme).wp;
         let mut command = null_mut();
-        let arg1 = args_string(&*(*cs).args, 1);
+        let arg0 = args_string(&*(*cs).wargs, 0);
 
         if !s.is_null()
-            && let Some(arg1) = arg1
-            && !arg1.is_empty()
+            && let Some(arg0) = arg0
+            && !arg0.is_empty()
         {
-            command = format_single(null_mut(), cstr_to_str(arg1.as_ptr().cast()), c, s, wl, wp);
+            command = format_single(null_mut(), arg0.to_str().unwrap(), c, s, wl, wp);
         }
         window_copy_pipe(wme, s, command);
         free_(command);
@@ -2431,10 +2431,10 @@ pub unsafe fn window_copy_cmd_pipe_and_cancel(
 pub unsafe fn window_copy_cmd_goto_line(cs: *mut window_copy_cmd_state) -> window_copy_cmd_action {
     unsafe {
         let wme: *mut window_mode_entry = (*cs).wme;
-        let arg1 = args_string(&*(*cs).args, 1).unwrap().as_ptr().cast::<u8>();
+        let arg0 = args_string(&*(*cs).wargs, 0).unwrap().as_ptr().cast::<u8>();
 
-        if *arg1 != b'\0' {
-            window_copy_goto_line(wme, arg1);
+        if *arg0 != b'\0' {
+            window_copy_goto_line(wme, arg0);
         }
         window_copy_cmd_action::WINDOW_COPY_CMD_NOTHING
     }
@@ -2447,12 +2447,12 @@ pub unsafe fn window_copy_cmd_jump_backward(
         let wme: *mut window_mode_entry = (*cs).wme;
         let data: *mut window_copy_mode_data = (*wme).data.cast();
         let mut np = (*wme).prefix;
-        let arg1 = args_string(&*(*cs).args, 1).unwrap().as_ptr().cast::<u8>();
+        let arg0 = args_string(&*(*cs).wargs, 0).unwrap().as_ptr().cast::<u8>();
 
-        if *arg1 != b'\0' {
+        if *arg0 != b'\0' {
             (*data).jumptype = window_copy::WINDOW_COPY_JUMPBACKWARD;
             free_((*data).jumpchar);
-            (*data).jumpchar = utf8_fromcstr(arg1);
+            (*data).jumpchar = utf8_fromcstr(arg0);
             while np != 0 {
                 window_copy_cursor_jump_back(wme);
                 np -= 1;
@@ -2469,12 +2469,12 @@ pub unsafe fn window_copy_cmd_jump_forward(
         let wme: *mut window_mode_entry = (*cs).wme;
         let data: *mut window_copy_mode_data = (*wme).data.cast();
         let mut np = (*wme).prefix;
-        let arg1 = args_string(&*(*cs).args, 1).unwrap().as_ptr().cast::<u8>();
+        let arg0 = args_string(&*(*cs).wargs, 0).unwrap().as_ptr().cast::<u8>();
 
-        if *arg1 != b'\0' {
+        if *arg0 != b'\0' {
             (*data).jumptype = window_copy::WINDOW_COPY_JUMPFORWARD;
             free_((*data).jumpchar);
-            (*data).jumpchar = utf8_fromcstr(arg1);
+            (*data).jumpchar = utf8_fromcstr(arg0);
             while np != 0 {
                 window_copy_cursor_jump(wme);
                 np -= 1;
@@ -2491,12 +2491,12 @@ pub unsafe fn window_copy_cmd_jump_to_backward(
         let wme: *mut window_mode_entry = (*cs).wme;
         let data: *mut window_copy_mode_data = (*wme).data.cast();
         let mut np = (*wme).prefix;
-        let arg1 = args_string(&*(*cs).args, 1).unwrap().as_ptr().cast::<u8>();
+        let arg0 = args_string(&*(*cs).wargs, 0).unwrap().as_ptr().cast::<u8>();
 
-        if *arg1 != b'\0' {
+        if *arg0 != b'\0' {
             (*data).jumptype = window_copy::WINDOW_COPY_JUMPTOBACKWARD;
             free_((*data).jumpchar);
-            (*data).jumpchar = utf8_fromcstr(arg1);
+            (*data).jumpchar = utf8_fromcstr(arg0);
             while np != 0 {
                 window_copy_cursor_jump_to_back(wme);
                 np -= 1;
@@ -2513,12 +2513,12 @@ pub unsafe fn window_copy_cmd_jump_to_forward(
         let wme: *mut window_mode_entry = (*cs).wme;
         let data: *mut window_copy_mode_data = (*wme).data.cast();
         let mut np = (*wme).prefix;
-        let arg1 = args_string(&*(*cs).args, 1).unwrap().as_ptr().cast::<u8>();
+        let arg0 = args_string(&*(*cs).wargs, 0).unwrap().as_ptr().cast::<u8>();
 
-        if *arg1 != b'\0' {
+        if *arg0 != b'\0' {
             (*data).jumptype = window_copy::WINDOW_COPY_JUMPTOFORWARD;
             free_((*data).jumpchar);
-            (*data).jumpchar = utf8_fromcstr(arg1);
+            (*data).jumpchar = utf8_fromcstr(arg0);
             while np != 0 {
                 window_copy_cursor_jump_to(wme);
                 np -= 1;
@@ -2544,9 +2544,8 @@ pub unsafe fn window_copy_cmd_next_prompt(
 ) -> window_copy_cmd_action {
     unsafe {
         let wme: *mut window_mode_entry = (*cs).wme;
-        let arg1 = args_string(&*(*cs).args, 1).unwrap().as_ptr().cast();
 
-        window_copy_cursor_prompt(wme, 1, arg1);
+        window_copy_cursor_prompt(wme, 1, args_has(&*(*cs).wargs, 'o'));
         window_copy_cmd_action::WINDOW_COPY_CMD_NOTHING
     }
 }
@@ -2556,9 +2555,8 @@ pub unsafe fn window_copy_cmd_previous_prompt(
 ) -> window_copy_cmd_action {
     unsafe {
         let wme: *mut window_mode_entry = (*cs).wme;
-        let arg1 = args_string(&*(*cs).args, 1).unwrap().as_ptr().cast();
 
-        window_copy_cursor_prompt(wme, 0, arg1);
+        window_copy_cursor_prompt(wme, 0, args_has(&*(*cs).wargs, 'o'));
         window_copy_cmd_action::WINDOW_COPY_CMD_NOTHING
     }
 }
@@ -2669,36 +2667,36 @@ pub unsafe fn window_copy_cmd_search_backward_incremental(
     unsafe {
         let wme: *mut window_mode_entry = (*cs).wme;
         let data: *mut window_copy_mode_data = (*wme).data.cast();
-        let mut arg1 = args_string(&*(*cs).args, 1).unwrap().as_ptr().cast::<u8>();
+        let mut arg0 = args_string(&*(*cs).wargs, 0).unwrap().as_ptr().cast::<u8>();
         let ss = (*data).searchstr;
         let mut action = window_copy_cmd_action::WINDOW_COPY_CMD_NOTHING;
 
         (*data).timeout = 0;
 
-        // log_debug("%s: %s", __func__, arg1);
+        log_debug!("{}: {}", "window_copy_cmd_search_backward_incremental", _s(arg0));
 
-        let prefix = *arg1;
-        arg1 = arg1.add(1);
+        let prefix = *arg0;
+        arg0 = arg0.add(1);
         if (*data).searchx == -1 || (*data).searchy == -1 {
             (*data).searchx = (*data).cx as i32;
             (*data).searchy = (*data).cy as i32;
             (*data).searcho = (*data).oy as i32;
-        } else if !ss.is_null() && libc::strcmp(arg1, ss) != 0 {
+        } else if !ss.is_null() && libc::strcmp(arg0, ss) != 0 {
             (*data).cx = (*data).searchx as u32;
             (*data).cy = (*data).searchy as u32;
             (*data).oy = (*data).searcho as u32;
             action = window_copy_cmd_action::WINDOW_COPY_CMD_REDRAW;
         }
-        if *arg1 == b'\0' {
+        if *arg0 == b'\0' {
             window_copy_clear_marks(wme);
             return window_copy_cmd_action::WINDOW_COPY_CMD_REDRAW;
         }
-        match prefix as u8 {
+        match prefix {
             b'=' | b'-' => {
                 (*data).searchtype = window_copy::WINDOW_COPY_SEARCHUP;
                 (*data).searchregex = 0;
                 free_((*data).searchstr);
-                (*data).searchstr = xstrdup(arg1).as_ptr();
+                (*data).searchstr = xstrdup(arg0).as_ptr();
                 if !window_copy_search_up(wme, 0) {
                     window_copy_clear_marks(wme);
                     return window_copy_cmd_action::WINDOW_COPY_CMD_REDRAW;
@@ -2708,7 +2706,7 @@ pub unsafe fn window_copy_cmd_search_backward_incremental(
                 (*data).searchtype = window_copy::WINDOW_COPY_SEARCHDOWN;
                 (*data).searchregex = 0;
                 free_((*data).searchstr);
-                (*data).searchstr = xstrdup(arg1).as_ptr();
+                (*data).searchstr = xstrdup(arg0).as_ptr();
                 if !window_copy_search_down(wme, 0) {
                     window_copy_clear_marks(wme);
                     return window_copy_cmd_action::WINDOW_COPY_CMD_REDRAW;
@@ -2726,36 +2724,36 @@ pub unsafe fn window_copy_cmd_search_forward_incremental(
     unsafe {
         let wme: *mut window_mode_entry = (*cs).wme;
         let data: *mut window_copy_mode_data = (*wme).data.cast();
-        let mut arg1 = args_string(&*(*cs).args, 1).unwrap().as_ptr().cast::<u8>();
+        let mut arg0 = args_string(&*(*cs).wargs, 0).unwrap().as_ptr().cast::<u8>();
         let ss = (*data).searchstr;
         let mut action = window_copy_cmd_action::WINDOW_COPY_CMD_NOTHING;
 
         (*data).timeout = 0;
 
-        // log_debug("%s: %s", __func__, arg1);
+        log_debug!("{}: {}", "window_copy_cmd_search_forward_incremental", _s(arg0));
 
-        let prefix = *arg1;
-        arg1 = arg1.add(1);
+        let prefix = *arg0;
+        arg0 = arg0.add(1);
         if (*data).searchx == -1 || (*data).searchy == -1 {
             (*data).searchx = (*data).cx as i32;
             (*data).searchy = (*data).cy as i32;
             (*data).searcho = (*data).oy as i32;
-        } else if !ss.is_null() && libc::strcmp(arg1, ss) != 0 {
+        } else if !ss.is_null() && libc::strcmp(arg0, ss) != 0 {
             (*data).cx = (*data).searchx as u32;
             (*data).cy = (*data).searchy as u32;
             (*data).oy = (*data).searcho as u32;
             action = window_copy_cmd_action::WINDOW_COPY_CMD_REDRAW;
         }
-        if *arg1 == b'\0' {
+        if *arg0 == b'\0' {
             window_copy_clear_marks(wme);
             return window_copy_cmd_action::WINDOW_COPY_CMD_REDRAW;
         }
-        match prefix as u8 {
+        match prefix {
             b'=' | b'+' => {
                 (*data).searchtype = window_copy::WINDOW_COPY_SEARCHDOWN;
                 (*data).searchregex = 0;
                 free_((*data).searchstr);
-                (*data).searchstr = xstrdup(arg1).as_ptr();
+                (*data).searchstr = xstrdup(arg0).as_ptr();
                 if !window_copy_search_down(wme, 0) {
                     window_copy_clear_marks(wme);
                     return window_copy_cmd_action::WINDOW_COPY_CMD_REDRAW;
@@ -2765,7 +2763,7 @@ pub unsafe fn window_copy_cmd_search_forward_incremental(
                 (*data).searchtype = window_copy::WINDOW_COPY_SEARCHUP;
                 (*data).searchregex = 0;
                 free_((*data).searchstr);
-                (*data).searchstr = xstrdup(arg1).as_ptr();
+                (*data).searchstr = xstrdup(arg0).as_ptr();
                 if !window_copy_search_up(wme, 0) {
                     window_copy_clear_marks(wme);
                     return window_copy_cmd_action::WINDOW_COPY_CMD_REDRAW;
@@ -2804,11 +2802,9 @@ pub unsafe fn window_copy_cmd_refresh_from_pane(
     }
 }
 
-#[repr(C)]
 struct window_copy_cmd_table_entry {
     command: &'static str,
-    minargs: u32,
-    maxargs: u32,
+    args: args_parse,
     clear: window_copy_cmd_clear,
     f: unsafe fn(*mut window_copy_cmd_state) -> window_copy_cmd_action,
 }
@@ -2816,596 +2812,511 @@ struct window_copy_cmd_table_entry {
 static WINDOW_COPY_CMD_TABLE: [window_copy_cmd_table_entry; 85] = [
     window_copy_cmd_table_entry {
         command: "append-selection",
-        minargs: 0,
-        maxargs: 0,
+        args: args_parse::new("", 0, 0, None),
         clear: window_copy_cmd_clear::WINDOW_COPY_CMD_CLEAR_ALWAYS,
         f: window_copy_cmd_append_selection,
     },
     window_copy_cmd_table_entry {
         command: "append-selection-and-cancel",
-        minargs: 0,
-        maxargs: 0,
+        args: args_parse::new("", 0, 0, None),
         clear: window_copy_cmd_clear::WINDOW_COPY_CMD_CLEAR_ALWAYS,
         f: window_copy_cmd_append_selection_and_cancel,
     },
     window_copy_cmd_table_entry {
         command: "back-to-indentation",
-        minargs: 0,
-        maxargs: 0,
+        args: args_parse::new("", 0, 0, None),
         clear: window_copy_cmd_clear::WINDOW_COPY_CMD_CLEAR_ALWAYS,
         f: window_copy_cmd_back_to_indentation,
     },
     window_copy_cmd_table_entry {
         command: "begin-selection",
-        minargs: 0,
-        maxargs: 0,
+        args: args_parse::new("", 0, 0, None),
         clear: window_copy_cmd_clear::WINDOW_COPY_CMD_CLEAR_ALWAYS,
         f: window_copy_cmd_begin_selection,
     },
     window_copy_cmd_table_entry {
         command: "bottom-line",
-        minargs: 0,
-        maxargs: 0,
+        args: args_parse::new("", 0, 0, None),
         clear: window_copy_cmd_clear::WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
         f: window_copy_cmd_bottom_line,
     },
     window_copy_cmd_table_entry {
         command: "cancel",
-        minargs: 0,
-        maxargs: 0,
+        args: args_parse::new("", 0, 0, None),
         clear: window_copy_cmd_clear::WINDOW_COPY_CMD_CLEAR_ALWAYS,
         f: window_copy_cmd_cancel,
     },
     window_copy_cmd_table_entry {
         command: "clear-selection",
-        minargs: 0,
-        maxargs: 0,
+        args: args_parse::new("", 0, 0, None),
         clear: window_copy_cmd_clear::WINDOW_COPY_CMD_CLEAR_ALWAYS,
         f: window_copy_cmd_clear_selection,
     },
     window_copy_cmd_table_entry {
         command: "copy-end-of-line",
-        minargs: 0,
-        maxargs: 1,
+        args: args_parse::new("CP", 0, 1, None),
         clear: window_copy_cmd_clear::WINDOW_COPY_CMD_CLEAR_ALWAYS,
         f: window_copy_cmd_copy_end_of_line,
     },
     window_copy_cmd_table_entry {
         command: "copy-end-of-line-and-cancel",
-        minargs: 0,
-        maxargs: 1,
+        args: args_parse::new("CP", 0, 1, None),
         clear: window_copy_cmd_clear::WINDOW_COPY_CMD_CLEAR_ALWAYS,
         f: window_copy_cmd_copy_end_of_line_and_cancel,
     },
     window_copy_cmd_table_entry {
         command: "copy-pipe-end-of-line",
-        minargs: 0,
-        maxargs: 2,
+        args: args_parse::new("CP", 0, 2, None),
         clear: window_copy_cmd_clear::WINDOW_COPY_CMD_CLEAR_ALWAYS,
         f: window_copy_cmd_copy_pipe_end_of_line,
     },
     window_copy_cmd_table_entry {
         command: "copy-pipe-end-of-line-and-cancel",
-        minargs: 0,
-        maxargs: 2,
+        args: args_parse::new("CP", 0, 2, None),
         clear: window_copy_cmd_clear::WINDOW_COPY_CMD_CLEAR_ALWAYS,
         f: window_copy_cmd_copy_pipe_end_of_line_and_cancel,
     },
     window_copy_cmd_table_entry {
         command: "copy-line",
-        minargs: 0,
-        maxargs: 1,
+        args: args_parse::new("CP", 0, 1, None),
         clear: window_copy_cmd_clear::WINDOW_COPY_CMD_CLEAR_ALWAYS,
         f: window_copy_cmd_copy_line,
     },
     window_copy_cmd_table_entry {
         command: "copy-line-and-cancel",
-        minargs: 0,
-        maxargs: 1,
+        args: args_parse::new("CP", 0, 1, None),
         clear: window_copy_cmd_clear::WINDOW_COPY_CMD_CLEAR_ALWAYS,
         f: window_copy_cmd_copy_line_and_cancel,
     },
     window_copy_cmd_table_entry {
         command: "copy-pipe-line",
-        minargs: 0,
-        maxargs: 2,
+        args: args_parse::new("CP", 0, 2, None),
         clear: window_copy_cmd_clear::WINDOW_COPY_CMD_CLEAR_ALWAYS,
         f: window_copy_cmd_copy_pipe_line,
     },
     window_copy_cmd_table_entry {
         command: "copy-pipe-line-and-cancel",
-        minargs: 0,
-        maxargs: 2,
+        args: args_parse::new("CP", 0, 2, None),
         clear: window_copy_cmd_clear::WINDOW_COPY_CMD_CLEAR_ALWAYS,
         f: window_copy_cmd_copy_pipe_line_and_cancel,
     },
     window_copy_cmd_table_entry {
         command: "copy-pipe-no-clear",
-        minargs: 0,
-        maxargs: 2,
+        args: args_parse::new("CP", 0, 2, None),
         clear: window_copy_cmd_clear::WINDOW_COPY_CMD_CLEAR_NEVER,
         f: window_copy_cmd_copy_pipe_no_clear,
     },
     window_copy_cmd_table_entry {
         command: "copy-pipe",
-        minargs: 0,
-        maxargs: 2,
+        args: args_parse::new("CP", 0, 2, None),
         clear: window_copy_cmd_clear::WINDOW_COPY_CMD_CLEAR_ALWAYS,
         f: window_copy_cmd_copy_pipe,
     },
     window_copy_cmd_table_entry {
         command: "copy-pipe-and-cancel",
-        minargs: 0,
-        maxargs: 2,
+        args: args_parse::new("CP", 0, 2, None),
         clear: window_copy_cmd_clear::WINDOW_COPY_CMD_CLEAR_ALWAYS,
         f: window_copy_cmd_copy_pipe_and_cancel,
     },
     window_copy_cmd_table_entry {
         command: "copy-selection-no-clear",
-        minargs: 0,
-        maxargs: 1,
+        args: args_parse::new("CP", 0, 1, None),
         clear: window_copy_cmd_clear::WINDOW_COPY_CMD_CLEAR_NEVER,
         f: window_copy_cmd_copy_selection_no_clear,
     },
     window_copy_cmd_table_entry {
         command: "copy-selection",
-        minargs: 0,
-        maxargs: 1,
+        args: args_parse::new("CP", 0, 1, None),
         clear: window_copy_cmd_clear::WINDOW_COPY_CMD_CLEAR_ALWAYS,
         f: window_copy_cmd_copy_selection,
     },
     window_copy_cmd_table_entry {
         command: "copy-selection-and-cancel",
-        minargs: 0,
-        maxargs: 1,
+        args: args_parse::new("CP", 0, 1, None),
         clear: window_copy_cmd_clear::WINDOW_COPY_CMD_CLEAR_ALWAYS,
         f: window_copy_cmd_copy_selection_and_cancel,
     },
     window_copy_cmd_table_entry {
         command: "cursor-down",
-        minargs: 0,
-        maxargs: 0,
+        args: args_parse::new("", 0, 0, None),
         clear: window_copy_cmd_clear::WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
         f: window_copy_cmd_cursor_down,
     },
     window_copy_cmd_table_entry {
         command: "cursor-down-and-cancel",
-        minargs: 0,
-        maxargs: 0,
+        args: args_parse::new("", 0, 0, None),
         clear: window_copy_cmd_clear::WINDOW_COPY_CMD_CLEAR_ALWAYS,
         f: window_copy_cmd_cursor_down_and_cancel,
     },
     window_copy_cmd_table_entry {
         command: "cursor-left",
-        minargs: 0,
-        maxargs: 0,
+        args: args_parse::new("", 0, 0, None),
         clear: window_copy_cmd_clear::WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
         f: window_copy_cmd_cursor_left,
     },
     window_copy_cmd_table_entry {
         command: "cursor-right",
-        minargs: 0,
-        maxargs: 0,
+        args: args_parse::new("", 0, 0, None),
         clear: window_copy_cmd_clear::WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
         f: window_copy_cmd_cursor_right,
     },
     window_copy_cmd_table_entry {
         command: "cursor-up",
-        minargs: 0,
-        maxargs: 0,
+        args: args_parse::new("", 0, 0, None),
         clear: window_copy_cmd_clear::WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
         f: window_copy_cmd_cursor_up,
     },
     window_copy_cmd_table_entry {
         command: "end-of-line",
-        minargs: 0,
-        maxargs: 0,
+        args: args_parse::new("", 0, 0, None),
         clear: window_copy_cmd_clear::WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
         f: window_copy_cmd_end_of_line,
     },
     window_copy_cmd_table_entry {
         command: "goto-line",
-        minargs: 1,
-        maxargs: 1,
+        args: args_parse::new("", 1, 1, None),
         clear: window_copy_cmd_clear::WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
         f: window_copy_cmd_goto_line,
     },
     window_copy_cmd_table_entry {
         command: "halfpage-down",
-        minargs: 0,
-        maxargs: 0,
+        args: args_parse::new("", 0, 0, None),
         clear: window_copy_cmd_clear::WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
         f: window_copy_cmd_halfpage_down,
     },
     window_copy_cmd_table_entry {
         command: "halfpage-down-and-cancel",
-        minargs: 0,
-        maxargs: 0,
+        args: args_parse::new("", 0, 0, None),
         clear: window_copy_cmd_clear::WINDOW_COPY_CMD_CLEAR_ALWAYS,
         f: window_copy_cmd_halfpage_down_and_cancel,
     },
     window_copy_cmd_table_entry {
         command: "halfpage-up",
-        minargs: 0,
-        maxargs: 0,
+        args: args_parse::new("", 0, 0, None),
         clear: window_copy_cmd_clear::WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
         f: window_copy_cmd_halfpage_up,
     },
     window_copy_cmd_table_entry {
         command: "history-bottom",
-        minargs: 0,
-        maxargs: 0,
+        args: args_parse::new("", 0, 0, None),
         clear: window_copy_cmd_clear::WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
         f: window_copy_cmd_history_bottom,
     },
     window_copy_cmd_table_entry {
         command: "history-top",
-        minargs: 0,
-        maxargs: 0,
+        args: args_parse::new("", 0, 0, None),
         clear: window_copy_cmd_clear::WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
         f: window_copy_cmd_history_top,
     },
     window_copy_cmd_table_entry {
         command: "jump-again",
-        minargs: 0,
-        maxargs: 0,
+        args: args_parse::new("", 0, 0, None),
         clear: window_copy_cmd_clear::WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
         f: window_copy_cmd_jump_again,
     },
     window_copy_cmd_table_entry {
         command: "jump-backward",
-        minargs: 1,
-        maxargs: 1,
+        args: args_parse::new("", 1, 1, None),
         clear: window_copy_cmd_clear::WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
         f: window_copy_cmd_jump_backward,
     },
     window_copy_cmd_table_entry {
         command: "jump-forward",
-        minargs: 1,
-        maxargs: 1,
+        args: args_parse::new("", 1, 1, None),
         clear: window_copy_cmd_clear::WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
         f: window_copy_cmd_jump_forward,
     },
     window_copy_cmd_table_entry {
         command: "jump-reverse",
-        minargs: 0,
-        maxargs: 0,
+        args: args_parse::new("", 0, 0, None),
         clear: window_copy_cmd_clear::WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
         f: window_copy_cmd_jump_reverse,
     },
     window_copy_cmd_table_entry {
         command: "jump-to-backward",
-        minargs: 1,
-        maxargs: 1,
+        args: args_parse::new("", 1, 1, None),
         clear: window_copy_cmd_clear::WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
         f: window_copy_cmd_jump_to_backward,
     },
     window_copy_cmd_table_entry {
         command: "jump-to-forward",
-        minargs: 1,
-        maxargs: 1,
+        args: args_parse::new("", 1, 1, None),
         clear: window_copy_cmd_clear::WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
         f: window_copy_cmd_jump_to_forward,
     },
     window_copy_cmd_table_entry {
         command: "jump-to-mark",
-        minargs: 0,
-        maxargs: 0,
+        args: args_parse::new("", 0, 0, None),
         clear: window_copy_cmd_clear::WINDOW_COPY_CMD_CLEAR_ALWAYS,
         f: window_copy_cmd_jump_to_mark,
     },
     window_copy_cmd_table_entry {
         command: "next-prompt",
-        minargs: 0,
-        maxargs: 1,
+        args: args_parse::new("o", 0, 0, None),
         clear: window_copy_cmd_clear::WINDOW_COPY_CMD_CLEAR_ALWAYS,
         f: window_copy_cmd_next_prompt,
     },
     window_copy_cmd_table_entry {
         command: "previous-prompt",
-        minargs: 0,
-        maxargs: 1,
+        args: args_parse::new("o", 0, 0, None),
         clear: window_copy_cmd_clear::WINDOW_COPY_CMD_CLEAR_ALWAYS,
         f: window_copy_cmd_previous_prompt,
     },
     window_copy_cmd_table_entry {
         command: "middle-line",
-        minargs: 0,
-        maxargs: 0,
+        args: args_parse::new("", 0, 0, None),
         clear: window_copy_cmd_clear::WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
         f: window_copy_cmd_middle_line,
     },
     window_copy_cmd_table_entry {
         command: "next-matching-bracket",
-        minargs: 0,
-        maxargs: 0,
+        args: args_parse::new("", 0, 0, None),
         clear: window_copy_cmd_clear::WINDOW_COPY_CMD_CLEAR_ALWAYS,
         f: window_copy_cmd_next_matching_bracket,
     },
     window_copy_cmd_table_entry {
         command: "next-paragraph",
-        minargs: 0,
-        maxargs: 0,
+        args: args_parse::new("", 0, 0, None),
         clear: window_copy_cmd_clear::WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
         f: window_copy_cmd_next_paragraph,
     },
     window_copy_cmd_table_entry {
         command: "next-space",
-        minargs: 0,
-        maxargs: 0,
+        args: args_parse::new("", 0, 0, None),
         clear: window_copy_cmd_clear::WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
         f: window_copy_cmd_next_space,
     },
     window_copy_cmd_table_entry {
         command: "next-space-end",
-        minargs: 0,
-        maxargs: 0,
+        args: args_parse::new("", 0, 0, None),
         clear: window_copy_cmd_clear::WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
         f: window_copy_cmd_next_space_end,
     },
     window_copy_cmd_table_entry {
         command: "next-word",
-        minargs: 0,
-        maxargs: 0,
+        args: args_parse::new("", 0, 0, None),
         clear: window_copy_cmd_clear::WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
         f: window_copy_cmd_next_word,
     },
     window_copy_cmd_table_entry {
         command: "next-word-end",
-        minargs: 0,
-        maxargs: 0,
+        args: args_parse::new("", 0, 0, None),
         clear: window_copy_cmd_clear::WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
         f: window_copy_cmd_next_word_end,
     },
     window_copy_cmd_table_entry {
         command: "other-end",
-        minargs: 0,
-        maxargs: 0,
+        args: args_parse::new("", 0, 0, None),
         clear: window_copy_cmd_clear::WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
         f: window_copy_cmd_other_end,
     },
     window_copy_cmd_table_entry {
         command: "page-down",
-        minargs: 0,
-        maxargs: 0,
+        args: args_parse::new("", 0, 0, None),
         clear: window_copy_cmd_clear::WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
         f: window_copy_cmd_page_down,
     },
     window_copy_cmd_table_entry {
         command: "page-down-and-cancel",
-        minargs: 0,
-        maxargs: 0,
+        args: args_parse::new("", 0, 0, None),
         clear: window_copy_cmd_clear::WINDOW_COPY_CMD_CLEAR_ALWAYS,
         f: window_copy_cmd_page_down_and_cancel,
     },
     window_copy_cmd_table_entry {
         command: "page-up",
-        minargs: 0,
-        maxargs: 0,
+        args: args_parse::new("", 0, 0, None),
         clear: window_copy_cmd_clear::WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
         f: window_copy_cmd_page_up,
     },
     window_copy_cmd_table_entry {
         command: "pipe-no-clear",
-        minargs: 0,
-        maxargs: 1,
+        args: args_parse::new("", 0, 1, None),
         clear: window_copy_cmd_clear::WINDOW_COPY_CMD_CLEAR_NEVER,
         f: window_copy_cmd_pipe_no_clear,
     },
     window_copy_cmd_table_entry {
         command: "pipe",
-        minargs: 0,
-        maxargs: 1,
+        args: args_parse::new("", 0, 1, None),
         clear: window_copy_cmd_clear::WINDOW_COPY_CMD_CLEAR_ALWAYS,
         f: window_copy_cmd_pipe,
     },
     window_copy_cmd_table_entry {
         command: "pipe-and-cancel",
-        minargs: 0,
-        maxargs: 1,
+        args: args_parse::new("", 0, 1, None),
         clear: window_copy_cmd_clear::WINDOW_COPY_CMD_CLEAR_ALWAYS,
         f: window_copy_cmd_pipe_and_cancel,
     },
     window_copy_cmd_table_entry {
         command: "previous-matching-bracket",
-        minargs: 0,
-        maxargs: 0,
+        args: args_parse::new("", 0, 0, None),
         clear: window_copy_cmd_clear::WINDOW_COPY_CMD_CLEAR_ALWAYS,
         f: window_copy_cmd_previous_matching_bracket,
     },
     window_copy_cmd_table_entry {
         command: "previous-paragraph",
-        minargs: 0,
-        maxargs: 0,
+        args: args_parse::new("", 0, 0, None),
         clear: window_copy_cmd_clear::WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
         f: window_copy_cmd_previous_paragraph,
     },
     window_copy_cmd_table_entry {
         command: "previous-space",
-        minargs: 0,
-        maxargs: 0,
+        args: args_parse::new("", 0, 0, None),
         clear: window_copy_cmd_clear::WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
         f: window_copy_cmd_previous_space,
     },
     window_copy_cmd_table_entry {
         command: "previous-word",
-        minargs: 0,
-        maxargs: 0,
+        args: args_parse::new("", 0, 0, None),
         clear: window_copy_cmd_clear::WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
         f: window_copy_cmd_previous_word,
     },
     window_copy_cmd_table_entry {
         command: "rectangle-on",
-        minargs: 0,
-        maxargs: 0,
+        args: args_parse::new("", 0, 0, None),
         clear: window_copy_cmd_clear::WINDOW_COPY_CMD_CLEAR_ALWAYS,
         f: window_copy_cmd_rectangle_on,
     },
     window_copy_cmd_table_entry {
         command: "rectangle-off",
-        minargs: 0,
-        maxargs: 0,
+        args: args_parse::new("", 0, 0, None),
         clear: window_copy_cmd_clear::WINDOW_COPY_CMD_CLEAR_ALWAYS,
         f: window_copy_cmd_rectangle_off,
     },
     window_copy_cmd_table_entry {
         command: "rectangle-toggle",
-        minargs: 0,
-        maxargs: 0,
+        args: args_parse::new("", 0, 0, None),
         clear: window_copy_cmd_clear::WINDOW_COPY_CMD_CLEAR_ALWAYS,
         f: window_copy_cmd_rectangle_toggle,
     },
     window_copy_cmd_table_entry {
         command: "refresh-from-pane",
-        minargs: 0,
-        maxargs: 0,
+        args: args_parse::new("", 0, 0, None),
         clear: window_copy_cmd_clear::WINDOW_COPY_CMD_CLEAR_ALWAYS,
         f: window_copy_cmd_refresh_from_pane,
     },
     window_copy_cmd_table_entry {
         command: "scroll-bottom",
-        minargs: 0,
-        maxargs: 0,
+        args: args_parse::new("", 0, 0, None),
         clear: window_copy_cmd_clear::WINDOW_COPY_CMD_CLEAR_ALWAYS,
         f: window_copy_cmd_scroll_bottom,
     },
     window_copy_cmd_table_entry {
         command: "scroll-down",
-        minargs: 0,
-        maxargs: 0,
+        args: args_parse::new("", 0, 0, None),
         clear: window_copy_cmd_clear::WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
         f: window_copy_cmd_scroll_down,
     },
     window_copy_cmd_table_entry {
         command: "scroll-down-and-cancel",
-        minargs: 0,
-        maxargs: 0,
+        args: args_parse::new("", 0, 0, None),
         clear: window_copy_cmd_clear::WINDOW_COPY_CMD_CLEAR_ALWAYS,
         f: window_copy_cmd_scroll_down_and_cancel,
     },
     window_copy_cmd_table_entry {
         command: "scroll-middle",
-        minargs: 0,
-        maxargs: 0,
+        args: args_parse::new("", 0, 0, None),
         clear: window_copy_cmd_clear::WINDOW_COPY_CMD_CLEAR_ALWAYS,
         f: window_copy_cmd_scroll_middle,
     },
     window_copy_cmd_table_entry {
         command: "scroll-top",
-        minargs: 0,
-        maxargs: 0,
+        args: args_parse::new("", 0, 0, None),
         clear: window_copy_cmd_clear::WINDOW_COPY_CMD_CLEAR_ALWAYS,
         f: window_copy_cmd_scroll_top,
     },
     window_copy_cmd_table_entry {
         command: "scroll-up",
-        minargs: 0,
-        maxargs: 0,
+        args: args_parse::new("", 0, 0, None),
         clear: window_copy_cmd_clear::WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
         f: window_copy_cmd_scroll_up,
     },
     window_copy_cmd_table_entry {
         command: "search-again",
-        minargs: 0,
-        maxargs: 0,
+        args: args_parse::new("", 0, 0, None),
         clear: window_copy_cmd_clear::WINDOW_COPY_CMD_CLEAR_ALWAYS,
         f: window_copy_cmd_search_again,
     },
     window_copy_cmd_table_entry {
         command: "search-backward",
-        minargs: 0,
-        maxargs: 1,
+        args: args_parse::new("", 0, 1, None),
         clear: window_copy_cmd_clear::WINDOW_COPY_CMD_CLEAR_ALWAYS,
         f: window_copy_cmd_search_backward,
     },
     window_copy_cmd_table_entry {
         command: "search-backward-text",
-        minargs: 0,
-        maxargs: 1,
+        args: args_parse::new("", 0, 1, None),
         clear: window_copy_cmd_clear::WINDOW_COPY_CMD_CLEAR_ALWAYS,
         f: window_copy_cmd_search_backward_text,
     },
     window_copy_cmd_table_entry {
         command: "search-backward-incremental",
-        minargs: 1,
-        maxargs: 1,
+        args: args_parse::new("", 1, 1, None),
         clear: window_copy_cmd_clear::WINDOW_COPY_CMD_CLEAR_ALWAYS,
         f: window_copy_cmd_search_backward_incremental,
     },
     window_copy_cmd_table_entry {
         command: "search-forward",
-        minargs: 0,
-        maxargs: 1,
+        args: args_parse::new("", 0, 1, None),
         clear: window_copy_cmd_clear::WINDOW_COPY_CMD_CLEAR_ALWAYS,
         f: window_copy_cmd_search_forward,
     },
     window_copy_cmd_table_entry {
         command: "search-forward-text",
-        minargs: 0,
-        maxargs: 1,
+        args: args_parse::new("", 0, 1, None),
         clear: window_copy_cmd_clear::WINDOW_COPY_CMD_CLEAR_ALWAYS,
         f: window_copy_cmd_search_forward_text,
     },
     window_copy_cmd_table_entry {
         command: "search-forward-incremental",
-        minargs: 1,
-        maxargs: 1,
+        args: args_parse::new("", 1, 1, None),
         clear: window_copy_cmd_clear::WINDOW_COPY_CMD_CLEAR_ALWAYS,
         f: window_copy_cmd_search_forward_incremental,
     },
     window_copy_cmd_table_entry {
         command: "search-reverse",
-        minargs: 0,
-        maxargs: 0,
+        args: args_parse::new("", 0, 0, None),
         clear: window_copy_cmd_clear::WINDOW_COPY_CMD_CLEAR_ALWAYS,
         f: window_copy_cmd_search_reverse,
     },
     window_copy_cmd_table_entry {
         command: "select-line",
-        minargs: 0,
-        maxargs: 0,
+        args: args_parse::new("", 0, 0, None),
         clear: window_copy_cmd_clear::WINDOW_COPY_CMD_CLEAR_ALWAYS,
         f: window_copy_cmd_select_line,
     },
     window_copy_cmd_table_entry {
         command: "select-word",
-        minargs: 0,
-        maxargs: 0,
+        args: args_parse::new("", 0, 0, None),
         clear: window_copy_cmd_clear::WINDOW_COPY_CMD_CLEAR_ALWAYS,
         f: window_copy_cmd_select_word,
     },
     window_copy_cmd_table_entry {
         command: "set-mark",
-        minargs: 0,
-        maxargs: 0,
+        args: args_parse::new("", 0, 0, None),
         clear: window_copy_cmd_clear::WINDOW_COPY_CMD_CLEAR_ALWAYS,
         f: window_copy_cmd_set_mark,
     },
     window_copy_cmd_table_entry {
         command: "start-of-line",
-        minargs: 0,
-        maxargs: 0,
+        args: args_parse::new("", 0, 0, None),
         clear: window_copy_cmd_clear::WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
         f: window_copy_cmd_start_of_line,
     },
     window_copy_cmd_table_entry {
         command: "stop-selection",
-        minargs: 0,
-        maxargs: 0,
+        args: args_parse::new("", 0, 0, None),
         clear: window_copy_cmd_clear::WINDOW_COPY_CMD_CLEAR_ALWAYS,
         f: window_copy_cmd_stop_selection,
     },
     window_copy_cmd_table_entry {
         command: "toggle-position",
-        minargs: 0,
-        maxargs: 0,
+        args: args_parse::new("", 0, 0, None),
         clear: window_copy_cmd_clear::WINDOW_COPY_CMD_CLEAR_NEVER,
         f: window_copy_cmd_toggle_position,
     },
     window_copy_cmd_table_entry {
         command: "top-line",
-        minargs: 0,
-        maxargs: 0,
+        args: args_parse::new("", 0, 0, None),
         clear: window_copy_cmd_clear::WINDOW_COPY_CMD_CLEAR_EMACS_ONLY,
         f: window_copy_cmd_top_line,
     },
@@ -3422,6 +3333,7 @@ pub unsafe fn window_copy_command(
     unsafe {
         let wme = wme.as_ptr();
         let data: *mut window_copy_mode_data = (*wme).data.cast();
+        let wp: *mut window_pane = (*wme).wp;
         let mut cs: window_copy_cmd_state = zeroed();
         let mut clear = window_copy_cmd_clear::WINDOW_COPY_CMD_CLEAR_NEVER;
         let count = args_count(&*args);
@@ -3437,6 +3349,7 @@ pub unsafe fn window_copy_command(
 
         cs.wme = wme;
         cs.args = args;
+        cs.wargs = null_mut();
         cs.m = m;
 
         cs.c = c;
@@ -3446,20 +3359,24 @@ pub unsafe fn window_copy_command(
         let mut action = window_copy_cmd_action::WINDOW_COPY_CMD_NOTHING;
         for window_copy_cmd_table_i in &WINDOW_COPY_CMD_TABLE {
             if libc::streq_(command, window_copy_cmd_table_i.command) {
-                if count - 1 < window_copy_cmd_table_i.minargs
-                    || count - 1 > window_copy_cmd_table_i.maxargs
-                {
-                    break;
-                }
+                cs.wargs = match args_parse(
+                    &window_copy_cmd_table_i.args,
+                    args_values(&*args),
+                ) {
+                    Ok(wargs) => wargs,
+                    Err(_) => break,
+                };
                 clear = window_copy_cmd_table_i.clear;
                 action = (window_copy_cmd_table_i.f)(&raw mut cs);
+                args_free(cs.wargs);
+                cs.wargs = null_mut();
                 break;
             }
         }
 
         if libc::strncmp(command, c!("search-"), 7) != 0 && !(*data).searchmark.is_null() {
             let keys = modekey::try_from(options_get_number_(
-                (*(*(*wme).wp).window).options,
+                (*(*wp).window).options,
                 "mode-keys",
             ) as i32);
             if clear == window_copy_cmd_clear::WINDOW_COPY_CMD_CLEAR_EMACS_ONLY
@@ -3479,7 +3396,7 @@ pub unsafe fn window_copy_command(
         (*wme).prefix = 1;
 
         if action == window_copy_cmd_action::WINDOW_COPY_CMD_CANCEL {
-            window_pane_reset_mode((*wme).wp);
+            window_pane_reset_mode(wp);
         } else if action == window_copy_cmd_action::WINDOW_COPY_CMD_REDRAW {
             window_copy_redraw_screen(wme);
         }
@@ -6287,7 +6204,7 @@ pub unsafe fn window_copy_cursor_previous_word(
 pub unsafe fn window_copy_cursor_prompt(
     wme: *mut window_mode_entry,
     direction: i32,
-    args: *const u8,
+    start_output: bool,
 ) {
     unsafe {
         let data: *mut window_copy_mode_data = (*wme).data.cast();
@@ -6295,7 +6212,7 @@ pub unsafe fn window_copy_cursor_prompt(
         let gd: *mut grid = (*s).grid;
         let mut line = (*gd).hsize - (*data).oy + (*data).cy;
 
-        let line_flag = if !args.is_null() && streq_(args, "-o") {
+        let line_flag = if start_output {
             grid_line_flag::START_OUTPUT
         } else {
             grid_line_flag::START_PROMPT

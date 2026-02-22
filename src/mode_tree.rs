@@ -1210,6 +1210,8 @@ pub unsafe fn mode_tree_display_menu(
             mtm.cast(),
         ) != 0
         {
+            mode_tree_remove_ref(mtd);
+            drop(Box::from_raw(mtm));
             menu_free(menu);
         }
     }

@@ -42,11 +42,14 @@ pub static SOCKET_PATH: std::sync::OnceLock<String> = std::sync::OnceLock::new()
 pub static mut PTM_FD: c_int = -1;
 pub static mut SHELL_COMMAND: *mut u8 = null_mut();
 
-pub fn usage() -> ! {
-    eprintln!(
-        "usage: tmux-rs [-2CDlNuVv] [-c shell-command] [-f file] [-L socket-name]\n               [-S socket-path] [-T features] [command [flags]]\n"
-    );
-    std::process::exit(1)
+pub fn usage(status: i32) -> ! {
+    let msg = "usage: tmux-rs [-2CDhlNuVv] [-c shell-command] [-f file] [-L socket-name]\n               [-S socket-path] [-T features] [command [flags]]\n";
+    if status != 0 {
+        eprintln!("{msg}");
+    } else {
+        println!("{msg}");
+    }
+    std::process::exit(status)
 }
 
 #[cfg(target_os = "windows")]
@@ -558,7 +561,7 @@ pub unsafe fn tmux_main(mut argc: i32, mut argv: *mut *mut u8, _env: *mut *mut u
         }
         expand_paths(TMUX_CONF, &mut CFG_FILES.lock().unwrap(), 1);
 
-        while let Some(opt) = getopt(argc, argv.cast(), c!("2c:CDdf:lL:NqS:T:uUvV")) {
+        while let Some(opt) = getopt(argc, argv.cast(), c!("2c:CDdf:hlL:NqS:T:uUvV")) {
             match opt {
                 b'2' => tty_add_features(&raw mut feat, "256", c!(":,")),
                 b'c' => SHELL_COMMAND = OPTARG.cast(),
@@ -581,6 +584,7 @@ pub unsafe fn tmux_main(mut argc: i32, mut argv: *mut *mut u8, _env: *mut *mut u
                         .push(CString::new(cstr_to_str(OPTARG)).unwrap());
                     CFG_QUIET.store(false, atomic::Ordering::Relaxed);
                 }
+                b'h' => usage(0),
                 b'V' => {
                     println!("tmux-rs {}", getversion());
                     std::process::exit(0);
@@ -598,17 +602,17 @@ pub unsafe fn tmux_main(mut argc: i32, mut argv: *mut *mut u8, _env: *mut *mut u
                 b'T' => tty_add_features(&raw mut feat, cstr_to_str(OPTARG.cast()), c!(":,")),
                 b'u' => flags |= client_flag::UTF8,
                 b'v' => log_add_level(),
-                _ => usage(),
+                _ => usage(1),
             }
         }
         argc -= OPTIND;
         argv = argv.add(OPTIND as usize);
 
         if !SHELL_COMMAND.is_null() && argc != 0 {
-            usage();
+            usage(1);
         }
         if flags.intersects(client_flag::NOFORK) && argc != 0 {
-            usage();
+            usage(1);
         }
 
         PTM_FD = getptmfd();

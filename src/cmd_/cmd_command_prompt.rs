@@ -18,7 +18,7 @@ pub static CMD_COMMAND_PROMPT_ENTRY: cmd_entry = cmd_entry {
     alias: None,
 
     args: args_parse::new("1bFkiI:Np:t:T:", 0, 1, Some(cmd_command_prompt_args_parse)),
-    usage: "[-1bFkiN] [-I inputs] [-p prompts] [-t target-pane] [-T type] [template]",
+    usage: "[-1bFkiN] [-I inputs] [-p prompts] [-t target-pane] [-T prompt-type] [template]",
 
     flags: cmd_flag::CMD_CLIENT_TFLAG,
     exec: cmd_command_prompt_exec,

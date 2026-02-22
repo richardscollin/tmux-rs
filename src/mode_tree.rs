@@ -77,6 +77,7 @@ pub struct mode_tree_data {
     line_list: Vec<mode_tree_line>,
 
     depth: u32,
+    maxdepth: u32,
 
     width: u32,
     height: u32,
@@ -197,6 +198,9 @@ unsafe fn mode_tree_build_lines(mtd: *mut mode_tree_data, mtl: *mut mode_tree_li
         let mut flat = 1;
 
         (*mtd).depth = depth;
+        if depth > (*mtd).maxdepth {
+            (*mtd).maxdepth = depth;
+        }
         for mti in tailq_foreach(mtl).map(NonNull::as_ptr) {
             (*mtd).line_list.push(mode_tree_line {
                 item: mti,
@@ -450,6 +454,7 @@ pub unsafe fn mode_tree_start(
             saved: zeroed(),
             line_list: Vec::default(),
             depth: Default::default(),
+            maxdepth: Default::default(),
             width: Default::default(),
             height: Default::default(),
             offset: Default::default(),
@@ -576,6 +581,7 @@ pub unsafe fn mode_tree_build(mtd: *mut mode_tree_data) {
         tailq_init(&raw mut (*mtd).saved);
 
         mode_tree_clear_lines(mtd);
+        (*mtd).maxdepth = 0;
         mode_tree_build_lines(mtd, &raw mut (*mtd).children, 0);
 
         if !(*mtd).line_list.is_empty() && tag == u64::MAX {
@@ -740,6 +746,15 @@ pub unsafe fn mode_tree_draw(mtd: &mut mode_tree_data) {
                 }
             }
 
+            let mut namelen = vec![0i32; mtd.maxdepth as usize + 1];
+            for line in &mtd.line_list {
+                let mti = line.item;
+                let nlen = strlen((*mti).name) as i32;
+                if nlen > namelen[line.depth as usize] {
+                    namelen[line.depth as usize] = nlen;
+                }
+            }
+
             for i in 0..mtd.line_list.len() {
                 // line = &mtd.line_list[i] // but we don't want to borrow
                 if (i as u32) < mtd.offset {
@@ -795,10 +810,11 @@ pub unsafe fn mode_tree_draw(mtd: &mut mode_tree_data) {
 
                 let tag = if (*mti).tagged != 0 { c!("*") } else { c!("") };
                 let text = format_nul!(
-                    "{1:<0$}{2}{3}{4}{5}",
+                    "{1:<0$}{2}{4:>3$}{5}{6}",
                     keylen as usize,
                     _s(key),
                     _s(start),
+                    namelen[mtd.line_list[i].depth as usize] as usize,
                     _s((*mti).name),
                     _s(tag),
                     if !(*mti).text.is_null() { ": " } else { "" },

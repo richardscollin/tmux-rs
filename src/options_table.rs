@@ -1285,7 +1285,7 @@ pub static OPTIONS_TABLE: [options_table_entry; 198] = [
         name: "pane-scrollbars-style",
         type_: options_table_type::OPTIONS_TABLE_STRING,
         scope: OPTIONS_TABLE_WINDOW | OPTIONS_TABLE_PANE,
-        default_str: Some("bg=black,fg=white"),
+        default_str: Some("bg=black,fg=white,width=1,pad=0"),
         flags: OPTIONS_TABLE_IS_STYLE,
         separator: c!(","),
         text: c!("Style of the pane scrollbar."),

@@ -141,7 +141,7 @@ pub unsafe fn screen_redraw_pane_border(
 
         // Are scrollbars enabled?
         if window_pane_show_scrollbar(wp, pane_scrollbars) {
-            sb_w = PANE_SCROLLBARS_WIDTH;
+            sb_w = (*wp).scrollbar_style.width as u32 + (*wp).scrollbar_style.pad as u32;
         }
 
         // Left/right borders
@@ -183,7 +183,7 @@ pub unsafe fn screen_redraw_pane_border(
         } else {
             if sb_pos == PANE_SCROLLBARS_LEFT {
                 if ((*wp).xoff - sb_w == 0 || px >= (*wp).xoff - sb_w)
-                    && (px <= ex || (sb_w != 0 && px - 1 == ex))
+                    && (px <= ex || (sb_w != 0 && px < ex + sb_w))
                 {
                     if (*wp).yoff != 0 && py == (*wp).yoff - 1 {
                         return screen_redraw_border_type::SCREEN_REDRAW_BORDER_TOP;
@@ -195,7 +195,7 @@ pub unsafe fn screen_redraw_pane_border(
             } else {
                 // PANE_SCROLLBARS_RIGHT
                 if ((*wp).xoff == 0 || px >= (*wp).xoff)
-                    && (px <= ex || (sb_w != 0 && px - 1 == ex))
+                    && (px <= ex || (sb_w != 0 && px < ex + sb_w))
                 {
                     if (*wp).yoff != 0 && py == (*wp).yoff - 1 {
                         return screen_redraw_border_type::SCREEN_REDRAW_BORDER_TOP;
@@ -350,7 +350,7 @@ pub unsafe fn screen_redraw_check_cell(
         let pane_status = (*ctx).pane_status;
         let pane_scrollbars = (*ctx).pane_scrollbars;
         let sb_pos = (*ctx).pane_scrollbars_pos;
-        let sb_w = PANE_SCROLLBARS_WIDTH as i32;
+        let mut sb_w: i32;
         let sx = (*w).sx;
         let sy = (*w).sy;
         let mut border: i32;
@@ -408,6 +408,7 @@ pub unsafe fn screen_redraw_check_cell(
                 *wpp = wp;
 
                 // Check if CELL_SCROLLBAR
+                sb_w = (*wp).scrollbar_style.width + (*wp).scrollbar_style.pad;
                 if window_pane_show_scrollbar(wp, pane_scrollbars) {
                     let line = if pane_status == pane_status::PANE_STATUS_TOP {
                         (*wp).yoff as i32 - 1
@@ -1139,9 +1140,12 @@ pub unsafe fn screen_redraw_draw_pane_scrollbar(
         let s = (*wp).screen;
         let sb = (*ctx).pane_scrollbars;
         let sb_pos = (*ctx).pane_scrollbars_pos;
-        let sb_w = PANE_SCROLLBARS_WIDTH;
+        let sb_w = (*wp).scrollbar_style.width;
+        let sb_pad = (*wp).scrollbar_style.pad;
         let sb_h = (*wp).sy;
         let sb_y = (*wp).yoff as i32 - (*ctx).oy as i32;
+        let xoff = (*wp).xoff as i32;
+        let ox = (*ctx).ox as i32;
 
         let (slider_h, slider_y);
 
@@ -1158,21 +1162,27 @@ pub unsafe fn screen_redraw_draw_pane_scrollbar(
             if tailq_empty(&raw mut (*wp).modes) {
                 return;
             }
-            let mut cm_y: u32 = 0;
-            let mut cm_size: u32 = 0;
-            if window_copy_get_current_offset(wp, &raw mut cm_y, &raw mut cm_size) == 0 {
+            let mut cm_y: i32 = 0;
+            let mut cm_size: i32 = 0;
+            if window_copy_get_current_offset(
+                wp,
+                &raw mut cm_y as *mut i32 as *mut u32,
+                &raw mut cm_size as *mut i32 as *mut u32,
+            ) == 0
+            {
                 return;
             }
-            let total_height = cm_size + sb_h;
-            let percent_view = sb_h as f64 / (cm_size + sb_h) as f64;
+            let total_height = cm_size as u32 + sb_h;
+            let percent_view = sb_h as f64 / (cm_size as u32 + sb_h) as f64;
             slider_h = (sb_h as f64 * percent_view) as u32;
-            slider_y = ((sb_h + 1) as f64 * (cm_y as f64 / total_height as f64)) as u32;
+            slider_y =
+                ((sb_h + 1) as f64 * (cm_y as f64 / total_height as f64)) as u32;
         }
 
         let sb_x = if sb_pos == PANE_SCROLLBARS_LEFT {
-            (*wp).xoff as i32 - sb_w as i32 - (*ctx).ox as i32
+            xoff - sb_w - sb_pad - ox
         } else {
-            (*wp).xoff as i32 + (*wp).sx as i32 - (*ctx).ox as i32
+            xoff + (*wp).sx as i32 - ox
         };
 
         let slider_h = slider_h.max(1);
@@ -1199,12 +1209,12 @@ unsafe fn screen_redraw_draw_scrollbar(
 ) {
     unsafe {
         let c = (*ctx).c;
-        let w = (*wp).window;
         let tty = &raw mut (*c).tty;
-        let mut gc: grid_cell = zeroed();
+        let gc: grid_cell;
         let slgc: grid_cell;
-        let sb_w = PANE_SCROLLBARS_WIDTH;
-        let sb_pad = PANE_SCROLLBARS_PADDING;
+        let sb_style = &raw const (*wp).scrollbar_style;
+        let sb_w = (*sb_style).width as u32;
+        let sb_pad = (*sb_style).pad as u32;
         let ox = (*ctx).ox as i32;
         let oy = (*ctx).oy as i32;
         let sx = (*ctx).sx as i32;
@@ -1212,34 +1222,42 @@ unsafe fn screen_redraw_draw_scrollbar(
         let xoff = (*wp).xoff as i32;
         let yoff = (*wp).yoff as i32;
 
-        // Set up default style.
-        style_apply(&raw mut gc, (*w).options, c!("pane-scrollbars-style"), null_mut());
-        utf8_set(&raw mut gc.data, b' ');
-
         // Set up style for slider.
+        gc = (*sb_style).gc;
         slgc = grid_cell {
-            bg: gc.fg,
             fg: gc.bg,
+            bg: gc.fg,
             ..gc
         };
 
-        let pad_col = if sb_pad != 0 {
-            if sb_pos == PANE_SCROLLBARS_RIGHT { 0 } else { sb_w - 1 }
-        } else {
-            u32::MAX // won't match
-        };
+        let mut imax = sb_w + sb_pad;
+        if sb_x as i32 + imax as i32 > sx {
+            imax = (sx - sb_x) as u32;
+        }
+        let mut jmax = sb_h;
+        if sb_y + jmax as i32 > sy {
+            jmax = (sy - sb_y) as u32;
+        }
 
-        for i in 0..sb_w {
-            for j in 0..sb_h {
+        for j in 0..jmax {
+            let py = sb_y + j as i32;
+            for i in 0..imax {
                 let px = sb_x + i as i32;
-                let py = sb_y + j as i32;
-                if px < xoff - ox - 1 || px >= sx || px < 0
-                    || py < yoff - oy - 1 || py >= sy || py < 0
+                if px < xoff - ox - sb_w as i32 - sb_pad as i32
+                    || px >= sx
+                    || px < 0
+                    || py < yoff - oy - 1
+                    || py >= sy
+                    || py < 0
                 {
                     continue;
                 }
                 tty_cursor(tty, px as u32, py as u32);
-                if sb_pad != 0 && i == pad_col {
+                if (sb_pos == PANE_SCROLLBARS_LEFT
+                    && i >= sb_w
+                    && i < sb_w + sb_pad)
+                    || (sb_pos == PANE_SCROLLBARS_RIGHT && i < sb_pad)
+                {
                     tty_cell(
                         tty,
                         &raw const GRID_DEFAULT_CELL,

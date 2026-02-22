@@ -281,11 +281,29 @@ pub unsafe fn layout_fix_panes(w: *mut window, skip: *mut window_pane) {
             }
 
             if window_pane_show_scrollbar(wp, scrollbars) {
+                let mut sb_w = (*wp).scrollbar_style.width;
+                let mut sb_pad = (*wp).scrollbar_style.pad;
+                if sb_w < 1 {
+                    sb_w = 1;
+                }
+                if sb_pad < 0 {
+                    sb_pad = 0;
+                }
                 if sb_pos == PANE_SCROLLBARS_LEFT {
-                    sx -= PANE_SCROLLBARS_WIDTH;
-                    (*wp).xoff += PANE_SCROLLBARS_WIDTH;
+                    if sx as i32 - sb_w < PANE_MINIMUM as i32 {
+                        (*wp).xoff = (*wp).xoff + sx - PANE_MINIMUM;
+                        sx = PANE_MINIMUM;
+                    } else {
+                        sx = sx - sb_w as u32 - sb_pad as u32;
+                        (*wp).xoff = (*wp).xoff + sb_w as u32 + sb_pad as u32;
+                    }
                 } else {
-                    sx -= PANE_SCROLLBARS_WIDTH;
+                    // sb_pos == PANE_SCROLLBARS_RIGHT
+                    if sx as i32 - sb_w - sb_pad < PANE_MINIMUM as i32 {
+                        sx = PANE_MINIMUM;
+                    } else {
+                        sx = sx - sb_w as u32 - sb_pad as u32;
+                    }
                 }
                 (*wp).flags |= window_pane_flags::PANE_REDRAWSCROLLBAR;
             }
@@ -316,6 +334,7 @@ pub unsafe fn layout_resize_check(w: *mut window, lc: *mut layout_cell, type_: l
     unsafe {
         let mut available: u32;
         let mut minimum: u32;
+        let sb_style = &raw const (*(*w).active).scrollbar_style;
 
         let status: pane_status =
             pane_status::try_from(options_get_number_((*w).options, "pane-border-status") as i32)
@@ -327,7 +346,9 @@ pub unsafe fn layout_resize_check(w: *mut window, lc: *mut layout_cell, type_: l
             if type_ == layout_type::LAYOUT_LEFTRIGHT {
                 available = (*lc).sx;
                 if scrollbars != 0 {
-                    minimum = PANE_MINIMUM + PANE_SCROLLBARS_WIDTH;
+                    minimum = PANE_MINIMUM
+                        + (*sb_style).width as u32
+                        + (*sb_style).pad as u32;
                 } else {
                     minimum = PANE_MINIMUM;
                 }
@@ -961,6 +982,7 @@ pub unsafe fn layout_split_pane(
         ) as i32)
         .unwrap();
         let scrollbars = options_get_number_((*(*wp).window).options, "pane-scrollbars") as i32;
+        let sb_style = &raw const (*wp).scrollbar_style;
 
         // Copy the old cell size
         let sx = (*lc).sx;
@@ -972,7 +994,9 @@ pub unsafe fn layout_split_pane(
         match type_ {
             layout_type::LAYOUT_LEFTRIGHT => {
                 if scrollbars != 0 {
-                    minimum = PANE_MINIMUM * 2 + PANE_SCROLLBARS_WIDTH;
+                    minimum = PANE_MINIMUM * 2
+                        + (*sb_style).width as u32
+                        + (*sb_style).pad as u32;
                 } else {
                     minimum = PANE_MINIMUM * 2 + 1;
                 }
@@ -1155,12 +1179,13 @@ pub unsafe fn layout_spread_cell(w: *mut window, parent: *mut layout_cell) -> c_
             .try_into()
             .unwrap();
         let scrollbars = options_get_number_((*w).options, "pane-scrollbars") as i32;
+        let sb_style = &raw const (*(*w).active).scrollbar_style;
 
         // Calculate available size
         let size = match (*parent).type_ {
             layout_type::LAYOUT_LEFTRIGHT => {
                 if scrollbars != 0 {
-                    (*parent).sx - PANE_SCROLLBARS_WIDTH
+                    (*parent).sx - (*sb_style).width as u32 + (*sb_style).pad as u32
                 } else {
                     (*parent).sx
                 }

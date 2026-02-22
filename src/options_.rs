@@ -1384,6 +1384,17 @@ pub unsafe fn options_push_changes(name: &str) {
                 layout_fix_panes(w.as_ptr(), null_mut());
             }
         }
+        if name == "pane-scrollbars-style" {
+            for wp in rb_foreach(&raw mut ALL_WINDOW_PANES).map(NonNull::as_ptr) {
+                style_set_scrollbar_style_from_option(
+                    &raw mut (*wp).scrollbar_style,
+                    (*wp).options,
+                );
+            }
+            for w in rb_foreach(&raw mut WINDOWS) {
+                layout_fix_panes(w.as_ptr(), null_mut());
+            }
+        }
         if name == "input-buffer-size" {
             input_set_buffer_size(options_get_number(GLOBAL_OPTIONS, name) as usize);
         }

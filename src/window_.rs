@@ -665,7 +665,7 @@ pub unsafe fn window_get_active_at(w: *mut window, x: u32, y: u32) -> *mut windo
                 || (pane_scrollbars == PANE_SCROLLBARS_MODAL
                     && window_pane_mode(wp) != WINDOW_PANE_NO_MODE)
             {
-                PANE_SCROLLBARS_WIDTH
+                (*wp).scrollbar_style.width as u32 + (*wp).scrollbar_style.pad as u32
             } else {
                 0
             };
@@ -1073,6 +1073,11 @@ pub unsafe fn window_pane_create(
 
         (*wp).control_bg = -1;
         (*wp).control_fg = -1;
+
+        style_set_scrollbar_style_from_option(
+            &raw mut (*wp).scrollbar_style,
+            (*wp).options,
+        );
 
         (*wp).palette = colour_palette_init();
         colour_palette_from_option(Some(&mut (*wp).palette), (*wp).options);

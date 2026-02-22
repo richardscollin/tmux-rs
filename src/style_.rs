@@ -38,6 +38,9 @@ pub static mut STYLE_DEFAULT: style = style {
     range_argument: 0,
     range_string: [0; 16], // ""
 
+    width: STYLE_WIDTH_DEFAULT,
+    pad: STYLE_PAD_DEFAULT,
+
     default_type: style_default_type::STYLE_DEFAULT_BASE,
 };
 
@@ -239,6 +242,16 @@ pub unsafe fn style_parse(sy: *mut style, base: *const grid_cell, mut in_: *cons
                     }
                 } else if strcaseeq_(tmp, "none") {
                     (*sy).gc.attr = grid_attr::empty();
+                } else if end > 6 && strncasecmp(tmp, c!("width="), 6) == 0 {
+                    let Ok(n) = strtonum::<u32>(tmp.add(6), 0, u32::MAX) else {
+                        break 'error;
+                    };
+                    (*sy).width = n as i32;
+                } else if end > 4 && strncasecmp(tmp, c!("pad="), 4) == 0 {
+                    let Ok(n) = strtonum::<u32>(tmp.add(4), 0, u32::MAX) else {
+                        break 'error;
+                    };
+                    (*sy).pad = n as i32;
                 } else if end > 2 && strncasecmp(tmp, c!("no"), 2) == 0 {
                     let Ok(value) = attributes_fromstring(cstr_to_str(tmp.add(2))) else {
                         break 'error;
@@ -429,15 +442,38 @@ pub unsafe fn style_tostring(sy: *const style) -> *const u8 {
             .unwrap() as i32;
             comma = c!(",");
         }
-        #[expect(unused_assignments)]
         if !(*gc).attr.is_empty() {
-            _ = xsnprintf_!(
+            off += xsnprintf_!(
                 s.add(off as usize),
                 size_of::<s_type>() - off as usize,
                 "{}{}",
                 _s(comma),
                 attributes_tostring((*gc).attr),
-            );
+            )
+            .unwrap() as i32;
+            comma = c!(",");
+        }
+        if (*sy).width >= 0 {
+            off += xsnprintf_!(
+                s.add(off as usize),
+                size_of::<s_type>() - off as usize,
+                "{}width={}",
+                _s(comma),
+                (*sy).width as u32,
+            )
+            .unwrap() as i32;
+            comma = c!(",");
+        }
+        #[expect(unused_assignments)]
+        if (*sy).pad >= 0 {
+            off += xsnprintf_!(
+                s.add(off as usize),
+                size_of::<s_type>() - off as usize,
+                "{}pad={}",
+                _s(comma),
+                (*sy).pad as u32,
+            )
+            .unwrap() as i32;
             comma = c!(",");
         }
 
@@ -505,5 +541,26 @@ pub unsafe fn style_set(sy: *mut style, gc: *const grid_cell) {
 pub unsafe fn style_copy(dst: *mut style, src: *const style) {
     unsafe {
         memcpy__(dst, src);
+    }
+}
+
+pub unsafe fn style_set_scrollbar_style_from_option(sb_style: *mut style, oo: *mut options) {
+    unsafe {
+        let sy = options_string_to_style(oo, "pane-scrollbars-style", null_mut());
+        if sy.is_null() {
+            style_set(sb_style, &raw const GRID_DEFAULT_CELL);
+            (*sb_style).width = PANE_SCROLLBARS_DEFAULT_WIDTH;
+            (*sb_style).pad = PANE_SCROLLBARS_DEFAULT_PADDING;
+            utf8_set(&raw mut (*sb_style).gc.data, PANE_SCROLLBARS_CHARACTER);
+        } else {
+            style_copy(sb_style, sy);
+            if (*sb_style).width < 1 {
+                (*sb_style).width = PANE_SCROLLBARS_DEFAULT_WIDTH;
+            }
+            if (*sb_style).pad < 0 {
+                (*sb_style).pad = PANE_SCROLLBARS_DEFAULT_PADDING;
+            }
+            utf8_set(&raw mut (*sb_style).gc.data, PANE_SCROLLBARS_CHARACTER);
+        }
     }
 }

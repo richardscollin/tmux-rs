@@ -754,12 +754,16 @@ unsafe fn server_client_check_mouse_in_pane(
         let wo = (*w).options;
 
         let sb = options_get_number_(wo, "pane-scrollbars") as i32;
+        let sb_pos = options_get_number_(wo, "pane-scrollbars-position") as i32;
         let pane_status = options_get_number_(wo, "pane-border-status") as i32;
 
-        let sb_w: u32 = if window_pane_show_scrollbar(wp, sb) {
-            PANE_SCROLLBARS_WIDTH as u32
+        let (sb_w, sb_pad): (u32, u32) = if window_pane_show_scrollbar(wp, sb) {
+            (
+                (*wp).scrollbar_style.width as u32,
+                (*wp).scrollbar_style.pad as u32,
+            )
         } else {
-            0
+            (0, 0)
         };
 
         let mut line: u32 = 0;
@@ -769,18 +773,18 @@ unsafe fn server_client_check_mouse_in_pane(
             line = (*wp).yoff + (*wp).sy;
         }
 
-        // Check if py could lie within a scrollbar.
+        // Check if py could lie within a scrollbar
+        // (but not within the padding).
         if (pane_status != pane_status::PANE_STATUS_OFF as i32 && py != line)
             || ((*wp).yoff == 0 && py < (*wp).sy)
             || (py >= (*wp).yoff && py < (*wp).yoff + (*wp).sy)
         {
-            let sb_pos = options_get_number_(wo, "pane-scrollbars-position") as i32;
             if (sb_pos == PANE_SCROLLBARS_RIGHT
-                && px >= (*wp).xoff + (*wp).sx
-                && px < (*wp).xoff + (*wp).sx + sb_w)
+                && px >= (*wp).xoff + (*wp).sx + sb_pad
+                && px < (*wp).xoff + (*wp).sx + sb_pad + sb_w)
                 || (sb_pos == PANE_SCROLLBARS_LEFT
-                    && px >= (*wp).xoff.wrapping_sub(sb_w)
-                    && px < (*wp).xoff)
+                    && px >= (*wp).xoff.wrapping_sub(sb_pad).wrapping_sub(sb_w)
+                    && px < (*wp).xoff.wrapping_sub(sb_pad))
             {
                 let sl_top = (*wp).yoff + (*wp).sb_slider_y;
                 let sl_bottom =

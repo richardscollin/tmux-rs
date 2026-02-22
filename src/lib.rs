@@ -1003,8 +1003,14 @@ struct style {
     range_argument: u32,
     range_string: [u8; 16],
 
+    width: i32,
+    pad: i32,
+
     default_type: style_default_type,
 }
+
+pub const STYLE_WIDTH_DEFAULT: i32 = -1;
+pub const STYLE_PAD_DEFAULT: i32 = -1;
 
 #[cfg(feature = "sixel")]
 impl crate::compat::queue::Entry<image, discr_all_entry> for image {
@@ -1385,6 +1391,8 @@ struct window_pane {
     control_bg: i32,
     control_fg: i32,
 
+    scrollbar_style: style,
+
     /// link in list of all panes
     entry: tailq_entry<window_pane>,
     /// link in list of last visited
@@ -1540,8 +1548,10 @@ pub const PANE_SCROLLBARS_MODAL: i32 = 1;
 pub const PANE_SCROLLBARS_ALWAYS: i32 = 2;
 pub const PANE_SCROLLBARS_RIGHT: i32 = 0;
 pub const PANE_SCROLLBARS_LEFT: i32 = 1;
-pub const PANE_SCROLLBARS_WIDTH: u32 = 1;
-pub const PANE_SCROLLBARS_PADDING: i32 = 0;
+/// Pane scrollbars width, padding and fill character.
+pub const PANE_SCROLLBARS_DEFAULT_PADDING: i32 = 0;
+pub const PANE_SCROLLBARS_DEFAULT_WIDTH: i32 = 1;
+pub const PANE_SCROLLBARS_CHARACTER: u8 = b' ';
 
 /// True if screen is in alternate screen.
 unsafe fn screen_is_alternate(s: *const screen) -> bool {

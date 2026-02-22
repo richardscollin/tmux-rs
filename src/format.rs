@@ -1633,11 +1633,59 @@ pub unsafe fn format_cb_config_files(_ft: *mut format_tree) -> format_table_type
     s.into()
 }
 
+/// Callback for `cursor_colour`.
+pub unsafe fn format_cb_cursor_colour(ft: *mut format_tree) -> format_table_type {
+    unsafe {
+        let wp = (*ft).wp;
+        if !wp.is_null() && !(*wp).screen.is_null() {
+            if (*(*wp).screen).ccolour != -1 {
+                return colour_tostring((*(*wp).screen).ccolour).into_owned().into();
+            }
+            return colour_tostring((*(*wp).screen).default_ccolour)
+                .into_owned()
+                .into();
+        }
+        format_table_type::None
+    }
+}
+
 /// Callback for `cursor_flag`.
 pub unsafe fn format_cb_cursor_flag(ft: *mut format_tree) -> format_table_type {
     unsafe {
         if !(*ft).wp.is_null() {
             if (*(*ft).wp).base.mode.intersects(mode_flag::MODE_CURSOR) {
+                return "1".into();
+            }
+            return "0".into();
+        }
+        format_table_type::None
+    }
+}
+
+/// Callback for `cursor_shape`.
+pub unsafe fn format_cb_cursor_shape(ft: *mut format_tree) -> format_table_type {
+    unsafe {
+        if !(*ft).wp.is_null() && !(*(*ft).wp).screen.is_null() {
+            return match (*(*(*ft).wp).screen).cstyle {
+                screen_cursor_style::SCREEN_CURSOR_BLOCK => "block",
+                screen_cursor_style::SCREEN_CURSOR_UNDERLINE => "underline",
+                screen_cursor_style::SCREEN_CURSOR_BAR => "bar",
+                _ => "default",
+            }
+            .into();
+        }
+        format_table_type::None
+    }
+}
+
+/// Callback for `cursor_very_visible`.
+pub unsafe fn format_cb_cursor_very_visible(ft: *mut format_tree) -> format_table_type {
+    unsafe {
+        if !(*ft).wp.is_null() && !(*(*ft).wp).screen.is_null() {
+            if (*(*(*ft).wp).screen)
+                .mode
+                .intersects(mode_flag::MODE_CURSOR_VERY_VISIBLE)
+            {
                 return "1".into();
             }
             return "0".into();
@@ -1661,6 +1709,22 @@ pub unsafe fn format_cb_cursor_y(ft: *mut format_tree) -> format_table_type {
     unsafe {
         if !(*ft).wp.is_null() {
             return format!("{}", (*(*ft).wp).base.cy).into();
+        }
+        format_table_type::None
+    }
+}
+
+/// Callback for `cursor_blinking`.
+pub unsafe fn format_cb_cursor_blinking(ft: *mut format_tree) -> format_table_type {
+    unsafe {
+        if !(*ft).wp.is_null() && !(*(*ft).wp).screen.is_null() {
+            if (*(*(*ft).wp).screen)
+                .mode
+                .intersects(mode_flag::MODE_CURSOR_BLINKING)
+            {
+                return "1".into();
+            }
+            return "0".into();
         }
         format_table_type::None
     }
@@ -3021,8 +3085,12 @@ static FORMAT_TABLE: &[format_table_entry] = &[
     format_table_entry::new("client_width", format_cb_client_width),
     format_table_entry::new("client_written", format_cb_client_written),
     format_table_entry::new("config_files", format_cb_config_files),
+    format_table_entry::new("cursor_blinking", format_cb_cursor_blinking),
     format_table_entry::new("cursor_character", format_cb_cursor_character),
+    format_table_entry::new("cursor_colour", format_cb_cursor_colour),
     format_table_entry::new("cursor_flag", format_cb_cursor_flag),
+    format_table_entry::new("cursor_shape", format_cb_cursor_shape),
+    format_table_entry::new("cursor_very_visible", format_cb_cursor_very_visible),
     format_table_entry::new("cursor_x", format_cb_cursor_x),
     format_table_entry::new("cursor_y", format_cb_cursor_y),
     format_table_entry::new("history_all_bytes", format_cb_history_all_bytes),

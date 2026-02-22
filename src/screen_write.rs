@@ -2352,17 +2352,24 @@ pub unsafe fn screen_write_combine(ctx: *mut screen_write_ctx, gc: *const grid_c
             return zero_width;
         }
 
-        // Check if we need to combine characters. This could be zero width
-        // (set above), a modifier character (with an existing Unicode
-        // character) or a previous ZWJ.
+        // Check if we need to combine characters. This could be a Korean
+        // Hangul Jamo character, zero width (set above), a modifier character
+        // (with an existing Unicode character) or a previous ZWJ.
         if zero_width == 0 {
-            if utf8_is_modifier(ud) {
-                if last.data.size < 2 {
-                    return 0;
+            match hanguljamo_check_state(&raw const last.data, ud) {
+                hanguljamo_state::NotComposable => return 1,
+                hanguljamo_state::Choseong => return 0,
+                hanguljamo_state::Composable => {}
+                hanguljamo_state::NotHangulJamo => {
+                    if utf8_is_modifier(ud) {
+                        if last.data.size < 2 {
+                            return 0;
+                        }
+                        force_wide = 1;
+                    } else if !utf8_has_zwj(&raw mut last.data) {
+                        return 0;
+                    }
                 }
-                force_wide = 1;
-            } else if !utf8_has_zwj(&raw mut last.data) {
-                return 0;
             }
         }
 

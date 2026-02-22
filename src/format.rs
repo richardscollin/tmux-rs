@@ -4327,28 +4327,32 @@ pub unsafe fn format_loop_windows(
             .map(NonNull::as_ptr)
             .collect();
 
-        l.sort_by(|a, b| {
-            use std::cmp::Ordering;
-            let wa = (*(*a)).window;
-            let wb = (*(*b)).window;
-            let result = match sort_field {
-                format_loop_sort_type::ByIndex => (*wa).id.cmp(&(*wb).id),
-                format_loop_sort_type::ByTime => {
-                    let ta = &(*wa).activity_time;
-                    let tb = &(*wb).activity_time;
-                    match (tb.tv_sec, tb.tv_usec).cmp(&(ta.tv_sec, ta.tv_usec)) {
-                        Ordering::Equal => strcmp((*wa).name, (*wb).name).cmp(&0),
-                        other => other,
+        if sort_field != format_loop_sort_type::ByIndex {
+            l.sort_by(|a, b| {
+                use std::cmp::Ordering;
+                let wa = (*(*a)).window;
+                let wb = (*(*b)).window;
+                let result = match sort_field {
+                    format_loop_sort_type::ByIndex => unreachable!(),
+                    format_loop_sort_type::ByTime => {
+                        let ta = &(*wa).activity_time;
+                        let tb = &(*wb).activity_time;
+                        match (tb.tv_sec, tb.tv_usec).cmp(&(ta.tv_sec, ta.tv_usec)) {
+                            Ordering::Equal => strcmp((*wa).name, (*wb).name).cmp(&0),
+                            other => other,
+                        }
                     }
+                    format_loop_sort_type::ByName => strcmp((*wa).name, (*wb).name).cmp(&0),
+                };
+                if sort_reversed {
+                    result.reverse()
+                } else {
+                    result
                 }
-                format_loop_sort_type::ByName => strcmp((*wa).name, (*wb).name).cmp(&0),
-            };
-            if sort_reversed {
-                result.reverse()
-            } else {
-                result
-            }
-        });
+            });
+        } else if sort_reversed {
+            l.reverse();
+        }
 
         let n = l.len();
         for (i, &wl) in l.iter().enumerate() {

@@ -5,7 +5,7 @@ use std::sync::atomic::Ordering;
 use crate::transmute_ptr;
 
 use crate::cmd_parse::{cmd_parse_argument_type, yystype_elif, cmd_parse_state, cmd_parse_command};
-use crate::compat::queue::{tailq_concat, tailq_init, tailq_insert_head, tailq_remove, tailq_insert_tail, tailq_empty};
+use crate::compat::queue::{tailq_concat, tailq_foreach, tailq_init, tailq_insert_head, tailq_remove, tailq_insert_tail, tailq_empty};
 
 use crate::cmd_parse::lexer::Tok;
 use crate::cmd_parse::lexer;
@@ -92,7 +92,14 @@ pub OptionalAssignment: () = { Assignment? };
 pub Assignment: () = {
     <arg1:equals> => unsafe {
       let flags = &(*ps.as_ptr()).input.as_ref().unwrap().flags;
-      if !flags.intersects(cmd_parse_input_flags::CMD_PARSE_PARSEONLY) && (*ps.as_ptr()).scope.as_ref().is_none_or(|scope| scope.flag) {
+      let mut flag = true;
+      if let Some(scope) = (*ps.as_ptr()).scope.as_ref() {
+        flag = scope.flag;
+        for s in tailq_foreach(&raw mut (*ps.as_ptr()).stack) {
+          flag = flag && s.as_ref().flag;
+        }
+      }
+      if !flags.intersects(cmd_parse_input_flags::CMD_PARSE_PARSEONLY) && flag {
         environ_put(GLOBAL_ENVIRON, transmute_ptr(arg1), environ_flags::empty());
       }
       free_(transmute_ptr(arg1));
@@ -102,7 +109,14 @@ pub Assignment: () = {
 pub HiddenAssignment: () = {
     "%hidden" <arg2:equals> => unsafe {
       let flags = &(*ps.as_ptr()).input.as_ref().unwrap().flags;
-      if !flags.intersects(cmd_parse_input_flags::CMD_PARSE_PARSEONLY) && (*ps.as_ptr()).scope.as_ref().is_none_or(|scope|scope .flag) {
+      let mut flag = true;
+      if let Some(scope) = (*ps.as_ptr()).scope.as_ref() {
+        flag = scope.flag;
+        for s in tailq_foreach(&raw mut (*ps.as_ptr()).stack) {
+          flag = flag && s.as_ref().flag;
+        }
+      }
+      if !flags.intersects(cmd_parse_input_flags::CMD_PARSE_PARSEONLY) && flag {
         environ_put(GLOBAL_ENVIRON, transmute_ptr(arg2), ENVIRON_HIDDEN);
       }
       free_(transmute_ptr(arg2));

@@ -5459,6 +5459,18 @@ pub unsafe fn format_defaults_paste_buffer(ft: *mut format_tree, pb: *mut paste_
 }
 
 /// Return word at given coordinates. Caller frees.
+unsafe fn format_is_word_separator(ws: *const u8, gc: *const grid_cell) -> bool {
+    unsafe {
+        if utf8_cstrhas(ws, &raw const (*gc).data) {
+            return true;
+        }
+        if (*gc).flags.intersects(grid_flag::TAB) {
+            return true;
+        }
+        (*gc).data.size == 1 && (*gc).data.data[0] == b' '
+    }
+}
+
 pub unsafe fn format_grid_word(gd: *mut grid, mut x: u32, mut y: u32) -> String {
     unsafe {
         let mut ud: Vec<utf8_data> = Vec::new();
@@ -5473,9 +5485,7 @@ pub unsafe fn format_grid_word(gd: *mut grid, mut x: u32, mut y: u32) -> String 
             if (*gc).flags.intersects(grid_flag::PADDING) {
                 break;
             }
-            if utf8_cstrhas(ws, &raw const (*gc).data)
-                || ((*gc).data.size == 1 && (*gc).data.data[0] == b' ')
-            {
+            if format_is_word_separator(ws, gc) {
                 found = true;
                 break;
             }
@@ -5519,9 +5529,7 @@ pub unsafe fn format_grid_word(gd: *mut grid, mut x: u32, mut y: u32) -> String 
             if (*gc).flags.intersects(grid_flag::PADDING) {
                 break;
             }
-            if utf8_cstrhas(ws, &raw mut (*gc).data)
-                || ((*gc).data.size == 1 && (*gc).data.data[0] == b' ')
-            {
+            if format_is_word_separator(ws, gc) {
                 break;
             }
 

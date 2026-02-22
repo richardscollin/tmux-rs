@@ -3463,6 +3463,13 @@ pub unsafe fn window_copy_search_compare(
         grid_get_cell(sgd, spx, 0, &raw mut sgc);
         let sud = &raw const sgc.data;
 
+        if (*sud).data[0] == b'\t'
+            && (*sud).size == 1
+            && gc.flags.intersects(grid_flag::TAB)
+        {
+            return true;
+        }
+
         if (*ud).size != (*sud).size || (*ud).width != (*sud).width {
             return false;
         }

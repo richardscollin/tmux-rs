@@ -346,6 +346,30 @@ unsafe fn cmd_list_keys_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retva
     }
 }
 
+unsafe fn cmd_list_single_command(
+    entry: &cmd_entry,
+    ft: *mut format_tree,
+    template: *const u8,
+    item: *mut cmdq_item,
+) {
+    unsafe {
+        format_add!(ft, "command_list_name", "{}", entry.name);
+        format_add!(
+            ft,
+            "command_list_alias",
+            "{}",
+            entry.alias.unwrap_or_default()
+        );
+        format_add!(ft, "command_list_usage", "{}", entry.usage);
+
+        let line = format_expand(ft, template);
+        if *line != b'\0' {
+            cmdq_print!(item, "{}", _s(line));
+        }
+        free_(line);
+    }
+}
+
 unsafe fn cmd_list_keys_commands(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retval {
     unsafe {
         let args = cmd_get_args(self_);
@@ -370,29 +394,22 @@ unsafe fn cmd_list_keys_commands(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
         format_defaults(ft, null_mut(), None, None, None);
 
         let command = args_string(&*args, 0);
-
-        for entry in CMD_TABLE {
-            if command.is_some()
-                && (!streq_(command.unwrap().as_ptr().cast(), entry.name)
-                    && entry.alias.is_none_or(|alias| !streq_(command.unwrap().as_ptr().cast(), alias)))
-            {
-                continue;
+        if command.is_none() {
+            for entry in CMD_TABLE {
+                cmd_list_single_command(entry, ft, template, item);
             }
-
-            format_add!(ft, "command_list_name", "{}", entry.name);
-            format_add!(
-                ft,
-                "command_list_alias",
-                "{}",
-                entry.alias.unwrap_or_default()
-            );
-            format_add!(ft, "command_list_usage", "{}", entry.usage);
-
-            let line = format_expand(ft, template);
-            if *line != b'\0' {
-                cmdq_print!(item, "{}", _s(line));
+        } else {
+            let command = command.unwrap();
+            match cmd_find(command.to_str().unwrap()) {
+                Ok(entry) => {
+                    cmd_list_single_command(entry, ft, template, item);
+                }
+                Err(cause) => {
+                    cmdq_error!(item, "{}", cause);
+                    format_free(ft);
+                    return cmd_retval::CMD_RETURN_ERROR;
+                }
             }
-            free_(line);
         }
 
         format_free(ft);

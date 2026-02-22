@@ -15,14 +15,7 @@ use core::ffi::c_void;
 
 use crate::libc::memcmp;
 
-use crate::{utf8_data, utf8_in_table, utf8_state, utf8_towc, wchar_t};
-
-static UTF8_MODIFIER_TABLE: [wchar_t; 31] = [
-    0x1F1E6, 0x1F1E7, 0x1F1E8, 0x1F1E9, 0x1F1EA, 0x1F1EB, 0x1F1EC, 0x1F1ED, 0x1F1EE, 0x1F1EF,
-    0x1F1F0, 0x1F1F1, 0x1F1F2, 0x1F1F3, 0x1F1F4, 0x1F1F5, 0x1F1F6, 0x1F1F7, 0x1F1F8, 0x1F1F9,
-    0x1F1FA, 0x1F1FB, 0x1F1FC, 0x1F1FD, 0x1F1FE, 0x1F1FF, 0x1F3FB, 0x1F3FC, 0x1F3FD, 0x1F3FE,
-    0x1F3FF,
-];
+use crate::{utf8_data, utf8_state, utf8_towc, wchar_t};
 
 pub unsafe fn utf8_has_zwj(ud: *const utf8_data) -> bool {
     unsafe {
@@ -71,5 +64,8 @@ pub unsafe fn utf8_is_modifier(ud: *const utf8_data) -> bool {
             return false;
         }
     }
-    utf8_in_table(wc, &UTF8_MODIFIER_TABLE)
+    matches!(
+        wc,
+        0x1F1E6..=0x1F1FF | 0x1F3FB..=0x1F3FF
+    )
 }

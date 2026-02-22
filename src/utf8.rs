@@ -20,6 +20,10 @@ use std::{
 
 use crate::compat::vis;
 use crate::libc::{memcpy, memset};
+use crate::options_::{
+    options_array_first, options_array_item_value, options_array_next, options_get,
+};
+use crate::tmux::GLOBAL_OPTIONS;
 use crate::*;
 
 #[cfg(feature = "utf8proc")]
@@ -82,25 +86,119 @@ pub(crate) enum utf8_state {
     UTF8_ERROR,
 }
 
-static UTF8_FORCE_WIDE: [wchar_t; 162] = [
-    0x0261D, 0x026F9, 0x0270A, 0x0270B, 0x0270C, 0x0270D, 0x1F1E6, 0x1F1E7, 0x1F1E8, 0x1F1E9,
-    0x1F1EA, 0x1F1EB, 0x1F1EC, 0x1F1ED, 0x1F1EE, 0x1F1EF, 0x1F1F0, 0x1F1F1, 0x1F1F2, 0x1F1F3,
-    0x1F1F4, 0x1F1F5, 0x1F1F6, 0x1F1F7, 0x1F1F8, 0x1F1F9, 0x1F1FA, 0x1F1FB, 0x1F1FC, 0x1F1FD,
-    0x1F1FE, 0x1F1FF, 0x1F385, 0x1F3C2, 0x1F3C3, 0x1F3C4, 0x1F3C7, 0x1F3CA, 0x1F3CB, 0x1F3CC,
-    0x1F3FB, 0x1F3FC, 0x1F3FD, 0x1F3FE, 0x1F3FF, 0x1F442, 0x1F443, 0x1F446, 0x1F447, 0x1F448,
-    0x1F449, 0x1F44A, 0x1F44B, 0x1F44C, 0x1F44D, 0x1F44E, 0x1F44F, 0x1F450, 0x1F466, 0x1F467,
-    0x1F468, 0x1F469, 0x1F46B, 0x1F46C, 0x1F46D, 0x1F46E, 0x1F470, 0x1F471, 0x1F472, 0x1F473,
-    0x1F474, 0x1F475, 0x1F476, 0x1F477, 0x1F478, 0x1F47C, 0x1F481, 0x1F482, 0x1F483, 0x1F485,
-    0x1F486, 0x1F487, 0x1F48F, 0x1F491, 0x1F4AA, 0x1F574, 0x1F575, 0x1F57A, 0x1F590, 0x1F595,
-    0x1F596, 0x1F645, 0x1F646, 0x1F647, 0x1F64B, 0x1F64C, 0x1F64D, 0x1F64E, 0x1F64F, 0x1F6A3,
-    0x1F6B4, 0x1F6B5, 0x1F6B6, 0x1F6C0, 0x1F6CC, 0x1F90C, 0x1F90F, 0x1F918, 0x1F919, 0x1F91A,
-    0x1F91B, 0x1F91C, 0x1F91D, 0x1F91E, 0x1F91F, 0x1F926, 0x1F930, 0x1F931, 0x1F932, 0x1F933,
-    0x1F934, 0x1F935, 0x1F936, 0x1F937, 0x1F938, 0x1F939, 0x1F93D, 0x1F93E, 0x1F977, 0x1F9B5,
-    0x1F9B6, 0x1F9B8, 0x1F9B9, 0x1F9BB, 0x1F9CD, 0x1F9CE, 0x1F9CF, 0x1F9D1, 0x1F9D2, 0x1F9D3,
-    0x1F9D4, 0x1F9D5, 0x1F9D6, 0x1F9D7, 0x1F9D8, 0x1F9D9, 0x1F9DA, 0x1F9DB, 0x1F9DC, 0x1F9DD,
-    0x1FAC3, 0x1FAC4, 0x1FAC5, 0x1FAF0, 0x1FAF1, 0x1FAF2, 0x1FAF3, 0x1FAF4, 0x1FAF5, 0x1FAF6,
-    0x1FAF7, 0x1FAF8,
+static UTF8_DEFAULT_WIDTH_CACHE: [(wchar_t, u32); 162] = [
+    (0x0261D, 2), (0x026F9, 2), (0x0270A, 2), (0x0270B, 2), (0x0270C, 2), (0x0270D, 2),
+    (0x1F1E6, 2), (0x1F1E7, 2), (0x1F1E8, 2), (0x1F1E9, 2), (0x1F1EA, 2), (0x1F1EB, 2),
+    (0x1F1EC, 2), (0x1F1ED, 2), (0x1F1EE, 2), (0x1F1EF, 2), (0x1F1F0, 2), (0x1F1F1, 2),
+    (0x1F1F2, 2), (0x1F1F3, 2), (0x1F1F4, 2), (0x1F1F5, 2), (0x1F1F6, 2), (0x1F1F7, 2),
+    (0x1F1F8, 2), (0x1F1F9, 2), (0x1F1FA, 2), (0x1F1FB, 2), (0x1F1FC, 2), (0x1F1FD, 2),
+    (0x1F1FE, 2), (0x1F1FF, 2), (0x1F385, 2), (0x1F3C2, 2), (0x1F3C3, 2), (0x1F3C4, 2),
+    (0x1F3C7, 2), (0x1F3CA, 2), (0x1F3CB, 2), (0x1F3CC, 2), (0x1F3FB, 2), (0x1F3FC, 2),
+    (0x1F3FD, 2), (0x1F3FE, 2), (0x1F3FF, 2), (0x1F442, 2), (0x1F443, 2), (0x1F446, 2),
+    (0x1F447, 2), (0x1F448, 2), (0x1F449, 2), (0x1F44A, 2), (0x1F44B, 2), (0x1F44C, 2),
+    (0x1F44D, 2), (0x1F44E, 2), (0x1F44F, 2), (0x1F450, 2), (0x1F466, 2), (0x1F467, 2),
+    (0x1F468, 2), (0x1F469, 2), (0x1F46B, 2), (0x1F46C, 2), (0x1F46D, 2), (0x1F46E, 2),
+    (0x1F470, 2), (0x1F471, 2), (0x1F472, 2), (0x1F473, 2), (0x1F474, 2), (0x1F475, 2),
+    (0x1F476, 2), (0x1F477, 2), (0x1F478, 2), (0x1F47C, 2), (0x1F481, 2), (0x1F482, 2),
+    (0x1F483, 2), (0x1F485, 2), (0x1F486, 2), (0x1F487, 2), (0x1F48F, 2), (0x1F491, 2),
+    (0x1F4AA, 2), (0x1F574, 2), (0x1F575, 2), (0x1F57A, 2), (0x1F590, 2), (0x1F595, 2),
+    (0x1F596, 2), (0x1F645, 2), (0x1F646, 2), (0x1F647, 2), (0x1F64B, 2), (0x1F64C, 2),
+    (0x1F64D, 2), (0x1F64E, 2), (0x1F64F, 2), (0x1F6A3, 2), (0x1F6B4, 2), (0x1F6B5, 2),
+    (0x1F6B6, 2), (0x1F6C0, 2), (0x1F6CC, 2), (0x1F90C, 2), (0x1F90F, 2), (0x1F918, 2),
+    (0x1F919, 2), (0x1F91A, 2), (0x1F91B, 2), (0x1F91C, 2), (0x1F91D, 2), (0x1F91E, 2),
+    (0x1F91F, 2), (0x1F926, 2), (0x1F930, 2), (0x1F931, 2), (0x1F932, 2), (0x1F933, 2),
+    (0x1F934, 2), (0x1F935, 2), (0x1F936, 2), (0x1F937, 2), (0x1F938, 2), (0x1F939, 2),
+    (0x1F93D, 2), (0x1F93E, 2), (0x1F977, 2), (0x1F9B5, 2), (0x1F9B6, 2), (0x1F9B8, 2),
+    (0x1F9B9, 2), (0x1F9BB, 2), (0x1F9CD, 2), (0x1F9CE, 2), (0x1F9CF, 2), (0x1F9D1, 2),
+    (0x1F9D2, 2), (0x1F9D3, 2), (0x1F9D4, 2), (0x1F9D5, 2), (0x1F9D6, 2), (0x1F9D7, 2),
+    (0x1F9D8, 2), (0x1F9D9, 2), (0x1F9DA, 2), (0x1F9DB, 2), (0x1F9DC, 2), (0x1F9DD, 2),
+    (0x1FAC3, 2), (0x1FAC4, 2), (0x1FAC5, 2), (0x1FAF0, 2), (0x1FAF1, 2), (0x1FAF2, 2),
+    (0x1FAF3, 2), (0x1FAF4, 2), (0x1FAF5, 2), (0x1FAF6, 2), (0x1FAF7, 2), (0x1FAF8, 2),
 ];
+
+thread_local! {
+    static UTF8_WIDTH_CACHE: RefCell<BTreeMap<wchar_t, u32>> = const { RefCell::new(BTreeMap::new()) };
+}
+static UTF8_NO_WIDTH: atomic::AtomicBool = atomic::AtomicBool::new(false);
+
+fn utf8_find_in_width_cache(wc: wchar_t) -> Option<u32> {
+    UTF8_WIDTH_CACHE.with(|cache| cache.borrow().get(&wc).copied())
+}
+
+unsafe fn utf8_add_to_width_cache(s: *const u8) {
+    unsafe {
+        let s_str = cstr_to_str(s);
+        let Some((key, val)) = s_str.split_once('=') else {
+            return;
+        };
+
+        let Ok(width) = val.parse::<u32>() else {
+            return;
+        };
+        if width > 2 {
+            return;
+        }
+
+        let wc: wchar_t;
+        if let Some(hex) = key.strip_prefix("U+") {
+            let Ok(n) = u32::from_str_radix(hex, 16) else {
+                return;
+            };
+            if n == 0 || n > wchar_t::MAX as u32 {
+                return;
+            }
+            wc = n as wchar_t;
+        } else {
+            let ckey = format_nul!("{}", key);
+            UTF8_NO_WIDTH.store(true, atomic::Ordering::Relaxed);
+            let ud = utf8_fromcstr(ckey);
+            UTF8_NO_WIDTH.store(false, atomic::Ordering::Relaxed);
+            if (*ud).size == 0 || (*ud.add(1)).size != 0 {
+                free_(ud);
+                free_(ckey);
+                return;
+            }
+            let mut w: wchar_t = 0;
+            #[cfg(feature = "utf8proc")]
+            let r = utf8proc_mbtowc(&raw mut w, (*ud).data.as_ptr(), (*ud).size as usize);
+            #[cfg(not(feature = "utf8proc"))]
+            let r = mbtowc(&raw mut w, (*ud).data.as_ptr().cast(), (*ud).size as usize);
+            if r <= 0 {
+                free_(ud);
+                free_(ckey);
+                return;
+            }
+            wc = w;
+            free_(ud);
+            free_(ckey);
+        }
+
+        log_debug!("Unicode width cache: {:08X}={}", wc, width);
+
+        UTF8_WIDTH_CACHE.with(|cache| {
+            cache.borrow_mut().insert(wc, width);
+        });
+    }
+}
+
+pub unsafe fn utf8_update_width_cache() {
+    unsafe {
+        UTF8_WIDTH_CACHE.with(|cache| {
+            let mut cache = cache.borrow_mut();
+            cache.clear();
+            for &(wc, width) in &UTF8_DEFAULT_WIDTH_CACHE {
+                cache.insert(wc, width);
+            }
+        });
+
+        let o = options_get(&mut *GLOBAL_OPTIONS, "codepoint-widths");
+        let mut a = options_array_first(o);
+        while !a.is_null() {
+            utf8_add_to_width_cache((*options_array_item_value(a)).string);
+            a = options_array_next(a);
+        }
+    }
+}
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct utf8_item_index {
@@ -223,10 +321,6 @@ pub unsafe fn utf8_put_item(data: *const [u8; UTF8_SIZE], size: usize, index: *m
     }
 }
 
-pub fn utf8_in_table(find: wchar_t, table: &[wchar_t]) -> bool {
-    table.binary_search(&find).is_ok()
-}
-
 pub unsafe fn utf8_from_data(ud: *const utf8_data, uc: *mut utf8_char) -> utf8_state {
     unsafe {
         let mut index: u32 = 0;
@@ -341,8 +435,9 @@ pub unsafe fn utf8_width(ud: *mut utf8_data, width: *mut i32) -> utf8_state {
         if utf8_towc(ud, &raw mut wc) != utf8_state::UTF8_DONE {
             return utf8_state::UTF8_ERROR;
         }
-        if utf8_in_table(wc, &UTF8_FORCE_WIDE) {
-            *width = 2;
+        if let Some(cached_width) = utf8_find_in_width_cache(wc) {
+            *width = cached_width as i32;
+            log_debug!("cached width for {:08X} is {}", wc, *width);
             return utf8_state::UTF8_DONE;
         }
         if cfg!(feature = "utf8proc") {
@@ -466,13 +561,15 @@ pub unsafe fn utf8_append(ud: *mut utf8_data, ch: c_uchar) -> utf8_state {
             return utf8_state::UTF8_MORE;
         }
 
-        if (*ud).width == 0xff {
-            return utf8_state::UTF8_ERROR;
+        if !UTF8_NO_WIDTH.load(atomic::Ordering::Relaxed) {
+            if (*ud).width == 0xff {
+                return utf8_state::UTF8_ERROR;
+            }
+            if utf8_width(ud, &raw mut width) != utf8_state::UTF8_DONE {
+                return utf8_state::UTF8_ERROR;
+            }
+            (*ud).width = width as u8;
         }
-        if utf8_width(ud, &raw mut width) != utf8_state::UTF8_DONE {
-            return utf8_state::UTF8_ERROR;
-        }
-        (*ud).width = width as u8;
     }
     utf8_state::UTF8_DONE
 }

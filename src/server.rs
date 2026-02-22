@@ -259,6 +259,7 @@ pub unsafe fn server_start(
         // TODO pledge
 
         input_key_build();
+        utf8_update_width_cache();
         rb_init(&raw mut WINDOWS);
         rb_init(&raw mut ALL_WINDOW_PANES);
         tailq_init(&raw mut CLIENTS);

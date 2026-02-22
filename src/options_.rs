@@ -1395,6 +1395,9 @@ pub unsafe fn options_push_changes(name: &str) {
                 layout_fix_panes(w.as_ptr(), null_mut());
             }
         }
+        if name == "codepoint-widths" {
+            utf8_update_width_cache();
+        }
         if name == "input-buffer-size" {
             input_set_buffer_size(options_get_number(GLOBAL_OPTIONS, name) as usize);
         }

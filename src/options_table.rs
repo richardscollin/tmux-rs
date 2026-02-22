@@ -209,7 +209,7 @@ macro_rules! options_table_window_hook {
     };
 }
 
-pub static OPTIONS_TABLE: [options_table_entry; 200] = [
+pub static OPTIONS_TABLE: [options_table_entry; 201] = [
     options_table_entry {
         name: "backspace",
         type_: options_table_type::OPTIONS_TABLE_KEY,
@@ -244,6 +244,16 @@ pub static OPTIONS_TABLE: [options_table_entry; 200] = [
         text: c!(
             "Array of command aliases. Each entry is an alias and a command separated by '='."
         ),
+        ..options_table_entry::const_default()
+    },
+    options_table_entry {
+        name: "codepoint-widths",
+        type_: options_table_type::OPTIONS_TABLE_STRING,
+        scope: OPTIONS_TABLE_SERVER,
+        flags: OPTIONS_TABLE_IS_ARRAY,
+        default_str: Some(""),
+        separator: c!(","),
+        text: c!("Array of override widths for Unicode codepoints."),
         ..options_table_entry::const_default()
     },
     options_table_entry {

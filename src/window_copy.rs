@@ -4893,6 +4893,8 @@ pub unsafe fn window_copy_match_at_cursor(data: *mut window_copy_mode_data) -> O
             grid_get_cell(gd, px, (*gd).hsize + py - (*data).oy, &raw mut gc);
             if gc.flags.intersects(grid_flag::TAB) {
                 buf.push(b'\t');
+            } else if gc.flags.intersects(grid_flag::PADDING) {
+                // nothing to do
             } else {
                 buf.extend(gc.data.initialized_slice());
             }

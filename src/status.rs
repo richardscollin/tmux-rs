@@ -902,6 +902,9 @@ pub unsafe fn status_prompt_redraw(c: *mut client) -> i32 {
 
             let pcursor = utf8_strwidth((*c).prompt_buffer, (*c).prompt_index as isize);
             let mut pwidth = utf8_strwidth((*c).prompt_buffer, -1);
+            if (*c).prompt_flags.intersects(prompt_flags::PROMPT_QUOTENEXT) {
+                pwidth += 1;
+            }
             if pcursor >= left {
                 // The cursor would be outside the screen so start drawing
                 // with it on the right.
@@ -916,9 +919,26 @@ pub unsafe fn status_prompt_redraw(c: *mut client) -> i32 {
             (*c).prompt_cursor =
                 (start as isize + (*c).prompt_index as isize - offset as isize) as i32;
 
-            let mut width = 0;
+            let mut width: u32 = 0;
             let mut i = 0;
             while (*(*c).prompt_buffer.add(i)).size != 0 {
+                // Draw quote indicator '^' if QUOTENEXT and at cursor position.
+                if (*c).prompt_flags.intersects(prompt_flags::PROMPT_QUOTENEXT)
+                    && (*ctx.s).cx == pcursor + 1
+                {
+                    let mut ud: utf8_data = zeroed();
+                    utf8_set(&raw mut ud, b'^');
+                    if width < offset {
+                        width += ud.width as u32;
+                    } else if width < offset + pwidth {
+                        width += ud.width as u32;
+                        if width <= offset + pwidth {
+                            utf8_copy(&raw mut gc.data, &raw const ud);
+                            screen_write_cell(&raw mut ctx, &raw const gc);
+                        }
+                    }
+                }
+
                 if width < offset {
                     width += (*(*c).prompt_buffer.add(i)).width as u32;
                     i += 1;
@@ -932,9 +952,33 @@ pub unsafe fn status_prompt_redraw(c: *mut client) -> i32 {
                     break;
                 }
 
-                utf8_copy(&raw mut gc.data, (*c).prompt_buffer.add(i));
+                let ud = &*(*c).prompt_buffer.add(i);
+                let ch = ud.data[0];
+                if ud.size == 1 && (ch <= 0x1f || ch == 0x7f) {
+                    gc.data.data[0] = b'^';
+                    gc.data.data[1] = if ch == 0x7f { b'?' } else { ch | 0x40 };
+                    gc.data.size = 2;
+                    gc.data.have = 2;
+                    gc.data.width = 2;
+                } else {
+                    utf8_copy(&raw mut gc.data, (*c).prompt_buffer.add(i));
+                }
                 screen_write_cell(&raw mut ctx, &raw const gc);
                 i += 1;
+            }
+            // Draw trailing quote indicator if QUOTENEXT and at end.
+            if (*c).prompt_flags.intersects(prompt_flags::PROMPT_QUOTENEXT)
+                && (*ctx.s).cx == pcursor + 1
+            {
+                let mut ud: utf8_data = zeroed();
+                utf8_set(&raw mut ud, b'^');
+                if width >= offset && width < offset + pwidth {
+                    width += ud.width as u32;
+                    if width <= offset + pwidth {
+                        utf8_copy(&raw mut gc.data, &raw const ud);
+                        screen_write_cell(&raw mut ctx, &raw const gc);
+                    }
+                }
             }
         }
         // finished:
@@ -989,6 +1033,8 @@ unsafe fn status_prompt_translate_key(
                 | code::N_CTRL
                 | code::P_CTRL
                 | code::T_CTRL
+                | code::U_CTRL
+                | code::V_CTRL
                 | code::W_CTRL
                 | code::Y_CTRL
                 | code::LF
@@ -1472,6 +1518,27 @@ pub unsafe fn status_prompt_key(c: *mut client, mut key: key_code) -> i32 {
                     }
                     key &= !KEYC_MASK_FLAGS;
 
+                    if (*c).prompt_flags.intersects(
+                        prompt_flags::PROMPT_SINGLE | prompt_flags::PROMPT_QUOTENEXT,
+                    ) {
+                        if (key & KEYC_MASK_KEY) == keyc::KEYC_BSPACE as u64 {
+                            key = 0x7f;
+                        } else if (key & KEYC_MASK_KEY) > 0x7f {
+                            if !KEYC_IS_UNICODE(key) {
+                                return 0;
+                            }
+                            key &= KEYC_MASK_KEY;
+                        } else {
+                            key &= if key & KEYC_CTRL != 0 {
+                                0x1f
+                            } else {
+                                KEYC_MASK_KEY
+                            };
+                        }
+                        (*c).prompt_flags &= !prompt_flags::PROMPT_QUOTENEXT;
+                        break 'append_key;
+                    }
+
                     let keys = modekey::try_from(options_get_number_(
                         (*(*c).session).options,
                         "status-keys",
@@ -1740,6 +1807,9 @@ pub unsafe fn status_prompt_key(c: *mut client, mut key: key_code) -> i32 {
                             break 'changed;
                         }
                     }
+                    code::V_CTRL => {
+                        (*c).prompt_flags |= prompt_flags::PROMPT_QUOTENEXT;
+                    }
                     _ => break 'append_key,
                 }
 
@@ -1748,6 +1818,9 @@ pub unsafe fn status_prompt_key(c: *mut client, mut key: key_code) -> i32 {
             } // append_key:
             if key <= 0x7f {
                 utf8_set(&raw mut tmp, key as u8);
+                if key <= 0x1f || key == 0x7f {
+                    tmp.width = 2;
+                }
             } else if KEYC_IS_UNICODE(key) {
                 tmp = utf8_to_data(key as u32);
             } else {
@@ -2450,6 +2523,7 @@ mod code {
     pub const S_CTRL: u64 = 's' as u64 | KEYC_CTRL;
     pub const T_CTRL: u64 = 't' as u64 | KEYC_CTRL;
     pub const U_CTRL: u64 = 'u' as u64 | KEYC_CTRL;
+    pub const V_CTRL: u64 = 'v' as u64 | KEYC_CTRL;
     pub const W_CTRL: u64 = 'w' as u64 | KEYC_CTRL;
     pub const Y_CTRL: u64 = 'y' as u64 | KEYC_CTRL;
 

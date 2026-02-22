@@ -205,7 +205,7 @@ macro_rules! options_table_window_hook {
     };
 }
 
-pub static OPTIONS_TABLE: [options_table_entry; 191] = [
+pub static OPTIONS_TABLE: [options_table_entry; 192] = [
     options_table_entry {
         name: "backspace",
         type_: options_table_type::OPTIONS_TABLE_KEY,
@@ -604,6 +604,19 @@ pub static OPTIONS_TABLE: [options_table_entry; 191] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
+        name: "initial-repeat-time",
+        type_: options_table_type::OPTIONS_TABLE_NUMBER,
+        scope: OPTIONS_TABLE_SESSION,
+        minimum: 0,
+        maximum: 10000,
+        default_num: 0,
+        unit: c!("milliseconds"),
+        text: c!(
+            "Time to wait for a key binding to repeat the first time the key is pressed, if it is bound with the '-r' flag. Subsequent presses use the 'repeat-time' option."
+        ),
+        ..options_table_entry::const_default()
+    },
+    options_table_entry {
         name: "key-table",
         type_: options_table_type::OPTIONS_TABLE_STRING,
         scope: OPTIONS_TABLE_SESSION,
@@ -700,7 +713,7 @@ pub static OPTIONS_TABLE: [options_table_entry; 191] = [
         type_: options_table_type::OPTIONS_TABLE_NUMBER,
         scope: OPTIONS_TABLE_SESSION,
         minimum: 0,
-        maximum: i16::MAX as u32,
+        maximum: 10000,
         default_num: 500,
         unit: c!("milliseconds"),
         text: c!("Time to wait for a key binding to repeat, if it is bound with the '-r' flag."),

@@ -2401,6 +2401,7 @@ struct client {
     exit_message: ManuallyDrop<Option<String>>,
 
     keytable: *mut key_table,
+    last_key: key_code,
 
     redraw_panes: u64,
 

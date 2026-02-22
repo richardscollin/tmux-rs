@@ -1956,6 +1956,28 @@ pub unsafe fn server_client_update_latest(c: *mut client) {
     }
 }
 
+/// Get repeat time.
+unsafe fn server_client_repeat_time(c: *mut client, bd: *mut key_binding) -> u32 {
+    unsafe {
+        let s = (*c).session;
+
+        if (*bd).flags & KEY_BINDING_REPEAT == 0 {
+            return 0;
+        }
+        let repeat = options_get_number_((*s).options, "repeat-time") as u32;
+        if repeat == 0 {
+            return 0;
+        }
+        if !(*c).flags.intersects(client_flag::REPEAT) || (*bd).key != (*c).last_key {
+            let initial = options_get_number_((*s).options, "initial-repeat-time") as u32;
+            if initial != 0 {
+                return initial;
+            }
+        }
+        repeat
+    }
+}
+
 /// Handle data key input from client. This owns and can modify the key event it is given and is responsible for freeing it.
 pub unsafe fn server_client_key_callback(item: *mut cmdq_item, data: *mut c_void) -> cmd_retval {
     unsafe {
@@ -1974,7 +1996,7 @@ pub unsafe fn server_client_key_callback(item: *mut cmdq_item, data: *mut c_void
         let wl: *mut winlink;
         let wp: *mut window_pane;
 
-        let xtimeout: i32;
+        let repeat: u32;
         let mut flags: client_flag;
         let mut prefix_delay: u64;
         let mut key0: key_code;
@@ -2150,12 +2172,13 @@ pub unsafe fn server_client_key_callback(item: *mut cmdq_item, data: *mut c_void
                              * If this is a repeating key, start the timer. Otherwise reset
                              * the client back to the root table.
                              */
-                            xtimeout = options_get_number_((*s).options, "repeat-time") as i32;
-                            if xtimeout != 0 && (*bd).flags & KEY_BINDING_REPEAT != 0 {
+                            repeat = server_client_repeat_time(c, bd);
+                            if repeat != 0 {
                                 (*c).flags |= client_flag::REPEAT;
+                                (*c).last_key = (*bd).key;
 
-                                tv.tv_sec = (xtimeout / 1000) as _;
-                                tv.tv_usec = (xtimeout as libc::suseconds_t % 1000) * 1000;
+                                tv.tv_sec = (repeat / 1000) as _;
+                                tv.tv_usec = (repeat as libc::suseconds_t % 1000) * 1000;
                                 evtimer_del(&raw mut (*c).repeat_timer);
                                 evtimer_add(&raw mut (*c).repeat_timer, &tv);
                             } else {

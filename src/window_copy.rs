@@ -4819,6 +4819,28 @@ pub unsafe fn window_copy_write_one(
     }
 }
 
+pub unsafe fn window_copy_get_current_offset(
+    wp: *mut window_pane,
+    offset: *mut u32,
+    size: *mut u32,
+) -> i32 {
+    unsafe {
+        let wme = tailq_first(&raw mut (*wp).modes);
+        if wme.is_null() {
+            return 0;
+        }
+        let data: *mut window_copy_mode_data = (*wme).data.cast();
+        if data.is_null() {
+            return 0;
+        }
+        let hsize = screen_hsize((*data).backing);
+
+        *offset = hsize - (*data).oy;
+        *size = hsize;
+        1
+    }
+}
+
 pub unsafe fn window_copy_write_line(
     wme: *mut window_mode_entry,
     ctx: *mut screen_write_ctx,

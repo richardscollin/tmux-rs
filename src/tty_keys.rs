@@ -1378,6 +1378,12 @@ pub unsafe fn tty_keys_next(tty: *mut tty) -> i32 {
                     if delay == 0 {
                         delay = 1;
                     }
+                    if !(*tty).flags.contains(TTY_ALL_REQUEST_FLAGS) {
+                        log_debug!("{}: increasing delay for active DA query", _s((*c).name));
+                        if delay < 500 {
+                            delay = 500;
+                        }
+                    }
                     tv.tv_sec = delay / 1000;
                     tv.tv_usec = ((delay % 1000) * 1000) as libc::suseconds_t;
 

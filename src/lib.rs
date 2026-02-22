@@ -2469,6 +2469,7 @@ struct client {
     message_timer: event,
 
     prompt_string: *mut u8,
+    pub prompt_formats: *mut format_tree,
     prompt_buffer: *mut utf8_data,
     prompt_last: *mut u8,
     prompt_index: usize,

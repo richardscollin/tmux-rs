@@ -698,18 +698,19 @@ pub unsafe fn status_prompt_set<T>(
         if input.is_null() {
             input = c!("");
         }
-        let tmp = if flags.intersects(prompt_flags::PROMPT_NOFORMAT) {
-            xstrdup(input).as_ptr()
-        } else {
-            format_expand_time(ft, input)
-        };
 
         status_message_clear(NonNull::new_unchecked(c));
         status_prompt_clear(c);
         status_push_screen(c);
 
-        (*c).prompt_string = format_expand_time(ft, msg);
+        (*c).prompt_formats = ft;
+        (*c).prompt_string = xstrdup(msg).as_ptr();
 
+        let tmp = if flags.intersects(prompt_flags::PROMPT_NOFORMAT) {
+            xstrdup(input).as_ptr()
+        } else {
+            format_expand_time(ft, input)
+        };
         if flags.intersects(prompt_flags::PROMPT_INCREMENTAL) {
             (*c).prompt_last = xstrdup(tmp).as_ptr();
             (*c).prompt_buffer = utf8_fromcstr(c!(""));
@@ -718,6 +719,7 @@ pub unsafe fn status_prompt_set<T>(
             (*c).prompt_buffer = utf8_fromcstr(tmp);
         }
         (*c).prompt_index = utf8_strlen((*c).prompt_buffer);
+        free_(tmp);
 
         (*c).prompt_inputcb = Some(std::mem::transmute::<
             unsafe fn(*mut client, NonNull<T>, *const u8, i32) -> i32,
@@ -756,9 +758,6 @@ pub unsafe fn status_prompt_set<T>(
         if flags.intersects(prompt_flags::PROMPT_INCREMENTAL) {
             (*c).prompt_inputcb.unwrap()(c, NonNull::new((*c).prompt_data).unwrap(), c!("="), 0);
         }
-
-        free_(tmp);
-        format_free(ft);
     }
 }
 
@@ -777,6 +776,9 @@ pub unsafe fn status_prompt_clear(c: *mut client) {
 
         free_((*c).prompt_last);
         (*c).prompt_last = null_mut();
+
+        format_free((*c).prompt_formats);
+        (*c).prompt_formats = null_mut();
 
         free_((*c).prompt_string);
         (*c).prompt_string = null_mut();
@@ -797,17 +799,14 @@ pub unsafe fn status_prompt_clear(c: *mut client) {
 /// Update status line prompt with a new prompt string.
 pub unsafe fn status_prompt_update(c: *mut client, msg: *const u8, input: *const u8) {
     unsafe {
-        let ft = format_create(c, null_mut(), FORMAT_NONE, format_flags::empty());
-        format_defaults(ft, c, None, None, None);
-
-        let tmp = format_expand_time(ft, input);
-
         free_((*c).prompt_string);
-        (*c).prompt_string = format_expand_time(ft, msg);
+        (*c).prompt_string = xstrdup(msg).as_ptr();
 
         free_((*c).prompt_buffer);
+        let tmp = format_expand_time((*c).prompt_formats, input);
         (*c).prompt_buffer = utf8_fromcstr(tmp);
         (*c).prompt_index = utf8_strlen((*c).prompt_buffer);
+        free_(tmp);
 
         libc::memset(
             (&raw mut (*c).prompt_hindex).cast(),
@@ -816,9 +815,6 @@ pub unsafe fn status_prompt_update(c: *mut client, msg: *const u8, input: *const
         );
 
         (*c).flags |= client_flag::REDRAWSTATUS;
-
-        free_(tmp);
-        format_free(ft);
     }
 }
 
@@ -894,6 +890,7 @@ pub unsafe fn status_prompt_redraw(c: *mut client) -> i32 {
 
         let mut gc: grid_cell = zeroed();
         let mut old_screen: screen;
+        let mut prompt: *mut u8 = null_mut();
 
         'finished: {
             if (*c).tty.sx == 0 || (*c).tty.sy == 0 {
@@ -921,15 +918,19 @@ pub unsafe fn status_prompt_redraw(c: *mut client) -> i32 {
                 promptline = lines - 1;
             }
 
-            let ft = format_create_defaults(null_mut(), c, null_mut(), null_mut(), null_mut());
+            let ft = (*c).prompt_formats;
             if (*c).prompt_mode == prompt_mode::PROMPT_COMMAND {
                 style_apply(&raw mut gc, (*s).options, c!("message-command-style"), ft);
             } else {
                 style_apply(&raw mut gc, (*s).options, c!("message-style"), ft);
             }
-            format_free(ft);
 
-            let mut start = format_width(cstr_to_str((*c).prompt_string));
+            let tmp = utf8_tocstr((*c).prompt_buffer);
+            format_add!(ft, "prompt-input", "{}", _s(tmp));
+            prompt = format_expand_time(ft, (*c).prompt_string);
+            free_(tmp);
+
+            let mut start = format_width(cstr_to_str(prompt));
             if start > (*c).tty.sx {
                 start = (*c).tty.sx;
             }
@@ -952,7 +953,7 @@ pub unsafe fn status_prompt_redraw(c: *mut client) -> i32 {
                 &raw mut ctx,
                 &raw const gc,
                 start,
-                cstr_to_str((*c).prompt_string),
+                cstr_to_str(prompt),
                 null_mut(),
                 0,
             );
@@ -1022,6 +1023,7 @@ pub unsafe fn status_prompt_redraw(c: *mut client) -> i32 {
         }
         // finished:
         screen_write_stop(&raw mut ctx);
+        free_(prompt);
 
         if grid_compare((*(*sl).active).grid, old_screen.grid) == 0 {
             screen_free(&raw mut old_screen);

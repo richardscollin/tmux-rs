@@ -1973,13 +1973,16 @@ unsafe fn tty_keys_device_attributes(
             if 3 + i == len {
                 return 1;
             }
-            if *buf.add(3 + i) == b'c' {
+            if *buf.add(3 + i) >= b'a' && *buf.add(3 + i) <= b'z' {
                 found = true;
                 break;
             }
             tmp[i] = *buf.add(3 + i);
         }
         if !found {
+            return -1;
+        }
+        if *buf.add(3 + i) != b'c' {
             return -1;
         }
         tmp[i] = b'\0';
@@ -2078,13 +2081,16 @@ unsafe fn tty_keys_device_attributes2(
             if 3 + i == len {
                 return 1;
             }
-            if *buf.add(3 + i) == b'c' {
+            if *buf.add(3 + i) >= b'a' && *buf.add(3 + i) <= b'z' {
                 found = true;
                 break;
             }
             tmp[i] = *buf.add(3 + i);
         }
         if !found {
+            return -1;
+        }
+        if *buf.add(3 + i) != b'c' {
             return -1;
         }
         tmp[i] = b'\0';

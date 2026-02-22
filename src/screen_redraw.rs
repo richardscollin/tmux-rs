@@ -199,14 +199,19 @@ pub unsafe fn screen_redraw_cell_border(ctx: *mut screen_redraw_ctx, px: u32, py
     unsafe {
         let c = (*ctx).c;
         let w = (*(*(*c).session).curw).window;
+        let mut sy = (*w).sy;
+
+        if (*ctx).pane_status == pane_status::PANE_STATUS_BOTTOM {
+            sy -= 1;
+        }
 
         // Outside the window?
-        if px > (*w).sx || py > (*w).sy {
+        if px > (*w).sx || py > sy {
             return 0;
         }
 
         // On the window border?
-        if px == (*w).sx || py == (*w).sy {
+        if px == (*w).sx || py == sy {
             return 1;
         }
 
@@ -245,8 +250,12 @@ pub unsafe fn screen_redraw_type_of_cell(
         let pane_status = (*ctx).pane_status;
         let w = (*(*(*c).session).curw).window;
         let sx = (*w).sx;
-        let sy = (*w).sy;
+        let mut sy = (*w).sy;
         let mut borders = 0;
+
+        if pane_status == pane_status::PANE_STATUS_BOTTOM {
+            sy -= 1;
+        }
 
         // Is this outside the window?
         if px > sx || py > sy {
@@ -274,7 +283,7 @@ pub unsafe fn screen_redraw_type_of_cell(
                 if py == 0 || screen_redraw_cell_border(ctx, px, py - 1) != 0 {
                     borders |= 2;
                 }
-                if py != sy - 1 && screen_redraw_cell_border(ctx, px, py + 1) != 0 {
+                if py != sy && screen_redraw_cell_border(ctx, px, py + 1) != 0 {
                     borders |= 1;
                 }
             }
@@ -321,16 +330,18 @@ pub unsafe fn screen_redraw_check_cell(
         let mut wp: *mut window_pane;
         let mut active: *mut window_pane;
         let pane_status = (*ctx).pane_status;
+        let sx = (*w).sx;
+        let sy = (*w).sy;
         let mut border: i32;
         let mut right: u32;
         let mut line: u32;
 
         *wpp = null_mut();
 
-        if px > (*w).sx || py > (*w).sy {
+        if px > sx || py > sy {
             return cell_type::CELL_OUTSIDE;
         }
-        if px == (*w).sx || py == (*w).sy {
+        if px == sx || py == sy {
             // window border
             return screen_redraw_type_of_cell(ctx, px, py);
         }
@@ -347,7 +358,7 @@ pub unsafe fn screen_redraw_check_cell(
                     if pane_status == pane_status::PANE_STATUS_TOP {
                         line = (*wp).yoff - 1;
                     } else {
-                        line = (*wp).yoff + (*wp).sy;
+                        line = (*wp).yoff + sy;
                     }
                     right = (*wp).xoff + 2 + (*wp).status_size as u32 - 1;
 
@@ -697,10 +708,10 @@ pub unsafe fn screen_redraw_screen(c: *mut client) {
 
         if flags.intersects(client_flag::REDRAWWINDOW | client_flag::REDRAWBORDERS) {
             log_debug!("{}: redrawing borders", _s((*c).name));
+            screen_redraw_draw_borders(ctx);
             if (*ctx).pane_status != pane_status::PANE_STATUS_OFF {
                 screen_redraw_draw_pane_status(ctx);
             }
-            screen_redraw_draw_borders(ctx);
         }
         if flags.intersects(client_flag::REDRAWWINDOW) {
             log_debug!("{}: redrawing panes", _s((*c).name));

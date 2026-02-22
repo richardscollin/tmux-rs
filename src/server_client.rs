@@ -2346,7 +2346,8 @@ pub unsafe fn server_client_loop() {
                     server_client_check_pane_resize(wp);
                     server_client_check_pane_buffer(wp);
                 }
-                (*wp).flags &= !window_pane_flags::PANE_REDRAW;
+                (*wp).flags &=
+                    !(window_pane_flags::PANE_REDRAW | window_pane_flags::PANE_REDRAWSCROLLBAR);
             }
             check_window_name(w);
         }
@@ -2877,7 +2878,6 @@ pub unsafe fn server_client_check_redraw(c: *mut client) {
 
         let mode = (*tty).mode;
         let mut client_flags: client_flag = client_flag::empty();
-        let mut redraw;
         let mut bit: u32 = 0;
         let tv = libc::timeval {
             tv_sec: 0,
@@ -2910,11 +2910,14 @@ pub unsafe fn server_client_check_redraw(c: *mut client) {
             for wp in tailq_foreach::<_, discr_entry>(&raw mut (*w).panes).map(NonNull::as_ptr) {
                 if (*wp).flags.intersects(window_pane_flags::PANE_REDRAW) {
                     needed = true;
+                    client_flags |= client_flag::REDRAWPANES;
                     break;
                 }
-            }
-            if needed {
-                client_flags |= client_flag::REDRAWPANES;
+                if (*wp).flags.intersects(window_pane_flags::PANE_REDRAWSCROLLBAR) {
+                    needed = true;
+                    client_flags |= client_flag::REDRAWSCROLLBARS;
+                    // no break - later panes may need redraw
+                }
             }
         }
         if needed
@@ -2967,21 +2970,28 @@ pub unsafe fn server_client_check_redraw(c: *mut client) {
             // If not redrawing the entire window, check whether each pane
             // needs to be redrawn.
             for wp in tailq_foreach::<_, discr_entry>(&raw mut (*w).panes).map(NonNull::as_ptr) {
-                redraw = false;
+                let mut redraw_pane = false;
+                let mut redraw_scrollbar_only = false;
                 if (*wp).flags.intersects(window_pane_flags::PANE_REDRAW) {
-                    redraw = true;
+                    redraw_pane = true;
                 } else if (*c).flags.intersects(client_flag::REDRAWPANES) {
-                    redraw = ((*c).redraw_panes & (1 << bit)) != 0;
+                    redraw_pane = ((*c).redraw_panes & (1 << bit)) != 0;
                 }
+                if !redraw_pane
+                    && (*wp).flags.intersects(window_pane_flags::PANE_REDRAWSCROLLBAR)
+                {
+                    redraw_scrollbar_only = true;
+                }
+                (*wp).flags &= !window_pane_flags::PANE_REDRAWSCROLLBAR;
                 bit += 1;
-                if !redraw {
+                if !redraw_pane && !redraw_scrollbar_only {
                     continue;
                 }
                 // log_debug("%s: redrawing pane %%%u", __func__, (*wp).id);
-                screen_redraw_pane(c, wp);
+                screen_redraw_pane(c, wp, redraw_scrollbar_only as i32);
             }
             (*c).redraw_panes = 0;
-            (*c).flags &= !client_flag::REDRAWPANES;
+            (*c).flags &= !(client_flag::REDRAWPANES | client_flag::REDRAWSCROLLBARS);
         }
 
         if (*c).flags.intersects(CLIENT_ALLREDRAWFLAGS) {

@@ -1376,7 +1376,10 @@ pub unsafe fn options_push_changes(name: &str) {
             }
         }
 
-        if name == "pane-border-status" {
+        if name == "pane-border-status"
+            || name == "pane-scrollbars"
+            || name == "pane-scrollbars-position"
+        {
             for w in rb_foreach(&raw mut WINDOWS) {
                 layout_fix_panes(w.as_ptr(), null_mut());
             }

@@ -251,6 +251,7 @@ pub unsafe extern "C-unwind" fn event_add(ev: *mut event, timeout: *const timeva
                 // Spawn watcher: poll the read-end of the pipe.
                 let handle = base.local_set.spawn_local(async move {
                     use std::os::fd::{AsRawFd, FromRawFd, OwnedFd};
+
                     use tokio::io::unix::AsyncFd;
 
                     let pipe_owned = unsafe { OwnedFd::from_raw_fd(pipe_read) };
@@ -358,6 +359,7 @@ pub unsafe extern "C-unwind" fn event_add(ev: *mut event, timeout: *const timeva
 #[cfg(unix)]
 async fn poll_fd(fd: c_int, events: c_short, timeout: Option<Duration>) -> Option<c_short> {
     use std::os::fd::{FromRawFd, OwnedFd};
+
     use tokio::io::unix::AsyncFd;
 
     // dup() the fd so each watcher task gets its own epoll registration.

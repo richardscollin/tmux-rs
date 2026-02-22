@@ -809,6 +809,7 @@ enum cell_type {
     CELL_RIGHTJOIN = 10,
     CELL_JOIN = 11,
     CELL_OUTSIDE = 12,
+    CELL_SCROLLBAR = 13,
 }
 
 /// Cell borders.
@@ -1167,6 +1168,9 @@ struct screen_redraw_ctx {
     pane_status: pane_status,
     pane_lines: pane_lines,
 
+    pane_scrollbars: i32,
+    pane_scrollbars_pos: i32,
+
     no_pane_gc: grid_cell,
     no_pane_gc_set: i32,
 
@@ -1308,6 +1312,7 @@ bitflags::bitflags! {
         const PANE_EMPTY = 0x800;
         const PANE_STYLECHANGED = 0x1000;
         const PANE_UNSEENCHANGES = 0x2000;
+        const PANE_REDRAWSCROLLBAR = 0x4000;
     }
 }
 
@@ -1526,6 +1531,14 @@ enum pane_status {
     PANE_STATUS_TOP,
     PANE_STATUS_BOTTOM,
 }
+
+pub const PANE_SCROLLBARS_OFF: i32 = 0;
+pub const PANE_SCROLLBARS_MODAL: i32 = 1;
+pub const PANE_SCROLLBARS_ALWAYS: i32 = 2;
+pub const PANE_SCROLLBARS_RIGHT: i32 = 0;
+pub const PANE_SCROLLBARS_LEFT: i32 = 1;
+pub const PANE_SCROLLBARS_WIDTH: u32 = 1;
+pub const PANE_SCROLLBARS_PADDING: i32 = 0;
 
 /// Layout direction.
 #[repr(i32)]
@@ -2313,6 +2326,7 @@ bitflags::bitflags! {
         const CLIPBOARDBUFFER    = 0x0800000000u64;
         const BRACKETPASTING     = 0x1000000000u64;
         const ASSUMEPASTING      = 0x2000000000u64;
+        const REDRAWSCROLLBARS   = 0x4000000000u64;
     }
 }
 
@@ -2321,7 +2335,8 @@ const CLIENT_ALLREDRAWFLAGS: client_flag = client_flag::REDRAWWINDOW
     .union(client_flag::REDRAWSTATUSALWAYS)
     .union(client_flag::REDRAWBORDERS)
     .union(client_flag::REDRAWOVERLAY)
-    .union(client_flag::REDRAWPANES);
+    .union(client_flag::REDRAWPANES)
+    .union(client_flag::REDRAWSCROLLBARS);
 const CLIENT_UNATTACHEDFLAGS: client_flag = client_flag::DEAD
     .union(client_flag::SUSPENDED)
     .union(client_flag::EXIT);
@@ -2405,6 +2420,7 @@ struct client {
     last_key: key_code,
 
     redraw_panes: u64,
+    redraw_scrollbars: u64,
 
     message_ignore_keys: c_int,
     message_ignore_styles: c_int,

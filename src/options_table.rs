@@ -47,6 +47,8 @@ static OPTIONS_TABLE_PANE_BORDER_LINES_LIST: [&str; 5] =
 static OPTIONS_TABLE_POPUP_BORDER_LINES_LIST: [&str; 7] = [
     "single", "double", "heavy", "simple", "rounded", "padded", "none",
 ];
+static OPTIONS_TABLE_PANE_SCROLLBARS_LIST: [&str; 3] = ["off", "modal", "on"];
+static OPTIONS_TABLE_PANE_SCROLLBARS_POSITION_LIST: [&str; 2] = ["right", "left"];
 static OPTIONS_TABLE_SET_CLIPBOARD_LIST: [&str; 3] = ["off", "external", "on"];
 static OPTIONS_TABLE_WINDOW_SIZE_LIST: [&str; 4] = ["largest", "smallest", "manual", "latest"];
 static OPTIONS_TABLE_REMAIN_ON_EXIT_LIST: [&str; 3] = ["off", "on", "failed"];
@@ -207,7 +209,7 @@ macro_rules! options_table_window_hook {
     };
 }
 
-pub static OPTIONS_TABLE: [options_table_entry; 194] = [
+pub static OPTIONS_TABLE: [options_table_entry; 197] = [
     options_table_entry {
         name: "backspace",
         type_: options_table_type::OPTIONS_TABLE_KEY,
@@ -1258,6 +1260,34 @@ pub static OPTIONS_TABLE: [options_table_entry; 194] = [
         default_str: Some(""),
         flags: OPTIONS_TABLE_IS_ARRAY,
         text: c!("The default colour palette for colours zero to 255."),
+        ..options_table_entry::const_default()
+    },
+    options_table_entry {
+        name: "pane-scrollbars",
+        type_: options_table_type::OPTIONS_TABLE_CHOICE,
+        scope: OPTIONS_TABLE_WINDOW,
+        choices: &OPTIONS_TABLE_PANE_SCROLLBARS_LIST,
+        default_num: PANE_SCROLLBARS_OFF as i64,
+        text: c!("Pane scrollbar state."),
+        ..options_table_entry::const_default()
+    },
+    options_table_entry {
+        name: "pane-scrollbars-style",
+        type_: options_table_type::OPTIONS_TABLE_STRING,
+        scope: OPTIONS_TABLE_WINDOW | OPTIONS_TABLE_PANE,
+        default_str: Some("bg=black,fg=white"),
+        flags: OPTIONS_TABLE_IS_STYLE,
+        separator: c!(","),
+        text: c!("Style of the pane scrollbar."),
+        ..options_table_entry::const_default()
+    },
+    options_table_entry {
+        name: "pane-scrollbars-position",
+        type_: options_table_type::OPTIONS_TABLE_CHOICE,
+        scope: OPTIONS_TABLE_WINDOW,
+        choices: &OPTIONS_TABLE_PANE_SCROLLBARS_POSITION_LIST,
+        default_num: PANE_SCROLLBARS_RIGHT as i64,
+        text: c!("Pane scrollbar position."),
         ..options_table_entry::const_default()
     },
     options_table_entry {

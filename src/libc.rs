@@ -6,14 +6,14 @@ pub use ::libc_sys::*;
 
 #[cfg(target_os = "windows")]
 mod windows;
-#[cfg(target_os = "windows")]
-pub use windows::*;
-
 // On Windows, pub use windows::* re-exports items for consumers but we also need them in local scope
 #[cfg(target_os = "windows")]
 use core::ffi::{c_int, c_void};
+
 #[cfg(target_os = "windows")]
 pub use windows::mode_t;
+#[cfg(target_os = "windows")]
+pub use windows::*;
 
 pub type wchar_t = core::ffi::c_int;
 

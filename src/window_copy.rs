@@ -4969,6 +4969,8 @@ pub unsafe fn window_copy_redraw_lines(wme: *mut window_mode_entry, py: u32, ny:
         }
         screen_write_cursormove(&raw mut ctx, (*data).cx as i32, (*data).cy as i32, 0);
         screen_write_stop(&raw mut ctx);
+
+        (*wp).flags |= window_pane_flags::PANE_REDRAWSCROLLBAR;
     }
 }
 
@@ -6284,6 +6286,7 @@ pub unsafe fn window_copy_scroll_up(wme: *mut window_mode_entry, mut ny: u32) {
         }
         screen_write_cursormove(&raw mut ctx, (*data).cx as i32, (*data).cy as i32, 0);
         screen_write_stop(&raw mut ctx);
+        (*wp).flags |= window_pane_flags::PANE_REDRAWSCROLLBAR;
     }
 }
 
@@ -6322,6 +6325,7 @@ pub unsafe fn window_copy_scroll_down(wme: *mut window_mode_entry, mut ny: u32) 
         } /* nuke position */
         screen_write_cursormove(&raw mut ctx, (*data).cx as i32, (*data).cy as i32, 0);
         screen_write_stop(&raw mut ctx);
+        (*wp).flags |= window_pane_flags::PANE_REDRAWSCROLLBAR;
     }
 }
 

@@ -1,13 +1,12 @@
 use std::ffi::{c_int, c_short, c_void};
 
-use crate::libc::{self, timeval};
-
 use super::super::{
     EV_PERSIST, EV_READ, EV_WRITE, bufferevent_data_cb, bufferevent_event_cb, evbuffer, event_base,
     event_watermark,
 };
 use super::evbuffer_impl::{evbuffer_add, evbuffer_drain, evbuffer_get_length, evbuffer_new};
 use super::{bufferevent, event};
+use crate::libc::{self, timeval};
 
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn bufferevent_new(

@@ -154,7 +154,8 @@ unsafe fn screen_write_set_client_cb(ttyctx: *mut tty_ctx, c: *mut client) -> i3
             // Redraw is already deferred to redraw another pane - redraw
             // this one also when that happens.
             // log_debug("%s: adding %%%u to deferred redraw", __func__, (*wp).id);
-            (*wp).flags |= window_pane_flags::PANE_REDRAW;
+            (*wp).flags |=
+                window_pane_flags::PANE_REDRAW | window_pane_flags::PANE_REDRAWSCROLLBAR;
             return -1;
         }
 
@@ -1986,6 +1987,10 @@ pub unsafe fn screen_write_collect_flush(ctx: *mut screen_write_ctx, scroll_only
             ttyctx.num = (*ctx).scrolled;
             ttyctx.bg = (*ctx).bg;
             tty_write(tty_cmd_scrollup, &raw mut ttyctx);
+
+            if !(*ctx).wp.is_null() {
+                (*(*ctx).wp).flags |= window_pane_flags::PANE_REDRAWSCROLLBAR;
+            }
         }
         (*ctx).scrolled = 0;
         (*ctx).bg = 8;

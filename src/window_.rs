@@ -651,11 +651,31 @@ pub unsafe fn window_redraw_active_switch(w: *mut window, mut wp: *mut window_pa
 
 pub unsafe fn window_get_active_at(w: *mut window, x: u32, y: u32) -> *mut window_pane {
     unsafe {
+        let pane_scrollbars =
+            options_get_number_((*w).options, "pane-scrollbars") as i32;
+        let sb_pos =
+            options_get_number_((*w).options, "pane-scrollbars-position") as u32;
+
         for wp in tailq_foreach::<_, discr_entry>(&raw mut (*w).panes).map(NonNull::as_ptr) {
             if !window_pane_visible(wp) {
                 continue;
             }
-            if x < (*wp).xoff || x > (*wp).xoff + (*wp).sx {
+
+            let sb_w = if pane_scrollbars == PANE_SCROLLBARS_ALWAYS
+                || (pane_scrollbars == PANE_SCROLLBARS_MODAL
+                    && window_pane_mode(wp) != WINDOW_PANE_NO_MODE)
+            {
+                PANE_SCROLLBARS_WIDTH
+            } else {
+                0
+            };
+
+            let (xoff, sx) = if sb_pos == PANE_SCROLLBARS_LEFT as u32 {
+                ((*wp).xoff - sb_w, (*wp).sx + sb_w)
+            } else {
+                ((*wp).xoff, (*wp).sx + sb_w)
+            };
+            if x < xoff || x > xoff + sx {
                 continue;
             }
             if y < (*wp).yoff || y > (*wp).yoff + (*wp).sy {
@@ -1251,7 +1271,12 @@ pub unsafe fn window_pane_set_mode(
         }
 
         (*wp).screen = (*wme).screen;
-        (*wp).flags |= window_pane_flags::PANE_REDRAW | window_pane_flags::PANE_CHANGED;
+
+        (*wp).flags |= window_pane_flags::PANE_REDRAW
+            | window_pane_flags::PANE_REDRAWSCROLLBAR
+            | window_pane_flags::PANE_CHANGED;
+        let w = (*wp).window;
+        layout_fix_panes(w, null_mut());
 
         server_redraw_window_borders((*wp).window);
         server_status_window((*wp).window);
@@ -1282,7 +1307,11 @@ pub unsafe fn window_pane_reset_mode(wp: *mut window_pane) {
             log_debug!("{}: no next mode", func);
             (*wp).screen = &raw mut (*wp).base;
         }
-        (*wp).flags |= window_pane_flags::PANE_REDRAW | window_pane_flags::PANE_CHANGED;
+        (*wp).flags |= window_pane_flags::PANE_REDRAW
+            | window_pane_flags::PANE_REDRAWSCROLLBAR
+            | window_pane_flags::PANE_CHANGED;
+        let w = (*wp).window;
+        layout_fix_panes(w, null_mut());
 
         server_redraw_window_borders((*wp).window);
         server_status_window((*wp).window);

@@ -1,7 +1,7 @@
-use crate::libc;
 use std::ffi::{c_int, c_void};
 
 use super::super::{evbuffer, evbuffer_eol_style};
+use crate::libc;
 
 /// Internal evbuffer backed by a `Vec<u8>`.
 ///

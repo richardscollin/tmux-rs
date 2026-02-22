@@ -10,10 +10,10 @@
 )]
 
 // Re-export everything from ::libc first, then our definitions shadow what we override
+use core::ffi::{c_char, c_int, c_uint, c_void};
+
 pub use ::libc_sys::*;
 pub use ::libc_sys::{self as libc};
-
-use core::ffi::{c_char, c_int, c_uint, c_void};
 
 // ============================================================
 // Types (not in ::libc on Windows)

@@ -1133,9 +1133,15 @@ unsafe fn yylex_token(ps: &mut cmd_parse_state, mut ch: i32) -> *mut u8 {
                                 ch = '\r' as i32;
                             }
                         }
-                        if state == State::None && ch == '\n' as i32 {
-                            // log_debug("%s: end at EOL", __func__);
-                            break 'aloop;
+                        if ch == '\n' as i32 {
+                            if state == State::None {
+                                // log_debug("%s: end at EOL", __func__);
+                                break 'aloop;
+                            }
+                            ps.input
+                                .unwrap()
+                                .line
+                                .fetch_add(1, atomic::Ordering::SeqCst);
                         }
 
                         // Whitespace or ; or } ends a token unless inside quotes.

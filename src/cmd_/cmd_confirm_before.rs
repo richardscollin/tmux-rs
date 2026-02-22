@@ -117,7 +117,7 @@ unsafe fn cmd_confirm_before_callback(
                 break 'out;
             }
             if *s != (*cdata.as_ptr()).confirm_key
-                && (*s != b'\0' || !(*cdata.as_ptr()).default_yes)
+                && (*s != b'\r' || !(*cdata.as_ptr()).default_yes)
             {
                 break 'out;
             }

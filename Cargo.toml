@@ -27,6 +27,7 @@ systemd = []
 utempter = []
 utf8proc = []
 event-tokio = ["dep:tokio"]
+slow-tests = []
 
 # configure linking of external libraries
 # defaults to static linking on macOS, and dynamic linking on all other platforms
@@ -175,3 +176,6 @@ unnested_or_patterns = "allow" # I think it's more readable the other way
 unreadable_literal = "allow" # too many color constants
 used_underscore_items = "allow" # _s and other's will naturally be removed in transition to safer rust
 wildcard_imports = "allow" # too many, c style codebase, eventually will be fixed / refactored
+
+[dev-dependencies]
+tempfile = "3.25.0"

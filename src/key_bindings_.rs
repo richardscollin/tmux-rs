@@ -199,11 +199,12 @@ pub unsafe fn key_bindings_add(
         let mut bd = key_bindings_get(NonNull::new(table).unwrap(), key & !KEYC_MASK_FLAGS);
         if cmdlist.is_null() {
             if !bd.is_null() {
-                free_((*bd).note);
                 if !note.is_null() {
+                    free_((*bd).note);
                     (*bd).note = xstrdup(note).as_ptr();
-                } else {
-                    (*bd).note = null_mut();
+                }
+                if repeat {
+                    (*bd).flags |= KEY_BINDING_REPEAT;
                 }
             }
             return;
@@ -439,8 +440,8 @@ pub unsafe fn key_bindings_init() {
         "bind -N 'Resize the pane left' -r C-Left { resize-pane -L }",
         "bind -N 'Resize the pane right' -r C-Right { resize-pane -R }",
         /* Menu keys */
-        concat!( "bind < { display-menu -xW -yW -T '#[align=centre]#{window_index}:#{window_name}' ", DEFAULT_WINDOW_MENU!(), " }"),
-        concat!( "bind > { display-menu -xP -yP -T '#[align=centre]#{pane_index} ", "(#{pane_id})' ", DEFAULT_PANE_MENU!(), " }"),
+        concat!( "bind -N 'Display window menu' < { display-menu -xW -yW -T '#[align=centre]#{window_index}:#{window_name}' ", DEFAULT_WINDOW_MENU!(), " }"),
+        concat!( "bind -N 'Display pane menu' > { display-menu -xP -yP -T '#[align=centre]#{pane_index} ", "(#{pane_id})' ", DEFAULT_PANE_MENU!(), " }"),
         // Mouse button 1 down on pane.
         "bind -n MouseDown1Pane { select-pane -t=; send -M }",
         /* Mouse button 1 drag on pane. */

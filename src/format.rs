@@ -1229,6 +1229,15 @@ pub unsafe fn format_cb_mouse_hyperlink(ft: *mut format_tree) -> format_table_ty
         if cmd_mouse_at(wp.as_ptr(), &raw mut (*ft).m, &mut x, &mut y, 0) != 0 {
             return format_table_type::None;
         }
+
+        if !tailq_empty(&raw const (*wp.as_ptr()).modes) {
+            if window_pane_mode(wp.as_ptr()) != WINDOW_PANE_NO_MODE {
+                return window_copy_get_hyperlink(wp.as_ptr(), x, y)
+                    .map(Into::into)
+                    .unwrap_or_default();
+            }
+            return format_table_type::None;
+        }
         let gd = (*wp.as_ptr()).base.grid;
         format_grid_hyperlink(gd, x, (*gd).hsize + y, (*wp.as_ptr()).screen)
             .map(Into::into)

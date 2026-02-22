@@ -89,7 +89,6 @@ enum window_tree_sort_type {
 }
 
 static WINDOW_TREE_SORT_LIST: [&str; 3] = ["index", "name", "time"];
-static mut WINDOW_TREE_SORT: *mut mode_tree_sort_criteria = null_mut();
 
 #[repr(i32)]
 #[derive(Eq, PartialEq)]
@@ -476,8 +475,6 @@ unsafe fn window_tree_build(
     filter: *const u8,
 ) {
     unsafe {
-        WINDOW_TREE_SORT = sort_crit;
-
         let data: NonNull<window_tree_modedata> = modedata.cast();
         let data = data.as_ptr();
 
@@ -1028,13 +1025,17 @@ unsafe fn window_tree_get_key(
     }
 }
 
-unsafe fn window_tree_cmp_window(a: *mut winlink, b: *mut winlink) -> i32 {
+unsafe fn window_tree_cmp_window(
+    a: *mut winlink,
+    b: *mut winlink,
+    sort_crit: *const mode_tree_sort_criteria,
+) -> i32 {
     unsafe {
         let wa = (*a).window;
         let wb = (*b).window;
         let mut result = 0;
 
-        match window_tree_sort_type::try_from((*WINDOW_TREE_SORT).field as i32) {
+        match window_tree_sort_type::try_from((*sort_crit).field as i32) {
             Ok(window_tree_sort_type::WINDOW_TREE_BY_INDEX) => {
                 result = (*a).idx - (*b).idx;
             }
@@ -1052,14 +1053,18 @@ unsafe fn window_tree_cmp_window(a: *mut winlink, b: *mut winlink) -> i32 {
             }
             _ => {}
         }
-        if (*WINDOW_TREE_SORT).reversed {
+        if (*sort_crit).reversed {
             result = -result;
         }
         result
     }
 }
 
-unsafe fn window_tree_swap(cur_itemdata: *mut c_void, other_itemdata: *mut c_void) -> i32 {
+unsafe fn window_tree_swap(
+    cur_itemdata: *mut c_void,
+    other_itemdata: *mut c_void,
+    sort_crit: *const mode_tree_sort_criteria,
+) -> i32 {
     unsafe {
         let cur: NonNull<window_tree_itemdata> = NonNull::new(cur_itemdata.cast()).unwrap();
         let other: NonNull<window_tree_itemdata> = NonNull::new(other_itemdata.cast()).unwrap();
@@ -1103,9 +1108,8 @@ unsafe fn window_tree_swap(cur_itemdata: *mut c_void, other_itemdata: *mut c_voi
             return 0;
         };
 
-        if !WINDOW_TREE_SORT.is_null()
-            && (*WINDOW_TREE_SORT).field != window_tree_sort_type::WINDOW_TREE_BY_INDEX as u32
-            && window_tree_cmp_window(cur_wl, other_wl) != 0
+        if (*sort_crit).field != window_tree_sort_type::WINDOW_TREE_BY_INDEX as u32
+            && window_tree_cmp_window(cur_wl, other_wl, sort_crit) != 0
         {
             // Swapping indexes would not swap positions in the tree, so
             // prevent swapping to avoid confusing the user.

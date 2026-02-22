@@ -841,6 +841,20 @@ pub unsafe fn window_copy_get_line(wp: *mut window_pane, y: u32) -> String {
     }
 }
 
+pub unsafe fn window_copy_get_hyperlink(
+    wp: *mut window_pane,
+    x: u32,
+    y: u32,
+) -> Option<String> {
+    unsafe {
+        let wme: *mut window_mode_entry = tailq_first(&raw mut (*wp).modes);
+        let data: *mut window_copy_mode_data = (*wme).data.cast();
+        let gd = (*data).screen.grid;
+
+        format_grid_hyperlink(gd, x, (*gd).hsize + y, (*wp).screen)
+    }
+}
+
 pub unsafe fn window_copy_cursor_hyperlink_cb(ft: *mut format_tree) -> format_table_type {
     unsafe {
         let wp = format_get_pane(ft);

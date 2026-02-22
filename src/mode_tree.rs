@@ -32,7 +32,7 @@ pub type mode_tree_height_cb = Option<unsafe fn(_: *mut c_void, _: c_uint) -> c_
 pub type mode_tree_key_cb =
     Option<unsafe fn(_: NonNull<c_void>, _: NonNull<c_void>, _: c_uint) -> key_code>;
 pub type mode_tree_swap_cb =
-    Option<unsafe fn(_: *mut c_void, _: *mut c_void) -> i32>;
+    Option<unsafe fn(_: *mut c_void, _: *mut c_void, _: *const mode_tree_sort_criteria) -> i32>;
 pub type mode_tree_each_cb =
     Option<unsafe fn(_: NonNull<c_void>, _: NonNull<c_void>, _: *mut client, _: key_code)>;
 
@@ -333,6 +333,7 @@ unsafe fn mode_tree_swap(mtd: *mut mode_tree_data, direction: i32) {
         if ((*mtd).swapcb.unwrap())(
             (*(&(*mtd).line_list)[(*mtd).current as usize].item).itemdata,
             (*(&(*mtd).line_list)[swap_with as usize].item).itemdata,
+            &(*mtd).sort_crit,
         ) != 0
         {
             (*mtd).current = swap_with as u32;

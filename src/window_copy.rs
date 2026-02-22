@@ -5040,18 +5040,15 @@ pub unsafe fn window_copy_write_line(
         let sx = screen_size_x(s);
         let hsize = screen_hsize((*data).backing);
 
-        style_apply(&raw mut gc, oo, c!("mode-style"), null_mut());
+        let ft = format_create_defaults(null_mut(), null_mut(), null_mut(), null_mut(), wp);
+
+        style_apply(&raw mut gc, oo, c!("copy-mode-position-style"), ft);
         gc.flags |= grid_flag::NOPALETTE;
-        style_apply(&raw mut mgc, oo, c!("copy-mode-match-style"), null_mut());
+        style_apply(&raw mut mgc, oo, c!("copy-mode-match-style"), ft);
         mgc.flags |= grid_flag::NOPALETTE;
-        style_apply(
-            &raw mut cgc,
-            oo,
-            c!("copy-mode-current-match-style"),
-            null_mut(),
-        );
+        style_apply(&raw mut cgc, oo, c!("copy-mode-current-match-style"), ft);
         cgc.flags |= grid_flag::NOPALETTE;
-        style_apply(&raw mut mkgc, oo, c!("copy-mode-mark-style"), null_mut());
+        style_apply(&raw mut mkgc, oo, c!("copy-mode-mark-style"), ft);
         mkgc.flags |= grid_flag::NOPALETTE;
 
         window_copy_write_one(
@@ -5068,14 +5065,12 @@ pub unsafe fn window_copy_write_line(
         if py == 0 && (*s).rupper < (*s).rlower && !(*data).hide_position {
             let value = options_get_string(oo, "copy-mode-position-format");
             if *value != 0 {
-                let ft = format_create_defaults(null_mut(), null_mut(), null_mut(), null_mut(), wp);
                 let expanded = format_expand(ft, value);
                 if *expanded != 0 {
                     screen_write_cursormove(ctx, 0, 0, 0);
                     format_draw(ctx, &raw mut gc, sx, cstr_to_str(expanded), null_mut(), 0);
                 }
                 free_(expanded);
-                format_free(ft);
             }
         }
 
@@ -5083,6 +5078,8 @@ pub unsafe fn window_copy_write_line(
             screen_write_cursormove(ctx, screen_size_x(s) as i32 - 1, py as i32, 0);
             screen_write_putc(ctx, &raw const GRID_DEFAULT_CELL, b'$');
         }
+
+        format_free(ft);
     }
 }
 
@@ -5365,8 +5362,10 @@ pub unsafe fn window_copy_set_selection(
         }
 
         // Set colours and selection.
-        style_apply(&raw mut gc, oo, c!("mode-style"), null_mut());
+        let ft = format_create_defaults(null_mut(), null_mut(), null_mut(), null_mut(), wp);
+        style_apply(&raw mut gc, oo, c!("copy-mode-selection-style"), ft);
         gc.flags |= grid_flag::NOPALETTE;
+        format_free(ft);
         screen_set_selection(
             s,
             sx,

@@ -209,7 +209,7 @@ macro_rules! options_table_window_hook {
     };
 }
 
-pub static OPTIONS_TABLE: [options_table_entry; 198] = [
+pub static OPTIONS_TABLE: [options_table_entry; 200] = [
     options_table_entry {
         name: "backspace",
         type_: options_table_type::OPTIONS_TABLE_KEY,
@@ -1099,6 +1099,26 @@ pub static OPTIONS_TABLE: [options_table_entry; 198] = [
              #{?search_count_partial,+,} results),}}",
         ),
         text: c!("Format of the position indicator in copy mode."),
+        ..options_table_entry::const_default()
+    },
+    options_table_entry {
+        name: "copy-mode-position-style",
+        type_: options_table_type::OPTIONS_TABLE_STRING,
+        scope: OPTIONS_TABLE_WINDOW,
+        default_str: Some("#{mode-style}"),
+        flags: OPTIONS_TABLE_IS_STYLE,
+        separator: c!(","),
+        text: c!("Style of position indicator in copy mode."),
+        ..options_table_entry::const_default()
+    },
+    options_table_entry {
+        name: "copy-mode-selection-style",
+        type_: options_table_type::OPTIONS_TABLE_STRING,
+        scope: OPTIONS_TABLE_WINDOW,
+        default_str: Some("#{mode-style}"),
+        flags: OPTIONS_TABLE_IS_STYLE,
+        separator: c!(","),
+        text: c!("Style of selection in copy mode."),
         ..options_table_entry::const_default()
     },
     options_table_entry {

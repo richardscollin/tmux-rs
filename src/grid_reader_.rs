@@ -361,6 +361,12 @@ unsafe fn grid_reader_cell_equals_data(gc: *const grid_cell, ud: *const utf8_dat
         if (*gc).flags.intersects(grid_flag::PADDING) {
             return false;
         }
+        if (*gc).flags.intersects(grid_flag::TAB)
+            && (*ud).size == 1
+            && (*ud).data[0] == b'\t'
+        {
+            return true;
+        }
         if (*gc).data.size != (*ud).size {
             return false;
         }

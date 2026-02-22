@@ -3732,6 +3732,11 @@ pub unsafe fn window_copy_cellstring(
             *allocated = 0;
             return (&raw mut (*gce).union_.data.data).cast();
         }
+        if (*gce).flags.intersects(grid_flag::TAB) {
+            *size = 1;
+            *allocated = 0;
+            return c!("\t") as *mut u8;
+        }
 
         let ud = utf8_to_data((*(*gl).extddata.add((*gce).union_.offset as usize)).data);
         if ud.size == 0 {
@@ -4704,7 +4709,11 @@ pub unsafe fn window_copy_match_at_cursor(data: *mut window_copy_mode_data) -> O
             let px = at - (py * sx);
 
             grid_get_cell(gd, px, (*gd).hsize + py - (*data).oy, &raw mut gc);
-            buf.extend(gc.data.initialized_slice());
+            if gc.flags.intersects(grid_flag::TAB) {
+                buf.push(b'\t');
+            } else {
+                buf.extend(gc.data.initialized_slice());
+            }
         }
         Some(String::from_utf8(buf).unwrap())
     }

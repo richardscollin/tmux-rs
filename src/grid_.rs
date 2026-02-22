@@ -1275,14 +1275,19 @@ pub unsafe fn grid_string_cells(
                 codelen = 0;
             }
 
-            data = &raw const gc.data.data as *const u8;
-            size = gc.data.size as usize;
-            if flags.intersects(grid_string_flags::GRID_STRING_ESCAPE_SEQUENCES)
-                && size == 1
-                && *data == b'\\'
-            {
-                data = c!("\\\\");
-                size = 2;
+            if gc.flags.intersects(grid_flag::TAB) {
+                data = c!("\t");
+                size = 1;
+            } else {
+                data = &raw const gc.data.data as *const u8;
+                size = gc.data.size as usize;
+                if flags.intersects(grid_string_flags::GRID_STRING_ESCAPE_SEQUENCES)
+                    && size == 1
+                    && *data == b'\\'
+                {
+                    data = c!("\\\\");
+                    size = 2;
+                }
             }
 
             while len < off + size + codelen + 1 {

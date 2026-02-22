@@ -127,6 +127,14 @@ pub enum format_type {
     FORMAT_TYPE_PANE,
 }
 
+// Format loop sort type.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum format_loop_sort_type {
+    ByIndex,
+    ByName,
+    ByTime,
+}
+
 // Entry in format tree.
 #[repr(C)]
 pub struct format_entry {
@@ -3914,7 +3922,7 @@ pub unsafe fn format_build_modifiers(
             }
 
             // Now try single character with arguments.
-            if strchr(c!("mCNst=pReq"), *cp as i32).is_null() {
+            if strchr(c!("mCNSst=pReq"), *cp as i32).is_null() {
                 break;
             }
             let mut c = *cp;
@@ -4080,22 +4088,65 @@ pub unsafe fn format_session_name(es: *mut format_expand_state, fmt: *const u8) 
     }
 }
 
-pub unsafe fn format_loop_sessions(es: *mut format_expand_state, fmt: *const u8) -> *mut u8 {
+pub unsafe fn format_loop_sessions(
+    es: *mut format_expand_state,
+    fmt: *const u8,
+    sort_field: format_loop_sort_type,
+    sort_reversed: bool,
+) -> *mut u8 {
     unsafe {
         let ft = (*es).ft;
         let c = (*ft).client;
         let item = (*ft).item;
+        let mut all: *mut u8 = null_mut();
+        let mut active: *mut u8 = null_mut();
         let mut value: *mut u8 = xcalloc(1, 1).as_ptr().cast();
         let mut valuelen = 1;
 
-        for s in rb_foreach(&raw mut SESSIONS).map(NonNull::as_ptr) {
+        if format_choose(es, fmt, &raw mut all, &raw mut active, 0) != 0 {
+            all = xstrdup(fmt).as_ptr();
+            active = null_mut();
+        }
+
+        let mut l: Vec<*mut session> =
+            rb_foreach(&raw mut SESSIONS).map(NonNull::as_ptr).collect();
+
+        l.sort_by(|a, b| {
+            use std::cmp::Ordering;
+            let sa = *a;
+            let sb = *b;
+            let result = match sort_field {
+                format_loop_sort_type::ByIndex => (*sa).id.cmp(&(*sb).id),
+                format_loop_sort_type::ByTime => {
+                    let ta = &(*sa).activity_time;
+                    let tb = &(*sb).activity_time;
+                    match (tb.tv_sec, tb.tv_usec).cmp(&(ta.tv_sec, ta.tv_usec)) {
+                        Ordering::Equal => (*sa).name.cmp(&(*sb).name),
+                        other => other,
+                    }
+                }
+                format_loop_sort_type::ByName => (*sa).name.cmp(&(*sb).name),
+            };
+            if sort_reversed {
+                result.reverse()
+            } else {
+                result
+            }
+        });
+
+        for &s in &l {
             format_log1!(es, c!("format_loop_sessions"), "session loop: ${}", (*s).id,);
+            let use_ = if !active.is_null() && (*s).id == (*(*(*ft).c).session).id {
+                active
+            } else {
+                all
+            };
             let nft = format_create(c, item, FORMAT_NONE, (*ft).flags);
             format_defaults(nft, (*ft).c, NonNull::new(s), None, None);
             let mut next = zeroed();
             format_copy_state(&mut next, es, format_expand_flags::empty());
             next.ft = nft;
-            let expanded = format_expand1(&mut next, fmt);
+            let expanded = format_expand1(&mut next, use_);
             format_free(next.ft);
 
             valuelen += strlen(expanded);
@@ -4104,6 +4155,8 @@ pub unsafe fn format_loop_sessions(es: *mut format_expand_state, fmt: *const u8)
             free_(expanded);
         }
 
+        free_(active);
+        free_(all);
         value
     }
 }
@@ -4568,6 +4621,8 @@ pub unsafe fn format_replace(
         // let mut i = 0u32;
         let mut count = 0u32;
         let mut nsub = 0u32;
+        let mut sort_field = format_loop_sort_type::ByIndex;
+        let mut sort_reversed = false;
 
         let mut next = MaybeUninit::<format_expand_state>::uninit();
         let next = next.as_mut_ptr();
@@ -4674,7 +4729,22 @@ pub unsafe fn format_replace(
                                     modifiers |= format_modifiers::FORMAT_SESSION_NAME;
                                 }
                             }
-                            b'S' => modifiers |= format_modifiers::FORMAT_SESSIONS,
+                            b'S' => {
+                                modifiers |= format_modifiers::FORMAT_SESSIONS;
+                                if (*fm).argc >= 1 {
+                                    if !strchr(*(*fm).argv, b'i' as i32).is_null() {
+                                        sort_field = format_loop_sort_type::ByIndex;
+                                    } else if !strchr(*(*fm).argv, b'n' as i32).is_null() {
+                                        sort_field = format_loop_sort_type::ByName;
+                                    } else if !strchr(*(*fm).argv, b't' as i32).is_null() {
+                                        sort_field = format_loop_sort_type::ByTime;
+                                    } else {
+                                        sort_field = format_loop_sort_type::ByIndex;
+                                    }
+                                    sort_reversed =
+                                        !strchr(*(*fm).argv, b'r' as i32).is_null();
+                                }
+                            }
                             b'W' => modifiers |= format_modifiers::FORMAT_WINDOWS,
                             b'P' => modifiers |= format_modifiers::FORMAT_PANES,
                             b'!' => modifiers |= format_modifiers::FORMAT_NOT,
@@ -4736,7 +4806,8 @@ pub unsafe fn format_replace(
 
                 // Is this a loop, comparison or condition?
                 if modifiers.intersects(format_modifiers::FORMAT_SESSIONS) {
-                    value = format_loop_sessions(es, copy);
+                    value =
+                        format_loop_sessions(es, copy, sort_field, sort_reversed);
                     if value.is_null() {
                         break 'fail;
                     }

@@ -825,9 +825,9 @@ pub unsafe fn window_copy_get_word(wp: *mut window_pane, x: u32, y: u32) -> Stri
     unsafe {
         let wme: *mut window_mode_entry = tailq_first(&raw mut (*wp).modes);
         let data: *mut window_copy_mode_data = (*wme).data.cast();
-        let gd = (*data).screen.grid;
+        let gd = (*(*data).backing).grid;
 
-        format_grid_word(gd, x, (*gd).hsize + y)
+        format_grid_word(gd, x, (*gd).hsize + y - (*data).oy)
     }
 }
 

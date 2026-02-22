@@ -4452,6 +4452,9 @@ pub unsafe fn window_copy_search_marks(
         'out: {
             if ssp.is_null() {
                 width = screen_write_strlen!("{}", _s((*data).searchstr)) as u32;
+                if width == 0 {
+                    return false;
+                }
                 screen_init(&raw mut ss, width, 1, 0);
                 screen_write_start(&raw mut ctx, &raw mut ss);
                 screen_write_nputs!(

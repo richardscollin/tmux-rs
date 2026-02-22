@@ -419,13 +419,15 @@ pub fn popup_make_pane(pd: *mut popup_data, type_: layout_type) {
         let new_wp = window_add_pane((*wp).window, null_mut(), hlimit, spawn_flags::empty());
         layout_assign_pane(lc, new_wp, 0);
 
-        (*new_wp).fd = job_transfer(
-            (*pd).job,
-            &mut (*new_wp).pid,
-            (*new_wp).tty.as_mut_ptr(),
-            TTY_NAME_MAX,
-        );
-        (*pd).job = null_mut();
+        if !(*pd).job.is_null() {
+            (*new_wp).fd = job_transfer(
+                (*pd).job,
+                &mut (*new_wp).pid,
+                (*new_wp).tty.as_mut_ptr(),
+                TTY_NAME_MAX,
+            );
+            (*pd).job = null_mut();
+        }
 
         screen_set_title(&raw mut (*pd).s, (*new_wp).base.title);
         screen_free(&raw mut (*new_wp).base);

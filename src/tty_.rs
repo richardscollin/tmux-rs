@@ -3678,9 +3678,7 @@ pub unsafe fn tty_attributes(
             tty_set_italics(tty);
         }
         if changed.intersects(GRID_ATTR_ALL_UNDERSCORE) {
-            if (changed.intersects(grid_attr::GRID_ATTR_UNDERSCORE))
-                || !tty_term_has((*tty).term, tty_code_code::TTYC_SMULX)
-            {
+            if changed.intersects(grid_attr::GRID_ATTR_UNDERSCORE) {
                 tty_putcode(tty, tty_code_code::TTYC_SMUL);
             } else if changed.intersects(grid_attr::GRID_ATTR_UNDERSCORE_2) {
                 tty_putcode_i(tty, tty_code_code::TTYC_SMULX, 2);

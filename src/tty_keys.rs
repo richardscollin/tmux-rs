@@ -193,8 +193,8 @@ static TTY_DEFAULT_RAW_KEYS: [tty_default_key_raw; 100] = [
     tty_default_key_raw::new(c"\x1b[I", keyc::KEYC_FOCUS_IN as u64),
     tty_default_key_raw::new(c"\x1b[O", keyc::KEYC_FOCUS_OUT as u64),
     // Paste keys.
-    tty_default_key_raw::new(c"\x1b[200~", keyc::KEYC_PASTE_START as u64),
-    tty_default_key_raw::new(c"\x1b[201~", keyc::KEYC_PASTE_END as u64),
+    tty_default_key_raw::new(c"\x1b[200~", keyc::KEYC_PASTE_START as u64 | KEYC_IMPLIED_META),
+    tty_default_key_raw::new(c"\x1b[201~", keyc::KEYC_PASTE_END as u64 | KEYC_IMPLIED_META),
     // Extended keys.
     tty_default_key_raw::new(c"\x1b[1;5Z", '\x09' as u64 | KEYC_CTRL | KEYC_SHIFT),
 ];

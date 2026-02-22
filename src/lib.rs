@@ -351,7 +351,8 @@ fn KEYC_IS_MOUSE(key: key_code) -> bool {
 #[expect(non_snake_case)]
 #[inline]
 fn KEYC_IS_PASTE(key: key_code) -> bool {
-    key == keyc::KEYC_PASTE_START as u64 || key == keyc::KEYC_PASTE_END as u64
+    (key & KEYC_MASK_KEY) == keyc::KEYC_PASTE_START as u64
+        || (key & KEYC_MASK_KEY) == keyc::KEYC_PASTE_END as u64
 }
 
 #[expect(non_snake_case)]

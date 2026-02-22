@@ -4005,6 +4005,7 @@ pub unsafe fn server_client_print(c: *mut client, parse: i32, evb: *mut evbuffer
         let data = EVBUFFER_DATA(evb);
         let mut size = EVBUFFER_LENGTH(evb);
         let mut msg = null_mut();
+        let mut empty: u8 = b'\0';
 
         'out: {
             if parse == 0 {
@@ -4014,13 +4015,17 @@ pub unsafe fn server_client_print(c: *mut client, parse: i32, evb: *mut evbuffer
                     size,
                     vis_flags::VIS_OCTAL | vis_flags::VIS_CSTYLE | vis_flags::VIS_NOSLASH,
                 );
-                // log_debug("%s: %s", __func__, msg);
             } else {
-                msg = EVBUFFER_DATA(evb).cast();
-                if *msg.add(size - 1) != b'\0' {
-                    evbuffer_add(evb, c!("").cast(), 1);
+                if size == 0 {
+                    msg = &raw mut empty as *mut u8;
+                } else {
+                    msg = EVBUFFER_DATA(evb).cast();
+                    if *msg.add(size - 1) != b'\0' {
+                        evbuffer_add(evb, c!("").cast(), 1);
+                    }
                 }
             }
+            log_debug!("server_client_print: {}", _s(msg));
 
             if c.is_null() {
                 break 'out;

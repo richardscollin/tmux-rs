@@ -773,12 +773,16 @@ unsafe fn server_client_check_mouse_in_pane(
             line = (*wp).yoff + (*wp).sy;
         }
 
-        // Check if py could lie within a scrollbar
-        // (but not within the padding).
-        if (pane_status != pane_status::PANE_STATUS_OFF as i32 && py != line)
+        // Check if point is within the pane or scrollbar.
+        if ((pane_status != pane_status::PANE_STATUS_OFF as i32 && py != line)
             || ((*wp).yoff == 0 && py < (*wp).sy)
-            || (py >= (*wp).yoff && py < (*wp).yoff + (*wp).sy)
+            || (py >= (*wp).yoff && py < (*wp).yoff + (*wp).sy))
+            && ((sb_pos == PANE_SCROLLBARS_RIGHT
+                && px < (*wp).xoff + (*wp).sx + sb_pad + sb_w)
+                || (sb_pos == PANE_SCROLLBARS_LEFT
+                    && px < ((*wp).xoff + (*wp).sx).wrapping_sub(sb_pad).wrapping_sub(sb_w)))
         {
+            // Check if in the scrollbar.
             if (sb_pos == PANE_SCROLLBARS_RIGHT
                 && px >= (*wp).xoff + (*wp).sx + sb_pad
                 && px < (*wp).xoff + (*wp).sx + sb_pad + sb_w)
@@ -786,6 +790,7 @@ unsafe fn server_client_check_mouse_in_pane(
                     && px >= (*wp).xoff.wrapping_sub(sb_pad).wrapping_sub(sb_w)
                     && px < (*wp).xoff.wrapping_sub(sb_pad))
             {
+                // Check where inside the scrollbar.
                 let sl_top = (*wp).yoff + (*wp).sb_slider_y;
                 let sl_bottom =
                     (*wp).yoff + (*wp).sb_slider_y + (*wp).sb_slider_h.wrapping_sub(1);
@@ -798,23 +803,25 @@ unsafe fn server_client_check_mouse_in_pane(
                     return mouse_where::ScrollbarDown;
                 }
             } else {
+                // Must be inside the pane.
                 return mouse_where::Pane;
             }
-        } else {
+        } else if !(*w).flags.intersects(window_flag::ZOOMED) {
             // Try the pane borders if not zoomed.
-            if !(*w).flags.intersects(window_flag::ZOOMED) {
-                for fwp in tailq_foreach::<window_pane, discr_entry>(&raw mut (*w).panes)
-                    .map(NonNull::as_ptr)
+            for fwp in tailq_foreach::<window_pane, discr_entry>(&raw mut (*w).panes)
+                .map(NonNull::as_ptr)
+            {
+                if (((sb_pos == PANE_SCROLLBARS_RIGHT
+                    && (*fwp).xoff + (*fwp).sx + sb_pad + sb_w == px)
+                    || (sb_pos == PANE_SCROLLBARS_LEFT
+                        && (*fwp).xoff + (*fwp).sx == px))
+                    && (*fwp).yoff <= 1 + py
+                    && (*fwp).yoff + (*fwp).sy >= py)
+                    || ((*fwp).yoff + (*fwp).sy == py
+                        && (*fwp).xoff <= 1 + px
+                        && (*fwp).xoff + (*fwp).sx >= px)
                 {
-                    if ((*fwp).xoff + (*fwp).sx == px
-                        && (*fwp).yoff <= 1 + py
-                        && (*fwp).yoff + (*fwp).sy >= py)
-                        || ((*fwp).yoff + (*fwp).sy == py
-                            && (*fwp).xoff <= 1 + px
-                            && (*fwp).xoff + (*fwp).sx >= px)
-                    {
-                        return mouse_where::Border;
-                    }
+                    return mouse_where::Border;
                 }
             }
         }

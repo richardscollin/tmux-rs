@@ -117,7 +117,11 @@ pub unsafe fn screen_redraw_pane_border(
         let ey = (*wp).yoff + (*wp).sy;
         let pane_status = (*ctx).pane_status;
         let pane_scrollbars = (*ctx).pane_scrollbars;
-        let sb_pos = (*ctx).pane_scrollbars_pos;
+        let sb_pos = if pane_scrollbars != 0 {
+            (*ctx).pane_scrollbars_pos
+        } else {
+            0
+        };
         let mut hsplit = false;
         let mut vsplit = false;
         let mut sb_w: u32 = 0;
@@ -152,21 +156,31 @@ pub unsafe fn screen_redraw_pane_border(
                         return screen_redraw_border_type::SCREEN_REDRAW_BORDER_RIGHT;
                     }
                 }
-                if (*wp).xoff - sb_w != 0 && px == (*wp).xoff - sb_w - 1 {
-                    if !hsplit || (hsplit && py > (*wp).sy / 2) {
+                if (*wp).xoff - sb_w != 0 {
+                    if px == (*wp).xoff - sb_w - 1
+                        && (!hsplit || (hsplit && py > (*wp).sy / 2))
+                    {
                         return screen_redraw_border_type::SCREEN_REDRAW_BORDER_LEFT;
+                    }
+                    if px == (*wp).xoff + (*wp).sx + sb_w - 1 {
+                        return screen_redraw_border_type::SCREEN_REDRAW_BORDER_RIGHT;
                     }
                 }
             } else {
-                // PANE_SCROLLBARS_RIGHT
+                // PANE_SCROLLBARS_RIGHT or disabled
                 if (*wp).xoff == 0 && px == (*wp).sx + sb_w {
                     if !hsplit || (hsplit && py <= (*wp).sy / 2) {
                         return screen_redraw_border_type::SCREEN_REDRAW_BORDER_RIGHT;
                     }
                 }
-                if (*wp).xoff != 0 && px == (*wp).xoff - 1 {
-                    if !hsplit || (hsplit && py > (*wp).sy / 2) {
+                if (*wp).xoff != 0 {
+                    if px == (*wp).xoff - 1
+                        && (!hsplit || (hsplit && py > (*wp).sy / 2))
+                    {
                         return screen_redraw_border_type::SCREEN_REDRAW_BORDER_LEFT;
+                    }
+                    if px == (*wp).xoff + (*wp).sx + sb_w {
+                        return screen_redraw_border_type::SCREEN_REDRAW_BORDER_RIGHT;
                     }
                 }
             }

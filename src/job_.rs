@@ -320,12 +320,23 @@ pub unsafe fn job_run(
                     proc_clear_signals(SERVER_PROC, 1);
                     libc::sigprocmask(libc::SIG_SETMASK, oldset.as_mut_ptr(), null_mut());
 
-                    if (cwd.is_null() || std::env::set_current_dir(cstr_to_str(cwd)).is_err())
-                        && find_home().is_none_or(|home| {
-                            std::env::set_current_dir(home.to_str().expect("TODO")).is_err()
-                        })
-                        && std::env::set_current_dir(Path::new("/")).is_err()
+                    if !cwd.is_null()
+                        && std::env::set_current_dir(cstr_to_str(cwd)).is_ok()
                     {
+                        environ_set!(env, c!("PWD"), environ_flags::empty(), "{}", _s(cwd));
+                    } else if let Some(home) = find_home()
+                        && std::env::set_current_dir(home.to_str().expect("TODO")).is_ok()
+                    {
+                        environ_set!(
+                            env,
+                            c!("PWD"),
+                            environ_flags::empty(),
+                            "{}",
+                            home.to_str().unwrap()
+                        );
+                    } else if std::env::set_current_dir(Path::new("/")).is_ok() {
+                        environ_set!(env, c!("PWD"), environ_flags::empty(), "/");
+                    } else {
                         fatal("chdir failed");
                     }
 

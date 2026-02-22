@@ -554,6 +554,7 @@ unsafe fn tty_start_start_timer(tty: *mut tty) {
         };
 
         log_debug!("{}: start timer started", _s((*c).name));
+        evtimer_del(&raw mut (*tty).start_timer);
         evtimer_set(
             &raw mut (*tty).start_timer,
             tty_start_timer_callback,

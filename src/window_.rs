@@ -2074,6 +2074,9 @@ pub unsafe fn window_pane_get_fg_control_client(wp: *mut window_pane) -> i32 {
 
 pub unsafe fn window_pane_get_theme(wp: *mut window_pane) -> client_theme {
     unsafe {
+        if wp.is_null() {
+            return client_theme::THEME_UNKNOWN;
+        }
         let w = (*wp).window;
 
         // Derive theme from pane background color

@@ -618,7 +618,7 @@ pub unsafe fn popup_key_cb(c: *mut client, data: *mut c_void, event: *mut key_ev
                         break 'menu;
                     }
                     if (((*m).b & MOUSE_MASK_MODIFIERS) == MOUSE_MASK_META)
-                        || border != Border::None
+                        || (border != Border::None && !MOUSE_DRAG((*m).lb))
                     {
                         if !MOUSE_DRAG((*m).b) {
                             break 'out;

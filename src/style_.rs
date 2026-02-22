@@ -101,6 +101,8 @@ pub unsafe fn style_parse(sy: *mut style, base: *const grid_cell, mut in_: *cons
                     (*sy).default_type = style_default_type::STYLE_DEFAULT_PUSH;
                 } else if strcaseeq_(tmp, "pop-default") {
                     (*sy).default_type = style_default_type::STYLE_DEFAULT_POP;
+                } else if strcaseeq_(tmp, "set-default") {
+                    (*sy).default_type = style_default_type::STYLE_DEFAULT_SET;
                 } else if strcaseeq_(tmp, "nolist") {
                     (*sy).list = style_list::STYLE_LIST_OFF;
                 } else if strncasecmp(tmp, c!("list="), 5) == 0 {
@@ -387,6 +389,8 @@ pub unsafe fn style_tostring(sy: *const style) -> *const u8 {
                 tmp = c!("push-default");
             } else if (*sy).default_type == style_default_type::STYLE_DEFAULT_POP {
                 tmp = c!("pop-default");
+            } else if (*sy).default_type == style_default_type::STYLE_DEFAULT_SET {
+                tmp = c!("set-default");
             }
             off += xsnprintf_!(
                 s.add(off as usize),

@@ -5766,13 +5766,8 @@ pub unsafe fn window_copy_in_set(
 ) -> bool {
     unsafe {
         let data: *mut window_copy_mode_data = (*wme).data.cast();
-        let mut gc: grid_cell = zeroed();
 
-        grid_get_cell((*(*data).backing).grid, px, py, &raw mut gc);
-        if gc.flags.intersects(grid_flag::PADDING) {
-            return false;
-        }
-        utf8_cstrhas(set, &raw mut gc.data)
+        grid_in_set((*(*data).backing).grid, px, py, set)
     }
 }
 

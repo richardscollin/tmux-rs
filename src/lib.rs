@@ -655,7 +655,7 @@ enum tty_code_code {
     TTYC_XT,
 }
 
-const WHITESPACE: *const u8 = c!(" ");
+const WHITESPACE: *const u8 = c!("\t ");
 
 #[repr(i32)]
 #[derive(Copy, Clone, Eq, PartialEq, num_enum::TryFromPrimitive)]

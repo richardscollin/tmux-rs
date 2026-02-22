@@ -1774,3 +1774,39 @@ pub unsafe fn grid_line_length(gd: *mut grid, py: u32) -> u32 {
         px
     }
 }
+
+/// Check if character at (px, py) is in set, returning the width (0 if not).
+pub unsafe fn grid_in_set_width(gd: *mut grid, px: u32, py: u32, set: *const u8) -> u32 {
+    unsafe {
+        let mut gc: grid_cell = zeroed();
+        let mut tmp_gc: grid_cell = zeroed();
+
+        grid_get_cell(gd, px, py, &raw mut gc);
+        if !strchr(set, b'\t' as i32).is_null() {
+            if gc.flags.intersects(grid_flag::PADDING) {
+                let mut pxx = px;
+                loop {
+                    pxx -= 1;
+                    grid_get_cell(gd, pxx, py, &raw mut tmp_gc);
+                    if !(pxx > 0 && tmp_gc.flags.intersects(grid_flag::PADDING)) {
+                        break;
+                    }
+                }
+                if tmp_gc.flags.intersects(grid_flag::TAB) {
+                    return tmp_gc.data.width as u32 - (px - pxx);
+                }
+            } else if gc.flags.intersects(grid_flag::TAB) {
+                return gc.data.width as u32;
+            }
+        }
+        if gc.flags.intersects(grid_flag::PADDING) {
+            return 0;
+        }
+        utf8_cstrhas(set, &raw mut gc.data) as u32
+    }
+}
+
+/// Check if character at (px, py) is in set.
+pub unsafe fn grid_in_set(gd: *mut grid, px: u32, py: u32, set: *const u8) -> bool {
+    unsafe { grid_in_set_width(gd, px, py, set) != 0 }
+}

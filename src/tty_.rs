@@ -601,6 +601,11 @@ pub unsafe fn tty_start_tty(tty: *mut tty) {
             tty_putcode(tty, tty_code_code::TTYC_ENBP);
         }
 
+        if (*(*tty).term).flags.intersects(term_flags::TERM_VT100LIKE) {
+            // Subscribe to theme changes and request theme now.
+            tty_puts(tty, c!("\x1b[?2031h\x1b[?996n"));
+        }
+
         evtimer_set(
             &raw mut (*tty).start_timer,
             tty_start_timer_callback,
@@ -798,6 +803,10 @@ pub unsafe fn tty_stop_tty(tty: *mut tty) {
             tty_raw(tty, tty_term_string((*tty).term, tty_code_code::TTYC_DSMG));
         }
         tty_raw(tty, tty_term_string((*tty).term, tty_code_code::TTYC_RMCUP));
+
+        if (*(*tty).term).flags.intersects(term_flags::TERM_VT100LIKE) {
+            tty_raw(tty, b"\x1b[?2031l");
+        }
 
         setblocking((*c).fd, 1);
     }

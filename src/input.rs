@@ -216,6 +216,7 @@ enum input_csi_type {
     INPUT_CSI_DECSTBM,
     INPUT_CSI_DL,
     INPUT_CSI_DSR,
+    INPUT_CSI_DSR_PRIVATE,
     INPUT_CSI_ECH,
     INPUT_CSI_ED,
     INPUT_CSI_EL,
@@ -224,6 +225,7 @@ enum input_csi_type {
     INPUT_CSI_IL,
     INPUT_CSI_MODOFF,
     INPUT_CSI_MODSET,
+    INPUT_CSI_QUERY_PRIVATE,
     INPUT_CSI_RCP,
     INPUT_CSI_REP,
     INPUT_CSI_RM,
@@ -232,8 +234,8 @@ enum input_csi_type {
     INPUT_CSI_SD,
     INPUT_CSI_SGR,
     INPUT_CSI_SM,
-    INPUT_CSI_SM_PRIVATE,
     INPUT_CSI_SM_GRAPHICS,
+    INPUT_CSI_SM_PRIVATE,
     INPUT_CSI_SU,
     INPUT_CSI_TBC,
     INPUT_CSI_VPA,
@@ -242,7 +244,7 @@ enum input_csi_type {
 }
 
 /// control (csi) command table.
-static INPUT_CSI_TABLE: [input_table_entry; 40] = [
+static INPUT_CSI_TABLE: [input_table_entry; 42] = [
     input_table_entry::new_csi('@', c"", input_csi_type::INPUT_CSI_ICH),
     input_table_entry::new_csi('A', c"", input_csi_type::INPUT_CSI_CUU),
     input_table_entry::new_csi('B', c"", input_csi_type::INPUT_CSI_CUD),
@@ -277,6 +279,8 @@ static INPUT_CSI_TABLE: [input_table_entry; 40] = [
     input_table_entry::new_csi('m', c">", input_csi_type::INPUT_CSI_MODSET),
     input_table_entry::new_csi('n', c"", input_csi_type::INPUT_CSI_DSR),
     input_table_entry::new_csi('n', c">", input_csi_type::INPUT_CSI_MODOFF),
+    input_table_entry::new_csi('n', c"?", input_csi_type::INPUT_CSI_DSR_PRIVATE),
+    input_table_entry::new_csi('p', c"?$", input_csi_type::INPUT_CSI_QUERY_PRIVATE),
     input_table_entry::new_csi('q', c" ", input_csi_type::INPUT_CSI_DECSCUSR),
     input_table_entry::new_csi('q', c">", input_csi_type::INPUT_CSI_XDA),
     input_table_entry::new_csi('r', c"", input_csi_type::INPUT_CSI_DECSTBM),
@@ -1706,6 +1710,14 @@ unsafe fn input_csi_dispatch(ictx: *mut input_ctx) -> i32 {
                     screen_write_deleteline(sctx, n as u32, bg);
                 }
             }
+            Ok(input_csi_type::INPUT_CSI_DSR_PRIVATE) => match input_get(ictx, 0, 0, 0) {
+                996 => input_report_current_theme(ictx),
+                _ => (),
+            },
+            Ok(input_csi_type::INPUT_CSI_QUERY_PRIVATE) => match input_get(ictx, 0, 0, 0) {
+                2031 => input_reply!(ictx, "\x1b[?2031;2$y"),
+                _ => (),
+            },
             Ok(input_csi_type::INPUT_CSI_DSR) => match input_get(ictx, 0, 0, 0) {
                 -1 => (),
                 5 => input_reply!(ictx, "\x1b[0n"),
@@ -1887,6 +1899,7 @@ unsafe fn input_csi_dispatch_rm_private(ictx: *mut input_ctx) {
                 47 | 1047 => screen_write_alternateoff(sctx, gc, 0),
                 1049 => screen_write_alternateoff(sctx, gc, 1),
                 2004 => screen_write_mode_clear(sctx, mode_flag::MODE_BRACKETPASTE),
+                2031 => screen_write_mode_clear(sctx, mode_flag::MODE_THEME_UPDATES),
                 _ => log_debug!(
                     "{}: unknown '{}'",
                     "input_csi_dispatch_rm_private",
@@ -1961,6 +1974,7 @@ unsafe fn input_csi_dispatch_sm_private(ictx: *mut input_ctx) {
                 47 | 1047 => screen_write_alternateon(sctx, gc, 0),
                 1049 => screen_write_alternateon(sctx, gc, 1),
                 2004 => screen_write_mode_set(sctx, mode_flag::MODE_BRACKETPASTE),
+                2031 => screen_write_mode_set(sctx, mode_flag::MODE_THEME_UPDATES),
                 _ => log_debug!(
                     "{}: unknown '{}'",
                     "input_csi_dispatch_sm_private",
@@ -2792,82 +2806,14 @@ unsafe fn input_osc_8(ictx: *mut input_ctx, p: *const u8) {
     }
 }
 
-/// Get a client with a foreground for the pane.
-/// There isn't much to choose between them so just use the first.
-unsafe fn input_get_fg_client(wp: *mut window_pane) -> i32 {
+unsafe fn input_report_current_theme(ictx: *mut input_ctx) {
     unsafe {
-        let w = (*wp).window;
-        for loop_ in tailq_foreach(&raw mut CLIENTS).map(NonNull::as_ptr) {
-            if (*loop_).flags.intersects(CLIENT_UNATTACHEDFLAGS) {
-                continue;
-            }
-            if (*loop_).session.is_null() || !session_has((*loop_).session, w) {
-                continue;
-            }
-            if (*loop_).tty.fg == -1 {
-                continue;
-            }
-            return (*loop_).tty.fg;
-        }
-
-        -1
-    }
-}
-
-/// Get a client with a background for the pane.
-unsafe fn input_get_bg_client(wp: *mut window_pane) -> i32 {
-    unsafe {
-        let w = (*wp).window;
-
-        for loop_ in tailq_foreach(&raw mut CLIENTS).map(NonNull::as_ptr) {
-            if (*loop_).flags.intersects(CLIENT_UNATTACHEDFLAGS) {
-                continue;
-            }
-            if (*loop_).session.is_null() || !session_has((*loop_).session, w) {
-                continue;
-            }
-            if (*loop_).tty.bg == -1 {
-                continue;
-            }
-            return (*loop_).tty.bg;
-        }
-        -1
-    }
-}
-
-/// If any control mode client exists that has provided a bg color, return it.
-/// Otherwise, return -1.
-unsafe fn input_get_bg_control_client(wp: *mut window_pane) -> i32 {
-    unsafe {
-        if (*wp).control_bg == -1 {
-            return -1;
-        }
-
-        if tailq_foreach(&raw mut CLIENTS)
-            .any(|c| (*c.as_ptr()).flags.intersects(client_flag::CONTROL))
-        {
-            return (*wp).control_bg;
+        match window_pane_get_theme((*ictx).wp) {
+            client_theme::THEME_DARK => input_reply!(ictx, "\x1b[?997;1n"),
+            client_theme::THEME_LIGHT => input_reply!(ictx, "\x1b[?997;2n"),
+            client_theme::THEME_UNKNOWN => (),
         }
     }
-
-    -1
-}
-
-/// If any control mode client exists that has provided a fg color, return it.
-/// Otherwise, return -1.
-unsafe fn input_get_fg_control_client(wp: *mut window_pane) -> i32 {
-    unsafe {
-        if (*wp).control_fg == -1 {
-            return -1;
-        }
-
-        if tailq_foreach(&raw mut CLIENTS)
-            .any(|c| (*c.as_ptr()).flags.intersects(client_flag::CONTROL))
-        {
-            return (*wp).control_fg;
-        }
-    }
-    -1
 }
 
 /// Handle the OSC 10 sequence for setting and querying foreground colour.
@@ -2881,11 +2827,11 @@ unsafe fn input_osc_10(ictx: *mut input_ctx, p: *const u8) {
             if wp.is_null() {
                 return;
             }
-            c = input_get_fg_control_client(wp);
+            c = window_pane_get_fg_control_client(wp);
             if c == -1 {
                 tty_default_colours(&raw mut defaults, wp);
                 if COLOUR_DEFAULT(defaults.fg) {
-                    c = input_get_fg_client(wp);
+                    c = window_pane_get_fg(wp);
                 } else {
                     c = defaults.fg;
                 }
@@ -2932,7 +2878,6 @@ unsafe fn input_osc_110(ictx: *mut input_ctx, p: *const u8) {
 unsafe fn input_osc_11(ictx: *mut input_ctx, p: *const u8) {
     unsafe {
         let wp = (*ictx).wp;
-        let mut defaults: grid_cell = zeroed();
 
         let mut c;
 
@@ -2940,15 +2885,7 @@ unsafe fn input_osc_11(ictx: *mut input_ctx, p: *const u8) {
             if wp.is_null() {
                 return;
             }
-            c = input_get_bg_control_client(wp);
-            if c == -1 {
-                tty_default_colours(&raw mut defaults, wp);
-                if COLOUR_DEFAULT(defaults.bg) {
-                    c = input_get_bg_client(wp);
-                } else {
-                    c = defaults.bg;
-                }
-            }
+            c = window_pane_get_bg(wp);
             input_osc_colour_reply(ictx, 11, c);
             return;
         }
@@ -2961,7 +2898,8 @@ unsafe fn input_osc_11(ictx: *mut input_ctx, p: *const u8) {
         if !(*ictx).palette.is_null() {
             (*(*ictx).palette).bg = c;
             if !wp.is_null() {
-                (*wp).flags |= window_pane_flags::PANE_STYLECHANGED;
+                (*wp).flags |=
+                    window_pane_flags::PANE_STYLECHANGED | window_pane_flags::PANE_THEMECHANGED;
             }
             screen_write_fullredraw(&raw mut (*ictx).ctx);
         }
@@ -2979,7 +2917,8 @@ unsafe fn input_osc_111(ictx: *mut input_ctx, p: *const u8) {
         if !(*ictx).palette.is_null() {
             (*(*ictx).palette).bg = 8;
             if !wp.is_null() {
-                (*wp).flags |= window_pane_flags::PANE_STYLECHANGED;
+                (*wp).flags |=
+                    window_pane_flags::PANE_STYLECHANGED | window_pane_flags::PANE_THEMECHANGED;
             }
             screen_write_fullredraw(&raw mut (*ictx).ctx);
         }

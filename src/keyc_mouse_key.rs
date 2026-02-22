@@ -739,6 +739,10 @@ pub(crate) enum keyc {
     KEYC_KP_ZERO,
     KEYC_KP_PERIOD,
 
+    // Theme reporting.
+    KEYC_REPORT_DARK_THEME,
+    KEYC_REPORT_LIGHT_THEME,
+
     // End of special keys.
     KEYC_BASE_END,
 }

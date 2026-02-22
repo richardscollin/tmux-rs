@@ -96,7 +96,7 @@ pub unsafe fn cmd_break_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
         w = (*wp).window;
 
         options_set_parent(&mut *(*wp).options, (*w).options);
-        (*wp).flags |= window_pane_flags::PANE_STYLECHANGED;
+        (*wp).flags |= window_pane_flags::PANE_STYLECHANGED | window_pane_flags::PANE_THEMECHANGED;
         tailq_insert_head::<_, discr_entry>(&raw mut (*w).panes, wp);
         (*w).active = wp;
         (*w).latest = tc as *mut c_void;

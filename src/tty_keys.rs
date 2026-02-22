@@ -46,7 +46,7 @@ impl tty_default_key_raw {
     }
 }
 
-static TTY_DEFAULT_RAW_KEYS: [tty_default_key_raw; 100] = [
+static TTY_DEFAULT_RAW_KEYS: [tty_default_key_raw; 102] = [
     // Application escape.
     tty_default_key_raw::new(c"\x1bO[", '\x1b' as u64),
     // Numeric keypad. Just use the vt100 escape sequences here and always
@@ -197,6 +197,9 @@ static TTY_DEFAULT_RAW_KEYS: [tty_default_key_raw; 100] = [
     tty_default_key_raw::new(c"\x1b[201~", keyc::KEYC_PASTE_END as u64 | KEYC_IMPLIED_META),
     // Extended keys.
     tty_default_key_raw::new(c"\x1b[1;5Z", '\x09' as u64 | KEYC_CTRL | KEYC_SHIFT),
+    // Theme reporting.
+    tty_default_key_raw::new(c"\x1b[?997;1n", keyc::KEYC_REPORT_DARK_THEME as u64),
+    tty_default_key_raw::new(c"\x1b[?997;2n", keyc::KEYC_REPORT_LIGHT_THEME as u64),
 ];
 
 /// Default xterm keys.
@@ -1202,10 +1205,14 @@ pub unsafe fn tty_keys_next(tty: *mut tty) -> i32 {
                                 0 => {
                                     // yes
                                     key = KEYC_UNKNOWN;
+                                    session_theme_changed((*(*tty).client).session);
                                     break 'complete_key;
                                 }
                                 -1 => (), // no, or not valid
-                                1 => break 'partial_key,
+                                1 => {
+                                    session_theme_changed((*(*tty).client).session);
+                                    break 'partial_key;
+                                }
                                 _ => (),
                             }
 

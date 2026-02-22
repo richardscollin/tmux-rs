@@ -1599,6 +1599,19 @@ pub unsafe fn format_cb_client_width(ft: *mut format_tree) -> format_table_type 
     }
 }
 
+pub unsafe fn format_cb_client_theme(ft: *mut format_tree) -> format_table_type {
+    unsafe {
+        if !(*ft).c.is_null() {
+            match (*(*ft).c).theme {
+                client_theme::THEME_DARK => return "dark".into(),
+                client_theme::THEME_LIGHT => return "light".into(),
+                client_theme::THEME_UNKNOWN => return format_table_type::None,
+            }
+        }
+        format_table_type::None
+    }
+}
+
 pub unsafe fn format_cb_client_written(ft: *mut format_tree) -> format_table_type {
     unsafe {
         if !(*ft).c.is_null() {
@@ -3000,6 +3013,7 @@ static FORMAT_TABLE: &[format_table_entry] = &[
     format_table_entry::new("client_termfeatures", format_cb_client_termfeatures),
     format_table_entry::new("client_termname", format_cb_client_termname),
     format_table_entry::new("client_termtype", format_cb_client_termtype),
+    format_table_entry::new("client_theme", format_cb_client_theme),
     format_table_entry::new("client_tty", format_cb_client_tty),
     format_table_entry::new("client_uid", format_cb_client_uid),
     format_table_entry::new("client_user", format_cb_client_user),

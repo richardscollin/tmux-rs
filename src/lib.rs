@@ -695,6 +695,7 @@ bitflags::bitflags! {
         const MODE_CURSOR_VERY_VISIBLE = 0x10000;
         const MODE_CURSOR_BLINKING_SET = 0x20000;
         const MODE_KEYS_EXTENDED_2 = 0x40000;
+        const MODE_THEME_UPDATES = 0x80000;
     }
 }
 
@@ -1325,8 +1326,9 @@ bitflags::bitflags! {
         const PANE_STATUSDRAWN = 0x400;
         const PANE_EMPTY = 0x800;
         const PANE_STYLECHANGED = 0x1000;
-        const PANE_UNSEENCHANGES = 0x2000;
-        const PANE_REDRAWSCROLLBAR = 0x4000;
+        const PANE_THEMECHANGED = 0x2000;
+        const PANE_UNSEENCHANGES = 0x4000;
+        const PANE_REDRAWSCROLLBAR = 0x8000;
     }
 }
 
@@ -2300,6 +2302,15 @@ struct overlay_ranges {
     nx: [u32; OVERLAY_MAX_RANGES],
 }
 
+#[repr(i32)]
+#[derive(Copy, Clone, Eq, PartialEq, Default)]
+pub enum client_theme {
+    #[default]
+    THEME_UNKNOWN = 0,
+    THEME_LIGHT = 1,
+    THEME_DARK = 2,
+}
+
 type prompt_input_cb = Option<unsafe fn(*mut client, NonNull<c_void>, *const u8, i32) -> i32>;
 type prompt_free_cb = Option<unsafe fn(NonNull<c_void>)>;
 
@@ -2437,6 +2448,7 @@ struct client {
     click_event: mouse_event,
 
     status: status_line,
+    theme: client_theme,
 
     flags: client_flag,
 

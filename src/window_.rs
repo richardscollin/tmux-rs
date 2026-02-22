@@ -1054,7 +1054,7 @@ pub unsafe fn window_pane_create(
         let wp: *mut window_pane = xcalloc_::<window_pane>(1).as_ptr();
         (*wp).window = w;
         (*wp).options = options_create((*w).options);
-        (*wp).flags = window_pane_flags::PANE_STYLECHANGED;
+        (*wp).flags = window_pane_flags::PANE_STYLECHANGED | window_pane_flags::PANE_THEMECHANGED;
 
         (*wp).id = NEXT_WINDOW_PANE_ID.fetch_add(1, atomic::Ordering::Relaxed);
 
@@ -2001,6 +2001,148 @@ pub unsafe fn window_pane_show_scrollbar(wp: *mut window_pane, sb_option: i32) -
             return true;
         }
         false
+    }
+}
+
+pub unsafe fn window_pane_get_bg(wp: *mut window_pane) -> i32 {
+    unsafe {
+        let mut c = window_pane_get_bg_control_client(wp);
+        if c == -1 {
+            let mut defaults: grid_cell = zeroed();
+            tty_default_colours(&raw mut defaults, wp);
+            if COLOUR_DEFAULT(defaults.bg) {
+                c = window_get_bg_client(wp);
+            } else {
+                c = defaults.bg;
+            }
+        }
+        c
+    }
+}
+
+pub unsafe fn window_get_bg_client(wp: *mut window_pane) -> i32 {
+    unsafe {
+        let w = (*wp).window;
+        for loop_ in tailq_foreach(&raw mut CLIENTS).map(NonNull::as_ptr) {
+            if (*loop_).flags.intersects(CLIENT_UNATTACHEDFLAGS) {
+                continue;
+            }
+            if (*loop_).session.is_null() || !session_has((*loop_).session, w) {
+                continue;
+            }
+            if (*loop_).tty.bg == -1 {
+                continue;
+            }
+            return (*loop_).tty.bg;
+        }
+        -1
+    }
+}
+
+pub unsafe fn window_pane_get_bg_control_client(wp: *mut window_pane) -> i32 {
+    unsafe {
+        if (*wp).control_bg == -1 {
+            return -1;
+        }
+        if tailq_foreach(&raw mut CLIENTS)
+            .any(|c| (*c.as_ptr()).flags.intersects(client_flag::CONTROL))
+        {
+            return (*wp).control_bg;
+        }
+    }
+    -1
+}
+
+pub unsafe fn window_pane_get_fg(wp: *mut window_pane) -> i32 {
+    unsafe {
+        let w = (*wp).window;
+        for loop_ in tailq_foreach(&raw mut CLIENTS).map(NonNull::as_ptr) {
+            if (*loop_).flags.intersects(CLIENT_UNATTACHEDFLAGS) {
+                continue;
+            }
+            if (*loop_).session.is_null() || !session_has((*loop_).session, w) {
+                continue;
+            }
+            if (*loop_).tty.fg == -1 {
+                continue;
+            }
+            return (*loop_).tty.fg;
+        }
+        -1
+    }
+}
+
+pub unsafe fn window_pane_get_fg_control_client(wp: *mut window_pane) -> i32 {
+    unsafe {
+        if (*wp).control_fg == -1 {
+            return -1;
+        }
+        if tailq_foreach(&raw mut CLIENTS)
+            .any(|c| (*c.as_ptr()).flags.intersects(client_flag::CONTROL))
+        {
+            return (*wp).control_fg;
+        }
+    }
+    -1
+}
+
+pub unsafe fn window_pane_get_theme(wp: *mut window_pane) -> client_theme {
+    unsafe {
+        let w = (*wp).window;
+
+        // Derive theme from pane background color
+        let theme = colour_totheme(window_pane_get_bg(wp));
+        if theme != client_theme::THEME_UNKNOWN {
+            return theme;
+        }
+
+        // Try to find a client that has a theme
+        let mut found_light = false;
+        let mut found_dark = false;
+        for loop_ in tailq_foreach(&raw mut CLIENTS).map(NonNull::as_ptr) {
+            if (*loop_).flags.intersects(CLIENT_UNATTACHEDFLAGS) {
+                continue;
+            }
+            if (*loop_).session.is_null() || !session_has((*loop_).session, w) {
+                continue;
+            }
+            match (*loop_).theme {
+                client_theme::THEME_LIGHT => found_light = true,
+                client_theme::THEME_DARK => found_dark = true,
+                client_theme::THEME_UNKNOWN => (),
+            }
+        }
+
+        if found_dark && !found_light {
+            return client_theme::THEME_DARK;
+        }
+        if found_light && !found_dark {
+            return client_theme::THEME_LIGHT;
+        }
+        client_theme::THEME_UNKNOWN
+    }
+}
+
+pub unsafe fn window_pane_send_theme_update(wp: *mut window_pane) {
+    unsafe {
+        if !(*wp).flags.intersects(window_pane_flags::PANE_THEMECHANGED) {
+            return;
+        }
+        if !(*(*wp).screen).mode.intersects(mode_flag::MODE_THEME_UPDATES) {
+            return;
+        }
+
+        match window_pane_get_theme(wp) {
+            client_theme::THEME_LIGHT => {
+                input_key_pane(wp, keyc::KEYC_REPORT_LIGHT_THEME as u64, null_mut());
+            }
+            client_theme::THEME_DARK => {
+                input_key_pane(wp, keyc::KEYC_REPORT_DARK_THEME as u64, null_mut());
+            }
+            client_theme::THEME_UNKNOWN => (),
+        }
+
+        (*wp).flags -= window_pane_flags::PANE_THEMECHANGED;
     }
 }
 

@@ -1366,7 +1366,8 @@ pub unsafe fn options_push_changes(name: &str) {
 
         if name == "window-style" || name == "window-active-style" {
             for wp in rb_foreach(&raw mut ALL_WINDOW_PANES) {
-                (*wp.as_ptr()).flags |= window_pane_flags::PANE_STYLECHANGED;
+                (*wp.as_ptr()).flags |=
+                    window_pane_flags::PANE_STYLECHANGED | window_pane_flags::PANE_THEMECHANGED;
             }
         }
 

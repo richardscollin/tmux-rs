@@ -49,7 +49,7 @@ static mut INPUT_KEY_TREE: input_key_tree = rb_initializer();
 
 const INPUT_KEY_DEFAULTS_LEN: usize = 83;
 
-static mut INPUT_KEY_DEFAULTS: [input_key_entry; 85] = [
+static mut INPUT_KEY_DEFAULTS: [input_key_entry; 87] = [
     // Paste keys.
     input_key_entry::new(keyc::KEYC_PASTE_START as u64, c"\x1b[200~"),
     input_key_entry::new(keyc::KEYC_PASTE_START as u64 | KEYC_IMPLIED_META, c"\x1b[200~"),
@@ -140,6 +140,8 @@ static mut INPUT_KEY_DEFAULTS: [input_key_entry; 85] = [
     input_key_entry::new(keyc::KEYC_NPAGE as u64 | KEYC_BUILD_MODIFIERS, c"\x1b[6;_~"),
     input_key_entry::new(keyc::KEYC_IC as u64 | KEYC_BUILD_MODIFIERS, c"\x1b[2;_~"),
     input_key_entry::new(keyc::KEYC_DC as u64 | KEYC_BUILD_MODIFIERS, c"\x1b[3;_~"),
+    input_key_entry::new(keyc::KEYC_REPORT_DARK_THEME as u64, c"\x1b[?997;1n"),
+    input_key_entry::new(keyc::KEYC_REPORT_LIGHT_THEME as u64, c"\x1b[?997;2n"),
 ];
 
 static INPUT_KEY_MODIFIERS: [key_code; 9] = [

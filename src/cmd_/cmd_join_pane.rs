@@ -141,7 +141,8 @@ unsafe fn cmd_join_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retva
 
         (*src_wp).window = dst_w;
         options_set_parent(&mut *(*src_wp).options, (*dst_w).options);
-        (*src_wp).flags |= window_pane_flags::PANE_STYLECHANGED;
+        (*src_wp).flags |=
+            window_pane_flags::PANE_STYLECHANGED | window_pane_flags::PANE_THEMECHANGED;
         if flags.intersects(SPAWN_BEFORE) {
             tailq_insert_before::<_, discr_entry>(dst_wp, src_wp);
         } else {

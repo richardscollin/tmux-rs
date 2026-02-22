@@ -209,7 +209,7 @@ macro_rules! options_table_window_hook {
     };
 }
 
-pub static OPTIONS_TABLE: [options_table_entry; 201] = [
+pub static OPTIONS_TABLE: [options_table_entry; 203] = [
     options_table_entry {
         name: "backspace",
         type_: options_table_type::OPTIONS_TABLE_KEY,
@@ -1574,6 +1574,8 @@ pub static OPTIONS_TABLE: [options_table_entry; 201] = [
     options_table_hook!("client-focus-out", ""),
     options_table_hook!("client-resized", ""),
     options_table_hook!("client-session-changed", ""),
+    options_table_hook!("client-light-theme", ""),
+    options_table_hook!("client-dark-theme", ""),
     options_table_hook!("command-error", ""),
     options_table_pane_hook!("pane-died", ""),
     options_table_pane_hook!("pane-exited", ""),

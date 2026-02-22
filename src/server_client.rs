@@ -273,6 +273,7 @@ pub unsafe fn server_client_create(fd: i32) -> *mut client {
 
         (*c).tty.sx = 80;
         (*c).tty.sy = 24;
+        (*c).theme = client_theme::THEME_UNKNOWN;
 
         status_init(c);
         (*c).flags |= client_flag::FOCUSED;
@@ -539,6 +540,7 @@ pub unsafe fn server_client_set_session(c: *mut client, s: *mut session) {
             recalculate_sizes();
             window_update_focus((*(*s).curw).window);
             session_update_activity(s, null_mut());
+            session_theme_changed(s);
             (*s).last_attached_time = libc::gettimeofday_();
             (*(*s).curw).flags &= !WINLINK_ALERTFLAGS;
             (*(*(*s).curw).window).latest = c.cast();
@@ -2351,6 +2353,16 @@ pub unsafe fn server_client_key_callback(item: *mut cmdq_item, data: *mut c_void
                     (*event).key = key;
                 }
 
+                // Handle theme reporting keys.
+                if key == keyc::KEYC_REPORT_LIGHT_THEME as u64 {
+                    server_client_report_theme(c, client_theme::THEME_LIGHT);
+                    break 'out;
+                }
+                if key == keyc::KEYC_REPORT_DARK_THEME as u64 {
+                    server_client_report_theme(c, client_theme::THEME_DARK);
+                    break 'out;
+                }
+
                 // Find affected pane.
                 if !KEYC_IS_MOUSE(key)
                     || cmd_find_from_mouse(&raw mut fs, m, cmd_find_flags::empty()) != 0
@@ -2661,6 +2673,13 @@ pub unsafe fn server_client_loop() {
                     !(window_pane_flags::PANE_REDRAW | window_pane_flags::PANE_REDRAWSCROLLBAR);
             }
             check_window_name(w);
+        }
+
+        // Send theme updates.
+        for w in rb_foreach(&raw mut WINDOWS).map(NonNull::as_ptr) {
+            for wp in tailq_foreach::<_, discr_entry>(&raw mut (*w).panes).map(NonNull::as_ptr) {
+                window_pane_send_theme_update(wp);
+            }
         }
     }
 }
@@ -4087,5 +4106,21 @@ pub unsafe fn server_client_print(c: *mut client, parse: i32, evb: *mut evbuffer
         if parse == 0 {
             free_(msg);
         }
+    }
+}
+
+unsafe fn server_client_report_theme(c: *mut client, theme: client_theme) {
+    unsafe {
+        if theme == client_theme::THEME_LIGHT {
+            (*c).theme = client_theme::THEME_LIGHT;
+            notify_client(c"client-light-theme", c);
+        } else {
+            (*c).theme = client_theme::THEME_DARK;
+            notify_client(c"client-dark-theme", c);
+        }
+
+        // Request foreground and background colour again. Don't forward 2031 to
+        // panes until a response is received.
+        tty_puts(&raw mut (*c).tty, c!("\x1b]10;?\x1b\\\x1b]11;?\x1b\\"));
     }
 }

@@ -151,6 +151,43 @@ pub fn colour_tostring(c: i32) -> Cow<'static, str> {
     })
 }
 
+/// Convert background colour to theme.
+pub fn colour_totheme(c: i32) -> client_theme {
+    if c == -1 {
+        return client_theme::THEME_UNKNOWN;
+    }
+
+    if c & COLOUR_FLAG_RGB != 0 {
+        let r = (c >> 16) & 0xff;
+        let g = (c >> 8) & 0xff;
+        let b = c & 0xff;
+
+        let brightness = r + g + b;
+        if brightness > 382 {
+            return client_theme::THEME_LIGHT;
+        }
+        return client_theme::THEME_DARK;
+    }
+
+    if c & COLOUR_FLAG_256 != 0 {
+        return colour_totheme(colour_256_to_rgb(c));
+    }
+
+    match c {
+        0 | 90 => client_theme::THEME_DARK,
+        7 | 97 => client_theme::THEME_LIGHT,
+        _ => {
+            if c >= 0 && c <= 7 {
+                return colour_totheme(colour_256_to_rgb(c));
+            }
+            if c >= 90 && c <= 97 {
+                return colour_totheme(colour_256_to_rgb(8 + c - 90));
+            }
+            client_theme::THEME_UNKNOWN
+        }
+    }
+}
+
 /// Convert colour from string.
 pub fn colour_fromstring(s: &str) -> i32 {
     if s.chars().next().is_some_and(|c| c == '#') && s.len() == 7 {

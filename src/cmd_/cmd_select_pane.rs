@@ -142,14 +142,16 @@ pub unsafe fn cmd_select_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd
             markedwp = MARKED_PANE.wp;
 
             if !lastwp.is_null() {
-                (*lastwp).flags |=
-                    window_pane_flags::PANE_REDRAW | window_pane_flags::PANE_STYLECHANGED;
+                (*lastwp).flags |= window_pane_flags::PANE_REDRAW
+                    | window_pane_flags::PANE_STYLECHANGED
+                    | window_pane_flags::PANE_THEMECHANGED;
                 server_redraw_window_borders((*lastwp).window);
                 server_status_window((*lastwp).window);
             }
             if !markedwp.is_null() {
-                (*markedwp).flags |=
-                    window_pane_flags::PANE_REDRAW | window_pane_flags::PANE_STYLECHANGED;
+                (*markedwp).flags |= window_pane_flags::PANE_REDRAW
+                    | window_pane_flags::PANE_STYLECHANGED
+                    | window_pane_flags::PANE_THEMECHANGED;
                 server_redraw_window_borders((*markedwp).window);
                 server_status_window((*markedwp).window);
             }
@@ -164,7 +166,9 @@ pub unsafe fn cmd_select_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd
                 return cmd_retval::CMD_RETURN_ERROR;
             }
             options_set_string!(oo, "window-active-style", false, "{}", _s(style),);
-            (*wp).flags |= window_pane_flags::PANE_REDRAW | window_pane_flags::PANE_STYLECHANGED;
+            (*wp).flags |= window_pane_flags::PANE_REDRAW
+                | window_pane_flags::PANE_STYLECHANGED
+                | window_pane_flags::PANE_THEMECHANGED;
         }
         if args_has(&*args, 'g') {
             cmdq_print!(item, "{}", _s(options_get_string_(oo, "window-style")),);

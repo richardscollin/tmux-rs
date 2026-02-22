@@ -787,3 +787,19 @@ pub unsafe fn session_renumber_windows(s: *mut session) {
         }
     }
 }
+
+/// Set the PANE_THEMECHANGED flag for every pane in this session.
+pub unsafe fn session_theme_changed(s: *mut session) {
+    unsafe {
+        if s.is_null() {
+            return;
+        }
+        for wl in rb_foreach(&raw mut (*s).windows).map(NonNull::as_ptr) {
+            for wp in
+                tailq_foreach::<_, discr_entry>(&raw mut (*(*wl).window).panes).map(NonNull::as_ptr)
+            {
+                (*wp).flags |= window_pane_flags::PANE_THEMECHANGED;
+            }
+        }
+    }
+}

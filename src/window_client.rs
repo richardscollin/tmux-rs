@@ -17,7 +17,7 @@ use crate::*;
 static WINDOW_CLIENT_DEFAULT_COMMAND: &str = "detach-client -t '%%'";
 static WINDOW_CLIENT_DEFAULT_FORMAT: &str = "#{t/p:client_activity}: session #{session_name}";
 static WINDOW_CLIENT_DEFAULT_KEY_FORMAT: &str =
-    "#{?#{e|<:#{line},10},#{line},#{?#{e|<:#{line},36},M-#{a:#{e|+:97,#{e|-:#{line},10}}},}}";
+    "#{?#{e|<:#{line},10},#{line},#{e|<:#{line},36},M-#{a:#{e|+:97,#{e|-:#{line},10}}}}";
 
 static WINDOW_CLIENT_MENU_ITEMS: [menu_item; 8] = [
     menu_item::new("Detach", b'd' as _, null()),

@@ -19,12 +19,8 @@ const WINDOW_BUFFER_DEFAULT_FORMAT: &str = "#{t/p:buffer_created}: #{buffer_samp
 const WINDOW_BUFFER_DEFAULT_KEY_FORMAT: &str = concat!(
     "#{?#{e|<:#{line},10},", //
     "#{line}",
-    ",",
-    "#{?#{e|<:#{line},36},",
+    ",#{e|<:#{line},36},",
     "M-#{a:#{e|+:97,#{e|-:#{line},10}}}",
-    ",",
-    "",
-    "}",
     "}"
 );
 

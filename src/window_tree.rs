@@ -21,8 +21,7 @@ const WINDOW_TREE_DEFAULT_FORMAT: &str = concat!(
     "#{pane_current_command}#{?pane_active,*,}#{?pane_marked,M,}",
     "#{?#{&&:#{pane_title},#{!=:#{pane_title},#{host_short}}},: ",
     "\"#{pane_title}\",}",
-    ",",
-    "#{?window_format,",
+    ",window_format,",
     "#{?window_marked_flag,#[reverse],}",
     "#{window_name}#{window_flags}",
     "#{?#{&&:#{==:#{window_panes},1},#{&&:#{pane_title},#{!=:#{pane_title},#{",
@@ -34,19 +33,14 @@ const WINDOW_TREE_DEFAULT_FORMAT: &str = concat!(
     "#{session_group_list}),",
     "}",
     "#{?session_attached, (attached),}",
-    "}",
     "}"
 );
 
 const WINDOW_TREE_DEFAULT_KEY_FORMAT: &CStr = cstring_concat!(
     "#{?#{e|<:#{line},10},",
     "#{line}",
-    ",",
-    "#{?#{e|<:#{line},36},",
+    ",#{e|<:#{line},36},",
     "M-#{a:#{e|+:97,#{e|-:#{line},10}}}",
-    ",",
-    "",
-    "}",
     "}"
 );
 

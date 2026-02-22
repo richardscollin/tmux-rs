@@ -1326,6 +1326,15 @@ pub unsafe fn tty_keys_next(tty: *mut tty) -> i32 {
                             key = b' ' as u64 | KEYC_CTRL | (key & KEYC_META);
                         }
 
+                        // Check for backspace key using termios VERASE - the terminfo
+                        // kbs entry is extremely unreliable, so cannot be safely
+                        // used. termios should have a better idea.
+                        let bspace: libc::cc_t = (*tty).tio.c_cc[libc::VERASE];
+                        if bspace != libc::_POSIX_VDISABLE && key == bspace as u64 {
+                            log_debug!("{}: key {:#x} is backspace", _s((*c).name), key);
+                            key = keyc::KEYC_BSPACE as u64;
+                        }
+
                         // Fix up all C0 control codes that don't have a dedicated key into
                         // corresponding Ctrl keys. Convert characters in the A-Z range into
                         // lowercase, so ^A becomes a|CTRL.
@@ -1333,7 +1342,6 @@ pub unsafe fn tty_keys_next(tty: *mut tty) -> i32 {
                         if onlykey < 0x20
                             && onlykey != c0::C0_HT as u64
                             && onlykey != c0::C0_CR as u64
-                            && onlykey != c0::C0_BS as u64
                             && onlykey != c0::C0_ESC as u64
                         {
                             onlykey |= 0x40;
@@ -1382,16 +1390,6 @@ pub unsafe fn tty_keys_next(tty: *mut tty) -> i32 {
                 }
                 // complete_key:
                 // log_debug("%s: complete key %.*s %#llx", (*c).name, (int)size, buf, key);
-
-                // Check for backspace key using termios VERASE - the terminfo
-                // kbs entry is extremely unreliable, so cannot be safely
-                // used. termios should have a better idea.
-
-                let bspace: libc::cc_t = (*tty).tio.c_cc[libc::VERASE];
-                if bspace != libc::_POSIX_VDISABLE && (key & KEYC_MASK_KEY) as libc::cc_t == bspace
-                {
-                    key = (key & KEYC_MASK_MODIFIERS) | keyc::KEYC_BSPACE as u64;
-                }
 
                 // Remove key timer.
                 if event_initialized(&raw const (*tty).key_timer) != 0 {

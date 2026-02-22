@@ -116,6 +116,7 @@ pub struct mode_tree_item {
 
     draw_as_parent: i32,
     no_tag: i32,
+    align: i32,
 
     children: mode_tree_list,
     entry: tailq_entry<mode_tree_item>,
@@ -743,6 +744,12 @@ pub unsafe fn mode_tree_no_tag(mti: *mut mode_tree_item) {
     }
 }
 
+pub unsafe fn mode_tree_align(mti: *mut mode_tree_item, align: i32) {
+    unsafe {
+        (*mti).align = align;
+    }
+}
+
 pub unsafe fn mode_tree_remove(mtd: *mut mode_tree_data, mti: *mut mode_tree_item) {
     unsafe {
         let parent: *mut mode_tree_item = (*mti).parent;
@@ -792,12 +799,14 @@ pub unsafe fn mode_tree_draw(mtd: &mut mode_tree_data) {
                 }
             }
 
-            let mut namelen = vec![0i32; mtd.maxdepth as usize + 1];
+            let mut alignlen = vec![0i32; mtd.maxdepth as usize + 1];
             for line in &mtd.line_list {
                 let mti = line.item;
-                let nlen = strlen((*mti).name) as i32;
-                if nlen > namelen[line.depth as usize] {
-                    namelen[line.depth as usize] = nlen;
+                if (*mti).align != 0 {
+                    let nlen = strlen((*mti).name) as i32;
+                    if nlen > alignlen[line.depth as usize] {
+                        alignlen[line.depth as usize] = nlen;
+                    }
                 }
             }
 
@@ -860,7 +869,7 @@ pub unsafe fn mode_tree_draw(mtd: &mut mode_tree_data) {
                     keylen as usize,
                     _s(key),
                     _s(start),
-                    namelen[mtd.line_list[i].depth as usize] as usize,
+                    ((*mti).align * alignlen[mtd.line_list[i].depth as usize]) as usize,
                     _s((*mti).name),
                     _s(tag),
                     if !(*mti).text.is_null() { ": " } else { "" },

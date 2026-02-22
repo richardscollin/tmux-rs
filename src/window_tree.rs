@@ -239,7 +239,7 @@ unsafe fn window_tree_build_pane(
         let name = format_nul!("{idx}");
         format_free(ft);
 
-        mode_tree_add(
+        let mti = mode_tree_add(
             (*data.as_ptr()).data,
             parent,
             item.cast(),
@@ -250,6 +250,7 @@ unsafe fn window_tree_build_pane(
         );
         free_(text);
         free_(name);
+        mode_tree_align(mti, 1);
     }
 }
 
@@ -326,6 +327,7 @@ unsafe fn window_tree_build_window(
             );
             free_(text);
             free_(name);
+            mode_tree_align(mti, 1);
 
             let wp = tailq_first(&raw mut (*(*wl).window).panes);
             if wp.is_null() {

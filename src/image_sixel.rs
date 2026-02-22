@@ -470,7 +470,7 @@ pub unsafe fn sixel_scale(
         let psy = sy * (*si).ypixel;
 
         let tsx = sx * xpixel;
-        let tsy = ((sy * ypixel) / 6) * 6;
+        let tsy = sy * ypixel;
 
         let new = xcalloc1::<sixel_image>() as *mut sixel_image;
         (*new).xpixel = xpixel;

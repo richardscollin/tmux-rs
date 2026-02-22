@@ -262,7 +262,7 @@ macro_rules! options_table_window_hook {
     };
 }
 
-pub static OPTIONS_TABLE: [options_table_entry; 209] = [
+pub static OPTIONS_TABLE: [options_table_entry; 210] = [
     options_table_entry {
         name: "backspace",
         type_: options_table_type::OPTIONS_TABLE_KEY,
@@ -1511,6 +1511,16 @@ pub static OPTIONS_TABLE: [options_table_entry; 209] = [
         scope: OPTIONS_TABLE_WINDOW | OPTIONS_TABLE_PANE,
         default_num: 0,
         text: c!("Whether typing should be sent to all panes simultaneously."),
+        ..options_table_entry::const_default()
+    },
+    options_table_entry {
+        name: "tiled-layout-max-columns",
+        type_: options_table_type::OPTIONS_TABLE_NUMBER,
+        scope: OPTIONS_TABLE_WINDOW,
+        minimum: 0,
+        maximum: u16::MAX as u32,
+        default_num: 0,
+        text: c!("Maximum number of columns in the 'tiled' layout. A value of 0 means no limit."),
         ..options_table_entry::const_default()
     },
     options_table_entry {

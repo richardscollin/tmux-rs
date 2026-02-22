@@ -21,7 +21,7 @@ pub static CMD_SEND_KEYS_ENTRY: cmd_entry = cmd_entry {
     alias: Some("send"),
 
     args: args_parse::new("c:FHKlMN:Rt:X", 0, -1, None),
-    usage: "[-FHKlMRX] [-c target-client] [-N repeat-count] -t target-pane key ...",
+    usage: "[-FHKlMRX] [-c target-client] [-N repeat-count] -t target-pane [key ...]",
 
     target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_PANE, cmd_find_flags::empty()),
 

@@ -56,7 +56,7 @@ pub static CMD_SHOW_HOOKS_ENTRY: cmd_entry = cmd_entry {
     alias: None,
 
     args: args_parse::new("gpt:w", 0, 1, None),
-    usage: "[-gpw] [-t target-pane]",
+    usage: "[-gpw] [-t target-pane] [hook]",
 
     target: cmd_entry_flag::new(
         b't',

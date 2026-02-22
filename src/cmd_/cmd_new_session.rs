@@ -23,7 +23,7 @@ pub static CMD_NEW_SESSION_ENTRY: cmd_entry = cmd_entry {
     alias: Some("new"),
 
     args: args_parse::new("Ac:dDe:EF:f:n:Ps:t:x:Xy:", 0, -1, None),
-    usage: "[-AdDEPX] [-c start-directory] [-e environment] [-F format] [-f flags] [-n window-name] [-s session-name] [-t target-session] [-x width] [-y height] [shell-command]",
+    usage: "[-AdDEPX] [-c start-directory] [-e environment] [-F format] [-f flags] [-n window-name] [-s session-name] [-t target-session] [-x width] [-y height] [shell-command [argument ...]]",
 
     target: cmd_entry_flag::new(
         b't',

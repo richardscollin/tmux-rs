@@ -21,7 +21,7 @@ pub static CMD_NEW_WINDOW_ENTRY: cmd_entry = cmd_entry {
     alias: Some("neww"),
 
     args: args_parse::new("abc:de:F:kn:PSt:", 0, -1, None),
-    usage: "[-abdkPS] [-c start-directory] [-e environment] [-F format] [-n window-name] [-t target-window] [shell-command]",
+    usage: "[-abdkPS] [-c start-directory] [-e environment] [-F format] [-n window-name] [-t target-window] [shell-command [argument ...]]",
 
     target: cmd_entry_flag::new(
         b't',

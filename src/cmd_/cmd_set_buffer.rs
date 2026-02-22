@@ -18,7 +18,7 @@ pub static CMD_SET_BUFFER_ENTRY: cmd_entry = cmd_entry {
     alias: Some("setb"),
 
     args: args_parse::new("ab:t:n:w", 0, 1, None),
-    usage: "[-aw] [-b buffer-name] [-n new-buffer-name] [-t target-client] data",
+    usage: "[-aw] [-b buffer-name] [-n new-buffer-name] [-t target-client] [data]",
 
     flags: cmd_flag::CMD_AFTERHOOK
         .union(cmd_flag::CMD_CLIENT_TFLAG)

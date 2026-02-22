@@ -20,7 +20,7 @@ pub static CMD_SPLIT_WINDOW_ENTRY: cmd_entry = cmd_entry {
     alias: Some("splitw"),
 
     args: args_parse::new("bc:de:fF:hIl:p:Pt:vZ", 0, -1, None),
-    usage: "[-bdefhIPvZ] [-c start-directory] [-e environment] [-F format] [-l size] [-t target-pane] [shell-command]",
+    usage: "[-bdefhIPvZ] [-c start-directory] [-e environment] [-F format] [-l size] [-t target-pane] [shell-command [argument ...]]",
 
     target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_PANE, cmd_find_flags::empty()),
 

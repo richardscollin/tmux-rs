@@ -49,10 +49,12 @@ static mut INPUT_KEY_TREE: input_key_tree = rb_initializer();
 
 const INPUT_KEY_DEFAULTS_LEN: usize = 83;
 
-static mut INPUT_KEY_DEFAULTS: [input_key_entry; 83] = [
+static mut INPUT_KEY_DEFAULTS: [input_key_entry; 85] = [
     // Paste keys.
     input_key_entry::new(keyc::KEYC_PASTE_START as u64, c"\x1b[200~"),
+    input_key_entry::new(keyc::KEYC_PASTE_START as u64 | KEYC_IMPLIED_META, c"\x1b[200~"),
     input_key_entry::new(keyc::KEYC_PASTE_END as u64, c"\x1b[201~"),
+    input_key_entry::new(keyc::KEYC_PASTE_END as u64 | KEYC_IMPLIED_META, c"\x1b[201~"),
     // Function keys.
     input_key_entry::new(keyc::KEYC_F1 as u64, c"\x1bOP"),
     input_key_entry::new(keyc::KEYC_F2 as u64, c"\x1bOQ"),

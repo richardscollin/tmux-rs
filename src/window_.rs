@@ -542,6 +542,7 @@ pub unsafe fn window_pane_update_focus(wp: *mut window_pane) {
                         && (*(*c).session).attached != 0
                         && (*c).flags.intersects(client_flag::FOCUSED)
                         && (*(*(*c).session).curw).window == (*wp).window
+                        && (*c).overlay_draw.is_none()
                     {
                         focused = true;
                         break;

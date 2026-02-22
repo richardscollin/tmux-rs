@@ -94,6 +94,7 @@ pub unsafe fn server_client_set_overlay(
         if (*c).overlay_mode.is_none() {
             (*c).tty.flags |= tty_flags::TTY_NOCURSOR;
         }
+        window_update_focus((*(*(*c).session).curw).window);
         server_redraw_client(c);
     }
 }
@@ -121,6 +122,7 @@ pub unsafe fn server_client_clear_overlay(c: *mut client) {
         (*c).overlay_data = null_mut();
 
         (*c).tty.flags &= !(tty_flags::TTY_FREEZE | tty_flags::TTY_NOCURSOR);
+        window_update_focus((*(*(*c).session).curw).window);
         server_redraw_client(c);
     }
 }

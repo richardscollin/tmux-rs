@@ -402,7 +402,7 @@ pub unsafe fn screen_write_strlen_(args: std::fmt::Arguments) -> usize {
                     size += ud.width;
                 }
             } else {
-                if *ptr > 0x1f && *ptr < 0x7f {
+                if *ptr == b'\t' || (*ptr > 0x1f && *ptr < 0x7f) {
                     size += 1;
                 }
                 ptr = ptr.add(1);
@@ -597,7 +597,7 @@ pub(crate) unsafe fn screen_write_vnputs_(
                 } else if *ptr == b'\n' {
                     screen_write_linefeed(ctx, false, 8);
                     screen_write_carriagereturn(ctx);
-                } else if *ptr > 0x1f && *ptr < 0x7f {
+                } else if *ptr == b'\t' || (*ptr > 0x1f && *ptr < 0x7f) {
                     size += 1;
                     screen_write_putc(ctx, &gc, *ptr);
                 }

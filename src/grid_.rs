@@ -257,10 +257,16 @@ unsafe fn grid_check_y(gd: *mut grid, from: *const u8, py: c_uint) -> c_int {
 /// Check if two styles are (visibly) the same.
 pub unsafe fn grid_cells_look_equal(gc1: *const grid_cell, gc2: *const grid_cell) -> c_int {
     unsafe {
+        let flags1 = (*gc1).flags;
+        let flags2 = (*gc2).flags;
+
         if (*gc1).fg != (*gc2).fg || (*gc1).bg != (*gc2).bg {
             return 0;
         }
-        if (*gc1).attr != (*gc2).attr || (*gc1).flags != (*gc2).flags {
+        if (*gc1).attr != (*gc2).attr {
+            return 0;
+        }
+        if (flags1 & !grid_flag::CLEARED) != (flags2 & !grid_flag::CLEARED) {
             return 0;
         }
         if (*gc1).link != (*gc2).link {

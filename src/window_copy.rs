@@ -3497,13 +3497,15 @@ pub unsafe fn window_copy_search_lr(
 ) -> bool {
     unsafe {
         let mut gl: *mut grid_line;
+        let mut gc: grid_cell = zeroed();
 
         let endline = (*gd).hsize + (*gd).sy - 1;
         for ax in first..last {
+            let mut padding: u32 = 0;
             let mut bx = 0;
             for bx_ in 0..(*sgd).sx {
                 bx = bx_;
-                let mut px = ax + bx;
+                let mut px = ax + bx + padding;
                 let mut pywrap = py;
                 // Wrap line.
                 while px >= (*gd).sx && pywrap < endline {
@@ -3515,9 +3517,15 @@ pub unsafe fn window_copy_search_lr(
                     pywrap += 1;
                 }
                 // We have run off the end of the grid.
-                if px >= (*gd).sx {
+                if px - padding >= (*gd).sx {
                     break;
                 }
+
+                grid_get_cell(gd, px, pywrap, &raw mut gc);
+                if gc.flags.intersects(grid_flag::TAB) {
+                    padding += gc.data.width as u32 - 1;
+                }
+
                 let matched = window_copy_search_compare(gd, px, pywrap, sgd, bx, cis);
                 if !matched {
                     break;
@@ -3543,14 +3551,16 @@ pub unsafe fn window_copy_search_rl(
 ) -> bool {
     unsafe {
         let mut gl: *mut grid_line;
+        let mut gc: grid_cell = zeroed();
         let endline = (*gd).hsize + (*gd).sy - 1;
 
         let mut ax = last;
         while ax > first {
+            let mut padding: u32 = 0;
             let mut bx = 0;
             for bx_ in 0..(*sgd).sx {
                 bx = bx_;
-                let mut px = ax - 1 + bx;
+                let mut px = ax - 1 + bx + padding;
                 let mut pywrap = py;
                 // Wrap line.
                 while px >= (*gd).sx && pywrap < endline {
@@ -3562,9 +3572,15 @@ pub unsafe fn window_copy_search_rl(
                     pywrap += 1;
                 }
                 // We have run off the end of the grid.
-                if px >= (*gd).sx {
+                if px - padding >= (*gd).sx {
                     break;
                 }
+
+                grid_get_cell(gd, px, pywrap, &raw mut gc);
+                if gc.flags.intersects(grid_flag::TAB) {
+                    padding += gc.data.width as u32 - 1;
+                }
+
                 let matched = window_copy_search_compare(gd, px, pywrap, sgd, bx, cis);
                 if !matched {
                     break;
@@ -4442,6 +4458,7 @@ pub unsafe fn window_copy_search_marks(
         let mut ss: screen = zeroed();
         let mut ctx: screen_write_ctx = zeroed();
         let gd: *mut grid = (*s).grid;
+        let mut gc: grid_cell = zeroed();
         let mut found: bool;
         let mut stopped: i32 = 0;
 
@@ -4449,10 +4466,13 @@ pub unsafe fn window_copy_search_marks(
         let mut px: u32;
         let mut nfound: u32 = 0;
         let mut width: u32;
+        let mut tw: u32;
 
         let mut ssize: u32 = 1;
         let mut start: u32 = 0;
         let mut end: u32 = 0;
+        let sx: u32 = (*gd).sx;
+        let sy: u32 = (*gd).sy;
 
         let mut reg: libc::regex_t = zeroed();
         let mut stop: u64 = 0;
@@ -4505,15 +4525,13 @@ pub unsafe fn window_copy_search_marks(
                 window_copy_visible_lines(data, &raw mut start, &raw mut end);
             } else {
                 start = 0;
-                end = (*gd).hsize + (*gd).sy;
+                end = (*gd).hsize + sy;
                 stop = get_timer() + WINDOW_COPY_SEARCH_ALL_TIMEOUT;
             }
 
             'again: loop {
                 free_((*data).searchmark);
-                (*data).searchmark = xcalloc((*gd).sx as usize, (*gd).sy as usize)
-                    .cast()
-                    .as_ptr();
+                (*data).searchmark = xcalloc(sx as usize, sy as usize).cast().as_ptr();
                 (*data).searchgen = 1;
 
                 for py in start..end {
@@ -4526,9 +4544,13 @@ pub unsafe fn window_copy_search_marks(
                                 &raw mut width,
                                 py,
                                 px,
-                                (*gd).sx,
+                                sx,
                                 &raw mut reg,
                             );
+                            grid_get_cell(gd, px + width - 1, py, &raw mut gc);
+                            if gc.data.width > 2 {
+                                width += gc.data.width as u32 - 1;
+                            }
                             if !found {
                                 break;
                             }
@@ -4539,7 +4561,7 @@ pub unsafe fn window_copy_search_marks(
                                 &raw mut px,
                                 py,
                                 px,
-                                (*gd).sx,
+                                sx,
                                 cis,
                             );
                             if !found {
@@ -4548,11 +4570,22 @@ pub unsafe fn window_copy_search_marks(
                         }
                         nfound += 1;
 
+                        tw = width;
                         if let Ok(b) = window_copy_search_mark_at(data, px, py) {
-                            if b + width > (*gd).sx * (*gd).sy {
-                                width = ((*gd).sx * (*gd).sy) - b;
+                            if b + width > sx * sy {
+                                width = (sx * sy) - b;
                             }
-                            for i in b..(b + width) {
+                            tw = width;
+                            for i in b..(b + tw) {
+                                if regex == 0 {
+                                    grid_get_cell(gd, px + (i - b), py, &raw mut gc);
+                                    if gc.flags.intersects(grid_flag::TAB) {
+                                        tw += gc.data.width as u32 - 1;
+                                    }
+                                    if b + tw > sx * sy {
+                                        tw = (sx * sy) - b;
+                                    }
+                                }
                                 if *(*data).searchmark.add(i as usize) != 0 {
                                     continue;
                                 }
@@ -4564,7 +4597,7 @@ pub unsafe fn window_copy_search_marks(
                                 (*data).searchgen += 1;
                             }
                         }
-                        px += width;
+                        px += tw;
                     }
 
                     let t = get_timer();

@@ -59,21 +59,23 @@ static OPTIONS_TABLE_ALLOW_PASSTHROUGH_LIST: [&str; 3] = ["off", "on", "all"];
 
 #[rustfmt::skip]
 /// Map of name conversions.
-pub static OPTIONS_OTHER_NAMES: [options_name_map; 5] = [
+pub static OPTIONS_OTHER_NAMES: [options_name_map; 6] = [
     options_name_map::new("display-panes-color", "display-panes-colour"),
     options_name_map::new("display-panes-active-color", "display-panes-active-colour"),
     options_name_map::new("clock-mode-color", "clock-mode-colour"),
     options_name_map::new("cursor-color", "cursor-colour"),
+    options_name_map::new("prompt-cursor-color", "prompt-cursor-colour"),
     options_name_map::new("pane-colors", "pane-colours"),
 ];
 
 #[rustfmt::skip]
 /// Map of name conversions.
-pub static OPTIONS_OTHER_NAMES_STR: [options_name_map_str; 5] = [
+pub static OPTIONS_OTHER_NAMES_STR: [options_name_map_str; 6] = [
     options_name_map_str::new("display-panes-color", "display-panes-colour"),
     options_name_map_str::new("display-panes-active-color", "display-panes-active-colour"),
     options_name_map_str::new("clock-mode-color", "clock-mode-colour"),
     options_name_map_str::new("cursor-color", "cursor-colour"),
+    options_name_map_str::new("prompt-cursor-color", "prompt-cursor-colour"),
     options_name_map_str::new("pane-colors", "pane-colours"),
 ];
 
@@ -205,7 +207,7 @@ macro_rules! options_table_window_hook {
     };
 }
 
-pub static OPTIONS_TABLE: [options_table_entry; 192] = [
+pub static OPTIONS_TABLE: [options_table_entry; 194] = [
     options_table_entry {
         name: "backspace",
         type_: options_table_type::OPTIONS_TABLE_KEY,
@@ -888,6 +890,23 @@ pub static OPTIONS_TABLE: [options_table_entry; 192] = [
         flags: OPTIONS_TABLE_IS_STYLE,
         separator: c!(","),
         text: c!("Style of the status line."),
+        ..options_table_entry::const_default()
+    },
+    options_table_entry {
+        name: "prompt-cursor-colour",
+        type_: options_table_type::OPTIONS_TABLE_COLOUR,
+        scope: OPTIONS_TABLE_SESSION,
+        default_num: 6,
+        text: c!("Colour of the cursor when in the command prompt."),
+        ..options_table_entry::const_default()
+    },
+    options_table_entry {
+        name: "prompt-cursor-style",
+        type_: options_table_type::OPTIONS_TABLE_CHOICE,
+        scope: OPTIONS_TABLE_SESSION,
+        choices: &OPTIONS_TABLE_CURSOR_STYLE_LIST,
+        default_num: 0,
+        text: c!("Style of the cursor when in the command prompt."),
         ..options_table_entry::const_default()
     },
     options_table_entry {

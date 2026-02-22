@@ -2649,7 +2649,7 @@ pub unsafe fn server_client_reset_state(c: *mut client) {
 
         // Move cursor to pane cursor and offset.
         if !(*c).prompt_string.is_null() {
-            n = options_get_number_((*(*c).session).options, "status-position") as i32;
+            n = options_get_number_(oo, "status-position") as i32;
             if n == 0 {
                 cy = 0;
             } else {
@@ -2661,26 +2661,45 @@ pub unsafe fn server_client_reset_state(c: *mut client) {
                 }
             }
             cx = (*c).prompt_cursor as u32;
-            mode &= !mode_flag::MODE_CURSOR;
-        } else if (*c).overlay_draw.is_none() {
-            cursor = 0;
-            tty_window_offset(tty, &raw mut ox, &raw mut oy, &raw mut sx, &raw mut sy);
-            if (*wp).xoff + (*s).cx >= ox
-                && (*wp).xoff + (*s).cx <= ox + sx
-                && (*wp).yoff + (*s).cy >= oy
-                && (*wp).yoff + (*s).cy <= oy + sy
-            {
-                cursor = 1;
 
-                cx = (*wp).xoff + (*s).cx - ox;
-                cy = (*wp).yoff + (*s).cy - oy;
+            n = options_get_number_(oo, "prompt-cursor-colour") as i32;
+            (*s).default_ccolour = n;
+            n = options_get_number_(oo, "prompt-cursor-style") as i32;
+            screen_set_cursor_style(
+                n as u32,
+                &raw mut (*s).default_cstyle,
+                &raw mut (*s).default_mode,
+            );
+        } else {
+            n = options_get_number_((*wp).options, "cursor-colour") as i32;
+            (*s).default_ccolour = n;
+            n = options_get_number_((*wp).options, "cursor-style") as i32;
+            screen_set_cursor_style(
+                n as u32,
+                &raw mut (*s).default_cstyle,
+                &raw mut (*s).default_mode,
+            );
 
-                if status_at_line(c) == 0 {
-                    cy += status_line_size(c);
+            if (*c).overlay_draw.is_none() {
+                cursor = 0;
+                tty_window_offset(tty, &raw mut ox, &raw mut oy, &raw mut sx, &raw mut sy);
+                if (*wp).xoff + (*s).cx >= ox
+                    && (*wp).xoff + (*s).cx <= ox + sx
+                    && (*wp).yoff + (*s).cy >= oy
+                    && (*wp).yoff + (*s).cy <= oy + sy
+                {
+                    cursor = 1;
+
+                    cx = (*wp).xoff + (*s).cx - ox;
+                    cy = (*wp).yoff + (*s).cy - oy;
+
+                    if status_at_line(c) == 0 {
+                        cy += status_line_size(c);
+                    }
                 }
-            }
-            if cursor == 0 {
-                mode &= !mode_flag::MODE_CURSOR;
+                if cursor == 0 {
+                    mode &= !mode_flag::MODE_CURSOR;
+                }
             }
         }
         // log_debug!("%s: cursor to %u,%u", __func__, cx, cy);

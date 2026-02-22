@@ -736,7 +736,7 @@ pub unsafe fn status_prompt_set<T>(
         (*c).prompt_mode = prompt_mode::PROMPT_ENTRY;
 
         if !flags.intersects(prompt_flags::PROMPT_INCREMENTAL) {
-            (*c).tty.flags |= tty_flags::TTY_NOCURSOR | tty_flags::TTY_FREEZE;
+            (*c).tty.flags |= tty_flags::TTY_FREEZE;
         }
         (*c).flags |= client_flag::REDRAWSTATUS;
 
@@ -829,7 +829,6 @@ pub unsafe fn status_prompt_redraw(c: *mut client) -> i32 {
         let offset: u32;
 
         let mut gc: grid_cell = zeroed();
-        let mut cursorgc: grid_cell = zeroed();
         let mut old_screen: screen;
 
         'finished: {
@@ -856,9 +855,6 @@ pub unsafe fn status_prompt_redraw(c: *mut client) -> i32 {
                 style_apply(&raw mut gc, (*s).options, c!("message-style"), ft);
             }
             format_free(ft);
-
-            memcpy__(&raw mut cursorgc, &raw const gc);
-            cursorgc.attr ^= grid_attr::GRID_ATTR_REVERSE;
 
             let mut start = format_width(cstr_to_str((*c).prompt_string));
             if start > (*c).tty.sx {
@@ -926,17 +922,9 @@ pub unsafe fn status_prompt_redraw(c: *mut client) -> i32 {
                     break;
                 }
 
-                if i != (*c).prompt_index {
-                    utf8_copy(&raw mut gc.data, (*c).prompt_buffer.add(i));
-                    screen_write_cell(&raw mut ctx, &raw const gc);
-                } else {
-                    utf8_copy(&raw mut cursorgc.data, (*c).prompt_buffer.add(i));
-                    screen_write_cell(&raw mut ctx, &raw const cursorgc);
-                }
+                utf8_copy(&raw mut gc.data, (*c).prompt_buffer.add(i));
+                screen_write_cell(&raw mut ctx, &raw const gc);
                 i += 1;
-            }
-            if (*(*sl).active).cx < screen_size_x((*sl).active) && (*c).prompt_index >= i {
-                screen_write_putc(&raw mut ctx, &raw const cursorgc, b' ');
             }
         }
         // finished:

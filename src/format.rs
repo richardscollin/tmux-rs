@@ -5600,10 +5600,9 @@ pub unsafe fn format_grid_word(gd: *mut grid, mut x: u32, mut y: u32) -> String 
 
         loop {
             grid_get_cell(gd, x, y, gc);
-            if (*gc).flags.intersects(grid_flag::PADDING) {
-                break;
-            }
-            if format_is_word_separator(ws, gc) {
+            if !(*gc).flags.intersects(grid_flag::PADDING)
+                && format_is_word_separator(ws, gc)
+            {
                 found = true;
                 break;
             }
@@ -5645,7 +5644,7 @@ pub unsafe fn format_grid_word(gd: *mut grid, mut x: u32, mut y: u32) -> String 
 
             grid_get_cell(gd, x, y, gc);
             if (*gc).flags.intersects(grid_flag::PADDING) {
-                break;
+                continue;
             }
             if format_is_word_separator(ws, gc) {
                 break;

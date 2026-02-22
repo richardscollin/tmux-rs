@@ -783,6 +783,9 @@ pub unsafe fn window_copy_search_match_cb(ft: *mut format_tree) -> format_table_
 pub unsafe fn window_copy_formats(wme: *mut window_mode_entry, ft: *mut format_tree) {
     unsafe {
         let data: *mut window_copy_mode_data = (*wme).data.cast();
+        let hsize = screen_hsize((*data).backing);
+        let gl = grid_get_line((*(*data).backing).grid, hsize - (*data).oy);
+        format_add!(ft, "top_line_time", "{}", (*gl).time);
 
         format_add!(ft, "scroll_position", "{}", (*data).oy);
         format_add!(ft, "rectangle_toggle", "{}", (*data).rectflag as i32);
@@ -817,6 +820,7 @@ pub unsafe fn window_copy_formats(wme: *mut window_mode_entry, ft: *mut format_t
             "{}",
             !(*data).searchmark.is_null() as i32,
         );
+        format_add!(ft, "search_timed_out", "{}", (*data).timeout);
         if (*data).searchcount != -1 {
             format_add!(ft, "search_count", "{}", (*data).searchcount,);
             format_add!(ft, "search_count_partial", "{}", (*data).searchmore,);
@@ -4825,15 +4829,11 @@ pub unsafe fn window_copy_write_line(
         let data: *mut window_copy_mode_data = (*wme).data.cast();
         let s: *mut screen = &raw mut (*data).screen;
         let oo: *mut options = (*(*wp).window).options;
-        let gl: *mut grid_line;
         let mut gc: grid_cell = zeroed();
         let mut mgc: grid_cell = zeroed();
         let mut cgc: grid_cell = zeroed();
         let mut mkgc: grid_cell = zeroed();
-        let mut hdr: [u8; 512] = zeroed();
-        let mut tmp: [u8; 512] = zeroed();
-        let t: *mut u8;
-        let mut size: usize;
+        let sx = screen_size_x(s);
         let hsize = screen_hsize((*data).backing);
 
         style_apply(&raw mut gc, oo, c!("mode-style"), null_mut());
@@ -4850,80 +4850,29 @@ pub unsafe fn window_copy_write_line(
         style_apply(&raw mut mkgc, oo, c!("copy-mode-mark-style"), null_mut());
         mkgc.flags |= grid_flag::NOPALETTE;
 
+        window_copy_write_one(
+            wme,
+            ctx,
+            py,
+            hsize - (*data).oy + py,
+            screen_size_x(s),
+            &raw mut mgc,
+            &raw mut cgc,
+            &raw mut mkgc,
+        );
+
         if py == 0 && (*s).rupper < (*s).rlower && !(*data).hide_position {
-            gl = grid_get_line((*(*data).backing).grid, hsize - (*data).oy);
-            if (*gl).time == 0 {
-                _ = xsnprintf_!((&raw mut tmp).cast(), 512, "[{}/{}]", (*data).oy, hsize,);
-            } else {
-                t = format_pretty_time((*gl).time, 1);
-                _ = xsnprintf_!(
-                    (&raw mut tmp).cast(),
-                    512,
-                    "{} [{}/{}]",
-                    _s(t),
-                    (*data).oy,
-                    hsize,
-                );
-                free_(t);
-            }
-
-            if (*data).searchmark.is_null() {
-                if (*data).timeout != 0 {
-                    size = xsnprintf_!(
-                        (&raw mut hdr).cast(),
-                        512,
-                        "(timed out) {}",
-                        _s(&raw const tmp as *mut u8)
-                    )
-                    .unwrap() as usize;
-                } else {
-                    size = xsnprintf_!(
-                        (&raw mut hdr).cast(),
-                        512,
-                        "{}",
-                        _s(&raw const tmp as *const u8)
-                    )
-                    .unwrap() as usize;
+            let value = options_get_string(oo, "copy-mode-position-format");
+            if *value != 0 {
+                let ft = format_create_defaults(null_mut(), null_mut(), null_mut(), null_mut(), wp);
+                let expanded = format_expand(ft, value);
+                if *expanded != 0 {
+                    screen_write_cursormove(ctx, 0, 0, 0);
+                    format_draw(ctx, &raw mut gc, sx, cstr_to_str(expanded), null_mut(), 0);
                 }
-            } else if (*data).searchcount == -1 {
-                size = xsnprintf_!(
-                    (&raw mut hdr).cast(),
-                    512,
-                    "{}",
-                    _s(&raw const tmp as *const u8)
-                )
-                .unwrap() as usize;
-            } else {
-                size = xsnprintf_!(
-                    (&raw mut hdr).cast(),
-                    512,
-                    "({}{} results) {}",
-                    (*data).searchcount,
-                    if (*data).searchmore != 0 { "+" } else { "" },
-                    _s(&raw const tmp as *const u8)
-                )
-                .unwrap() as usize;
+                free_(expanded);
+                format_free(ft);
             }
-            if size > screen_size_x(s) as usize {
-                size = screen_size_x(s) as usize;
-            }
-            screen_write_cursormove(ctx, screen_size_x(s) as i32 - size as i32, 0, 0);
-            screen_write_puts!(ctx, &raw mut gc, "{}", _s((&raw const hdr).cast::<u8>()));
-        } else {
-            size = 0;
-        }
-
-        if size < screen_size_x(s) as usize {
-            window_copy_write_one(
-                wme,
-                ctx,
-                py,
-                hsize - (*data).oy + py,
-                screen_size_x(s) - size as u32,
-                &raw mut mgc,
-                &raw mut cgc,
-                &raw mut mkgc,
-            );
         }
 
         if py == (*data).cy && (*data).cx == screen_size_x(s) {

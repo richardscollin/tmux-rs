@@ -394,7 +394,9 @@ pub unsafe fn job_run(
                 ..Default::default()
             }));
 
-            strlcpy((*job).tty.as_mut_ptr(), tty.as_ptr().cast(), TTY_NAME_MAX);
+            if flags.intersects(job_flag::JOB_PTY) {
+                strlcpy((*job).tty.as_mut_ptr(), tty.as_ptr().cast(), TTY_NAME_MAX);
+            }
 
             list_insert_head(&raw mut ALL_JOBS, job);
 

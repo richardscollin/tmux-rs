@@ -566,7 +566,6 @@ unsafe fn window_copy_scroll1(
 ) {
     unsafe {
         let data: *mut window_copy_mode_data = (*wme).data.cast();
-        let _slider_y = (*wp).sb_slider_y;
         let slider_height = (*wp).sb_slider_h;
         let sb_height = (*wp).sy;
         let sb_top = (*wp).yoff;
@@ -4556,6 +4555,55 @@ pub unsafe fn window_copy_search_mark_at(
     }
 }
 
+fn window_copy_clip_width(width: u32, b: u32, sx: u32, sy: u32) -> u32 {
+    if b + width > sx * sy {
+        (sx * sy) - b
+    } else {
+        width
+    }
+}
+
+unsafe fn window_copy_search_mark_match(
+    data: *mut window_copy_mode_data,
+    px: u32,
+    py: u32,
+    mut width: u32,
+    regex: i32,
+) -> u32 {
+    unsafe {
+        let gd: *mut grid = (*(*data).backing).grid;
+        let mut gc: grid_cell = zeroed();
+        let sx: u32 = (*gd).sx;
+        let sy: u32 = (*gd).sy;
+
+        let mut w: u32 = width;
+        if let Ok(b) = window_copy_search_mark_at(data, px, py) {
+            width = window_copy_clip_width(width, b, sx, sy);
+            w = width;
+            for i in b..(b + w) {
+                if regex == 0 {
+                    grid_get_cell(gd, px + (i - b), py, &raw mut gc);
+                    if gc.flags.intersects(grid_flag::TAB) {
+                        w += gc.data.width as u32 - 1;
+                    }
+                    w = window_copy_clip_width(w, b, sx, sy);
+                }
+                if *(*data).searchmark.add(i as usize) != 0 {
+                    continue;
+                }
+                *(*data).searchmark.add(i as usize) = (*data).searchgen;
+            }
+            if (*data).searchgen == u8::MAX {
+                (*data).searchgen = 1;
+            } else {
+                (*data).searchgen += 1;
+            }
+        }
+
+        w
+    }
+}
+
 pub unsafe fn window_copy_search_marks(
     wme: *mut window_mode_entry,
     mut ssp: *mut screen,
@@ -4576,7 +4624,6 @@ pub unsafe fn window_copy_search_marks(
         let mut px: u32;
         let mut nfound: u32 = 0;
         let mut width: u32;
-        let mut tw: u32;
 
         let mut ssize: u32 = 1;
         let mut start: u32 = 0;
@@ -4680,34 +4727,7 @@ pub unsafe fn window_copy_search_marks(
                         }
                         nfound += 1;
 
-                        tw = width;
-                        if let Ok(b) = window_copy_search_mark_at(data, px, py) {
-                            if b + width > sx * sy {
-                                width = (sx * sy) - b;
-                            }
-                            tw = width;
-                            for i in b..(b + tw) {
-                                if regex == 0 {
-                                    grid_get_cell(gd, px + (i - b), py, &raw mut gc);
-                                    if gc.flags.intersects(grid_flag::TAB) {
-                                        tw += gc.data.width as u32 - 1;
-                                    }
-                                    if b + tw > sx * sy {
-                                        tw = (sx * sy) - b;
-                                    }
-                                }
-                                if *(*data).searchmark.add(i as usize) != 0 {
-                                    continue;
-                                }
-                                *(*data).searchmark.add(i as usize) = (*data).searchgen;
-                            }
-                            if (*data).searchgen == u8::MAX {
-                                (*data).searchgen = 1;
-                            } else {
-                                (*data).searchgen += 1;
-                            }
-                        }
-                        px += tw;
+                        px += window_copy_search_mark_match(data, px, py, width, regex);
                     }
 
                     let t = get_timer();

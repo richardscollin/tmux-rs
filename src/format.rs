@@ -101,6 +101,7 @@ bitflags::bitflags! {
         const FORMAT_CLIENTS = 0x40000;
         const FORMAT_NOT = 0x80000;
         const FORMAT_NOT_NOT = 0x100000;
+        const FORMAT_REPEAT = 0x200000;
     }
 }
 
@@ -3913,7 +3914,7 @@ pub unsafe fn format_build_modifiers(
             }
 
             // Now try single character with arguments.
-            if strchr(c!("mCNst=peq"), *cp as i32).is_null() {
+            if strchr(c!("mCNst=pReq"), *cp as i32).is_null() {
                 break;
             }
             let mut c = *cp;
@@ -4678,6 +4679,7 @@ pub unsafe fn format_replace(
                             b'P' => modifiers |= format_modifiers::FORMAT_PANES,
                             b'!' => modifiers |= format_modifiers::FORMAT_NOT,
                             b'L' => modifiers |= format_modifiers::FORMAT_CLIENTS,
+                            b'R' => modifiers |= format_modifiers::FORMAT_REPEAT,
                             _ => (),
                         }
                     } else if (*fm).size == 2 {
@@ -4774,6 +4776,27 @@ pub unsafe fn format_replace(
                         value = format_search(search, wp, new);
                     }
                     free_(new);
+                } else if modifiers.intersects(format_modifiers::FORMAT_REPEAT) {
+                    // Repeat multiple times.
+                    if format_choose(es, copy, &raw mut left, &raw mut right, 1) != 0 {
+                        format_log1!(es, __func__, "repeat syntax error: {}", _s(copy));
+                        break 'fail;
+                    }
+                    match strtonum::<i32>(right, 1, 10000) {
+                        Err(_) => {
+                            value = xstrdup(c!("")).as_ptr();
+                        }
+                        Ok(nrep) => {
+                            value = xstrdup(c!("")).as_ptr();
+                            for _i in 0..nrep {
+                                new = format_nul!("{}{}", _s(value), _s(left));
+                                free_(value);
+                                value = new;
+                            }
+                        }
+                    }
+                    free_(right);
+                    free_(left);
                 } else if modifiers.intersects(format_modifiers::FORMAT_NOT) {
                     value = format_bool_op_1(es, copy, true);
                 } else if modifiers.intersects(format_modifiers::FORMAT_NOT_NOT) {

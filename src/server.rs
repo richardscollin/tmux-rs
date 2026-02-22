@@ -40,7 +40,9 @@ pub unsafe fn server_set_marked(s: *mut session, wl: *mut winlink, wp: *mut wind
         cmd_find_clear_state(&raw mut MARKED_PANE, cmd_find_flags::empty());
         MARKED_PANE.s = s;
         MARKED_PANE.wl = wl;
-        MARKED_PANE.w = (*wl).window;
+        if !wl.is_null() {
+            MARKED_PANE.w = (*wl).window;
+        }
         MARKED_PANE.wp = wp;
     }
 }

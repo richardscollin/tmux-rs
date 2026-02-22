@@ -3525,7 +3525,7 @@ pub unsafe fn server_client_dispatch_command(c: *mut client, imsg: *mut imsg) {
         let mut data: msg_command = zeroed();
         let buf;
         let len: usize;
-        let argc;
+        let mut argc = 0;
         let mut argv: *mut *mut u8 = null_mut();
         let cause: *mut u8;
         let new_item;
@@ -3546,12 +3546,12 @@ pub unsafe fn server_client_dispatch_command(c: *mut client, imsg: *mut imsg) {
                 fatalx("bad MSG_COMMAND string");
             }
 
-            argc = data.argc;
-            if cmd_unpack_argv(buf, len, argc, &raw mut argv) != 0 {
+            if cmd_unpack_argv(buf, len, data.argc, &raw mut argv) != 0 {
                 cause = xstrdup(c!("command too long")).as_ptr();
                 break 'error;
             }
 
+            argc = data.argc;
             let cmdlist;
             if argc == 0 {
                 cmdlist = cmd_list_copy(

@@ -457,7 +457,7 @@ pub unsafe fn key_bindings_init() {
         /* Mouse button 1 drag on border. */
         "bind -n MouseDrag1Border { resize-pane -M }",
         /* Mouse button 1 down on status line. */
-        "bind -n MouseDown1Status { select-window -t= }",
+        "bind -n MouseDown1Status { switch-client -t= }",
         /* Mouse wheel down on status line. */
         "bind -n WheelDownStatus { next-window }",
         /* Mouse wheel up on status line. */

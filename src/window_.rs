@@ -1957,6 +1957,8 @@ pub unsafe fn window_set_fill_character(w: NonNull<window>) {
             let ud = utf8_fromcstr(value);
             if !ud.is_null() && (*ud).width == 1 {
                 (*w).fill_character = ud;
+            } else {
+                free(ud as _);
             }
         }
     }

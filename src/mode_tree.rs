@@ -353,8 +353,14 @@ pub unsafe fn mode_tree_set_current(mtd: *mut mode_tree_data, tag: u64) -> bool 
             }
             return true;
         }
-        (*mtd).current = 0;
-        (*mtd).offset = 0;
+        if (*mtd).current >= (*mtd).line_list.len() as u32 {
+            (*mtd).current = (*mtd).line_list.len() as u32 - 1;
+            if (*mtd).current > (*mtd).height - 1 {
+                (*mtd).offset = (*mtd).current - (*mtd).height + 1;
+            } else {
+                (*mtd).offset = 0;
+            }
+        }
         false
     }
 }

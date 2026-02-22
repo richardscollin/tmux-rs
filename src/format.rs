@@ -5685,7 +5685,7 @@ pub unsafe fn format_grid_line(gd: *mut grid, y: u32) -> String {
 /// Return hyperlink at given coordinates. Caller frees.
 pub unsafe fn format_grid_hyperlink(
     gd: *mut grid,
-    x: u32,
+    mut x: u32,
     y: u32,
     s: *mut screen,
 ) -> Option<String> {
@@ -5694,9 +5694,15 @@ pub unsafe fn format_grid_hyperlink(
         let mut gc = MaybeUninit::<grid_cell>::uninit();
         let gc = gc.as_mut_ptr();
 
-        grid_get_cell(gd, x, y, gc);
-        if (*gc).flags.intersects(grid_flag::PADDING) {
-            return None;
+        loop {
+            grid_get_cell(gd, x, y, gc);
+            if !(*gc).flags.intersects(grid_flag::PADDING) {
+                break;
+            }
+            if x == 0 {
+                return None;
+            }
+            x -= 1;
         }
         if (*s).hyperlinks.is_null() || (*gc).link == 0 {
             return None;

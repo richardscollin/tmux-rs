@@ -849,6 +849,7 @@ pub unsafe fn popup_display(
         (*pd).border_cell.attr = grid_attr::empty();
 
         screen_init(&raw mut (*pd).s, jx, jy, 0);
+        screen_set_default_cursor(&raw mut (*pd).s, GLOBAL_W_OPTIONS);
         (*pd).palette = colour_palette_init();
         colour_palette_from_option(Some(&mut (*pd).palette), GLOBAL_W_OPTIONS);
 

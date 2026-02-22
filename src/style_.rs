@@ -255,8 +255,13 @@ pub unsafe fn style_parse(sy: *mut style, base: *const grid_cell, mut in_: *cons
                     };
                     (*sy).pad = n as i32;
                 } else if end > 2 && strncasecmp(tmp, c!("no"), 2) == 0 {
-                    let Ok(value) = attributes_fromstring(cstr_to_str(tmp.add(2))) else {
-                        break 'error;
+                    let value = if streq_(tmp.add(2), "attr") {
+                        grid_attr::from_bits_retain(0xffff) & !grid_attr::GRID_ATTR_CHARSET
+                    } else {
+                        let Ok(v) = attributes_fromstring(cstr_to_str(tmp.add(2))) else {
+                            break 'error;
+                        };
+                        v
                     };
                     (*sy).gc.attr &= !value;
                 } else {

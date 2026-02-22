@@ -651,8 +651,7 @@ pub unsafe fn screen_select_cell(s: *mut screen, dst: *mut grid_cell, src: *cons
             (*dst).bg = (*src).bg;
         }
         utf8_copy(&mut (*dst).data, &(*src).data);
-        (*dst).attr &= !grid_attr::GRID_ATTR_CHARSET;
-        (*dst).attr |= (*src).attr & grid_attr::GRID_ATTR_CHARSET;
+        (*dst).attr = (*src).attr;
         (*dst).flags = (*src).flags;
     }
 }

@@ -1191,7 +1191,7 @@ pub static OPTIONS_TABLE: [options_table_entry; 205] = [
         type_: options_table_type::OPTIONS_TABLE_STRING,
         scope: OPTIONS_TABLE_WINDOW,
         flags: OPTIONS_TABLE_IS_STYLE,
-        default_str: Some("bg=yellow,fg=black"),
+        default_str: Some("noattr,bg=yellow,fg=black"),
         separator: c!(","),
         text: c!("Style of indicators and highlighting in modes."),
         ..options_table_entry::const_default()

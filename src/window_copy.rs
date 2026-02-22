@@ -5575,6 +5575,8 @@ pub unsafe fn window_copy_copy_buffer(
 
         if set_paste {
             paste_add(prefix, buf.cast(), len);
+        } else {
+            free_(buf);
         }
     }
 }
@@ -5616,7 +5618,8 @@ pub unsafe fn window_copy_pipe(wme: *mut window_mode_entry, s: *mut session, cmd
     unsafe {
         let mut len: usize = 0;
 
-        window_copy_pipe_run(wme, s, cmd, &raw mut len);
+        let buf = window_copy_pipe_run(wme, s, cmd, &raw mut len);
+        free_(buf);
     }
 }
 

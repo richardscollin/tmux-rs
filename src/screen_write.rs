@@ -2214,7 +2214,7 @@ pub unsafe fn screen_write_cell(ctx: *mut screen_write_ctx, gc: *const grid_cell
             // log_debug("%s: wrapped at %u,%u", __func__, (*s).cx, (*s).cy);
             screen_write_linefeed(ctx, true, 8);
             screen_write_set_cursor(ctx, 0, -1);
-            screen_write_collect_flush(ctx, 1, "screen_write_cell");
+            screen_write_collect_flush(ctx, 0, "screen_write_cell");
         }
 
         // Sanity check cursor position.

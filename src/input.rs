@@ -2614,7 +2614,8 @@ unsafe fn input_stop_utf8(ictx: *mut input_ctx) {
     unsafe {
         static RC: utf8_data = utf8_data {
             data: [
-                0xef, 0xbf, 0xbd, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                0xef, 0xbf, 0xbd, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0, 0, 0, 0,
             ],
             have: 3,
             size: 3,

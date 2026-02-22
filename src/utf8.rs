@@ -39,7 +39,7 @@ pub(crate) type utf8_char = c_uint;
 // An expanded UTF-8 character. UTF8_SIZE must be big enough to hold combining
 // characters as well. It can't be more than 32 bytes without changes to how
 // characters are stored.
-pub(crate) const UTF8_SIZE: usize = 21;
+pub(crate) const UTF8_SIZE: usize = 32;
 
 #[repr(C)]
 #[derive(Copy, Clone)]

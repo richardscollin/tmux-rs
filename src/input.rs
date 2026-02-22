@@ -2669,7 +2669,7 @@ unsafe fn input_top_bit_set(ictx: *mut input_ctx) -> i32 {
 }
 
 /// Reply to a colour request.
-unsafe fn input_osc_colour_reply(ictx: *mut input_ctx, n: u32, mut c: i32) {
+unsafe fn input_osc_colour_reply(ictx: *mut input_ctx, n: u32, idx: i32, mut c: i32) {
     unsafe {
         if c != -1 {
             c = colour_force_rgb(c);
@@ -2685,18 +2685,34 @@ unsafe fn input_osc_colour_reply(ictx: *mut input_ctx, n: u32, mut c: i32) {
             c!("\x1b\\")
         };
 
-        input_reply!(
-            ictx,
-            "\x1b]{};rgb:{:02x}{:02x}/{:02x}{:02x}/{:02x}{:02x}{}",
-            n,
-            r,
-            r,
-            g,
-            g,
-            b,
-            b,
-            _s(end),
-        );
+        if n == 4 {
+            input_reply!(
+                ictx,
+                "\x1b]{};{};rgb:{:02x}{:02x}/{:02x}{:02x}/{:02x}{:02x}{}",
+                n,
+                idx,
+                r,
+                r,
+                g,
+                g,
+                b,
+                b,
+                _s(end),
+            );
+        } else {
+            input_reply!(
+                ictx,
+                "\x1b]{};rgb:{:02x}{:02x}/{:02x}{:02x}/{:02x}{:02x}{}",
+                n,
+                r,
+                r,
+                g,
+                g,
+                b,
+                b,
+                _s(end),
+            );
+        }
     }
 }
 
@@ -2729,10 +2745,14 @@ unsafe fn input_osc_4(ictx: *mut input_ctx, p: *const u8) {
 
             s = strsep(&raw mut next, c!(";"));
             if streq_(s, "?") {
-                c = colour_palette_get(ptr_to_ref((*ictx).palette), idx as i32);
+                c = colour_palette_get(
+                    ptr_to_ref((*ictx).palette),
+                    idx as i32 | COLOUR_FLAG_256,
+                );
                 if c != -1 {
-                    input_osc_colour_reply(ictx, 4, c);
+                    input_osc_colour_reply(ictx, 4, idx as i32, c);
                 }
+                s = next;
                 continue;
             }
             c = colour_parse_x11(s);
@@ -2837,7 +2857,7 @@ unsafe fn input_osc_10(ictx: *mut input_ctx, p: *const u8) {
                     c = defaults.fg;
                 }
             }
-            input_osc_colour_reply(ictx, 10, c);
+            input_osc_colour_reply(ictx, 10, 0, c);
             return;
         }
 
@@ -2887,7 +2907,7 @@ unsafe fn input_osc_11(ictx: *mut input_ctx, p: *const u8) {
                 return;
             }
             c = window_pane_get_bg(wp);
-            input_osc_colour_reply(ictx, 11, c);
+            input_osc_colour_reply(ictx, 11, 0, c);
             return;
         }
 
@@ -2938,7 +2958,7 @@ unsafe fn input_osc_12(ictx: *mut input_ctx, p: *const u8) {
                 if c == -1 {
                     c = (*(*ictx).ctx.s).default_ccolour;
                 }
-                input_osc_colour_reply(ictx, 12, c);
+                input_osc_colour_reply(ictx, 12, 0, c);
             }
             return;
         }

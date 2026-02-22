@@ -21,6 +21,7 @@ bitflags::bitflags! {
         const POPUP_CLOSEEXIT = 0x1;
         const POPUP_CLOSEEXITZERO = 0x2;
         const POPUP_INTERNAL = 0x4;
+        const POPUP_CLOSEANYKEY = 0x8;
     }
 }
 
@@ -641,6 +642,13 @@ pub unsafe fn popup_key_cb(c: *mut client, data: *mut c_void, event: *mut key_ev
                     .intersects(popup_flag::POPUP_CLOSEEXIT | popup_flag::POPUP_CLOSEEXITZERO))
                     || (*pd).job.is_null())
                     && ((*event).key == b'\x1b' as u64 || (*event).key == (b'c' as u64 | KEYC_CTRL))
+                {
+                    return 1;
+                }
+                if (*pd).job.is_null()
+                    && (*pd).flags.intersects(popup_flag::POPUP_CLOSEANYKEY)
+                    && !KEYC_IS_MOUSE((*event).key)
+                    && !KEYC_IS_PASTE((*event).key)
                 {
                     return 1;
                 }

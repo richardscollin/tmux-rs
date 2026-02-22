@@ -38,8 +38,8 @@ pub static CMD_DISPLAY_POPUP_ENTRY: cmd_entry = cmd_entry {
     name: "display-popup",
     alias: Some("popup"),
 
-    args: args_parse::new("Bb:Cc:d:e:Eh:s:S:t:T:w:x:y:", 0, -1, None),
-    usage: "[-BCE] [-b border-lines] [-c target-client] [-d start-directory] [-e environment] [-h height] [-s style] [-S border-style] [-t target-pane] [-T title] [-w width] [-x position] [-y position] [shell-command [argument ...]]",
+    args: args_parse::new("Bb:Cc:d:e:Eh:ks:S:t:T:w:x:y:", 0, -1, None),
+    usage: "[-BCEk] [-b border-lines] [-c target-client] [-d start-directory] [-e environment] [-h height] [-s style] [-S border-style] [-t target-pane] [-T title] [-w width] [-x position] [-y position] [shell-command [argument ...]]",
     target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_PANE, cmd_find_flags::empty()),
 
     flags: cmd_flag::CMD_AFTERHOOK.union(cmd_flag::CMD_CLIENT_CFLAG),
@@ -566,6 +566,9 @@ unsafe fn cmd_display_popup_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
             flags |= popup_flag::POPUP_CLOSEEXITZERO;
         } else if args_has(&*args, 'E') {
             flags |= popup_flag::POPUP_CLOSEEXIT;
+        }
+        if args_has(&*args, 'k') {
+            flags |= popup_flag::POPUP_CLOSEANYKEY;
         }
         if popup_display(
             flags,

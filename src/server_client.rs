@@ -119,6 +119,7 @@ pub unsafe fn server_client_clear_overlay(c: *mut client) {
         (*c).overlay_draw = None;
         (*c).overlay_key = None;
         (*c).overlay_free = None;
+        (*c).overlay_resize = None;
         (*c).overlay_data = null_mut();
 
         (*c).tty.flags &= !(tty_flags::TTY_FREEZE | tty_flags::TTY_NOCURSOR);

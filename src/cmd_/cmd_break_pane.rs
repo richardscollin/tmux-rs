@@ -80,65 +80,70 @@ pub unsafe fn cmd_break_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
                 options_set_number((*w).options, "automatic-rename", 0);
             }
             server_unlink_window(src_s, wl);
-            return cmd_retval::CMD_RETURN_NORMAL;
-        }
-        if idx != -1 && !winlink_find_by_index(&raw mut (*dst_s).windows, idx).is_null() {
-            cmdq_error!(item, "index in use: {}", idx);
-            return cmd_retval::CMD_RETURN_ERROR;
-        }
-
-        tailq_remove::<_, discr_entry>(&raw mut (*w).panes, wp);
-        server_client_remove_pane(wp);
-        window_lost_pane(w, wp);
-        layout_close_pane(wp);
-
-        (*wp).window = window_create((*w).sx, (*w).sy, (*w).xpixel, (*w).ypixel);
-        w = (*wp).window;
-
-        options_set_parent(&mut *(*wp).options, (*w).options);
-        (*wp).flags |= window_pane_flags::PANE_STYLECHANGED | window_pane_flags::PANE_THEMECHANGED;
-        tailq_insert_head::<_, discr_entry>(&raw mut (*w).panes, wp);
-        (*w).active = wp;
-        (*w).latest = tc as *mut c_void;
-
-        if !args_has(&*args, 'n') {
-            name = CString::new(default_window_name(w))
-                .unwrap()
-                .into_raw()
-                .cast();
-            window_set_name(w, name);
-            free_(name);
+            wl = match winlink_find_by_window(&raw mut (*dst_s).windows, w) {
+                Some(wl) => wl.as_ptr(),
+                None => return cmd_retval::CMD_RETURN_ERROR,
+            };
         } else {
-            window_set_name(w, args_get(&*args, b'n'));
-            options_set_number((*w).options, "automatic-rename", 0);
-        }
-
-        layout_init(w, wp);
-        (*wp).flags |= window_pane_flags::PANE_CHANGED;
-        colour_palette_from_option(Some(&mut (*wp).palette), (*wp).options);
-
-        if idx == -1 {
-            idx = -1 - options_get_number___::<i32>(&*(*dst_s).options, "base-index");
-        }
-        wl = match session_attach(dst_s, w, idx) {
-            Ok(wl) => wl,
-            Err(cause) => {
-                cmdq_error!(item, "{}", cause);
+            if idx != -1 && !winlink_find_by_index(&raw mut (*dst_s).windows, idx).is_null() {
+                cmdq_error!(item, "index in use: {}", idx);
                 return cmd_retval::CMD_RETURN_ERROR;
             }
-        };
-        if !args_has(&*args, 'd') {
-            session_select(dst_s, (*wl).idx);
-            cmd_find_from_session(current, dst_s, cmd_find_flags::empty());
-        }
 
-        server_redraw_session(src_s);
-        if src_s != dst_s {
-            server_redraw_session(dst_s);
-        }
-        server_status_session_group(src_s);
-        if src_s != dst_s {
-            server_status_session_group(dst_s);
+            tailq_remove::<_, discr_entry>(&raw mut (*w).panes, wp);
+            server_client_remove_pane(wp);
+            window_lost_pane(w, wp);
+            layout_close_pane(wp);
+
+            (*wp).window = window_create((*w).sx, (*w).sy, (*w).xpixel, (*w).ypixel);
+            w = (*wp).window;
+
+            options_set_parent(&mut *(*wp).options, (*w).options);
+            (*wp).flags |=
+                window_pane_flags::PANE_STYLECHANGED | window_pane_flags::PANE_THEMECHANGED;
+            tailq_insert_head::<_, discr_entry>(&raw mut (*w).panes, wp);
+            (*w).active = wp;
+            (*w).latest = tc as *mut c_void;
+
+            if !args_has(&*args, 'n') {
+                name = CString::new(default_window_name(w))
+                    .unwrap()
+                    .into_raw()
+                    .cast();
+                window_set_name(w, name);
+                free_(name);
+            } else {
+                window_set_name(w, args_get(&*args, b'n'));
+                options_set_number((*w).options, "automatic-rename", 0);
+            }
+
+            layout_init(w, wp);
+            (*wp).flags |= window_pane_flags::PANE_CHANGED;
+            colour_palette_from_option(Some(&mut (*wp).palette), (*wp).options);
+
+            if idx == -1 {
+                idx = -1 - options_get_number___::<i32>(&*(*dst_s).options, "base-index");
+            }
+            wl = match session_attach(dst_s, w, idx) {
+                Ok(wl) => wl,
+                Err(cause) => {
+                    cmdq_error!(item, "{}", cause);
+                    return cmd_retval::CMD_RETURN_ERROR;
+                }
+            };
+            if !args_has(&*args, 'd') {
+                session_select(dst_s, (*wl).idx);
+                cmd_find_from_session(current, dst_s, cmd_find_flags::empty());
+            }
+
+            server_redraw_session(src_s);
+            if src_s != dst_s {
+                server_redraw_session(dst_s);
+            }
+            server_status_session_group(src_s);
+            if src_s != dst_s {
+                server_status_session_group(dst_s);
+            }
         }
 
         if args_has(&*args, 'P') {

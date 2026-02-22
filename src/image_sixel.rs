@@ -217,31 +217,40 @@ unsafe fn sixel_parse_colour(si: *mut sixel_image, cp: *const u8, end: *const u8
             log_debug!("sixel_parse_colour: missing ;");
             return null_mut();
         }
-        let r = libc::strtoul(endptr.add(1), &raw mut endptr, 10) as u32;
+        let c1 = libc::strtoul(endptr.add(1), &raw mut endptr, 10) as u32;
         if endptr.cast_const() == last || *endptr != b';' {
             log_debug!("sixel_parse_colour: missing ;");
             return null_mut();
         }
-        let g = libc::strtoul(endptr.add(1), &raw mut endptr, 10) as u32;
+        let c2 = libc::strtoul(endptr.add(1), &raw mut endptr, 10) as u32;
         if endptr.cast_const() == last || *endptr != b';' {
             log_debug!("sixel_parse_colour: missing ;");
             return null_mut();
         }
-        let b = libc::strtoul(endptr.add(1), &raw mut endptr, 10) as u32;
+        let c3 = libc::strtoul(endptr.add(1), &raw mut endptr, 10) as u32;
         if endptr.cast_const() != last {
             log_debug!("sixel_parse_colour: missing ;");
             return null_mut();
         }
 
-        if type_ != 1 && type_ != 2 {
-            log_debug!("sixel_parse_colour: invalid type_ {}", type_);
+        if (type_ != 1 && type_ != 2)
+            || (type_ == 1 && (c1 > 360 || c2 > 100 || c3 > 100))
+            || (type_ == 2 && (c1 > 100 || c2 > 100 || c3 > 100))
+        {
+            log_debug!(
+                "sixel_parse_colour: invalid color {};{};{};{}",
+                type_,
+                c1,
+                c2,
+                c3
+            );
             return null_mut();
         }
 
         if c as usize + 1 > (*si).colours.len() {
             (*si).colours.resize(c as usize + 1, 0);
         }
-        (&mut *(*si).colours)[c as usize] = (type_ << 24) | (r << 16) | (g << 8) | b;
+        (&mut *(*si).colours)[c as usize] = (type_ << 25) | (c1 << 16) | (c2 << 8) | c3;
         last
     }
 }
@@ -659,8 +668,8 @@ pub(crate) unsafe fn sixel_print(
             let tmp = CString::new(format!(
                 "#{};{};{};{};{}",
                 i,
-                c >> 24,
-                (c >> 16) & 0xff,
+                c >> 25,
+                (c >> 16) & 0x1ff,
                 (c >> 8) & 0xff,
                 c & 0xff,
             ))

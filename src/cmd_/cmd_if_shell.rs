@@ -113,7 +113,7 @@ unsafe fn cmd_if_shell_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retval
         {
             cmdq_error!(item, "failed to run command: {}", _s(shellcmd));
             free_(shellcmd);
-            free_(cdata);
+            cmd_if_shell_free(cdata as _);
             return cmd_retval::CMD_RETURN_ERROR;
         }
         free_(shellcmd);

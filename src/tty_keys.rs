@@ -1378,7 +1378,11 @@ pub unsafe fn tty_keys_next(tty: *mut tty) -> i32 {
                     if delay == 0 {
                         delay = 1;
                     }
-                    if !(*tty).flags.contains(TTY_ALL_REQUEST_FLAGS) {
+                    if (*tty)
+                        .flags
+                        .intersects(tty_flags::TTY_WAITFG | tty_flags::TTY_WAITBG)
+                        || !(*tty).flags.contains(TTY_ALL_REQUEST_FLAGS)
+                    {
                         log_debug!("{}: increasing delay for active query", _s((*c).name));
                         if delay < 500 {
                             delay = 500;
@@ -2314,7 +2318,7 @@ pub unsafe fn tty_keys_colours(
                 // log_debug( c!("fg is %s\0"), colour_tostring(n));
             }
             *fg = n;
-            (*tty).flags |= tty_flags::TTY_HAVEFG;
+            (*tty).flags &= !tty_flags::TTY_WAITFG;
         } else if n != -1 {
             if !c.is_null() {
                 // log_debug( c!("%s bg is %s\0"), (*c).name, colour_tostring(n));
@@ -2322,7 +2326,7 @@ pub unsafe fn tty_keys_colours(
                 // log_debug( c!("bg is %s\0"), colour_tostring(n));
             }
             *bg = n;
-            (*tty).flags |= tty_flags::TTY_HAVEBG;
+            (*tty).flags &= !tty_flags::TTY_WAITBG;
         }
 
         0

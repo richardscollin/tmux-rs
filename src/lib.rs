@@ -1815,15 +1815,13 @@ bitflags::bitflags! {
         const TTY_SYNCING      = 0x00400;
         const TTY_HAVEDA2      = 0x00800;
         const TTY_WINSIZEQUERY = 0x01000;
-        const TTY_HAVEFG       = 0x02000;
-        const TTY_HAVEBG       = 0x04000;
+        const TTY_WAITFG       = 0x02000;
+        const TTY_WAITBG       = 0x04000;
     }
 }
 const TTY_ALL_REQUEST_FLAGS: tty_flags = tty_flags::TTY_HAVEDA
     .union(tty_flags::TTY_HAVEDA2)
-    .union(tty_flags::TTY_HAVEXDA)
-    .union(tty_flags::TTY_HAVEFG)
-    .union(tty_flags::TTY_HAVEBG);
+    .union(tty_flags::TTY_HAVEXDA);
 
 /// Client terminal.
 #[repr(C)]

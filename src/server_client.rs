@@ -3446,7 +3446,7 @@ pub unsafe fn server_client_dispatch(imsg: *mut imsg, arg: *mut c_void) {
                 if !(*c).flags.intersects(client_flag::CONTROL) {
                     server_client_update_latest(c);
                     tty_resize(&raw mut (*c).tty);
-                    tty_repeat_requests(&raw mut (*c).tty);
+                    tty_repeat_requests(&raw mut (*c).tty, false);
                     recalculate_sizes();
                     if let Some(overlay_resize) = (*c).overlay_resize {
                         overlay_resize(c, (*c).overlay_data);
@@ -4154,6 +4154,6 @@ unsafe fn server_client_report_theme(c: *mut client, theme: client_theme) {
 
         // Request foreground and background colour again. Don't forward 2031 to
         // panes until a response is received.
-        tty_puts(&raw mut (*c).tty, c!("\x1b]10;?\x1b\\\x1b]11;?\x1b\\"));
+        tty_repeat_requests(&raw mut (*c).tty, true);
     }
 }

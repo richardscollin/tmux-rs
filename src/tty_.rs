@@ -532,13 +532,34 @@ pub unsafe extern "C-unwind" fn tty_start_timer_callback(
         let c = (*tty).client;
 
         log_debug!("{}: start timer fired", _s((*c).name));
-        if (*tty)
+
+        if !(*tty)
             .flags
             .intersects(tty_flags::TTY_HAVEDA | tty_flags::TTY_HAVEDA2 | tty_flags::TTY_HAVEXDA)
         {
             tty_update_features(tty);
         }
         (*tty).flags |= TTY_ALL_REQUEST_FLAGS;
+
+        (*tty).flags &= !(tty_flags::TTY_WAITBG | tty_flags::TTY_WAITFG);
+    }
+}
+
+unsafe fn tty_start_start_timer(tty: *mut tty) {
+    unsafe {
+        let c = (*tty).client;
+        let tv = libc::timeval {
+            tv_sec: TTY_QUERY_TIMEOUT as _,
+            tv_usec: 0,
+        };
+
+        log_debug!("{}: start timer started", _s((*c).name));
+        evtimer_set(
+            &raw mut (*tty).start_timer,
+            tty_start_timer_callback,
+            NonNull::new_unchecked(tty),
+        );
+        evtimer_add(&raw mut (*tty).start_timer, &raw const tv);
     }
 }
 
@@ -547,10 +568,6 @@ pub unsafe fn tty_start_tty(tty: *mut tty) {
     unsafe {
         let c = (*tty).client;
         let mut tio: libc::termios = zeroed();
-        let tv = libc::timeval {
-            tv_sec: TTY_QUERY_TIMEOUT as _,
-            tv_usec: 0,
-        };
 
         setblocking((*c).fd, 0);
         event_add(&raw mut (*tty).event_in, null_mut());
@@ -606,12 +623,7 @@ pub unsafe fn tty_start_tty(tty: *mut tty) {
             tty_puts(tty, c!("\x1b[?2031h\x1b[?996n"));
         }
 
-        evtimer_set(
-            &raw mut (*tty).start_timer,
-            tty_start_timer_callback,
-            NonNull::new_unchecked(tty),
-        );
-        evtimer_add(&raw mut (*tty).start_timer, &raw const tv);
+        tty_start_start_timer(tty);
 
         (*tty).flags |= tty_flags::TTY_STARTED;
         tty_invalidate(tty);
@@ -634,10 +646,6 @@ pub unsafe fn tty_start_tty(tty: *mut tty) {
 pub unsafe fn tty_start_tty(tty: *mut tty) {
     unsafe {
         let c = (*tty).client;
-        let tv = libc::timeval {
-            tv_sec: TTY_QUERY_TIMEOUT as _,
-            tv_usec: 0,
-        };
 
         // Set console raw mode and enable VT processing
         libc::enable_vt_processing();
@@ -697,8 +705,8 @@ pub unsafe fn tty_send_requests(tty: *mut tty) {
             if !(*tty).flags.intersects(tty_flags::TTY_HAVEXDA) {
                 tty_puts(tty, c!("\x1b[>q"));
             }
-            tty_puts(tty, c!("\x1b]10;?\x1b\\"));
-            tty_puts(tty, c!("\x1b]11;?\x1b\\"));
+            tty_puts(tty, c!("\x1b]10;?\x1b\\\x1b]11;?\x1b\\"));
+            (*tty).flags |= tty_flags::TTY_WAITBG | tty_flags::TTY_WAITFG;
         } else {
             (*tty).flags |= TTY_ALL_REQUEST_FLAGS;
         }
@@ -706,23 +714,33 @@ pub unsafe fn tty_send_requests(tty: *mut tty) {
     }
 }
 
-pub unsafe fn tty_repeat_requests(tty: *mut tty) {
+pub unsafe fn tty_repeat_requests(tty: *mut tty, force: bool) {
     unsafe {
+        let c = (*tty).client;
         let t = libc::time(null_mut());
+        let n = (t - (*tty).last_requests) as u32;
 
         if !(*tty).flags.intersects(tty_flags::TTY_STARTED) {
             return;
         }
 
-        if t - (*tty).last_requests <= TTY_REQUEST_LIMIT as time_t {
+        if !force && n <= TTY_REQUEST_LIMIT as u32 {
+            log_debug!("{}: not repeating requests ({} seconds)", _s((*c).name), n);
             return;
         }
+        log_debug!(
+            "{}: {}repeating requests ({} seconds)",
+            _s((*c).name),
+            if force { "(force) " } else { "" },
+            n
+        );
         (*tty).last_requests = t;
 
         if (*(*tty).term).flags.intersects(term_flags::TERM_VT100LIKE) {
-            tty_puts(tty, c!("\x1b]10;?\x1b\\"));
-            tty_puts(tty, c!("\x1b]11;?\x1b\\"));
+            tty_puts(tty, c!("\x1b]10;?\x1b\\\x1b]11;?\x1b\\"));
+            (*tty).flags |= tty_flags::TTY_WAITBG | tty_flags::TTY_WAITFG;
         }
+        tty_start_start_timer(tty);
     }
 }
 

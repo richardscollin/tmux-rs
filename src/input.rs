@@ -1717,8 +1717,9 @@ unsafe fn input_csi_dispatch(ictx: *mut input_ctx) -> i32 {
             Ok(input_csi_type::INPUT_CSI_QUERY_PRIVATE) => match input_get(ictx, 0, 0, 0) {
                 12 => {
                     // cursor blink: 1 = blink, 2 = steady
-                    let n =
-                        if (*s).mode.intersects(mode_flag::MODE_CURSOR_BLINKING_SET) {
+                    let n = if (*s).cstyle != screen_cursor_style::SCREEN_CURSOR_DEFAULT
+                        || (*s).mode.intersects(mode_flag::MODE_CURSOR_BLINKING_SET)
+                    {
                             if (*s).mode.intersects(mode_flag::MODE_CURSOR_BLINKING) {
                                 1
                             } else {
@@ -1864,6 +1865,10 @@ unsafe fn input_csi_dispatch(ictx: *mut input_ctx) -> i32 {
                 let n = input_get(ictx, 0, 0, 0);
                 if n != -1 {
                     screen_set_cursor_style(n as u32, &raw mut (*s).cstyle, &raw mut (*s).mode);
+                    if n == 0 {
+                        // Go back to default blinking state.
+                        screen_write_mode_clear(sctx, mode_flag::MODE_CURSOR_BLINKING_SET);
+                    }
                 }
             }
             Ok(input_csi_type::INPUT_CSI_XDA) => {

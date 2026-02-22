@@ -35,6 +35,7 @@ pub struct sixel_image {
     ra_y: u32,
 
     colours: Vec<u32>,
+    used_colours: u32,
     p2: u32,
 
     dx: u32,
@@ -206,6 +207,9 @@ unsafe fn sixel_parse_colour(si: *mut sixel_image, cp: *const u8, end: *const u8
         if c > SIXEL_COLOUR_REGISTERS {
             log_debug!("sixel_parse_colour: too many colours");
             return null_mut();
+        }
+        if (*si).used_colours <= c {
+            (*si).used_colours = c + 1;
         }
         (*si).dc = c + 1;
         if endptr.cast_const() == last || *endptr != b';' {
@@ -485,6 +489,7 @@ pub unsafe fn sixel_scale(
         (*new).ra_x = (*new).ra_x * xpixel / (*si).xpixel;
         (*new).ra_y = (*new).ra_y * ypixel / (*si).ypixel;
 
+        (*new).used_colours = (*si).used_colours;
         for y in 0..tsy {
             let py: u32 = poy + ((y as f64) * psy as f64 / tsy as f64) as u32;
             for x in 0..tsx {
@@ -632,7 +637,8 @@ pub(crate) unsafe fn sixel_print(
             &(*si).colours
         };
 
-        if colours.is_empty() {
+        let used_colours = (*si).used_colours as usize;
+        if used_colours == 0 {
             return null_mut();
         }
 
@@ -661,8 +667,8 @@ pub(crate) unsafe fn sixel_print(
         }
 
         let ncolours = colours.len();
-        let chunks: *mut sixel_chunk = xcalloc_(ncolours).as_ptr();
-        let active: *mut u32 = xcalloc_(ncolours).as_ptr();
+        let chunks: *mut sixel_chunk = xcalloc_(used_colours).as_ptr();
+        let active: *mut u32 = xcalloc_(used_colours).as_ptr();
 
         for (i, c) in colours.iter().copied().enumerate() {
             let tmp = CString::new(format!(
@@ -681,7 +687,9 @@ pub(crate) unsafe fn sixel_print(
                 tmp.as_ptr().cast(),
                 tmp.as_bytes().len(),
             );
+        }
 
+        for i in 0..used_colours {
             let chunk = chunks.add(i);
             (*chunk).len = 8;
             (*chunk).data = xmalloc((*chunk).len).as_ptr().cast();
@@ -743,7 +751,7 @@ pub(crate) unsafe fn sixel_print(
             *size = used;
         }
 
-        for i in 0..ncolours {
+        for i in 0..used_colours {
             free_((*chunks.add(i)).data);
         }
         free_(active);

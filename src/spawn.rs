@@ -262,8 +262,9 @@ pub unsafe fn spawn_pane(sc: *mut spawn_context) -> Result<*mut window_pane, Str
             if !(*sc).cwd.is_null() {
                 cwd = format_single(item, cstr_to_str((*sc).cwd), c, (*target).s, null_mut(), null_mut());
                 if *cwd != b'/' {
+                    let sep = if *cwd != b'\0' { "/" } else { "" };
                     new_cwd =
-                        format_nul!("{}/{}", _s(server_client_get_cwd(c, (*target).s)), _s(cwd));
+                        format_nul!("{}{}{}", _s(server_client_get_cwd(c, (*target).s)), sep, _s(cwd));
                     free_(cwd);
                     cwd = new_cwd;
                 }
@@ -629,8 +630,9 @@ pub unsafe fn spawn_pane(sc: *mut spawn_context) -> Result<*mut window_pane, Str
                 let is_absolute =
                     (first == b'/' || first == b'\\') || (first.is_ascii_alphabetic() && second == b':');
                 if !is_absolute {
+                    let sep = if *cwd != b'\0' { "/" } else { "" };
                     new_cwd =
-                        format_nul!("{}/{}", _s(server_client_get_cwd(c, (*target).s)), _s(cwd));
+                        format_nul!("{}{}{}", _s(server_client_get_cwd(c, (*target).s)), sep, _s(cwd));
                     free_(cwd);
                     cwd = new_cwd;
                 }

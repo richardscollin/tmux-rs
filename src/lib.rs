@@ -1543,6 +1543,11 @@ pub const PANE_SCROLLBARS_LEFT: i32 = 1;
 pub const PANE_SCROLLBARS_WIDTH: u32 = 1;
 pub const PANE_SCROLLBARS_PADDING: i32 = 0;
 
+/// True if screen is in alternate screen.
+unsafe fn screen_is_alternate(s: *const screen) -> bool {
+    unsafe { !(*s).saved_grid.is_null() }
+}
+
 /// Layout direction.
 #[repr(i32)]
 #[derive(Copy, Clone, Eq, PartialEq, num_enum::TryFromPrimitive)]

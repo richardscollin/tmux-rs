@@ -140,10 +140,7 @@ pub unsafe fn screen_redraw_pane_border(
         }
 
         // Are scrollbars enabled?
-        if pane_scrollbars == PANE_SCROLLBARS_ALWAYS
-            || (pane_scrollbars == PANE_SCROLLBARS_MODAL
-                && window_pane_mode(wp) != WINDOW_PANE_NO_MODE)
-        {
+        if window_pane_show_scrollbar(wp, pane_scrollbars) {
             sb_w = PANE_SCROLLBARS_WIDTH;
         }
 
@@ -411,10 +408,7 @@ pub unsafe fn screen_redraw_check_cell(
                 *wpp = wp;
 
                 // Check if CELL_SCROLLBAR
-                if pane_scrollbars == PANE_SCROLLBARS_ALWAYS
-                    || (pane_scrollbars == PANE_SCROLLBARS_MODAL
-                        && window_pane_mode(wp) != WINDOW_PANE_NO_MODE)
-                {
+                if window_pane_show_scrollbar(wp, pane_scrollbars) {
                     let line = if pane_status == pane_status::PANE_STATUS_TOP {
                         (*wp).yoff as i32 - 1
                     } else {
@@ -802,7 +796,6 @@ pub unsafe fn screen_redraw_pane(
         if !window_pane_visible(wp) {
             return;
         }
-        let mode = window_pane_mode(wp);
 
         screen_redraw_set_context(c, ctx.as_mut_ptr());
         tty_sync_start(&raw mut (*c).tty);
@@ -812,15 +805,7 @@ pub unsafe fn screen_redraw_pane(
             screen_redraw_draw_pane(ctx.as_mut_ptr(), wp);
         }
 
-        // Redraw scrollbar if needed. Always redraw scrollbar in a mode
-        // because if redrawing a pane, it's because pane has scrolled.
-        let mut pane_scrollbars = (*ctx.as_ptr()).pane_scrollbars;
-        if pane_scrollbars == PANE_SCROLLBARS_MODAL
-            && mode == WINDOW_PANE_NO_MODE
-        {
-            pane_scrollbars = PANE_SCROLLBARS_OFF;
-        }
-        if pane_scrollbars != PANE_SCROLLBARS_OFF {
+        if window_pane_show_scrollbar(wp, (*ctx.as_ptr()).pane_scrollbars) {
             screen_redraw_draw_pane_scrollbar(ctx.as_mut_ptr(), wp);
         }
 
@@ -1136,16 +1121,9 @@ unsafe fn screen_redraw_draw_pane_scrollbars(ctx: *mut screen_redraw_ctx) {
         );
 
         for wp in tailq_foreach::<_, discr_entry>(&raw mut (*w).panes).map(NonNull::as_ptr) {
-            match (*ctx).pane_scrollbars {
-                x if x == PANE_SCROLLBARS_OFF => return,
-                x if x == PANE_SCROLLBARS_MODAL => {
-                    if window_pane_mode(wp) == WINDOW_PANE_NO_MODE {
-                        return;
-                    }
-                }
-                _ => {} // PANE_SCROLLBARS_ALWAYS
-            }
-            if window_pane_visible(wp) {
+            if window_pane_show_scrollbar(wp, (*ctx).pane_scrollbars)
+                && window_pane_visible(wp)
+            {
                 screen_redraw_draw_pane_scrollbar(ctx, wp);
             }
         }

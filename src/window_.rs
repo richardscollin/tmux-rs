@@ -1933,6 +1933,21 @@ pub unsafe fn window_pane_mode(wp: *mut window_pane) -> i32 {
     }
 }
 
+/// Return true if scrollbar should be displayed.
+pub unsafe fn window_pane_show_scrollbar(wp: *mut window_pane, sb_option: i32) -> bool {
+    unsafe {
+        if screen_is_alternate((*wp).screen) {
+            return false;
+        }
+        if sb_option == PANE_SCROLLBARS_ALWAYS
+            || (sb_option == PANE_SCROLLBARS_MODAL
+                && window_pane_mode(wp) != WINDOW_PANE_NO_MODE)
+        {
+            return true;
+        }
+        false
+    }
+}
 
 pub unsafe fn window_pane_paste(wp: *mut window_pane, buf: *mut u8, len: usize)
 {

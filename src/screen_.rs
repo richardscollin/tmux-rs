@@ -104,7 +104,7 @@ pub unsafe fn screen_reinit(s: *mut screen) {
             (*s).mode = ((*s).mode & !EXTENDED_KEY_MODES) | mode_flag::MODE_KEYS_EXTENDED;
         }
 
-        if !(*s).saved_grid.is_null() {
+        if screen_is_alternate(s) {
             screen_alternate_off(s, null_mut(), 0);
         }
         (*s).saved_cx = u32::MAX;
@@ -147,7 +147,7 @@ pub unsafe fn screen_free(s: *mut screen) {
             screen_write_free_list(s);
         }
 
-        if !(*s).saved_grid.is_null() {
+        if screen_is_alternate(s) {
             grid_destroy((*s).saved_grid);
         }
         grid_destroy((*s).grid);
@@ -686,7 +686,7 @@ unsafe fn screen_reflow(s: *mut screen, new_x: u32, cx: *mut u32, cy: *mut u32, 
 /// history is not updated.
 pub unsafe fn screen_alternate_on(s: *mut screen, gc: *mut grid_cell, cursor: i32) {
     unsafe {
-        if !(*s).saved_grid.is_null() {
+        if screen_is_alternate(s) {
             return;
         }
         let sx = screen_size_x(s);
@@ -715,7 +715,7 @@ pub unsafe fn screen_alternate_off(s: *mut screen, gc: *mut grid_cell, cursor: i
 
         // If the current size is different, temporarily resize to the old size
         // before copying back.
-        if !(*s).saved_grid.is_null() {
+        if screen_is_alternate(s) {
             screen_resize(s, (*(*s).saved_grid).sx, (*(*s).saved_grid).sy, 0);
         }
 
@@ -730,7 +730,7 @@ pub unsafe fn screen_alternate_off(s: *mut screen, gc: *mut grid_cell, cursor: i
         }
 
         // If not in the alternate screen, do nothing more.
-        if (*s).saved_grid.is_null() {
+        if !screen_is_alternate(s) {
             if (*s).cx > screen_size_x(s) - 1 {
                 (*s).cx = screen_size_x(s) - 1;
             }

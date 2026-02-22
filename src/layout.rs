@@ -280,10 +280,7 @@ pub unsafe fn layout_fix_panes(w: *mut window, skip: *mut window_pane) {
                 sy -= 1;
             }
 
-            let mode = window_pane_mode(wp);
-            if scrollbars == PANE_SCROLLBARS_ALWAYS
-                || (scrollbars == PANE_SCROLLBARS_MODAL && mode != WINDOW_PANE_NO_MODE)
-            {
+            if window_pane_show_scrollbar(wp, scrollbars) {
                 if sb_pos == PANE_SCROLLBARS_LEFT {
                     sx -= PANE_SCROLLBARS_WIDTH;
                     (*wp).xoff += PANE_SCROLLBARS_WIDTH;

@@ -754,13 +754,9 @@ unsafe fn server_client_check_mouse_in_pane(
         let wo = (*w).options;
 
         let sb = options_get_number_(wo, "pane-scrollbars") as i32;
-        let sb_pos = options_get_number_(wo, "pane-scrollbars-position") as i32;
         let pane_status = options_get_number_(wo, "pane-border-status") as i32;
 
-        let sb_w: u32 = if sb == PANE_SCROLLBARS_ALWAYS
-            || (sb == PANE_SCROLLBARS_MODAL
-                && window_pane_mode(wp) != WINDOW_PANE_NO_MODE)
-        {
+        let sb_w: u32 = if window_pane_show_scrollbar(wp, sb) {
             PANE_SCROLLBARS_WIDTH as u32
         } else {
             0
@@ -778,6 +774,7 @@ unsafe fn server_client_check_mouse_in_pane(
             || ((*wp).yoff == 0 && py < (*wp).sy)
             || (py >= (*wp).yoff && py < (*wp).yoff + (*wp).sy)
         {
+            let sb_pos = options_get_number_(wo, "pane-scrollbars-position") as i32;
             if (sb_pos == PANE_SCROLLBARS_RIGHT
                 && px >= (*wp).xoff + (*wp).sx
                 && px < (*wp).xoff + (*wp).sx + sb_w)

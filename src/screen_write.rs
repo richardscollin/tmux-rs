@@ -2615,6 +2615,9 @@ pub unsafe fn screen_write_alternateon(
 
         screen_write_collect_flush(ctx, 0, "screen_write_alternateon");
         screen_alternate_on((*ctx).s, gc, cursor);
+        if !wp.is_null() {
+            layout_fix_panes((*wp).window, null_mut());
+        }
 
         screen_write_initctx(ctx, &raw mut ttyctx, 1);
         if let Some(redraw_cb) = ttyctx.redraw_cb {
@@ -2638,6 +2641,9 @@ pub unsafe fn screen_write_alternateoff(
 
         screen_write_collect_flush(ctx, 0, "screen_write_alternateoff");
         screen_alternate_off((*ctx).s, gc, cursor);
+        if !wp.is_null() {
+            layout_fix_panes((*wp).window, null_mut());
+        }
 
         screen_write_initctx(ctx, &raw mut ttyctx, 1);
         if let Some(redraw_cb) = ttyctx.redraw_cb {

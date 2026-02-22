@@ -228,9 +228,16 @@ unsafe fn window_tree_build_pane(
         (*item).winlink = (*wl).idx;
         (*item).pane = (*wp).id as i32;
 
-        let text: *mut u8 =
-            format_single(null_mut(), cstr_to_str((*data.as_ptr()).format), null_mut(), s, wl, wp);
+        let ft = format_create(
+            null_mut(),
+            null_mut(),
+            (FORMAT_PANE | (*wp).id) as i32,
+            format_flags::empty(),
+        );
+        format_defaults(ft, null_mut(), NonNull::new(s), NonNull::new(wl), NonNull::new(wp));
+        let text = format_expand(ft, (*data.as_ptr()).format);
         let name = format_nul!("{idx}");
+        format_free(ft);
 
         mode_tree_add(
             (*data.as_ptr()).data,
@@ -292,15 +299,16 @@ unsafe fn window_tree_build_window(
             (*item).winlink = (*wl).idx;
             (*item).pane = -1;
 
-            text = format_single(
+            let ft = format_create(
                 null_mut(),
-                cstr_to_str((*data.as_ptr()).format),
                 null_mut(),
-                s,
-                wl,
-                null_mut(),
+                (FORMAT_PANE | (*(*(*wl).window).active).id) as i32,
+                format_flags::empty(),
             );
+            format_defaults(ft, null_mut(), NonNull::new(s), NonNull::new(wl), None);
+            text = format_expand(ft, (*data.as_ptr()).format);
             name = format_nul!("{}", (*wl).idx);
+            format_free(ft);
 
             let expanded = !matches!(
                 (*data.as_ptr()).type_,
@@ -327,7 +335,6 @@ unsafe fn window_tree_build_window(
                 if !window_tree_filter_pane(s, wl, wp, cstr_to_str_(filter)) {
                     break 'empty;
                 }
-                return 1;
             }
 
             l = null_mut();
@@ -388,6 +395,7 @@ unsafe fn window_tree_build_session(
 ) {
     unsafe {
         let data: NonNull<window_tree_modedata> = modedata.cast();
+        let wl = (*s).curw;
 
         let item = window_tree_add_item(data);
         let data = data.as_ptr();
@@ -396,14 +404,15 @@ unsafe fn window_tree_build_session(
         (*item).winlink = -1;
         (*item).pane = -1;
 
-        let text = format_single(
-            null_mut(),
-            cstr_to_str((*data).format),
-            null_mut(),
-            s,
+        let ft = format_create(
             null_mut(),
             null_mut(),
+            (FORMAT_PANE | (*(*(*wl).window).active).id) as i32,
+            format_flags::empty(),
         );
+        format_defaults(ft, null_mut(), NonNull::new(s), None, None);
+        let text = format_expand(ft, (*data).format);
+        format_free(ft);
 
         let expanded = (*data).type_ != window_tree_type::WINDOW_TREE_SESSION;
         let mti = mode_tree_add(

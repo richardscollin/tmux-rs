@@ -438,7 +438,7 @@ pub unsafe fn input_key(s: *mut screen, bev: *mut bufferevent, mut key: key_code
 
         // Is this backtab?
         if (key & KEYC_MASK_KEY) == keyc::KEYC_BTAB as u64 {
-            if (*s).mode.intersects(EXTENDED_KEY_MODES) {
+            if (*s).mode.intersects(mode_flag::MODE_KEYS_EXTENDED_2) {
                 // When in xterm extended mode, remap into S-Tab.
                 key = '\x09' as u64 | (key & !KEYC_MASK_KEY) | KEYC_SHIFT;
             } else {

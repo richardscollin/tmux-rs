@@ -435,7 +435,7 @@ pub unsafe fn server_destroy_session(s: *mut session) {
     unsafe {
         let detach_on_destroy = options_get_number_((*s).options, "detach-on-destroy");
 
-        let mut s_new: *mut session = if detach_on_destroy == 0 {
+        let s_new: *mut session = if detach_on_destroy == 0 {
             server_find_session(s, server_newer_session)
         } else if detach_on_destroy == 2 {
             server_find_session(s, server_newer_detached_session)
@@ -447,17 +447,26 @@ pub unsafe fn server_destroy_session(s: *mut session) {
             null_mut()
         };
 
-        if s_new == s {
-            s_new = null_mut();
+        let mut cs_new: *mut session = null_mut();
+        if s_new.is_null() && (detach_on_destroy == 1 || detach_on_destroy == 2) {
+            cs_new = server_find_session(s, server_newer_session);
         }
         for c in tailq_foreach(&raw mut CLIENTS).map(NonNull::as_ptr) {
             if (*c).session != s {
                 continue;
             }
+            let mut use_s = s_new;
+            if use_s.is_null()
+                && (*c)
+                    .flags
+                    .intersects(client_flag::NO_DETACH_ON_DESTROY)
+            {
+                use_s = cs_new;
+            }
             (*c).session = null_mut();
             (*c).last_session = null_mut();
-            server_client_set_session(c, s_new);
-            if s_new.is_null() {
+            server_client_set_session(c, use_s);
+            if use_s.is_null() {
                 (*c).flags |= client_flag::EXIT;
             }
         }

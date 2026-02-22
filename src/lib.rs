@@ -2347,6 +2347,7 @@ bitflags::bitflags! {
         const BRACKETPASTING     = 0x1000000000u64;
         const ASSUMEPASTING      = 0x2000000000u64;
         const REDRAWSCROLLBARS   = 0x4000000000u64;
+        const NO_DETACH_ON_DESTROY = 0x8000000000u64;
     }
 }
 

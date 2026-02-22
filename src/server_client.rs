@@ -3823,6 +3823,8 @@ pub unsafe fn server_client_set_flags(c: *mut client, flags: *const u8) {
                 flag = client_flag::IGNORESIZE;
             } else if streq_(next, "active-pane") {
                 flag = client_flag::ACTIVEPANE;
+            } else if streq_(next, "no-detach-on-destroy") {
+                flag = client_flag::NO_DETACH_ON_DESTROY;
             }
             if flag == client_flag::empty() {
                 continue;
@@ -3872,6 +3874,13 @@ pub unsafe fn server_client_get_flags(c: *mut client) -> *const u8 {
         }
         if (*c).flags.intersects(client_flag::IGNORESIZE) {
             strlcat((&raw mut S).cast(), c!("ignore-size,"), SIZEOF_S);
+        }
+        if (*c).flags.intersects(client_flag::NO_DETACH_ON_DESTROY) {
+            strlcat(
+                (&raw mut S).cast(),
+                c!("no-detach-on-destroy,"),
+                SIZEOF_S,
+            );
         }
         if (*c).flags.intersects(client_flag::CONTROL_NOOUTPUT) {
             strlcat((&raw mut S).cast(), c!("no-output,"), SIZEOF_S);

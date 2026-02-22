@@ -1809,16 +1809,20 @@ bitflags::bitflags! {
         const TTY_OPENED       = 0x00020;
         const TTY_OSC52QUERY   = 0x00040;
         const TTY_BLOCK        = 0x00080;
-        const TTY_HAVEDA       = 0x00100; // Primary DA.
+        const TTY_HAVEDA       = 0x00100;
         const TTY_HAVEXDA      = 0x00200;
         const TTY_SYNCING      = 0x00400;
-        const TTY_HAVEDA2      = 0x00800; // Secondary DA.
+        const TTY_HAVEDA2      = 0x00800;
         const TTY_WINSIZEQUERY = 0x01000;
+        const TTY_HAVEFG       = 0x02000;
+        const TTY_HAVEBG       = 0x04000;
     }
 }
 const TTY_ALL_REQUEST_FLAGS: tty_flags = tty_flags::TTY_HAVEDA
     .union(tty_flags::TTY_HAVEDA2)
-    .union(tty_flags::TTY_HAVEXDA);
+    .union(tty_flags::TTY_HAVEXDA)
+    .union(tty_flags::TTY_HAVEFG)
+    .union(tty_flags::TTY_HAVEBG);
 
 /// Client terminal.
 #[repr(C)]

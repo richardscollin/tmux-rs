@@ -370,7 +370,9 @@ pub unsafe fn job_run(
                     closefrom(STDERR_FILENO + 1);
 
                     if !cmd.is_null() {
-                        std::env::set_var("SHELL", cstr_to_str(shell));
+                        if flags.intersects(job_flag::JOB_DEFAULTSHELL) {
+                            std::env::set_var("SHELL", cstr_to_str(shell));
+                        }
                         execl(
                             shell.cast(),
                             argv0.cast(),

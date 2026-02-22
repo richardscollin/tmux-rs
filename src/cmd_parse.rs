@@ -685,10 +685,10 @@ macro_rules! yyerror {
         crate::cmd_parse::yyerror_(&mut *$ps, format_args!($fmt $(, $args)*))
     };
 }
-unsafe fn yyerror_(ps: &mut cmd_parse_state, args: std::fmt::Arguments) -> i32 {
+unsafe fn yyerror_(ps: &mut cmd_parse_state, args: std::fmt::Arguments) {
     unsafe {
         if !ps.error.is_null() {
-            return 0;
+            return;
         }
 
         let pi = ps.input.as_mut().unwrap();
@@ -699,7 +699,6 @@ unsafe fn yyerror_(ps: &mut cmd_parse_state, args: std::fmt::Arguments) -> i32 {
         ps.error = cmd_parse_get_error(pi.file, pi.line.load(atomic::Ordering::SeqCst), &error)
             .into_raw()
             .cast();
-        0
     }
 }
 

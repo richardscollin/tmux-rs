@@ -1091,6 +1091,7 @@ unsafe fn window_pane_destroy(wp: *mut window_pane) {
             #[cfg(feature = "utempter")]
             {
                 utempter_remove_record((*wp).fd);
+                libc::kill(libc::getpid(), libc::SIGCHLD);
             }
             bufferevent_free((*wp).event);
             close((*wp).fd);

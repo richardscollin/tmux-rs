@@ -313,6 +313,7 @@ pub unsafe fn server_destroy_pane(wp: *mut window_pane, notify: i32) {
             #[cfg(feature = "utempter")]
             {
                 utempter_remove_record((*wp).fd);
+                libc::kill(libc::getpid(), libc::SIGCHLD);
             }
             bufferevent_free((*wp).event);
             (*wp).event = null_mut();

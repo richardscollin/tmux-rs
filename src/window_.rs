@@ -651,34 +651,20 @@ pub unsafe fn window_redraw_active_switch(w: *mut window, mut wp: *mut window_pa
 
 pub unsafe fn window_get_active_at(w: *mut window, x: u32, y: u32) -> *mut window_pane {
     unsafe {
-        let pane_scrollbars =
-            options_get_number_((*w).options, "pane-scrollbars") as i32;
-        let sb_pos =
-            options_get_number_((*w).options, "pane-scrollbars-position") as u32;
+        let mut xoff = 0u32;
+        let mut yoff = 0u32;
+        let mut sx = 0u32;
+        let mut sy = 0u32;
 
         for wp in tailq_foreach::<_, discr_entry>(&raw mut (*w).panes).map(NonNull::as_ptr) {
             if !window_pane_visible(wp) {
                 continue;
             }
-
-            let sb_w = if pane_scrollbars == PANE_SCROLLBARS_ALWAYS
-                || (pane_scrollbars == PANE_SCROLLBARS_MODAL
-                    && window_pane_mode(wp) != WINDOW_PANE_NO_MODE)
-            {
-                (*wp).scrollbar_style.width as u32 + (*wp).scrollbar_style.pad as u32
-            } else {
-                0
-            };
-
-            let (xoff, sx) = if sb_pos == PANE_SCROLLBARS_LEFT as u32 {
-                ((*wp).xoff - sb_w, (*wp).sx + sb_w)
-            } else {
-                ((*wp).xoff, (*wp).sx + sb_w)
-            };
+            window_pane_full_size_offset(wp, &mut xoff, &mut yoff, &mut sx, &mut sy);
             if x < xoff || x > xoff + sx {
                 continue;
             }
-            if y < (*wp).yoff || y > (*wp).yoff + (*wp).sy {
+            if y < yoff || y > yoff + sy {
                 continue;
             }
             return wp;

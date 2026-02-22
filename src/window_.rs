@@ -1954,7 +1954,7 @@ pub unsafe fn window_pane_show_scrollbar(wp: *mut window_pane, sb_option: i32) -
     }
 }
 
-pub unsafe fn window_pane_paste(wp: *mut window_pane, buf: *mut u8, len: usize)
+pub unsafe fn window_pane_paste(wp: *mut window_pane, key: key_code, buf: *mut u8, len: usize)
 {
     unsafe {
        if !tailq_empty(&(*wp).modes) {
@@ -1962,6 +1962,10 @@ pub unsafe fn window_pane_paste(wp: *mut window_pane, buf: *mut u8, len: usize)
        }
 
        if (*wp).fd == -1 || (*wp).flags.intersects(window_pane_flags::PANE_INPUTOFF) {
+           return;
+       }
+
+       if KEYC_IS_PASTE(key) && !(*(*wp).screen).mode.intersects(mode_flag::MODE_BRACKETPASTE) {
            return;
        }
 

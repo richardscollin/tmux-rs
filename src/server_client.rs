@@ -2571,7 +2571,7 @@ pub unsafe fn server_client_key_callback(item: *mut cmdq_item, data: *mut c_void
                    break 'out;
                }
                if !(*event).buf.is_null() {
-                   window_pane_paste(wp, (*event).buf, (*event).len);
+                   window_pane_paste(wp, key, (*event).buf, (*event).len);
                }
                key = KEYC_NONE;
                // goto out;

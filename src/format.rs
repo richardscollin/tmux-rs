@@ -2633,8 +2633,16 @@ pub unsafe fn format_cb_window_last_flag(ft: *mut format_tree) -> format_table_t
 pub unsafe fn format_cb_window_linked(ft: *mut format_tree) -> format_table_type {
     unsafe {
         if !(*ft).wl.is_null() {
-            if session_is_linked((*(*ft).wl).session, (*(*ft).wl).window) {
-                return "1".into();
+            let mut found = 0;
+            for s in rb_foreach(&raw mut SESSIONS).map(NonNull::as_ptr) {
+                for wl in rb_foreach(&raw mut (*s).windows).map(NonNull::as_ptr) {
+                    if (*wl).window == (*(*ft).wl).window {
+                        if found != 0 {
+                            return "1".into();
+                        }
+                        found = 1;
+                    }
+                }
             }
             return "0".into();
         }
@@ -2645,10 +2653,29 @@ pub unsafe fn format_cb_window_linked(ft: *mut format_tree) -> format_table_type
 /// Callback for `window_linked_sessions`.
 pub unsafe fn format_cb_window_linked_sessions(ft: *mut format_tree) -> format_table_type {
     unsafe {
-        if !(*ft).wl.is_null() {
-            return format!("{}", (*(*(*ft).wl).window).references).into();
+        if (*ft).wl.is_null() {
+            return format_table_type::None;
         }
-        format_table_type::None
+        let w = (*(*ft).wl).window;
+        let mut n: u32 = 0;
+
+        for sg in rb_foreach(&raw mut SESSION_GROUPS).map(NonNull::as_ptr) {
+            let s = tailq_first(&raw mut (*sg).sessions);
+            if !s.is_null()
+                && winlink_find_by_window(&raw mut (*s).windows, w).is_some()
+            {
+                n += 1;
+            }
+        }
+        for s in rb_foreach(&raw mut SESSIONS).map(NonNull::as_ptr) {
+            if !session_group_contains(s).is_null() {
+                continue;
+            }
+            if winlink_find_by_window(&raw mut (*s).windows, w).is_some() {
+                n += 1;
+            }
+        }
+        format!("{n}").into()
     }
 }
 

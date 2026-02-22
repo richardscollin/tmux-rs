@@ -306,9 +306,9 @@ fn alerts_set_message(wl: &winlink, type_: &str, option: &str) {
                 continue;
             }
             if std::ptr::eq((*(*c).session).curw, wl) {
-                status_message_set!(c, -1, 1, false, "{type_} in current window",);
+                status_message_set!(c, -1, 1, false, false, "{type_} in current window",);
             } else {
-                status_message_set!(c, -1, 1, false, "{type_} in window {}", wl.idx);
+                status_message_set!(c, -1, 1, false, false, "{type_} in window {}", wl.idx);
             }
         }
     }

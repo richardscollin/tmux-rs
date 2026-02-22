@@ -1540,7 +1540,7 @@ pub unsafe fn mode_tree_run_command(
                     let upper = first.to_ascii_uppercase();
                     error.replace_range(..1, &upper);
                 }
-                status_message_set!(c, -1, 1, false, "{}", error);
+                status_message_set!(c, -1, 1, false, false, "{}", error);
             }
             cmdq_free_state(state);
         }

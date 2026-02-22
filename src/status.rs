@@ -489,8 +489,8 @@ pub unsafe fn status_redraw(c: *mut client) -> i32 {
 }
 
 macro_rules! status_message_set {
-   ($c:expr, $delay:expr, $ignore_styles:expr, $ignore_keys:expr, $fmt:literal $(, $args:expr)* $(,)?) => {
-        crate::status::status_message_set_($c, $delay, $ignore_styles, $ignore_keys, format_args!($fmt $(, $args)*))
+   ($c:expr, $delay:expr, $ignore_styles:expr, $ignore_keys:expr, $no_freeze:expr, $fmt:literal $(, $args:expr)* $(,)?) => {
+        crate::status::status_message_set_($c, $delay, $ignore_styles, $ignore_keys, $no_freeze, format_args!($fmt $(, $args)*))
     };
 }
 pub(crate) use status_message_set;
@@ -501,6 +501,7 @@ pub unsafe fn status_message_set_(
     mut delay: i32,
     ignore_styles: i32,
     ignore_keys: bool,
+    no_freeze: bool,
     args: std::fmt::Arguments,
 ) {
     unsafe {
@@ -547,7 +548,10 @@ pub unsafe fn status_message_set_(
         }
         (*c).message_ignore_styles = ignore_styles;
 
-        (*c).tty.flags |= tty_flags::TTY_NOCURSOR | tty_flags::TTY_FREEZE;
+        if !no_freeze {
+            (*c).tty.flags |= tty_flags::TTY_FREEZE;
+        }
+        (*c).tty.flags |= tty_flags::TTY_NOCURSOR;
         (*c).flags |= client_flag::REDRAWSTATUS;
     }
 }

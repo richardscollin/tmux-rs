@@ -159,7 +159,7 @@ unsafe fn cmd_if_shell_callback(job: *mut job) {
                         if let Some(first) = error.as_bytes_mut().first_mut() {
                             first.make_ascii_uppercase();
                         }
-                        status_message_set!(c, -1, 1, false, "{}", error);
+                        status_message_set!(c, -1, 1, false, false, "{}", error);
                     } else {
                         cmdq_error!((*cdata).item, "{}", error);
                     }

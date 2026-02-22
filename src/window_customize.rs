@@ -1301,12 +1301,12 @@ pub unsafe fn window_customize_set_option_callback(
             if let Err(err) = options_array_set(o, idx as u32, Some(cstr_to_str(s)), false) {
                 let mut err_msg = err.into_string().unwrap();
                 err_msg[0..=0].make_ascii_uppercase();
-                status_message_set!(c, -1, 1, false, "{err_msg}");
+                status_message_set!(c, -1, 1, false, false, "{err_msg}");
             }
         } else if let Err(err) = options_from_string(oo, oe, name, s, false) {
             let mut err_msg = err.into_string().unwrap();
             err_msg[0..=0].make_ascii_uppercase();
-            status_message_set!(c, -1, 1, false, "{err_msg}");
+            status_message_set!(c, -1, 1, false, false, "{err_msg}");
         }
 
         options_push_changes(name);
@@ -1544,7 +1544,7 @@ pub unsafe fn window_customize_set_command_callback(
         }
         // 'fail:
         *error = (*error).to_ascii_uppercase();
-        status_message_set!(c, -1, 1, false, "{}", _s(error));
+        status_message_set!(c, -1, 1, false, false, "{}", _s(error));
         free_(error);
         0
     }

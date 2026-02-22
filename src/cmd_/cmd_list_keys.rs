@@ -108,7 +108,7 @@ unsafe fn cmd_list_keys_print_notes(
 
             let tmp = utf8_padcstr(key, keywidth + 1);
             if args_has(&*args, '1') && !tc.is_null() {
-                status_message_set!(tc, -1, 1, false, "{}{}{}", _s(prefix), _s(tmp), _s(note.as_ptr()));
+                status_message_set!(tc, -1, 1, false, false, "{}{}{}", _s(prefix), _s(tmp), _s(note.as_ptr()));
             } else {
                 cmdq_print!(item, "{}{}{}", _s(prefix), _s(tmp), _s(note.as_ptr()));
             }
@@ -321,7 +321,7 @@ unsafe fn cmd_list_keys_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retva
                     strlcat(tmp.as_ptr(), cp2.as_ptr().cast(), tmpsize);
 
                     if args_has(&*args, '1') && tc.is_null() {
-                        status_message_set!(tc, -1, 1, false, "bind-key {}", _s(tmp.as_ptr()));
+                        status_message_set!(tc, -1, 1, false, false, "bind-key {}", _s(tmp.as_ptr()));
                     } else {
                         cmdq_print!(item, "bind-key {}", _s(tmp.as_ptr()));
                     }

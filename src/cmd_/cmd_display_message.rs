@@ -22,8 +22,8 @@ pub static CMD_DISPLAY_MESSAGE_ENTRY: cmd_entry = cmd_entry {
     name: "display-message",
     alias: Some("display"),
 
-    args: args_parse::new("ac:d:lINpt:F:v", 0, 1, None),
-    usage: "[-aIlNpv] [-c target-client] [-d delay] [-F format] [-t target-pane] [message]",
+    args: args_parse::new("aCc:d:lINpt:F:v", 0, 1, None),
+    usage: "[-aCIlNpv] [-c target-client] [-d delay] [-F format] [-t target-pane] [message]",
 
     target: cmd_entry_flag::new(
         b't',
@@ -54,6 +54,7 @@ unsafe fn cmd_display_message_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd
         let wp = (*target).wp;
         let mut delay = -1;
         let nflag = args_has(&*args, 'N');
+        let cflag = args_has(&*args, 'C');
         let count = args_count(&*args);
 
         if args_has(&*args, 'I') {
@@ -143,7 +144,7 @@ unsafe fn cmd_display_message_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd
             server_client_print(tc, 0, evb);
             evbuffer_free(evb);
         } else if !tc.is_null() {
-            status_message_set!(tc, delay as i32, 0, nflag, "{}", _s(msg));
+            status_message_set!(tc, delay as i32, 0, nflag, cflag, "{}", _s(msg));
         }
         free_(msg);
 

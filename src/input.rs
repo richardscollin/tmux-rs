@@ -2405,7 +2405,7 @@ unsafe fn input_dcs_dispatch(ictx: *mut input_ctx) -> i32 {
             use crate::screen_write::screen_write_sixelimage;
 
             let w = (*wp).window;
-            if *buf == b'q' {
+            if *buf == b'q' && (*ictx).interm_len == 0 {
                if input_split(ictx) != 0 {
                    return 0;
                }

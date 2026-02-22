@@ -1759,6 +1759,16 @@ unsafe fn input_csi_dispatch(ictx: *mut input_ctx) -> i32 {
                     }
 
                     if (*ictx).flags.intersects(input_flags::INPUT_LAST) {
+                        let set = if (*ictx).cell.set == 0 {
+                            (*ictx).cell.g0set
+                        } else {
+                            (*ictx).cell.g1set
+                        };
+                        if set == 1 {
+                            (*ictx).cell.cell.attr |= grid_attr::GRID_ATTR_CHARSET;
+                        } else {
+                            (*ictx).cell.cell.attr &= !grid_attr::GRID_ATTR_CHARSET;
+                        }
                         utf8_copy(&raw mut (*ictx).cell.cell.data, &raw const (*ictx).last);
                         for _ in 0..n {
                             screen_write_collect_add(sctx, &raw const (*ictx).cell.cell);

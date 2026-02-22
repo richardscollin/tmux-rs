@@ -8,3 +8,4 @@ tmux-*.log
 
 # github wiki in CI
 /wiki
+.tracey/

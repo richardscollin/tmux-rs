@@ -209,7 +209,7 @@ macro_rules! options_table_window_hook {
     };
 }
 
-pub static OPTIONS_TABLE: [options_table_entry; 203] = [
+pub static OPTIONS_TABLE: [options_table_entry; 204] = [
     options_table_entry {
         name: "backspace",
         type_: options_table_type::OPTIONS_TABLE_KEY,
@@ -279,6 +279,14 @@ pub static OPTIONS_TABLE: [options_table_entry; 203] = [
         choices: &OPTIONS_TABLE_CURSOR_STYLE_LIST,
         default_num: 0,
         text: c!("Style of the cursor."),
+        ..options_table_entry::const_default()
+    },
+    options_table_entry {
+        name: "default-client-command",
+        type_: options_table_type::OPTIONS_TABLE_COMMAND,
+        scope: OPTIONS_TABLE_SERVER,
+        default_str: Some("new-session"),
+        text: c!("Default command to run when tmux is run without a command."),
         ..options_table_entry::const_default()
     },
     options_table_entry {

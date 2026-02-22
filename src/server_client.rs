@@ -3525,7 +3525,7 @@ pub unsafe fn server_client_dispatch_command(c: *mut client, imsg: *mut imsg) {
         let mut data: msg_command = zeroed();
         let buf;
         let len: usize;
-        let mut argc;
+        let argc;
         let mut argv: *mut *mut u8 = null_mut();
         let cause: *mut u8;
         let new_item;
@@ -3552,22 +3552,25 @@ pub unsafe fn server_client_dispatch_command(c: *mut client, imsg: *mut imsg) {
                 break 'error;
             }
 
+            let cmdlist;
             if argc == 0 {
-                argc = 1;
-                argv = xcalloc1();
-                *argv = xstrdup(c!("new-session")).as_ptr();
+                cmdlist = cmd_list_copy(
+                    &*options_get_command(&mut *GLOBAL_OPTIONS, "default-client-command"),
+                    0,
+                    null_mut(),
+                );
+            } else {
+                let values = args_from_vector(argc, argv);
+                cmdlist = match cmd_parse_from_arguments(&values, None) {
+                    Ok(cl) => cl,
+                    Err(err) => {
+                        cause = err;
+                        break 'error;
+                    }
+                };
+                drop(values);
+                cmd_free_argv(argc, argv);
             }
-
-            let values = args_from_vector(argc, argv);
-            let cmdlist = match cmd_parse_from_arguments(&values, None) {
-                Ok(cmdlist) => cmdlist,
-                Err(err) => {
-                    cause = err;
-                    break 'error;
-                }
-            };
-            drop(values);
-            cmd_free_argv(argc, argv);
 
             if (*c).flags.intersects(client_flag::READONLY)
                 && !cmd_list_all_have(cmdlist, cmd_flag::CMD_READONLY)

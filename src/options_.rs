@@ -358,6 +358,16 @@ pub unsafe fn options_default(
             options_table_type::OPTIONS_TABLE_STRING => {
                 (*ov).string = xstrdup___((*oe).default_str);
             }
+            options_table_type::OPTIONS_TABLE_COMMAND => {
+                match cmd_parse_from_string((*oe).default_str.unwrap(), None) {
+                    Ok(cmdlist) => {
+                        (*ov).cmdlist = cmdlist;
+                    }
+                    Err(err) => {
+                        free_(err);
+                    }
+                }
+            }
             _ => {
                 (*ov).number = (*oe).default_num;
             }
@@ -879,6 +889,19 @@ pub fn options_get_number___<T: TryFrom<i64>>(oo: &options, name: &str) -> T {
     }
 }
 
+pub unsafe fn options_get_command(oo: *mut options, name: &str) -> *const cmd_list {
+    unsafe {
+        let o = options_get(&mut *oo, name);
+        if o.is_null() {
+            fatalx_!("missing option {name}");
+        }
+        if !OPTIONS_IS_COMMAND(o) {
+            fatalx_!("option {name} is not a command");
+        }
+        (*o).value.cmdlist
+    }
+}
+
 macro_rules! options_set_string {
    ($oo:expr, $name:expr, $append:expr, $fmt:literal $(, $args:expr)* $(,)?) => {
         crate::options_::options_set_string_($oo, $name, $append, format_args!($fmt $(, $args)*))
@@ -955,6 +978,35 @@ pub unsafe fn options_set_number(
             panic!("option {name} is not a number");
         }
         (*o).value.number = value;
+        o
+    }
+}
+
+pub unsafe fn options_set_command(
+    oo: *mut options,
+    name: &str,
+    value: *mut cmd_list,
+) -> *mut options_entry {
+    unsafe {
+        if name.starts_with('@') {
+            panic!("user option {name} must be a string");
+        }
+
+        let mut o = options_get_only(oo, name);
+        if o.is_null() {
+            o = options_default(oo, options_parent_table_entry(oo, name));
+            if o.is_null() {
+                return null_mut();
+            }
+        }
+
+        if !OPTIONS_IS_COMMAND(o) {
+            panic!("option {name} is not a command");
+        }
+        if !(*o).value.cmdlist.is_null() {
+            cmd_list_free((*o).value.cmdlist);
+        }
+        (*o).value.cmdlist = value;
         o
     }
 }
@@ -1301,10 +1353,21 @@ pub unsafe fn options_from_string(
                 return options_from_string_choice(oe, oo, name, value);
             }
 
-            options_table_type::OPTIONS_TABLE_COMMAND => {}
+            options_table_type::OPTIONS_TABLE_COMMAND => {
+                match cmd_parse_from_string(cstr_to_str(value), None) {
+                    Ok(cmdlist) => {
+                        options_set_command(oo, name, cmdlist);
+                        return Ok(());
+                    }
+                    Err(err) => {
+                        let cause =
+                            CString::new(_s(err).to_string()).unwrap();
+                        free_(err);
+                        return Err(cause);
+                    }
+                }
+            }
         }
-
-        Err(CString::new("").unwrap())
     }
 }
 

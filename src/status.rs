@@ -818,6 +818,65 @@ pub unsafe fn status_prompt_update(c: *mut client, msg: *const u8, input: *const
     }
 }
 
+/// Redraw character. Return 1 if can continue redrawing, 0 otherwise.
+unsafe fn status_prompt_redraw_character(
+    ctx: *mut screen_write_ctx,
+    offset: u32,
+    pwidth: u32,
+    width: *mut u32,
+    gc: *mut grid_cell,
+    ud: *const utf8_data,
+) -> i32 {
+    unsafe {
+        if *width < offset {
+            *width += (*ud).width as u32;
+            return 1;
+        }
+        if *width >= offset + pwidth {
+            return 0;
+        }
+        *width += (*ud).width as u32;
+        if *width > offset + pwidth {
+            return 0;
+        }
+
+        let ch = (*ud).data[0];
+        if (*ud).size == 1 && (ch <= 0x1f || ch == 0x7f) {
+            (*gc).data.data[0] = b'^';
+            (*gc).data.data[1] = if ch == 0x7f { b'?' } else { ch | 0x40 };
+            (*gc).data.size = 2;
+            (*gc).data.have = 2;
+            (*gc).data.width = 2;
+        } else {
+            utf8_copy(&raw mut (*gc).data, ud);
+        }
+        screen_write_cell(ctx, gc);
+        1
+    }
+}
+
+/// Redraw quote indicator '^' if necessary. Return 1 if can continue redrawing, 0 otherwise.
+unsafe fn status_prompt_redraw_quote(
+    c: *const client,
+    pcursor: u32,
+    ctx: *mut screen_write_ctx,
+    offset: u32,
+    pwidth: u32,
+    width: *mut u32,
+    gc: *mut grid_cell,
+) -> i32 {
+    unsafe {
+        if (*c).prompt_flags.intersects(prompt_flags::PROMPT_QUOTENEXT)
+            && (*(*ctx).s).cx == pcursor + 1
+        {
+            let mut ud: utf8_data = zeroed();
+            utf8_set(&raw mut ud, b'^');
+            return status_prompt_redraw_character(ctx, offset, pwidth, width, gc, &raw const ud);
+        }
+        1
+    }
+}
+
 /// Draw client prompt on status line of present else on last line.
 pub unsafe fn status_prompt_redraw(c: *mut client) -> i32 {
     unsafe {
@@ -917,69 +976,45 @@ pub unsafe fn status_prompt_redraw(c: *mut client) -> i32 {
                 pwidth = left;
             }
             (*c).prompt_cursor =
-                (start as isize + (*c).prompt_index as isize - offset as isize) as i32;
+                (start as isize + pcursor as isize - offset as isize) as i32;
 
             let mut width: u32 = 0;
             let mut i = 0;
             while (*(*c).prompt_buffer.add(i)).size != 0 {
-                // Draw quote indicator '^' if QUOTENEXT and at cursor position.
-                if (*c).prompt_flags.intersects(prompt_flags::PROMPT_QUOTENEXT)
-                    && (*ctx.s).cx == pcursor + 1
+                if status_prompt_redraw_quote(
+                    c,
+                    pcursor,
+                    &raw mut ctx,
+                    offset,
+                    pwidth,
+                    &raw mut width,
+                    &raw mut gc,
+                ) == 0
                 {
-                    let mut ud: utf8_data = zeroed();
-                    utf8_set(&raw mut ud, b'^');
-                    if width < offset {
-                        width += ud.width as u32;
-                    } else if width < offset + pwidth {
-                        width += ud.width as u32;
-                        if width <= offset + pwidth {
-                            utf8_copy(&raw mut gc.data, &raw const ud);
-                            screen_write_cell(&raw mut ctx, &raw const gc);
-                        }
-                    }
-                }
-
-                if width < offset {
-                    width += (*(*c).prompt_buffer.add(i)).width as u32;
-                    i += 1;
-                    continue;
-                }
-                if width >= offset + pwidth {
                     break;
                 }
-                width += (*(*c).prompt_buffer.add(i)).width as u32;
-                if width > offset + pwidth {
+                if status_prompt_redraw_character(
+                    &raw mut ctx,
+                    offset,
+                    pwidth,
+                    &raw mut width,
+                    &raw mut gc,
+                    (*c).prompt_buffer.add(i),
+                ) == 0
+                {
                     break;
                 }
-
-                let ud = &*(*c).prompt_buffer.add(i);
-                let ch = ud.data[0];
-                if ud.size == 1 && (ch <= 0x1f || ch == 0x7f) {
-                    gc.data.data[0] = b'^';
-                    gc.data.data[1] = if ch == 0x7f { b'?' } else { ch | 0x40 };
-                    gc.data.size = 2;
-                    gc.data.have = 2;
-                    gc.data.width = 2;
-                } else {
-                    utf8_copy(&raw mut gc.data, (*c).prompt_buffer.add(i));
-                }
-                screen_write_cell(&raw mut ctx, &raw const gc);
                 i += 1;
             }
-            // Draw trailing quote indicator if QUOTENEXT and at end.
-            if (*c).prompt_flags.intersects(prompt_flags::PROMPT_QUOTENEXT)
-                && (*ctx.s).cx == pcursor + 1
-            {
-                let mut ud: utf8_data = zeroed();
-                utf8_set(&raw mut ud, b'^');
-                if width >= offset && width < offset + pwidth {
-                    width += ud.width as u32;
-                    if width <= offset + pwidth {
-                        utf8_copy(&raw mut gc.data, &raw const ud);
-                        screen_write_cell(&raw mut ctx, &raw const gc);
-                    }
-                }
-            }
+            status_prompt_redraw_quote(
+                c,
+                pcursor,
+                &raw mut ctx,
+                offset,
+                pwidth,
+                &raw mut width,
+                &raw mut gc,
+            );
         }
         // finished:
         screen_write_stop(&raw mut ctx);

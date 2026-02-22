@@ -1333,6 +1333,7 @@ pub unsafe fn tty_keys_next(tty: *mut tty) -> i32 {
                         if onlykey < 0x20
                             && onlykey != c0::C0_HT as u64
                             && onlykey != c0::C0_CR as u64
+                            && onlykey != c0::C0_BS as u64
                             && onlykey != c0::C0_ESC as u64
                         {
                             onlykey |= 0x40;

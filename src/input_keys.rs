@@ -424,10 +424,15 @@ pub unsafe fn input_key(s: *mut screen, bev: *mut bufferevent, mut key: key_code
         // Is this backspace?
         if (key & KEYC_MASK_KEY) == keyc::KEYC_BSPACE as u64 {
             let mut newkey = options_get_number_(GLOBAL_OPTIONS, "backspace") as key_code;
-            if newkey >= 0x7f {
-                newkey = '\x7f' as u64;
+            if newkey == keyc::KEYC_BSPACE as u64 {
+                newkey = c0::C0_BS as u64;
             }
-            key = newkey | (key & (KEYC_MASK_MODIFIERS | KEYC_MASK_FLAGS));
+            log_debug!(
+                "input_key: key 0x{:x} is backspace -> 0x{:x}",
+                key,
+                newkey | (key & KEYC_MASK_FLAGS)
+            );
+            key = newkey | (key & KEYC_MASK_FLAGS);
         }
 
         // Is this backtab?
@@ -447,6 +452,7 @@ pub unsafe fn input_key(s: *mut screen, bev: *mut bufferevent, mut key: key_code
         if (key & !KEYC_MASK_KEY) == 0 {
             if key == c0::C0_HT as u64
                 || key == c0::C0_CR as u64
+                || key == c0::C0_BS as u64
                 || key == c0::C0_ESC as u64
                 || (0x20..=0x7f).contains(&key)
             {

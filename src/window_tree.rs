@@ -89,6 +89,7 @@ enum window_tree_sort_type {
 }
 
 static WINDOW_TREE_SORT_LIST: [&str; 3] = ["index", "name", "time"];
+static mut WINDOW_TREE_SORT: *mut mode_tree_sort_criteria = null_mut();
 
 #[repr(i32)]
 #[derive(Eq, PartialEq)]
@@ -475,6 +476,8 @@ unsafe fn window_tree_build(
     filter: *const u8,
 ) {
     unsafe {
+        WINDOW_TREE_SORT = sort_crit;
+
         let data: NonNull<window_tree_modedata> = modedata.cast();
         let data = data.as_ptr();
 
@@ -1025,6 +1028,113 @@ unsafe fn window_tree_get_key(
     }
 }
 
+unsafe fn window_tree_cmp_window(a: *mut winlink, b: *mut winlink) -> i32 {
+    unsafe {
+        let wa = (*a).window;
+        let wb = (*b).window;
+        let mut result = 0;
+
+        match window_tree_sort_type::try_from((*WINDOW_TREE_SORT).field as i32) {
+            Ok(window_tree_sort_type::WINDOW_TREE_BY_INDEX) => {
+                result = (*a).idx - (*b).idx;
+            }
+            Ok(window_tree_sort_type::WINDOW_TREE_BY_TIME) => {
+                result = match timer::new(&raw const (*wa).activity_time)
+                    .cmp(&timer::new(&raw const (*wb).activity_time))
+                {
+                    std::cmp::Ordering::Greater => -1,
+                    std::cmp::Ordering::Less => 1,
+                    std::cmp::Ordering::Equal => (*a).idx - (*b).idx,
+                };
+            }
+            Ok(window_tree_sort_type::WINDOW_TREE_BY_NAME) => {
+                result = strcmp((*wa).name, (*wb).name);
+            }
+            _ => {}
+        }
+        if (*WINDOW_TREE_SORT).reversed {
+            result = -result;
+        }
+        result
+    }
+}
+
+unsafe fn window_tree_swap(cur_itemdata: *mut c_void, other_itemdata: *mut c_void) -> i32 {
+    unsafe {
+        let cur: NonNull<window_tree_itemdata> = NonNull::new(cur_itemdata.cast()).unwrap();
+        let other: NonNull<window_tree_itemdata> = NonNull::new(other_itemdata.cast()).unwrap();
+
+        if (*cur.as_ptr()).type_ != (*other.as_ptr()).type_ {
+            return 0;
+        }
+        if (*cur.as_ptr()).type_ != window_tree_type::WINDOW_TREE_WINDOW {
+            return 0;
+        }
+
+        let mut cur_session = None;
+        let mut cur_winlink = None;
+        let mut cur_pane = None;
+        let mut other_session = None;
+        let mut other_winlink = None;
+        let mut other_pane = None;
+
+        window_tree_pull_item(cur, &raw mut cur_session, &raw mut cur_winlink, &raw mut cur_pane);
+        window_tree_pull_item(
+            other,
+            &raw mut other_session,
+            &raw mut other_winlink,
+            &raw mut other_pane,
+        );
+
+        let Some(cur_session) = cur_session.map(NonNull::as_ptr) else {
+            return 0;
+        };
+        let Some(other_session) = other_session.map(NonNull::as_ptr) else {
+            return 0;
+        };
+        if cur_session != other_session {
+            return 0;
+        }
+
+        let Some(cur_wl) = cur_winlink.map(NonNull::as_ptr) else {
+            return 0;
+        };
+        let Some(other_wl) = other_winlink.map(NonNull::as_ptr) else {
+            return 0;
+        };
+
+        if !WINDOW_TREE_SORT.is_null()
+            && (*WINDOW_TREE_SORT).field != window_tree_sort_type::WINDOW_TREE_BY_INDEX as u32
+            && window_tree_cmp_window(cur_wl, other_wl) != 0
+        {
+            // Swapping indexes would not swap positions in the tree, so
+            // prevent swapping to avoid confusing the user.
+            return 0;
+        }
+
+        let other_window = (*other_wl).window;
+        tailq_remove::<_, discr_wentry>(&raw mut (*other_window).winlinks, other_wl);
+        let cur_window = (*cur_wl).window;
+        tailq_remove::<_, discr_wentry>(&raw mut (*cur_window).winlinks, cur_wl);
+
+        (*other_wl).window = cur_window;
+        tailq_insert_tail::<_, discr_wentry>(&raw mut (*cur_window).winlinks, other_wl);
+        (*cur_wl).window = other_window;
+        tailq_insert_tail::<_, discr_wentry>(&raw mut (*other_window).winlinks, cur_wl);
+
+        if (*cur_session).curw == cur_wl {
+            session_set_current(cur_session, other_wl);
+        } else if (*cur_session).curw == other_wl {
+            session_set_current(cur_session, cur_wl);
+        }
+        session_group_synchronize_from(cur_session);
+        server_redraw_session_group(cur_session);
+        recalculate_sizes();
+
+        1
+    }
+}
+
 unsafe fn window_tree_init(
     wme: NonNull<window_mode_entry>,
     fs: *mut cmd_find_state,
@@ -1079,6 +1189,7 @@ unsafe fn window_tree_init(
             Some(window_tree_menu),
             None,
             Some(window_tree_get_key),
+            Some(window_tree_swap),
             data.cast(),
             WINDOW_TREE_MENU_ITEMS.as_slice(),
             &WINDOW_TREE_SORT_LIST,

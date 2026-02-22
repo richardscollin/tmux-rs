@@ -310,6 +310,7 @@ pub unsafe fn window_client_init(
             Some(window_client_menu),
             None,
             Some(window_client_get_key),
+            None,
             data.cast(),
             WINDOW_CLIENT_MENU_ITEMS.as_slice(),
             &WINDOW_CLIENT_SORT_LIST,

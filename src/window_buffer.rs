@@ -380,6 +380,7 @@ pub unsafe fn window_buffer_init(
             Some(window_buffer_menu),
             None,
             Some(window_buffer_get_key),
+            None,
             data as *mut window_buffer_modedata as *mut c_void,
             WINDOW_BUFFER_MENU_ITEMS.as_slice(),
             &WINDOW_BUFFER_SORT_LIST,

@@ -1194,6 +1194,7 @@ pub unsafe fn window_customize_init(
             Some(window_customize_menu),
             Some(window_customize_height),
             None,
+            None,
             data.cast(),
             WINDOW_CUSTOMIZE_MENU_ITEMS.as_slice(),
             &[],

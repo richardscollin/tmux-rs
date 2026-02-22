@@ -31,6 +31,8 @@ pub type mode_tree_menu_cb = Option<unsafe fn(_: NonNull<c_void>, _: *mut client
 pub type mode_tree_height_cb = Option<unsafe fn(_: *mut c_void, _: c_uint) -> c_uint>;
 pub type mode_tree_key_cb =
     Option<unsafe fn(_: NonNull<c_void>, _: NonNull<c_void>, _: c_uint) -> key_code>;
+pub type mode_tree_swap_cb =
+    Option<unsafe fn(_: *mut c_void, _: *mut c_void) -> i32>;
 pub type mode_tree_each_cb =
     Option<unsafe fn(_: NonNull<c_void>, _: NonNull<c_void>, _: *mut client, _: key_code)>;
 
@@ -70,6 +72,7 @@ pub struct mode_tree_data {
     menucb: mode_tree_menu_cb,
     heightcb: mode_tree_height_cb,
     keycb: mode_tree_key_cb,
+    swapcb: mode_tree_swap_cb,
 
     children: mode_tree_list,
     saved: mode_tree_list,
@@ -298,6 +301,46 @@ pub unsafe fn mode_tree_down(mtd: *mut mode_tree_data, wrap: i32) -> bool {
     }
 }
 
+unsafe fn mode_tree_swap(mtd: *mut mode_tree_data, direction: i32) {
+    unsafe {
+        if (*mtd).swapcb.is_none() {
+            return;
+        }
+
+        let current_depth = (&(*mtd).line_list)[(*mtd).current as usize].depth;
+
+        // Find the next line at the same depth with the same parent.
+        let mut swap_with = (*mtd).current as i32;
+        loop {
+            if direction < 0 && swap_with < -direction {
+                return;
+            }
+            if direction > 0
+                && (swap_with + direction) as u32 >= (&(*mtd).line_list).len() as u32
+            {
+                return;
+            }
+            swap_with += direction;
+            let swap_with_depth = (&(*mtd).line_list)[swap_with as usize].depth;
+            if swap_with_depth <= current_depth {
+                if swap_with_depth != current_depth {
+                    return;
+                }
+                break;
+            }
+        }
+
+        if ((*mtd).swapcb.unwrap())(
+            (*(&(*mtd).line_list)[(*mtd).current as usize].item).itemdata,
+            (*(&(*mtd).line_list)[swap_with as usize].item).itemdata,
+        ) != 0
+        {
+            (*mtd).current = swap_with as u32;
+            mode_tree_build(mtd);
+        }
+    }
+}
+
 pub unsafe fn mode_tree_get_current(mtd: *mut mode_tree_data) -> NonNull<c_void> {
     NonNull::new(unsafe { (*(&mut (*mtd).line_list)[(*mtd).current as usize].item).itemdata })
         .unwrap()
@@ -421,6 +464,7 @@ pub unsafe fn mode_tree_start(
     menucb: mode_tree_menu_cb,
     heightcb: mode_tree_height_cb,
     keycb: mode_tree_key_cb,
+    swapcb: mode_tree_swap_cb,
     modedata: *mut c_void,
     menu: &'static [menu_item],
     sort_list: &'static [&'static str],
@@ -447,6 +491,7 @@ pub unsafe fn mode_tree_start(
             menucb,
             heightcb,
             keycb,
+            swapcb,
             dead: 0,
             zoomed: 0,
             sort_crit: mode_tree_sort_criteria::default(),
@@ -1351,8 +1396,13 @@ pub unsafe fn mode_tree_key(
             pub const SLASH: u64 = '/' as u64;
             pub const S_CTRL: u64 = 's' as u64 | KEYC_CTRL;
 
+            pub const K_UPPER: u64 = 'K' as u64;
+            pub const J_UPPER: u64 = 'J' as u64;
+
             pub const KEYC_UP: u64 = keyc::KEYC_UP as u64;
             pub const KEYC_DOWN: u64 = keyc::KEYC_DOWN as u64;
+            pub const KEYC_UP_SHIFT: u64 = keyc::KEYC_UP as u64 | KEYC_SHIFT;
+            pub const KEYC_DOWN_SHIFT: u64 = keyc::KEYC_DOWN as u64 | KEYC_SHIFT;
 
             pub const KEYC_WHEELUP_PANE: u64 = keyc::KEYC_WHEELUP_PANE as u64;
             pub const KEYC_WHEELDOWN_PANE: u64 = keyc::KEYC_WHEELDOWN_PANE as u64;
@@ -1375,6 +1425,14 @@ pub unsafe fn mode_tree_key(
 
             code::KEYC_DOWN | code::J | code::KEYC_WHEELDOWN_PANE | code::N_CTRL => {
                 mode_tree_down(mtd, 1);
+            }
+
+            code::KEYC_UP_SHIFT | code::K_UPPER => {
+                mode_tree_swap(mtd, -1);
+            }
+
+            code::KEYC_DOWN_SHIFT | code::J_UPPER => {
+                mode_tree_swap(mtd, 1);
             }
 
             code::KEYC_PPAGE | code::B_CTRL => {

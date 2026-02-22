@@ -226,7 +226,7 @@ unsafe fn cmd_source_file_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
         if args_has(&*args, 'n') {
             (*cdata).flags |= cmd_parse_input_flags::CMD_PARSE_PARSEONLY;
         }
-        if args_has(&*args, 'v') {
+        if args_has(&*args, 'v') && (c.is_null() || !(*c).flags.intersects(client_flag::CONTROL)) {
             (*cdata).flags |= cmd_parse_input_flags::CMD_PARSE_VERBOSE;
         }
 

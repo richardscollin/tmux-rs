@@ -44,6 +44,19 @@ pub struct sixel_image {
     lines: *mut sixel_line,
 }
 
+struct sixel_chunk {
+    next_x: u32,
+    next_y: u32,
+
+    count: u32,
+    pattern: u8,
+    next_pattern: u8,
+
+    len: usize,
+    used: usize,
+    data: *mut u8,
+}
+
 unsafe fn sixel_parse_expand_lines(si: *mut sixel_image, y: u32) -> bool {
     unsafe {
         if y <= (*si).y {
@@ -524,6 +537,74 @@ unsafe fn sixel_print_repeat(
     }
 }
 
+unsafe fn sixel_print_compress_colors(
+    si: *mut sixel_image,
+    chunks: *mut sixel_chunk,
+    y: u32,
+    active: *mut u32,
+    nactive: *mut u32,
+) {
+    unsafe {
+        let mut colors: [u32; 6];
+        let mut chunk: *mut sixel_chunk;
+
+        for x in 0..(*si).x {
+            colors = [0; 6];
+            for i in 0u32..6 {
+                if y + i < (*si).y {
+                    let sl = (*si).lines.add((y + i) as usize);
+                    if x < (*sl).x && *(*sl).data.add(x as usize) != 0 {
+                        let c = *(*sl).data.add(x as usize) as u32;
+                        colors[i as usize] = c;
+                        (*chunks.add((c - 1) as usize)).next_pattern |= 1 << i;
+                    }
+                }
+            }
+
+            for i in 0u32..6 {
+                if colors[i as usize] == 0 {
+                    continue;
+                }
+
+                let c = colors[i as usize] - 1;
+                chunk = chunks.add(c as usize);
+                if (*chunk).next_x == x + 1 {
+                    continue;
+                }
+
+                if (*chunk).next_y < y + 1 {
+                    (*chunk).next_y = y + 1;
+                    *active.add(*nactive as usize) = c;
+                    *nactive += 1;
+                }
+
+                let dx = x - (*chunk).next_x;
+                if (*chunk).pattern != (*chunk).next_pattern || dx != 0 {
+                    sixel_print_repeat(
+                        &raw mut (*chunk).data,
+                        &raw mut (*chunk).len,
+                        &raw mut (*chunk).used,
+                        (*chunk).count,
+                        (*chunk).pattern + 0x3f,
+                    );
+                    sixel_print_repeat(
+                        &raw mut (*chunk).data,
+                        &raw mut (*chunk).len,
+                        &raw mut (*chunk).used,
+                        dx,
+                        b'?',
+                    );
+                    (*chunk).pattern = (*chunk).next_pattern;
+                    (*chunk).count = 0;
+                }
+                (*chunk).count += 1;
+                (*chunk).next_pattern = 0;
+                (*chunk).next_x = x + 1;
+            }
+        }
+    }
+}
+
 pub(crate) unsafe fn sixel_print(
     si: *mut sixel_image,
     map: *mut sixel_image,
@@ -532,8 +613,6 @@ pub(crate) unsafe fn sixel_print(
     log_debug!("sixel_print");
     unsafe {
         let mut buf: *mut u8;
-        let mut data: u8 = b'\0';
-        let mut last = 0;
 
         let mut len: usize;
         let mut used: usize = 0;
@@ -572,6 +651,10 @@ pub(crate) unsafe fn sixel_print(
             );
         }
 
+        let ncolours = colours.len();
+        let chunks: *mut sixel_chunk = xcalloc_(ncolours).as_ptr();
+        let active: *mut u32 = xcalloc_(ncolours).as_ptr();
+
         for (i, c) in colours.iter().copied().enumerate() {
             let tmp = CString::new(format!(
                 "#{};{};{};{};{}",
@@ -589,29 +672,21 @@ pub(crate) unsafe fn sixel_print(
                 tmp.as_ptr().cast(),
                 tmp.as_bytes().len(),
             );
+
+            let chunk = chunks.add(i);
+            (*chunk).len = 8;
+            (*chunk).data = xmalloc((*chunk).len).as_ptr().cast();
         }
 
-        let mut contains: Vec<bool> = vec![false; colours.len()];
         let mut y = 0;
         while y < (*si).y {
-            contains.fill(false);
-            for x in 0..(*si).x {
-                for i in 0..6 {
-                    if y + i >= (*si).y {
-                        break;
-                    }
-                    let sl = (*si).lines.add((y + i) as usize);
-                    if x < (*sl).x && *(*sl).data.add(x as usize) != 0 {
-                        contains[*(*sl).data.add(x as usize) as usize - 1] = true;
-                    }
-                }
-            }
+            let mut nactive: u32 = 0;
+            sixel_print_compress_colors(si, chunks, y, active, &raw mut nactive);
 
             log_debug!("sixel_print mid {y}");
-            for (c, contains_c) in contains.iter().copied().enumerate() {
-                if !contains_c {
-                    continue;
-                }
+            for i in 0..nactive {
+                let c = *active.add(i as usize);
+                let chunk = chunks.add(c as usize);
                 let tmp = CString::new(format!("#{c}")).unwrap();
                 sixel_print_add(
                     &raw mut buf,
@@ -620,30 +695,24 @@ pub(crate) unsafe fn sixel_print(
                     tmp.as_ptr().cast(),
                     tmp.as_bytes().len(),
                 );
-
-                let mut count = 0;
-                for x in 0..(*si).x {
-                    data = 0;
-                    for i in 0..6 {
-                        if y + i >= (*si).y {
-                            break;
-                        }
-                        let sl = (*si).lines.add((y + i) as usize);
-                        if x < (*sl).x && *(*sl).data.add(x as usize) as u32 == c as u32 + 1 {
-                            data |= 1 << i;
-                        }
-                    }
-                    data += 0x3f;
-                    if data != last {
-                        sixel_print_repeat(&raw mut buf, &raw mut len, &raw mut used, count, last);
-                        last = data;
-                        count = 1;
-                    } else {
-                        count += 1;
-                    }
-                }
-                sixel_print_repeat(&raw mut buf, &raw mut len, &raw mut used, count, data);
+                sixel_print_add(
+                    &raw mut buf,
+                    &raw mut len,
+                    &raw mut used,
+                    (*chunk).data,
+                    (*chunk).used,
+                );
+                sixel_print_repeat(
+                    &raw mut buf,
+                    &raw mut len,
+                    &raw mut used,
+                    (*chunk).count,
+                    (*chunk).pattern + 0x3f,
+                );
                 sixel_print_add(&raw mut buf, &raw mut len, &raw mut used, c!("$"), 1);
+                (*chunk).used = 0;
+                (*chunk).next_x = 0;
+                (*chunk).count = 0;
             }
 
             if *buf.add(used - 1) == b'$' {
@@ -653,7 +722,7 @@ pub(crate) unsafe fn sixel_print(
 
             y += 6;
         }
-        if *buf.add(used - 1) == b'$' || *buf.add(used - 1) == b'-' {
+        if *buf.add(used - 1) == b'-' {
             used -= 1;
         }
 
@@ -664,6 +733,12 @@ pub(crate) unsafe fn sixel_print(
         if !size.is_null() {
             *size = used;
         }
+
+        for i in 0..ncolours {
+            free_((*chunks.add(i)).data);
+        }
+        free_(active);
+        free_(chunks);
 
         buf
     }

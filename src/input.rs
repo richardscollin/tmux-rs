@@ -1715,6 +1715,39 @@ unsafe fn input_csi_dispatch(ictx: *mut input_ctx) -> i32 {
                 _ => (),
             },
             Ok(input_csi_type::INPUT_CSI_QUERY_PRIVATE) => match input_get(ictx, 0, 0, 0) {
+                12 => {
+                    // cursor blink: 1 = blink, 2 = steady
+                    let n =
+                        if (*s).mode.intersects(mode_flag::MODE_CURSOR_BLINKING_SET) {
+                            if (*s).mode.intersects(mode_flag::MODE_CURSOR_BLINKING) {
+                                1
+                            } else {
+                                2
+                            }
+                        } else {
+                            let oo = if !(*ictx).wp.is_null() {
+                                (*(*ictx).wp).options
+                            } else {
+                                GLOBAL_OPTIONS
+                            };
+                            let p = options_get_number_(oo, "cursor-style") as i32;
+                            // blink for 1,3,5; steady for 0,2,4,6
+                            if p == 1 || p == 3 || p == 5 { 1 } else { 2 }
+                        };
+                    input_reply!(ictx, "\x1b[?12;{}$y", n);
+                }
+                2004 => {
+                    let n = if (*s).mode.intersects(mode_flag::MODE_BRACKETPASTE) { 1 } else { 2 };
+                    input_reply!(ictx, "\x1b[?2004;{}$y", n);
+                }
+                1004 => {
+                    let n = if (*s).mode.intersects(mode_flag::MODE_FOCUSON) { 1 } else { 2 };
+                    input_reply!(ictx, "\x1b[?1004;{}$y", n);
+                }
+                1006 => {
+                    let n = if (*s).mode.intersects(mode_flag::MODE_MOUSE_SGR) { 1 } else { 2 };
+                    input_reply!(ictx, "\x1b[?1006;{}$y", n);
+                }
                 2031 => input_reply!(ictx, "\x1b[?2031;2$y"),
                 _ => (),
             },
@@ -2377,6 +2410,60 @@ unsafe fn input_enter_dcs(ictx: *mut input_ctx) {
     }
 }
 
+/// Handle DECRQSS query.
+unsafe fn input_handle_decrqss(ictx: *mut input_ctx) -> i32 {
+    unsafe {
+        let wp = (*ictx).wp;
+        let sctx = &raw mut (*ictx).ctx;
+        let buf = (*ictx).input_buf;
+        let len = (*ictx).input_len;
+        let s = (*sctx).s;
+
+        if len < 3 || *buf.add(1) != b' ' || *buf.add(2) != b'q' {
+            // Not recognized
+            input_reply!(ictx, "\x1bP0$r\x1b\\");
+            return 0;
+        }
+
+        // Cursor style query: DCS $ q SP q
+        // Reply: DCS 1 $ r SP q <Ps> SP q ST
+        let ps = if (*s).cstyle == screen_cursor_style::SCREEN_CURSOR_BLOCK
+            || (*s).cstyle == screen_cursor_style::SCREEN_CURSOR_UNDERLINE
+            || (*s).cstyle == screen_cursor_style::SCREEN_CURSOR_BAR
+        {
+            let blinking = (*s).mode.intersects(mode_flag::MODE_CURSOR_BLINKING);
+            match (*s).cstyle {
+                screen_cursor_style::SCREEN_CURSOR_BLOCK => {
+                    if blinking { 1 } else { 2 }
+                }
+                screen_cursor_style::SCREEN_CURSOR_UNDERLINE => {
+                    if blinking { 3 } else { 4 }
+                }
+                screen_cursor_style::SCREEN_CURSOR_BAR => {
+                    if blinking { 5 } else { 6 }
+                }
+                _ => 0,
+            }
+        } else {
+            // No explicit runtime style: fall back to configured cursor-style option.
+            let oo = if !wp.is_null() { (*wp).options } else { GLOBAL_OPTIONS };
+            let opt_ps = options_get_number_(oo, "cursor-style") as i32;
+            // Sanity clamp: valid Ps are 0..6 per DECSCUSR.
+            if opt_ps < 0 || opt_ps > 6 { 0 } else { opt_ps }
+        };
+
+        log_debug!(
+            "input_handle_decrqss: DECRQSS cursor -> Ps={} (cstyle={} mode={:#x})",
+            ps,
+            (*s).cstyle as i32,
+            (*s).mode,
+        );
+
+        input_reply!(ictx, "\x1bP1$r q{} q\x1b\\", ps);
+        0
+    }
+}
+
 /// DCS terminator (ST) received.
 unsafe fn input_dcs_dispatch(ictx: *mut input_ctx) -> i32 {
     unsafe {
@@ -2394,9 +2481,20 @@ unsafe fn input_dcs_dispatch(ictx: *mut input_ctx) -> i32 {
             return 0;
         }
 
+        let oo = (*wp).options;
+
         if (*ictx).flags.intersects(input_flags::INPUT_DISCARD) {
             log_debug!("{}: {} bytes (discard)", func, len);
             return 0;
+        }
+        log_debug!("{}: {} bytes", func, len);
+
+        // DCS sequences with intermediate byte '$' (includes DECRQSS).
+        if (*ictx).interm_len == 1 && (*ictx).interm_buf[0] == b'$' {
+            // DECRQSS is DCS $ q Pt ST.
+            if len >= 1 && *buf == b'q' {
+                return input_handle_decrqss(ictx);
+            }
         }
 
         #[cfg(feature = "sixel")]
@@ -2422,7 +2520,7 @@ unsafe fn input_dcs_dispatch(ictx: *mut input_ctx) -> i32 {
             }
         }
 
-        let allow_passthrough = options_get_number_((*wp).options, "allow-passthrough");
+        let allow_passthrough = options_get_number_(oo, "allow-passthrough");
         if allow_passthrough == 0 {
             return 0;
         }

@@ -2488,6 +2488,7 @@ struct client {
     overlay_timer: event,
 
     files: client_files,
+    source_file_depth: c_uint,
 
     clipboard_panes: *mut c_uint,
     clipboard_npanes: c_uint,

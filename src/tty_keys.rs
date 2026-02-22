@@ -2193,6 +2193,8 @@ unsafe fn tty_keys_extended_device_attributes(
             tty_default_features(features, c!("XTerm"), 0);
         } else if libc::strncmp(tmp.as_ptr(), c!("mintty "), 7) == 0 {
             tty_default_features(features, c!("mintty"), 0);
+        } else if libc::strncmp(tmp.as_ptr(), c!("foot("), 5) == 0 {
+            tty_default_features(features, c!("foot"), 0);
         }
         // log_debug( c!("%s: received extended DA %.*s\0"), (*c).name, *size as i32, buf);
 

@@ -292,14 +292,7 @@ pub unsafe fn server_client_create(fd: i32) -> *mut client {
             NonNull::new_unchecked(c),
         );
 
-        for i in 0..INPUT_REQUEST_TYPES {
-            (*c).input_requests[i].c = c;
-            (*c).input_requests[i].type_ = match i {
-                0 => input_request_type::INPUT_REQUEST_PALETTE,
-                _ => unreachable!(),
-            };
-            tailq_init(&raw mut (*c).input_requests[i].requests);
-        }
+        tailq_init(&raw mut (*c).input_requests);
 
         tailq_insert_tail(&raw mut CLIENTS, c);
         log_debug!("new client {:p}", c);

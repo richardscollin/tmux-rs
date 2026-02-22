@@ -215,8 +215,13 @@ unsafe fn cmd_source_file_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
         if args_has(&*args, 'n') {
             (*cdata).flags |= cmd_parse_input_flags::CMD_PARSE_PARSEONLY;
         }
-        if args_has(&*args, 'v') && (c.is_null() || !(*c).flags.intersects(client_flag::CONTROL)) {
-            (*cdata).flags |= cmd_parse_input_flags::CMD_PARSE_VERBOSE;
+        if c.is_null() || !(*c).flags.intersects(client_flag::CONTROL) {
+            let parse_flags = cmd_get_parse_flags(self_);
+            if args_has(&*args, 'v')
+                || (parse_flags & cmd_parse_input_flags::CMD_PARSE_VERBOSE.bits() != 0)
+            {
+                (*cdata).flags |= cmd_parse_input_flags::CMD_PARSE_VERBOSE;
+            }
         }
 
         let cwd = cmd_source_file_quote_for_glob(server_client_get_cwd(c, null_mut()));

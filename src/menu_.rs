@@ -543,6 +543,39 @@ pub unsafe fn menu_key_cb(c: *mut client, data: *mut c_void, mut event: *mut key
     1
 }
 
+unsafe fn menu_resize_cb(c: *mut client, data: *mut c_void) {
+    unsafe {
+        let md = data as *mut menu_data;
+        if md.is_null() {
+            return;
+        }
+
+        let mut nx = (*md).px;
+        let mut ny = (*md).py;
+
+        let w = (*(*md).menu).width + 4;
+        let h = (*(*md).menu).items.len() as u32 + 2;
+
+        if nx + w > (*c).tty.sx {
+            if (*c).tty.sx <= w {
+                nx = 0;
+            } else {
+                nx = (*c).tty.sx - w;
+            }
+        }
+
+        if ny + h > (*c).tty.sy {
+            if (*c).tty.sy <= h {
+                ny = 0;
+            } else {
+                ny = (*c).tty.sy - h;
+            }
+        }
+        (*md).px = nx;
+        (*md).py = ny;
+    }
+}
+
 pub unsafe fn menu_set_style(
     c: *mut client,
     gc: *mut grid_cell,
@@ -730,7 +763,7 @@ pub unsafe fn menu_display(
             Some(menu_draw_cb),
             Some(menu_key_cb),
             Some(menu_free_cb),
-            None,
+            Some(menu_resize_cb),
             md.cast(),
         );
     }

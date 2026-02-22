@@ -1105,6 +1105,8 @@ struct screen {
 
     #[cfg(feature = "sixel")]
     images: images,
+    #[cfg(feature = "sixel")]
+    saved_images: images,
 
     write_list: *mut screen_write_cline,
 
@@ -1295,8 +1297,8 @@ struct window_mode_entry {
 #[derive(Copy, Clone, Eq, PartialEq)]
 enum input_request_type {
     INPUT_REQUEST_PALETTE = 0,
+    INPUT_REQUEST_QUEUE,
 }
-const INPUT_REQUEST_TYPES: usize = 1;
 
 /// Palette request reply data.
 #[repr(C)]
@@ -1305,15 +1307,15 @@ struct input_request_palette_data {
     c: i32,
 }
 
+#[repr(i32)]
+#[derive(Copy, Clone, Eq, PartialEq)]
+enum input_end_type {
+    INPUT_END_ST,
+    INPUT_END_BEL,
+}
+
 /// Request sent to client on behalf of pane.
 type input_requests = tailq_head<input_request>;
-
-#[repr(C)]
-struct input_request_list {
-    c: *mut client,
-    type_: input_request_type,
-    requests: input_requests,
-}
 
 struct InputRequestEntry;
 struct InputRequestCEntry;
@@ -1324,8 +1326,11 @@ struct input_request {
     ictx: *mut input_ctx,
 
     type_: input_request_type,
-    idx: i32,
     t: libc::time_t,
+    end: input_end_type,
+
+    idx: i32,
+    data: *mut c_void,
 
     entry: tailq_entry<input_request>,
     centry: tailq_entry<input_request>,
@@ -2178,6 +2183,9 @@ impl AtomicCmdParseInputFlags {
             .unwrap()
             .intersects(rhs)
     }
+    fn bits(&self) -> i32 {
+        self.0.load(std::sync::atomic::Ordering::SeqCst)
+    }
 }
 impl std::ops::BitOrAssign<cmd_parse_input_flags> for &AtomicCmdParseInputFlags {
     fn bitor_assign(&mut self, rhs: cmd_parse_input_flags) {
@@ -2507,7 +2515,7 @@ struct client {
     status: status_line,
     theme: client_theme,
 
-    input_requests: [input_request_list; INPUT_REQUEST_TYPES],
+    input_requests: input_requests,
 
     flags: client_flag,
 

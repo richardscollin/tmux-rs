@@ -379,6 +379,7 @@ pub unsafe fn cmd_parse_build_command(
                 &values,
                 pi.file,
                 pi.line.load(atomic::Ordering::SeqCst),
+                pi.flags.bits(),
             ) {
                 Ok(add) => {
                     let cmdlist = cmd_list_new();

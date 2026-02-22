@@ -639,7 +639,9 @@ pub unsafe fn screen_write_fast_copy(
                 screen_write_initctx(ctx, &raw mut ttyctx, 0);
             }
             for xx in px..(px + nx) {
-                if xx >= (*grid_get_line(gd, yy)).cellsize {
+                if xx >= (*grid_get_line(gd, yy)).cellsize
+                    && (*s).cx >= (*grid_get_line((*(*ctx).s).grid, (*s).cy)).cellsize
+                {
                     break;
                 }
                 grid_get_cell(gd, xx, yy, &raw mut gc);

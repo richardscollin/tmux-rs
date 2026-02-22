@@ -80,13 +80,6 @@ bitflags::bitflags! {
     }
 }
 
-#[repr(i32)]
-#[derive(Eq, PartialEq)]
-enum input_end_type {
-    INPUT_END_ST,
-    INPUT_END_BEL,
-}
-
 /// Input parser context.
 #[repr(C)]
 pub struct input_ctx {
@@ -125,7 +118,7 @@ pub struct input_ctx {
     state: *const input_state,
     flags: input_flags,
 
-    requests: [input_requests; INPUT_REQUEST_TYPES],
+    requests: input_requests,
     request_count: u32,
     request_timer: event,
 
@@ -967,9 +960,7 @@ pub unsafe fn input_init(
             NonNull::new(ictx).unwrap(),
         );
 
-        for i in 0..INPUT_REQUEST_TYPES {
-            tailq_init(&raw mut (*ictx).requests[i]);
-        }
+        tailq_init(&raw mut (*ictx).requests);
         evtimer_set(
             &raw mut (*ictx).request_timer,
             input_request_timer_callback,
@@ -990,28 +981,11 @@ pub unsafe fn input_free(ictx: *mut input_ctx) {
             }
         }
 
-        for i in 0..INPUT_REQUEST_TYPES {
-            let mut ir = tailq_first(&raw mut (*ictx).requests[i]);
+        {
+            let mut ir = tailq_first(&raw mut (*ictx).requests);
             while !ir.is_null() {
                 let ir1 = tailq_next::<input_request, input_request, InputRequestEntry>(ir);
-                log_debug!(
-                    "{}: req {:p}: client {}, pane %{}, type {}",
-                    "input_free",
-                    ir,
-                    _s((*(*ir).c).name),
-                    (*(*ictx).wp).id,
-                    i,
-                );
-                let irl = &raw mut (*(*ir).c).input_requests[i];
-                tailq_remove::<input_request, InputRequestEntry>(
-                    &raw mut (*ictx).requests[i],
-                    ir,
-                );
-                tailq_remove::<input_request, InputRequestCEntry>(
-                    &raw mut (*irl).requests,
-                    ir,
-                );
-                free_(ir);
+                input_free_request(ir);
                 ir = ir1;
             }
         }
@@ -1279,21 +1253,35 @@ pub unsafe fn input_get(ictx: *mut input_ctx, validx: u32, minval: i32, defval: 
 }
 
 macro_rules! input_reply {
-    ($ictx:expr, $($args:expr),* $(,)?) => {
-        crate::input::input_reply_($ictx, format_args!($($args),*))
+    ($ictx:expr, $add:expr, $($args:expr),* $(,)?) => {
+        crate::input::input_reply_($ictx, $add, format_args!($($args),*))
     };
 }
-/// Reply to terminal query.
-unsafe fn input_reply_(ictx: *mut input_ctx, args: std::fmt::Arguments) {
+
+/// Send reply directly.
+unsafe fn input_send_reply(ictx: *mut input_ctx, reply: *const c_void) {
     unsafe {
         let bev = (*ictx).event;
-        if bev.is_null() {
-            return;
+        if !bev.is_null() {
+            let reply = reply as *const u8;
+            log_debug!("{}: {}", "input_send_reply", _s(reply));
+            bufferevent_write(bev, reply.cast(), strlen(reply));
         }
+    }
+}
 
-        let reply = CString::new(args.to_string()).unwrap();
-        log_debug!("input_reply: {}", _s(reply.as_ptr()));
-        bufferevent_write(bev, reply.as_ptr().cast(), strlen(reply.as_ptr().cast()));
+/// Reply to terminal query.
+unsafe fn input_reply_(ictx: *mut input_ctx, add: i32, args: std::fmt::Arguments) {
+    unsafe {
+        let reply = xstrdup__(args.to_string().as_str());
+
+        if add != 0 && !tailq_empty(&raw mut (*ictx).requests) {
+            let ir = input_make_request(ictx, input_request_type::INPUT_REQUEST_QUEUE);
+            (*ir).data = reply as *mut c_void;
+        } else {
+            input_send_reply(ictx, reply as *const c_void);
+            free_(reply);
+        }
     }
 }
 
@@ -1707,18 +1695,18 @@ unsafe fn input_csi_dispatch(ictx: *mut input_ctx) -> i32 {
                 0 => {
                     #[cfg(feature = "sixel")]
                     {
-                        input_reply!(ictx, "\x1b[?1;2;4c");
+                        input_reply!(ictx, 1, "\x1b[?1;2;4c");
                     }
                     #[cfg(not(feature = "sixel"))]
                     {
-                        input_reply!(ictx, "\x1b[?1;2c");
+                        input_reply!(ictx, 1, "\x1b[?1;2c");
                     }
                 }
                 _ => log_debug!("{}: unknown '{}'", __func__, (*ictx).ch),
             },
             Ok(input_csi_type::INPUT_CSI_DA_TWO) => match input_get(ictx, 0, 0, 0) {
                 -1 => (),
-                0 => input_reply!(ictx, "\x1b[>84;0;0c"),
+                0 => input_reply!(ictx, 1, "\x1b[>84;0;0c"),
                 _ => log_debug!("{}: unknown '{}'", __func__, (*ictx).ch as u8 as char),
             },
             Ok(input_csi_type::INPUT_CSI_ECH) => {
@@ -1771,27 +1759,27 @@ unsafe fn input_csi_dispatch(ictx: *mut input_ctx) -> i32 {
                             // blink for 1,3,5; steady for 0,2,4,6
                             if p == 1 || p == 3 || p == 5 { 1 } else { 2 }
                         };
-                    input_reply!(ictx, "\x1b[?12;{}$y", n);
+                    input_reply!(ictx, 1, "\x1b[?12;{}$y", n);
                 }
                 2004 => {
                     let n = if (*s).mode.intersects(mode_flag::MODE_BRACKETPASTE) { 1 } else { 2 };
-                    input_reply!(ictx, "\x1b[?2004;{}$y", n);
+                    input_reply!(ictx, 1, "\x1b[?2004;{}$y", n);
                 }
                 1004 => {
                     let n = if (*s).mode.intersects(mode_flag::MODE_FOCUSON) { 1 } else { 2 };
-                    input_reply!(ictx, "\x1b[?1004;{}$y", n);
+                    input_reply!(ictx, 1, "\x1b[?1004;{}$y", n);
                 }
                 1006 => {
                     let n = if (*s).mode.intersects(mode_flag::MODE_MOUSE_SGR) { 1 } else { 2 };
-                    input_reply!(ictx, "\x1b[?1006;{}$y", n);
+                    input_reply!(ictx, 1, "\x1b[?1006;{}$y", n);
                 }
-                2031 => input_reply!(ictx, "\x1b[?2031;2$y"),
+                2031 => input_reply!(ictx, 1, "\x1b[?2031;2$y"),
                 _ => (),
             },
             Ok(input_csi_type::INPUT_CSI_DSR) => match input_get(ictx, 0, 0, 0) {
                 -1 => (),
-                5 => input_reply!(ictx, "\x1b[0n"),
-                6 => input_reply!(ictx, "\x1b[{};{}R", (*s).cy + 1, (*s).cx + 1),
+                5 => input_reply!(ictx, 1, "\x1b[0n"),
+                6 => input_reply!(ictx, 1, "\x1b[{};{}R", (*s).cy + 1, (*s).cx + 1),
                 _ => log_debug!("{}: unknown '{}'", __func__, (*ictx).ch as u8 as char),
             },
             Ok(input_csi_type::INPUT_CSI_ED) => {
@@ -1909,7 +1897,7 @@ unsafe fn input_csi_dispatch(ictx: *mut input_ctx) -> i32 {
             }
             Ok(input_csi_type::INPUT_CSI_XDA) => {
                 if input_get(ictx, 0, 0, 0) == 0 {
-                    input_reply!(ictx, "\x1bP>|tmux {}\x1b\\", getversion());
+                    input_reply!(ictx, 1, "\x1bP>|tmux {}\x1b\\", getversion());
                 }
             }
             Err(_) => (),
@@ -2073,9 +2061,9 @@ unsafe fn input_csi_dispatch_sm_graphics(ictx: *mut input_ctx) {
         let o = input_get(ictx, 2, 0, 0);
 
         if n == 1 && (m == 1 || m == 2 || m == 4) {
-            input_reply!(ictx, "\x1b[?{n};0;{SIXEL_COLOUR_REGISTERS}S");
+            input_reply!(ictx, 1, "\x1b[?{n};0;{SIXEL_COLOUR_REGISTERS}S");
         } else {
-            input_reply!(ictx, "\x1b[?{n};3;{o}S");
+            input_reply!(ictx, 1, "\x1b[?{n};3;{o}S");
         }
     }
 }
@@ -2121,21 +2109,21 @@ unsafe fn input_csi_dispatch_winops(ictx: *mut input_ctx) {
                 }
                 14 => {
                     if !w.is_null() {
-                        input_reply!(ictx, "\x1b[4;{};{}t", y * (*w).ypixel, x * (*w).xpixel);
+                        input_reply!(ictx, 1, "\x1b[4;{};{}t", y * (*w).ypixel, x * (*w).xpixel);
                     }
                 }
                 15 => {
                     if !w.is_null() {
-                        input_reply!(ictx, "\x1b[5;{};{}t", y * (*w).ypixel, x * (*w).xpixel,);
+                        input_reply!(ictx, 1, "\x1b[5;{};{}t", y * (*w).ypixel, x * (*w).xpixel,);
                     }
                 }
                 16 => {
                     if !w.is_null() {
-                        input_reply!(ictx, "\x1b[6;{};{}t", (*w).ypixel, (*w).xpixel);
+                        input_reply!(ictx, 1, "\x1b[6;{};{}t", (*w).ypixel, (*w).xpixel);
                     }
                 }
-                18 => input_reply!(ictx, "\x1b[8;{};{}t", y, x),
-                19 => input_reply!(ictx, "\x1b[9;{};{}t", y, x),
+                18 => input_reply!(ictx, 1, "\x1b[8;{};{}t", y, x),
+                19 => input_reply!(ictx, 1, "\x1b[9;{};{}t", y, x),
                 22 => {
                     m += 1;
                     match input_get(ictx, m as u32, 0, -1) {
@@ -2462,7 +2450,7 @@ unsafe fn input_handle_decrqss(ictx: *mut input_ctx) -> i32 {
 
         if len < 3 || *buf.add(1) != b' ' || *buf.add(2) != b'q' {
             // Not recognized
-            input_reply!(ictx, "\x1bP0$r\x1b\\");
+            input_reply!(ictx, 1, "\x1bP0$r\x1b\\");
             return 0;
         }
 
@@ -2500,7 +2488,7 @@ unsafe fn input_handle_decrqss(ictx: *mut input_ctx) -> i32 {
             (*s).mode,
         );
 
-        input_reply!(ictx, "\x1bP1$r q{} q\x1b\\", ps);
+        input_reply!(ictx, 1, "\x1bP1$r q{} q\x1b\\", ps);
         0
     }
 }
@@ -2811,7 +2799,14 @@ unsafe fn input_top_bit_set(ictx: *mut input_ctx) -> i32 {
 }
 
 /// Reply to a colour request.
-unsafe fn input_osc_colour_reply(ictx: *mut input_ctx, n: u32, idx: i32, mut c: i32) {
+unsafe fn input_osc_colour_reply(
+    ictx: *mut input_ctx,
+    add: i32,
+    n: u32,
+    idx: i32,
+    mut c: i32,
+    end_type: input_end_type,
+) {
     unsafe {
         if c != -1 {
             c = colour_force_rgb(c);
@@ -2821,7 +2816,7 @@ unsafe fn input_osc_colour_reply(ictx: *mut input_ctx, n: u32, idx: i32, mut c: 
         }
         let (r, g, b) = colour_split_rgb(c);
 
-        let end = if (*ictx).input_end == input_end_type::INPUT_END_BEL {
+        let end = if end_type == input_end_type::INPUT_END_BEL {
             c!("\x07")
         } else {
             c!("\x1b\\")
@@ -2830,6 +2825,7 @@ unsafe fn input_osc_colour_reply(ictx: *mut input_ctx, n: u32, idx: i32, mut c: 
         if n == 4 {
             input_reply!(
                 ictx,
+                add,
                 "\x1b]{};{};rgb:{:02x}{:02x}/{:02x}{:02x}/{:02x}{:02x}{}",
                 n,
                 idx,
@@ -2844,6 +2840,7 @@ unsafe fn input_osc_colour_reply(ictx: *mut input_ctx, n: u32, idx: i32, mut c: 
         } else {
             input_reply!(
                 ictx,
+                add,
                 "\x1b]{};rgb:{:02x}{:02x}/{:02x}{:02x}/{:02x}{:02x}{}",
                 n,
                 r,
@@ -2892,7 +2889,7 @@ unsafe fn input_osc_4(ictx: *mut input_ctx, p: *const u8) {
                     idx as i32 | COLOUR_FLAG_256,
                 );
                 if c != -1 {
-                    input_osc_colour_reply(ictx, 4, idx as i32, c);
+                    input_osc_colour_reply(ictx, 1, 4, idx as i32, c, (*ictx).input_end);
                     s = next;
                     continue;
                 }
@@ -2979,8 +2976,8 @@ unsafe fn input_osc_8(ictx: *mut input_ctx, p: *const u8) {
 unsafe fn input_report_current_theme(ictx: *mut input_ctx) {
     unsafe {
         match window_pane_get_theme((*ictx).wp) {
-            client_theme::THEME_DARK => input_reply!(ictx, "\x1b[?997;1n"),
-            client_theme::THEME_LIGHT => input_reply!(ictx, "\x1b[?997;2n"),
+            client_theme::THEME_DARK => input_reply!(ictx, 0, "\x1b[?997;1n"),
+            client_theme::THEME_LIGHT => input_reply!(ictx, 0, "\x1b[?997;2n"),
             client_theme::THEME_UNKNOWN => (),
         }
     }
@@ -3006,7 +3003,7 @@ unsafe fn input_osc_10(ictx: *mut input_ctx, p: *const u8) {
                     c = defaults.fg;
                 }
             }
-            input_osc_colour_reply(ictx, 10, 0, c);
+            input_osc_colour_reply(ictx, 1, 10, 0, c, (*ictx).input_end);
             return;
         }
 
@@ -3056,7 +3053,7 @@ unsafe fn input_osc_11(ictx: *mut input_ctx, p: *const u8) {
                 return;
             }
             c = window_pane_get_bg(wp);
-            input_osc_colour_reply(ictx, 11, 0, c);
+            input_osc_colour_reply(ictx, 1, 11, 0, c, (*ictx).input_end);
             return;
         }
 
@@ -3107,7 +3104,7 @@ unsafe fn input_osc_12(ictx: *mut input_ctx, p: *const u8) {
                 if c == -1 {
                     c = (*(*ictx).ctx.s).default_ccolour;
                 }
-                input_osc_colour_reply(ictx, 12, 0, c);
+                input_osc_colour_reply(ictx, 1, 12, 0, c, (*ictx).input_end);
             }
             return;
         }
@@ -3314,7 +3311,7 @@ pub fn input_set_buffer_size(buffer_size: usize) {
     INPUT_BUFFER_SIZE.store(buffer_size, std::sync::atomic::Ordering::Relaxed);
 }
 
-const INPUT_REQUEST_TIMEOUT: libc::time_t = 5;
+const INPUT_REQUEST_TIMEOUT: libc::time_t = 2;
 
 /// Request timer. Remove any requests that are too old.
 unsafe extern "C-unwind" fn input_request_timer_callback(
@@ -3326,35 +3323,18 @@ unsafe extern "C-unwind" fn input_request_timer_callback(
         let ictx = ictx.as_ptr();
         let t = libc::time(null_mut());
 
-        for i in 0..INPUT_REQUEST_TYPES {
-            let mut ir = tailq_first(&raw mut (*ictx).requests[i]);
-            while !ir.is_null() {
-                let ir1 = tailq_next::<input_request, input_request, InputRequestEntry>(ir);
-                if (*ir).t >= t - INPUT_REQUEST_TIMEOUT {
-                    ir = ir1;
-                    continue;
-                }
-                log_debug!(
-                    "{}: req {:p}: client {}, pane %{}, type {}",
-                    "input_request_timer_callback",
-                    ir,
-                    _s((*(*ir).c).name),
-                    (*(*ictx).wp).id,
-                    (*ir).type_ as u32,
-                );
-                let irl = &raw mut (*(*ir).c).input_requests[i];
-                tailq_remove::<input_request, InputRequestEntry>(
-                    &raw mut (*ictx).requests[i],
-                    ir,
-                );
-                tailq_remove::<input_request, InputRequestCEntry>(
-                    &raw mut (*irl).requests,
-                    ir,
-                );
-                (*ictx).request_count -= 1;
-                free_(ir);
+        let mut ir = tailq_first(&raw mut (*ictx).requests);
+        while !ir.is_null() {
+            let ir1 = tailq_next::<input_request, input_request, InputRequestEntry>(ir);
+            if (*ir).t >= t - INPUT_REQUEST_TIMEOUT {
                 ir = ir1;
+                continue;
             }
+            if (*ir).type_ == input_request_type::INPUT_REQUEST_QUEUE {
+                input_send_reply((*ir).ictx, (*ir).data);
+            }
+            input_free_request(ir);
+            ir = ir1;
         }
         if (*ictx).request_count != 0 {
             input_start_request_timer(ictx);
@@ -3366,12 +3346,53 @@ unsafe extern "C-unwind" fn input_request_timer_callback(
 unsafe fn input_start_request_timer(ictx: *mut input_ctx) {
     unsafe {
         let tv: timeval = timeval {
-            tv_sec: 1,
-            tv_usec: 0,
+            tv_sec: 0,
+            tv_usec: 500000,
         };
 
         event_del(&raw mut (*ictx).request_timer);
         event_add(&raw mut (*ictx).request_timer, &raw const tv);
+    }
+}
+
+/// Create a request.
+unsafe fn input_make_request(
+    ictx: *mut input_ctx,
+    type_: input_request_type,
+) -> *mut input_request {
+    unsafe {
+        let ir: *mut input_request = xcalloc1();
+        (*ir).type_ = type_;
+        (*ir).ictx = ictx;
+        (*ir).t = libc::time(null_mut());
+
+        (*ictx).request_count += 1;
+        if (*ictx).request_count == 1 {
+            input_start_request_timer(ictx);
+        }
+        tailq_insert_tail::<input_request, InputRequestEntry>(&raw mut (*ictx).requests, ir);
+
+        ir
+    }
+}
+
+/// Free a request.
+unsafe fn input_free_request(ir: *mut input_request) {
+    unsafe {
+        let ictx = (*ir).ictx;
+
+        if !(*ir).c.is_null() {
+            tailq_remove::<input_request, InputRequestCEntry>(
+                &raw mut (*(*ir).c).input_requests,
+                ir,
+            );
+        }
+
+        (*ictx).request_count -= 1;
+        tailq_remove::<input_request, InputRequestEntry>(&raw mut (*ictx).requests, ir);
+
+        free_((*ir).data as *mut u8);
+        free_(ir);
     }
 }
 
@@ -3411,31 +3432,13 @@ unsafe fn input_add_request(
             return -1;
         }
 
-        let ir: *mut input_request = xcalloc1();
+        let ir = input_make_request(ictx, type_);
         (*ir).c = c;
-        (*ir).ictx = ictx;
-        (*ir).type_ = type_;
         (*ir).idx = idx;
-        (*ir).t = libc::time(null_mut());
-        tailq_insert_tail::<input_request, InputRequestEntry>(
-            &raw mut (*ictx).requests[type_ as usize],
-            ir,
-        );
+        (*ir).end = (*ictx).input_end;
         tailq_insert_tail::<input_request, InputRequestCEntry>(
-            &raw mut (*c).input_requests[type_ as usize].requests,
+            &raw mut (*c).input_requests,
             ir,
-        );
-        (*ictx).request_count += 1;
-        if (*ictx).request_count == 1 {
-            input_start_request_timer(ictx);
-        }
-        log_debug!(
-            "{}: req {:p}: client {}, pane %{}, type {}",
-            "input_add_request",
-            ir,
-            _s((*c).name),
-            (*wp).id,
-            type_ as u32,
         );
 
         match type_ {
@@ -3445,6 +3448,7 @@ unsafe fn input_add_request(
                     tty_puts(&raw mut (*c).tty, s.as_ptr());
                 }
             }
+            input_request_type::INPUT_REQUEST_QUEUE => {}
         }
 
         0
@@ -3458,40 +3462,44 @@ pub unsafe fn input_request_reply(
     data: *mut c_void,
 ) {
     unsafe {
-        let irl = &raw mut (*c).input_requests[type_ as usize];
         let pd = data.cast::<input_request_palette_data>();
+        let mut found: *mut input_request = null_mut();
 
-        let mut ir = tailq_first(&raw mut (*irl).requests);
+        // Find the matching request, freeing non-matching ones along the way.
+        let mut ir = tailq_first(&raw mut (*c).input_requests);
         while !ir.is_null() {
             let ir1 = tailq_next::<input_request, input_request, InputRequestCEntry>(ir);
-            log_debug!(
-                "{}: req {:p}: client {}, pane %{}, type {}",
-                "input_request_reply",
-                ir,
-                _s((*c).name),
-                (*(*ir).ictx).wp.as_ref().map_or(0, |wp| wp.id),
-                (*ir).type_ as u32,
-            );
-            match type_ {
-                input_request_type::INPUT_REQUEST_PALETTE => {
-                    if (*pd).idx != (*ir).idx {
-                        ir = ir1;
-                        continue;
-                    }
-                    input_osc_colour_reply((*ir).ictx, 4, (*pd).idx, (*pd).c);
-                }
+            if (*ir).type_ == type_ && (*pd).idx == (*ir).idx {
+                found = ir;
+                break;
             }
-            tailq_remove::<input_request, InputRequestEntry>(
-                &raw mut (*(*ir).ictx).requests[type_ as usize],
-                ir,
-            );
-            tailq_remove::<input_request, InputRequestCEntry>(
-                &raw mut (*irl).requests,
-                ir,
-            );
-            (*(*ir).ictx).request_count -= 1;
-            free_(ir);
-            break;
+            input_free_request(ir);
+            ir = ir1;
+        }
+        if found.is_null() {
+            return;
+        }
+
+        // Process requests in the ictx queue up to and including found.
+        let mut complete: i32 = 0;
+        let mut ir = tailq_first(&raw mut (*(*found).ictx).requests);
+        while !ir.is_null() {
+            let ir1 = tailq_next::<input_request, input_request, InputRequestEntry>(ir);
+            if complete != 0
+                && (*ir).type_ != input_request_type::INPUT_REQUEST_QUEUE
+            {
+                break;
+            }
+            if (*ir).type_ == input_request_type::INPUT_REQUEST_QUEUE {
+                input_send_reply((*ir).ictx, (*ir).data);
+            } else if ir == found
+                && (*ir).type_ == input_request_type::INPUT_REQUEST_PALETTE
+            {
+                input_osc_colour_reply((*ir).ictx, 0, 4, (*pd).idx, (*pd).c, (*ir).end);
+                complete = 1;
+            }
+            input_free_request(ir);
+            ir = ir1;
         }
     }
 }
@@ -3499,31 +3507,11 @@ pub unsafe fn input_request_reply(
 /// Cancel pending requests for client.
 pub unsafe fn input_cancel_requests(c: *mut client) {
     unsafe {
-        for i in 0..INPUT_REQUEST_TYPES {
-            let irl = &raw mut (*c).input_requests[i];
-            let mut ir = tailq_first(&raw mut (*irl).requests);
-            while !ir.is_null() {
-                let ir1 = tailq_next::<input_request, input_request, InputRequestCEntry>(ir);
-                log_debug!(
-                    "{}: req {:p}: client {}, pane %{}, type {}",
-                    "input_cancel_requests",
-                    ir,
-                    _s((*c).name),
-                    (*(*ir).ictx).wp.as_ref().map_or(0, |wp| wp.id),
-                    (*ir).type_ as u32,
-                );
-                tailq_remove::<input_request, InputRequestEntry>(
-                    &raw mut (*(*ir).ictx).requests[i],
-                    ir,
-                );
-                tailq_remove::<input_request, InputRequestCEntry>(
-                    &raw mut (*irl).requests,
-                    ir,
-                );
-                (*(*ir).ictx).request_count -= 1;
-                free_(ir);
-                ir = ir1;
-            }
+        let mut ir = tailq_first(&raw mut (*c).input_requests);
+        while !ir.is_null() {
+            let ir1 = tailq_next::<input_request, input_request, InputRequestCEntry>(ir);
+            input_free_request(ir);
+            ir = ir1;
         }
     }
 }

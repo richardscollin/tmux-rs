@@ -270,6 +270,7 @@ pub struct cmd {
     pub group: u32,
     pub file: *mut u8,
     pub line: u32,
+    pub parse_flags: i32,
 
     pub qentry: tailq_entry<cmd>,
 }
@@ -448,6 +449,10 @@ pub unsafe fn cmd_get_source(cmd: *mut cmd, file: *mut *const u8, line: &AtomicU
     }
 }
 
+pub unsafe fn cmd_get_parse_flags(cmd: *mut cmd) -> i32 {
+    unsafe { (*cmd).parse_flags }
+}
+
 pub unsafe fn cmd_get_alias(name: *const u8) -> *mut u8 {
     unsafe {
         let o = options_get_only(GLOBAL_OPTIONS, "command-alias");
@@ -527,6 +532,7 @@ pub unsafe fn cmd_parse(
     values: &[args_value],
     file: Option<&str>,
     line: c_uint,
+    parse_flags: i32,
 ) -> Result<*mut cmd, String> {
     unsafe {
         if values.is_empty() || !matches!(&values[0], args_value::String { .. }) {
@@ -551,6 +557,7 @@ pub unsafe fn cmd_parse(
             group: 0,
             file: null_mut(),
             line: 0,
+            parse_flags,
             qentry: tailq_entry {
                 tqe_next: null_mut(),
                 tqe_prev: null_mut(),
@@ -585,6 +592,7 @@ pub unsafe fn cmd_copy(cmd: *mut cmd, argc: c_int, argv: *mut *mut u8) -> *mut c
             group: 0,
             file: null_mut(),
             line: 0,
+            parse_flags: (*cmd).parse_flags,
             qentry: tailq_entry {
                 tqe_next: null_mut(),
                 tqe_prev: null_mut(),

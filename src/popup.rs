@@ -776,6 +776,68 @@ pub unsafe fn popup_job_complete_cb(job: *mut job) {
     }
 }
 
+#[expect(
+    unpredictable_function_pointer_comparisons,
+    reason = "intentional function pointer identity check, ported from C"
+)]
+pub unsafe fn popup_present(c: *mut client) -> bool {
+    unsafe { (*c).overlay_draw == Some(popup_draw_cb) }
+}
+
+pub unsafe fn popup_modify(
+    c: *mut client,
+    title: *const u8,
+    style: *const u8,
+    border_style: *const u8,
+    lines: box_lines,
+    flags: i32,
+) -> i32 {
+    unsafe {
+        let pd = (*c).overlay_data.cast::<popup_data>();
+        let mut sytmp = MaybeUninit::<crate::style>::uninit();
+
+        if !title.is_null() {
+            if !(*pd).title.is_null() {
+                free_((*pd).title);
+            }
+            (*pd).title = xstrdup(title).as_ptr();
+        }
+        if !border_style.is_null() {
+            style_set(sytmp.as_mut_ptr(), &raw const (*pd).border_cell);
+            if style_parse(sytmp.as_mut_ptr(), &raw mut (*pd).border_cell, border_style) == 0 {
+                (*pd).border_cell.fg = (*sytmp.as_ptr()).gc.fg;
+                (*pd).border_cell.bg = (*sytmp.as_ptr()).gc.bg;
+            }
+        }
+        if !style.is_null() {
+            style_set(sytmp.as_mut_ptr(), &raw const (*pd).defaults);
+            if style_parse(sytmp.as_mut_ptr(), &raw mut (*pd).defaults, style) == 0 {
+                (*pd).defaults.fg = (*sytmp.as_ptr()).gc.fg;
+                (*pd).defaults.bg = (*sytmp.as_ptr()).gc.bg;
+            }
+        }
+        if lines != box_lines::BOX_LINES_DEFAULT {
+            if lines == box_lines::BOX_LINES_NONE && (*pd).border_lines != lines {
+                screen_resize(&raw mut (*pd).s, (*pd).sx, (*pd).sy, 1);
+                job_resize((*pd).job, (*pd).sx, (*pd).sy);
+            } else if (*pd).border_lines == box_lines::BOX_LINES_NONE
+                && (*pd).border_lines != lines
+            {
+                screen_resize(&raw mut (*pd).s, (*pd).sx - 2, (*pd).sy - 2, 1);
+                job_resize((*pd).job, (*pd).sx - 2, (*pd).sy - 2);
+            }
+            (*pd).border_lines = lines;
+            tty_resize(&raw mut (*c).tty);
+        }
+        if flags != -1 {
+            (*pd).flags = popup_flag::from_bits_truncate(flags);
+        }
+
+        server_redraw_client(c);
+        0
+    }
+}
+
 pub unsafe fn popup_display(
     flags: popup_flag,
     mut lines: box_lines,

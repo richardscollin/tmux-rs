@@ -2115,6 +2115,9 @@ pub unsafe fn window_pane_get_theme(wp: *mut window_pane) -> client_theme {
 
 pub unsafe fn window_pane_send_theme_update(wp: *mut window_pane) {
     unsafe {
+        if wp.is_null() || window_pane_exited(wp) {
+            return;
+        }
         if !(*wp).flags.intersects(window_pane_flags::PANE_THEMECHANGED) {
             return;
         }

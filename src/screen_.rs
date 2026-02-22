@@ -80,6 +80,8 @@ pub unsafe fn screen_init(s: *mut screen, sx: u32, sy: u32, hlimit: u32) {
 
         #[cfg(feature = "sixel")]
         tailq_init(&raw mut (*s).images);
+        #[cfg(feature = "sixel")]
+        tailq_init(&raw mut (*s).saved_images);
 
         (*s).write_list = null_mut();
         (*s).hyperlinks = null_mut();
@@ -704,6 +706,12 @@ pub unsafe fn screen_alternate_on(s: *mut screen, gc: *mut grid_cell, cursor: i3
         }
         memcpy__(&raw mut (*s).saved_cell, gc);
 
+        #[cfg(feature = "sixel")]
+        tailq_concat::<image, discr_entry>(
+            &raw mut (*s).saved_images,
+            &raw mut (*s).images,
+        );
+
         grid_view_clear((*s).grid, 0, 0, sx, sy, 8);
 
         (*s).saved_flags = (*(*s).grid).flags;
@@ -762,6 +770,15 @@ pub unsafe fn screen_alternate_off(s: *mut screen, gc: *mut grid_cell, cursor: i
 
         grid_destroy((*s).saved_grid);
         (*s).saved_grid = null_mut();
+
+        #[cfg(feature = "sixel")]
+        {
+            crate::image_::image_free_all(s);
+            tailq_concat::<image, discr_entry>(
+                &raw mut (*s).images,
+                &raw mut (*s).saved_images,
+            );
+        }
 
         if (*s).cx > screen_size_x(s) - 1 {
             (*s).cx = screen_size_x(s) - 1;

@@ -439,7 +439,9 @@ pub unsafe fn input_key(s: *mut screen, bev: *mut bufferevent, mut key: key_code
                     ud.data[0] = newkey as u8;
                 } else if (newkey & KEYC_MASK_MODIFIERS) == KEYC_CTRL {
                     let nk = newkey & KEYC_MASK_KEY;
-                    if nk >= b'A' as u64 && nk <= b'Z' as u64 {
+                    if nk == b'?' as u64 {
+                        ud.data[0] = 0x7f;
+                    } else if nk >= b'@' as u64 && nk <= b'_' as u64 {
                         ud.data[0] = (nk - 0x40) as u8;
                     } else if nk >= b'a' as u64 && nk <= b'z' as u64 {
                         ud.data[0] = (nk - 0x60) as u8;

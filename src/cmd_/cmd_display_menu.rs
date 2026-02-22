@@ -38,8 +38,8 @@ pub static CMD_DISPLAY_POPUP_ENTRY: cmd_entry = cmd_entry {
     name: "display-popup",
     alias: Some("popup"),
 
-    args: args_parse::new("Bb:Cc:d:e:Eh:ks:S:t:T:w:x:y:", 0, -1, None),
-    usage: "[-BCEk] [-b border-lines] [-c target-client] [-d start-directory] [-e environment] [-h height] [-s style] [-S border-style] [-t target-pane] [-T title] [-w width] [-x position] [-y position] [shell-command [argument ...]]",
+    args: args_parse::new("Bb:Cc:d:e:Eh:kNs:S:t:T:w:x:y:", 0, -1, None),
+    usage: "[-BCEkN] [-b border-lines] [-c target-client] [-d start-directory] [-e environment] [-h height] [-s style] [-S border-style] [-t target-pane] [-T title] [-w width] [-x position] [-y position] [shell-command [argument ...]]",
     target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_PANE, cmd_find_flags::empty()),
 
     flags: cmd_flag::CMD_AFTERHOOK.union(cmd_flag::CMD_CLIENT_CFLAG),
@@ -83,7 +83,7 @@ unsafe fn cmd_display_menu_args_parse(
     type_
 }
 
-unsafe fn cmd_display_menu_get_position(
+unsafe fn cmd_display_menu_get_pos(
     tc: *mut client,
     item: *mut cmdq_item,
     args: *mut args,
@@ -271,7 +271,7 @@ unsafe fn cmd_display_menu_get_position(
         *px = n as u32;
         log_debug!(
             "{}: -x: {} = {} = {} (-w {})",
-            "cmd_display_menu_get_position",
+            "cmd_display_menu_get_pos",
             _s(xp),
             _s(p),
             *px,
@@ -307,7 +307,7 @@ unsafe fn cmd_display_menu_get_position(
         *py = n as u32;
         log_debug!(
             "{}: -y: {} = {} = {} (-h {})",
-            "cmd_display_menu_get_position",
+            "cmd_display_menu_get_pos",
             _s(yp),
             _s(p),
             *py,
@@ -399,7 +399,7 @@ unsafe fn cmd_display_menu_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
             menu_free(menu);
             return cmd_retval::CMD_RETURN_NORMAL;
         }
-        if cmd_display_menu_get_position(
+        if cmd_display_menu_get_pos(
             tc,
             item,
             args,
@@ -460,55 +460,69 @@ unsafe fn cmd_display_popup_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
         let tty = &raw mut (*tc).tty;
         let style = args_get(&*args, b's');
         let border_style = args_get(&*args, b'S');
+        let mut cwd: *mut u8 = null_mut();
         let mut argc = 0;
         let mut lines = box_lines::BOX_LINES_DEFAULT as i32;
         let mut px = 0;
         let mut py = 0;
+        let mut w: u32 = 0;
+        let mut h: u32 = 0;
         let count = args_count(&*args);
         let mut env = null_mut();
+        let modify = popup_present(tc);
+        let mut flags: i32 = -1;
         let o = (*(*(*s).curw).window).options;
 
         if args_has(&*args, 'C') {
             server_client_clear_overlay(tc);
             return cmd_retval::CMD_RETURN_NORMAL;
         }
-        if (*tc).overlay_draw.is_some() {
+        if !modify && (*tc).overlay_draw.is_some() {
             return cmd_retval::CMD_RETURN_NORMAL;
         }
 
-        let mut h: u32 = (*tty).sy / 2;
-        if args_has(&*args, 'h') {
-            match args_percentage(&*args, b'h', 1, (*tty).sy as i64, (*tty).sy as i64) {
-                Ok(v) => h = v as u32,
-                Err(cause) => {
-                    cmdq_error!(item, "height {}", cause);
-                    return cmd_retval::CMD_RETURN_ERROR;
+        if !modify {
+            h = (*tty).sy / 2;
+            if args_has(&*args, 'h') {
+                match args_percentage(&*args, b'h', 1, (*tty).sy as i64, (*tty).sy as i64) {
+                    Ok(v) => h = v as u32,
+                    Err(cause) => {
+                        cmdq_error!(item, "height {}", cause);
+                        return cmd_retval::CMD_RETURN_ERROR;
+                    }
                 }
             }
-        }
 
-        let mut w = (*tty).sx / 2;
-        if args_has(&*args, 'w') {
-            match args_percentage(&*args, b'w', 1, (*tty).sx as i64, (*tty).sx as i64) {
-                Ok(v) => w = v as u32,
-                Err(cause) => {
-                    cmdq_error!(item, "width {}", cause);
-                    return cmd_retval::CMD_RETURN_ERROR;
+            w = (*tty).sx / 2;
+            if args_has(&*args, 'w') {
+                match args_percentage(&*args, b'w', 1, (*tty).sx as i64, (*tty).sx as i64) {
+                    Ok(v) => w = v as u32,
+                    Err(cause) => {
+                        cmdq_error!(item, "width {}", cause);
+                        return cmd_retval::CMD_RETURN_ERROR;
+                    }
                 }
             }
+
+            if w > (*tty).sx {
+                w = (*tty).sx;
+            }
+            if h > (*tty).sy {
+                h = (*tty).sy;
+            }
+            if cmd_display_menu_get_pos(tc, item, args, &raw mut px, &raw mut py, w, h) == 0 {
+                return cmd_retval::CMD_RETURN_NORMAL;
+            }
+
+            let value = args_get(&*args, b'd');
+            cwd = if !value.is_null() {
+                format_single_from_target(item, value)
+            } else {
+                xstrdup(server_client_get_cwd(tc, s)).as_ptr()
+            };
         }
 
-        if w > (*tty).sx {
-            w = (*tty).sx;
-        }
-        if h > (*tty).sy {
-            h = (*tty).sy;
-        }
-        if cmd_display_menu_get_position(tc, item, args, &raw mut px, &raw mut py, w, h) == 0 {
-            return cmd_retval::CMD_RETURN_NORMAL;
-        }
-
-        let mut value = args_get(&*args, b'b');
+        let value = args_get(&*args, b'b');
         if args_has(&*args, 'B') {
             lines = box_lines::BOX_LINES_NONE as i32;
         } else if !value.is_null() {
@@ -522,12 +536,46 @@ unsafe fn cmd_display_popup_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
             };
         }
 
-        value = args_get(&*args, b'd');
-        let cwd = if !value.is_null() {
-            format_single_from_target(item, value)
+        let title = if args_has(&*args, 'T') {
+            format_single_from_target(item, args_get(&*args, b'T'))
         } else {
-            xstrdup(server_client_get_cwd(tc, s)).as_ptr()
+            xstrdup_(c"").as_ptr()
         };
+
+        if args_has(&*args, 'N') || !modify {
+            flags = 0;
+        }
+        if args_has_count(&*args, b'E') > 1 {
+            if flags == -1 {
+                flags = 0;
+            }
+            flags |= popup_flag::POPUP_CLOSEEXITZERO.bits();
+        } else if args_has(&*args, 'E') {
+            if flags == -1 {
+                flags = 0;
+            }
+            flags |= popup_flag::POPUP_CLOSEEXIT.bits();
+        }
+        if args_has(&*args, 'k') {
+            if flags == -1 {
+                flags = 0;
+            }
+            flags |= popup_flag::POPUP_CLOSEANYKEY.bits();
+        }
+
+        if modify {
+            popup_modify(
+                tc,
+                title,
+                style,
+                border_style,
+                box_lines::try_from(lines).unwrap(),
+                flags,
+            );
+            free_(title);
+            return cmd_retval::CMD_RETURN_NORMAL;
+        }
+
         let mut shellcmd = null();
         if count == 0 {
             shellcmd = options_get_string_((*s).options, "default-command");
@@ -556,22 +604,8 @@ unsafe fn cmd_display_popup_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
             }
         }
 
-        let title = if args_has(&*args, 'T') {
-            format_single_from_target(item, args_get(&*args, b'T'))
-        } else {
-            xstrdup_(c"").as_ptr()
-        };
-        let mut flags = popup_flag::empty();
-        if args_has_count(&*args, b'E') > 1 {
-            flags |= popup_flag::POPUP_CLOSEEXITZERO;
-        } else if args_has(&*args, 'E') {
-            flags |= popup_flag::POPUP_CLOSEEXIT;
-        }
-        if args_has(&*args, 'k') {
-            flags |= popup_flag::POPUP_CLOSEANYKEY;
-        }
         if popup_display(
-            flags,
+            popup_flag::from_bits_truncate(flags),
             box_lines::try_from(lines).unwrap(),
             item,
             px,

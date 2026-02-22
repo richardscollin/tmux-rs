@@ -2386,7 +2386,7 @@ pub unsafe fn window_copy_cmd_select_word(
 ) -> window_copy_cmd_action {
     unsafe {
         let wme: *mut window_mode_entry = (*cs).wme;
-        let session_options: *mut options = (*(*cs).s).options;
+        let so: *mut options = (*(*cs).s).options;
         let data: *mut window_copy_mode_data = (*wme).data.cast();
         // u_int px, py, nextx, nexty;
 
@@ -2396,7 +2396,7 @@ pub unsafe fn window_copy_cmd_select_word(
         (*data).dx = (*data).cx;
         (*data).dy = screen_hsize((*data).backing) + (*data).cy - (*data).oy;
 
-        (*data).separators = options_get_string_(session_options, "word-separators");
+        (*data).separators = options_get_string_(so, "word-separators");
         window_copy_cursor_previous_word(wme, (*data).separators, 0);
         let px = (*data).cx;
         let py = screen_hsize((*data).backing) + (*data).cy - (*data).oy;
@@ -2435,6 +2435,34 @@ pub unsafe fn window_copy_cmd_select_word(
         }
 
         window_copy_cmd_action::WINDOW_COPY_CMD_REDRAW
+    }
+}
+
+pub unsafe fn window_copy_cmd_selection_mode(
+    cs: *mut window_copy_cmd_state,
+) -> window_copy_cmd_action {
+    unsafe {
+        let wme: *mut window_mode_entry = (*cs).wme;
+        let so: *mut options = (*(*cs).s).options;
+        let data: *mut window_copy_mode_data = (*wme).data.cast();
+        let s = args_string(&*(*cs).wargs, 0);
+
+        if s.is_none()
+            || libc::strcaseeq_(s.unwrap().as_ptr().cast::<u8>(), "char")
+            || libc::strcaseeq_(s.unwrap().as_ptr().cast::<u8>(), "c")
+        {
+            (*data).selflag = selflag::SEL_CHAR;
+        } else if libc::strcaseeq_(s.unwrap().as_ptr().cast::<u8>(), "word")
+            || libc::strcaseeq_(s.unwrap().as_ptr().cast::<u8>(), "w")
+        {
+            (*data).separators = options_get_string_(so, "word-separators");
+            (*data).selflag = selflag::SEL_WORD;
+        } else if libc::strcaseeq_(s.unwrap().as_ptr().cast::<u8>(), "line")
+            || libc::strcaseeq_(s.unwrap().as_ptr().cast::<u8>(), "l")
+        {
+            (*data).selflag = selflag::SEL_LINE;
+        }
+        window_copy_cmd_action::WINDOW_COPY_CMD_NOTHING
     }
 }
 
@@ -2955,7 +2983,7 @@ struct window_copy_cmd_table_entry {
     f: unsafe fn(*mut window_copy_cmd_state) -> window_copy_cmd_action,
 }
 
-static WINDOW_COPY_CMD_TABLE: [window_copy_cmd_table_entry; 87] = [
+static WINDOW_COPY_CMD_TABLE: [window_copy_cmd_table_entry; 88] = [
     window_copy_cmd_table_entry {
         command: "append-selection",
         args: args_parse::new("", 0, 0, None),
@@ -3447,6 +3475,12 @@ static WINDOW_COPY_CMD_TABLE: [window_copy_cmd_table_entry; 87] = [
         args: args_parse::new("", 0, 0, None),
         clear: window_copy_cmd_clear::WINDOW_COPY_CMD_CLEAR_ALWAYS,
         f: window_copy_cmd_select_word,
+    },
+    window_copy_cmd_table_entry {
+        command: "selection-mode",
+        args: args_parse::new("", 0, 1, None),
+        clear: window_copy_cmd_clear::WINDOW_COPY_CMD_CLEAR_ALWAYS,
+        f: window_copy_cmd_selection_mode,
     },
     window_copy_cmd_table_entry {
         command: "set-mark",

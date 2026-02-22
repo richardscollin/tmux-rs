@@ -907,7 +907,9 @@ pub fn colour_byname(name: &str) -> i32 {
         ("yellow4", 0x8b8b00),
     ];
 
-    if name.starts_with("grey") || name.starts_with("gray") {
+    if name.len() >= 4
+        && (name[..4].eq_ignore_ascii_case("grey") || name[..4].eq_ignore_ascii_case("gray"))
+    {
         if name.len() == 4 {
             return 0xbebebe | COLOUR_FLAG_RGB;
         }

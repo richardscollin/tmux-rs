@@ -3422,11 +3422,25 @@ pub unsafe fn server_client_dispatch(imsg: *mut imsg, arg: *mut c_void) {
             | msgtype::MSG_IDENTIFY_TERM
             | msgtype::MSG_IDENTIFY_TERMINFO
             | msgtype::MSG_IDENTIFY_TTYNAME
-            | msgtype::MSG_IDENTIFY_DONE => server_client_dispatch_identify(c, imsg),
-            msgtype::MSG_COMMAND => server_client_dispatch_command(c, imsg),
+            | msgtype::MSG_IDENTIFY_DONE => {
+                if server_client_dispatch_identify(c, imsg).is_err() {
+                    log_debug!("client {:?} invalid message type {}", c, (*imsg).hdr.type_);
+                    proc_kill_peer((*c).peer);
+                    return;
+                }
+            }
+            msgtype::MSG_COMMAND => {
+                if server_client_dispatch_command(c, imsg).is_err() {
+                    log_debug!("client {:?} invalid message type {}", c, (*imsg).hdr.type_);
+                    proc_kill_peer((*c).peer);
+                    return;
+                }
+            }
             msgtype::MSG_RESIZE => {
                 if datalen != 0 {
-                    fatalx("bad MSG_RESIZE size");
+                    log_debug!("client {:?} invalid message type {}", c, (*imsg).hdr.type_);
+                    proc_kill_peer((*c).peer);
+                    return;
                 }
 
                 if !(*c).flags.intersects(client_flag::CONTROL) {
@@ -3447,7 +3461,9 @@ pub unsafe fn server_client_dispatch(imsg: *mut imsg, arg: *mut c_void) {
             }
             msgtype::MSG_EXITING => {
                 if datalen != 0 {
-                    fatalx("bad MSG_EXITING size");
+                    log_debug!("client {:?} invalid message type {}", c, (*imsg).hdr.type_);
+                    proc_kill_peer((*c).peer);
+                    return;
                 }
                 server_client_set_session(c, null_mut());
                 recalculate_sizes();
@@ -3456,7 +3472,9 @@ pub unsafe fn server_client_dispatch(imsg: *mut imsg, arg: *mut c_void) {
             }
             msgtype::MSG_WAKEUP | msgtype::MSG_UNLOCK => {
                 if datalen != 0 {
-                    fatalx("bad MSG_WAKEUP size");
+                    log_debug!("client {:?} invalid message type {}", c, (*imsg).hdr.type_);
+                    proc_kill_peer((*c).peer);
+                    return;
                 }
 
                 if !(*c).flags.intersects(client_flag::SUSPENDED) {
@@ -3481,10 +3499,15 @@ pub unsafe fn server_client_dispatch(imsg: *mut imsg, arg: *mut c_void) {
             }
             msgtype::MSG_SHELL => {
                 if datalen != 0 {
-                    fatalx("bad MSG_SHELL size");
+                    log_debug!("client {:?} invalid message type {}", c, (*imsg).hdr.type_);
+                    proc_kill_peer((*c).peer);
+                    return;
                 }
-
-                server_client_dispatch_shell(c);
+                if server_client_dispatch_shell(c).is_err() {
+                    log_debug!("client {:?} invalid message type {}", c, (*imsg).hdr.type_);
+                    proc_kill_peer((*c).peer);
+                    return;
+                }
             }
             msgtype::MSG_WRITE_READY => file_write_ready(&raw mut (*c).files, imsg),
             msgtype::MSG_READ => file_read_data(&raw mut (*c).files, imsg),
@@ -3520,7 +3543,7 @@ pub unsafe fn server_client_command_done(item: *mut cmdq_item, _data: *mut c_voi
 }
 
 /// Handle command message.
-pub unsafe fn server_client_dispatch_command(c: *mut client, imsg: *mut imsg) {
+pub unsafe fn server_client_dispatch_command(c: *mut client, imsg: *mut imsg) -> Result<(), ()> {
     unsafe {
         let mut data: msg_command = zeroed();
         let buf;
@@ -3532,18 +3555,18 @@ pub unsafe fn server_client_dispatch_command(c: *mut client, imsg: *mut imsg) {
 
         'error: {
             if (*c).flags.intersects(client_flag::EXIT) {
-                return;
+                return Ok(());
             }
 
             if (*imsg).hdr.len as usize - IMSG_HEADER_SIZE < size_of::<msg_command>() {
-                fatalx("bad MSG_COMMAND size");
+                return Err(());
             }
             memcpy__(&raw mut data, (*imsg).data.cast());
 
             buf = (*imsg).data.cast::<u8>().add(size_of::<msg_command>());
             len = (*imsg).hdr.len as usize - IMSG_HEADER_SIZE - size_of::<msg_command>();
             if len > 0 && *buf.add(len - 1) != b'\0' {
-                fatalx("bad MSG_COMMAND string");
+                return Err(());
             }
 
             if cmd_unpack_argv(buf, len, data.argc, &raw mut argv) != 0 {
@@ -3586,7 +3609,7 @@ pub unsafe fn server_client_dispatch_command(c: *mut client, imsg: *mut imsg) {
             );
 
             cmd_list_free(cmdlist);
-            return;
+            return Ok(());
         }
         // error:
         cmd_free_argv(argc, argv);
@@ -3595,18 +3618,19 @@ pub unsafe fn server_client_dispatch_command(c: *mut client, imsg: *mut imsg) {
         free_(cause);
 
         (*c).flags |= client_flag::EXIT;
+        Ok(())
     }
 }
 
 /// Handle identify message.
-pub unsafe fn server_client_dispatch_identify(c: *mut client, imsg: *mut imsg) {
+pub unsafe fn server_client_dispatch_identify(c: *mut client, imsg: *mut imsg) -> Result<(), ()> {
     unsafe {
         let mut feat: i32 = 0;
         let mut flags: i32 = 0;
         let mut longflags: u64 = 0;
 
         if (*c).flags.intersects(client_flag::IDENTIFIED) {
-            fatalx("out-of-order identify message");
+            return Err(());
         }
 
         let data = (*imsg).data;
@@ -3615,7 +3639,7 @@ pub unsafe fn server_client_dispatch_identify(c: *mut client, imsg: *mut imsg) {
         match msgtype::try_from((*imsg).hdr.type_).expect("unexpectd msgtype") {
             msgtype::MSG_IDENTIFY_FEATURES => {
                 if datalen != size_of::<i32>() as u16 {
-                    fatalx("bad MSG_IDENTIFY_FEATURES size");
+                    return Err(());
                 }
                 memcpy__(&raw mut feat, data.cast());
                 (*c).term_features |= feat;
@@ -3623,7 +3647,7 @@ pub unsafe fn server_client_dispatch_identify(c: *mut client, imsg: *mut imsg) {
             }
             msgtype::MSG_IDENTIFY_FLAGS => {
                 if datalen != size_of::<i32>() as u16 {
-                    fatalx("bad MSG_IDENTIFY_FLAGS size");
+                    return Err(());
                 }
                 memcpy__(&raw mut flags, data.cast());
                 (*c).flags |= client_flag::from_bits(flags as u64).expect("invalid identify flags");
@@ -3631,7 +3655,7 @@ pub unsafe fn server_client_dispatch_identify(c: *mut client, imsg: *mut imsg) {
             }
             msgtype::MSG_IDENTIFY_LONGFLAGS => {
                 if datalen != size_of::<u64>() as u16 {
-                    fatalx("bad MSG_IDENTIFY_LONGFLAGS size");
+                    return Err(());
                 }
                 memcpy__(&raw mut longflags, data.cast());
                 (*c).flags |=
@@ -3640,18 +3664,14 @@ pub unsafe fn server_client_dispatch_identify(c: *mut client, imsg: *mut imsg) {
             }
             msgtype::MSG_IDENTIFY_TERM => {
                 if datalen == 0 || *data.cast::<u8>().add((datalen - 1) as usize) != b'\0' {
-                    fatalx("bad MSG_IDENTIFY_TERM string");
+                    return Err(());
                 }
-                if *data.cast::<u8>() == b'\0' {
-                    (*c).term_name = xstrdup(c!("unknown")).as_ptr();
-                } else {
-                    (*c).term_name = xstrdup(data.cast()).as_ptr();
-                }
+                (*c).term_name = xstrdup(data.cast()).as_ptr();
                 // log_debug("client %p IDENTIFY_TERM %s", c, data);
             }
             msgtype::MSG_IDENTIFY_TERMINFO => {
                 if datalen == 0 || *data.cast::<u8>().add((datalen - 1) as usize) != b'\0' {
-                    fatalx("bad MSG_IDENTIFY_TERMINFO string");
+                    return Err(());
                 }
                 (*c).term_caps =
                     xreallocarray_((*c).term_caps, (*c).term_ncaps as usize + 1).as_ptr();
@@ -3661,14 +3681,14 @@ pub unsafe fn server_client_dispatch_identify(c: *mut client, imsg: *mut imsg) {
             }
             msgtype::MSG_IDENTIFY_TTYNAME => {
                 if datalen == 0 || *data.cast::<u8>().add((datalen - 1) as usize) != b'\0' {
-                    fatalx("bad MSG_IDENTIFY_TTYNAME string");
+                    return Err(());
                 }
                 (*c).ttyname = xstrdup(data.cast()).as_ptr();
                 // log_debug("client %p IDENTIFY_TTYNAME %s", c, data);
             }
             msgtype::MSG_IDENTIFY_CWD => {
                 if datalen == 0 || *data.cast::<u8>().add((datalen - 1) as usize) != b'\0' {
-                    // fatalx("bad MSG_IDENTIFY_CWD string");
+                    return Err(());
                 }
                 // On Windows, _access does not support X_OK; use F_OK (0) instead
                 #[cfg(target_os = "windows")]
@@ -3686,19 +3706,19 @@ pub unsafe fn server_client_dispatch_identify(c: *mut client, imsg: *mut imsg) {
             }
             msgtype::MSG_IDENTIFY_STDIN => {
                 if datalen != 0 {
-                    fatalx("bad MSG_IDENTIFY_STDIN size");
+                    return Err(());
                 }
                 (*c).fd = imsg_get_fd(imsg);
             }
             msgtype::MSG_IDENTIFY_STDOUT => {
                 if datalen != 0 {
-                    fatalx("bad MSG_IDENTIFY_STDOUT size");
+                    return Err(());
                 }
                 (*c).out_fd = imsg_get_fd(imsg);
             }
             msgtype::MSG_IDENTIFY_ENVIRON => {
                 if datalen == 0 || *data.cast::<u8>().add((datalen - 1) as usize) != b'\0' {
-                    fatalx("bad MSG_IDENTIFY_ENVIRON string");
+                    return Err(());
                 }
                 if !libc::strchr(data.cast(), b'=' as i32).is_null() {
                     environ_put((*c).environ, data.cast(), environ_flags::empty());
@@ -3707,7 +3727,7 @@ pub unsafe fn server_client_dispatch_identify(c: *mut client, imsg: *mut imsg) {
             }
             msgtype::MSG_IDENTIFY_CLIENTPID => {
                 if datalen != size_of::<i32>() as u16 {
-                    fatalx("bad MSG_IDENTIFY_CLIENTPID size");
+                    return Err(());
                 }
                 memcpy__(&raw mut (*c).pid, data.cast());
                 // log_debug("client %p IDENTIFY_CLIENTPID %ld", c, (long)(*c).pid);
@@ -3716,11 +3736,16 @@ pub unsafe fn server_client_dispatch_identify(c: *mut client, imsg: *mut imsg) {
         }
 
         if (*imsg).hdr.type_ != msgtype::MSG_IDENTIFY_DONE as u32 {
-            return;
+            return Ok(());
         }
         (*c).flags |= client_flag::IDENTIFIED;
 
-        let name = if *(*c).ttyname != b'\0' {
+        if (*c).term_name.is_null() || *(*c).term_name == b'\0' {
+            free_((*c).term_name);
+            (*c).term_name = xstrdup(c!("unknown")).as_ptr();
+        }
+
+        let name = if (*c).ttyname.is_null() || *(*c).ttyname != b'\0' {
             xstrdup((*c).ttyname).as_ptr()
         } else {
             format_nul!("client-{}", (*c).pid)
@@ -3744,7 +3769,9 @@ pub unsafe fn server_client_dispatch_identify(c: *mut client, imsg: *mut imsg) {
                 tty_resize(&raw mut (*c).tty);
                 (*c).flags |= client_flag::TERMINAL;
             }
-            libc::close((*c).out_fd);
+            if (*c).out_fd != -1 {
+                libc::close((*c).out_fd);
+            }
             (*c).out_fd = -1;
         }
 
@@ -3757,11 +3784,13 @@ pub unsafe fn server_client_dispatch_identify(c: *mut client, imsg: *mut imsg) {
         {
             start_cfg();
         }
+
+        Ok(())
     }
 }
 
 /// Handle shell message.
-pub unsafe fn server_client_dispatch_shell(c: *mut client) {
+pub unsafe fn server_client_dispatch_shell(c: *mut client) -> Result<(), ()> {
     unsafe {
         let mut shell = options_get_string_(GLOBAL_S_OPTIONS, "default-shell");
         if !checkshell_(shell) {
@@ -3776,6 +3805,7 @@ pub unsafe fn server_client_dispatch_shell(c: *mut client) {
         );
 
         proc_kill_peer((*c).peer);
+        Ok(())
     }
 }
 

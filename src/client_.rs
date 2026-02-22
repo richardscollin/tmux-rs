@@ -470,9 +470,7 @@ tcsetattr,
                     cmd_list_free(cmdlist);
                 }
                 Err(error) => {
-                    eprintln!("{}", _s(error));
                     free_(error);
-                    return 1;
                 }
             }
         }

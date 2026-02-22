@@ -2443,6 +2443,16 @@ pub fn format_cb_version(_ft: *mut format_tree) -> format_table_type {
     getversion().into()
 }
 
+/// Callback for sixel_support.
+pub fn format_cb_sixel_support(_ft: *mut format_tree) -> format_table_type {
+    if cfg!(feature = "sixel") {
+        "1"
+    } else {
+        "0"
+    }
+    .into()
+}
+
 /// Callback for `active_window_index`.
 pub unsafe fn format_cb_active_window_index(ft: *mut format_tree) -> format_table_type {
     unsafe {
@@ -3071,6 +3081,7 @@ static FORMAT_TABLE: &[format_table_entry] = &[
     format_table_entry::new("session_path", format_cb_session_path),
     format_table_entry::new("session_stack", format_cb_session_stack),
     format_table_entry::new("session_windows", format_cb_session_windows),
+    format_table_entry::new("sixel_support", format_cb_sixel_support),
     format_table_entry::new("socket_path", format_cb_socket_path),
     format_table_entry::new("start_time", format_cb_start_time),
     format_table_entry::new("tree_mode_format", format_cb_tree_mode_format),

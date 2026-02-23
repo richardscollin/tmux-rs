@@ -563,25 +563,26 @@ pub unsafe fn server_update_socket() {
             LAST = n;
 
             #[cfg(unix)]
+            #[cfg_attr(not(target_os = "macos"), expect(clippy::unnecessary_cast, reason = "mode_t is u32 on linux but u16 on macos"))]
             {
                 use std::os::unix::fs::{MetadataExt, PermissionsExt};
                 let socket_path = SOCKET_PATH.get().unwrap();
                 let Ok(metadata) = std::fs::metadata(socket_path) else {
                     return;
                 };
-                let mut mode = metadata.mode() & ACCESSPERMS;
+                let mut mode = metadata.mode() & ACCESSPERMS as u32;
                 if n != 0 {
-                    if mode & S_IRUSR != 0 {
-                        mode |= S_IXUSR;
+                    if mode & S_IRUSR as u32 != 0 {
+                        mode |= S_IXUSR as u32;
                     }
-                    if mode & S_IRGRP != 0 {
-                        mode |= S_IXGRP;
+                    if mode & S_IRGRP as u32 != 0 {
+                        mode |= S_IXGRP as u32;
                     }
-                    if mode & S_IROTH != 0 {
-                        mode |= S_IXOTH;
+                    if mode & S_IROTH as u32 != 0 {
+                        mode |= S_IXOTH as u32;
                     }
                 } else {
-                    mode &= !(S_IXUSR | S_IXGRP | S_IXOTH);
+                    mode &= !(S_IXUSR as u32 | S_IXGRP as u32 | S_IXOTH as u32);
                 }
                 let _ = std::fs::set_permissions(socket_path, std::fs::Permissions::from_mode(mode));
             }

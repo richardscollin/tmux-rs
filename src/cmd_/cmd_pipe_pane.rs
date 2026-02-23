@@ -133,7 +133,7 @@ pub unsafe fn cmd_pipe_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
                 close(pipe_fd[0]);
 
                 use crate::compat::FileIntoRawFd;
-                let null_fd = std::fs::OpenOptions::new().write(true).open(PATH_DEVNULL).map(FileIntoRawFd::into_fd).unwrap_or(-1);
+                let null_fd = std::fs::OpenOptions::new().write(true).open(PATH_DEVNULL).map_or(-1, FileIntoRawFd::into_fd);
                 #[expect(clippy::collapsible_else_if)]
                 if out {
                     if dup2(pipe_fd[1], STDIN_FILENO) == -1 {

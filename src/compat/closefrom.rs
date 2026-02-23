@@ -21,9 +21,9 @@ unsafe extern "C" {
 /// Closes all file descriptors >= `start_fd`.
 pub fn closefrom(start_fd: i32) {
     unsafe {
-        let max_fd = libc::getdtablesize();
+        let max_fd = crate::libc::getdtablesize();
         for fd in start_fd..max_fd {
-            libc::close(fd); // ignore close errors
+            crate::libc::close(fd); // ignore close errors
         }
     }
 }

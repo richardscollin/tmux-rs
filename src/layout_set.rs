@@ -232,8 +232,7 @@ pub unsafe fn layout_set_main_h(w: *mut window) {
         } else {
             s = options_get_string_((*w).options, "other-pane-height");
             otherh = args_string_percentage(s, 0, sy as i64, sy as i64)
-                .map(|v| v as u32)
-                .unwrap_or(0);
+                .map_or(0, |v| v as u32);
             if otherh == 0 {
                 otherh = sy - mainh;
             } else if otherh > sy || sy - otherh < mainh {
@@ -330,8 +329,7 @@ pub unsafe fn layout_set_main_h_mirrored(w: *mut window) {
         } else {
             let s = options_get_string_((*w).options, "other-pane-height");
             otherh = args_string_percentage(s, 0, sy as i64, sy as i64)
-                .map(|v| v as u32)
-                .unwrap_or(0);
+                .map_or(0, |v| v as u32);
             if otherh == 0 {
                 otherh = sy - mainh;
             } else if otherh > sy || sy - otherh < mainh {
@@ -428,8 +426,7 @@ pub unsafe fn layout_set_main_v(w: *mut window) {
         } else {
             let s = options_get_string_((*w).options, "other-pane-width");
             otherw = args_string_percentage(s, 0, sx as i64, sx as i64)
-                .map(|v| v as u32)
-                .unwrap_or(0);
+                .map_or(0, |v| v as u32);
             if otherw == 0 {
                 otherw = sx - mainw;
             } else if otherw > sx || sx - otherw < mainw {
@@ -526,8 +523,7 @@ pub unsafe fn layout_set_main_v_mirrored(w: *mut window) {
         } else {
             let s = options_get_string_((*w).options, "other-pane-width");
             otherw = args_string_percentage(s, 0, sx as i64, sx as i64)
-                .map(|v| v as u32)
-                .unwrap_or(0);
+                .map_or(0, |v| v as u32);
             if otherw == 0 {
                 otherw = sx - mainw;
             } else if otherw > sx || sx - otherw < mainw {

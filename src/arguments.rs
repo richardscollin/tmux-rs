@@ -535,7 +535,7 @@ pub fn args_get(args: &args, flag: u8) -> *const u8 {
         return null_mut();
     };
     match entry.values.last() {
-        Some(args_value::String { string }) => string.as_ptr() as *const u8,
+        Some(args_value::String { string }) => string.as_ptr().cast(),
         _ => null_mut(),
     }
 }
@@ -611,7 +611,7 @@ pub unsafe fn args_make_commands_prepare<'a>(
                     (*(*state).cmdlist).references += 1;
                     return state;
                 }
-                args_value::String { string } => string.as_ptr() as *const u8,
+                args_value::String { string } => string.as_ptr().cast(),
                 args_value::None => {
                     if default_command.is_null() {
                         fatalx("argument out of range");

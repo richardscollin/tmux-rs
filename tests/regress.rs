@@ -100,6 +100,18 @@ mod regress {
         /// Kill the server (also called on Drop).
         pub fn kill_server(&self) {
             let _ = self.build_cmd(&["kill-server"]).output();
+            // Wait for the server to fully exit. After kill-server returns,
+            // the server process may still be shutting down with its listening
+            // socket open. A new client connecting during this window would get
+            // "server exited unexpectedly".
+            for _ in 0..200 {
+                let out = self.build_cmd(&["has-session"]).output();
+                match out {
+                    Ok(o) if o.status.success() => {}
+                    _ => break,
+                }
+                std::thread::sleep(std::time::Duration::from_millis(10));
+            }
         }
 
         /// Write content to a temp file and return its path.

@@ -17,7 +17,7 @@ jobs:
           sudo apt-get install -y libncurses-dev libevent-dev
       - uses: dtolnay/rust-toolchain@nightly
       - run: |
-         RUSTFLAGS=-Zsanitizer=address cargo test --target x86_64-unknown-linux-gnu --features slow-tests
+         RUSTFLAGS=-Zsanitizer=address cargo +nightly test --target x86_64-unknown-linux-gnu --features slow-tests
 
   clippy:
     runs-on: ${{ matrix.os }}

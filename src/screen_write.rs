@@ -2368,6 +2368,7 @@ pub unsafe fn screen_write_combine(ctx: *mut screen_write_ctx, gc: *const grid_c
                 hanguljamo_state::Choseong => return 0,
                 hanguljamo_state::Composable => {}
                 hanguljamo_state::NotHangulJamo => {
+                    #[expect(clippy::if_same_then_else)]
                     if utf8_should_combine(&raw const last.data, ud) {
                         force_wide = 1;
                     } else if utf8_should_combine(ud, &raw const last.data) {

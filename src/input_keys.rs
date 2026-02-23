@@ -47,7 +47,7 @@ RB_GENERATE!(
 );
 static mut INPUT_KEY_TREE: input_key_tree = rb_initializer();
 
-const INPUT_KEY_DEFAULTS_LEN: usize = 83;
+const INPUT_KEY_DEFAULTS_LEN: usize = 87;
 
 static mut INPUT_KEY_DEFAULTS: [input_key_entry; 87] = [
     // Paste keys.

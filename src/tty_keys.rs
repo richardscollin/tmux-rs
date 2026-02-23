@@ -1354,9 +1354,12 @@ pub unsafe fn tty_keys_next(tty: *mut tty) -> i32 {
                         // kbs entry is extremely unreliable, so cannot be safely
                         // used. termios should have a better idea.
                         let bspace: libc::cc_t = (*tty).tio.c_cc[libc::VERASE];
-                        if bspace != libc::_POSIX_VDISABLE && key == bspace as u64 {
+                        if bspace != libc::_POSIX_VDISABLE
+                            && (key & KEYC_MASK_KEY) == bspace as u64
+                        {
                             log_debug!("{}: key {:#x} is backspace", _s((*c).name), key);
-                            key = keyc::KEYC_BSPACE as u64;
+                            key = keyc::KEYC_BSPACE as u64
+                                | (key & (KEYC_META | KEYC_IMPLIED_META));
                         }
 
                         // Fix up all C0 control codes that don't have a dedicated key into

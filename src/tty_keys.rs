@@ -1274,10 +1274,8 @@ pub unsafe fn tty_keys_next(tty: *mut tty) -> i32 {
                                     key = KEYC_UNKNOWN;
                                     break 'complete_key;
                                 }
-                                1 => (),
-                                -1 => {
-                                    break 'partial_key;
-                                }
+                                -1 => (), // no, or not valid
+                                1 => break 'partial_key,
                                 _ => unreachable!(),
                             }
                         } // if start

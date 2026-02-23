@@ -15,7 +15,7 @@ description = "A Rust port of tmux"
 # they just exist to make matching upstream's
 # configuration options easier. However, sixel support is implemented
 [features]
-default = ["sixel"]
+default = ["sixel", "event-tokio"]
 cgroups = []
 hyperlinks = []
 iutf8 = []

@@ -266,11 +266,6 @@ pub unsafe fn environ_for_session(s: *mut session, no_term: c_int) -> *mut envir
                 getversion()
             );
             environ_set!(env, c!("COLORTERM"), environ_flags::empty(), "truecolor");
-        } else {
-            environ_unset(env, c!("TERM"));
-            environ_unset(env, c!("TERM_PROGRAM"));
-            environ_unset(env, c!("TERM_PROGRAM_VERSION"));
-            environ_unset(env, c!("COLORTERM"));
         }
 
         #[cfg(feature = "systemd")]

@@ -2370,6 +2370,8 @@ pub unsafe fn screen_write_combine(ctx: *mut screen_write_ctx, gc: *const grid_c
                 hanguljamo_state::NotHangulJamo => {
                     if utf8_should_combine(&raw const last.data, ud) {
                         force_wide = 1;
+                    } else if utf8_should_combine(ud, &raw const last.data) {
+                        force_wide = 1;
                     } else if !utf8_has_zwj(&raw mut last.data) {
                         return 0;
                     }

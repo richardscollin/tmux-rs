@@ -29,7 +29,10 @@ mod regress {
         }
 
         pub fn regress_dir() -> PathBuf {
-            PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("regress")
+            PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .join("tests")
+                .join("regress")
+                .join("data")
         }
 
         fn build_cmd(&self, args: &[&str]) -> Command {

@@ -706,8 +706,15 @@ pub unsafe fn tty_send_requests(tty: *mut tty) {
             if !(*tty).flags.intersects(tty_flags::TTY_HAVEXDA) {
                 tty_puts(tty, c!("\x1b[>q"));
             }
-            tty_puts(tty, c!("\x1b]10;?\x1b\\\x1b]11;?\x1b\\"));
-            (*tty).flags |= tty_flags::TTY_WAITBG | tty_flags::TTY_WAITFG;
+            // ConPTY does not respond to OSC foreground/background color
+            // queries, so skip them on Windows to avoid setting WAITFG/WAITBG
+            // flags that would never be cleared (no timer fallback either),
+            // causing a permanent 500ms escape-time delay on every keystroke.
+            #[cfg(not(target_os = "windows"))]
+            {
+                tty_puts(tty, c!("\x1b]10;?\x1b\\\x1b]11;?\x1b\\"));
+                (*tty).flags |= tty_flags::TTY_WAITBG | tty_flags::TTY_WAITFG;
+            }
         } else {
             (*tty).flags |= TTY_ALL_REQUEST_FLAGS;
         }
@@ -737,6 +744,7 @@ pub unsafe fn tty_repeat_requests(tty: *mut tty, force: bool) {
         );
         (*tty).last_requests = t;
 
+        #[cfg(not(target_os = "windows"))]
         if (*(*tty).term).flags.intersects(term_flags::TERM_VT100LIKE) {
             tty_puts(tty, c!("\x1b]10;?\x1b\\\x1b]11;?\x1b\\"));
             (*tty).flags |= tty_flags::TTY_WAITBG | tty_flags::TTY_WAITFG;

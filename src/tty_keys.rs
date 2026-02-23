@@ -2330,7 +2330,7 @@ pub unsafe fn tty_keys_colours(
         }
         *size = 6 + i;
 
-        let n: i32 = colour_parse_x11(tmp.as_ptr());
+        let n: i32 = colour_parse_x11(cstr_to_str(tmp.as_ptr()));
         if n != -1 && *buf.add(3) == b'0' {
             if !c.is_null() {
                 // log_debug( c!("%s fg is %s\0"), (*c).name, colour_tostring(n));
@@ -2430,7 +2430,7 @@ unsafe fn tty_keys_palette(
 
         // Work out the colour.
         let mut pd = input_request_palette_data { idx: 0, c: 0 };
-        pd.c = colour_parse_x11(tmp.as_ptr());
+        pd.c = colour_parse_x11(cstr_to_str(tmp.as_ptr()));
         if pd.c == -1 {
             return 0;
         }

@@ -135,8 +135,8 @@ unsafe fn cmd_swap_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retva
             if src_w != dst_w {
                 window_pane_stack_remove(&raw mut (*src_w).last_panes, src_wp);
                 window_pane_stack_remove(&raw mut (*dst_w).last_panes, dst_wp);
-                colour_palette_from_option(Some(&mut (*src_wp).palette), (*src_wp).options);
-                colour_palette_from_option(Some(&mut (*dst_wp).palette), (*dst_wp).options);
+                colour_palette_from_option(Some(&mut (*src_wp).palette), &mut *(*src_wp).options);
+                colour_palette_from_option(Some(&mut (*dst_wp).palette), &mut *(*dst_wp).options);
                 layout_fix_panes(src_w, null_mut());
                 server_redraw_window(src_w);
             }

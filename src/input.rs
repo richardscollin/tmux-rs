@@ -2902,7 +2902,7 @@ unsafe fn input_osc_4(ictx: *mut input_ctx, p: *const u8) {
                 s = next;
                 continue;
             }
-            c = colour_parse_x11(s);
+            c = colour_parse_x11(cstr_to_str(s));
             if c == -1 {
                 s = next;
                 continue;
@@ -3008,7 +3008,7 @@ unsafe fn input_osc_10(ictx: *mut input_ctx, p: *const u8) {
             return;
         }
 
-        c = colour_parse_x11(p);
+        c = colour_parse_x11(cstr_to_str(p));
         if c == -1 {
             log_debug!("bad OSC 10: {}", _s(p));
             return;
@@ -3056,7 +3056,7 @@ unsafe fn input_osc_11(ictx: *mut input_ctx, p: *const u8) {
             return;
         }
 
-        let c = colour_parse_x11(p);
+        let c = colour_parse_x11(cstr_to_str(p));
         if c == -1 {
             log_debug!("bad OSC 11: {}", _s(p));
             return;
@@ -3108,7 +3108,7 @@ unsafe fn input_osc_12(ictx: *mut input_ctx, p: *const u8) {
             return;
         }
 
-        c = colour_parse_x11(p);
+        c = colour_parse_x11(cstr_to_str(p));
         if c == -1 {
             log_debug!("bad OSC 12: {}", _s(p));
             return;

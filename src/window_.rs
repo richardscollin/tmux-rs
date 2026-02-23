@@ -1066,7 +1066,7 @@ pub unsafe fn window_pane_create(
         );
 
         (*wp).palette = colour_palette_init();
-        colour_palette_from_option(Some(&mut (*wp).palette), (*wp).options);
+        colour_palette_from_option(Some(&mut (*wp).palette), &mut *(*wp).options);
 
         screen_init(&raw mut (*wp).base, sx, sy, hlimit);
         (*wp).screen = &raw mut (*wp).base;

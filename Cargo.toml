@@ -178,4 +178,5 @@ used_underscore_items = "allow" # _s and other's will naturally be removed in tr
 wildcard_imports = "allow" # too many, c style codebase, eventually will be fixed / refactored
 
 [dev-dependencies]
+proptest = "1.10.0"
 tempfile = "3.25.0"

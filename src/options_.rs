@@ -1434,7 +1434,7 @@ pub unsafe fn options_push_changes(name: &str) {
 
         if name == "pane-colours" {
             for wp in rb_foreach(&raw mut ALL_WINDOW_PANES).map(NonNull::as_ptr) {
-                colour_palette_from_option(Some(&mut (*wp).palette), (*wp).options);
+                colour_palette_from_option(Some(&mut (*wp).palette), &mut *(*wp).options);
             }
         }
 

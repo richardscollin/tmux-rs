@@ -57,33 +57,30 @@ pub unsafe fn osdep_get_name(fd: i32, _tty: *const u8) -> *mut u8 {
 }
 
 #[cfg(target_os = "linux")]
-pub unsafe fn osdep_get_cwd(fd: i32) -> *const u8 {
+pub unsafe fn osdep_get_cwd(fd: i32, _pid: pid_t) -> Option<String> {
     const MAXPATHLEN: usize = libc::PATH_MAX as usize;
-    static mut TARGET_BUFFER: [u8; MAXPATHLEN + 1] = [0; MAXPATHLEN + 1];
+    let mut buf = [0u8; MAXPATHLEN + 1];
     unsafe {
-        let target = &raw mut TARGET_BUFFER as *mut u8;
-
         let pgrp = libc::tcgetpgrp(fd);
         if pgrp == -1 {
-            return null_mut();
+            return None;
         }
 
         let mut path = format_nul!("/proc/{pgrp}/cwd");
-        let mut n = libc::readlink(path.cast(), target.cast(), MAXPATHLEN);
+        let mut n = libc::readlink(path.cast(), buf.as_mut_ptr().cast(), MAXPATHLEN);
         free_(path);
 
         let mut sid: pid_t = 0;
         if n == -1 && libc::ioctl(fd, libc::TIOCGSID, &raw mut sid) != -1 {
             path = format_nul!("/proc/{sid}/cwd");
-            n = libc::readlink(path.cast(), target.cast(), MAXPATHLEN);
+            n = libc::readlink(path.cast(), buf.as_mut_ptr().cast(), MAXPATHLEN);
             free_(path);
         }
 
         if n > 0 {
-            *target.add(n as usize) = b'\0';
-            return target;
+            return Some(String::from_utf8_lossy(&buf[..n as usize]).into_owned());
         }
-        null_mut()
+        None
     }
 }
 
@@ -142,14 +139,13 @@ pub unsafe fn osdep_get_name(fd: i32, _tty: *const u8) -> *mut u8 {
 }
 
 #[cfg(target_os = "macos")]
-pub unsafe fn osdep_get_cwd(fd: i32) -> *const u8 {
-    static mut WD: [u8; libc::PATH_MAX as usize] = [0; libc::PATH_MAX as usize];
+pub unsafe fn osdep_get_cwd(fd: i32, _pid: pid_t) -> Option<String> {
     unsafe {
         let mut pathinfo: libc::proc_vnodepathinfo = zeroed();
 
         let pgrp: pid_t = libc::tcgetpgrp(fd);
         if pgrp == -1 {
-            return null_mut();
+            return None;
         }
 
         let ret = libc::proc_pidinfo(
@@ -160,15 +156,12 @@ pub unsafe fn osdep_get_cwd(fd: i32) -> *const u8 {
             size_of::<libc::proc_vnodepathinfo>() as _,
         );
         if ret == size_of::<libc::proc_vnodepathinfo>() as i32 {
-            crate::compat::strlcpy(
-                &raw mut WD as *mut u8,
-                &raw const pathinfo.pvi_cdir.vip_path as *const u8,
-                libc::PATH_MAX as usize,
-            );
-            return &raw const WD as *const u8;
+            let path = &pathinfo.pvi_cdir.vip_path;
+            let len = path.iter().position(|&b| b == 0).unwrap_or(path.len());
+            return Some(String::from_utf8_lossy(&path[..len]).into_owned());
         }
 
-        null_mut()
+        None
     }
 }
 
@@ -191,8 +184,110 @@ pub unsafe fn osdep_event_init() -> *mut event_base {
 
 
 #[cfg(target_os = "windows")]
-pub unsafe fn osdep_get_cwd(_fd: i32) -> *const u8 {
-    null_mut()
+pub unsafe fn osdep_get_cwd(_fd: i32, pid: pid_t) -> Option<String> {
+    use windows_sys::Wdk::System::Threading::{NtQueryInformationProcess, ProcessBasicInformation};
+    use windows_sys::Win32::Foundation::{CloseHandle, UNICODE_STRING};
+    use windows_sys::Win32::System::Diagnostics::Debug::ReadProcessMemory;
+    use windows_sys::Win32::System::Threading::{
+        OpenProcess, PROCESS_BASIC_INFORMATION, PROCESS_QUERY_INFORMATION, PROCESS_VM_READ,
+    };
+
+    const MAX_PATH_BUF: usize = 1024;
+
+    // CurrentDirectory.DosPath offset within RTL_USER_PROCESS_PARAMETERS.
+    // windows-sys hides this field behind Reserved2, so we use the raw offset.
+    const CURDIR_DOS_PATH_OFFSET: usize = 0x38;
+
+    unsafe {
+        if pid <= 0 {
+            return None;
+        }
+
+        let handle = OpenProcess(
+            PROCESS_QUERY_INFORMATION | PROCESS_VM_READ,
+            false.into(),
+            pid as u32,
+        );
+        if handle.is_null() {
+            return None;
+        }
+
+        let result = (|| -> Option<String> {
+            // Step 1: Get PEB address via NtQueryInformationProcess.
+            let mut pbi: PROCESS_BASIC_INFORMATION = zeroed();
+            let status = NtQueryInformationProcess(
+                handle,
+                ProcessBasicInformation,
+                (&raw mut pbi).cast(),
+                size_of::<PROCESS_BASIC_INFORMATION>() as u32,
+                null_mut(),
+            );
+            if status < 0 {
+                return None;
+            }
+            let peb_addr = pbi.PebBaseAddress as usize;
+
+            // Step 2: Read ProcessParameters pointer from PEB.
+            let params_ptr_offset =
+                peb_addr + core::mem::offset_of!(windows_sys::Win32::System::Threading::PEB, ProcessParameters);
+            let mut process_params_addr: usize = 0;
+            if ReadProcessMemory(
+                handle,
+                params_ptr_offset as *const _,
+                (&raw mut process_params_addr).cast(),
+                size_of::<usize>(),
+                null_mut(),
+            ) == 0
+            {
+                return None;
+            }
+
+            // Step 3: Read CurrentDirectoryPath UNICODE_STRING from
+            // RTL_USER_PROCESS_PARAMETERS.
+            let cwd_ustr_offset = process_params_addr + CURDIR_DOS_PATH_OFFSET;
+            let mut ustr: UNICODE_STRING = zeroed();
+            if ReadProcessMemory(
+                handle,
+                cwd_ustr_offset as *const _,
+                (&raw mut ustr).cast(),
+                size_of::<UNICODE_STRING>(),
+                null_mut(),
+            ) == 0
+            {
+                return None;
+            }
+
+            let wchar_len = ustr.Length as usize / 2;
+            if wchar_len == 0 || ustr.Buffer.is_null() {
+                return None;
+            }
+
+            // Step 4: Read the UTF-16 path buffer.
+            let mut wbuf = [0u16; MAX_PATH_BUF];
+            let read_len = wchar_len.min(MAX_PATH_BUF - 1);
+            if ReadProcessMemory(
+                handle,
+                ustr.Buffer as *const _,
+                wbuf.as_mut_ptr().cast(),
+                read_len * 2,
+                null_mut(),
+            ) == 0
+            {
+                return None;
+            }
+
+            // Strip trailing backslash (unless root like "C:\").
+            let mut len = read_len;
+            if len > 3 && wbuf[len - 1] == b'\\' as u16 {
+                len -= 1;
+            }
+
+            Some(String::from_utf16_lossy(&wbuf[..len]))
+        })();
+
+        CloseHandle(handle);
+        result
+    }
 }
 
 #[cfg(target_os = "windows")]

@@ -1071,34 +1071,29 @@ pub fn colour_parse_x11(s: &str) -> i32 {
     // rgb:XX/XX/XX or rgb:XXXX/XXXX/XXXX
     if let Some(rest) = s.strip_prefix("rgb:") {
         let mut it = rest.splitn(3, '/');
-        if let (Some(r), Some(g), Some(b)) = (it.next(), it.next(), it.next()) {
-            if let Some(c) = parse_hex_rgb(r, g, b) {
+        if let (Some(r), Some(g), Some(b)) = (it.next(), it.next(), it.next())
+            && let Some(c) = parse_hex_rgb(r, g, b) {
                 return c;
             }
-        }
     }
 
     // #XXXXXX or #XXXXXXXXXXXX
     if let Some(hex) = s.strip_prefix('#') {
         let d = hex.len() / 3;
-        if hex.len() == d * 3 {
-            if let (Some(r), Some(g), Some(b)) = (hex.get(..d), hex.get(d..d * 2), hex.get(d * 2..))
-            {
-                if let Some(c) = parse_hex_rgb(r, g, b) {
+        if hex.len() == d * 3
+            && let (Some(r), Some(g), Some(b)) = (hex.get(..d), hex.get(d..d * 2), hex.get(d * 2..))
+                && let Some(c) = parse_hex_rgb(r, g, b) {
                     return c;
                 }
-            }
-        }
     }
 
     // R,G,B decimal
     {
         let mut it = s.splitn(3, ',');
-        if let (Some(r), Some(g), Some(b)) = (it.next(), it.next(), it.next()) {
-            if let (Ok(r), Ok(g), Ok(b)) = (r.parse::<i32>(), g.parse::<i32>(), b.parse::<i32>()) {
+        if let (Some(r), Some(g), Some(b)) = (it.next(), it.next(), it.next())
+            && let (Ok(r), Ok(g), Ok(b)) = (r.parse::<i32>(), g.parse::<i32>(), b.parse::<i32>()) {
                 return colour_join_rgb(r as u8, g as u8, b as u8);
             }
-        }
     }
 
     // cmyk:C/M/Y/K or cmy:C/M/Y

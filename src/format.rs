@@ -939,11 +939,7 @@ pub unsafe fn format_cb_current_path(ft: *mut format_tree) -> format_table_type 
             return format_table_type::None;
         }
 
-        let cwd = osdep_get_cwd((*wp).fd);
-        if cwd.is_null() {
-            return format_table_type::None;
-        }
-        format!("{}", _s(cwd)).into()
+        osdep_get_cwd((*wp).fd, (*wp).pid).map(Into::into).unwrap_or_default()
     }
 }
 

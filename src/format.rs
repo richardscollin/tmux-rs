@@ -4265,7 +4265,7 @@ pub unsafe fn format_loop_sessions(
         let n = l.len();
         for (i, &s) in l.iter().enumerate() {
             format_log1!(es, c!("format_loop_sessions"), "session loop: ${}", (*s).id,);
-            let use_ = if !active.is_null() && (*s).id == (*(*(*ft).c).session).id {
+            let use_ = if !active.is_null() && !(*ft).c.is_null() && (*s).id == (*(*(*ft).c).session).id {
                 active
             } else {
                 all
@@ -6111,5 +6111,253 @@ pub unsafe fn format_grid_hyperlink(
             return None;
         }
         Some(cstr_to_str(uri).to_string())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::ffi::CString;
+
+    fn cstr(s: &str) -> CString {
+        CString::new(s).unwrap()
+    }
+
+    unsafe fn to_string_free(p: *mut u8) -> String {
+        unsafe {
+            let s = cstr_to_str(p).to_string();
+            free_(p);
+            s
+        }
+    }
+
+    #[test]
+    fn test_format_quote_shell() {
+        let cases: &[(&str, &str)] = &[
+            ("hello", "hello"),
+            ("", ""),
+            ("echo foo | bar", "echo\\ foo\\ \\|\\ bar"),
+            ("a&b;c", "a\\&b\\;c"),
+            ("$HOME", "\\$HOME"),
+            ("it's", "it\\'s"),
+            ("a b", "a\\ b"),
+        ];
+        for &(input, expected) in cases {
+            let cs = cstr(input);
+            let result = unsafe { to_string_free(format_quote_shell(cs.as_ptr().cast())) };
+            assert_eq!(result, expected, "quote_shell({input:?})");
+        }
+    }
+
+    #[test]
+    fn test_format_quote_style() {
+        let cases: &[(&str, &str)] = &[
+            ("hello", "hello"),
+            ("", ""),
+            ("fg=#ff0000", "fg=##ff0000"),
+            ("##", "####"),
+            ("no hash here", "no hash here"),
+        ];
+        for &(input, expected) in cases {
+            let cs = cstr(input);
+            let result = unsafe { to_string_free(format_quote_style(cs.as_ptr().cast())) };
+            assert_eq!(result, expected, "quote_style({input:?})");
+        }
+    }
+
+    #[test]
+    fn test_format_unescape() {
+        let cases: &[(&str, &str)] = &[
+            ("", ""),
+            ("hello", "hello"),
+            ("#,", ","),
+            ("##", "#"),
+            ("#}", "}"),
+            ("#{#,}", "#{#,}"),  // inside brackets, escapes are preserved
+        ];
+        for &(input, expected) in cases {
+            let cs = cstr(input);
+            let result = unsafe { to_string_free(format_unescape(cs.as_ptr().cast())) };
+            assert_eq!(result, expected, "unescape({input:?})");
+        }
+    }
+
+    #[test]
+    fn test_format_strip() {
+        let cases: &[(&str, &str)] = &[
+            ("", ""),
+            ("hello", "hello"),
+            ("#,", ","),
+            ("##", ""),          // both #s stripped (strchr finds NUL)
+            ("#{#,}", "#{#,}"),  // inside brackets, escapes are kept
+        ];
+        for &(input, expected) in cases {
+            let cs = cstr(input);
+            let result = unsafe { to_string_free(format_strip(cs.as_ptr().cast())) };
+            assert_eq!(result, expected, "strip({input:?})");
+        }
+    }
+
+    #[test]
+    fn test_format_skip() {
+        // (input, end_chars, expected_offset_or_null)
+        let cases: &[(&str, &str, Option<usize>)] = &[
+            ("abc,xyz", ",", Some(3)),
+            ("#{a,b},xyz", ",", Some(6)),    // comma inside #{} skipped
+            ("abc", ",", None),              // no match
+            ("a#,b,c", ",", Some(4)),        // #, is escaped, real comma at 4
+            ("abc:def", ":", Some(3)),
+        ];
+        for &(input, end_chars, expected) in cases {
+            let cs = cstr(input);
+            let ec = cstr(end_chars);
+            let result = unsafe { format_skip(cs.as_ptr().cast(), ec.as_ptr().cast()) };
+            match expected {
+                None => assert!(result.is_null(), "skip({input:?}, {end_chars:?}) expected null"),
+                Some(off) => {
+                    assert!(!result.is_null(), "skip({input:?}, {end_chars:?}) expected non-null");
+                    let actual = unsafe { result.offset_from(cs.as_ptr().cast::<u8>()) } as usize;
+                    assert_eq!(actual, off, "skip({input:?}, {end_chars:?})");
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn test_format_match() {
+        unsafe {
+            // Helper to build a format_modifier with optional flags string
+            let run = |flags: &str, pattern: &str, text: &str| -> String {
+                let mut fm: format_modifier = zeroed();
+                let argv: *mut *mut u8;
+                let _cflags: CString;
+                if flags.is_empty() {
+                    fm.argc = 0;
+                    fm.argv = null_mut();
+                    argv = null_mut();
+                } else {
+                    _cflags = cstr(flags);
+                    argv = xmalloc(size_of::<*mut u8>()).as_ptr().cast();
+                    *argv = xstrdup(_cflags.as_ptr().cast()).as_ptr();
+                    fm.argc = 1;
+                    fm.argv = argv;
+                }
+                let p = cstr(pattern);
+                let t = cstr(text);
+                let result = to_string_free(format_match(&mut fm, p.as_ptr().cast(), t.as_ptr().cast()));
+                if !argv.is_null() {
+                    free_(*argv);
+                    free_(argv);
+                }
+                result
+            };
+
+            // Glob matching
+            assert_eq!(run("", "hello", "hello"), "1");
+            assert_eq!(run("", "hel*", "hello"), "1");
+            assert_eq!(run("", "xyz*", "hello"), "0");
+            assert_eq!(run("i", "HELLO", "hello"), "1");  // case-insensitive glob
+
+            // Regex matching
+            assert_eq!(run("r", "^hel+o$", "hello"), "1");
+            assert_eq!(run("r", "^xyz$", "hello"), "0");
+            assert_eq!(run("ri", "^HELLO$", "hello"), "1");  // case-insensitive regex
+            assert_eq!(run("r", "[invalid", "hello"), "0");  // invalid regex
+        }
+    }
+
+    #[test]
+    fn test_format_sub() {
+        unsafe {
+            let run = |flags: &str, text: &str, pattern: &str, with: &str| -> String {
+                let mut fm: format_modifier = zeroed();
+                if flags.is_empty() {
+                    fm.argc = 0;
+                    fm.argv = null_mut();
+                } else {
+                    // Need 3 argv entries for case-insensitive flag in argv[2]
+                    let argv: *mut *mut u8 =
+                        xmalloc(3 * size_of::<*mut u8>()).as_ptr().cast();
+                    let empty = cstr("");
+                    *argv = xstrdup(empty.as_ptr().cast()).as_ptr();
+                    *argv.add(1) = xstrdup(empty.as_ptr().cast()).as_ptr();
+                    let fl = cstr(flags);
+                    *argv.add(2) = xstrdup(fl.as_ptr().cast()).as_ptr();
+                    fm.argc = 3;
+                    fm.argv = argv;
+                }
+                let t = cstr(text);
+                let p = cstr(pattern);
+                let w = cstr(with);
+                let result = to_string_free(format_sub(
+                    &mut fm, t.as_ptr().cast(), p.as_ptr().cast(), w.as_ptr().cast(),
+                ));
+                if !fm.argv.is_null() {
+                    for i in 0..fm.argc as usize {
+                        free_(*fm.argv.add(i));
+                    }
+                    free_(fm.argv);
+                }
+                result
+            };
+
+            assert_eq!(run("", "hello world", "world", "rust"), "hello rust");
+            assert_eq!(run("", "hello", "xyz", "abc"), "hello");  // no match
+            assert_eq!(run("i", "Hello World", "hello", "goodbye"), "goodbye World");
+        }
+    }
+
+    #[test]
+    fn test_format_pretty_time() {
+        unsafe {
+            let now = libc::time(null_mut());
+
+            // Recent (< 24h): HH:MM
+            let r = to_string_free(format_pretty_time(now - 30, 0));
+            assert_eq!(r.len(), 5, "expected HH:MM, got '{r}'");
+            assert_eq!(r.as_bytes()[2], b':');
+
+            // Recent with seconds: HH:MM:SS
+            let r = to_string_free(format_pretty_time(now - 30, 1));
+            assert_eq!(r.len(), 8, "expected HH:MM:SS, got '{r}'");
+
+            // 3 days ago: DayDD (e.g. "Mon10")
+            let r = to_string_free(format_pretty_time(now - 3 * 24 * 3600, 0));
+            assert_eq!(r.len(), 5, "expected DayDD, got '{r}'");
+
+            // 60 days ago: DDMon
+            let r = to_string_free(format_pretty_time(now - 60 * 24 * 3600, 0));
+            assert_eq!(r.len(), 5, "expected DDMon, got '{r}'");
+
+            // 400 days ago: MonYY
+            let r = to_string_free(format_pretty_time(now - 400 * 24 * 3600, 0));
+            assert_eq!(r.len(), 5, "expected MonYY, got '{r}'");
+
+            // Future time: clamped to now (age=0, < 24h path)
+            let r = to_string_free(format_pretty_time(now + 1000, 0));
+            assert_eq!(r.len(), 5, "expected HH:MM for future, got '{r}'");
+        }
+    }
+
+    #[test]
+    fn test_format_true() {
+        let cases: &[(&str, bool)] = &[
+            ("", false),
+            ("0", false),
+            ("1", true),
+            ("5", true),
+            ("hello", true),
+            ("0x", true),  // "0" followed by non-NUL is true
+        ];
+        for &(input, expected) in cases {
+            let cs = cstr(input);
+            assert_eq!(
+                unsafe { format_true(cs.as_ptr().cast()) },
+                expected,
+                "format_true({input:?})"
+            );
+        }
+        // null pointer is false
+        assert!(!unsafe { format_true(null()) });
     }
 }

@@ -80,7 +80,11 @@ fn clock_mode_exit_on_key() {
     // send-keys requires a non-null client; use a control-mode client
     tmux.run_with_stdin(&["-C", "attach"], b"send-keys q\n");
 
-    assert_eq!(tmux.display("#{pane_mode}"), "", "should have exited clock-mode");
+    assert_eq!(
+        tmux.display("#{pane_mode}"),
+        "",
+        "should have exited clock-mode"
+    );
 }
 
 /// Test that the timer callback fires and re-renders the clock.

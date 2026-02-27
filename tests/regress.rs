@@ -161,6 +161,7 @@ mod regress {
         std::thread::sleep(std::time::Duration::from_secs(secs));
     }
 
+    mod alerts;
     mod am_terminal;
     mod bind_key;
     mod break_pane;

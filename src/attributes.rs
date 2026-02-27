@@ -96,6 +96,7 @@ mod test {
     use super::*;
 
     #[test]
+    #[cfg_attr(not(feature = "coverage-tests"), ignore)]
     fn test_tostring() {
         assert_eq!(attributes_tostring(grid_attr::empty()).as_ref(), "none");
 
@@ -134,6 +135,7 @@ mod test {
     }
 
     #[test]
+    #[cfg_attr(not(feature = "coverage-tests"), ignore)]
     fn test_fromstring() {
         // All table entries via combined parse
         let cases: &[(&str, grid_attr)] = &[
@@ -175,6 +177,7 @@ mod test {
     }
 
     #[test]
+    #[cfg_attr(not(feature = "coverage-tests"), ignore)]
     fn test_roundtrip() {
         let all = grid_attr::GRID_ATTR_BRIGHT
             | grid_attr::GRID_ATTR_DIM

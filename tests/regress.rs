@@ -201,6 +201,7 @@ mod regress {
     mod show_environment;
     mod show_messages;
     mod show_prompt_history;
+    mod status;
     mod style_trim;
     mod swap_pane;
     mod swap_window;

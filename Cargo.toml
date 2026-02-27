@@ -28,6 +28,7 @@ utempter = []
 utf8proc = []
 event-tokio = ["dep:tokio"]
 slow-tests = []
+coverage-tests = []
 
 # configure linking of external libraries
 # defaults to static linking on macOS, and dynamic linking on all other platforms

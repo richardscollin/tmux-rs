@@ -929,12 +929,14 @@ mod test {
     }
 
     #[test]
+    #[cfg_attr(not(feature = "coverage-tests"), ignore)]
     fn test_value_helpers() {
         assert_eq!(args_type_to_string(&val_str("x")), "STRING");
         assert_eq!(args_value_as_string(&val_str("hello")).to_str().unwrap(), "hello");
     }
 
     #[test]
+    #[cfg_attr(not(feature = "coverage-tests"), ignore)]
     fn test_set_has_get() {
         let a = args_create();
 
@@ -981,6 +983,7 @@ mod test {
     }
 
     #[test]
+    #[cfg_attr(not(feature = "coverage-tests"), ignore)]
     fn test_parse_flags() {
         // Empty values
         let a = parse_ok("t:", -1, -1, &[]);
@@ -1047,6 +1050,7 @@ mod test {
     }
 
     #[test]
+    #[cfg_attr(not(feature = "coverage-tests"), ignore)]
     fn test_parse_errors() {
         assert_eq!(parse_err("t:", -1, -1, &["-x"]).unwrap(), "unknown flag -x");
         assert_eq!(parse_err("t:", -1, -1, &["-*"]).unwrap(), "invalid flag -*");
@@ -1058,6 +1062,7 @@ mod test {
     }
 
     #[test]
+    #[cfg_attr(not(feature = "coverage-tests"), ignore)]
     fn test_print() {
         let a = args_create();
         assert_eq!(args_print(a), "");
@@ -1099,6 +1104,7 @@ mod test {
     }
 
     #[test]
+    #[cfg_attr(not(feature = "coverage-tests"), ignore)]
     fn test_strtonum() {
         let a = args_create();
         assert_eq!(args_strtonum(a, b'n', 0, 100), Err("missing".into()));
@@ -1119,6 +1125,7 @@ mod test {
     }
 
     #[test]
+    #[cfg_attr(not(feature = "coverage-tests"), ignore)]
     fn test_percentage() {
         // Missing flag / empty value
         let a = args_create();
@@ -1148,6 +1155,7 @@ mod test {
     }
 
     #[test]
+    #[cfg_attr(not(feature = "coverage-tests"), ignore)]
     fn test_escape() {
         unsafe {
             assert_eq!(escape(c""), "''");

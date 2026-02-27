@@ -2584,3 +2584,35 @@ mod code {
     pub const LF: u64 = '\n' as u64;
     pub const ESC: u64 = '\x1b' as u64;
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    #[cfg_attr(not(feature = "coverage-tests"), ignore)]
+    fn test_prompt_type_string() {
+        assert_eq!(status_prompt_type_string(0), "command");
+        assert_eq!(status_prompt_type_string(1), "search");
+        assert_eq!(status_prompt_type_string(2), "target");
+        assert_eq!(status_prompt_type_string(3), "window-target");
+        assert_eq!(status_prompt_type_string(4), "invalid");
+        assert_eq!(status_prompt_type_string(u32::MAX), "invalid");
+    }
+
+    #[test]
+    #[cfg_attr(not(feature = "coverage-tests"), ignore)]
+    fn test_prompt_type() {
+        unsafe {
+            assert!(status_prompt_type(c!("command")) == prompt_type::PROMPT_TYPE_COMMAND);
+            assert!(status_prompt_type(c!("search")) == prompt_type::PROMPT_TYPE_SEARCH);
+            assert!(status_prompt_type(c!("target")) == prompt_type::PROMPT_TYPE_TARGET);
+            assert!(
+                status_prompt_type(c!("window-target"))
+                    == prompt_type::PROMPT_TYPE_WINDOW_TARGET
+            );
+            assert!(status_prompt_type(c!("bogus")) == prompt_type::PROMPT_TYPE_INVALID);
+            assert!(status_prompt_type(c!("")) == prompt_type::PROMPT_TYPE_INVALID);
+        }
+    }
+}

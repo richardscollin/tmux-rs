@@ -185,3 +185,68 @@ pub unsafe fn parse_window_name(in_: *const u8) -> String {
         tmp
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_window_name_simple() {
+        let name = unsafe { parse_window_name(c!("bash")) };
+        assert_eq!(name, "bash");
+    }
+
+    #[test]
+    fn test_parse_window_name_with_path() {
+        let name = unsafe { parse_window_name(c!("/usr/bin/bash")) };
+        assert_eq!(name, "bash");
+    }
+
+    #[test]
+    fn test_parse_window_name_exec_prefix() {
+        // "exec " prefix should be stripped (coverage: line 155-156)
+        let name = unsafe { parse_window_name(c!("exec vim")) };
+        assert_eq!(name, "vim");
+    }
+
+    #[test]
+    fn test_parse_window_name_exec_with_path() {
+        let name = unsafe { parse_window_name(c!("exec /usr/bin/vim")) };
+        assert_eq!(name, "vim");
+    }
+
+    #[test]
+    fn test_parse_window_name_quoted() {
+        // Leading quote should be stripped
+        let name = unsafe { parse_window_name(c!("\"bash\"")) };
+        assert_eq!(name, "bash");
+    }
+
+    #[test]
+    fn test_parse_window_name_with_args() {
+        // Only the command name (before first space) should be kept
+        let name = unsafe { parse_window_name(c!("vim -u NONE file.txt")) };
+        assert_eq!(name, "vim");
+    }
+
+    #[test]
+    fn test_parse_window_name_leading_dash() {
+        // Leading dashes/spaces should be stripped
+        let name = unsafe { parse_window_name(c!("-bash")) };
+        assert_eq!(name, "bash");
+    }
+
+    #[test]
+    fn test_parse_window_name_trailing_control_chars() {
+        // Trailing non-alphanumeric, non-punctuation chars should be stripped (coverage: lines 170-176)
+        // Control character \x01 is neither alphanumeric nor punctuation
+        let name = unsafe { parse_window_name(b"bash\x01\0".as_ptr()) };
+        assert_eq!(name, "bash");
+    }
+
+    #[test]
+    fn test_parse_window_name_trailing_control_multiple() {
+        let name = unsafe { parse_window_name(b"vim\x01\x02\x03\0".as_ptr()) };
+        assert_eq!(name, "vim");
+    }
+}

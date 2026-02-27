@@ -162,6 +162,7 @@ mod regress {
     }
 
     mod am_terminal;
+    mod bind_key;
     mod capture_pane;
     mod combine;
     mod command_order;
@@ -174,11 +175,14 @@ mod regress {
     mod if_shell;
     mod input_keys;
     mod kill_session;
+    mod list_sessions;
+    mod list_windows;
     mod new_session;
     mod new_window;
     mod osc;
     mod run_shell;
     mod style_trim;
+    mod swap_pane;
     mod tty_keys;
     mod utf8;
 }

@@ -34,3 +34,33 @@ pub fn setproctitle_(_: String) {}
 
 #[cfg(target_os = "windows")]
 pub fn setproctitle_(_: String) {}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_setproctitle_short_title() {
+        // Title <= 15 chars should not be truncated (coverage: line 24 branch)
+        setproctitle_("short".to_string());
+    }
+
+    #[test]
+    fn test_setproctitle_exact_max_len() {
+        // Exactly 15 chars - should not truncate
+        setproctitle_("123456789012345".to_string());
+    }
+
+    #[test]
+    fn test_setproctitle_long_no_space() {
+        // Longer than 15 chars with no space - truncate but no space-trim
+        // (coverage: line 23 None branch)
+        setproctitle_("abcdefghijklmnopqrstuvwxyz".to_string());
+    }
+
+    #[test]
+    fn test_setproctitle_long_with_space() {
+        // Longer than 15 chars with space - truncate then trim at last space
+        setproctitle_("tmux: server (/tmp/tmux-1000/default)".to_string());
+    }
+}

@@ -181,9 +181,10 @@ pub unsafe extern "C-unwind" fn event_add(ev_ptr: *mut event, timeout: *const ti
 
     // If already added, remove the old watcher first
     if ev.added
-        && let Some(handle) = base.registrations.remove(&ev.id) {
-            handle.abort();
-        }
+        && let Some(handle) = base.registrations.remove(&ev.id)
+    {
+        handle.abort();
+    }
 
     // Store timeout if provided
     if !timeout.is_null() {
@@ -227,10 +228,25 @@ pub unsafe extern "C-unwind" fn event_add(ev_ptr: *mut event, timeout: *const ti
             }
 
             let mut pipe_fds: [c_int; 2] = [0; 2];
-            if unsafe { libc::pipe2(pipe_fds.as_mut_ptr(), libc::O_NONBLOCK | libc::O_CLOEXEC) }
-                != 0
-            {
-                log_debug!("event_add: pipe2 failed for signal {signum}");
+            let pipe_ret = unsafe {
+                #[cfg(target_os = "linux")]
+                {
+                    libc::pipe2(pipe_fds.as_mut_ptr(), libc::O_NONBLOCK | libc::O_CLOEXEC)
+                }
+                #[cfg(not(target_os = "linux"))]
+                {
+                    let ret = libc::pipe(pipe_fds.as_mut_ptr());
+                    if ret == 0 {
+                        libc::fcntl(pipe_fds[0], libc::F_SETFL, libc::O_NONBLOCK);
+                        libc::fcntl(pipe_fds[1], libc::F_SETFL, libc::O_NONBLOCK);
+                        libc::fcntl(pipe_fds[0], libc::F_SETFD, libc::FD_CLOEXEC);
+                        libc::fcntl(pipe_fds[1], libc::F_SETFD, libc::FD_CLOEXEC);
+                    }
+                    ret
+                }
+            };
+            if pipe_ret != 0 {
+                log_debug!("event_add: pipe failed for signal {signum}");
             } else {
                 let pipe_read = pipe_fds[0];
                 let pipe_write = pipe_fds[1];
@@ -333,21 +349,20 @@ pub unsafe extern "C-unwind" fn event_add(ev_ptr: *mut event, timeout: *const ti
             }
         });
         base.registrations.insert(id, handle);
-    } else if !signal_handled
-        && let Some(dur) = timeout_duration {
-            // Pure timer (fd == -1, timeout set)
-            let handle = base.local_set.spawn_local(async move {
-                tokio::time::sleep(dur).await;
-                let _ = tx.send(ReadyEvent {
-                    id,
-                    fd,
-                    events: EV_TIMEOUT,
-                    callback,
-                    arg,
-                });
+    } else if !signal_handled && let Some(dur) = timeout_duration {
+        // Pure timer (fd == -1, timeout set)
+        let handle = base.local_set.spawn_local(async move {
+            tokio::time::sleep(dur).await;
+            let _ = tx.send(ReadyEvent {
+                id,
+                fd,
+                events: EV_TIMEOUT,
+                callback,
+                arg,
             });
-            base.registrations.insert(id, handle);
-        }
+        });
+        base.registrations.insert(id, handle);
+    }
 
     ev.added = true;
     0

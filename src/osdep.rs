@@ -157,8 +157,9 @@ pub unsafe fn osdep_get_cwd(fd: i32, _pid: pid_t) -> Option<String> {
         );
         if ret == size_of::<libc::proc_vnodepathinfo>() as i32 {
             let path = &pathinfo.pvi_cdir.vip_path;
-            let len = path.iter().position(|&b| b == 0).unwrap_or(path.len());
-            return Some(String::from_utf8_lossy(&path[..len]).into_owned());
+            let path_bytes: &[u8] = std::slice::from_raw_parts(path.as_ptr().cast(), path.len());
+            let len = path_bytes.iter().position(|&b| b == 0).unwrap_or(path_bytes.len());
+            return Some(String::from_utf8_lossy(&path_bytes[..len]).into_owned());
         }
 
         None

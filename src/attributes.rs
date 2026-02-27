@@ -40,6 +40,7 @@ pub fn attributes_tostring(attr: grid_attr) -> Cow<'static, str> {
     ))
 }
 
+/// Parse a comma/space/pipe-separated attribute string into grid_attr flags.
 pub fn attributes_fromstring(str: &str) -> Result<grid_attr, ()> {
     struct table_entry {
         name: &'static str,
@@ -88,4 +89,106 @@ pub fn attributes_fromstring(str: &str) -> Result<grid_attr, ()> {
     }
 
     Ok(attr)
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_tostring() {
+        assert_eq!(attributes_tostring(grid_attr::empty()).as_ref(), "none");
+
+        // Single flag: exercises true for one, false for all others
+        assert!(attributes_tostring(grid_attr::GRID_ATTR_CHARSET).contains("acs,"));
+
+        // All flags at once - each name must appear in the output
+        let all = grid_attr::GRID_ATTR_CHARSET
+            | grid_attr::GRID_ATTR_BRIGHT
+            | grid_attr::GRID_ATTR_DIM
+            | grid_attr::GRID_ATTR_UNDERSCORE
+            | grid_attr::GRID_ATTR_BLINK
+            | grid_attr::GRID_ATTR_REVERSE
+            | grid_attr::GRID_ATTR_HIDDEN
+            | grid_attr::GRID_ATTR_ITALICS
+            | grid_attr::GRID_ATTR_STRIKETHROUGH
+            | grid_attr::GRID_ATTR_UNDERSCORE_2
+            | grid_attr::GRID_ATTR_UNDERSCORE_3
+            | grid_attr::GRID_ATTR_UNDERSCORE_4
+            | grid_attr::GRID_ATTR_UNDERSCORE_5
+            | grid_attr::GRID_ATTR_OVERLINE;
+        let s = attributes_tostring(all);
+        for name in [
+            "acs,", "bright,", "dim,", "underscore,", "blink,", "reverse,",
+            "hidden,", "italics,", "strikethrough,", "double-underscore,",
+            "curly-underscore,", "dotted-underscore,", "dashed-underscore,", "overline,",
+        ] {
+            assert!(s.contains(name), "{name} not in {s}");
+        }
+    }
+
+    fn assert_parses_to(input: &str, expected: grid_attr) {
+        let result = attributes_fromstring(input);
+        assert!(result.is_ok(), "expected Ok for {input:?}, got Err");
+        assert!(result.unwrap() == expected, "wrong flags for {input:?}");
+    }
+
+    #[test]
+    fn test_fromstring() {
+        // All table entries via combined parse
+        let cases: &[(&str, grid_attr)] = &[
+            ("acs", grid_attr::GRID_ATTR_CHARSET),
+            ("bright", grid_attr::GRID_ATTR_BRIGHT),
+            ("bold", grid_attr::GRID_ATTR_BRIGHT),
+            ("dim", grid_attr::GRID_ATTR_DIM),
+            ("underscore", grid_attr::GRID_ATTR_UNDERSCORE),
+            ("blink", grid_attr::GRID_ATTR_BLINK),
+            ("reverse", grid_attr::GRID_ATTR_REVERSE),
+            ("hidden", grid_attr::GRID_ATTR_HIDDEN),
+            ("italics", grid_attr::GRID_ATTR_ITALICS),
+            ("strikethrough", grid_attr::GRID_ATTR_STRIKETHROUGH),
+            ("double-underscore", grid_attr::GRID_ATTR_UNDERSCORE_2),
+            ("curly-underscore", grid_attr::GRID_ATTR_UNDERSCORE_3),
+            ("dotted-underscore", grid_attr::GRID_ATTR_UNDERSCORE_4),
+            ("dashed-underscore", grid_attr::GRID_ATTR_UNDERSCORE_5),
+            ("overline", grid_attr::GRID_ATTR_OVERLINE),
+        ];
+        for &(name, attr) in cases {
+            assert_parses_to(name, attr);
+        }
+
+        // Special names: none/default (case insensitive)
+        for name in ["none", "default", "NONE", "Default"] {
+            assert_parses_to(name, grid_attr::empty());
+        }
+
+        // Combined with all delimiter types
+        let expected = grid_attr::GRID_ATTR_BRIGHT | grid_attr::GRID_ATTR_ITALICS;
+        for input in ["bright,italics", "bright italics", "bright|italics"] {
+            assert_parses_to(input, expected);
+        }
+
+        // Error cases: empty, leading delimiter, trailing delimiter, unknown
+        for bad in ["", ",bright", " bright", "|bright", "bright,", "bright ", "bright|", "invalid"] {
+            assert!(attributes_fromstring(bad).is_err(), "expected Err for {bad:?}");
+        }
+    }
+
+    #[test]
+    fn test_roundtrip() {
+        let all = grid_attr::GRID_ATTR_BRIGHT
+            | grid_attr::GRID_ATTR_DIM
+            | grid_attr::GRID_ATTR_UNDERSCORE
+            | grid_attr::GRID_ATTR_BLINK
+            | grid_attr::GRID_ATTR_REVERSE
+            | grid_attr::GRID_ATTR_HIDDEN
+            | grid_attr::GRID_ATTR_ITALICS
+            | grid_attr::GRID_ATTR_OVERLINE;
+        // tostring produces "bright,dim,...overline," - trim trailing comma, split, re-parse
+        let s = attributes_tostring(all);
+        let trimmed = s.trim_end_matches(',');
+        let parsed = attributes_fromstring(trimmed);
+        assert!(parsed.is_ok(), "roundtrip parse failed for {s}");
+        assert!(parsed.unwrap() == all, "roundtrip mismatch for {s}");
+    }
 }

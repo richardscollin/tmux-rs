@@ -185,4 +185,5 @@ mod regress {
     mod swap_pane;
     mod tty_keys;
     mod utf8;
+    mod window_clock;
 }

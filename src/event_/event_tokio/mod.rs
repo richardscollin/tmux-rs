@@ -17,13 +17,13 @@ use crate::libc::timeval;
 /// internal layout is free to differ from libevent's.
 #[repr(C)]
 pub struct event {
-    /// Unique id assigned by event_set (0 = uninitialized).
+    /// Unique id assigned by `event_set` (0 = uninitialized).
     pub(crate) id: u64,
     /// File descriptor, or -1 for timers.
     pub(crate) ev_fd: c_int,
-    /// Event flags (EV_READ, EV_WRITE, EV_SIGNAL, EV_PERSIST, EV_TIMEOUT).
+    /// Event flags (`EV_READ`, `EV_WRITE`, `EV_SIGNAL`, `EV_PERSIST`, `EV_TIMEOUT`).
     pub(crate) ev_events: c_short,
-    /// Pending result flags (set by event_active).
+    /// Pending result flags (set by `event_active`).
     pub(crate) ev_res: c_short,
     /// Callback function.
     pub(crate) ev_callback:

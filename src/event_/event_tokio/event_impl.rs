@@ -51,7 +51,7 @@ struct ReadyEvent {
 
 /// The tokio-backed event base.
 ///
-/// Owns the tokio current_thread runtime, a LocalSet for spawn_local
+/// Owns the tokio `current_thread` runtime, a `LocalSet` for `spawn_local`
 /// (avoiding Send requirements), and the channel used to deliver
 /// ready-event notifications from watcher tasks.
 pub(crate) struct EventBase {
@@ -132,17 +132,17 @@ pub unsafe extern "C-unwind" fn event_reinit(base: *mut event_base) -> c_int {
 
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn event_set(
-    ev: *mut event,
+    ev_ptr: *mut event,
     fd: c_int,
     events: c_short,
     cb: Option<unsafe extern "C-unwind" fn(arg1: c_int, arg2: c_short, arg3: *mut c_void)>,
     arg: *mut c_void,
 ) {
-    if ev.is_null() {
+    if ev_ptr.is_null() {
         return;
     }
     let base = unsafe { GLOBAL_BASE };
-    let ev = unsafe { &mut *ev };
+    let ev = unsafe { &mut *ev_ptr };
     // Keep the existing id if the event was already initialized (id != 0).
     // This ensures event_del and event_add can track registrations correctly
     // across event_set → event_del → event_set → event_add cycles.
@@ -167,11 +167,11 @@ pub unsafe extern "C-unwind" fn event_set(
 }
 
 #[unsafe(no_mangle)]
-pub unsafe extern "C-unwind" fn event_add(ev: *mut event, timeout: *const timeval) -> c_int {
-    if ev.is_null() {
+pub unsafe extern "C-unwind" fn event_add(ev_ptr: *mut event, timeout: *const timeval) -> c_int {
+    if ev_ptr.is_null() {
         return -1;
     }
-    let ev = unsafe { &mut *ev };
+    let ev = unsafe { &mut *ev_ptr };
 
     let base_ptr = ev.ev_base as *mut EventBase;
     if base_ptr.is_null() {
@@ -180,11 +180,10 @@ pub unsafe extern "C-unwind" fn event_add(ev: *mut event, timeout: *const timeva
     let base = unsafe { &mut *base_ptr };
 
     // If already added, remove the old watcher first
-    if ev.added {
-        if let Some(handle) = base.registrations.remove(&ev.id) {
+    if ev.added
+        && let Some(handle) = base.registrations.remove(&ev.id) {
             handle.abort();
         }
-    }
 
     // Store timeout if provided
     if !timeout.is_null() {
@@ -334,8 +333,8 @@ pub unsafe extern "C-unwind" fn event_add(ev: *mut event, timeout: *const timeva
             }
         });
         base.registrations.insert(id, handle);
-    } else if !signal_handled {
-        if let Some(dur) = timeout_duration {
+    } else if !signal_handled
+        && let Some(dur) = timeout_duration {
             // Pure timer (fd == -1, timeout set)
             let handle = base.local_set.spawn_local(async move {
                 tokio::time::sleep(dur).await;
@@ -349,13 +348,12 @@ pub unsafe extern "C-unwind" fn event_add(ev: *mut event, timeout: *const timeva
             });
             base.registrations.insert(id, handle);
         }
-    }
 
     ev.added = true;
     0
 }
 
-/// Poll a file descriptor for readiness using tokio's AsyncFd.
+/// Poll a file descriptor for readiness using tokio's `AsyncFd`.
 #[cfg(unix)]
 async fn poll_fd(fd: c_int, events: c_short, timeout: Option<Duration>) -> Option<c_short> {
     use std::os::fd::{FromRawFd, OwnedFd};
@@ -432,10 +430,7 @@ async fn poll_fd(fd: c_int, events: c_short, timeout: Option<Duration>) -> Optio
     };
 
     if let Some(dur) = timeout {
-        match tokio::time::timeout(dur, poll_future).await {
-            Ok(fired) => Some(fired),
-            Err(_) => None, // timed out
-        }
+        tokio::time::timeout(dur, poll_future).await.ok()
     } else {
         Some(poll_future.await)
     }
@@ -522,11 +517,11 @@ async fn poll_fd(fd: c_int, events: c_short, timeout: Option<Duration>) -> Optio
 }
 
 #[unsafe(no_mangle)]
-pub unsafe extern "C-unwind" fn event_del(ev: *mut event) -> c_int {
-    if ev.is_null() {
+pub unsafe extern "C-unwind" fn event_del(ev_ptr: *mut event) -> c_int {
+    if ev_ptr.is_null() {
         return -1;
     }
-    let ev = unsafe { &mut *ev };
+    let ev = unsafe { &mut *ev_ptr };
     if !ev.added {
         return 0;
     }
@@ -568,11 +563,11 @@ pub unsafe extern "C-unwind" fn event_del(ev: *mut event) -> c_int {
 }
 
 #[unsafe(no_mangle)]
-pub unsafe extern "C-unwind" fn event_active(ev: *mut event, res: c_int, _ncalls: c_short) {
-    if ev.is_null() {
+pub unsafe extern "C-unwind" fn event_active(ev_ptr: *mut event, res: c_int, _ncalls: c_short) {
+    if ev_ptr.is_null() {
         return;
     }
-    let ev = unsafe { &*ev };
+    let ev = unsafe { &*ev_ptr };
     let base_ptr = ev.ev_base as *mut EventBase;
     if base_ptr.is_null() {
         return;
@@ -589,14 +584,14 @@ pub unsafe extern "C-unwind" fn event_active(ev: *mut event, res: c_int, _ncalls
 
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn event_pending(
-    ev: *const event,
+    ev_ptr: *const event,
     events: c_short,
     tv: *mut timeval,
 ) -> c_int {
-    if ev.is_null() {
+    if ev_ptr.is_null() {
         return 0;
     }
-    let ev = unsafe { &*ev };
+    let ev = unsafe { &*ev_ptr };
     if !ev.added {
         return 0;
     }
@@ -620,11 +615,11 @@ pub unsafe extern "C-unwind" fn event_pending(
 }
 
 #[unsafe(no_mangle)]
-pub unsafe extern "C-unwind" fn event_initialized(ev: *const event) -> c_int {
-    if ev.is_null() {
+pub unsafe extern "C-unwind" fn event_initialized(ev_ptr: *const event) -> c_int {
+    if ev_ptr.is_null() {
         return 0;
     }
-    let ev = unsafe { &*ev };
+    let ev = unsafe { &*ev_ptr };
     // id is assigned by event_set; 0 means uninitialized (zeroed memory)
     (ev.id != 0) as c_int
 }

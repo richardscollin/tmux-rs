@@ -156,9 +156,8 @@ pub unsafe extern "C-unwind" fn evbuffer_readline(buffer: *mut evbuffer) -> *mut
     let inner = unsafe { inner(buffer) };
 
     // Find first \n
-    let pos = match memchr::memchr(b'\n', &inner.data) {
-        Some(p) => p,
-        None => return std::ptr::null_mut(),
+    let Some(pos) = memchr::memchr(b'\n', &inner.data) else {
+        return std::ptr::null_mut();
     };
 
     // Determine line length (strip trailing \r if present)

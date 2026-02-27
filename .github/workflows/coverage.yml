@@ -27,7 +27,7 @@ jobs:
 
       - name: Coverage
         run: |
-          cargo +nightly llvm-cov --no-report nextest --profile ci --features slow-tests
+          cargo +nightly llvm-cov --no-report nextest --profile ci
           mv ./target/nextest/ci/junit.xml junit.xml
 
           cargo llvm-cov report --lcov --output-path lcov.info

@@ -260,7 +260,7 @@ unsafe fn window_tree_filter_pane(
         };
 
         let cp: *mut u8 = format_single(null_mut(), filter, null_mut(), s, wl, wp);
-        let result = format_true(cp);
+        let result = format_true(cstr_to_str_(cp));
         free_(cp);
 
         result

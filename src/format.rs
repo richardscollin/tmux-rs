@@ -3951,8 +3951,8 @@ pub unsafe fn format_choose(
 }
 
 /// Is this true?
-pub unsafe fn format_true(s: *const u8) -> bool {
-    unsafe { !s.is_null() && *s != b'\0' && (*s != b'0' || *s.add(1) != b'\0') }
+pub fn format_true(s: Option<&str>) -> bool {
+    s.is_some_and(|v| !v.is_empty() && v != "0")
 }
 
 /// Check if modifier end.
@@ -4774,7 +4774,7 @@ unsafe fn format_bool_op_1(
 ) -> *mut u8 {
     unsafe {
         let expanded = format_expand1(es, fmt);
-        let mut result = format_true(expanded);
+        let mut result = format_true(cstr_to_str_(expanded));
         if not {
             result = !result;
         }
@@ -4806,9 +4806,9 @@ unsafe fn format_bool_op_n(
             free_(raw);
 
             if and {
-                result = result && format_true(expanded);
+                result = result && format_true(cstr_to_str_(expanded));
             } else {
-                result = result || format_true(expanded);
+                result = result || format_true(cstr_to_str_(expanded));
             }
             free_(expanded);
 
@@ -5298,7 +5298,7 @@ pub unsafe fn format_replace(
 
                         cp = cp2.add(1);
                         let cp2 = format_skip(cp, c!(","));
-                        if format_true(found) {
+                        if format_true(cstr_to_str_(found)) {
                             format_log1!(
                                 es,
                                 __func__,
@@ -6350,14 +6350,13 @@ mod tests {
             ("0x", true),  // "0" followed by non-NUL is true
         ];
         for &(input, expected) in cases {
-            let cs = cstr(input);
             assert_eq!(
-                unsafe { format_true(cs.as_ptr().cast()) },
+                format_true(Some(input)),
                 expected,
                 "format_true({input:?})"
             );
         }
-        // null pointer is false
-        assert!(!unsafe { format_true(null()) });
+        // None is false
+        assert!(!format_true(None));
     }
 }

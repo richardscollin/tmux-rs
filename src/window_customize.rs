@@ -330,7 +330,7 @@ unsafe fn window_customize_build_option(
 
         if !filter.is_null() {
             let expanded = format_expand(ft, filter);
-            if !format_true(expanded) {
+            if !format_true(cstr_to_str_(expanded)) {
                 free_(expanded);
                 return;
             }
@@ -520,7 +520,7 @@ unsafe fn window_customize_build_keys(
             }
             if !filter.is_null() {
                 let expanded = format_expand(ft, filter);
-                if !format_true(expanded) {
+                if !format_true(cstr_to_str_(expanded)) {
                     free_(expanded);
                     continue;
                 }

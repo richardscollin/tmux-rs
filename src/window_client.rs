@@ -163,7 +163,7 @@ pub unsafe fn window_client_build(
 
             if !filter.is_null() {
                 let cp = format_single(null_mut(), cstr_to_str(filter), c, null_mut(), null_mut(), null_mut());
-                if !format_true(cp) {
+                if !format_true(cstr_to_str_(cp)) {
                     free_(cp);
                     continue;
                 }

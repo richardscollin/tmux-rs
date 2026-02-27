@@ -136,7 +136,7 @@ fn cmd_list_panes_window(
             let flag;
             if !filter.is_null() {
                 let expanded = format_expand(ft, filter);
-                flag = format_true(expanded);
+                flag = format_true(cstr_to_str_(expanded));
                 free_(expanded);
             } else {
                 flag = true;

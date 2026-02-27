@@ -189,7 +189,7 @@ pub unsafe fn window_buffer_build(
 
             if !filter.is_null() {
                 let cp = format_expand(ft, filter);
-                if !format_true(cp) {
+                if !format_true(cstr_to_str_(cp)) {
                     free_(cp);
                     format_free(ft);
                     continue;

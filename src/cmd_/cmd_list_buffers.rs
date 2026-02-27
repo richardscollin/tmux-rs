@@ -53,7 +53,7 @@ unsafe fn cmd_list_buffers_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
             let flag;
             if !filter.is_null() {
                 let expanded = format_expand(ft, filter);
-                flag = format_true(expanded);
+                flag = format_true(cstr_to_str_(expanded));
                 free_(expanded);
             } else {
                 flag = true;

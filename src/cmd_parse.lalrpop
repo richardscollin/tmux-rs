@@ -126,7 +126,7 @@ pub HiddenAssignment: () = {
 pub IfOpen: bool = {
     "%if" <arg2:Expanded> => unsafe {
       let scope = xcalloc1::<cmd_parse_scope>();
-      let value = format_true(arg2.as_ptr());
+      let value = format_true(cstr_to_str_(arg2.as_ptr()));
       scope.flag = value;
       free_(arg2.as_ptr());
 
@@ -152,7 +152,7 @@ pub IfElse: () = {
 pub IfElif: bool = {
     "%elif" <arg2:Expanded> => unsafe {
       let scope = xcalloc1::<cmd_parse_scope>();
-      let value = format_true(arg2.as_ptr());
+      let value = format_true(cstr_to_str_(arg2.as_ptr()));
       scope.flag = value;
       free_(arg2.as_ptr());
 

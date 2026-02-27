@@ -44,6 +44,10 @@ fn break_pane_single_pane_cross_session() {
     tmux.run(&["new", "-d", "-x80", "-y24", "-s", "dst"]);
 
     // src has 1 window with 1 pane; break it into dst
+    #[expect(
+        unused_variables,
+        reason = "#{pane_id} is a tmux format string, not Rust interpolation"
+    )]
     let pane_id = tmux.display("-t src #{pane_id}");
     tmux.run(&["breakp", "-s", "src:0.0", "-t", "dst:"]);
 

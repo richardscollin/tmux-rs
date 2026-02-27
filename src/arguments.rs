@@ -889,3 +889,288 @@ pub unsafe fn args_string_percentage_and_expand(
         Ok(ll)
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use std::ffi::CString;
+
+    fn val_str(s: &str) -> args_value {
+        unsafe { args_value::new_string(xstrdup(CString::new(s).unwrap().as_ptr().cast()).as_ptr()) }
+    }
+
+    fn make_values(cmd: &str, rest: &[&str]) -> Vec<args_value> {
+        let mut v = vec![val_str(cmd)];
+        for s in rest {
+            v.push(val_str(s));
+        }
+        v
+    }
+
+    fn parse_ok(template: &'static str, lower: i32, upper: i32, args: &[&str]) -> *mut super::args {
+        let parse = args_parse { template, lower, upper, cb: None };
+        let values = make_values("cmd", args);
+        args_parse(&parse, &values).unwrap()
+    }
+
+    fn parse_err(template: &'static str, lower: i32, upper: i32, args: &[&str]) -> Option<String> {
+        let parse = args_parse { template, lower, upper, cb: None };
+        let values = make_values("cmd", args);
+        args_parse(&parse, &values).unwrap_err()
+    }
+
+    unsafe fn escape(s: &CStr) -> String {
+        unsafe {
+            let result = args_escape(s.as_ptr().cast());
+            let out = CStr::from_ptr(result.cast()).to_str().unwrap().to_string();
+            free_(result);
+            out
+        }
+    }
+
+    #[test]
+    fn test_value_helpers() {
+        assert_eq!(args_type_to_string(&val_str("x")), "STRING");
+        assert_eq!(args_value_as_string(&val_str("hello")).to_str().unwrap(), "hello");
+    }
+
+    #[test]
+    fn test_set_has_get() {
+        let a = args_create();
+
+        // Empty args
+        assert_eq!(args_count(a), 0);
+        assert!(!args_has(a, 'v'));
+        assert_eq!(args_has_count(a, b'v'), 0);
+        assert!(args_get(a, b'v').is_null());
+        assert!(args_entry_values(a, b'x').is_empty());
+
+        // Boolean flag (no value)
+        args_set(a, b'v', None, 0);
+        assert!(args_has(a, 'v'));
+        assert_eq!(args_has_count(a, b'v'), 1);
+        assert!(args_get(a, b'v').is_null());
+
+        // Repeated boolean flag
+        args_set(a, b'v', None, 0);
+        assert_eq!(args_has_count(a, b'v'), 2);
+
+        // Flag with value
+        args_set(a, b't', Some(val_str("mysession")), 0);
+        let ptr = args_get(a, b't');
+        assert!(!ptr.is_null());
+        assert_eq!(unsafe { CStr::from_ptr(ptr.cast()) }.to_str().unwrap(), "mysession");
+
+        // Multiple values for same flag
+        args_set(a, b'f', Some(val_str("one")), 0);
+        args_set(a, b'f', Some(val_str("two")), 0);
+        let vals = args_entry_values(a, b'f');
+        assert_eq!(vals.len(), 2);
+
+        // Positional args
+        a.values.push(val_str("first"));
+        a.values.push(val_str("second"));
+        assert_eq!(args_count(a), 2);
+        assert_eq!(args_values(a).len(), 2);
+        assert_eq!(args_string(a, 0).unwrap().to_str().unwrap(), "first");
+        assert_eq!(args_string(a, 1).unwrap().to_str().unwrap(), "second");
+        assert!(args_value(a, 5).is_none());
+        assert!(args_string(a, 5).is_none());
+
+        unsafe { args_free(a) };
+    }
+
+    #[test]
+    fn test_parse_flags() {
+        // Empty values
+        let a = parse_ok("t:", -1, -1, &[]);
+        assert_eq!(args_count(unsafe { &*a }), 0);
+        unsafe { args_free(&mut *a) };
+
+        // Positional args only (no flags)
+        let a = parse_ok("t:", -1, -1, &["arg1", "arg2"]);
+        let r = unsafe { &*a };
+        assert_eq!(args_count(r), 2);
+        assert_eq!(args_string(r, 0).unwrap().to_str().unwrap(), "arg1");
+        unsafe { args_free(&mut *a) };
+
+        // Boolean flags: separate and combined
+        let a = parse_ok("vdx", -1, -1, &["-v", "-d"]);
+        let r = unsafe { &*a };
+        assert!(args_has(r, 'v'));
+        assert!(args_has(r, 'd'));
+        unsafe { args_free(&mut *a) };
+
+        let a = parse_ok("vdx", -1, -1, &["-vdx"]);
+        let r = unsafe { &*a };
+        assert!(args_has(r, 'v'));
+        assert!(args_has(r, 'd'));
+        assert!(args_has(r, 'x'));
+        unsafe { args_free(&mut *a) };
+
+        // Flag with argument (separate and inline)
+        let a = parse_ok("t:", -1, -1, &["-t", "mysession"]);
+        unsafe {
+            assert_eq!(CStr::from_ptr(args_get(&*a, b't').cast()).to_str().unwrap(), "mysession");
+            args_free(&mut *a);
+        }
+
+        let a = parse_ok("t:", -1, -1, &["-tmysession"]);
+        unsafe {
+            assert_eq!(CStr::from_ptr(args_get(&*a, b't').cast()).to_str().unwrap(), "mysession");
+            args_free(&mut *a);
+        }
+
+        // -- ends flags, bare - is positional
+        let a = parse_ok("v", -1, -1, &["--", "-v"]);
+        let r = unsafe { &*a };
+        assert!(!args_has(r, 'v'));
+        assert_eq!(args_string(r, 0).unwrap().to_str().unwrap(), "-v");
+        unsafe { args_free(&mut *a) };
+
+        let a = parse_ok("v", -1, -1, &["-"]);
+        assert_eq!(args_count(unsafe { &*a }), 1);
+        unsafe { args_free(&mut *a) };
+
+        // Optional flag argument (l::)
+        let a = parse_ok("l::", -1, -1, &["-l"]);
+        let r = unsafe { &*a };
+        assert!(args_has(r, 'l'));
+        assert!(args_get(r, b'l').is_null());
+        unsafe { args_free(&mut *a) };
+
+        let a = parse_ok("l::", -1, -1, &["-lvalue"]);
+        unsafe {
+            assert_eq!(CStr::from_ptr(args_get(&*a, b'l').cast()).to_str().unwrap(), "value");
+            args_free(&mut *a);
+        }
+    }
+
+    #[test]
+    fn test_parse_errors() {
+        assert_eq!(parse_err("t:", -1, -1, &["-x"]).unwrap(), "unknown flag -x");
+        assert_eq!(parse_err("t:", -1, -1, &["-*"]).unwrap(), "invalid flag -*");
+        assert!(parse_err("t:", -1, -1, &["-?"]).is_none());
+        assert_eq!(parse_err("t:", -1, -1, &["-t"]).unwrap(), "-t expects an argument");
+        assert_eq!(parse_err("", 2, -1, &["one"]).unwrap(), "too few arguments (need at least 2)");
+        assert_eq!(parse_err("", -1, 1, &["one", "two"]).unwrap(), "too many arguments (need at most 1)");
+
+    }
+
+    #[test]
+    fn test_print() {
+        let a = args_create();
+        assert_eq!(args_print(a), "");
+        unsafe { args_free(a) };
+
+        // Boolean flags, repeated flag, flag with value
+        let a = args_create();
+        args_set(a, b'd', None, 0);
+        args_set(a, b'v', None, 0);
+        args_set(a, b'v', None, 0);
+        args_set(a, b'v', None, 0);
+        assert!(args_print(a).starts_with("-d"));
+        unsafe { args_free(a) };
+
+        // Optional value flag
+        let a = args_create();
+        args_set(a, b'l', None, ARGS_ENTRY_OPTIONAL_VALUE);
+        assert_eq!(args_print(a), "-l --");
+        unsafe { args_free(a) };
+
+        let a = args_create();
+        args_set(a, b'd', None, 0);
+        args_set(a, b'l', None, ARGS_ENTRY_OPTIONAL_VALUE);
+        assert_eq!(args_print(a), "-d -l --");
+        unsafe { args_free(a) };
+
+        // Flags + positional args
+        let a = args_create();
+        args_set(a, b'd', None, 0);
+        args_set(a, b't', Some(val_str("mysession")), 0);
+        a.values.push(val_str("arg1"));
+        assert_eq!(args_print(a), "-d -t mysession arg1");
+        unsafe { args_free(a) };
+
+        // Round-trip parse -> print
+        let a = parse_ok("dvt:", -1, -1, &["-dv", "-t", "mysession", "positional"]);
+        assert_eq!(args_print(unsafe { &*a }), "-dv -t mysession positional");
+        unsafe { args_free(&mut *a) };
+    }
+
+    #[test]
+    fn test_strtonum() {
+        let a = args_create();
+        assert_eq!(args_strtonum(a, b'n', 0, 100), Err("missing".into()));
+
+        args_set(a, b'n', None, 0);
+        assert_eq!(args_strtonum(a, b'n', 0, 100), Err("missing".into()));
+        unsafe { args_free(a) };
+
+        let a = args_create();
+        args_set(a, b'n', Some(val_str("42")), 0);
+        assert_eq!(args_strtonum(a, b'n', 0, 100), Ok(42));
+        unsafe { args_free(a) };
+
+        let a = args_create();
+        args_set(a, b'n', Some(val_str("200")), 0);
+        assert!(args_strtonum(a, b'n', 0, 100).is_err());
+        unsafe { args_free(a) };
+    }
+
+    #[test]
+    fn test_percentage() {
+        // Missing flag / empty value
+        let a = args_create();
+        assert_eq!(args_percentage(a, b'p', 0, 100, 200), Err("missing".into()));
+        args_set(a, b'p', None, 0);
+        assert_eq!(args_percentage(a, b'p', 0, 100, 200), Err("empty".into()));
+        unsafe { args_free(a) };
+
+        // Plain number
+        let a = args_create();
+        args_set(a, b'p', Some(val_str("50")), 0);
+        assert_eq!(args_percentage(a, b'p', 0, 100, 200), Ok(50));
+        unsafe { args_free(a) };
+
+        // Percentage (50% of 200 = 100)
+        let a = args_create();
+        args_set(a, b'p', Some(val_str("50%")), 0);
+        assert_eq!(args_percentage(a, b'p', 0, 200, 200), Ok(100));
+        unsafe { args_free(a) };
+
+        // args_string_percentage edge cases
+        unsafe {
+            assert_eq!(args_string_percentage(c"".as_ptr().cast(), 0, 100, 200), Err("empty".into()));
+            assert_eq!(args_string_percentage(c"10%".as_ptr().cast(), 50, 200, 200), Err("too small".into()));
+            assert_eq!(args_string_percentage(c"90%".as_ptr().cast(), 0, 100, 200), Err("too large".into()));
+        }
+    }
+
+    #[test]
+    fn test_escape() {
+        unsafe {
+            assert_eq!(escape(c""), "''");
+            assert_eq!(escape(c"hello"), "hello");
+            assert_eq!(escape(c"#"), "\\#");
+            assert_eq!(escape(c"~"), "\\~");
+            assert_eq!(escape(c"~user"), "\\~user");
+
+            // Space is in dquoted list, so triggers double quoting
+            let s = escape(c"hello world");
+            assert!(s.starts_with('"') && s.ends_with('"'));
+
+            // Double-quote char triggers single quoting (only in squoted, not dquoted)
+            let s = escape(c"say\"hi");
+            assert!(s.starts_with('\'') && s.ends_with('\''));
+
+            // $ triggers double quoting
+            let s = escape(c"$HOME");
+            assert!(s.starts_with('"') && s.ends_with('"'));
+
+            // ~ with dquoted chars triggers double-quoted with \~ prefix
+            let s = escape(c"~$foo");
+            assert!(s.starts_with("\"\\~") && s.ends_with('"'));
+        }
+    }
+}

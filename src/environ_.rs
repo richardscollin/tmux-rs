@@ -84,6 +84,12 @@ pub unsafe fn environ_find(env: *mut environ, name: *const u8) -> *mut environ_e
     unsafe { rb_find(env, envent) }
 }
 
+pub unsafe fn environ_find_(env: *mut environ, name: &str) -> *mut environ_entry {
+    unsafe {
+        rb_find_by(env, |e: &environ_entry| strcmp_(transmute_ptr(e.name), name).reverse())
+    }
+}
+
 macro_rules! environ_set {
    ($env:expr, $name:expr, $flags:expr, $fmt:literal $(, $args:expr)* $(,)?) => {
         crate::environ_::environ_set_($env, $name, $flags, format_args!($fmt $(, $args)*))

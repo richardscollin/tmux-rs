@@ -3389,19 +3389,15 @@ static FORMAT_TABLE: &[format_table_entry] = &[
     format_table_entry::new("wrap_flag", format_cb_wrap_flag),
 ];
 
-pub unsafe fn format_table_compare(
-    key: *const u8,
-    entry: *const format_table_entry,
-) -> std::cmp::Ordering {
-    unsafe { strcmp_(key, (*entry).key) }
+fn format_table_compare(key: &str, entry: &format_table_entry) -> std::cmp::Ordering {
+    key.cmp(entry.key)
 }
 
-pub unsafe fn format_table_get(key: *const u8) -> Option<&'static format_table_entry> {
-    unsafe {
-        match FORMAT_TABLE.binary_search_by(|e| format_table_compare(key, e).reverse()) {
-            Ok(idx) => Some(&FORMAT_TABLE[idx]),
-            Err(_) => None,
-        }
+pub fn format_table_get(key: Option<&str>) -> Option<&'static format_table_entry> {
+    let key = key?;
+    match FORMAT_TABLE.binary_search_by(|e| format_table_compare(key, e).reverse()) {
+        Ok(idx) => Some(&FORMAT_TABLE[idx]),
+        Err(_) => None,
     }
 }
 
@@ -3690,14 +3686,14 @@ pub unsafe fn format_pretty_time(t: time_t, seconds: i32) -> *mut u8 {
 /// Find a format entry.
 fn format_find(
     ft: *mut format_tree,
-    key: *const u8,
+    key: Option<&str>,
     modifiers: format_modifiers,
     time_format: *const u8,
 ) -> *mut u8 {
     unsafe {
         let mut s = MaybeUninit::<[u8; 512]>::uninit();
         let s = s.as_mut_ptr() as *mut u8;
-        let mut fe_find = MaybeUninit::<format_entry>::uninit();
+        let Some(key) = key else { return null_mut() };
 
         const SIZEOF_S: usize = 512;
         let mut t: time_t = 0;
@@ -3705,28 +3701,28 @@ fn format_find(
         let mut found = null_mut();
 
         'found: {
-            let mut o = options_parse_get(GLOBAL_OPTIONS, cstr_to_str(key), &raw mut idx, 0);
+            let mut o = options_parse_get(GLOBAL_OPTIONS, key, &raw mut idx, 0);
             if o.is_null() && !(*ft).wp.is_null() {
-                o = options_parse_get((*(*ft).wp).options, cstr_to_str(key), &raw mut idx, 0);
+                o = options_parse_get((*(*ft).wp).options, key, &raw mut idx, 0);
             }
             if o.is_null() && !(*ft).w.is_null() {
-                o = options_parse_get((*(*ft).w).options, cstr_to_str(key), &raw mut idx, 0);
+                o = options_parse_get((*(*ft).w).options, key, &raw mut idx, 0);
             }
             if o.is_null() {
-                o = options_parse_get(GLOBAL_W_OPTIONS, cstr_to_str(key), &raw mut idx, 0);
+                o = options_parse_get(GLOBAL_W_OPTIONS, key, &raw mut idx, 0);
             }
             if o.is_null() && !(*ft).s.is_null() {
-                o = options_parse_get((*(*ft).s).options, cstr_to_str(key), &raw mut idx, 0);
+                o = options_parse_get((*(*ft).s).options, key, &raw mut idx, 0);
             }
             if o.is_null() {
-                o = options_parse_get(GLOBAL_S_OPTIONS, cstr_to_str(key), &raw mut idx, 0);
+                o = options_parse_get(GLOBAL_S_OPTIONS, key, &raw mut idx, 0);
             }
             if !o.is_null() {
                 found = options_to_string(o, idx, 1);
                 break 'found;
             }
 
-            if let Some(fte) = format_table_get(key) {
+            if let Some(fte) = format_table_get(Some(key)) {
                 match (fte.cb)(ft) {
                     format_table_type::Time(tv) => t = tv.tv_sec as _,
                     format_table_type::String(string) => {
@@ -3737,8 +3733,9 @@ fn format_find(
                 break 'found;
             }
 
-            (*fe_find.as_mut_ptr()).key = key.cast_mut(); // TODO: check if this is correct casting away const
-            let fe = rb_find(&raw mut (*ft).tree, fe_find.as_mut_ptr());
+            let fe = rb_find_by(&raw mut (*ft).tree, |fe: &format_entry| {
+                strcmp_(fe.key, key).reverse()
+            });
             if !fe.is_null() {
                 if (*fe).time != 0 {
                     t = (*fe).time;
@@ -3762,10 +3759,10 @@ fn format_find(
             if !modifiers.intersects(format_modifiers::FORMAT_TIMESTRING) {
                 let mut envent = null_mut();
                 if !(*ft).s.is_null() {
-                    envent = environ_find((*(*ft).s).environ, key);
+                    envent = environ_find_((*(*ft).s).environ, key);
                 }
                 if envent.is_null() {
-                    envent = environ_find(GLOBAL_ENVIRON, key);
+                    envent = environ_find_(GLOBAL_ENVIRON, key);
                 }
                 if !envent.is_null() && (*envent).value.is_some() {
                     found = xstrdup((*envent).value.unwrap().as_ptr()).as_ptr();
@@ -5270,7 +5267,7 @@ pub unsafe fn format_replace(
                             xstrndup(cp, cp2.offset_from(cp) as usize).as_ptr();
                         format_log1!(es, __func__, "condition is: {}", _s(condition));
 
-                        found = format_find(ft, condition, modifiers, time_format);
+                        found = format_find(ft, cstr_to_str_(condition), modifiers, time_format);
                         if found.is_null() {
                             // If the condition not found, try to expand it. If
                             // the expansion doesn't have any effect, then assume
@@ -5349,7 +5346,7 @@ pub unsafe fn format_replace(
                     format_log1!(es, __func__, "expanding inner format '{}'", _s(copy));
                     value = format_expand1(es, copy);
                 } else {
-                    value = format_find(ft, copy, modifiers, time_format);
+                    value = format_find(ft, cstr_to_str_(copy), modifiers, time_format);
                     if value.is_null() {
                         format_log1!(es, __func__, "format '{}' not found", _s(copy));
                         value = xstrdup(c!("")).as_ptr();

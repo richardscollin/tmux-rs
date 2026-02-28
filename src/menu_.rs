@@ -100,7 +100,9 @@ pub unsafe fn menu_add_item(
             (*menu).items.pop();
             return;
         }
-        let mut max_width = (*c).tty.sx - 4;
+        // TODO: upstream C relies on unsigned wrapping when tty.sx <= 4;
+        // use saturating_sub to avoid panic in Rust debug builds.
+        let mut max_width = (*c).tty.sx.saturating_sub(4);
 
         let mut key = null();
         let slen: usize = strlen(s0);
@@ -116,7 +118,8 @@ pub unsafe fn menu_add_item(
         }
 
         let suffix = if slen > max_width as usize {
-            max_width -= 1;
+            // TODO: can underflow when max_width is 0 (tiny terminal)
+            max_width = max_width.saturating_sub(1);
             c!(">")
         } else {
             c!("")

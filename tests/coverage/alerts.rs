@@ -16,8 +16,10 @@ fn alerts_bell() {
     assert_eq!(flag.trim(), "0");
 
     // Trigger bell in window 0 (non-current) via printf '\a'
+    // TODO: bell requires the shell to start and execute printf, which can
+    // be slow under parallel test load. Use a longer sleep than activity tests.
     tmux.run(&["send-keys", "-t:0", "printf '\\a'", "Enter"]);
-    sleep_ms(500);
+    sleep_secs(2);
 
     // Bell flag should be set on window 0's winlink
     let flag = tmux.run(&["display-message", "-t:0", "-p", "#{window_bell_flag}"]);
@@ -57,7 +59,7 @@ fn alerts_bell_action_variants() {
         tmux.run(&["new-window"]);
 
         tmux.run(&["send-keys", "-t:0", "printf '\\a'", "Enter"]);
-        sleep_ms(500);
+        sleep_secs(2);
 
         // WINLINK_BELL is still set (independent of action), but no notification
         let flag = tmux.run(&["display-message", "-t:0", "-p", "#{window_bell_flag}"]);
@@ -74,11 +76,11 @@ fn alerts_bell_action_variants() {
 
         // Bell in non-current window (wl != curw) -> action does NOT apply
         tmux.run(&["send-keys", "-t:0", "printf '\\a'", "Enter"]);
-        sleep_ms(500);
+        sleep_secs(2);
 
         // Bell in current window (wl == curw) -> action applies
         tmux.run(&["send-keys", "-t:1", "printf '\\a'", "Enter"]);
-        sleep_ms(500);
+        sleep_secs(2);
     }
 
     // bell-action=other: applies only when wl != curw
@@ -91,11 +93,11 @@ fn alerts_bell_action_variants() {
 
         // Bell in non-current window (wl != curw) -> action applies
         tmux.run(&["send-keys", "-t:0", "printf '\\a'", "Enter"]);
-        sleep_ms(500);
+        sleep_secs(2);
 
         // Bell in current window (wl == curw) -> action does NOT apply
         tmux.run(&["send-keys", "-t:1", "printf '\\a'", "Enter"]);
-        sleep_ms(500);
+        sleep_secs(2);
     }
 }
 
@@ -233,7 +235,7 @@ fn alerts_session_alerted_dedup() {
 
     // Trigger bell in the linked window
     tmux.run(&["send-keys", "-t:0", "printf '\\a'", "Enter"]);
-    sleep_ms(500);
+    sleep_secs(2);
 
     // Both winlinks should have WINLINK_BELL set
     let flag0 = tmux.run(&["display-message", "-t:0", "-p", "#{window_bell_flag}"]);

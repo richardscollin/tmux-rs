@@ -14,6 +14,7 @@ mod coverage {
     mod cmd_display_message;
     mod cmd_display_panes;
     mod cmd_find_window;
+    mod cmd_list_keys;
     mod command_prompt;
     mod detach_client;
     mod join_pane;

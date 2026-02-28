@@ -635,7 +635,7 @@ tcsetattr,
 
         if CLIENT_ATTACHED != 0 {
             if CLIENT_EXITREASON != client_exitreason::CLIENT_EXIT_NONE {
-                println!("[{}]", client_exit_message());
+                _ = writeln!(std::io::stdout(), "[{}]", client_exit_message());
             }
 
             #[cfg(not(target_os = "windows"))]
@@ -647,9 +647,9 @@ tcsetattr,
             }
         } else if (*&raw const CLIENT_FLAGS).intersects(client_flag::CONTROL) {
             if CLIENT_EXITREASON != client_exitreason::CLIENT_EXIT_NONE {
-                println!("%exit {}", client_exit_message());
+                _ = writeln!(std::io::stdout(), "%exit {}", client_exit_message());
             } else {
-                println!("%exit");
+                _ = writeln!(std::io::stdout(), "%exit");
             }
             // flush stdout (should already be flushed by println! macro)
             if (*&raw const CLIENT_FLAGS).intersects(client_flag::CONTROL_WAITEXIT) {

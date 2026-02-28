@@ -43,7 +43,7 @@ fn combine_test() {
     sleep_secs(1);
 
     let captured = out.read_to_bytes();
-    let expected = std::fs::read(TmuxServer::regress_dir().join("combine-test.result"))
+    let expected = std::fs::read(test_data_dir().join("combine-test.result"))
         .expect("failed to read combine-test.result");
 
     assert_eq!(captured, expected, "combine test output mismatch");

@@ -2,6 +2,7 @@ use super::*;
 
 /// Load buffer from a file.
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn load_buffer_basic() {
     let tmux = TmuxServer::new("loadb_basic");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -16,6 +17,7 @@ fn load_buffer_basic() {
 
 /// Load buffer into a named buffer.
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn load_buffer_named() {
     let tmux = TmuxServer::new("loadb_named");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -30,6 +32,7 @@ fn load_buffer_named() {
 
 /// Load buffer from nonexistent file.
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn load_buffer_missing_file() {
     let tmux = TmuxServer::new("loadb_missing");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -41,6 +44,7 @@ fn load_buffer_missing_file() {
 
 /// Load buffer from stdin using '-' as path.
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn load_buffer_stdin() {
     let tmux = TmuxServer::new("loadb_stdin");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -56,6 +60,7 @@ fn load_buffer_stdin() {
 
 /// Load buffer with -w flag (exercises the code path even without a real tty client).
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn load_buffer_with_w_flag() {
     let tmux = TmuxServer::new("loadb_w");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -81,6 +86,7 @@ fn load_buffer_with_w_flag() {
 
 /// Load buffer with -w and -b (named buffer + selection).
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn load_buffer_named_with_w() {
     let tmux = TmuxServer::new("loadb_named_w");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -99,6 +105,7 @@ fn load_buffer_named_with_w() {
 
 /// Load empty file (exercises bsize == 0 path in done callback).
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn load_buffer_empty_file() {
     let tmux = TmuxServer::new("loadb_empty");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -120,6 +127,7 @@ fn load_buffer_empty_file() {
 
 /// Load buffer using alias loadb.
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn load_buffer_alias() {
     let tmux = TmuxServer::new("loadb_alias");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -134,6 +142,7 @@ fn load_buffer_alias() {
 
 /// Load buffer overwriting existing named buffer.
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn load_buffer_overwrite() {
     let tmux = TmuxServer::new("loadb_overwrite");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -151,6 +160,7 @@ fn load_buffer_overwrite() {
 
 /// Load buffer with -w via control mode to exercise client path.
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn load_buffer_w_control_mode() {
     let tmux = TmuxServer::new("loadb_w_ctrl");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);

@@ -8,8 +8,8 @@ use super::*;
 fn utf8_test() {
     let tmux = TmuxServer::new("utf8_test");
 
-    let test_file = TmuxServer::regress_dir().join("UTF-8-test.txt");
-    let expected_file = TmuxServer::regress_dir().join("utf8-test.result");
+    let test_file = test_data_dir().join("UTF-8-test.txt");
+    let expected_file = test_data_dir().join("utf8-test.result");
 
     tmux.run(&[
         "-f/dev/null",

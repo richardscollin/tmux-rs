@@ -4,7 +4,7 @@ use super::*;
 /// (translates conf-syntax.sh)
 #[test]
 fn conf_syntax() {
-    let conf_dir = TmuxServer::regress_dir().join("conf");
+    let conf_dir = test_data_dir().join("conf");
     let mut entries: Vec<_> = std::fs::read_dir(&conf_dir)
         .unwrap_or_else(|e| panic!("failed to read conf dir {:?}: {}", conf_dir, e))
         .filter_map(|e| e.ok())

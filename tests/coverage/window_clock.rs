@@ -6,6 +6,7 @@ use super::*;
 ///         AM/PM, digit/colon/character indexing, colour option),
 ///         window_clock_resize, window_clock_free.
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn clock_mode_draw() {
     // --- Style 0 (12h) with resize through all screen-size branches ---
     {
@@ -69,6 +70,7 @@ fn clock_mode_draw() {
 /// Covers: window_clock_key (calls window_pane_reset_mode).
 /// Uses a control-mode client since window_pane_key requires a non-null client.
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn clock_mode_exit_on_key() {
     let tmux = TmuxServer::new("clock_mode_exit_key");
 
@@ -92,6 +94,7 @@ fn clock_mode_exit_on_key() {
 ///         window_clock_draw_screen re-invocation).
 /// Uses run-shell to keep the server alive for 2s while the 1s timer fires.
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn clock_mode_timer() {
     let tmux = TmuxServer::new("clock_mode_timer");
 
@@ -108,6 +111,7 @@ fn clock_mode_timer() {
 /// neww while in clock-mode crashes with null pointer dereference in
 /// clients_calculate_size (resize.rs:145). Upstream tmux also crashes.
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn clock_mode_neww_crash() {
     let tmux = TmuxServer::new("clock_mode_neww_crash");
 

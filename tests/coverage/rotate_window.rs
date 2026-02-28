@@ -2,6 +2,7 @@ use super::*;
 
 /// Rotate window down (-D).
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn rotate_window_down() {
     let tmux = TmuxServer::new("rotatew_down");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -18,6 +19,7 @@ fn rotate_window_down() {
 
 /// Rotate window up (-U, default).
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn rotate_window_up() {
     let tmux = TmuxServer::new("rotatew_up");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -34,6 +36,7 @@ fn rotate_window_up() {
 
 /// Rotate window default (no flag = up).
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn rotate_window_default() {
     let tmux = TmuxServer::new("rotatew_default");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -49,6 +52,7 @@ fn rotate_window_default() {
 
 /// Rotate preserves zoom with -Z.
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn rotate_window_zoom() {
     let tmux = TmuxServer::new("rotatew_zoom");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -68,6 +72,7 @@ fn rotate_window_zoom() {
 
 /// Rotate down with 3 panes verifies pane order changes correctly.
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn rotate_window_down_three_panes() {
     let tmux = TmuxServer::new("rotatew_d3");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -96,6 +101,7 @@ fn rotate_window_down_three_panes() {
 
 /// Rotate up with 3 panes verifies pane order changes correctly.
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn rotate_window_up_three_panes() {
     let tmux = TmuxServer::new("rotatew_u3");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -125,6 +131,7 @@ fn rotate_window_up_three_panes() {
 
 /// Rotate down twice restores near-original order with 3 panes.
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn rotate_window_down_twice() {
     let tmux = TmuxServer::new("rotatew_d2x");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -148,6 +155,7 @@ fn rotate_window_down_twice() {
 
 /// Rotate down with -Z preserves zoom.
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn rotate_window_down_zoom() {
     let tmux = TmuxServer::new("rotatew_dz");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);

@@ -2,6 +2,7 @@ use super::*;
 
 /// List buffers when empty.
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn list_buffers_empty() {
     let tmux = TmuxServer::new("lsb_empty");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -13,6 +14,7 @@ fn list_buffers_empty() {
 
 /// List buffers after setting one.
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn list_buffers_with_data() {
     let tmux = TmuxServer::new("lsb_data");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -25,6 +27,7 @@ fn list_buffers_with_data() {
 
 /// List buffers with custom format.
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn list_buffers_format() {
     let tmux = TmuxServer::new("lsb_fmt");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -40,6 +43,7 @@ fn list_buffers_format() {
 
 /// List buffers with filter.
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn list_buffers_filter() {
     let tmux = TmuxServer::new("lsb_filter");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);

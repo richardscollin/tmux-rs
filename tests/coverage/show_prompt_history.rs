@@ -2,6 +2,7 @@ use super::*;
 
 /// Show prompt history (all types).
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn show_prompt_history_all() {
     let tmux = TmuxServer::new("showphist_all");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -14,6 +15,7 @@ fn show_prompt_history_all() {
 
 /// Show prompt history for a specific type.
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn show_prompt_history_command() {
     let tmux = TmuxServer::new("showphist_cmd");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -25,6 +27,7 @@ fn show_prompt_history_command() {
 
 /// Clear all prompt history.
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn clear_prompt_history_all() {
     let tmux = TmuxServer::new("clearphist_all");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -36,6 +39,7 @@ fn clear_prompt_history_all() {
 
 /// Clear prompt history for specific type.
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn clear_prompt_history_type() {
     let tmux = TmuxServer::new("clearphist_type");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -47,6 +51,7 @@ fn clear_prompt_history_type() {
 
 /// Invalid prompt type.
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn show_prompt_history_invalid_type() {
     let tmux = TmuxServer::new("showphist_invalid");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -63,6 +68,7 @@ fn show_prompt_history_invalid_type() {
 
 /// Show prompt history for search type.
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn show_prompt_history_search() {
     let tmux = TmuxServer::new("showphist_search");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -77,6 +83,7 @@ fn show_prompt_history_search() {
 
 /// Show prompt history for target type.
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn show_prompt_history_target() {
     let tmux = TmuxServer::new("showphist_target");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -91,6 +98,7 @@ fn show_prompt_history_target() {
 
 /// Show prompt history for window-target type.
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn show_prompt_history_window_target() {
     let tmux = TmuxServer::new("showphist_wintgt");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -105,6 +113,7 @@ fn show_prompt_history_window_target() {
 
 /// Show all prompt history types (default, no -T flag).
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn show_prompt_history_all_types_header() {
     let tmux = TmuxServer::new("showphist_allhdr");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -126,6 +135,7 @@ fn show_prompt_history_all_types_header() {
 
 /// Clear prompt history for command type.
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn clear_prompt_history_command() {
     let tmux = TmuxServer::new("clearphist_cmd");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -146,6 +156,7 @@ fn clear_prompt_history_command() {
 
 /// Clear prompt history for target type.
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn clear_prompt_history_target() {
     let tmux = TmuxServer::new("clearphist_tgt");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -157,6 +168,7 @@ fn clear_prompt_history_target() {
 
 /// Clear prompt history for window-target type.
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn clear_prompt_history_window_target() {
     let tmux = TmuxServer::new("clearphist_wt");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -168,6 +180,7 @@ fn clear_prompt_history_window_target() {
 
 /// Clear prompt history with invalid type (error).
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn clear_prompt_history_invalid_type() {
     let tmux = TmuxServer::new("clearphist_inv");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -184,6 +197,7 @@ fn clear_prompt_history_invalid_type() {
 
 /// Clear all prompt history then show (should be empty).
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn clear_then_show_prompt_history() {
     let tmux = TmuxServer::new("clearshow_phist");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);

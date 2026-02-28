@@ -2,6 +2,7 @@ use super::*;
 
 /// Basic rename-window.
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn rename_window_basic() {
     let tmux = TmuxServer::new("renamew_basic");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -14,6 +15,7 @@ fn rename_window_basic() {
 
 /// Rename specific window with -t.
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn rename_window_target() {
     let tmux = TmuxServer::new("renamew_target");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -27,6 +29,7 @@ fn rename_window_target() {
 
 /// Rename window disables automatic-rename.
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn rename_window_disables_auto_rename() {
     let tmux = TmuxServer::new("renamew_noauto");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);

@@ -2,6 +2,7 @@ use super::*;
 
 /// Basic join-pane: move pane from one window into another.
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn join_pane_basic() {
     let tmux = TmuxServer::new("joinp_basic");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -27,6 +28,7 @@ fn join_pane_basic() {
 
 /// Join pane with -h (horizontal split).
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn join_pane_horizontal() {
     let tmux = TmuxServer::new("joinp_horiz");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -41,6 +43,7 @@ fn join_pane_horizontal() {
 
 /// Join pane with -d (don't change active pane).
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn join_pane_detached() {
     let tmux = TmuxServer::new("joinp_detach");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -59,6 +62,7 @@ fn join_pane_detached() {
 
 /// Join pane with -b (before target).
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn join_pane_before() {
     let tmux = TmuxServer::new("joinp_before");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -76,6 +80,7 @@ fn join_pane_before() {
 
 /// Join pane error: source == target.
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn join_pane_same_pane_error() {
     let tmux = TmuxServer::new("joinp_same");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -87,6 +92,7 @@ fn join_pane_same_pane_error() {
 
 /// Join pane with -l (size).
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn join_pane_with_size() {
     let tmux = TmuxServer::new("joinp_size");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -101,6 +107,7 @@ fn join_pane_with_size() {
 
 /// Join pane with -p (percentage).
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn join_pane_percentage() {
     let tmux = TmuxServer::new("joinp_pct");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -115,6 +122,7 @@ fn join_pane_percentage() {
 
 /// move-pane alias uses same exec function.
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn move_pane_alias() {
     let tmux = TmuxServer::new("movep_alias");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);

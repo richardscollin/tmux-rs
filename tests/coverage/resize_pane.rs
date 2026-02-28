@@ -2,6 +2,7 @@ use super::*;
 
 /// Resize pane down with -D (extends pane 0 downward).
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn resize_pane_down() {
     let tmux = TmuxServer::new("resizep_down");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -28,6 +29,7 @@ fn resize_pane_down() {
 
 /// Resize pane up with -U (shrinks pane 0 from bottom).
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn resize_pane_up() {
     let tmux = TmuxServer::new("resizep_up");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -54,6 +56,7 @@ fn resize_pane_up() {
 
 /// Resize pane left with -L.
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn resize_pane_left() {
     let tmux = TmuxServer::new("resizep_left");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -77,6 +80,7 @@ fn resize_pane_left() {
 
 /// Resize pane right with -R.
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn resize_pane_right() {
     let tmux = TmuxServer::new("resizep_right");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -100,6 +104,7 @@ fn resize_pane_right() {
 
 /// Resize pane with -Z (zoom toggle).
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn resize_pane_zoom() {
     let tmux = TmuxServer::new("resizep_zoom");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -119,6 +124,7 @@ fn resize_pane_zoom() {
 
 /// Resize pane with -x (absolute width).
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn resize_pane_absolute_width() {
     let tmux = TmuxServer::new("resizep_abs_w");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -136,6 +142,7 @@ fn resize_pane_absolute_width() {
 
 /// Resize pane with -y (absolute height).
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn resize_pane_absolute_height() {
     let tmux = TmuxServer::new("resizep_abs_h");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -153,6 +160,7 @@ fn resize_pane_absolute_height() {
 
 /// Resize pane default adjustment (1 cell).
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn resize_pane_default_adjustment() {
     let tmux = TmuxServer::new("resizep_default");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -180,6 +188,7 @@ fn resize_pane_default_adjustment() {
 
 /// Resize pane with -T (trim).
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn resize_pane_trim() {
     let tmux = TmuxServer::new("resizep_trim");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -193,6 +202,7 @@ fn resize_pane_trim() {
 
 /// -T in copy-mode returns early (modes list is non-empty).
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn resize_pane_trim_in_copy_mode() {
     let tmux = TmuxServer::new("resizep_trim_mode");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -209,6 +219,7 @@ fn resize_pane_trim_in_copy_mode() {
 
 /// Invalid adjustment value triggers strtonum error path.
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn resize_pane_invalid_adjustment() {
     let tmux = TmuxServer::new("resizep_bad_adj");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -233,6 +244,7 @@ fn resize_pane_invalid_adjustment() {
 
 /// Invalid -x value triggers args_percentage error.
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn resize_pane_invalid_x() {
     let tmux = TmuxServer::new("resizep_bad_x");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -248,6 +260,7 @@ fn resize_pane_invalid_x() {
 
 /// Invalid -y value triggers args_percentage error.
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn resize_pane_invalid_y() {
     let tmux = TmuxServer::new("resizep_bad_y");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -263,6 +276,7 @@ fn resize_pane_invalid_y() {
 
 /// -x with percentage value exercises args_percentage percent path.
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn resize_pane_x_percentage() {
     let tmux = TmuxServer::new("resizep_x_pct");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -281,6 +295,7 @@ fn resize_pane_x_percentage() {
 
 /// -y with percentage value exercises args_percentage percent path.
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn resize_pane_y_percentage() {
     let tmux = TmuxServer::new("resizep_y_pct");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -299,6 +314,7 @@ fn resize_pane_y_percentage() {
 
 /// -y with pane-border-status top exercises the PANE_STATUS_TOP branch.
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn resize_pane_y_with_border_status_top() {
     let tmux = TmuxServer::new("resizep_y_bst");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -321,6 +337,7 @@ fn resize_pane_y_with_border_status_top() {
 
 /// -y with pane-border-status bottom exercises the PANE_STATUS_BOTTOM branch.
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn resize_pane_y_with_border_status_bottom() {
     let tmux = TmuxServer::new("resizep_y_bsb");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -342,6 +359,7 @@ fn resize_pane_y_with_border_status_bottom() {
 
 /// Combined -x and -y sets both width and height.
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn resize_pane_x_and_y_combined() {
     let tmux = TmuxServer::new("resizep_xy");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -367,6 +385,7 @@ fn resize_pane_x_and_y_combined() {
 
 /// Resize while zoomed unzooms first (server_unzoom_window path, line 82).
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn resize_pane_unzooms_before_resize() {
     let tmux = TmuxServer::new("resizep_unzoom");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -388,6 +407,7 @@ fn resize_pane_unzooms_before_resize() {
 
 /// Resize with no direction flags and no -x/-y/-Z/-T/-M just calls server_redraw_window.
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn resize_pane_no_direction() {
     let tmux = TmuxServer::new("resizep_nodir");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -415,6 +435,7 @@ fn resize_pane_no_direction() {
 
 /// -y applied to the second pane (pane 1) exercises different yoff conditions.
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn resize_pane_y_second_pane() {
     let tmux = TmuxServer::new("resizep_y_p1");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -432,6 +453,7 @@ fn resize_pane_y_second_pane() {
 
 /// -y with border-status top on second pane (different yoff value).
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn resize_pane_y_border_top_second_pane() {
     let tmux = TmuxServer::new("resizep_y_bt_p1");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -454,6 +476,7 @@ fn resize_pane_y_border_top_second_pane() {
 /// -y with border-status bottom on second pane (tests bottom border path
 /// where pane is at the bottom of the window).
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn resize_pane_y_border_bottom_second_pane() {
     let tmux = TmuxServer::new("resizep_y_bb_p1");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);

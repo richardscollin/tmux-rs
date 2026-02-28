@@ -2,6 +2,7 @@ use super::*;
 
 /// Test swap-pane -D (swap with next pane) (coverage: cmd_swap_pane.rs lines 55-60)
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn swap_pane_down() {
     let tmux = TmuxServer::new("swap_pane_down");
 
@@ -31,6 +32,7 @@ fn swap_pane_down() {
 
 /// Test swap-pane -U (swap with previous pane) (coverage: cmd_swap_pane.rs lines 62-66)
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn swap_pane_up() {
     let tmux = TmuxServer::new("swap_pane_up");
 
@@ -50,6 +52,7 @@ fn swap_pane_up() {
 
 /// Test swap-pane -d (don't change active pane) (coverage: cmd_swap_pane.rs lines 128-133)
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn swap_pane_no_focus() {
     let tmux = TmuxServer::new("swap_pane_nofocus");
 
@@ -82,6 +85,7 @@ fn swap_pane_no_focus() {
 
 /// Test swap-pane within same window (coverage: cmd_swap_pane.rs lines 124-125)
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn swap_pane_same_window() {
     let tmux = TmuxServer::new("swap_pane_same");
 

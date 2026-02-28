@@ -2,6 +2,7 @@ use super::*;
 
 /// Set buffer with data.
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn set_buffer_basic() {
     let tmux = TmuxServer::new("setb_basic");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -14,6 +15,7 @@ fn set_buffer_basic() {
 
 /// Set named buffer with -b.
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn set_buffer_named() {
     let tmux = TmuxServer::new("setb_named");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -26,6 +28,7 @@ fn set_buffer_named() {
 
 /// Append to buffer with -a.
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn set_buffer_append() {
     let tmux = TmuxServer::new("setb_append");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -39,6 +42,7 @@ fn set_buffer_append() {
 
 /// Delete buffer (deleteb).
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn delete_buffer() {
     let tmux = TmuxServer::new("deleteb_basic");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -53,6 +57,7 @@ fn delete_buffer() {
 
 /// Rename buffer with -n.
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn set_buffer_rename() {
     let tmux = TmuxServer::new("setb_rename");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -66,6 +71,7 @@ fn set_buffer_rename() {
 
 /// Delete nonexistent buffer (error).
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn delete_buffer_nonexistent() {
     let tmux = TmuxServer::new("deleteb_noexist");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -82,6 +88,7 @@ fn delete_buffer_nonexistent() {
 
 /// Delete top buffer (without -b flag).
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn delete_buffer_top() {
     let tmux = TmuxServer::new("deleteb_top");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -101,6 +108,7 @@ fn delete_buffer_top() {
 
 /// Delete when no buffers exist at all.
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn delete_buffer_empty() {
     let tmux = TmuxServer::new("deleteb_empty");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -117,6 +125,7 @@ fn delete_buffer_empty() {
 
 /// Rename buffer without -b (renames top buffer).
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn set_buffer_rename_top() {
     let tmux = TmuxServer::new("setb_rename_top");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -131,6 +140,7 @@ fn set_buffer_rename_top() {
 
 /// Rename nonexistent named buffer (error).
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn set_buffer_rename_nonexistent() {
     let tmux = TmuxServer::new("setb_rename_noex");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -147,6 +157,7 @@ fn set_buffer_rename_nonexistent() {
 
 /// Rename when no buffers exist (error).
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn set_buffer_rename_empty() {
     let tmux = TmuxServer::new("setb_rename_empty");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -163,6 +174,7 @@ fn set_buffer_rename_empty() {
 
 /// Set buffer without data argument (error).
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn set_buffer_no_data() {
     let tmux = TmuxServer::new("setb_nodata");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -179,6 +191,7 @@ fn set_buffer_no_data() {
 
 /// Set buffer with empty string data (no-op).
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn set_buffer_empty_data() {
     let tmux = TmuxServer::new("setb_emptydata");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -196,6 +209,7 @@ fn set_buffer_empty_data() {
 
 /// Set buffer without -b (auto-named buffer).
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn set_buffer_auto_name() {
     let tmux = TmuxServer::new("setb_autoname");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -210,6 +224,7 @@ fn set_buffer_auto_name() {
 
 /// Append with -a without -b creates a new buffer (no existing pb to append to).
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn set_buffer_append_no_b_flag() {
     let tmux = TmuxServer::new("setb_append_nob");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -230,6 +245,7 @@ fn set_buffer_append_no_b_flag() {
 
 /// Append with -a when no buffer exists (creates new buffer).
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn set_buffer_append_no_existing() {
     let tmux = TmuxServer::new("setb_append_noex");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);

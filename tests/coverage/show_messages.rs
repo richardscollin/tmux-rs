@@ -2,6 +2,7 @@ use super::*;
 
 /// Show server messages.
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn show_messages_basic() {
     let tmux = TmuxServer::new("showmsgs_basic");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -18,6 +19,7 @@ fn show_messages_basic() {
 
 /// Show messages with -T (terminals).
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn show_messages_terminals() {
     let tmux = TmuxServer::new("showmsgs_terms");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -30,6 +32,7 @@ fn show_messages_terminals() {
 
 /// Show messages with -J (jobs).
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn show_messages_jobs() {
     let tmux = TmuxServer::new("showmsgs_jobs");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -42,6 +45,7 @@ fn show_messages_jobs() {
 
 /// Show messages with both -J and -T flags.
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn show_messages_jobs_and_terminals() {
     let tmux = TmuxServer::new("showmsgs_jt");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -54,6 +58,7 @@ fn show_messages_jobs_and_terminals() {
 
 /// Show messages default (message log) contains server startup info.
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn show_messages_log() {
     let tmux = TmuxServer::new("showmsgs_log");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);

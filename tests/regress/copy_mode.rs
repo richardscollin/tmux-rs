@@ -13,7 +13,7 @@ fn show_buffer(tmux: &TmuxServer) -> String {
 fn copy_mode_emacs() {
     let tmux = TmuxServer::new("copy_mode_emacs");
 
-    let test_file = TmuxServer::regress_dir().join("copy-mode-test.txt");
+    let test_file = test_data_dir().join("copy-mode-test.txt");
     let pane_cmd = format!("cat {}; printf '\\e[9;15H'; cat", test_file.display());
 
     tmux.run(&["-f/dev/null", "new", "-d", "-x40", "-y10", &pane_cmd]);
@@ -141,7 +141,7 @@ fn copy_mode_emacs() {
 fn copy_mode_vi() {
     let tmux = TmuxServer::new("copy_mode_vi");
 
-    let test_file = TmuxServer::regress_dir().join("copy-mode-test.txt");
+    let test_file = test_data_dir().join("copy-mode-test.txt");
     let pane_cmd = format!("cat {}; printf '\\e[9;15H'; cat", test_file.display());
 
     tmux.run(&["-f/dev/null", "new", "-d", "-x40", "-y10", &pane_cmd]);

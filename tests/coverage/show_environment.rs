@@ -2,6 +2,7 @@ use super::*;
 
 /// Show global environment.
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn show_environment_global() {
     let tmux = TmuxServer::new("showenv_global");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -14,6 +15,7 @@ fn show_environment_global() {
 
 /// Show session environment.
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn show_environment_session() {
     let tmux = TmuxServer::new("showenv_session");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -26,6 +28,7 @@ fn show_environment_session() {
 
 /// Show environment with -s (shell format).
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn show_environment_shell_format() {
     let tmux = TmuxServer::new("showenv_shell");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -38,6 +41,7 @@ fn show_environment_shell_format() {
 
 /// Show all global environment variables.
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn show_environment_all() {
     let tmux = TmuxServer::new("showenv_all");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -53,6 +57,7 @@ fn show_environment_all() {
 
 /// Show unknown variable (error).
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn show_environment_unknown() {
     let tmux = TmuxServer::new("showenv_unknown");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -64,6 +69,7 @@ fn show_environment_unknown() {
 
 /// Unset environment variable with -u.
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn show_environment_unset() {
     let tmux = TmuxServer::new("showenv_unset");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -85,6 +91,7 @@ fn show_environment_unset() {
 
 /// Show environment with -h (hidden only).
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn show_environment_hidden() {
     let tmux = TmuxServer::new("showenv_hidden");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -100,6 +107,7 @@ fn show_environment_hidden() {
 
 /// Show a specific hidden variable by name with -h.
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn show_environment_hidden_specific_var() {
     let tmux = TmuxServer::new("showenv_hidden_sp");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -115,6 +123,7 @@ fn show_environment_hidden_specific_var() {
 
 /// Hidden var should NOT appear without -h flag.
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn show_environment_hidden_excluded_without_flag() {
     let tmux = TmuxServer::new("showenv_hidden_ex");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -132,6 +141,7 @@ fn show_environment_hidden_excluded_without_flag() {
 
 /// Non-hidden var should NOT appear with -h flag.
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn show_environment_nonhidden_excluded_with_h() {
     let tmux = TmuxServer::new("showenv_nonhid_ex");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -151,6 +161,7 @@ fn show_environment_nonhidden_excluded_with_h() {
 /// Use setenv -r to mark a variable for removal (sets value to None)
 /// rather than -u which completely removes the entry.
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn show_environment_shell_format_unset() {
     let tmux = TmuxServer::new("showenv_s_unset");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -167,6 +178,7 @@ fn show_environment_shell_format_unset() {
 
 /// Shell format should escape special characters ($, backtick, ", \).
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn show_environment_shell_format_escape() {
     let tmux = TmuxServer::new("showenv_s_esc");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -183,6 +195,7 @@ fn show_environment_shell_format_escape() {
 
 /// Show all session environment variables (without -g).
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn show_environment_all_session() {
     let tmux = TmuxServer::new("showenv_all_sess");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -199,6 +212,7 @@ fn show_environment_all_session() {
 /// Use setenv -r to mark for removal (keeps entry with None value)
 /// rather than -u which removes the entry entirely.
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn show_environment_removed_var_format() {
     let tmux = TmuxServer::new("showenv_rm_fmt");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -212,6 +226,7 @@ fn show_environment_removed_var_format() {
 
 /// Shell format with valid value should show export syntax.
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn show_environment_shell_format_export() {
     let tmux = TmuxServer::new("showenv_s_export");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);

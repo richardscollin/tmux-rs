@@ -2,6 +2,7 @@ use super::*;
 
 /// Test list-sessions with -f filter (coverage: cmd_list_sessions.rs lines 55-66)
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn list_sessions_filter() {
     let tmux = TmuxServer::new("list_sessions_filter");
 

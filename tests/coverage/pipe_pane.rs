@@ -2,6 +2,7 @@ use super::*;
 
 /// Pipe pane to a command.
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn pipe_pane_basic() {
     let tmux = TmuxServer::new("pipep_basic");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -26,6 +27,7 @@ fn pipe_pane_basic() {
 
 /// Pipe pane with -o (toggle/open only if not already piping).
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn pipe_pane_toggle() {
     let tmux = TmuxServer::new("pipep_toggle");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -42,6 +44,7 @@ fn pipe_pane_toggle() {
 
 /// Pipe pane with -I (input mode).
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn pipe_pane_input() {
     let tmux = TmuxServer::new("pipep_input");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -57,6 +60,7 @@ fn pipe_pane_input() {
 
 /// Pipe pane with explicit -O (output mode).
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn pipe_pane_output_flag() {
     let tmux = TmuxServer::new("pipep_output");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -84,6 +88,7 @@ fn pipe_pane_output_flag() {
 
 /// Pipe pane with -I and -O combined (bidirectional).
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn pipe_pane_input_output() {
     let tmux = TmuxServer::new("pipep_io");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -99,6 +104,7 @@ fn pipe_pane_input_output() {
 
 /// Pipe to a dead/exited pane returns error.
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn pipe_pane_dead_pane() {
     let tmux = TmuxServer::new("pipep_dead");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -123,6 +129,7 @@ fn pipe_pane_dead_pane() {
 
 /// Close pipe by running pipep with no arguments.
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn pipe_pane_close_no_args() {
     let tmux = TmuxServer::new("pipep_close");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -149,6 +156,7 @@ fn pipe_pane_close_no_args() {
 
 /// Close pipe by running pipep with empty command string.
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn pipe_pane_close_empty_cmd() {
     let tmux = TmuxServer::new("pipep_empty");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -167,6 +175,7 @@ fn pipe_pane_close_empty_cmd() {
 
 /// Toggle -o: first call opens, second call with -o closes (no new pipe).
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn pipe_pane_toggle_no_reopen() {
     let tmux = TmuxServer::new("pipep_toggle2");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -198,6 +207,7 @@ fn pipe_pane_toggle_no_reopen() {
 
 /// Use pipe-pane alias 'pipep'.
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn pipe_pane_alias() {
     let tmux = TmuxServer::new("pipep_alias");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);

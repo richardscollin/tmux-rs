@@ -2,6 +2,7 @@ use super::*;
 
 /// Detach control-mode client.
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn detach_client_basic() {
     let tmux = TmuxServer::new("detach_basic");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -15,6 +16,7 @@ fn detach_client_basic() {
 
 /// Detach with -P (kill).
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn detach_client_kill() {
     let tmux = TmuxServer::new("detach_kill");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -25,6 +27,7 @@ fn detach_client_kill() {
 
 /// Detach with -a (all others).
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn detach_client_all_others() {
     let tmux = TmuxServer::new("detach_all");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -35,6 +38,7 @@ fn detach_client_all_others() {
 
 /// Detach with -s (target session).
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn detach_client_session() {
     let tmux = TmuxServer::new("detach_sess");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24", "-s", "mysess"]);
@@ -45,6 +49,7 @@ fn detach_client_session() {
 
 /// Detach with -E (exec command on detach).
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn detach_client_exec() {
     let tmux = TmuxServer::new("detach_exec");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -55,6 +60,7 @@ fn detach_client_exec() {
 
 /// Detach with -a -E (all others, exec command).
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn detach_client_all_exec() {
     let tmux = TmuxServer::new("detach_all_exec");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -68,6 +74,7 @@ fn detach_client_all_exec() {
 
 /// Detach with -s -E (session, exec command).
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn detach_client_session_exec() {
     let tmux = TmuxServer::new("detach_sess_exec");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24", "-s", "sexec"]);
@@ -78,6 +85,7 @@ fn detach_client_session_exec() {
 
 /// Suspend-client command (suspendc alias).
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn suspend_client() {
     let tmux = TmuxServer::new("suspendc");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -95,6 +103,7 @@ fn suspend_client() {
 
 /// Suspend-client using alias suspendc.
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn suspend_client_alias() {
     let tmux = TmuxServer::new("suspendc_alias");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -108,6 +117,7 @@ fn suspend_client_alias() {
 
 /// Detach with -P -a (kill + all others).
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn detach_client_kill_all() {
     let tmux = TmuxServer::new("detach_kill_all");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -118,6 +128,7 @@ fn detach_client_kill_all() {
 
 /// Detach using alias 'detach'.
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn detach_client_alias() {
     let tmux = TmuxServer::new("detach_alias");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);

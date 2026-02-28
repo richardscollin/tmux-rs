@@ -2,6 +2,7 @@ use super::*;
 
 /// Respawn window with -k.
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn respawn_window_kill() {
     let tmux = TmuxServer::new("respawnw_kill");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -17,6 +18,7 @@ fn respawn_window_kill() {
 
 /// Respawn window with custom command using -k.
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn respawn_window_custom_cmd() {
     let tmux = TmuxServer::new("respawnw_cmd");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -30,6 +32,7 @@ fn respawn_window_custom_cmd() {
 
 /// Respawn alive window without -k should fail.
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn respawn_window_alive_no_kill() {
     let tmux = TmuxServer::new("respawnw_alive");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -41,6 +44,7 @@ fn respawn_window_alive_no_kill() {
 
 /// Respawn window with -e (environment).
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn respawn_window_env() {
     let tmux = TmuxServer::new("respawnw_env");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -54,6 +58,7 @@ fn respawn_window_env() {
 
 /// Respawn window with -c (start directory).
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn respawn_window_start_directory() {
     let tmux = TmuxServer::new("respawnw_cwd");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -73,6 +78,7 @@ fn respawn_window_start_directory() {
 
 /// Respawn window with multiple -e flags.
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn respawn_window_multi_env() {
     let tmux = TmuxServer::new("respawnw_menv");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -89,6 +95,7 @@ fn respawn_window_multi_env() {
 
 /// Respawn window with -k and -c (start directory) together.
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn respawn_window_kill_with_cwd() {
     let tmux = TmuxServer::new("respawnw_kcwd");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -107,6 +114,7 @@ fn respawn_window_kill_with_cwd() {
 
 /// Respawn window with -k, -c, and -e combined.
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn respawn_window_kill_cwd_env() {
     let tmux = TmuxServer::new("respawnw_kce");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);

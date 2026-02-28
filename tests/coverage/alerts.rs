@@ -4,6 +4,7 @@ use super::*;
 /// Covers: alerts_check_bell main path, alerts_enabled(BELL), alerts_queue,
 /// alerts_reset, alerts_callback, bell-action=any (default).
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn alerts_bell() {
     let tmux = TmuxServer::new("alerts_bell");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -26,6 +27,7 @@ fn alerts_bell() {
 /// Bell with monitor-bell off: early return in alerts_check_bell.
 /// Covers: alerts_check_bell monitor-bell==0 branch, alerts_enabled(BELL, off).
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn alerts_bell_monitor_off() {
     let tmux = TmuxServer::new("alerts_bell_off");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -44,6 +46,7 @@ fn alerts_bell_monitor_off() {
 /// Bell-action variants: exercise all branches of alerts_action_applies.
 /// Tests none/current/other with bell in both current and non-current windows.
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn alerts_bell_action_variants() {
     // bell-action=none: notification skipped for all windows
     {
@@ -100,6 +103,7 @@ fn alerts_bell_action_variants() {
 /// Covers: alerts_check_activity main path, alerts_enabled(ACTIVITY),
 /// activity-action=other (default).
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn alerts_activity() {
     let tmux = TmuxServer::new("alerts_activity");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -118,6 +122,7 @@ fn alerts_activity() {
 /// Activity with monitor-activity off (default): early return.
 /// Covers: alerts_check_activity monitor-activity==0 branch.
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn alerts_activity_monitor_off() {
     let tmux = TmuxServer::new("alerts_activity_off");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -135,6 +140,7 @@ fn alerts_activity_monitor_off() {
 /// Activity-action variants: current and other.
 /// Covers: alerts_action_applies ALERT_CURRENT and ALERT_OTHER for activity.
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn alerts_activity_action_variants() {
     // activity-action=current: applies only for current window
     {
@@ -173,6 +179,7 @@ fn alerts_activity_action_variants() {
 /// alerts_reset timer setup, alerts_timer callback, silence-action=other (default).
 /// Also covers WINLINK_SILENCE "already set" continue branch (timer fires again).
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn alerts_silence() {
     let tmux = TmuxServer::new("alerts_silence");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -192,6 +199,7 @@ fn alerts_silence() {
 /// Silence with monitor-silence off (default): no flag set.
 /// Covers: alerts_check_silence early return (monitor-silence==0).
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn alerts_silence_monitor_off() {
     let tmux = TmuxServer::new("alerts_silence_off");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -210,6 +218,7 @@ fn alerts_silence_monitor_off() {
 /// then SESSION_ALERTED causes the second winlink to skip notify.
 /// Covers: alerts_check_bell SESSION_ALERTED branch (continue).
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn alerts_session_alerted_dedup() {
     let tmux = TmuxServer::new("alerts_dedup");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -239,6 +248,7 @@ fn alerts_session_alerted_dedup() {
 /// and takes the early return at line 174.
 /// Covers: alerts_check_bell monitor-bell==0 early return when BELL flag IS set.
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn alerts_cross_alert_bell_disabled() {
     let tmux = TmuxServer::new("alerts_cross_bell");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -266,6 +276,7 @@ fn alerts_cross_alert_bell_disabled() {
 /// SESSION_ALERTED dedup for activity: linked window with two winlinks.
 /// Covers: alerts_check_activity SESSION_ALERTED branch (line 235).
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn alerts_activity_session_alerted() {
     let tmux = TmuxServer::new("alerts_act_dedup");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -293,6 +304,7 @@ fn alerts_activity_session_alerted() {
 /// SESSION_ALERTED dedup for silence: linked window with two winlinks.
 /// Covers: alerts_check_silence SESSION_ALERTED branch (line 277).
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn alerts_silence_session_alerted() {
     let tmux = TmuxServer::new("alerts_sil_dedup");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -322,6 +334,7 @@ fn alerts_silence_session_alerted() {
 /// Uses respawn-pane to produce BEL in the current window while attached,
 /// covering the curw==wl && attached!=0 branch (lines 187, 226).
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn alerts_with_control_client() {
     let tmux = TmuxServer::new("alerts_ctrl");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -357,6 +370,7 @@ fn alerts_with_control_client() {
 /// Uses wait-for to keep control client attached while silence timer fires.
 /// Covers: alerts_check_silence curw==wl && attached!=0 branch (line 268).
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn alerts_silence_current_attached() {
     let tmux = TmuxServer::new("alerts_sil_att");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);

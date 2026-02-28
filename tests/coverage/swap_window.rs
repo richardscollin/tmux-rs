@@ -2,6 +2,7 @@ use super::*;
 
 /// Basic swap-window.
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn swap_window_basic() {
     let tmux = TmuxServer::new("swapw_basic");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -22,6 +23,7 @@ fn swap_window_basic() {
 
 /// Swap-window with -d (don't select).
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn swap_window_no_select() {
     let tmux = TmuxServer::new("swapw_nosel");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);

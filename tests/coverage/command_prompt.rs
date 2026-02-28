@@ -10,6 +10,7 @@ use super::*;
 ///
 /// Upstream C tmux silently wraps (unsigned underflow is defined in C).
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn command_prompt_control_mode_crash() {
     let tmux = TmuxServer::new("cmd_prompt_crash");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);

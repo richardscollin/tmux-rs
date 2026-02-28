@@ -2,6 +2,7 @@ use super::*;
 
 /// List server access (should work even with no explicit ACL entries).
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn server_access_list() {
     let tmux = TmuxServer::new("svraccess_list");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -14,6 +15,7 @@ fn server_access_list() {
 
 /// Server-access -a and -d conflict.
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn server_access_add_deny_conflict() {
     let tmux = TmuxServer::new("svraccess_conflict");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -25,6 +27,7 @@ fn server_access_add_deny_conflict() {
 
 /// Server-access -r and -w conflict.
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn server_access_rw_conflict() {
     let tmux = TmuxServer::new("svraccess_rw_conflict");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -36,6 +39,7 @@ fn server_access_rw_conflict() {
 
 /// Server-access add unknown user.
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn server_access_unknown_user() {
     let tmux = TmuxServer::new("svraccess_unknown");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -47,6 +51,7 @@ fn server_access_unknown_user() {
 
 /// Server-access deny owner (error).
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn server_access_deny_owner() {
     let tmux = TmuxServer::new("svraccess_deny_owner");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);

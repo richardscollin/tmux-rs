@@ -2,6 +2,7 @@ use super::*;
 
 /// List clients on a detached session (no clients expected).
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn list_clients_empty() {
     let tmux = TmuxServer::new("lsc_empty");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -17,6 +18,7 @@ fn list_clients_empty() {
 
 /// List clients with custom format.
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn list_clients_format() {
     let tmux = TmuxServer::new("lsc_fmt");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -28,6 +30,7 @@ fn list_clients_format() {
 
 /// List clients for a specific session.
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn list_clients_session() {
     let tmux = TmuxServer::new("lsc_session");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24", "-s", "test"]);

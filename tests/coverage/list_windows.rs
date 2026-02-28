@@ -2,6 +2,7 @@ use super::*;
 
 /// Test list-windows -a without -F (coverage: cmd_list_windows.rs lines 80-82)
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn list_windows_all_sessions() {
     let tmux = TmuxServer::new("list_windows_all");
 
@@ -27,6 +28,7 @@ fn list_windows_all_sessions() {
 
 /// Test list-windows with -f filter (coverage: cmd_list_windows.rs lines 100-110)
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn list_windows_filter() {
     let tmux = TmuxServer::new("list_windows_filter");
 

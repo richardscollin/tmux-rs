@@ -3,6 +3,7 @@ use super::*;
 /// Break pane from a multi-pane window (the main code path: else branch at line 87).
 /// Also tests -d (don't select new window) and default window naming.
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn break_pane_multi_pane() {
     let tmux = TmuxServer::new("break_pane_multi");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -37,6 +38,7 @@ fn break_pane_multi_pane() {
 /// Break pane from a single-pane window into a different session.
 /// Exercises the window_count_panes == 1 path (line 66) and cross-session branches.
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn break_pane_single_pane_cross_session() {
     let tmux = TmuxServer::new("break_pane_single_cross");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24", "-s", "src"]);
@@ -70,6 +72,7 @@ fn break_pane_single_pane_cross_session() {
 /// Break pane with -n to set a custom window name.
 /// Exercises line 78 (single pane) and line 115-117 (multi pane).
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn break_pane_with_name() {
     let tmux = TmuxServer::new("break_pane_name");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -90,6 +93,7 @@ fn break_pane_with_name() {
 /// Break pane with -P to print the new pane location (default format).
 /// Exercises lines 149-157.
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn break_pane_print() {
     let tmux = TmuxServer::new("break_pane_print");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -110,6 +114,7 @@ fn break_pane_print() {
 /// Break pane with -P -F to print with custom format.
 /// Exercises the custom template path at line 150.
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn break_pane_print_custom_format() {
     let tmux = TmuxServer::new("break_pane_print_fmt");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -125,6 +130,7 @@ fn break_pane_print_custom_format() {
 /// Break pane with -a (after current window).
 /// Exercises the winlink_shuffle_up path at line 54-62.
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn break_pane_after() {
     let tmux = TmuxServer::new("break_pane_after");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -147,6 +153,7 @@ fn break_pane_after() {
 /// Break pane with -b (before current window).
 /// Exercises the `before` variable path at line 53.
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn break_pane_before() {
     let tmux = TmuxServer::new("break_pane_before");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -169,6 +176,7 @@ fn break_pane_before() {
 /// Break pane to a specific target index that is already in use.
 /// Exercises the "index in use" error at line 88-90.
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn break_pane_index_in_use() {
     let tmux = TmuxServer::new("break_pane_idx_used");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -191,6 +199,7 @@ fn break_pane_index_in_use() {
 /// Break pane without -d (should select the new window).
 /// Exercises the session_select path at line 134-136.
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn break_pane_selects_new_window() {
     let tmux = TmuxServer::new("break_pane_select");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -208,6 +217,7 @@ fn break_pane_selects_new_window() {
 /// Break pane from multi-pane window into a different session.
 /// Exercises src_s != dst_s branches at lines 140-145.
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn break_pane_multi_pane_cross_session() {
     let tmux = TmuxServer::new("break_pane_multi_cross");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24", "-s", "src"]);
@@ -243,6 +253,7 @@ fn break_pane_multi_pane_cross_session() {
 /// Break pane with -a but no explicit -t target.
 /// Exercises line 58: winlink_shuffle_up with curw fallback.
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn break_pane_after_no_target() {
     let tmux = TmuxServer::new("break_pane_after_notgt");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -262,6 +273,7 @@ fn break_pane_after_no_target() {
 /// Break pane with -n from a single-pane window (the link path).
 /// Exercises -n at line 78-81 in the single-pane branch.
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn break_pane_single_pane_with_name() {
     let tmux = TmuxServer::new("break_pane_single_name");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24", "-s", "src"]);

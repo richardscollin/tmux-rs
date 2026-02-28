@@ -2,6 +2,7 @@ use super::*;
 
 /// Basic move-window to a new index.
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn move_window_basic() {
     let tmux = TmuxServer::new("movew_basic");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -16,6 +17,7 @@ fn move_window_basic() {
 
 /// Move-window with -r to renumber.
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn move_window_renumber() {
     let tmux = TmuxServer::new("movew_renum");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -32,6 +34,7 @@ fn move_window_renumber() {
 
 /// Move-window with -k (kill existing at target).
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn move_window_kill() {
     let tmux = TmuxServer::new("movew_kill");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -49,6 +52,7 @@ fn move_window_kill() {
 
 /// Move-window target in use error.
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn move_window_target_in_use() {
     let tmux = TmuxServer::new("movew_in_use");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -61,6 +65,7 @@ fn move_window_target_in_use() {
 
 /// Move-window with -a (after).
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn move_window_after() {
     let tmux = TmuxServer::new("movew_after");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -75,6 +80,7 @@ fn move_window_after() {
 
 /// Move-window with -b (before).
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn move_window_before() {
     let tmux = TmuxServer::new("movew_before");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -89,6 +95,7 @@ fn move_window_before() {
 
 /// Move-window cross-session.
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn move_window_cross_session() {
     let tmux = TmuxServer::new("movew_cross");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24", "-s", "src"]);
@@ -104,6 +111,7 @@ fn move_window_cross_session() {
 
 /// Link-window basic.
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn link_window_basic() {
     let tmux = TmuxServer::new("linkw_basic");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24", "-s", "src"]);

@@ -2,6 +2,7 @@ use super::*;
 
 /// Respawn pane with -k (kill existing process).
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn respawn_pane_kill() {
     let tmux = TmuxServer::new("respawnp_kill");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -20,6 +21,7 @@ fn respawn_pane_kill() {
 
 /// Respawn pane without -k on a dead pane.
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn respawn_pane_dead() {
     let tmux = TmuxServer::new("respawnp_dead");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -42,6 +44,7 @@ fn respawn_pane_dead() {
 
 /// Respawn pane without -k on alive pane (should fail).
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn respawn_pane_alive_no_kill() {
     let tmux = TmuxServer::new("respawnp_alive");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -56,6 +59,7 @@ fn respawn_pane_alive_no_kill() {
 
 /// Respawn pane with custom command.
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn respawn_pane_custom_command() {
     let tmux = TmuxServer::new("respawnp_cmd");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -70,6 +74,7 @@ fn respawn_pane_custom_command() {
 
 /// Respawn pane with -e (environment variable).
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn respawn_pane_env() {
     let tmux = TmuxServer::new("respawnp_env");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -84,6 +89,7 @@ fn respawn_pane_env() {
 
 /// Respawn pane with -c (start directory).
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn respawn_pane_start_directory() {
     let tmux = TmuxServer::new("respawnp_cwd");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -103,6 +109,7 @@ fn respawn_pane_start_directory() {
 
 /// Respawn pane with multiple -e flags.
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn respawn_pane_multi_env() {
     let tmux = TmuxServer::new("respawnp_menv");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -120,6 +127,7 @@ fn respawn_pane_multi_env() {
 
 /// Respawn dead pane with -c and custom command.
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn respawn_pane_dead_with_cwd() {
     let tmux = TmuxServer::new("respawnp_deadcwd");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);

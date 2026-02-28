@@ -140,6 +140,10 @@ unsafe fn cmd_capture_pane_history(
             gd = (*wp).base.grid;
         }
 
+        // TODO: check against upstream - hsize + sy can overflow u32 in debug mode
+        // Use wrapping arithmetic to mirror C unsigned wraparound
+        let last_line = (*gd).hsize.wrapping_add((*gd).sy).wrapping_sub(1);
+
         let sflag: *const u8 = args_get(&*args, b'S');
         let mut top;
         if !sflag.is_null() && streq_(sflag, "-") {
@@ -157,18 +161,18 @@ unsafe fn cmd_capture_pane_history(
                     top = (*gd).hsize.wrapping_add(n as u32);
                 }
             }
-            if top > (*gd).hsize + (*gd).sy - 1 {
-                top = (*gd).hsize + (*gd).sy - 1;
+            if top > last_line {
+                top = last_line;
             }
         }
 
         let eflag: *const u8 = args_get(&*args, b'E');
         if !eflag.is_null() && streq_(eflag, "-") {
-            bottom = (*gd).hsize + (*gd).sy - 1;
+            bottom = last_line;
         } else {
             match args_strtonum_and_expand(&*args, b'E', i32::MIN as i64, i16::MAX as i64, item) {
                 Err(_) => {
-                    bottom = (*gd).hsize + (*gd).sy - 1;
+                    bottom = last_line;
                 }
                 Ok(n) if n < 0 && (-n) as u32 > (*gd).hsize => {
                     bottom = 0;
@@ -178,8 +182,8 @@ unsafe fn cmd_capture_pane_history(
                     bottom = (*gd).hsize.wrapping_add(n as u32);
                 }
             }
-            if bottom > (*gd).hsize + (*gd).sy - 1 {
-                bottom = (*gd).hsize + (*gd).sy - 1;
+            if bottom > last_line {
+                bottom = last_line;
             }
         }
 

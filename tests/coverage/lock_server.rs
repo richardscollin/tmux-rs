@@ -2,6 +2,7 @@ use super::*;
 
 /// Lock server (no-op without terminal clients).
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn lock_server_basic() {
     let tmux = TmuxServer::new("lock_basic");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -15,6 +16,7 @@ fn lock_server_basic() {
 
 /// Lock session.
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn lock_session_basic() {
     let tmux = TmuxServer::new("lock_sess");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -28,6 +30,7 @@ fn lock_session_basic() {
 
 /// Lock client via control mode.
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn lock_client_control() {
     let tmux = TmuxServer::new("lock_client");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);

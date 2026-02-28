@@ -2,6 +2,7 @@ use super::*;
 
 /// Test bind-key with an unknown key name (coverage: cmd_bind_key.rs lines 42-44)
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn bind_key_unknown_key() {
     let tmux = TmuxServer::new("bind_key_unknown");
 
@@ -16,6 +17,7 @@ fn bind_key_unknown_key() {
 
 /// Test bind-key with key only, no command (coverage: cmd_bind_key.rs lines 56-58)
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn bind_key_no_command() {
     let tmux = TmuxServer::new("bind_key_no_cmd");
 
@@ -35,6 +37,7 @@ fn bind_key_no_command() {
 
 /// Test bind-key with a malformed command string (coverage: cmd_bind_key.rs lines 77-80)
 #[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn bind_key_parse_error() {
     let tmux = TmuxServer::new("bind_key_parse_err");
 

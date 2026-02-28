@@ -29,7 +29,7 @@ fn capture_cursor_state(tmux: &TmuxServer, output: &mut String) {
 #[test]
 fn cursor_test1() {
     let tmux = TmuxServer::new("cursor_test1");
-    let regress = TmuxServer::regress_dir();
+    let regress = test_data_dir();
     let txt = regress.join("cursor-test.txt");
     let txt_path = txt.to_str().unwrap();
 
@@ -60,7 +60,7 @@ fn cursor_test1() {
 #[test]
 fn cursor_test2() {
     let tmux = TmuxServer::new("cursor_test2");
-    let regress = TmuxServer::regress_dir();
+    let regress = test_data_dir();
     let txt = regress.join("cursor-test.txt");
     let txt_path = txt.to_str().unwrap();
 
@@ -91,7 +91,7 @@ fn cursor_test2() {
 #[test]
 fn cursor_test3() {
     let tmux = TmuxServer::new("cursor_test3");
-    let regress = TmuxServer::regress_dir();
+    let regress = test_data_dir();
 
     let pane_cmd = "printf 'abcdefabcdefab'; printf '\\e[2;7H'; cat";
     tmux.run(&["-f/dev/null", "new", "-d", "-x7", "-y2", pane_cmd]);
@@ -120,7 +120,7 @@ fn cursor_test3() {
 #[test]
 fn cursor_test4() {
     let tmux = TmuxServer::new("cursor_test4");
-    let regress = TmuxServer::regress_dir();
+    let regress = test_data_dir();
 
     let pane_cmd = "printf 'abcdef\\n'; cat";
     tmux.run(&["-f/dev/null", "new", "-d", "-x10", "-y3", pane_cmd]);

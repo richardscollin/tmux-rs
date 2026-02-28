@@ -6,8 +6,13 @@ on:
     branches: [main]
 name: build
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   asan-test:
+    timeout-minutes: 15
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -20,6 +25,7 @@ jobs:
          RUSTFLAGS=-Zsanitizer=address cargo +nightly test --target x86_64-unknown-linux-gnu
 
   clippy:
+    timeout-minutes: 10
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -47,6 +53,7 @@ jobs:
       # - run: cargo +nightly clippy -- -Dwarnings
 
   fmt:
+    timeout-minutes: 5
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -63,6 +70,7 @@ jobs:
       - run: cargo +nightly fmt --check
 
   build:
+    timeout-minutes: 15
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:

@@ -4,9 +4,14 @@ name: Coverage
 on:
   push
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   coverage:
     name: Coverage
+    timeout-minutes: 15
     runs-on: ubuntu-latest
 
     steps:

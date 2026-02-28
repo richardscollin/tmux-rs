@@ -167,6 +167,11 @@ mod regress {
     mod break_pane;
     mod capture_pane;
     mod cmd_choose_tree;
+    mod cmd_confirm_before;
+    mod cmd_display_menu;
+    mod cmd_display_message;
+    mod cmd_display_panes;
+    mod cmd_find_window;
     mod combine;
     mod command_order;
     mod command_prompt;

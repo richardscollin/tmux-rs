@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 pub use std::io::Write;
 pub use std::path::PathBuf;
 pub use std::process::{Command, Output, Stdio};
@@ -25,7 +26,6 @@ impl TmuxServer {
     pub fn socket(&self) -> &str {
         &self.socket
     }
-
 
     fn build_cmd(&self, args: &[&str]) -> Command {
         let mut cmd = Command::new(&self.binary);

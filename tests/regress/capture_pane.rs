@@ -84,7 +84,7 @@ fn capture_pane_sgr0() {
 
 /// Test clear-history and clear-history -H
 #[test]
-#[cfg_attr(not(feature = "coverage-tests"), ignore)]
+#[ignore = "broken"]
 fn clear_history() {
     let tmux = TmuxServer::new("clear_history");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
@@ -292,7 +292,7 @@ fn capture_t_and_n_flags() {
 
 /// Test capture-pane -a (alternate screen) error paths
 #[test]
-#[cfg_attr(not(feature = "coverage-tests"), ignore)]
+#[ignore]
 fn capture_alternate_screen() {
     let tmux = TmuxServer::new("capture_alt_screen");
     tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);

@@ -178,6 +178,7 @@ mod regress {
     mod if_shell;
     mod input_keys;
     mod join_pane;
+    mod kill_pane;
     mod kill_session;
     mod list_buffers;
     mod list_clients;
@@ -208,4 +209,5 @@ mod regress {
     mod tty_keys;
     mod utf8;
     mod window_clock;
+    mod window_copy;
 }

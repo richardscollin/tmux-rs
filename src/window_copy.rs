@@ -1181,19 +1181,22 @@ pub unsafe fn window_copy_do_copy_end_of_line(
         let data: *mut window_copy_mode_data = (*wme).data.cast();
         let mut prefix = null_mut();
         let mut command = null_mut();
-        let arg0 = args_string(&*(*cs).wargs, 0).unwrap().as_ptr().cast::<u8>();
-        let arg1 = args_string(&*(*cs).wargs, 1).unwrap().as_ptr().cast::<u8>();
         let set_paste = !args_has(&*(*cs).wargs, 'P');
         let set_clip = !args_has(&*(*cs).wargs, 'C');
 
         if pipe != 0 {
             if count == 2 {
+                let arg1 = args_string(&*(*cs).wargs, 1).unwrap().as_ptr().cast::<u8>();
                 prefix = format_single(null_mut(), cstr_to_str(arg1), c, s, wl, wp);
             }
-            if !s.is_null() && count > 0 && *arg0 != b'\0' {
-                command = format_single(null_mut(), cstr_to_str(arg0), c, s, wl, wp);
+            if !s.is_null() && count > 0 {
+                let arg0 = args_string(&*(*cs).wargs, 0).unwrap().as_ptr().cast::<u8>();
+                if *arg0 != b'\0' {
+                    command = format_single(null_mut(), cstr_to_str(arg0), c, s, wl, wp);
+                }
             }
         } else if count == 1 {
+            let arg0 = args_string(&*(*cs).wargs, 0).unwrap().as_ptr().cast::<u8>();
             prefix = format_single(null_mut(), cstr_to_str(arg0), c, s, wl, wp);
         }
 

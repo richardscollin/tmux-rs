@@ -40,7 +40,7 @@ pub fn attributes_tostring(attr: grid_attr) -> Cow<'static, str> {
     ))
 }
 
-/// Parse a comma/space/pipe-separated attribute string into grid_attr flags.
+/// Parse a comma/space/pipe-separated attribute string into `grid_attr` flags.
 pub fn attributes_fromstring(str: &str) -> Result<grid_attr, ()> {
     struct table_entry {
         name: &'static str,

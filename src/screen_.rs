@@ -97,7 +97,8 @@ pub unsafe fn screen_reinit(s: *mut screen) {
         (*s).cy = 0;
 
         (*s).rupper = 0;
-        (*s).rlower = screen_size_y(s) - 1;
+        // TODO: wrapping_sub to match C unsigned underflow when sy == 0
+        (*s).rlower = screen_size_y(s).wrapping_sub(1);
 
         (*s).mode =
             mode_flag::MODE_CURSOR | mode_flag::MODE_WRAP | ((*s).mode & mode_flag::MODE_CRLF);
@@ -457,7 +458,8 @@ unsafe fn screen_resize_y(s: *mut screen, sy: u32, eat_empty: i32, cy: *mut u32)
         // Set the new size, and reset the scroll region
         (*gd).sy = sy;
         (*s).rupper = 0;
-        (*s).rlower = screen_size_y(s) - 1;
+        // TODO: wrapping_sub to match C unsigned underflow when sy == 0
+        (*s).rlower = screen_size_y(s).wrapping_sub(1);
     }
 }
 

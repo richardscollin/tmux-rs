@@ -169,6 +169,7 @@ mod regress {
     mod cmd_choose_tree;
     mod combine;
     mod command_order;
+    mod command_prompt;
     mod conf_syntax;
     mod control_client;
     mod copy_mode;

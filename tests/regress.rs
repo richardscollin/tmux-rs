@@ -166,6 +166,7 @@ mod regress {
     mod bind_key;
     mod break_pane;
     mod capture_pane;
+    mod cmd_choose_tree;
     mod combine;
     mod command_order;
     mod conf_syntax;

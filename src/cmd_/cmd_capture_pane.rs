@@ -153,7 +153,8 @@ unsafe fn cmd_capture_pane_history(
                     top = 0;
                 }
                 Ok(n) => {
-                    top = (*gd).hsize + n as u32;
+                    // wrapping_add: n may be negative, mirroring C unsigned wraparound
+                    top = (*gd).hsize.wrapping_add(n as u32);
                 }
             }
             if top > (*gd).hsize + (*gd).sy - 1 {
@@ -173,7 +174,8 @@ unsafe fn cmd_capture_pane_history(
                     bottom = 0;
                 }
                 Ok(n) => {
-                    bottom = (*gd).hsize + n as u32;
+                    // wrapping_add: n may be negative, mirroring C unsigned wraparound
+                    bottom = (*gd).hsize.wrapping_add(n as u32);
                 }
             }
             if bottom > (*gd).hsize + (*gd).sy - 1 {

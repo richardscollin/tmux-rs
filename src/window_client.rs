@@ -282,6 +282,9 @@ pub unsafe fn window_client_init(
 
         let data: *mut window_client_modedata =
             xcalloc1::<window_client_modedata>() as *mut window_client_modedata;
+        // xcalloc1 zeroes all bytes, but Vec requires NonNull::dangling() not null,
+        // so we must explicitly initialize item_list.
+        std::ptr::write(&raw mut (*data).item_list, Vec::new());
         (*wme.as_ptr()).data = data.cast();
         (*data).wp = wp;
 

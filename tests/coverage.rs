@@ -41,6 +41,7 @@ mod coverage {
     mod rotate_window;
     mod save_buffer;
     mod select_layout;
+    mod select_window;
     mod server_access;
     mod set_buffer;
     mod set_environment;

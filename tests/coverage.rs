@@ -9,6 +9,7 @@ mod coverage {
     mod bind_key;
     mod break_pane;
     mod cmd_choose_tree;
+    mod copy_mode;
     mod cmd_confirm_before;
     mod cmd_display_menu;
     mod cmd_display_message;

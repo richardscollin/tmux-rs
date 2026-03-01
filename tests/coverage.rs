@@ -38,6 +38,7 @@ mod coverage {
     mod respawn_pane;
     mod respawn_window;
     mod rotate_window;
+    mod select_layout;
     mod server_access;
     mod set_buffer;
     mod set_environment;

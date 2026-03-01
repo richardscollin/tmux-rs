@@ -35,6 +35,7 @@ mod coverage {
     mod pipe_pane;
     mod rename_window;
     mod resize_pane;
+    mod resize_window;
     mod respawn_pane;
     mod respawn_window;
     mod rotate_window;

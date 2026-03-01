@@ -45,6 +45,7 @@ mod coverage {
     mod status;
     mod swap_pane;
     mod swap_window;
+    mod unbind_key;
     mod window_clock;
     mod window_copy;
 }

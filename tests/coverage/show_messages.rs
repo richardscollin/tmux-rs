@@ -17,7 +17,7 @@ fn show_messages_basic() {
     let _ = out;
 }
 
-/// Show messages with -T (terminals).
+/// Show messages with -T (terminals) - no attached clients.
 #[test]
 #[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn show_messages_terminals() {
@@ -71,4 +71,53 @@ fn show_messages_log() {
         !out.trim().is_empty(),
         "expected at least one message in log"
     );
+}
+
+/// Show messages with -T from control-mode client (exercises terminal loop body).
+#[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
+fn show_messages_terminals_with_client() {
+    let tmux = TmuxServer::new("showmsgs_terms_c");
+    tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
+    tmux.run(&["set", "-g", "window-size", "manual"]);
+
+    // Attach control-mode client so TTY_TERMS has entries, then show terminals
+    let output = tmux.run_with_stdin(
+        &["-C", "attach"],
+        b"show-messages -T\ndetach-client\n",
+    );
+    assert!(output.status.success());
+}
+
+/// Show messages with -T and -J from control-mode client (blank separator).
+#[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
+fn show_messages_terminals_and_jobs_with_client() {
+    let tmux = TmuxServer::new("showmsgs_tj_c");
+    tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
+    tmux.run(&["set", "-g", "window-size", "manual"]);
+
+    // -T then -J: if -T printed terminals, blank > 0 triggers the blank line
+    let output = tmux.run_with_stdin(
+        &["-C", "attach"],
+        b"show-messages -T -J\ndetach-client\n",
+    );
+    assert!(output.status.success());
+}
+
+/// Show messages with -T -t targeting a specific client.
+#[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
+fn show_messages_terminals_target_client() {
+    let tmux = TmuxServer::new("showmsgs_terms_t");
+    tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
+    tmux.run(&["set", "-g", "window-size", "manual"]);
+
+    // Attach control-mode client, then show terminals with -t targeting self
+    // This exercises the args_has('t') && term != tc->tty.term branch
+    let output = tmux.run_with_stdin(
+        &["-C", "attach"],
+        b"show-messages -T -t /dev/tty\nshow-messages -T\ndetach-client\n",
+    );
+    assert!(output.status.success());
 }

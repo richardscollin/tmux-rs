@@ -40,6 +40,7 @@ mod coverage {
     mod rotate_window;
     mod server_access;
     mod set_buffer;
+    mod set_environment;
     mod show_environment;
     mod show_messages;
     mod show_prompt_history;

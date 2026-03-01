@@ -14,6 +14,7 @@ mod coverage {
     mod cmd_display_message;
     mod cmd_display_panes;
     mod cmd_find_window;
+    mod cmd_kill_session;
     mod cmd_list_keys;
     mod cmd_list_panes;
     mod cmd_refresh_client;

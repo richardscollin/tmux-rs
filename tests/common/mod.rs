@@ -33,6 +33,8 @@ impl TmuxServer {
         cmd.args(args);
         cmd.env("PATH", "/bin:/usr/bin:/usr/local/bin");
         cmd.env("TERM", "screen");
+        cmd.env("SHELL", "/bin/sh");
+        cmd.env_remove("TMUX");
         cmd.stdin(Stdio::null());
         cmd
     }

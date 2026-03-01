@@ -392,6 +392,7 @@ fn alerts_silence_current_attached() {
         cmd.arg("-L").arg(&socket).args(&["-C", "attach"]);
         cmd.env("PATH", "/bin:/usr/bin:/usr/local/bin");
         cmd.env("TERM", "screen");
+        cmd.env_remove("TMUX");
         cmd.stdin(std::process::Stdio::piped());
         cmd.stdout(std::process::Stdio::piped());
         cmd.stderr(std::process::Stdio::piped());

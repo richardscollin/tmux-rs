@@ -32,6 +32,7 @@ fn assert_key(tmux_outer: &TmuxServer, inner_socket: &str, keys: &str, expected:
         .args(["-L", inner_socket, "set", "-g", "@lastkey", ""])
         .stdin(Stdio::null())
         .env("TERM", "screen")
+        .env_remove("TMUX")
         .output();
 
     let socket = inner_socket.to_string();
@@ -45,6 +46,7 @@ fn assert_key(tmux_outer: &TmuxServer, inner_socket: &str, keys: &str, expected:
             .stderr(Stdio::null())
             .env("PATH", "/bin:/usr/bin:/usr/local/bin")
             .env("TERM", "screen")
+            .env_remove("TMUX")
             .output()
     });
 
@@ -68,6 +70,7 @@ fn assert_key(tmux_outer: &TmuxServer, inner_socket: &str, keys: &str, expected:
             .stdin(Stdio::null())
             .env("PATH", "/bin:/usr/bin:/usr/local/bin")
             .env("TERM", "screen")
+            .env_remove("TMUX")
             .output()
             .expect("failed to read @lastkey");
         String::from_utf8_lossy(&out.stdout).trim().to_string()

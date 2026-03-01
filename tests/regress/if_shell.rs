@@ -114,6 +114,7 @@ fn if_shell_term() {
         .args(["-L", socket, &f_flag, "new", "-d", &pane_cmd])
         .env("TERM", "xterm")
         .env("PATH", "/bin:/usr/bin:/usr/local/bin")
+        .env_remove("TMUX")
         .stdin(std::process::Stdio::null())
         .output()
         .unwrap();
@@ -139,6 +140,7 @@ fn if_shell_term() {
         .args(["-L", socket, &f_flag, "new", "-d", &pane_cmd])
         .env("TERM", "screen")
         .env("PATH", "/bin:/usr/bin:/usr/local/bin")
+        .env_remove("TMUX")
         .stdin(std::process::Stdio::null())
         .output()
         .unwrap();

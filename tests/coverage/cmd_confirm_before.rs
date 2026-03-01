@@ -45,6 +45,7 @@ fn spawn_confirm(
             .stderr(Stdio::piped())
             .env("PATH", "/bin:/usr/bin:/usr/local/bin")
             .env("TERM", "screen")
+            .env_remove("TMUX")
             .output()
             .expect("failed to run confirm-before")
     })

@@ -76,6 +76,7 @@ fn test_choose_client_with_client() {
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
+        .env_remove("TMUX")
         .spawn()
         .expect("failed to spawn control client");
 

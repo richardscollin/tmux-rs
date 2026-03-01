@@ -11,3 +11,8 @@ pub unsafe fn getprogname() -> *const u8 {
 pub unsafe fn getprogname() -> *const u8 {
     c"tmux".as_ptr().cast()
 }
+
+#[cfg(target_os = "windows")]
+pub unsafe fn getprogname() -> *const u8 {
+    c"tmux".as_ptr().cast()
+}

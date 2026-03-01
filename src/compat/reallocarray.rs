@@ -12,7 +12,7 @@
 // ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 // OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-#[cfg(target_os = "macos")]
+#[cfg(not(target_os = "linux"))]
 pub unsafe fn reallocarray(
     optr: *mut core::ffi::c_void,
     nmemb: usize,
@@ -25,12 +25,12 @@ pub unsafe fn reallocarray(
             && nmemb > 0
             && usize::MAX / nmemb < size
         {
-            crate::errno!() = libc::ENOMEM;
+            crate::errno!() = ::libc_sys::ENOMEM;
             return core::ptr::null_mut();
         }
-        libc::realloc(optr, size * nmemb)
+        ::libc_sys::realloc(optr, size * nmemb)
     }
 }
 
 #[cfg(target_os = "linux")]
-pub(crate) use libc::reallocarray;
+pub(crate) use ::libc_sys::reallocarray;

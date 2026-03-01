@@ -18,8 +18,8 @@ pub static CMD_COPY_MODE_ENTRY: cmd_entry = cmd_entry {
     name: "copy-mode",
     alias: None,
 
-    args: args_parse::new("deHMs:t:uq", 0, 0, None),
-    usage: "[-deHMuq] [-s src-pane] [-t target-pane]",
+    args: args_parse::new("deHMqSs:t:u", 0, 0, None),
+    usage: "[-deHMqSu] [-s src-pane] [-t target-pane]",
 
     source: cmd_entry_flag::new(b's', cmd_find_type::CMD_FIND_PANE, cmd_find_flags::empty()),
     target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_PANE, cmd_find_flags::empty()),
@@ -52,12 +52,12 @@ unsafe fn cmd_copy_mode_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retva
         let mut s = null_mut();
         let wp = (*target).wp;
 
-        if args_has(args, 'q') {
+        if args_has(&*args, 'q') {
             window_pane_reset_mode_all(wp);
             return cmd_retval::CMD_RETURN_NORMAL;
         }
 
-        if args_has(args, 'M') {
+        if args_has(&*args, 'M') {
             let wp = cmd_mouse_pane(&raw mut (*event).m, &raw mut s, null_mut());
             if wp.is_none() {
                 return cmd_retval::CMD_RETURN_NORMAL;
@@ -78,21 +78,30 @@ unsafe fn cmd_copy_mode_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retva
             return cmd_retval::CMD_RETURN_NORMAL;
         }
 
-        let swp = if args_has(args, 's') {
+        let swp = if args_has(&*args, 's') {
             (*source).wp
         } else {
             wp
         };
         if window_pane_set_mode(wp, swp, &raw const WINDOW_COPY_MODE, null_mut(), args) == 0
-            && args_has(args, 'M')
+            && args_has(&*args, 'M')
         {
             window_copy_start_drag(c, &raw mut (*event).m);
         }
-        if args_has(args, 'u') {
+        if args_has(&*args, 'u') {
             window_copy_pageup(wp, 0);
         }
-        if args_has(args, 'd') {
-            window_copy_pagedown(wp, 0, args_has(args, 'e'));
+        if args_has(&*args, 'd') {
+            window_copy_pagedown(wp, 0, args_has(&*args, 'e'));
+        }
+        if args_has(&*args, 'S') {
+            window_copy_scroll(
+                wp,
+                (*c).tty.mouse_slider_mpos,
+                (*event).m.y,
+                args_has(&*args, 'e'),
+            );
+            return cmd_retval::CMD_RETURN_NORMAL;
         }
 
         cmd_retval::CMD_RETURN_NORMAL

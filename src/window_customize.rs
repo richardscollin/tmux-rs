@@ -47,6 +47,7 @@ pub static WINDOW_CUSTOMIZE_MODE: window_mode = window_mode {
     key_table: None,
     command: None,
     formats: None,
+    get_screen: None,
 };
 
 #[repr(i32)]
@@ -95,6 +96,8 @@ pub struct window_customize_modedata {
     item_list: *mut *mut window_customize_itemdata,
     item_size: u32,
 
+    prompt_flags: prompt_flags,
+
     fs: cmd_find_state,
     change: window_customize_change,
 }
@@ -109,7 +112,7 @@ unsafe fn window_customize_get_tag(
             let offset = oe.offset_from_unsigned(
                 NonNull::new((&raw const OPTIONS_TABLE) as *mut options_table_entry).unwrap(),
             ) as u64;
-            (2u64 << 62) | (offset << 32) | ((idx as u64 + 1) << 1) | 1
+            (2u64 << 62) | (offset << 32) | (((idx + 1) as u64) << 1) | 1
         } else {
             o.addr() as u64
         }
@@ -327,7 +330,7 @@ unsafe fn window_customize_build_option(
 
         if !filter.is_null() {
             let expanded = format_expand(ft, filter);
-            if !format_true(expanded) {
+            if !format_true(cstr_to_str_(expanded)) {
                 free_(expanded);
                 return;
             }
@@ -517,7 +520,7 @@ unsafe fn window_customize_build_keys(
             }
             if !filter.is_null() {
                 let expanded = format_expand(ft, filter);
-                if !format_true(expanded) {
+                if !format_true(cstr_to_str_(expanded)) {
                     free_(expanded);
                     continue;
                 }
@@ -544,8 +547,7 @@ unsafe fn window_customize_build_keys(
             free_(expanded);
 
             let tmp = cmd_list_print(&*(*bd).cmdlist, 0);
-            let mut text = format_nul!("#[ignore]{}", _s(tmp));
-            free_(tmp);
+            let mut text = format_nul!("#[ignore]{}", _s(tmp.as_ptr()));
             let mut mti = mode_tree_add(
                 (*data).data,
                 child,
@@ -779,15 +781,14 @@ unsafe fn window_customize_draw_key(
             0,
             &raw const GRID_DEFAULT_CELL,
             "Command: {}",
-            _s(cmd),
+            _s(cmd.as_ptr()),
         ) {
-            free_(cmd);
             return;
         }
         let default_bd = key_bindings_get_default(kt, (*bd).key);
         if !default_bd.is_null() {
             let default_cmd = cmd_list_print(&*(*default_bd).cmdlist, 0);
-            if libc::strcmp(cmd, default_cmd) != 0
+            if cmd != default_cmd
                 && !screen_write_text!(
                     ctx,
                     cx,
@@ -796,16 +797,10 @@ unsafe fn window_customize_draw_key(
                     0,
                     &GRID_DEFAULT_CELL,
                     "The default is: {}",
-                    _s(default_cmd),
+                    _s(default_cmd.as_ptr()),
                 )
-            {
-                free_(default_cmd);
-                free_(cmd);
-                return;
-            }
-            free_(default_cmd);
+            {}
         }
-        free_(cmd);
     }
 }
 
@@ -1181,10 +1176,13 @@ pub unsafe fn window_customize_init(
 
         memcpy__(&raw mut (*data).fs, fs);
 
-        if args.is_null() || !args_has(args, 'F') {
+        if args.is_null() || !args_has(&*args, 'F') {
             (*data).format = xstrdup__(WINDOW_CUSTOMIZE_DEFAULT_FORMAT);
         } else {
             (*data).format = xstrdup(args_get_(args, 'F')).as_ptr();
+        }
+        if !args.is_null() && args_has(&*args, 'y') {
+            (*data).prompt_flags = prompt_flags::PROMPT_ACCEPT;
         }
 
         (*data).data = mode_tree_start(
@@ -1195,6 +1193,7 @@ pub unsafe fn window_customize_init(
             None,
             Some(window_customize_menu),
             Some(window_customize_height),
+            None,
             None,
             data.cast(),
             WINDOW_CUSTOMIZE_MENU_ITEMS.as_slice(),
@@ -1304,12 +1303,12 @@ pub unsafe fn window_customize_set_option_callback(
             if let Err(err) = options_array_set(o, idx as u32, Some(cstr_to_str(s)), false) {
                 let mut err_msg = err.into_string().unwrap();
                 err_msg[0..=0].make_ascii_uppercase();
-                status_message_set!(c, -1, 1, false, "{err_msg}");
+                status_message_set!(c, -1, 1, false, false, "{err_msg}");
             }
         } else if let Err(err) = options_from_string(oo, oe, name, s, false) {
             let mut err_msg = err.into_string().unwrap();
             err_msg[0..=0].make_ascii_uppercase();
-            status_message_set!(c, -1, 1, false, "{err_msg}");
+            status_message_set!(c, -1, 1, false, false, "{err_msg}");
         }
 
         options_push_changes(name);
@@ -1547,7 +1546,7 @@ pub unsafe fn window_customize_set_command_callback(
         }
         // 'fail:
         *error = (*error).to_ascii_uppercase();
-        status_message_set!(c, -1, 1, false, "{}", _s(error));
+        status_message_set!(c, -1, 1, false, false, "{}", _s(error));
         free_(error);
         0
     }
@@ -1596,13 +1595,12 @@ pub unsafe fn window_customize_set_key(
         }
 
         let prompt: *mut u8;
-        let value: *mut u8;
         let s = mode_tree_get_current_name((*data).data);
         if streq_(s, "Repeat") {
             (*bd).flags ^= KEY_BINDING_REPEAT;
         } else if streq_(s, "Command") {
             prompt = format_nul!("({}) ", _s(key_string_lookup_key(key, 0)));
-            value = cmd_list_print(&*(*bd).cmdlist, 0);
+            let value = cmd_list_print(&*(*bd).cmdlist, 0);
 
             let new_item = Box::new(window_customize_itemdata {
                 data,
@@ -1619,7 +1617,7 @@ pub unsafe fn window_customize_set_key(
                 c,
                 null_mut(),
                 prompt,
-                value,
+                value.as_ptr().cast(),
                 window_customize_set_command_callback,
                 window_customize_free_item_callback,
                 Box::into_raw(new_item),
@@ -1627,7 +1625,6 @@ pub unsafe fn window_customize_set_key(
                 prompt_type::PROMPT_TYPE_COMMAND,
             );
             free_(prompt);
-            free_(value);
         } else if streq_(s, "Note") {
             prompt = format_nul!("({}) ", _s(key_string_lookup_key(key, 0)));
 
@@ -1882,7 +1879,7 @@ pub unsafe fn window_customize_key(
                         window_customize_change_current_callback,
                         window_customize_free_callback,
                         data,
-                        prompt_flags::PROMPT_SINGLE | prompt_flags::PROMPT_NOFORMAT,
+                        prompt_flags::PROMPT_SINGLE | prompt_flags::PROMPT_NOFORMAT | (*data).prompt_flags,
                         prompt_type::PROMPT_TYPE_COMMAND,
                     );
                     free_(prompt);
@@ -1902,7 +1899,7 @@ pub unsafe fn window_customize_key(
                         window_customize_change_tagged_callback,
                         window_customize_free_callback,
                         data,
-                        prompt_flags::PROMPT_SINGLE | prompt_flags::PROMPT_NOFORMAT,
+                        prompt_flags::PROMPT_SINGLE | prompt_flags::PROMPT_NOFORMAT | (*data).prompt_flags,
                         prompt_type::PROMPT_TYPE_COMMAND,
                     );
                     free_(prompt);
@@ -1926,7 +1923,7 @@ pub unsafe fn window_customize_key(
                         window_customize_change_current_callback,
                         window_customize_free_callback,
                         data,
-                        prompt_flags::PROMPT_SINGLE | prompt_flags::PROMPT_NOFORMAT,
+                        prompt_flags::PROMPT_SINGLE | prompt_flags::PROMPT_NOFORMAT | (*data).prompt_flags,
                         prompt_type::PROMPT_TYPE_COMMAND,
                     );
                     free_(prompt);
@@ -1946,7 +1943,7 @@ pub unsafe fn window_customize_key(
                         window_customize_change_tagged_callback,
                         window_customize_free_callback,
                         data,
-                        prompt_flags::PROMPT_SINGLE | prompt_flags::PROMPT_NOFORMAT,
+                        prompt_flags::PROMPT_SINGLE | prompt_flags::PROMPT_NOFORMAT | (*data).prompt_flags,
                         prompt_type::PROMPT_TYPE_COMMAND,
                     );
                     free_(prompt);

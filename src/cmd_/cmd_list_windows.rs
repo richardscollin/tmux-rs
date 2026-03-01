@@ -44,7 +44,7 @@ unsafe fn cmd_list_windows_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
         let args = cmd_get_args(self_);
         let target = cmdq_get_target(item);
 
-        if args_has(args, 'a') {
+        if args_has(&*args, 'a') {
             cmd_list_windows_server(self_, item);
         } else {
             cmd_list_windows_session(self_, NonNull::new_unchecked((*target).s), item, 0);
@@ -98,7 +98,7 @@ unsafe fn cmd_list_windows_session(
             let flag;
             if !filter.is_null() {
                 let expanded = format_expand(ft, filter);
-                flag = format_true(expanded);
+                flag = format_true(cstr_to_str_(expanded));
                 free_(expanded);
             } else {
                 flag = true;

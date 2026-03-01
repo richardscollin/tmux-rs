@@ -100,7 +100,9 @@ pub unsafe fn menu_add_item(
             (*menu).items.pop();
             return;
         }
-        let mut max_width = (*c).tty.sx - 4;
+        // TODO: upstream C relies on unsigned wrapping when tty.sx <= 4;
+        // use saturating_sub to avoid panic in Rust debug builds.
+        let mut max_width = (*c).tty.sx.saturating_sub(4);
 
         let mut key = null();
         let slen: usize = strlen(s0);
@@ -116,7 +118,8 @@ pub unsafe fn menu_add_item(
         }
 
         let suffix = if slen > max_width as usize {
-            max_width -= 1;
+            // TODO: can underflow when max_width is 0 (tiny terminal)
+            max_width = max_width.saturating_sub(1);
             c!(">")
         } else {
             c!("")
@@ -305,8 +308,6 @@ pub unsafe fn menu_key_cb(c: *mut client, data: *mut c_void, mut event: *mut key
         let m = &raw mut (*event).m;
         let count = (*menu).items.len();
         let mut old = (*md).choice;
-
-        let mut error = null_mut();
 
         'chosen: {
             if KEYC_IS_MOUSE((*event).key) {
@@ -534,15 +535,48 @@ pub unsafe fn menu_key_cb(c: *mut client, data: *mut c_void, mut event: *mut key
         let ptr = item.command.as_ptr();
         let cmd_str =
             std::str::from_utf8(std::slice::from_raw_parts(ptr.cast(), libc::strlen(ptr))).unwrap();
-        let status = cmd_parse_and_append(cmd_str, None, c, state, &raw mut error);
-        if status == cmd_parse_status::CMD_PARSE_ERROR {
-            cmdq_append(c, cmdq_get_error(error).as_ptr());
-            free_(error);
+        if let Err(error) = cmd_parse_and_append(cmd_str, None, c, state) {
+            let error_cstr = xstrdup__(error.as_str());
+            cmdq_append(c, cmdq_get_error(error_cstr).as_ptr());
+            free_(error_cstr);
         }
         cmdq_free_state(state);
     }
 
     1
+}
+
+unsafe fn menu_resize_cb(c: *mut client, data: *mut c_void) {
+    unsafe {
+        let md = data as *mut menu_data;
+        if md.is_null() {
+            return;
+        }
+
+        let mut nx = (*md).px;
+        let mut ny = (*md).py;
+
+        let w = (*(*md).menu).width + 4;
+        let h = (*(*md).menu).items.len() as u32 + 2;
+
+        if nx + w > (*c).tty.sx {
+            if (*c).tty.sx <= w {
+                nx = 0;
+            } else {
+                nx = (*c).tty.sx - w;
+            }
+        }
+
+        if ny + h > (*c).tty.sy {
+            if (*c).tty.sy <= h {
+                ny = 0;
+            } else {
+                ny = (*c).tty.sy - h;
+            }
+        }
+        (*md).px = nx;
+        (*md).py = ny;
+    }
 }
 
 pub unsafe fn menu_set_style(
@@ -566,7 +600,6 @@ pub unsafe fn menu_set_style(
                 (*gc).bg = (*sytmp).gc.bg;
             }
         }
-        (*gc).attr = grid_attr::empty();
     }
 }
 
@@ -733,7 +766,7 @@ pub unsafe fn menu_display(
             Some(menu_draw_cb),
             Some(menu_key_cb),
             Some(menu_free_cb),
-            None,
+            Some(menu_resize_cb),
             md.cast(),
         );
     }

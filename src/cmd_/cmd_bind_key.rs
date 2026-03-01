@@ -19,7 +19,7 @@ pub static CMD_BIND_KEY_ENTRY: cmd_entry = cmd_entry {
     alias: Some("bind"),
 
     args: args_parse::new("nrN:T:", 1, -1, Some(cmd_bind_key_args_parse)),
-    usage: "[-nr] [-T key-table] [-N note] key [command [arguments]]",
+    usage: "[-nr] [-T key-table] [-N note] key [command [argument ...]]",
 
     flags: cmd_flag::CMD_AFTERHOOK,
     exec: cmd_bind_key_exec,
@@ -27,48 +27,50 @@ pub static CMD_BIND_KEY_ENTRY: cmd_entry = cmd_entry {
     target: cmd_entry_flag::zeroed(),
 };
 
-fn cmd_bind_key_args_parse(_args: *mut args, _idx: u32, _cause: *mut *mut u8) -> args_parse_type {
+fn cmd_bind_key_args_parse(_args: *mut args, _idx: u32) -> args_parse_type {
     args_parse_type::ARGS_PARSE_COMMANDS_OR_STRING
 }
 
 unsafe fn cmd_bind_key_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retval {
     unsafe {
         let args: *mut args = cmd_get_args(self_);
-        let note = args_get(args, b'N');
+        let note = args_get(&*args, b'N');
 
-        let count: u32 = args_count(args);
+        let count: u32 = args_count(&*args);
 
-        let key: key_code = key_string_lookup_string(args_string(args, 0));
+        let key: key_code = key_string_lookup_string(args_string(&*args, 0).unwrap().as_ptr().cast());
         if key == KEYC_NONE || key == KEYC_UNKNOWN {
-            cmdq_error!(item, "unknown key bind: {}", _s(args_string(args, 0)));
+            cmdq_error!(item, "unknown key bind: {}", _s(args_string(&*args, 0).unwrap().as_ptr()));
             return cmd_retval::CMD_RETURN_ERROR;
         }
 
-        let tablename: *const u8 = if args_has(args, 'T') {
-            args_get(args, b'T')
-        } else if args_has(args, 'n') {
+        let tablename: *const u8 = if args_has(&*args, 'T') {
+            args_get(&*args, b'T')
+        } else if args_has(&*args, 'n') {
             c!("root")
         } else {
             c!("prefix")
         };
-        let repeat = args_has(args, 'r');
+        let repeat = args_has(&*args, 'r');
 
         if count == 1 {
             key_bindings_add(tablename, key, note, repeat, null_mut());
             return cmd_retval::CMD_RETURN_NORMAL;
         }
 
-        let value = args_value(args, 1);
-        if count == 2 && (*value).type_ == args_type::ARGS_COMMANDS {
-            key_bindings_add(tablename, key, note, repeat, (*value).union_.cmdlist);
-            (*(*value).union_.cmdlist).references += 1;
+        let value = args_value(&*args, 1);
+        if let Some(args_value::Commands { cmdlist, .. }) = value
+            && count == 2
+        {
+            key_bindings_add(tablename, key, note, repeat, *cmdlist);
+            (**cmdlist).references += 1;
             return cmd_retval::CMD_RETURN_NORMAL;
         }
 
         let pr = if count == 2 {
-            cmd_parse_from_string(cstr_to_str(args_string(args, 1)), None)
+            cmd_parse_from_string(cstr_to_str(args_string(&*args, 1).unwrap().as_ptr().cast()), None)
         } else {
-            cmd_parse_from_arguments(args_values(args).add(1), count - 1, None)
+            cmd_parse_from_arguments(&args_values(&*args)[1..], None)
         };
 
         match pr {

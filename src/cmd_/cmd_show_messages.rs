@@ -23,7 +23,9 @@ pub static CMD_SHOW_MESSAGES_ENTRY: cmd_entry = cmd_entry {
     args: args_parse::new("JTt:", 0, 0, None),
     usage: "[-JT] [-t target-client]",
 
-    flags: cmd_flag::CMD_AFTERHOOK.union(cmd_flag::CMD_CLIENT_TFLAG),
+    flags: cmd_flag::CMD_AFTERHOOK
+        .union(cmd_flag::CMD_CLIENT_TFLAG)
+        .union(cmd_flag::CMD_CLIENT_CANFAIL),
     exec: cmd_show_messages_exec,
     source: cmd_entry_flag::zeroed(),
     target: cmd_entry_flag::zeroed(),
@@ -40,7 +42,7 @@ unsafe fn cmd_show_messages_terminals(
 
         let mut n = 0u32;
         for term in list_foreach::<_, discr_entry>(&raw mut TTY_TERMS).map(NonNull::as_ptr) {
-            if args_has(args, 't') && term != (*tc).tty.term {
+            if args_has(&*args, 't') && !tc.is_null() && term != (*tc).tty.term {
                 continue;
             }
             if blank != 0 {
@@ -74,11 +76,11 @@ unsafe fn cmd_show_messages_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
 
         let mut done = false;
         let mut blank = 0;
-        if args_has(args, 'T') {
+        if args_has(&*args, 'T') {
             blank = cmd_show_messages_terminals(self_, item, blank);
             done = true;
         }
-        if args_has(args, 'J') {
+        if args_has(&*args, 'J') {
             job_print_summary(item, blank);
             done = true;
         }

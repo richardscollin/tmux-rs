@@ -14,6 +14,9 @@
 use crate::libc::{EINVAL, ENOENT, ENOMEM, GLOB_NOMATCH, GLOB_NOSPACE, glob, glob_t, globfree};
 use crate::*;
 
+const CMD_SOURCE_FILE_DEPTH_LIMIT: u32 = 50;
+static CMD_SOURCE_FILE_DEPTH: atomic::AtomicU32 = atomic::AtomicU32::new(0);
+
 pub static CMD_SOURCE_FILE_ENTRY: cmd_entry = cmd_entry {
     name: "source-file",
     alias: Some("source"),
@@ -47,6 +50,19 @@ pub struct cmd_source_file_data {
 
 unsafe fn cmd_source_file_complete_cb(item: *mut cmdq_item, _data: *mut c_void) -> cmd_retval {
     unsafe {
+        let c = cmdq_get_client(item);
+
+        if c.is_null() {
+            let depth = CMD_SOURCE_FILE_DEPTH.fetch_sub(1, atomic::Ordering::Relaxed) - 1;
+            log_debug!("cmd_source_file_complete_cb: depth now {}", depth);
+        } else {
+            (*c).source_file_depth -= 1;
+            log_debug!(
+                "cmd_source_file_complete_cb: depth now {}",
+                (*c).source_file_depth
+            );
+        }
+
         cfg_print_causes(item);
         cmd_retval::CMD_RETURN_NORMAL
     }
@@ -94,7 +110,7 @@ unsafe fn cmd_source_file_done(
         }
 
         if error != 0 {
-            cmdq_error!(item, "{}: {}", _s(path), strerror(error));
+            cmdq_error!(item, "{}: {}", strerror(error), _s(path));
         } else if bsize != 0 {
             if load_cfg_from_buffer(
                 std::slice::from_raw_parts(bdata, bsize),
@@ -173,24 +189,46 @@ unsafe fn cmd_source_file_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
         let mut g = MaybeUninit::<glob_t>::uninit();
         let mut result;
 
+        if c.is_null() {
+            if CMD_SOURCE_FILE_DEPTH.load(atomic::Ordering::Relaxed) >= CMD_SOURCE_FILE_DEPTH_LIMIT
+            {
+                cmdq_error!(item, "too many nested files");
+                return cmd_retval::CMD_RETURN_ERROR;
+            }
+            let depth = CMD_SOURCE_FILE_DEPTH.fetch_add(1, atomic::Ordering::Relaxed) + 1;
+            log_debug!("{}: depth now {}", __func__, depth);
+        } else {
+            if (*c).source_file_depth >= CMD_SOURCE_FILE_DEPTH_LIMIT {
+                cmdq_error!(item, "too many nested files");
+                return cmd_retval::CMD_RETURN_ERROR;
+            }
+            (*c).source_file_depth += 1;
+            log_debug!("{}: depth now {}", __func__, (*c).source_file_depth);
+        }
+
         let cdata = xcalloc_::<cmd_source_file_data>(1).as_ptr();
         (*cdata).item = item;
 
-        if args_has(args, 'q') {
+        if args_has(&*args, 'q') {
             (*cdata).flags |= cmd_parse_input_flags::CMD_PARSE_QUIET;
         }
-        if args_has(args, 'n') {
+        if args_has(&*args, 'n') {
             (*cdata).flags |= cmd_parse_input_flags::CMD_PARSE_PARSEONLY;
         }
-        if args_has(args, 'v') {
-            (*cdata).flags |= cmd_parse_input_flags::CMD_PARSE_VERBOSE;
+        if c.is_null() || !(*c).flags.intersects(client_flag::CONTROL) {
+            let parse_flags = cmd_get_parse_flags(self_);
+            if args_has(&*args, 'v')
+                || (parse_flags & cmd_parse_input_flags::CMD_PARSE_VERBOSE.bits() != 0)
+            {
+                (*cdata).flags |= cmd_parse_input_flags::CMD_PARSE_VERBOSE;
+            }
         }
 
         let cwd = cmd_source_file_quote_for_glob(server_client_get_cwd(c, null_mut()));
 
-        for i in 0..args_count(args) {
-            let mut path = args_string(args, i);
-            if args_has(args, 'F') {
+        for i in 0..args_count(&*args) {
+            let mut path: *const u8 = args_string(&*args, i).unwrap().as_ptr().cast();
+            if args_has(&*args, 'F') {
                 free_(expanded);
                 expanded = format_single_from_target(item, path);
                 path = expanded;
@@ -221,7 +259,7 @@ unsafe fn cmd_source_file_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
                     } else {
                         strerror(EINVAL)
                     };
-                    cmdq_error!(item, "{}: {}", _s(path), error);
+                    cmdq_error!(item, "{}: {}", error, _s(path));
                     retval = cmd_retval::CMD_RETURN_ERROR;
                 }
                 globfree(g.as_mut_ptr());

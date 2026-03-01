@@ -26,8 +26,8 @@ pub fn xmalloc(size: usize) -> NonNull<c_void> {
 
     // Allocate using max_align_t to have the same allignment as malloc.
     // We allocate a bit too much when size is not a multiple of max_align_t.
-    let count = size.div_ceil(size_of::<libc::max_align_t>());
-    let alloc = vec![MaybeUninit::<libc::max_align_t>::uninit(); count].into_boxed_slice();
+    let count = size.div_ceil(size_of::<crate::libc::max_align_t>());
+    let alloc = vec![MaybeUninit::<crate::libc::max_align_t>::uninit(); count].into_boxed_slice();
     NonNull::new(Box::into_raw(alloc))
         .expect("box pointer is not null")
         .cast()
@@ -36,7 +36,7 @@ pub fn xmalloc(size: usize) -> NonNull<c_void> {
 pub fn xcalloc(nmemb: usize, size: usize) -> NonNull<c_void> {
     debug_assert!(size != 0 && nmemb != 0, "xcalloc: zero size");
 
-    NonNull::new(unsafe { ::libc::calloc(nmemb, size) })
+    NonNull::new(unsafe { crate::libc::calloc(nmemb, size) })
         .unwrap_or_else(|| panic!("xcalloc: allocating {nmemb} * {size}"))
 }
 
@@ -88,6 +88,7 @@ pub unsafe fn xreallocarray_<T>(ptr: *mut T, nmemb: usize) -> NonNull<T> {
     }
 }
 
+#[expect(dead_code)]
 pub unsafe fn xrecallocarray(
     ptr: *mut c_void,
     oldnmemb: usize,

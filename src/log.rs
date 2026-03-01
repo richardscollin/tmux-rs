@@ -45,18 +45,21 @@ pub fn log_get_level() -> i32 {
     LOG_LEVEL.load(DEFAULT_ORDERING)
 }
 
-pub fn log_open(name: &CStr) {
-    if LOG_LEVEL.load(DEFAULT_ORDERING) == 0 {
+pub fn log_open(name: &str) {
+    let level = LOG_LEVEL.load(DEFAULT_ORDERING);
+    let pid = std::process::id();
+    let filename = format!("tmux-{name}-{pid}.log");
+
+    if level == 0 {
         return;
     }
 
     log_close();
-    let pid = std::process::id();
     let Ok(file) = std::fs::File::options()
         .read(false)
         .append(true)
         .create(true)
-        .open(format!("tmux-{}-{}.log", name.to_str().unwrap(), pid))
+        .open(&filename)
     else {
         return;
     };
@@ -65,7 +68,7 @@ pub fn log_open(name: &CStr) {
     unsafe { event_set_log_callback(Some(log_event_cb)) };
 }
 
-pub fn log_toggle(name: &CStr) {
+pub fn log_toggle(name: &str) {
     if LOG_LEVEL.fetch_xor(1, DEFAULT_ORDERING) == 0 {
         log_open(name);
         log_debug!("log opened");
@@ -79,12 +82,17 @@ pub fn log_close() {
     // If we drop the file when it's already closed it will panic in debug mode.
     // Because of this and our use of fork, extra care has to be made when closing the file.
     // see std::sys::pal::unix::fs::debug_assert_fd_is_open;
-    use std::os::fd::AsRawFd;
     if let Some(mut old_handle) = LOG_FILE.lock().unwrap().take() {
         let _flush_err = old_handle.flush(); // TODO
         match old_handle.into_inner() {
             Ok(file) => unsafe {
-                libc::close(file.as_raw_fd());
+                #[cfg(unix)]
+                {
+                    use std::os::fd::AsRawFd;
+                    libc::close(file.as_raw_fd());
+                }
+                #[cfg(windows)]
+                drop(file.sync_all());
                 std::mem::forget(file);
             },
             Err(err) => {

@@ -18,7 +18,7 @@ pub static CMD_SET_ENVIRONMENT_ENTRY: cmd_entry = cmd_entry {
     alias: Some("setenv"),
 
     args: args_parse::new("Fhgrt:u", 1, 2, None),
-    usage: "[-Fhgru] [-t target-session] name [value]",
+    usage: "[-Fhgru] [-t target-session] variable [value]",
 
     target: cmd_entry_flag::new(
         b't',
@@ -36,7 +36,7 @@ unsafe fn cmd_set_environment_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd
         let args = cmd_get_args(self_);
         let target = cmdq_get_target(item);
         let env: *mut environ;
-        let name = args_string(args, 0);
+        let name = args_string(&*args, 0).unwrap().as_ptr().cast();
         let mut value: *const u8;
         let tflag;
         let mut expanded = null_mut();
@@ -52,16 +52,16 @@ unsafe fn cmd_set_environment_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd
                 return cmd_retval::CMD_RETURN_ERROR;
             }
 
-            if args_count(args) < 2 {
+            if args_count(&*args) < 2 {
                 value = null_mut();
             } else {
-                value = args_string(args, 1);
+                value = args_string(&*args, 1).unwrap().as_ptr().cast();
             }
-            if !value.is_null() && args_has(args, 'F') {
+            if !value.is_null() && args_has(&*args, 'F') {
                 expanded = format_single_from_target(item, value);
                 value = expanded;
             }
-            if args_has(args, 'g') {
+            if args_has(&*args, 'g') {
                 env = GLOBAL_ENVIRON;
             } else {
                 if (*target).s.is_null() {
@@ -77,14 +77,14 @@ unsafe fn cmd_set_environment_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd
                 env = (*(*target).s).environ;
             }
 
-            if args_has(args, 'u') {
+            if args_has(&*args, 'u') {
                 if !value.is_null() {
                     cmdq_error!(item, "can't specify a value with -u");
                     retval = cmd_retval::CMD_RETURN_ERROR;
                     break 'out;
                 }
                 environ_unset(env, name);
-            } else if args_has(args, 'r') {
+            } else if args_has(&*args, 'r') {
                 if !value.is_null() {
                     cmdq_error!(item, "can't specify a value with -r");
                     retval = cmd_retval::CMD_RETURN_ERROR;
@@ -98,7 +98,7 @@ unsafe fn cmd_set_environment_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd
                     break 'out;
                 }
 
-                if args_has(args, 'h') {
+                if args_has(&*args, 'h') {
                     environ_set!(env, name, ENVIRON_HIDDEN, "{}", _s(value));
                 } else {
                     environ_set!(env, name, environ_flags::empty(), "{}", _s(value));

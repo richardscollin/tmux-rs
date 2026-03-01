@@ -44,8 +44,6 @@ pub unsafe fn cmd_attach_session(
         let c: *mut client = cmdq_get_client(item);
 
         let cwd: *mut u8;
-        let mut cause: *mut u8 = null_mut();
-
         let msgtype: msgtype;
 
         if rb_empty(&raw mut SESSIONS) {
@@ -132,9 +130,8 @@ pub unsafe fn cmd_attach_session(
                 server_client_set_key_table(c, null_mut());
             }
         } else {
-            if server_client_open(c, &raw mut cause) != 0 {
-                cmdq_error!(item, "open terminal failed: {}", _s(cause));
-                free_(cause);
+            if let Err(cause) = server_client_open(c) {
+                cmdq_error!(item, "open terminal failed: {}", cause);
                 return cmd_retval::CMD_RETURN_ERROR;
             }
 
@@ -178,13 +175,13 @@ unsafe fn cmd_attach_session_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
 
         cmd_attach_session(
             item,
-            cstr_to_str_(args_get(args, b't')),
-            args_has(args, 'd'),
-            args_has(args, 'x'),
-            args_has(args, 'r'),
-            args_get(args, b'c'),
-            args_has(args, 'E'),
-            args_get(args, b'f'),
+            cstr_to_str_(args_get(&*args, b't')),
+            args_has(&*args, 'd'),
+            args_has(&*args, 'x'),
+            args_has(&*args, 'r'),
+            args_get(&*args, b'c'),
+            args_has(&*args, 'E'),
+            args_get(&*args, b'f'),
         )
     }
 }

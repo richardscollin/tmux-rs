@@ -13,13 +13,13 @@
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 use crate::compat::HOST_NAME_MAX;
 use crate::libc::{
-    FIONREAD, FNM_CASEFOLD, TIOCSWINSZ, close, fnmatch, free, gethostname, gettimeofday, ioctl,
+    FIONREAD, FNM_CASEFOLD, TIOCSWINSZ, close, fnmatch, free, gethostname,
     isspace, memset, regcomp, regex_t, regexec, regfree, strlen, winsize,
 };
 #[cfg(feature = "utempter")]
 use crate::utempter::utempter_remove_record;
 use crate::*;
-use crate::options_::{options_create, options_free, options_get_number___, options_get_string_};
+use crate::options_::{options_create, options_free, options_get_number___, options_get_string_, options_get_number_};
 
 /// Default pixel cell sizes.
 pub const DEFAULT_XPIXEL: u32 = 16;
@@ -257,7 +257,7 @@ pub unsafe fn window_find_by_id(id: u32) -> *mut window {
 
 pub unsafe fn window_update_activity(w: NonNull<window>) {
     unsafe {
-        gettimeofday(&raw mut (*w.as_ptr()).activity_time, null_mut());
+        (*w.as_ptr()).activity_time = libc::gettimeofday_();
         alerts_queue(w, window_flag::ACTIVITY);
     }
 }
@@ -355,19 +355,26 @@ unsafe fn window_destroy(w: *mut window) {
 }
 
 pub unsafe fn window_pane_destroy_ready(wp: *mut window_pane) -> bool {
-    let mut n = 0;
     unsafe {
-        if (*wp).pipe_fd != -1 {
-            if EVBUFFER_LENGTH((*(*wp).pipe_event).output) != 0 {
-                return false;
-            }
-            if ioctl((*wp).fd, FIONREAD, &raw mut n) != -1 && n > 0 {
-                return false;
-            }
+        if (*wp).pipe_fd != -1
+            && EVBUFFER_LENGTH((*(*wp).pipe_event).output) != 0
+        {
+            return false;
         }
 
         if !(*wp).flags.intersects(window_pane_flags::PANE_EXITED) {
             return false;
+        }
+
+        // Check if there is still unread data in the pty buffer. If so, delay
+        // destruction so the bufferevent can drain it. This prevents data loss
+        // when SIGCHLD races with pty reads.
+        #[cfg(not(target_os = "windows"))]
+        if (*wp).fd != -1 {
+            let mut n = 0;
+            if crate::libc::ioctl((*wp).fd, FIONREAD, &raw mut n) != -1 && n > 0 {
+                return false;
+            }
         }
     }
 
@@ -454,6 +461,7 @@ pub unsafe fn window_resize(w: *mut window, sx: u32, sy: u32, mut xpixel: i32, m
     }
 }
 
+#[cfg(not(target_os = "windows"))]
 pub unsafe fn window_pane_send_resize(wp: *mut window_pane, sx: u32, sy: u32) {
     unsafe {
         let w = (*wp).window;
@@ -480,8 +488,30 @@ pub unsafe fn window_pane_send_resize(wp: *mut window_pane, sx: u32, sy: u32) {
 
         // TODO sun ifdef
 
-        if ioctl((*wp).fd, TIOCSWINSZ, &ws) == -1 {
+        if crate::libc::ioctl((*wp).fd, TIOCSWINSZ, &ws) == -1 {
             fatal("ioctl failed");
+        }
+    }
+}
+
+#[cfg(target_os = "windows")]
+pub unsafe fn window_pane_send_resize(wp: *mut window_pane, sx: u32, sy: u32) {
+    unsafe {
+        if (*wp).fd == -1 {
+            return;
+        }
+
+        log_debug!(
+            "{}: %%{} resize to {},{}",
+            "window_pane_send_resize",
+            (*wp).id,
+            sx,
+            sy,
+        );
+
+        let pid = (*wp).pid as u32;
+        if let Err(e) = crate::conpty::conpty_resize(pid, sx as u16, sy as u16) {
+            log_debug!("window_pane_send_resize: {}", e);
         }
     }
 }
@@ -512,6 +542,7 @@ pub unsafe fn window_pane_update_focus(wp: *mut window_pane) {
                         && (*(*c).session).attached != 0
                         && (*c).flags.intersects(client_flag::FOCUSED)
                         && (*(*(*c).session).curw).window == (*wp).window
+                        && (*c).overlay_draw.is_none()
                     {
                         focused = true;
                         break;
@@ -620,14 +651,20 @@ pub unsafe fn window_redraw_active_switch(w: *mut window, mut wp: *mut window_pa
 
 pub unsafe fn window_get_active_at(w: *mut window, x: u32, y: u32) -> *mut window_pane {
     unsafe {
+        let mut xoff = 0u32;
+        let mut yoff = 0u32;
+        let mut sx = 0u32;
+        let mut sy = 0u32;
+
         for wp in tailq_foreach::<_, discr_entry>(&raw mut (*w).panes).map(NonNull::as_ptr) {
             if !window_pane_visible(wp) {
                 continue;
             }
-            if x < (*wp).xoff || x > (*wp).xoff + (*wp).sx {
+            window_pane_full_size_offset(wp, &mut xoff, &mut yoff, &mut sx, &mut sy);
+            if x < xoff || x > xoff + sx {
                 continue;
             }
-            if y < (*wp).yoff || y > (*wp).yoff + (*wp).sy {
+            if y < yoff || y > yoff + sy {
                 continue;
             }
             return wp;
@@ -1003,7 +1040,7 @@ pub unsafe fn window_pane_create(
         let wp: *mut window_pane = xcalloc_::<window_pane>(1).as_ptr();
         (*wp).window = w;
         (*wp).options = options_create((*w).options);
-        (*wp).flags = window_pane_flags::PANE_STYLECHANGED;
+        (*wp).flags = window_pane_flags::PANE_STYLECHANGED | window_pane_flags::PANE_THEMECHANGED;
 
         (*wp).id = NEXT_WINDOW_PANE_ID.fetch_add(1, atomic::Ordering::Relaxed);
 
@@ -1023,8 +1060,13 @@ pub unsafe fn window_pane_create(
         (*wp).control_bg = -1;
         (*wp).control_fg = -1;
 
+        style_set_scrollbar_style_from_option(
+            &raw mut (*wp).scrollbar_style,
+            (*wp).options,
+        );
+
         (*wp).palette = colour_palette_init();
-        colour_palette_from_option(Some(&mut (*wp).palette), (*wp).options);
+        colour_palette_from_option(Some(&mut (*wp).palette), &mut *(*wp).options);
 
         screen_init(&raw mut (*wp).base, sx, sy, hlimit);
         (*wp).screen = &raw mut (*wp).base;
@@ -1049,6 +1091,7 @@ unsafe fn window_pane_destroy(wp: *mut window_pane) {
             #[cfg(feature = "utempter")]
             {
                 utempter_remove_record((*wp).fd);
+                libc::kill(libc::getpid(), libc::SIGCHLD);
             }
             bufferevent_free((*wp).event);
             close((*wp).fd);
@@ -1220,7 +1263,12 @@ pub unsafe fn window_pane_set_mode(
         }
 
         (*wp).screen = (*wme).screen;
-        (*wp).flags |= window_pane_flags::PANE_REDRAW | window_pane_flags::PANE_CHANGED;
+
+        (*wp).flags |= window_pane_flags::PANE_REDRAW
+            | window_pane_flags::PANE_REDRAWSCROLLBAR
+            | window_pane_flags::PANE_CHANGED;
+        let w = (*wp).window;
+        layout_fix_panes(w, null_mut());
 
         server_redraw_window_borders((*wp).window);
         server_status_window((*wp).window);
@@ -1251,7 +1299,11 @@ pub unsafe fn window_pane_reset_mode(wp: *mut window_pane) {
             log_debug!("{}: no next mode", func);
             (*wp).screen = &raw mut (*wp).base;
         }
-        (*wp).flags |= window_pane_flags::PANE_REDRAW | window_pane_flags::PANE_CHANGED;
+        (*wp).flags |= window_pane_flags::PANE_REDRAW
+            | window_pane_flags::PANE_REDRAWSCROLLBAR
+            | window_pane_flags::PANE_CHANGED;
+        let w = (*wp).window;
+        layout_fix_panes(w, null_mut());
 
         server_redraw_window_borders((*wp).window);
         server_status_window((*wp).window);
@@ -1263,6 +1315,22 @@ pub unsafe fn window_pane_reset_mode_all(wp: *mut window_pane) {
     unsafe {
         while !tailq_empty(&raw mut (*wp).modes) {
             window_pane_reset_mode(wp);
+        }
+    }
+}
+
+unsafe fn window_pane_copy_paste(wp: *mut window_pane , buf: *mut u8, len: usize) {
+    unsafe {
+        for loop_ in tailq_foreach::<_, discr_entry>(&raw mut (*(*wp).window).panes).map(NonNull::as_ptr) {
+            if loop_ != wp &&
+                   tailq_empty(&(*loop_).modes) &&
+                       (*loop_).fd != -1 &&
+                   !(*loop_).flags.contains(window_pane_flags::PANE_INPUTOFF) &&
+                   window_pane_visible(loop_) &&
+                   options_get_number_((*loop_).options, "synchronize-panes") != 0 {
+                       // log_debug("%s: %.*s", __func__, (int)len, buf);
+                       bufferevent_write((*loop_).event, buf.cast(), len);
+               }
         }
     }
 }
@@ -1421,6 +1489,38 @@ unsafe fn window_pane_choose_best(list: *mut *mut window_pane, size: u32) -> *mu
     }
 }
 
+/// Get full size and offset of a window pane including the area of the
+/// scrollbars if they were visible but not including the border(s).
+unsafe fn window_pane_full_size_offset(
+    wp: *mut window_pane,
+    xoff: &mut u32,
+    yoff: &mut u32,
+    sx: &mut u32,
+    sy: &mut u32,
+) {
+    unsafe {
+        let w = (*wp).window;
+        let pane_scrollbars =
+            options_get_number_((*w).options, "pane-scrollbars") as i32;
+        let sb_pos = options_get_number_((*w).options, "pane-scrollbars-position") as u32;
+
+        let sb_w = if window_pane_show_scrollbar(wp, pane_scrollbars) {
+            ((*wp).scrollbar_style.width + (*wp).scrollbar_style.pad) as u32
+        } else {
+            0
+        };
+        if sb_pos == PANE_SCROLLBARS_LEFT as u32 {
+            *xoff = (*wp).xoff - sb_w;
+            *sx = (*wp).sx + sb_w;
+        } else {
+            *xoff = (*wp).xoff;
+            *sx = (*wp).sx + sb_w;
+        }
+        *yoff = (*wp).yoff;
+        *sy = (*wp).sy;
+    }
+}
+
 /// Find the pane directly above another. We build a list of those adjacent to top edge and then choose the best.
 pub unsafe fn window_pane_find_up(wp: *mut window_pane) -> *mut window_pane {
     unsafe {
@@ -1435,7 +1535,10 @@ pub unsafe fn window_pane_find_up(wp: *mut window_pane) -> *mut window_pane {
         let mut list: *mut *mut window_pane = null_mut();
         let mut size = 0;
 
-        let mut edge = (*wp).yoff;
+        let (mut xoff, mut yoff, mut sx, mut sy) = (0u32, 0u32, 0u32, 0u32);
+        window_pane_full_size_offset(wp, &mut xoff, &mut yoff, &mut sx, &mut sy);
+
+        let mut edge = yoff;
         match status {
             pane_status::PANE_STATUS_TOP => {
                 if edge == 1 {
@@ -1454,23 +1557,24 @@ pub unsafe fn window_pane_find_up(wp: *mut window_pane) -> *mut window_pane {
             }
         }
 
-        let left = (*wp).xoff;
-        let right = (*wp).xoff + (*wp).sx;
+        let left = xoff;
+        let right = xoff + sx;
 
         for next in tailq_foreach::<_, discr_entry>(&raw mut (*w).panes).map(NonNull::as_ptr) {
+            window_pane_full_size_offset(next, &mut xoff, &mut yoff, &mut sx, &mut sy);
             if next == wp {
                 continue;
             }
-            if (*next).yoff + (*next).sy + 1 != edge {
+            if yoff + sy + 1 != edge {
                 continue;
             }
-            let end = (*next).xoff + (*next).sx - 1;
+            let end = xoff + sx - 1;
 
             let mut found = 0;
             #[expect(clippy::if_same_then_else)]
-            if (*next).xoff < left && end > right {
+            if xoff < left && end > right {
                 found = 1;
-            } else if (*next).xoff >= left && (*next).xoff <= right {
+            } else if xoff >= left && xoff <= right {
                 found = 1;
             } else if end >= left && end <= right {
                 found = 1;
@@ -1503,7 +1607,10 @@ pub unsafe fn window_pane_find_down(wp: *mut window_pane) -> *mut window_pane {
         let mut list: *mut *mut window_pane = null_mut();
         let mut size = 0;
 
-        let mut edge = (*wp).yoff + (*wp).sy + 1;
+        let (mut xoff, mut yoff, mut sx, mut sy) = (0u32, 0u32, 0u32, 0u32);
+        window_pane_full_size_offset(wp, &mut xoff, &mut yoff, &mut sx, &mut sy);
+
+        let mut edge = yoff + sy + 1;
         match status {
             pane_status::PANE_STATUS_TOP => {
                 if edge >= (*w).sy {
@@ -1526,19 +1633,20 @@ pub unsafe fn window_pane_find_down(wp: *mut window_pane) -> *mut window_pane {
         let right = (*wp).xoff + (*wp).sx;
 
         for next in tailq_foreach::<_, discr_entry>(&raw mut (*w).panes).map(NonNull::as_ptr) {
+            window_pane_full_size_offset(next, &mut xoff, &mut yoff, &mut sx, &mut sy);
             if next == wp {
                 continue;
             }
-            if (*next).yoff != edge {
+            if yoff != edge {
                 continue;
             }
-            let end = (*next).xoff + (*next).sx - 1;
+            let end = xoff + sx - 1;
 
             let mut found = 0;
             #[expect(clippy::if_same_then_else)]
-            if (*next).xoff < left && end > right {
+            if xoff < left && end > right {
                 found = 1;
-            } else if (*next).xoff >= left && (*next).xoff <= right {
+            } else if xoff >= left && xoff <= right {
                 found = 1;
             } else if end >= left && end <= right {
                 found = 1;
@@ -1568,28 +1676,32 @@ pub unsafe fn window_pane_find_left(wp: *mut window_pane) -> *mut window_pane {
         let mut list: *mut *mut window_pane = null_mut();
         let mut size = 0;
 
-        let mut edge = (*wp).xoff;
+        let (mut xoff, mut yoff, mut sx, mut sy) = (0u32, 0u32, 0u32, 0u32);
+        window_pane_full_size_offset(wp, &mut xoff, &mut yoff, &mut sx, &mut sy);
+
+        let mut edge = xoff;
         if edge == 0 {
             edge = (*w).sx + 1;
         }
 
-        let top = (*wp).yoff;
-        let bottom = (*wp).yoff + (*wp).sy;
+        let top = yoff;
+        let bottom = yoff + sy;
 
         for next in tailq_foreach::<_, discr_entry>(&raw mut (*w).panes).map(NonNull::as_ptr) {
+            window_pane_full_size_offset(next, &mut xoff, &mut yoff, &mut sx, &mut sy);
             if next == wp {
                 continue;
             }
-            if (*next).xoff + (*next).sx + 1 != edge {
+            if xoff + sx + 1 != edge {
                 continue;
             }
-            let end = (*next).yoff + (*next).sy - 1;
+            let end = yoff + sy - 1;
 
             let mut found = false;
             #[expect(clippy::if_same_then_else)]
-            if (*next).yoff < top && end > bottom {
+            if yoff < top && end > bottom {
                 found = true;
-            } else if (*next).yoff >= top && (*next).yoff <= bottom {
+            } else if yoff >= top && yoff <= bottom {
                 found = true;
             } else if end >= top && end <= bottom {
                 found = true;
@@ -1619,7 +1731,10 @@ pub unsafe fn window_pane_find_right(wp: *mut window_pane) -> *mut window_pane {
         let mut list: *mut *mut window_pane = null_mut();
         let mut size = 0;
 
-        let mut edge = (*wp).xoff + (*wp).sx + 1;
+        let (mut xoff, mut yoff, mut sx, mut sy) = (0u32, 0u32, 0u32, 0u32);
+        window_pane_full_size_offset(wp, &mut xoff, &mut yoff, &mut sx, &mut sy);
+
+        let mut edge = xoff + sx + 1;
         if edge >= (*w).sx {
             edge = 0;
         }
@@ -1628,19 +1743,20 @@ pub unsafe fn window_pane_find_right(wp: *mut window_pane) -> *mut window_pane {
         let bottom = (*wp).yoff + (*wp).sy;
 
         for next in tailq_foreach::<_, discr_entry>(&raw mut (*w).panes).map(NonNull::as_ptr) {
+            window_pane_full_size_offset(next, &mut xoff, &mut yoff, &mut sx, &mut sy);
             if next == wp {
                 continue;
             }
-            if (*next).xoff != edge {
+            if xoff != edge {
                 continue;
             }
-            let end = (*next).yoff + (*next).sy - 1;
+            let end = yoff + sy - 1;
 
             let mut found = false;
             #[expect(clippy::if_same_then_else)]
-            if (*next).yoff < top && end > bottom {
+            if yoff < top && end > bottom {
                 found = true;
-            } else if (*next).yoff >= top && (*next).yoff <= bottom {
+            } else if yoff >= top && yoff <= bottom {
                 found = true;
             } else if end >= top && end <= bottom {
                 found = true;
@@ -1760,23 +1876,21 @@ unsafe fn window_pane_input_callback(
 pub unsafe fn window_pane_start_input(
     wp: *mut window_pane,
     item: *mut cmdq_item,
-    cause: *mut *mut u8,
-) -> i32 {
+) -> Result<i32, String> {
     unsafe {
         let c: *mut client = cmdq_get_client(item);
 
         if !(*wp).flags.intersects(window_pane_flags::PANE_EMPTY) {
-            *cause = xstrdup(c!("pane is not empty")).cast().as_ptr();
-            return -1;
+            return Err("pane is not empty".into());
         }
         if (*c)
             .flags
             .intersects(client_flag::DEAD | client_flag::EXITED)
         {
-            return 1;
+            return Ok(1);
         }
         if !(*c).session.is_null() {
-            return 1;
+            return Ok(1);
         }
 
         let cdata = Box::leak(Box::new(window_pane_input_data {
@@ -1787,7 +1901,7 @@ pub unsafe fn window_pane_start_input(
         (*cdata).file = file_read(c, c!("-"), Some(window_pane_input_callback), cdata as _);
         (*c).references += 1;
 
-        0
+        Ok(0)
     }
 }
 
@@ -1830,6 +1944,8 @@ pub unsafe fn window_set_fill_character(w: NonNull<window>) {
             let ud = utf8_fromcstr(value);
             if !ud.is_null() && (*ud).width == 1 {
                 (*w).fill_character = ud;
+            } else {
+                free(ud as _);
             }
         }
     }
@@ -1837,18 +1953,7 @@ pub unsafe fn window_set_fill_character(w: NonNull<window>) {
 
 pub unsafe fn window_pane_default_cursor(wp: *mut window_pane) {
     unsafe {
-        let s = (*wp).screen;
-
-        let c: i32 = options_get_number___::<i32>(&*(*wp).options, "cursor-colour");
-        (*s).default_ccolour = c;
-
-        let c: i32 = options_get_number___::<i32>(&*(*wp).options, "cursor-style");
-        (*s).default_mode = mode_flag::empty();
-        screen_set_cursor_style(
-            c as u32,
-            &raw mut (*s).default_cstyle,
-            &raw mut (*s).default_mode,
-        );
+        screen_set_default_cursor((*wp).screen, (*wp).options);
     }
 }
 
@@ -1867,5 +1972,192 @@ pub unsafe fn window_pane_mode(wp: *mut window_pane) -> i32 {
             }
         }
         WINDOW_PANE_NO_MODE
+    }
+}
+
+/// Return true if scrollbar should be displayed.
+pub unsafe fn window_pane_show_scrollbar(wp: *mut window_pane, sb_option: i32) -> bool {
+    unsafe {
+        if screen_is_alternate((*wp).screen) {
+            return false;
+        }
+        if sb_option == PANE_SCROLLBARS_ALWAYS
+            || (sb_option == PANE_SCROLLBARS_MODAL
+                && window_pane_mode(wp) != WINDOW_PANE_NO_MODE)
+        {
+            return true;
+        }
+        false
+    }
+}
+
+pub unsafe fn window_pane_get_bg(wp: *mut window_pane) -> i32 {
+    unsafe {
+        let mut c = window_pane_get_bg_control_client(wp);
+        if c == -1 {
+            let mut defaults: grid_cell = zeroed();
+            tty_default_colours(&raw mut defaults, wp);
+            if COLOUR_DEFAULT(defaults.bg) {
+                c = window_get_bg_client(wp);
+            } else {
+                c = defaults.bg;
+            }
+        }
+        c
+    }
+}
+
+pub unsafe fn window_get_bg_client(wp: *mut window_pane) -> i32 {
+    unsafe {
+        let w = (*wp).window;
+        for loop_ in tailq_foreach(&raw mut CLIENTS).map(NonNull::as_ptr) {
+            if (*loop_).flags.intersects(CLIENT_UNATTACHEDFLAGS) {
+                continue;
+            }
+            if (*loop_).session.is_null() || !session_has((*loop_).session, w) {
+                continue;
+            }
+            if (*loop_).tty.bg == -1 {
+                continue;
+            }
+            return (*loop_).tty.bg;
+        }
+        -1
+    }
+}
+
+pub unsafe fn window_pane_get_bg_control_client(wp: *mut window_pane) -> i32 {
+    unsafe {
+        if (*wp).control_bg == -1 {
+            return -1;
+        }
+        if tailq_foreach(&raw mut CLIENTS)
+            .any(|c| (*c.as_ptr()).flags.intersects(client_flag::CONTROL))
+        {
+            return (*wp).control_bg;
+        }
+    }
+    -1
+}
+
+pub unsafe fn window_pane_get_fg(wp: *mut window_pane) -> i32 {
+    unsafe {
+        let w = (*wp).window;
+        for loop_ in tailq_foreach(&raw mut CLIENTS).map(NonNull::as_ptr) {
+            if (*loop_).flags.intersects(CLIENT_UNATTACHEDFLAGS) {
+                continue;
+            }
+            if (*loop_).session.is_null() || !session_has((*loop_).session, w) {
+                continue;
+            }
+            if (*loop_).tty.fg == -1 {
+                continue;
+            }
+            return (*loop_).tty.fg;
+        }
+        -1
+    }
+}
+
+pub unsafe fn window_pane_get_fg_control_client(wp: *mut window_pane) -> i32 {
+    unsafe {
+        if (*wp).control_fg == -1 {
+            return -1;
+        }
+        if tailq_foreach(&raw mut CLIENTS)
+            .any(|c| (*c.as_ptr()).flags.intersects(client_flag::CONTROL))
+        {
+            return (*wp).control_fg;
+        }
+    }
+    -1
+}
+
+pub unsafe fn window_pane_get_theme(wp: *mut window_pane) -> client_theme {
+    unsafe {
+        if wp.is_null() {
+            return client_theme::THEME_UNKNOWN;
+        }
+        let w = (*wp).window;
+
+        // Derive theme from pane background color
+        let theme = colour_totheme(window_pane_get_bg(wp));
+        if theme != client_theme::THEME_UNKNOWN {
+            return theme;
+        }
+
+        // Try to find a client that has a theme
+        let mut found_light = false;
+        let mut found_dark = false;
+        for loop_ in tailq_foreach(&raw mut CLIENTS).map(NonNull::as_ptr) {
+            if (*loop_).flags.intersects(CLIENT_UNATTACHEDFLAGS) {
+                continue;
+            }
+            if (*loop_).session.is_null() || !session_has((*loop_).session, w) {
+                continue;
+            }
+            match (*loop_).theme {
+                client_theme::THEME_LIGHT => found_light = true,
+                client_theme::THEME_DARK => found_dark = true,
+                client_theme::THEME_UNKNOWN => (),
+            }
+        }
+
+        if found_dark && !found_light {
+            return client_theme::THEME_DARK;
+        }
+        if found_light && !found_dark {
+            return client_theme::THEME_LIGHT;
+        }
+        client_theme::THEME_UNKNOWN
+    }
+}
+
+pub unsafe fn window_pane_send_theme_update(wp: *mut window_pane) {
+    unsafe {
+        if wp.is_null() || window_pane_exited(wp) {
+            return;
+        }
+        if !(*wp).flags.intersects(window_pane_flags::PANE_THEMECHANGED) {
+            return;
+        }
+        if !(*(*wp).screen).mode.intersects(mode_flag::MODE_THEME_UPDATES) {
+            return;
+        }
+
+        match window_pane_get_theme(wp) {
+            client_theme::THEME_LIGHT => {
+                input_key_pane(wp, keyc::KEYC_REPORT_LIGHT_THEME as u64, null_mut());
+            }
+            client_theme::THEME_DARK => {
+                input_key_pane(wp, keyc::KEYC_REPORT_DARK_THEME as u64, null_mut());
+            }
+            client_theme::THEME_UNKNOWN => (),
+        }
+
+        (*wp).flags -= window_pane_flags::PANE_THEMECHANGED;
+    }
+}
+
+pub unsafe fn window_pane_paste(wp: *mut window_pane, key: key_code, buf: *mut u8, len: usize)
+{
+    unsafe {
+       if !tailq_empty(&(*wp).modes) {
+           return;
+       }
+
+       if (*wp).fd == -1 || (*wp).flags.intersects(window_pane_flags::PANE_INPUTOFF) {
+           return;
+       }
+
+       if KEYC_IS_PASTE(key) && !(*(*wp).screen).mode.intersects(mode_flag::MODE_BRACKETPASTE) {
+           return;
+       }
+
+       bufferevent_write((*wp).event, buf.cast(), len);
+
+       if options_get_number_((*wp).options, "synchronize-panes") != 0 {
+           window_pane_copy_paste(wp, buf, len);
+       }
     }
 }

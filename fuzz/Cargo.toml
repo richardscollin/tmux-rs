@@ -22,3 +22,10 @@ path = "fuzz_targets/colour_find_rgb.rs"
 test = false
 doc = false
 bench = false
+
+[[bin]]
+name = "colour_parse_x11"
+path = "fuzz_targets/colour_parse_x11.rs"
+test = false
+doc = false
+bench = false

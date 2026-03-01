@@ -19,8 +19,8 @@ pub static CMD_CAPTURE_PANE_ENTRY: cmd_entry = cmd_entry {
     name: "capture-pane",
     alias: Some("capturep"),
 
-    args: args_parse::new("ab:CeE:JNpPqS:Tt:", 0, 0, None),
-    usage: "[-aCeJNpPqT] [-b buffer-name] [-E end-line] [-S start-line] [-t target-pane]",
+    args: args_parse::new("ab:CeE:JMNpPqS:Tt:", 0, 0, None),
+    usage: "[-aCeJMNpPqT] [-b buffer-name] [-E end-line] [-S start-line] [-t target-pane]",
 
     source: cmd_entry_flag::zeroed(),
     target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_PANE, cmd_find_flags::empty()),
@@ -78,7 +78,7 @@ unsafe fn cmd_capture_pane_pending(
         let linelen = EVBUFFER_LENGTH(pending);
 
         let mut buf = xstrdup(c!("")).as_ptr();
-        if args_has(args, 'C') {
+        if args_has(&*args, 'C') {
             for i in 0usize..linelen {
                 if *line.add(i) >= b' ' && *line.add(i) != b'\\' {
                     tmp[0] = *line.add(i) as _;
@@ -105,79 +105,85 @@ unsafe fn cmd_capture_pane_history(
     unsafe {
         let gd: *mut grid;
         let mut gl: *const grid_line;
+        let s: *mut screen;
         let mut gc: *mut grid_cell = null_mut();
-        let mut n;
         let mut flags = grid_string_flags::empty();
 
         let tmp: u32;
         let mut bottom: u32;
-        let mut cause: *mut u8 = null_mut();
         let mut line: *mut u8;
 
         let mut linelen: usize;
 
         let sx = screen_size_x(&raw mut (*wp).base);
-        if args_has(args, 'a') {
+        if args_has(&*args, 'a') {
             gd = (*wp).base.saved_grid;
             if gd.is_null() {
-                if !args_has(args, 'q') {
+                if !args_has(&*args, 'q') {
                     cmdq_error!(item, "no alternate screen");
                     return null_mut();
                 }
                 return xstrdup(c!("")).as_ptr();
             }
+            s = &raw mut (*wp).base;
+        } else if args_has(&*args, 'M') {
+            let wme = tailq_first(&raw mut (*wp).modes);
+            if !wme.is_null() && (*(*wme).mode).get_screen.is_some() {
+                s = (*(*wme).mode).get_screen.unwrap()(wme);
+                gd = (*s).grid;
+            } else {
+                s = &raw mut (*wp).base;
+                gd = (*wp).base.grid;
+            }
         } else {
+            s = &raw mut (*wp).base;
             gd = (*wp).base.grid;
         }
 
-        let sflag: *const u8 = args_get(args, b'S');
+        // TODO: check against upstream - hsize + sy can overflow u32 in debug mode
+        // Use wrapping arithmetic to mirror C unsigned wraparound
+        let last_line = (*gd).hsize.wrapping_add((*gd).sy).wrapping_sub(1);
+
+        let sflag: *const u8 = args_get(&*args, b'S');
         let mut top;
         if !sflag.is_null() && streq_(sflag, "-") {
             top = 0;
         } else {
-            n = args_strtonum_and_expand(
-                args,
-                b'S',
-                i32::MIN as i64,
-                i16::MAX as i64,
-                item,
-                &raw mut cause,
-            );
-            if !cause.is_null() {
-                top = (*gd).hsize;
-                free_(cause);
-            } else if n < 0 && (-n) as u32 > (*gd).hsize {
-                top = 0;
-            } else {
-                top = (*gd).hsize + n as u32;
+            match args_strtonum_and_expand(&*args, b'S', i32::MIN as i64, i16::MAX as i64, item) {
+                Err(_) => {
+                    top = (*gd).hsize;
+                }
+                Ok(n) if n < 0 && (-n) as u32 > (*gd).hsize => {
+                    top = 0;
+                }
+                Ok(n) => {
+                    // wrapping_add: n may be negative, mirroring C unsigned wraparound
+                    top = (*gd).hsize.wrapping_add(n as u32);
+                }
             }
-            if top > (*gd).hsize + (*gd).sy - 1 {
-                top = (*gd).hsize + (*gd).sy - 1;
+            if top > last_line {
+                top = last_line;
             }
         }
 
-        let eflag: *const u8 = args_get(args, b'E');
+        let eflag: *const u8 = args_get(&*args, b'E');
         if !eflag.is_null() && streq_(eflag, "-") {
-            bottom = (*gd).hsize + (*gd).sy - 1;
+            bottom = last_line;
         } else {
-            n = args_strtonum_and_expand(
-                args,
-                b'E',
-                i32::MIN as i64,
-                i16::MAX as i64,
-                item,
-                &raw mut cause,
-            );
-            if !cause.is_null() {
-                bottom = (*gd).hsize + (*gd).sy - 1;
-                free_(cause);
-            } else if n < 0 && (-n) as u32 > (*gd).hsize {
-                bottom = 0;
-            } else {
-                bottom = (*gd).hsize + n as u32;
+            match args_strtonum_and_expand(&*args, b'E', i32::MIN as i64, i16::MAX as i64, item) {
+                Err(_) => {
+                    bottom = last_line;
+                }
+                Ok(n) if n < 0 && (-n) as u32 > (*gd).hsize => {
+                    bottom = 0;
+                }
+                Ok(n) => {
+                    // wrapping_add: n may be negative, mirroring C unsigned wraparound
+                    bottom = (*gd).hsize.wrapping_add(n as u32);
+                }
             }
-            if bottom > (*gd).hsize + (*gd).sy - 1 {
-                bottom = (*gd).hsize + (*gd).sy - 1;
+            if bottom > last_line {
+                bottom = last_line;
             }
         }
 
@@ -187,23 +193,23 @@ unsafe fn cmd_capture_pane_history(
             top = tmp;
         }
 
-        let join_lines = args_has(args, 'J');
-        if args_has(args, 'e') {
+        let join_lines = args_has(&*args, 'J');
+        if args_has(&*args, 'e') {
             flags |= grid_string_flags::GRID_STRING_WITH_SEQUENCES;
         }
-        if args_has(args, 'C') {
+        if args_has(&*args, 'C') {
             flags |= grid_string_flags::GRID_STRING_ESCAPE_SEQUENCES;
         }
-        if !join_lines && !args_has(args, 'T') {
+        if !join_lines && !args_has(&*args, 'T') {
             flags |= grid_string_flags::GRID_STRING_EMPTY_CELLS;
         }
-        if !join_lines && !args_has(args, 'N') {
+        if !join_lines && !args_has(&*args, 'N') {
             flags |= grid_string_flags::GRID_STRING_TRIM_SPACES;
         }
 
         let mut buf = null_mut();
         for i in top..=bottom {
-            line = grid_string_cells(gd, 0, i, sx, &raw mut gc, flags, (*wp).screen);
+            line = grid_string_cells(gd, 0, i, sx, &raw mut gc, flags, s);
             linelen = strlen(line);
 
             buf = cmd_capture_pane_append(buf, len, line, linelen);
@@ -229,14 +235,14 @@ unsafe fn cmd_capture_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
         if std::ptr::eq(cmd_get_entry(self_), &CMD_CLEAR_HISTORY_ENTRY) {
             window_pane_reset_mode_all(wp);
             grid_clear_history((*wp).base.grid);
-            if args_has(args, 'H') {
+            if args_has(&*args, 'H') {
                 screen_reset_hyperlinks((*wp).screen);
             }
             return cmd_retval::CMD_RETURN_NORMAL;
         }
 
         let mut len = 0;
-        let buf = if args_has(args, 'P') {
+        let buf = if args_has(&*args, 'P') {
             cmd_capture_pane_pending(args, wp, &raw mut len)
         } else {
             cmd_capture_pane_history(args, item, wp, &raw mut len)
@@ -245,7 +251,7 @@ unsafe fn cmd_capture_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
             return cmd_retval::CMD_RETURN_ERROR;
         }
 
-        if args_has(args, 'p') {
+        if args_has(&*args, 'p') {
             if len > 0 && *buf.add(len - 1) == b'\n' {
                 len -= 1;
             }
@@ -259,18 +265,16 @@ unsafe fn cmd_capture_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
                 }
                 file_print_buffer(c, buf as _, len);
                 file_print!(c, "\n");
-                free_(buf);
             }
+            free_(buf);
         } else {
             let mut bufname = None;
-            let mut cause = null_mut();
-            if args_has(args, 'b') {
-                bufname = cstr_to_str_(args_get(args, b'b'));
+            if args_has(&*args, 'b') {
+                bufname = cstr_to_str_(args_get(&*args, b'b'));
             }
 
-            if paste_set(buf, len, bufname, &raw mut cause) != 0 {
-                cmdq_error!(item, "{}", _s(cause));
-                free_(cause);
+            if let Err(cause) = paste_set(buf, len, bufname) {
+                cmdq_error!(item, "{}", cause);
                 free_(buf);
                 return cmd_retval::CMD_RETURN_ERROR;
             }

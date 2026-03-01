@@ -18,14 +18,6 @@ impl<T> Default for rb_head<T> {
     }
 }
 
-impl<T> rb_head<T> {
-    pub(crate) const fn rb_init() -> Self {
-        Self {
-            rbh_root: null_mut(),
-        }
-    }
-}
-
 #[repr(i32)]
 #[derive(Copy, Clone, Debug, Default, Eq, PartialEq)]
 pub enum rb_color {

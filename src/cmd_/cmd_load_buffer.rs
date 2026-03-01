@@ -55,20 +55,16 @@ unsafe fn cmd_load_buffer_done(
         }
 
         if error != 0 {
-            cmdq_error!(item, "{}: {}", _s(path), strerror(error));
+            cmdq_error!(item, "{}: {}", strerror(error), _s(path));
         } else if bsize != 0 {
             let copy = xmalloc(bsize).as_ptr();
             memcpy_(copy, bdata as _, bsize);
-            let mut cause = null_mut();
-            if paste_set(
+            if let Err(cause) = paste_set(
                 copy as _,
                 bsize,
                 cstr_to_str_((*cdata).name),
-                &raw mut cause,
-            ) != 0
-            {
-                cmdq_error!(item, "{}", _s(cause));
-                free_(cause);
+            ) {
+                cmdq_error!(item, "{}", cause);
                 free_(copy);
             } else if !tc.is_null()
                 && !(*tc).session.is_null()
@@ -91,19 +87,19 @@ unsafe fn cmd_load_buffer_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
     unsafe {
         let args = cmd_get_args(self_);
         let tc = cmdq_get_target_client(item);
-        let bufname = args_get(args, b'b');
+        let bufname = args_get(&*args, b'b');
 
         let cdata = xcalloc_::<cmd_load_buffer_data>(1).as_ptr();
         (*cdata).item = item;
         if !bufname.is_null() {
             (*cdata).name = xstrdup(bufname).as_ptr();
         }
-        if args_has(args, 'w') && !tc.is_null() {
+        if args_has(&*args, 'w') && !tc.is_null() {
             (*cdata).client = tc;
             (*(*cdata).client).references += 1;
         }
 
-        let path = format_single_from_target(item, args_string(args, 0));
+        let path = format_single_from_target(item, args_string(&*args, 0).unwrap().as_ptr().cast());
         file_read(
             cmdq_get_client(item),
             path,

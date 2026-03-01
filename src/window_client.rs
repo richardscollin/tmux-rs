@@ -17,7 +17,7 @@ use crate::*;
 static WINDOW_CLIENT_DEFAULT_COMMAND: &str = "detach-client -t '%%'";
 static WINDOW_CLIENT_DEFAULT_FORMAT: &str = "#{t/p:client_activity}: session #{session_name}";
 static WINDOW_CLIENT_DEFAULT_KEY_FORMAT: &str =
-    "#{?#{e|<:#{line},10},#{line},#{?#{e|<:#{line},36},M-#{a:#{e|+:97,#{e|-:#{line},10}}},}}";
+    "#{?#{e|<:#{line},10},#{line},#{e|<:#{line},36},M-#{a:#{e|+:97,#{e|-:#{line},10}}}}";
 
 static WINDOW_CLIENT_MENU_ITEMS: [menu_item; 8] = [
     menu_item::new("Detach", b'd' as _, null()),
@@ -42,6 +42,7 @@ pub static WINDOW_CLIENT_MODE: window_mode = window_mode {
     key_table: None,
     command: None,
     formats: None,
+    get_screen: None,
 };
 
 #[derive(num_enum::TryFromPrimitive)]
@@ -162,7 +163,7 @@ pub unsafe fn window_client_build(
 
             if !filter.is_null() {
                 let cp = format_single(null_mut(), cstr_to_str(filter), c, null_mut(), null_mut(), null_mut());
-                if !format_true(cp) {
+                if !format_true(cstr_to_str_(cp)) {
                     free_(cp);
                     continue;
                 }
@@ -281,23 +282,26 @@ pub unsafe fn window_client_init(
 
         let data: *mut window_client_modedata =
             xcalloc1::<window_client_modedata>() as *mut window_client_modedata;
+        // xcalloc1 zeroes all bytes, but Vec requires NonNull::dangling() not null,
+        // so we must explicitly initialize item_list.
+        std::ptr::write(&raw mut (*data).item_list, Vec::new());
         (*wme.as_ptr()).data = data.cast();
         (*data).wp = wp;
 
-        if args.is_null() || !args_has(args, 'F') {
+        if args.is_null() || !args_has(&*args, 'F') {
             (*data).format = xstrdup__(WINDOW_CLIENT_DEFAULT_FORMAT);
         } else {
             (*data).format = xstrdup(args_get_(args, 'F')).as_ptr();
         }
-        if args.is_null() || !args_has(args, 'K') {
+        if args.is_null() || !args_has(&*args, 'K') {
             (*data).key_format = xstrdup__(WINDOW_CLIENT_DEFAULT_KEY_FORMAT);
         } else {
             (*data).key_format = xstrdup(args_get_(args, 'K')).as_ptr();
         }
-        if args.is_null() || args_count(args) == 0 {
+        if args.is_null() || args_count(&*args) == 0 {
             (*data).command = xstrdup__(WINDOW_CLIENT_DEFAULT_COMMAND);
         } else {
-            (*data).command = xstrdup(args_string(args, 0)).as_ptr();
+            (*data).command = xstrdup(args_string(&*args, 0).unwrap().as_ptr().cast()).as_ptr();
         }
 
         (*data).data = mode_tree_start(
@@ -309,6 +313,7 @@ pub unsafe fn window_client_init(
             Some(window_client_menu),
             None,
             Some(window_client_get_key),
+            None,
             data.cast(),
             WINDOW_CLIENT_MENU_ITEMS.as_slice(),
             &WINDOW_CLIENT_SORT_LIST,

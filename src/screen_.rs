@@ -80,6 +80,8 @@ pub unsafe fn screen_init(s: *mut screen, sx: u32, sy: u32, hlimit: u32) {
 
         #[cfg(feature = "sixel")]
         tailq_init(&raw mut (*s).images);
+        #[cfg(feature = "sixel")]
+        tailq_init(&raw mut (*s).saved_images);
 
         (*s).write_list = null_mut();
         (*s).hyperlinks = null_mut();
@@ -95,7 +97,8 @@ pub unsafe fn screen_reinit(s: *mut screen) {
         (*s).cy = 0;
 
         (*s).rupper = 0;
-        (*s).rlower = screen_size_y(s) - 1;
+        // TODO: wrapping_sub to match C unsigned underflow when sy == 0
+        (*s).rlower = screen_size_y(s).wrapping_sub(1);
 
         (*s).mode =
             mode_flag::MODE_CURSOR | mode_flag::MODE_WRAP | ((*s).mode & mode_flag::MODE_CRLF);
@@ -104,7 +107,7 @@ pub unsafe fn screen_reinit(s: *mut screen) {
             (*s).mode = ((*s).mode & !EXTENDED_KEY_MODES) | mode_flag::MODE_KEYS_EXTENDED;
         }
 
-        if !(*s).saved_grid.is_null() {
+        if screen_is_alternate(s) {
             screen_alternate_off(s, null_mut(), 0);
         }
         (*s).saved_cx = u32::MAX;
@@ -147,7 +150,7 @@ pub unsafe fn screen_free(s: *mut screen) {
             screen_write_free_list(s);
         }
 
-        if !(*s).saved_grid.is_null() {
+        if screen_is_alternate(s) {
             grid_destroy((*s).saved_grid);
         }
         grid_destroy((*s).grid);
@@ -172,6 +175,18 @@ pub unsafe fn screen_reset_tabs(s: *mut screen) {
             (*s).tabs.as_ref().unwrap().borrow_mut().bit_set(i);
             i += 8;
         }
+    }
+}
+
+/// Set default cursor style and colour from options.
+pub unsafe fn screen_set_default_cursor(s: *mut screen , oo: *const options) {
+    unsafe {
+       let c: i32 = options_get_number___(&*oo, "cursor-colour");
+       (*s).default_ccolour = c;
+
+       let c: i32 = options_get_number___(&*oo, "cursor-style");
+       (*s).default_mode = mode_flag::empty();
+       screen_set_cursor_style(c as u32, &raw mut (*s).default_cstyle, &raw mut (*s).default_mode);
     }
 }
 
@@ -443,7 +458,8 @@ unsafe fn screen_resize_y(s: *mut screen, sy: u32, eat_empty: i32, cy: *mut u32)
         // Set the new size, and reset the scroll region
         (*gd).sy = sy;
         (*s).rupper = 0;
-        (*s).rlower = screen_size_y(s) - 1;
+        // TODO: wrapping_sub to match C unsigned underflow when sy == 0
+        (*s).rlower = screen_size_y(s).wrapping_sub(1);
     }
 }
 
@@ -632,10 +648,14 @@ pub unsafe fn screen_select_cell(s: *mut screen, dst: *mut grid_cell, src: *cons
         }
 
         memcpy__(dst, &raw const (*(*s).sel).cell);
-
+        if COLOUR_DEFAULT((*dst).fg) {
+            (*dst).fg = (*src).fg;
+        }
+        if COLOUR_DEFAULT((*dst).bg) {
+            (*dst).bg = (*src).bg;
+        }
         utf8_copy(&mut (*dst).data, &(*src).data);
-        (*dst).attr &= !grid_attr::GRID_ATTR_CHARSET;
-        (*dst).attr |= (*src).attr & grid_attr::GRID_ATTR_CHARSET;
+        (*dst).attr = (*src).attr;
         (*dst).flags = (*src).flags;
     }
 }
@@ -674,7 +694,7 @@ unsafe fn screen_reflow(s: *mut screen, new_x: u32, cx: *mut u32, cy: *mut u32, 
 /// history is not updated.
 pub unsafe fn screen_alternate_on(s: *mut screen, gc: *mut grid_cell, cursor: i32) {
     unsafe {
-        if !(*s).saved_grid.is_null() {
+        if screen_is_alternate(s) {
             return;
         }
         let sx = screen_size_x(s);
@@ -687,6 +707,12 @@ pub unsafe fn screen_alternate_on(s: *mut screen, gc: *mut grid_cell, cursor: i3
             (*s).saved_cy = (*s).cy;
         }
         memcpy__(&raw mut (*s).saved_cell, gc);
+
+        #[cfg(feature = "sixel")]
+        tailq_concat::<image, discr_entry>(
+            &raw mut (*s).saved_images,
+            &raw mut (*s).images,
+        );
 
         grid_view_clear((*s).grid, 0, 0, sx, sy, 8);
 
@@ -703,7 +729,7 @@ pub unsafe fn screen_alternate_off(s: *mut screen, gc: *mut grid_cell, cursor: i
 
         // If the current size is different, temporarily resize to the old size
         // before copying back.
-        if !(*s).saved_grid.is_null() {
+        if screen_is_alternate(s) {
             screen_resize(s, (*(*s).saved_grid).sx, (*(*s).saved_grid).sy, 0);
         }
 
@@ -718,7 +744,7 @@ pub unsafe fn screen_alternate_off(s: *mut screen, gc: *mut grid_cell, cursor: i
         }
 
         // If not in the alternate screen, do nothing more.
-        if (*s).saved_grid.is_null() {
+        if !screen_is_alternate(s) {
             if (*s).cx > screen_size_x(s) - 1 {
                 (*s).cx = screen_size_x(s) - 1;
             }
@@ -746,6 +772,15 @@ pub unsafe fn screen_alternate_off(s: *mut screen, gc: *mut grid_cell, cursor: i
 
         grid_destroy((*s).saved_grid);
         (*s).saved_grid = null_mut();
+
+        #[cfg(feature = "sixel")]
+        {
+            crate::image_::image_free_all(s);
+            tailq_concat::<image, discr_entry>(
+                &raw mut (*s).images,
+                &raw mut (*s).saved_images,
+            );
+        }
 
         if (*s).cx > screen_size_x(s) - 1 {
             (*s).cx = screen_size_x(s) - 1;

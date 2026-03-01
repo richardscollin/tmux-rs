@@ -390,3 +390,161 @@ macro_rules! impl_tailq_entry {
     };
 }
 pub(crate) use impl_tailq_entry;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // A simple test node for tailq
+    #[repr(C)]
+    struct TNode {
+        value: i32,
+        entry: tailq_entry<TNode>,
+    }
+    impl Entry<TNode> for TNode {
+        unsafe fn entry(this: *mut Self) -> *mut tailq_entry<TNode> {
+            unsafe { &raw mut (*this).entry }
+        }
+    }
+
+    // A simple test node for list_head
+    #[repr(C)]
+    struct LNode {
+        value: i32,
+        entry: list_entry<LNode>,
+    }
+    impl ListEntry<LNode> for LNode {
+        unsafe fn field(this: *mut Self) -> *mut list_entry<LNode> {
+            unsafe { &raw mut (*this).entry }
+        }
+    }
+
+    fn make_tnode(val: i32) -> Box<TNode> {
+        Box::new(TNode {
+            value: val,
+            entry: tailq_entry::default(),
+        })
+    }
+
+    #[test]
+    fn test_list_head_initializer() {
+        let head = list_head_initializer::<LNode>();
+        assert!(head.lh_first.is_null());
+    }
+
+    #[test]
+    fn test_tailq_foreach_reverse() {
+        unsafe {
+            let mut head: tailq_head<TNode> = std::mem::zeroed();
+            tailq_init(&raw mut head);
+
+            let mut n1 = make_tnode(1);
+            let mut n2 = make_tnode(2);
+            let mut n3 = make_tnode(3);
+
+            let p1: *mut TNode = &mut *n1;
+            let p2: *mut TNode = &mut *n2;
+            let p3: *mut TNode = &mut *n3;
+
+            tailq_insert_tail(&raw mut head, p1);
+            tailq_insert_tail(&raw mut head, p2);
+            tailq_insert_tail(&raw mut head, p3);
+
+            // Forward should give 1, 2, 3
+            let fwd: Vec<i32> = tailq_foreach::<TNode, ()>(&raw mut head)
+                .map(|nn| (*nn.as_ptr()).value)
+                .collect();
+            assert_eq!(fwd, vec![1, 2, 3]);
+
+            // Reverse should give 3, 2, 1
+            let rev: Vec<i32> = tailq_foreach_reverse::<TNode, ()>(&raw mut head)
+                .map(|nn| (*nn.as_ptr()).value)
+                .collect();
+            assert_eq!(rev, vec![3, 2, 1]);
+
+            // Clean up - remove all nodes so Box can free them
+            tailq_remove::<_, ()>(&raw mut head, p1);
+            tailq_remove::<_, ()>(&raw mut head, p2);
+            tailq_remove::<_, ()>(&raw mut head, p3);
+            drop(n1);
+            drop(n2);
+            drop(n3);
+        }
+    }
+
+    #[test]
+    fn test_tailq_replace_last_element() {
+        unsafe {
+            let mut head: tailq_head<TNode> = std::mem::zeroed();
+            tailq_init(&raw mut head);
+
+            let mut n1 = make_tnode(1);
+            let mut n2 = make_tnode(2);
+            let mut n3 = make_tnode(30);
+
+            let p1: *mut TNode = &mut *n1;
+            let p2: *mut TNode = &mut *n2;
+            let p3: *mut TNode = &mut *n3;
+
+            tailq_insert_tail(&raw mut head, p1);
+            tailq_insert_tail(&raw mut head, p2);
+
+            // Replace the last element (p2) with p3
+            tailq_replace::<_, ()>(&raw mut head, p2, p3);
+
+            let vals: Vec<i32> = tailq_foreach::<TNode, ()>(&raw mut head)
+                .map(|nn| (*nn.as_ptr()).value)
+                .collect();
+            assert_eq!(vals, vec![1, 30]);
+
+            // Verify p3 is now the tail
+            assert_eq!((*tailq_last(&raw mut head)).value, 30);
+
+            tailq_remove::<_, ()>(&raw mut head, p1);
+            tailq_remove::<_, ()>(&raw mut head, p3);
+            drop(n1);
+            drop(n2);
+            drop(n3);
+        }
+    }
+
+    #[test]
+    fn test_tailq_debug_fmt() {
+        let entry: tailq_entry<TNode> = tailq_entry::default();
+        let debug = format!("{:?}", entry);
+        assert!(debug.contains("tailq_entry"));
+    }
+
+    #[test]
+    fn test_tailq_foreach_reverse_empty() {
+        unsafe {
+            let mut head: tailq_head<TNode> = std::mem::zeroed();
+            tailq_init(&raw mut head);
+
+            let rev: Vec<i32> = tailq_foreach_reverse::<TNode, ()>(&raw mut head)
+                .map(|nn| (*nn.as_ptr()).value)
+                .collect();
+            assert!(rev.is_empty());
+        }
+    }
+
+    #[test]
+    fn test_tailq_foreach_reverse_single() {
+        unsafe {
+            let mut head: tailq_head<TNode> = std::mem::zeroed();
+            tailq_init(&raw mut head);
+
+            let mut n1 = make_tnode(42);
+            let p1: *mut TNode = &mut *n1;
+            tailq_insert_tail(&raw mut head, p1);
+
+            let rev: Vec<i32> = tailq_foreach_reverse::<TNode, ()>(&raw mut head)
+                .map(|nn| (*nn.as_ptr()).value)
+                .collect();
+            assert_eq!(rev, vec![42]);
+
+            tailq_remove::<_, ()>(&raw mut head, p1);
+            drop(n1);
+        }
+    }
+}

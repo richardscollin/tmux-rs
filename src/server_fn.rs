@@ -12,7 +12,7 @@
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 use crate::compat::imsg::{IMSG_HEADER_SIZE, MAX_IMSGSIZE};
-use crate::libc::{WEXITSTATUS, WIFEXITED, close, gettimeofday};
+use crate::libc::{WEXITSTATUS, WIFEXITED, close};
 use crate::*;
 use crate::options_::*;
 
@@ -240,16 +240,14 @@ pub unsafe fn server_link_window(
     mut dstidx: i32,
     killflag: bool,
     mut selectflag: bool,
-    cause: *mut *mut u8,
-) -> i32 {
+) -> Result<(), String> {
     unsafe {
         let mut dstwl = null_mut();
 
         let srcsg = session_group_contains(src);
         let dstsg = session_group_contains(dst);
         if src != dst && !srcsg.is_null() && !dstsg.is_null() && srcsg == dstsg {
-            *cause = format_nul!("sessions are grouped");
-            return -1;
+            return Err("sessions are grouped".into());
         }
 
         if dstidx != -1 {
@@ -257,8 +255,7 @@ pub unsafe fn server_link_window(
         }
         if !dstwl.is_null() {
             if (*dstwl).window == (*srcwl).window {
-                *cause = format_nul!("same index: {}", dstidx);
-                return -1;
+                return Err(format!("same index: {dstidx}"));
             }
             if killflag {
                 // Can't use session_detach as it will destroy session
@@ -279,17 +276,17 @@ pub unsafe fn server_link_window(
         if dstidx == -1 {
             dstidx = -1 - options_get_number_((*dst).options, "base-index") as i32;
         }
-        dstwl = session_attach(dst, (*srcwl).window, dstidx, cause);
-        if dstwl.is_null() {
-            return -1;
-        }
+        dstwl = session_attach(dst, (*srcwl).window, dstidx)?;
 
+        if MARKED_PANE.wl == srcwl {
+            MARKED_PANE.wl = dstwl;
+        }
         if selectflag {
             session_select(dst, (*dstwl).idx);
         }
         server_redraw_session_group(dst);
 
-        0
+        Ok(())
     }
 }
 
@@ -319,6 +316,7 @@ pub unsafe fn server_destroy_pane(wp: *mut window_pane, notify: i32) {
             #[cfg(feature = "utempter")]
             {
                 utempter_remove_record((*wp).fd);
+                libc::kill(libc::getpid(), libc::SIGCHLD);
             }
             bufferevent_free((*wp).event);
             (*wp).event = null_mut();
@@ -345,7 +343,7 @@ pub unsafe fn server_destroy_pane(wp: *mut window_pane, notify: i32) {
                     }
                     (*wp).flags |= window_pane_flags::PANE_STATUSDRAWN;
 
-                    gettimeofday(&raw mut (*wp).dead_time, null_mut());
+                    (*wp).dead_time = libc::gettimeofday_();
                     if notify != 0 {
                         notify_pane(c"pane-died", wp);
                     }
@@ -413,7 +411,7 @@ pub unsafe fn server_find_session(
     unsafe {
         let mut s_out: *mut session = null_mut();
         for s_loop in rb_foreach(&raw mut SESSIONS).map(NonNull::as_ptr) {
-            if s_loop != s && (s_out.is_null() || f(s_loop, s_out) != 0) {
+            if s_loop != s && f(s_loop, s_out) != 0 {
                 s_out = s_loop;
             }
         }
@@ -423,6 +421,9 @@ pub unsafe fn server_find_session(
 
 pub unsafe fn server_newer_session(s_loop: *mut session, s_out: *mut session) -> i32 {
     unsafe {
+        if s_out.is_null() {
+            return 1;
+        }
         (timer::new(&raw const (*s_loop).activity_time)
             > timer::new(&raw const (*s_out).activity_time)) as i32
     }
@@ -441,7 +442,7 @@ pub unsafe fn server_destroy_session(s: *mut session) {
     unsafe {
         let detach_on_destroy = options_get_number_((*s).options, "detach-on-destroy");
 
-        let mut s_new: *mut session = if detach_on_destroy == 0 {
+        let s_new: *mut session = if detach_on_destroy == 0 {
             server_find_session(s, server_newer_session)
         } else if detach_on_destroy == 2 {
             server_find_session(s, server_newer_detached_session)
@@ -453,17 +454,26 @@ pub unsafe fn server_destroy_session(s: *mut session) {
             null_mut()
         };
 
-        if s_new == s {
-            s_new = null_mut();
+        let mut cs_new: *mut session = null_mut();
+        if s_new.is_null() && (detach_on_destroy == 1 || detach_on_destroy == 2) {
+            cs_new = server_find_session(s, server_newer_session);
         }
         for c in tailq_foreach(&raw mut CLIENTS).map(NonNull::as_ptr) {
             if (*c).session != s {
                 continue;
             }
+            let mut use_s = s_new;
+            if use_s.is_null()
+                && (*c)
+                    .flags
+                    .intersects(client_flag::NO_DETACH_ON_DESTROY)
+            {
+                use_s = cs_new;
+            }
             (*c).session = null_mut();
             (*c).last_session = null_mut();
-            server_client_set_session(c, s_new);
-            if s_new.is_null() {
+            server_client_set_session(c, use_s);
+            if use_s.is_null() {
                 (*c).flags |= client_flag::EXIT;
             }
         }

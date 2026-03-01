@@ -154,7 +154,8 @@ unsafe fn screen_write_set_client_cb(ttyctx: *mut tty_ctx, c: *mut client) -> i3
             // Redraw is already deferred to redraw another pane - redraw
             // this one also when that happens.
             // log_debug("%s: adding %%%u to deferred redraw", __func__, (*wp).id);
-            (*wp).flags |= window_pane_flags::PANE_REDRAW;
+            (*wp).flags |=
+                window_pane_flags::PANE_REDRAW | window_pane_flags::PANE_REDRAWSCROLLBAR;
             return -1;
         }
 
@@ -401,7 +402,7 @@ pub unsafe fn screen_write_strlen_(args: std::fmt::Arguments) -> usize {
                     size += ud.width;
                 }
             } else {
-                if *ptr > 0x1f && *ptr < 0x7f {
+                if *ptr == b'\t' || (*ptr > 0x1f && *ptr < 0x7f) {
                     size += 1;
                 }
                 ptr = ptr.add(1);
@@ -596,7 +597,7 @@ pub(crate) unsafe fn screen_write_vnputs_(
                 } else if *ptr == b'\n' {
                     screen_write_linefeed(ctx, false, 8);
                     screen_write_carriagereturn(ctx);
-                } else if *ptr > 0x1f && *ptr < 0x7f {
+                } else if *ptr == b'\t' || (*ptr > 0x1f && *ptr < 0x7f) {
                     size += 1;
                     screen_write_putc(ctx, &gc, *ptr);
                 }
@@ -618,6 +619,8 @@ pub unsafe fn screen_write_fast_copy(
 ) {
     unsafe {
         let s = (*ctx).s;
+        let wp = (*ctx).wp;
+        let mut ttyctx: tty_ctx = zeroed();
         let gd = (*src).grid;
         let mut gc: grid_cell = zeroed();
 
@@ -625,25 +628,39 @@ pub unsafe fn screen_write_fast_copy(
             return;
         }
 
-        let mut cy = (*s).cy;
+        let cx = (*s).cx;
+        let cy = (*s).cy;
         for yy in py..(py + ny) {
             if yy >= (*gd).hsize + (*gd).sy {
                 break;
             }
-            let mut cx = (*s).cx;
+            (*s).cx = cx;
+            if !wp.is_null() {
+                screen_write_initctx(ctx, &raw mut ttyctx, 0);
+            }
             for xx in px..(px + nx) {
-                if xx >= (*grid_get_line(gd, yy)).cellsize {
+                if xx >= (*grid_get_line(gd, yy)).cellsize
+                    && (*s).cx >= (*grid_get_line((*(*ctx).s).grid, (*s).cy)).cellsize
+                {
                     break;
                 }
                 grid_get_cell(gd, xx, yy, &raw mut gc);
                 if xx + gc.data.width as u32 > px + nx {
                     break;
                 }
-                grid_view_set_cell((*(*ctx).s).grid, cx, cy, &gc);
-                cx += 1;
+                grid_view_set_cell((*(*ctx).s).grid, (*s).cx, (*s).cy, &gc);
+                if !wp.is_null() {
+                    ttyctx.cell = &gc;
+                    tty_write(tty_cmd_cell, &raw mut ttyctx);
+                    ttyctx.ocx += 1;
+                }
+                (*s).cx += 1;
             }
-            cy += 1;
+            (*s).cy += 1;
         }
+
+        (*s).cx = cx;
+        (*s).cy = cy;
     }
 }
 
@@ -1972,6 +1989,10 @@ pub unsafe fn screen_write_collect_flush(ctx: *mut screen_write_ctx, scroll_only
             ttyctx.num = (*ctx).scrolled;
             ttyctx.bg = (*ctx).bg;
             tty_write(tty_cmd_scrollup, &raw mut ttyctx);
+
+            if !(*ctx).wp.is_null() {
+                (*(*ctx).wp).flags |= window_pane_flags::PANE_REDRAWSCROLLBAR;
+            }
         }
         (*ctx).scrolled = 0;
         (*ctx).bg = 8;
@@ -2052,8 +2073,13 @@ pub unsafe fn screen_write_collect_end(ctx: *mut screen_write_ctx) {
                 grid_view_set_cell((*s).grid, xx, (*s).cy, &GRID_DEFAULT_CELL);
                 xx -= 1;
             }
-            if gc.data.width > 1 {
-                grid_view_set_cell((*s).grid, xx, (*s).cy, &GRID_DEFAULT_CELL);
+            if xx != (*s).cx {
+                if xx == 0 {
+                    grid_view_get_cell((*s).grid, 0, (*s).cy, &raw mut gc);
+                }
+                if gc.data.width > 1 {
+                    grid_view_set_cell((*s).grid, xx, (*s).cy, &GRID_DEFAULT_CELL);
+                }
             }
         }
 
@@ -2097,6 +2123,7 @@ pub unsafe fn screen_write_collect_add(ctx: *mut screen_write_ctx, gc: *const gr
         // a plain character is encountered.
 
         if ((*gc).data.width != 1 || (*gc).data.size != 1 || (*gc).data.data[0] >= 0x7f)
+            || (*gc).flags.intersects(grid_flag::TAB)
             || (*gc).attr.intersects(grid_attr::GRID_ATTR_CHARSET)
             || !(*s).mode.intersects(mode_flag::MODE_WRAP)
             || (*s).mode.intersects(mode_flag::MODE_INSERT)
@@ -2189,7 +2216,7 @@ pub unsafe fn screen_write_cell(ctx: *mut screen_write_ctx, gc: *const grid_cell
             // log_debug("%s: wrapped at %u,%u", __func__, (*s).cx, (*s).cy);
             screen_write_linefeed(ctx, true, 8);
             screen_write_set_cursor(ctx, 0, -1);
-            screen_write_collect_flush(ctx, 1, "screen_write_cell");
+            screen_write_collect_flush(ctx, 0, "screen_write_cell");
         }
 
         // Sanity check cursor position.
@@ -2296,6 +2323,11 @@ pub unsafe fn screen_write_combine(ctx: *mut screen_write_ctx, gc: *const grid_c
         let mut force_wide = 0;
         let mut zero_width = 0;
 
+        // Ignore U+3164 HANGUL_FILLER entirely.
+        if utf8_is_hangul_filler(ud) {
+            return 1;
+        }
+
         // Is this character which makes no sense without being combined? If
         // this is true then flag it here and discard the character (return 1)
         // if we cannot combine it.
@@ -2303,7 +2335,9 @@ pub unsafe fn screen_write_combine(ctx: *mut screen_write_ctx, gc: *const grid_c
             zero_width = 1;
         } else if utf8_is_vs(ud) {
             zero_width = 1;
-            force_wide = 1;
+            if options_get_number_(GLOBAL_OPTIONS, "variation-selector-always-wide") != 0 {
+                force_wide = 1;
+            }
         } else if (*ud).width == 0 {
             zero_width = 1;
         }
@@ -2325,17 +2359,24 @@ pub unsafe fn screen_write_combine(ctx: *mut screen_write_ctx, gc: *const grid_c
             return zero_width;
         }
 
-        // Check if we need to combine characters. This could be zero width
-        // (set above), a modifier character (with an existing Unicode
-        // character) or a previous ZWJ.
+        // Check if we need to combine characters. This could be a Korean
+        // Hangul Jamo character, zero width (set above), a modifier character
+        // (with an existing Unicode character) or a previous ZWJ.
         if zero_width == 0 {
-            if utf8_is_modifier(ud) {
-                if last.data.size < 2 {
-                    return 0;
+            match hanguljamo_check_state(&raw const last.data, ud) {
+                hanguljamo_state::NotComposable => return 1,
+                hanguljamo_state::Choseong => return 0,
+                hanguljamo_state::Composable => {}
+                hanguljamo_state::NotHangulJamo => {
+                    #[expect(clippy::if_same_then_else)]
+                    if utf8_should_combine(&raw const last.data, ud) {
+                        force_wide = 1;
+                    } else if utf8_should_combine(ud, &raw const last.data) {
+                        force_wide = 1;
+                    } else if !utf8_has_zwj(&raw mut last.data) {
+                        return 0;
+                    }
                 }
-                force_wide = 1;
-            } else if !utf8_has_zwj(&raw mut last.data) {
-                return 0;
             }
         }
 
@@ -2443,7 +2484,17 @@ pub unsafe fn screen_write_overwrite(
                     break;
                 }
                 // log_debug("%s: overwrite at %u,%u", __func__, xx, (*s).cy);
-                grid_view_set_cell(gd, xx, (*s).cy, &raw const GRID_DEFAULT_CELL);
+                if (*gc).flags.intersects(grid_flag::TAB) {
+                    tmp_gc = *gc;
+                    tmp_gc.data.data = [0; UTF8_SIZE];
+                    tmp_gc.data.data[0] = b' ';
+                    tmp_gc.data.width = 1;
+                    tmp_gc.data.size = 1;
+                    tmp_gc.data.have = 1;
+                    grid_view_set_cell(gd, xx, (*s).cy, &raw const tmp_gc);
+                } else {
+                    grid_view_set_cell(gd, xx, (*s).cy, &raw const GRID_DEFAULT_CELL);
+                }
                 done = 1;
             }
         }
@@ -2585,6 +2636,9 @@ pub unsafe fn screen_write_alternateon(
 
         screen_write_collect_flush(ctx, 0, "screen_write_alternateon");
         screen_alternate_on((*ctx).s, gc, cursor);
+        if !wp.is_null() {
+            layout_fix_panes((*wp).window, null_mut());
+        }
 
         screen_write_initctx(ctx, &raw mut ttyctx, 1);
         if let Some(redraw_cb) = ttyctx.redraw_cb {
@@ -2608,6 +2662,9 @@ pub unsafe fn screen_write_alternateoff(
 
         screen_write_collect_flush(ctx, 0, "screen_write_alternateoff");
         screen_alternate_off((*ctx).s, gc, cursor);
+        if !wp.is_null() {
+            layout_fix_panes((*wp).window, null_mut());
+        }
 
         screen_write_initctx(ctx, &raw mut ttyctx, 1);
         if let Some(redraw_cb) = ttyctx.redraw_cb {

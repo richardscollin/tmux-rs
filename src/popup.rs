@@ -21,6 +21,7 @@ bitflags::bitflags! {
         const POPUP_CLOSEEXIT = 0x1;
         const POPUP_CLOSEEXITZERO = 0x2;
         const POPUP_INTERNAL = 0x4;
+        const POPUP_CLOSEANYKEY = 0x8;
     }
 }
 
@@ -415,17 +416,22 @@ pub fn popup_make_pane(pd: *mut popup_data, type_: layout_type) {
         window_unzoom(w, 1);
 
         let lc = layout_split_pane(wp, type_, -1, spawn_flags::empty());
+        if lc.is_null() {
+            return;
+        }
         let hlimit = options_get_number_((*s).options, "history-limit") as u32;
         let new_wp = window_add_pane((*wp).window, null_mut(), hlimit, spawn_flags::empty());
         layout_assign_pane(lc, new_wp, 0);
 
-        (*new_wp).fd = job_transfer(
-            (*pd).job,
-            &mut (*new_wp).pid,
-            (*new_wp).tty.as_mut_ptr(),
-            TTY_NAME_MAX,
-        );
-        (*pd).job = null_mut();
+        if !(*pd).job.is_null() {
+            (*new_wp).fd = job_transfer(
+                (*pd).job,
+                &mut (*new_wp).pid,
+                (*new_wp).tty.as_mut_ptr(),
+                TTY_NAME_MAX,
+            );
+            (*pd).job = null_mut();
+        }
 
         screen_set_title(&raw mut (*pd).s, (*new_wp).base.title);
         screen_free(&raw mut (*new_wp).base);
@@ -616,7 +622,7 @@ pub unsafe fn popup_key_cb(c: *mut client, data: *mut c_void, event: *mut key_ev
                         break 'menu;
                     }
                     if (((*m).b & MOUSE_MASK_MODIFIERS) == MOUSE_MASK_META)
-                        || border != Border::None
+                        || (border != Border::None && !MOUSE_DRAG((*m).lb))
                     {
                         if !MOUSE_DRAG((*m).b) {
                             break 'out;
@@ -636,6 +642,13 @@ pub unsafe fn popup_key_cb(c: *mut client, data: *mut c_void, event: *mut key_ev
                     .intersects(popup_flag::POPUP_CLOSEEXIT | popup_flag::POPUP_CLOSEEXITZERO))
                     || (*pd).job.is_null())
                     && ((*event).key == b'\x1b' as u64 || (*event).key == (b'c' as u64 | KEYC_CTRL))
+                {
+                    return 1;
+                }
+                if (*pd).job.is_null()
+                    && (*pd).flags.intersects(popup_flag::POPUP_CLOSEANYKEY)
+                    && !KEYC_IS_MOUSE((*event).key)
+                    && !KEYC_IS_PASTE((*event).key)
                 {
                     return 1;
                 }
@@ -763,6 +776,68 @@ pub unsafe fn popup_job_complete_cb(job: *mut job) {
     }
 }
 
+#[expect(
+    unpredictable_function_pointer_comparisons,
+    reason = "intentional function pointer identity check, ported from C"
+)]
+pub unsafe fn popup_present(c: *mut client) -> bool {
+    unsafe { (*c).overlay_draw == Some(popup_draw_cb) }
+}
+
+pub unsafe fn popup_modify(
+    c: *mut client,
+    title: *const u8,
+    style: *const u8,
+    border_style: *const u8,
+    lines: box_lines,
+    flags: i32,
+) -> i32 {
+    unsafe {
+        let pd = (*c).overlay_data.cast::<popup_data>();
+        let mut sytmp = MaybeUninit::<crate::style>::uninit();
+
+        if !title.is_null() {
+            if !(*pd).title.is_null() {
+                free_((*pd).title);
+            }
+            (*pd).title = xstrdup(title).as_ptr();
+        }
+        if !border_style.is_null() {
+            style_set(sytmp.as_mut_ptr(), &raw const (*pd).border_cell);
+            if style_parse(sytmp.as_mut_ptr(), &raw mut (*pd).border_cell, border_style) == 0 {
+                (*pd).border_cell.fg = (*sytmp.as_ptr()).gc.fg;
+                (*pd).border_cell.bg = (*sytmp.as_ptr()).gc.bg;
+            }
+        }
+        if !style.is_null() {
+            style_set(sytmp.as_mut_ptr(), &raw const (*pd).defaults);
+            if style_parse(sytmp.as_mut_ptr(), &raw mut (*pd).defaults, style) == 0 {
+                (*pd).defaults.fg = (*sytmp.as_ptr()).gc.fg;
+                (*pd).defaults.bg = (*sytmp.as_ptr()).gc.bg;
+            }
+        }
+        if lines != box_lines::BOX_LINES_DEFAULT {
+            if lines == box_lines::BOX_LINES_NONE && (*pd).border_lines != lines {
+                screen_resize(&raw mut (*pd).s, (*pd).sx, (*pd).sy, 1);
+                job_resize((*pd).job, (*pd).sx, (*pd).sy);
+            } else if (*pd).border_lines == box_lines::BOX_LINES_NONE
+                && (*pd).border_lines != lines
+            {
+                screen_resize(&raw mut (*pd).s, (*pd).sx - 2, (*pd).sy - 2, 1);
+                job_resize((*pd).job, (*pd).sx - 2, (*pd).sy - 2);
+            }
+            (*pd).border_lines = lines;
+            tty_resize(&raw mut (*c).tty);
+        }
+        if flags != -1 {
+            (*pd).flags = popup_flag::from_bits_truncate(flags);
+        }
+
+        server_redraw_client(c);
+        0
+    }
+}
+
 pub unsafe fn popup_display(
     flags: popup_flag,
     mut lines: box_lines,
@@ -827,7 +902,7 @@ pub unsafe fn popup_display(
 
         (*pd).cb = cb;
         (*pd).arg = arg;
-        (*pd).status = 128 + SIGHUP;
+        (*pd).status = 128 + libc::SIGHUP;
 
         (*pd).border_lines = lines;
         memcpy__(&raw mut (*pd).border_cell, &raw const GRID_DEFAULT_CELL);
@@ -849,8 +924,9 @@ pub unsafe fn popup_display(
         (*pd).border_cell.attr = grid_attr::empty();
 
         screen_init(&raw mut (*pd).s, jx, jy, 0);
+        screen_set_default_cursor(&raw mut (*pd).s, GLOBAL_W_OPTIONS);
         (*pd).palette = colour_palette_init();
-        colour_palette_from_option(Some(&mut (*pd).palette), GLOBAL_W_OPTIONS);
+        colour_palette_from_option(Some(&mut (*pd).palette), &mut *GLOBAL_W_OPTIONS);
 
         memcpy__(&raw mut (*pd).defaults, &raw const GRID_DEFAULT_CELL);
         style_apply(

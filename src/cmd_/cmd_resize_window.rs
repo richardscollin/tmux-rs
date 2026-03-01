@@ -39,14 +39,13 @@ unsafe fn cmd_resize_window_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
         let wl = (*target).wl;
         let w = (*wl).window;
         let s = (*target).s;
-        let mut cause = null_mut();
         let mut xpixel = 0u32;
         let mut ypixel = 0u32;
 
-        let adjust = if args_count(args) == 0 {
+        let adjust = if args_count(&*args) == 0 {
             1
         } else {
-            match strtonum(args_string(args, 0), 1, i32::MAX) {
+            match strtonum(args_string(&*args, 0).unwrap().as_ptr().cast(), 1, i32::MAX) {
                 Ok(n) => n as u32,
                 Err(errstr) => {
                     cmdq_error!(item, "adjustment {}", _s(errstr.as_ptr()));
@@ -58,50 +57,40 @@ unsafe fn cmd_resize_window_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
         let mut sx = (*w).sx;
         let mut sy = (*w).sy;
 
-        if args_has(args, 'x') {
-            sx = args_strtonum(
-                args,
-                b'x',
-                WINDOW_MINIMUM as _,
-                WINDOW_MAXIMUM as _,
-                &raw mut cause,
-            ) as u32;
-            if !cause.is_null() {
-                cmdq_error!(item, "width {}", _s(cause));
-                free_(cause);
-                return cmd_retval::CMD_RETURN_ERROR;
+        if args_has(&*args, 'x') {
+            match args_strtonum(&*args, b'x', WINDOW_MINIMUM as _, WINDOW_MAXIMUM as _) {
+                Ok(v) => sx = v as u32,
+                Err(cause) => {
+                    cmdq_error!(item, "width {}", cause);
+                    return cmd_retval::CMD_RETURN_ERROR;
+                }
             }
         }
-        if args_has(args, 'y') {
-            sy = args_strtonum(
-                args,
-                b'y',
-                WINDOW_MINIMUM as _,
-                WINDOW_MAXIMUM as _,
-                &raw mut cause,
-            ) as u32;
-            if !cause.is_null() {
-                cmdq_error!(item, "height {}", _s(cause));
-                free_(cause);
-                return cmd_retval::CMD_RETURN_ERROR;
+        if args_has(&*args, 'y') {
+            match args_strtonum(&*args, b'y', WINDOW_MINIMUM as _, WINDOW_MAXIMUM as _) {
+                Ok(v) => sy = v as u32,
+                Err(cause) => {
+                    cmdq_error!(item, "height {}", cause);
+                    return cmd_retval::CMD_RETURN_ERROR;
+                }
             }
         }
 
-        if args_has(args, 'L') {
+        if args_has(&*args, 'L') {
             if sx >= adjust {
                 sx -= adjust;
             }
-        } else if args_has(args, 'R') {
+        } else if args_has(&*args, 'R') {
             sx += adjust;
-        } else if args_has(args, 'U') {
+        } else if args_has(&*args, 'U') {
             if sy >= adjust {
                 sy -= adjust;
             }
-        } else if args_has(args, 'D') {
+        } else if args_has(&*args, 'D') {
             sy += adjust;
         }
 
-        if args_has(args, 'A') {
+        if args_has(&*args, 'A') {
             default_window_size(
                 null_mut(),
                 s,
@@ -112,7 +101,7 @@ unsafe fn cmd_resize_window_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
                 &raw mut ypixel,
                 Some(window_size_option::WINDOW_SIZE_LARGEST),
             );
-        } else if args_has(args, 'a') {
+        } else if args_has(&*args, 'a') {
             default_window_size(
                 null_mut(),
                 s,

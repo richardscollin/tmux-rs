@@ -52,7 +52,7 @@ macro_rules! DEFAULT_PANE_MENU {
             " '#{?#{m/r:(copy|view)-mode,#{pane_mode}},Go To Top,}' '<' {send -X history-top}",
             " '#{?#{m/r:(copy|view)-mode,#{pane_mode}},Go To Bottom,}' '>' {send -X history-bottom}",
             " ''",
-            " '#{?mouse_word,Search For #[underscore]#{=/9/...:mouse_word},}' 'C-r' {if -F '#{?#{m/r:(copy|view)-mode,#{pane_mode}},0,1}' 'copy-mode -t='; send -Xt= search-backward \"#{q:mouse_word}\"}",
+            " '#{?mouse_word,Search For #[underscore]#{=/9/...:mouse_word},}' 'C-r' {if -F '#{?#{m/r:(copy|view)-mode,#{pane_mode}},0,1}' 'copy-mode -t='; send -Xt= search-backward -- \"#{q:mouse_word}\"}",
             " '#{?mouse_word,Type #[underscore]#{=/9/...:mouse_word},}' 'C-y' {copy-mode -q; send-keys -l -- \"#{q:mouse_word}\"}",
             " '#{?mouse_word,Copy #[underscore]#{=/9/...:mouse_word},}' 'c' {copy-mode -q; set-buffer -- \"#{q:mouse_word}\"}",
             " '#{?mouse_line,Copy Line,}' 'l' {copy-mode -q; set-buffer -- \"#{q:mouse_line}\"}",
@@ -199,11 +199,12 @@ pub unsafe fn key_bindings_add(
         let mut bd = key_bindings_get(NonNull::new(table).unwrap(), key & !KEYC_MASK_FLAGS);
         if cmdlist.is_null() {
             if !bd.is_null() {
-                free_((*bd).note);
                 if !note.is_null() {
+                    free_((*bd).note);
                     (*bd).note = xstrdup(note).as_ptr();
-                } else {
-                    (*bd).note = null_mut();
+                }
+                if repeat {
+                    (*bd).flags |= KEY_BINDING_REPEAT;
                 }
             }
             return;
@@ -231,9 +232,8 @@ pub unsafe fn key_bindings_add(
             "key_bindings_add",
             (*bd).key,
             _s(key_string_lookup_key((*bd).key, 1)),
-            _s(s),
+            _s(s.as_ptr()),
         );
-        free_(s);
     }
 }
 
@@ -352,7 +352,7 @@ unsafe fn key_bindings_init_done(_item: *mut cmdq_item, _data: *mut c_void) -> c
 
 pub unsafe fn key_bindings_init() {
     #[rustfmt::skip]
-    static DEFAULTS: [&str; 262] = [
+    static DEFAULTS: [&str; 267] = [
         // Prefix keys.
         "bind -N 'Send the prefix key' C-b { send-prefix }",
         "bind -N 'Rotate through the panes' C-o { rotate-window }",
@@ -440,14 +440,14 @@ pub unsafe fn key_bindings_init() {
         "bind -N 'Resize the pane left' -r C-Left { resize-pane -L }",
         "bind -N 'Resize the pane right' -r C-Right { resize-pane -R }",
         /* Menu keys */
-        concat!( "bind < { display-menu -xW -yW -T '#[align=centre]#{window_index}:#{window_name}' ", DEFAULT_WINDOW_MENU!(), " }"),
-        concat!( "bind > { display-menu -xP -yP -T '#[align=centre]#{pane_index} ", "(#{pane_id})' ", DEFAULT_PANE_MENU!(), " }"),
+        concat!( "bind -N 'Display window menu' < { display-menu -xW -yW -T '#[align=centre]#{window_index}:#{window_name}' ", DEFAULT_WINDOW_MENU!(), " }"),
+        concat!( "bind -N 'Display pane menu' > { display-menu -xP -yP -T '#[align=centre]#{pane_index} ", "(#{pane_id})' ", DEFAULT_PANE_MENU!(), " }"),
         // Mouse button 1 down on pane.
         "bind -n MouseDown1Pane { select-pane -t=; send -M }",
         /* Mouse button 1 drag on pane. */
-        "bind -n MouseDrag1Pane { if -F '#{||:#{pane_in_mode},#{mouse_any_flag}}' { send -M } { copy-mode -M } }",
+        "bind -n MouseDrag1Pane { if -F '#{||:#{alternate_on},#{pane_in_mode},#{mouse_any_flag}}' { send -M } { copy-mode -M } }",
         /* Mouse wheel up on pane. */
-        "bind -n WheelUpPane { if -F '#{||:#{pane_in_mode},#{mouse_any_flag}}' { send -M } { copy-mode -e } }",
+        "bind -n WheelUpPane { if -F '#{||:#{alternate_on},#{pane_in_mode},#{mouse_any_flag}}' { send -M } { copy-mode -e } }",
         /* Mouse button 2 down on pane. */
         "bind -n MouseDown2Pane { select-pane -t=; if -F '#{||:#{pane_in_mode},#{mouse_any_flag}}' { send -M } { paste -p } }",
         /* Mouse button 1 double click on pane. */
@@ -457,7 +457,7 @@ pub unsafe fn key_bindings_init() {
         /* Mouse button 1 drag on border. */
         "bind -n MouseDrag1Border { resize-pane -M }",
         /* Mouse button 1 down on status line. */
-        "bind -n MouseDown1Status { select-window -t= }",
+        "bind -n MouseDown1Status { switch-client -t= }",
         /* Mouse wheel down on status line. */
         "bind -n WheelDownStatus { next-window }",
         /* Mouse wheel up on status line. */
@@ -471,6 +471,10 @@ pub unsafe fn key_bindings_init() {
         /* Mouse button 3 down on pane. */
         concat!( "bind -n MouseDown3Pane { if -Ft= '#{||:#{mouse_any_flag},#{&&:#{pane_in_mode},#{?#{m/r:(copy|view)-mode,#{pane_mode}},0,1}}}' { select-pane -t=; send -M } { display-menu -t= -xM -yM -T '#[align=centre]#{pane_index} (#{pane_id})' ", DEFAULT_PANE_MENU!(), " } }"),
         concat!( "bind -n M-MouseDown3Pane { display-menu -t= -xM -yM -T '#[align=centre]#{pane_index} (#{pane_id})' ", DEFAULT_PANE_MENU!(), " }"),
+        /* Mouse on scrollbar. */
+        "bind -n MouseDown1ScrollbarUp { copy-mode -u }",
+        "bind -n MouseDown1ScrollbarDown { copy-mode -d }",
+        "bind -n MouseDrag1ScrollbarSlider { copy-mode -S }",
         /* Copy mode (emacs) keys. */
         "bind -Tcopy-mode C-Space { send -X begin-selection }",
         "bind -Tcopy-mode C-a { send -X start-of-line }",
@@ -480,28 +484,30 @@ pub unsafe fn key_bindings_init() {
         "bind -Tcopy-mode C-b { send -X cursor-left }",
         "bind -Tcopy-mode C-g { send -X clear-selection }",
         "bind -Tcopy-mode C-k { send -X copy-pipe-end-of-line-and-cancel }",
+        "bind -Tcopy-mode C-l { send -X cursor-centre-vertical }",
+        "bind -Tcopy-mode M-l { send -X cursor-centre-horizontal }",
         "bind -Tcopy-mode C-n { send -X cursor-down }",
         "bind -Tcopy-mode C-p { send -X cursor-up }",
-        "bind -Tcopy-mode C-r { command-prompt -T search -ip'(search up)' -I'#{pane_search_string}' { send -X search-backward-incremental '%%' } }",
-        "bind -Tcopy-mode C-s { command-prompt -T search -ip'(search down)' -I'#{pane_search_string}' { send -X search-forward-incremental '%%' } }",
+        "bind -Tcopy-mode C-r { command-prompt -T search -ip'(search up)' -I'#{pane_search_string}' { send -X search-backward-incremental -- '%%' } }",
+        "bind -Tcopy-mode C-s { command-prompt -T search -ip'(search down)' -I'#{pane_search_string}' { send -X search-forward-incremental -- '%%' } }",
         "bind -Tcopy-mode C-v { send -X page-down }",
         "bind -Tcopy-mode C-w { send -X copy-pipe-and-cancel }",
         "bind -Tcopy-mode Escape { send -X cancel }",
         "bind -Tcopy-mode Space { send -X page-down }",
         "bind -Tcopy-mode , { send -X jump-reverse }",
         "bind -Tcopy-mode \\; { send -X jump-again }",
-        "bind -Tcopy-mode F { command-prompt -1p'(jump backward)' { send -X jump-backward '%%' } }",
+        "bind -Tcopy-mode F { command-prompt -1p'(jump backward)' { send -X jump-backward -- '%%' } }",
         "bind -Tcopy-mode N { send -X search-reverse }",
         "bind -Tcopy-mode P { send -X toggle-position }",
         "bind -Tcopy-mode R { send -X rectangle-toggle }",
-        "bind -Tcopy-mode T { command-prompt -1p'(jump to backward)' { send -X jump-to-backward '%%' } }",
+        "bind -Tcopy-mode T { command-prompt -1p'(jump to backward)' { send -X jump-to-backward -- '%%' } }",
         "bind -Tcopy-mode X { send -X set-mark }",
-        "bind -Tcopy-mode f { command-prompt -1p'(jump forward)' { send -X jump-forward '%%' } }",
-        "bind -Tcopy-mode g { command-prompt -p'(goto line)' { send -X goto-line '%%' } }",
+        "bind -Tcopy-mode f { command-prompt -1p'(jump forward)' { send -X jump-forward -- '%%' } }",
+        "bind -Tcopy-mode g { command-prompt -p'(goto line)' { send -X goto-line -- '%%' } }",
         "bind -Tcopy-mode n { send -X search-again }",
         "bind -Tcopy-mode q { send -X cancel }",
         "bind -Tcopy-mode r { send -X refresh-from-pane }",
-        "bind -Tcopy-mode t { command-prompt -1p'(jump to forward)' { send -X jump-to-forward '%%' } }",
+        "bind -Tcopy-mode t { command-prompt -1p'(jump to forward)' { send -X jump-to-forward -- '%%' } }",
         "bind -Tcopy-mode Home { send -X start-of-line }",
         "bind -Tcopy-mode End { send -X end-of-line }",
         "bind -Tcopy-mode MouseDown1Pane select-pane",
@@ -545,8 +551,8 @@ pub unsafe fn key_bindings_init() {
         "bind -Tcopy-mode C-Up { send -X scroll-up }",
         "bind -Tcopy-mode C-Down { send -X scroll-down }",
         /* Copy mode (vi) keys. */
-        "bind -Tcopy-mode-vi '#' { send -FX search-backward '#{copy_cursor_word}' }",
-        "bind -Tcopy-mode-vi * { send -FX search-forward '#{copy_cursor_word}' }",
+        "bind -Tcopy-mode-vi '#' { send -FX search-backward -- '#{copy_cursor_word}' }",
+        "bind -Tcopy-mode-vi * { send -FX search-forward -- '#{copy_cursor_word}' }",
         "bind -Tcopy-mode-vi C-c { send -X cancel }",
         "bind -Tcopy-mode-vi C-d { send -X halfpage-down }",
         "bind -Tcopy-mode-vi C-e { send -X scroll-down }",
@@ -562,7 +568,7 @@ pub unsafe fn key_bindings_init() {
         "bind -Tcopy-mode-vi Space { send -X begin-selection }",
         "bind -Tcopy-mode-vi '$' { send -X end-of-line }",
         "bind -Tcopy-mode-vi , { send -X jump-reverse }",
-        "bind -Tcopy-mode-vi / { command-prompt -T search -p'(search down)' { send -X search-forward '%%' } }",
+        "bind -Tcopy-mode-vi / { command-prompt -T search -p'(search down)' { send -X search-forward -- '%%' } }",
         "bind -Tcopy-mode-vi 0 { send -X start-of-line }",
         "bind -Tcopy-mode-vi 1 { command-prompt -Np'(repeat)' -I1 { send -N '%%' } }",
         "bind -Tcopy-mode-vi 2 { command-prompt -Np'(repeat)' -I2 { send -N '%%' } }",
@@ -573,14 +579,14 @@ pub unsafe fn key_bindings_init() {
         "bind -Tcopy-mode-vi 7 { command-prompt -Np'(repeat)' -I7 { send -N '%%' } }",
         "bind -Tcopy-mode-vi 8 { command-prompt -Np'(repeat)' -I8 { send -N '%%' } }",
         "bind -Tcopy-mode-vi 9 { command-prompt -Np'(repeat)' -I9 { send -N '%%' } }",
-        "bind -Tcopy-mode-vi : { command-prompt -p'(goto line)' { send -X goto-line '%%' } }",
+        "bind -Tcopy-mode-vi : { command-prompt -p'(goto line)' { send -X goto-line -- '%%' } }",
         "bind -Tcopy-mode-vi \\; { send -X jump-again }",
-        "bind -Tcopy-mode-vi ? { command-prompt -T search -p'(search up)' { send -X search-backward '%%' } }",
+        "bind -Tcopy-mode-vi ? { command-prompt -T search -p'(search up)' { send -X search-backward -- '%%' } }",
         "bind -Tcopy-mode-vi A { send -X append-selection-and-cancel }",
         "bind -Tcopy-mode-vi B { send -X previous-space }",
         "bind -Tcopy-mode-vi D { send -X copy-pipe-end-of-line-and-cancel }",
         "bind -Tcopy-mode-vi E { send -X next-space-end }",
-        "bind -Tcopy-mode-vi F { command-prompt -1p'(jump backward)' { send -X jump-backward '%%' } }",
+        "bind -Tcopy-mode-vi F { command-prompt -1p'(jump backward)' { send -X jump-backward -- '%%' } }",
         "bind -Tcopy-mode-vi G { send -X history-bottom }",
         "bind -Tcopy-mode-vi H { send -X top-line }",
         "bind -Tcopy-mode-vi J { send -X scroll-down }",
@@ -589,14 +595,14 @@ pub unsafe fn key_bindings_init() {
         "bind -Tcopy-mode-vi M { send -X middle-line }",
         "bind -Tcopy-mode-vi N { send -X search-reverse }",
         "bind -Tcopy-mode-vi P { send -X toggle-position }",
-        "bind -Tcopy-mode-vi T { command-prompt -1p'(jump to backward)' { send -X jump-to-backward '%%' } }",
+        "bind -Tcopy-mode-vi T { command-prompt -1p'(jump to backward)' { send -X jump-to-backward -- '%%' } }",
         "bind -Tcopy-mode-vi V { send -X select-line }",
         "bind -Tcopy-mode-vi W { send -X next-space }",
         "bind -Tcopy-mode-vi X { send -X set-mark }",
         "bind -Tcopy-mode-vi ^ { send -X back-to-indentation }",
         "bind -Tcopy-mode-vi b { send -X previous-word }",
         "bind -Tcopy-mode-vi e { send -X next-word-end }",
-        "bind -Tcopy-mode-vi f { command-prompt -1p'(jump forward)' { send -X jump-forward '%%' } }",
+        "bind -Tcopy-mode-vi f { command-prompt -1p'(jump forward)' { send -X jump-forward -- '%%' } }",
         "bind -Tcopy-mode-vi g { send -X history-top }",
         "bind -Tcopy-mode-vi h { send -X cursor-left }",
         "bind -Tcopy-mode-vi j { send -X cursor-down }",
@@ -607,7 +613,7 @@ pub unsafe fn key_bindings_init() {
         "bind -Tcopy-mode-vi o { send -X other-end }",
         "bind -Tcopy-mode-vi q { send -X cancel }",
         "bind -Tcopy-mode-vi r { send -X refresh-from-pane }",
-        "bind -Tcopy-mode-vi t { command-prompt -1p'(jump to forward)' { send -X jump-to-forward '%%' } }",
+        "bind -Tcopy-mode-vi t { command-prompt -1p'(jump to forward)' { send -X jump-to-forward -- '%%' } }",
         "bind -Tcopy-mode-vi v { send -X rectangle-toggle }",
         "bind -Tcopy-mode-vi w { send -X next-word }",
         "bind -Tcopy-mode-vi '{' { send -X previous-paragraph }",

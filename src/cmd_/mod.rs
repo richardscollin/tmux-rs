@@ -16,7 +16,6 @@ use crate::compat::{
         tailq_concat, tailq_first, tailq_foreach, tailq_init_, tailq_insert_tail, tailq_next,
         tailq_remove,
     },
-    strlcat, strlcpy,
 };
 use crate::libc::{strchr, strlen, strncmp};
 use crate::xmalloc::{xrealloc_, xreallocarray_};
@@ -271,6 +270,7 @@ pub struct cmd {
     pub group: u32,
     pub file: *mut u8,
     pub line: u32,
+    pub parse_flags: i32,
 
     pub qentry: tailq_entry<cmd>,
 }
@@ -311,12 +311,14 @@ pub unsafe fn cmd_append_argv(argc: *mut c_int, argv: *mut *mut *mut u8, arg: *c
     }
 }
 
+#[cfg(not(target_os = "windows"))]
 pub unsafe fn cmd_pack_argv(
     argc: c_int,
     argv: *mut *mut u8,
     mut buf: *mut u8,
     mut len: usize,
 ) -> c_int {
+    use crate::compat::strlcpy;
     unsafe {
         //
         if argc == 0 {
@@ -447,6 +449,10 @@ pub unsafe fn cmd_get_source(cmd: *mut cmd, file: *mut *const u8, line: &AtomicU
     }
 }
 
+pub unsafe fn cmd_get_parse_flags(cmd: *mut cmd) -> i32 {
+    unsafe { (*cmd).parse_flags }
+}
+
 pub unsafe fn cmd_get_alias(name: *const u8) -> *mut u8 {
     unsafe {
         let o = options_get_only(GLOBAL_OPTIONS, "command-alias");
@@ -523,28 +529,27 @@ pub fn cmd_find(name: &str) -> Result<&'static cmd_entry, String> {
 }
 
 pub unsafe fn cmd_parse(
-    values: *mut args_value,
-    count: c_uint,
+    values: &[args_value],
     file: Option<&str>,
     line: c_uint,
+    parse_flags: i32,
 ) -> Result<*mut cmd, String> {
     unsafe {
-        let mut error: *mut u8 = null_mut();
-
-        if count == 0 || (*values).type_ != args_type::ARGS_STRING {
+        if values.is_empty() || !matches!(&values[0], args_value::String { .. }) {
             return Err("no command".to_string());
         }
-        let entry = cmd_find(cstr_to_str((*values).union_.string))?;
+        let args_value::String { string } = &values[0] else { unreachable!() };
+        let entry = cmd_find(cstr_to_str(string.as_ptr().cast()))?;
 
-        let args = args_parse(&entry.args, values, count, &raw mut error);
-        if args.is_null() && error.is_null() {
-            return Err(format!("usage: {} {}", entry.name, entry.usage));
-        }
-        if args.is_null() {
-            let cause = format!("command {}: {}", entry.name, _s(error));
-            free(error as _);
-            return Err(cause);
-        }
+        let args = match args_parse(&entry.args, values) {
+            Ok(args) => args,
+            Err(None) => {
+                return Err(format!("usage: {} {}", entry.name, entry.usage));
+            }
+            Err(Some(msg)) => {
+                return Err(format!("command {}: {}", entry.name, msg));
+            }
+        };
 
         let cmd: *mut cmd = Box::leak(Box::new(cmd {
             entry,
@@ -552,6 +557,7 @@ pub unsafe fn cmd_parse(
             group: 0,
             file: null_mut(),
             line: 0,
+            parse_flags,
             qentry: tailq_entry {
                 tqe_next: null_mut(),
                 tqe_prev: null_mut(),
@@ -586,6 +592,7 @@ pub unsafe fn cmd_copy(cmd: *mut cmd, argc: c_int, argv: *mut *mut u8) -> *mut c
             group: 0,
             file: null_mut(),
             line: 0,
+            parse_flags: (*cmd).parse_flags,
             qentry: tailq_entry {
                 tqe_next: null_mut(),
                 tqe_prev: null_mut(),
@@ -603,15 +610,12 @@ pub unsafe fn cmd_copy(cmd: *mut cmd, argc: c_int, argv: *mut *mut u8) -> *mut c
 
 pub unsafe fn cmd_print(cmd: *mut cmd) -> *mut u8 {
     unsafe {
-        let s = args_print((*cmd).args);
-        let out = if *s != b'\0' {
-            format_nul!("{} {}", (*cmd).entry.name, _s(s))
+        let s = args_print(&*(*cmd).args);
+        if !s.is_empty() {
+            format_nul!("{} {}", (*cmd).entry.name, s)
         } else {
             xstrdup__((*cmd).entry.name)
-        };
-        free(s as _);
-
-        out
+        }
     }
 }
 
@@ -678,8 +682,7 @@ pub unsafe fn cmd_list_copy(
     unsafe {
         let mut group: u32 = cmdlist.group;
         let s = cmd_list_print(cmdlist, 0);
-        log_debug!("{}: {}", "cmd_list_copy", _s(s));
-        free(s as _);
+        log_debug!("{}: {}", "cmd_list_copy", _s(s.as_ptr()));
 
         let new_cmdlist = cmd_list_new();
         for cmd in tailq_foreach_const(cmdlist.list).map(NonNull::as_ptr) {
@@ -693,32 +696,24 @@ pub unsafe fn cmd_list_copy(
         }
 
         let s = cmd_list_print(new_cmdlist, 0);
-        log_debug!("{}: {}", "cmd_list_copy", _s(s));
-        free(s as _);
+        log_debug!("{}: {}", "cmd_list_copy", _s(s.as_ptr()));
 
         new_cmdlist
     }
 }
 
-pub fn cmd_list_print(cmdlist: &cmd_list, escaped: c_int) -> *mut u8 {
+pub fn cmd_list_print(cmdlist: &cmd_list, escaped: c_int) -> std::ffi::CString {
+    use std::fmt::Write;
     unsafe {
-        let mut len = 1;
-        let mut buf: *mut u8 = xcalloc(1, len).cast().as_ptr();
+        let single_separator = if escaped != 0 { " \\; " } else { " ; " };
+        let double_separator = if escaped != 0 { " \\;\\; " } else { " ;; " };
 
-        let single_separator = if escaped != 0 { c!(" \\; ") } else { c!(" ; ") };
-        let double_separator = if escaped != 0 {
-            c!(" \\;\\; ")
-        } else {
-            c!(" ;; ")
-        };
+        let mut buf = String::new();
 
         for cmd in tailq_foreach_const::<_, qentry>(cmdlist.list).map(NonNull::as_ptr) {
             let this = cmd_print(cmd);
-
-            len += strlen(this) + 6;
-            buf = xrealloc_(buf, len).as_ptr();
-
-            strlcat(buf, this, len);
+            let _ = write!(buf, "{}", _s(this));
+            free_(this);
 
             let next = tailq_next::<_, _, qentry>(cmd);
             if !next.is_null() {
@@ -727,13 +722,11 @@ pub fn cmd_list_print(cmdlist: &cmd_list, escaped: c_int) -> *mut u8 {
                 } else {
                     single_separator
                 };
-                strlcat(buf, separator, len);
+                buf.push_str(separator);
             }
-
-            free_(this);
         }
 
-        buf
+        std::ffi::CString::new(buf).expect("cmd_list_print: interior nul")
     }
 }
 
@@ -751,6 +744,7 @@ pub unsafe fn cmd_list_all_have(cmdlist: *mut cmd_list, flag: cmd_flag) -> bool 
     }
 }
 
+#[cfg(not(target_os = "windows"))]
 pub unsafe fn cmd_list_any_have(cmdlist: *mut cmd_list, flag: cmd_flag) -> bool {
     unsafe {
         tailq_foreach((*cmdlist).list).any(|cmd| (*cmd.as_ptr()).entry.flags.intersects(flag))

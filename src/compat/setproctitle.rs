@@ -12,31 +12,55 @@
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-// a custom version of setproctitle which just supports our usage:
-// setproctitle( c!("%s (%s)"), name, socket_path);
 #[cfg(target_os = "linux")]
-pub unsafe fn setproctitle_(_fmt: *const u8, name: *const u8, socket_path: *const u8) {
-    use crate::libc;
-
-    unsafe {
-        let mut title: [u8; 16] = [0; 16];
-
-        let used = libc::snprintf(
-            &raw mut title as _,
-            title.len(),
-            c"tmux: %s (%s)".as_ptr(),
-            name,
-            socket_path,
-        );
-        if used >= title.len() as i32 {
-            let cp = libc::strrchr(&raw const title as *const u8, b' ' as i32);
-            if !cp.is_null() {
-                *cp = b'\0';
-            }
+pub fn setproctitle_(mut title: String) {
+    const MAX_LEN: usize = 15; // PR_SET_NAME limit is 16 including nul
+    if title.len() > MAX_LEN {
+        title.truncate(MAX_LEN);
+        // Trim at the last space for a cleaner title
+        if let Some(pos) = title.bytes().rposition(|b| b == b' ') {
+            title.truncate(pos);
         }
-        libc::prctl(libc::PR_SET_NAME, &raw const title as *const u8);
+    }
+    title.push('\0');
+    unsafe {
+        #[expect(clippy::disallowed_methods, reason = "CString has guaranteed nul terminator")]
+        crate::libc::prctl(crate::libc::PR_SET_NAME, title.as_ptr());
     }
 }
 
 #[cfg(target_os = "macos")]
-pub unsafe fn setproctitle_(_: *const u8, _: *const u8, _: *const u8) {}
+pub fn setproctitle_(_: String) {}
+
+#[cfg(target_os = "windows")]
+pub fn setproctitle_(_: String) {}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_setproctitle_short_title() {
+        // Title <= 15 chars should not be truncated (coverage: line 24 branch)
+        setproctitle_("short".to_string());
+    }
+
+    #[test]
+    fn test_setproctitle_exact_max_len() {
+        // Exactly 15 chars - should not truncate
+        setproctitle_("123456789012345".to_string());
+    }
+
+    #[test]
+    fn test_setproctitle_long_no_space() {
+        // Longer than 15 chars with no space - truncate but no space-trim
+        // (coverage: line 23 None branch)
+        setproctitle_("abcdefghijklmnopqrstuvwxyz".to_string());
+    }
+
+    #[test]
+    fn test_setproctitle_long_with_space() {
+        // Longer than 15 chars with space - truncate then trim at last space
+        setproctitle_("tmux: server (/tmp/tmux-1000/default)".to_string());
+    }
+}

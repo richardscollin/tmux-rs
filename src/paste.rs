@@ -61,7 +61,7 @@ fn paste_cmp_times(a: *const paste_buffer, b: *const paste_buffer) -> cmp::Order
         let x = (*a).order;
         let y = (*b).order;
 
-        u32::cmp(&x, &y)
+        u32::cmp(&y, &x)
     }
 }
 
@@ -134,8 +134,10 @@ pub unsafe fn paste_get_name(name: Option<&str>) -> *mut paste_buffer {
             return null_mut();
         }
 
-        (*pbfind.as_mut_ptr()).name =
-            Cow::Borrowed(std::mem::transmute::<&str, &'static str>(name));
+        std::ptr::write(
+            &raw mut (*pbfind.as_mut_ptr()).name,
+            Cow::Borrowed(std::mem::transmute::<&str, &'static str>(name)),
+        );
         rb_find::<_, discr_name_entry>(&raw mut PASTE_BY_NAME, pbfind.as_ptr())
     }
 }
@@ -209,35 +211,25 @@ pub unsafe fn paste_add(mut prefix: *const u8, data: *mut u8, size: usize) {
 pub unsafe fn paste_rename(
     oldname: Option<&str>,
     newname: Option<&str>,
-    cause: *mut *mut u8,
-) -> i32 {
+) -> Result<(), String> {
     unsafe {
-        if !cause.is_null() {
-            *cause = null_mut();
-        }
-
         if oldname.is_none_or(str::is_empty) {
-            if !cause.is_null() {
-                *cause = xstrdup_(c"no buffer").as_ptr();
-            }
-            return -1;
+            return Err("no buffer".into());
         }
         if newname.is_none_or(str::is_empty) {
-            if !cause.is_null() {
-                *cause = xstrdup_(c"new name is empty").as_ptr();
-            }
-            return -1;
+            return Err("new name is empty".into());
         }
 
         let pb = paste_get_name(oldname);
         if pb.is_null() {
-            if !cause.is_null() {
-                *cause = format_nul!("no buffer {}", oldname.unwrap());
-            }
-            return -1;
+            return Err(format!("no buffer {}", oldname.unwrap()));
         }
 
-        if let Some(pb_new) = NonNull::new(paste_get_name(newname)) {
+        let pb_new = paste_get_name(newname);
+        if pb_new == pb {
+            return Ok(());
+        }
+        if let Some(pb_new) = NonNull::new(pb_new) {
             paste_free(pb_new);
         }
 
@@ -255,34 +247,26 @@ pub unsafe fn paste_rename(
         notify_paste_buffer(oldname.unwrap(), true);
         notify_paste_buffer(newname.unwrap(), false);
     }
-    0
+    Ok(())
 }
 
 pub unsafe fn paste_set(
     data: *mut u8,
     size: usize,
     name: Option<&str>,
-    cause: *mut *mut u8,
-) -> i32 {
+) -> Result<(), String> {
     unsafe {
-        if !cause.is_null() {
-            *cause = null_mut();
-        }
-
         if size == 0 {
             free_(data);
-            return 0;
+            return Ok(());
         }
         let Some(name) = name else {
             paste_add(null_mut(), data, size);
-            return 0;
+            return Ok(());
         };
 
         if name.is_empty() {
-            if !cause.is_null() {
-                *cause = xstrdup_(c"empty buffer name").as_ptr();
-            }
-            return -1;
+            return Err("empty buffer name".into());
         }
 
         let pb = Box::leak(Box::new(paste_buffer {
@@ -306,7 +290,7 @@ pub unsafe fn paste_set(
 
         notify_paste_buffer(name, false);
     }
-    0
+    Ok(())
 }
 
 pub unsafe fn paste_replace(pb: NonNull<paste_buffer>, data: *mut u8, size: usize) {

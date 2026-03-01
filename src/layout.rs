@@ -239,7 +239,7 @@ unsafe fn layout_cell_is_bottom(w: *mut window, mut lc: *mut layout_cell) -> c_i
 
 /// Returns 1 if we need to add an extra line for the pane status line. This is
 /// the case for the most upper or lower panes only.
-unsafe fn layout_add_border(w: *mut window, lc: *mut layout_cell, status: pane_status) -> bool {
+unsafe fn layout_add_horizontal_border(w: *mut window, lc: *mut layout_cell, status: pane_status) -> bool {
     unsafe {
         if status == pane_status::PANE_STATUS_TOP {
             return layout_cell_is_top(w, lc) != 0;
@@ -257,6 +257,8 @@ pub unsafe fn layout_fix_panes(w: *mut window, skip: *mut window_pane) {
         let status: pane_status =
             pane_status::try_from(options_get_number_((*w).options, "pane-border-status") as i32)
                 .unwrap();
+        let scrollbars = options_get_number_((*w).options, "pane-scrollbars") as i32;
+        let sb_pos = options_get_number_((*w).options, "pane-scrollbars-position") as i32;
 
         for wp in tailq_foreach::<window_pane, discr_entry>(&raw mut (*w).panes) {
             let wp = wp.as_ptr();
@@ -268,14 +270,45 @@ pub unsafe fn layout_fix_panes(w: *mut window, skip: *mut window_pane) {
             (*wp).xoff = (*lc).xoff;
             (*wp).yoff = (*lc).yoff;
 
-            if layout_add_border(w, lc, status) {
+            let mut sx = (*lc).sx;
+            let mut sy = (*lc).sy;
+
+            if layout_add_horizontal_border(w, lc, status) {
                 if status == pane_status::PANE_STATUS_TOP {
                     (*wp).yoff += 1;
                 }
-                window_pane_resize(wp, (*lc).sx, (*lc).sy - 1);
-            } else {
-                window_pane_resize(wp, (*lc).sx, (*lc).sy);
+                sy -= 1;
             }
+
+            if window_pane_show_scrollbar(wp, scrollbars) {
+                let mut sb_w = (*wp).scrollbar_style.width;
+                let mut sb_pad = (*wp).scrollbar_style.pad;
+                if sb_w < 1 {
+                    sb_w = 1;
+                }
+                if sb_pad < 0 {
+                    sb_pad = 0;
+                }
+                if sb_pos == PANE_SCROLLBARS_LEFT {
+                    if sx as i32 - sb_w < PANE_MINIMUM as i32 {
+                        (*wp).xoff = (*wp).xoff + sx - PANE_MINIMUM;
+                        sx = PANE_MINIMUM;
+                    } else {
+                        sx = sx - sb_w as u32 - sb_pad as u32;
+                        (*wp).xoff = (*wp).xoff + sb_w as u32 + sb_pad as u32;
+                    }
+                } else {
+                    // sb_pos == PANE_SCROLLBARS_RIGHT
+                    if sx as i32 - sb_w - sb_pad < PANE_MINIMUM as i32 {
+                        sx = PANE_MINIMUM;
+                    } else {
+                        sx = sx - sb_w as u32 - sb_pad as u32;
+                    }
+                }
+                (*wp).flags |= window_pane_flags::PANE_REDRAWSCROLLBAR;
+            }
+
+            window_pane_resize(wp, sx, sy);
         }
     }
 }
@@ -301,19 +334,27 @@ pub unsafe fn layout_resize_check(w: *mut window, lc: *mut layout_cell, type_: l
     unsafe {
         let mut available: u32;
         let mut minimum: u32;
+        let sb_style = &raw const (*(*w).active).scrollbar_style;
 
         let status: pane_status =
             pane_status::try_from(options_get_number_((*w).options, "pane-border-status") as i32)
                 .unwrap();
+        let scrollbars = options_get_number_((*w).options, "pane-scrollbars") as i32;
 
         if (*lc).type_ == layout_type::LAYOUT_WINDOWPANE {
             // Space available in this cell only.
             if type_ == layout_type::LAYOUT_LEFTRIGHT {
                 available = (*lc).sx;
-                minimum = PANE_MINIMUM;
+                if scrollbars != 0 {
+                    minimum = PANE_MINIMUM
+                        + (*sb_style).width as u32
+                        + (*sb_style).pad as u32;
+                } else {
+                    minimum = PANE_MINIMUM;
+                }
             } else {
                 available = (*lc).sy;
-                if layout_add_border(w, lc, status) {
+                if layout_add_horizontal_border(w, lc, status) {
                     minimum = PANE_MINIMUM + 1;
                 } else {
                     minimum = PANE_MINIMUM;
@@ -940,6 +981,8 @@ pub unsafe fn layout_split_pane(
             "pane-border-status",
         ) as i32)
         .unwrap();
+        let scrollbars = options_get_number_((*(*wp).window).options, "pane-scrollbars") as i32;
+        let sb_style = &raw const (*wp).scrollbar_style;
 
         // Copy the old cell size
         let sx = (*lc).sx;
@@ -950,12 +993,19 @@ pub unsafe fn layout_split_pane(
         // Check there is enough space for the two new panes
         match type_ {
             layout_type::LAYOUT_LEFTRIGHT => {
-                if sx < PANE_MINIMUM * 2 + 1 {
+                if scrollbars != 0 {
+                    minimum = PANE_MINIMUM * 2
+                        + (*sb_style).width as u32
+                        + (*sb_style).pad as u32;
+                } else {
+                    minimum = PANE_MINIMUM * 2 + 1;
+                }
+                if sx < minimum {
                     return null_mut();
                 }
             }
             layout_type::LAYOUT_TOPBOTTOM => {
-                if layout_add_border((*wp).window, lc, status) {
+                if layout_add_horizontal_border((*wp).window, lc, status) {
                     minimum = PANE_MINIMUM * 2 + 2;
                 } else {
                     minimum = PANE_MINIMUM * 2 + 1;
@@ -1128,12 +1178,20 @@ pub unsafe fn layout_spread_cell(w: *mut window, parent: *mut layout_cell) -> c_
         let status: pane_status = (options_get_number_((*w).options, "pane-border-status") as i32)
             .try_into()
             .unwrap();
+        let scrollbars = options_get_number_((*w).options, "pane-scrollbars") as i32;
+        let sb_style = &raw const (*(*w).active).scrollbar_style;
 
         // Calculate available size
         let size = match (*parent).type_ {
-            layout_type::LAYOUT_LEFTRIGHT => (*parent).sx,
+            layout_type::LAYOUT_LEFTRIGHT => {
+                if scrollbars != 0 {
+                    (*parent).sx - (*sb_style).width as u32 + (*sb_style).pad as u32
+                } else {
+                    (*parent).sx
+                }
+            }
             layout_type::LAYOUT_TOPBOTTOM => {
-                if layout_add_border(w, parent, status) {
+                if layout_add_horizontal_border(w, parent, status) {
                     (*parent).sy - 1
                 } else {
                     (*parent).sy
@@ -1146,31 +1204,36 @@ pub unsafe fn layout_spread_cell(w: *mut window, parent: *mut layout_cell) -> c_
             return 0;
         }
 
-        let mut each = (size - (number - 1)) / number;
+        let each = (size - (number - 1)) / number;
         if each == 0 {
             return 0;
         }
+        // Remaining space after assigning that which can be evenly
+        // distributed.
+        let mut remainder = size - (number * (each + 1)) + 1;
 
         let mut changed = 0;
-        let mut idx = 0;
         for lc in tailq_foreach(&raw mut (*parent).cells).map(NonNull::as_ptr) {
-            idx += 1;
-            if idx == number {
-                each = size - ((each + 1) * (number - 1));
-            }
-
             let change = match (*parent).type_ {
                 layout_type::LAYOUT_LEFTRIGHT => {
-                    let change = each as i32 - (*lc).sx as i32;
+                    let mut change = each as i32 - (*lc).sx as i32;
+                    if remainder > 0 {
+                        change += 1;
+                        remainder -= 1;
+                    }
                     layout_resize_adjust(w, lc, layout_type::LAYOUT_LEFTRIGHT, change);
                     change
                 }
                 layout_type::LAYOUT_TOPBOTTOM => {
-                    let this = if layout_add_border(w, lc, status) {
+                    let mut this = if layout_add_horizontal_border(w, lc, status) {
                         each + 1
                     } else {
                         each
                     };
+                    if remainder > 0 {
+                        this += 1;
+                        remainder -= 1;
+                    }
                     let change = this as i32 - (*lc).sy as i32;
                     layout_resize_adjust(w, lc, layout_type::LAYOUT_TOPBOTTOM, change);
                     change

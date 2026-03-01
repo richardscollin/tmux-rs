@@ -88,6 +88,9 @@ unsafe fn grid_need_extended_cell(gce: *const grid_cell_entry, gc: *const grid_c
         if (*gc).attr.bits() > 0xff {
             return true;
         }
+        if (*gc).flags.intersects(grid_flag::TAB) {
+            return true;
+        }
         if (*gc).data.size != 1 || (*gc).data.width != 1 {
             return true;
         }
@@ -140,7 +143,11 @@ unsafe fn grid_extended_cell(
 
         let mut uc = MaybeUninit::<utf8_char>::uninit();
         let uc = uc.as_mut_ptr();
-        utf8_from_data(&raw const (*gc).data, uc);
+        if flags.intersects(grid_flag::TAB) {
+            *uc = (*gc).data.width as utf8_char;
+        } else {
+            utf8_from_data(&raw const (*gc).data, uc);
+        }
 
         let gee = &mut *(*gl).extddata.offset((*gce).union_.offset as isize);
         gee.data = *uc;
@@ -250,10 +257,16 @@ unsafe fn grid_check_y(gd: *mut grid, from: *const u8, py: c_uint) -> c_int {
 /// Check if two styles are (visibly) the same.
 pub unsafe fn grid_cells_look_equal(gc1: *const grid_cell, gc2: *const grid_cell) -> c_int {
     unsafe {
+        let flags1 = (*gc1).flags;
+        let flags2 = (*gc2).flags;
+
         if (*gc1).fg != (*gc2).fg || (*gc1).bg != (*gc2).bg {
             return 0;
         }
-        if (*gc1).attr != (*gc2).attr || (*gc1).flags != (*gc2).flags {
+        if (*gc1).attr != (*gc2).attr {
+            return 0;
+        }
+        if (flags1 & !grid_flag::CLEARED) != (flags2 & !grid_flag::CLEARED) {
             return 0;
         }
         if (*gc1).link != (*gc2).link {
@@ -280,6 +293,21 @@ pub unsafe fn grid_cells_equal(gc1: *const grid_cell, gc2: *const grid_cell) -> 
             (*gc2).data.data.as_ptr().cast(),
             (*gc1).data.size as usize,
         ) == 0
+    }
+}
+
+/// Set grid cell to a tab.
+pub unsafe fn grid_set_tab(gc: *mut grid_cell, width: u32) {
+    unsafe {
+        (*gc).data.data = [0; UTF8_SIZE];
+        (*gc).flags |= grid_flag::TAB;
+        (*gc).flags -= (*gc).flags & grid_flag::PADDING;
+        (*gc).data.width = width as u8;
+        (*gc).data.size = width as u8;
+        (*gc).data.have = width as u8;
+        for i in 0..width as usize {
+            (*gc).data.data[i] = b' ';
+        }
     }
 }
 
@@ -551,7 +579,11 @@ unsafe fn grid_get_cell1(gl: *mut grid_line, px: c_uint, gc: *mut grid_cell) {
                 (*gc).bg = (*gee).bg;
                 (*gc).us = (*gee).us;
                 (*gc).link = (*gee).link;
-                (*gc).data = utf8_to_data((*gee).data);
+                if (*gc).flags.intersects(grid_flag::TAB) {
+                    grid_set_tab(gc, (*gee).data);
+                } else {
+                    (*gc).data = utf8_to_data((*gee).data);
+                }
             }
             return;
         }
@@ -1026,7 +1058,8 @@ unsafe fn grid_string_cells_code(
     len: usize,
     flags: grid_string_flags,
     sc: *mut screen,
-) -> bool {
+    has_link: &mut bool,
+) {
     unsafe {
         let mut oldc: [c_int; 64] = [0; 64];
         let mut newc: [c_int; 64] = [0; 64];
@@ -1039,7 +1072,6 @@ unsafe fn grid_string_cells_code(
         let mut tmp: [u8; 64] = [0; 64];
         let mut uri: *const u8 = null();
         let mut id: *const u8 = null();
-        let mut has_link = false;
 
         static ATTRS: [(grid_attr, c_uint); 13] = [
             (grid_attr::GRID_ATTR_BRIGHT, 1),
@@ -1180,13 +1212,12 @@ unsafe fn grid_string_cells_code(
                 &raw mut id,
                 null_mut(),
             ) {
-                has_link = grid_string_cells_add_hyperlink(buf, len, id, uri, flags);
-            } else if has_link {
+                *has_link = grid_string_cells_add_hyperlink(buf, len, id, uri, flags);
+            } else if *has_link {
                 grid_string_cells_add_hyperlink(buf, len, c!(""), c!(""), flags);
-                has_link = false;
+                *has_link = false;
             }
         }
-        has_link
     }
 }
 
@@ -1235,13 +1266,14 @@ pub unsafe fn grid_string_cells(
             }
 
             if flags.intersects(grid_string_flags::GRID_STRING_WITH_SEQUENCES) {
-                has_link = grid_string_cells_code(
+                grid_string_cells_code(
                     *lastgc,
                     &gc,
                     code.as_mut_ptr(),
                     code.len(),
                     flags,
-                    s
+                    s,
+                    &mut has_link,
                 );
                 codelen = strlen(code.as_ptr());
                 std::ptr::copy(&gc, *lastgc, 1);
@@ -1249,14 +1281,19 @@ pub unsafe fn grid_string_cells(
                 codelen = 0;
             }
 
-            data = &raw const gc.data.data as *const u8;
-            size = gc.data.size as usize;
-            if flags.intersects(grid_string_flags::GRID_STRING_ESCAPE_SEQUENCES)
-                && size == 1
-                && *data == b'\\'
-            {
-                data = c!("\\\\");
-                size = 2;
+            if gc.flags.intersects(grid_flag::TAB) {
+                data = c!("\t");
+                size = 1;
+            } else {
+                data = &raw const gc.data.data as *const u8;
+                size = gc.data.size as usize;
+                if flags.intersects(grid_string_flags::GRID_STRING_ESCAPE_SEQUENCES)
+                    && size == 1
+                    && *data == b'\\'
+                {
+                    data = c!("\\\\");
+                    size = 2;
+                }
             }
 
             while len < off + size + codelen + 1 {
@@ -1465,7 +1502,7 @@ unsafe fn grid_reflow_join(
                 break;
             }
         }
-        if lines == 0 {
+        if lines == 0 || from.is_null() {
             return;
         }
 
@@ -1736,4 +1773,40 @@ pub unsafe fn grid_line_length(gd: *mut grid, py: u32) -> u32 {
         }
         px
     }
+}
+
+/// Check if character at (px, py) is in set, returning the width (0 if not).
+pub unsafe fn grid_in_set_width(gd: *mut grid, px: u32, py: u32, set: *const u8) -> u32 {
+    unsafe {
+        let mut gc: grid_cell = zeroed();
+        let mut tmp_gc: grid_cell = zeroed();
+
+        grid_get_cell(gd, px, py, &raw mut gc);
+        if !strchr(set, b'\t' as i32).is_null() {
+            if gc.flags.intersects(grid_flag::PADDING) {
+                let mut pxx = px;
+                loop {
+                    pxx -= 1;
+                    grid_get_cell(gd, pxx, py, &raw mut tmp_gc);
+                    if !(pxx > 0 && tmp_gc.flags.intersects(grid_flag::PADDING)) {
+                        break;
+                    }
+                }
+                if tmp_gc.flags.intersects(grid_flag::TAB) {
+                    return tmp_gc.data.width as u32 - (px - pxx);
+                }
+            } else if gc.flags.intersects(grid_flag::TAB) {
+                return gc.data.width as u32;
+            }
+        }
+        if gc.flags.intersects(grid_flag::PADDING) {
+            return 0;
+        }
+        utf8_cstrhas(set, &raw mut gc.data) as u32
+    }
+}
+
+/// Check if character at (px, py) is in set.
+pub unsafe fn grid_in_set(gd: *mut grid, px: u32, py: u32, set: *const u8) -> bool {
+    unsafe { grid_in_set_width(gd, px, py, set) != 0 }
 }

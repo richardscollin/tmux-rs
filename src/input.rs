@@ -33,7 +33,7 @@
 //! - Special handling for ESC inside a DCS to allow arbitrary byte sequences to
 //!   be passed to the underlying terminals.
 use crate::compat::b64::{b64_ntop, b64_pton};
-use crate::libc::{strchr, strpbrk, strtol};
+use crate::libc::{strchr, strpbrk};
 use crate::*;
 use crate::options_::{options_get_number_, options_get_only, options_remove_or_default, options_set_number};
 
@@ -67,7 +67,10 @@ struct input_param {
 }
 
 const INPUT_BUF_START: usize = 32;
-const INPUT_BUF_LIMIT: usize = 1048576;
+pub const INPUT_BUF_DEFAULT_SIZE: usize = 1048576;
+
+static INPUT_BUFFER_SIZE: std::sync::atomic::AtomicUsize =
+    std::sync::atomic::AtomicUsize::new(INPUT_BUF_DEFAULT_SIZE);
 
 bitflags::bitflags! {
     #[repr(C)]
@@ -75,13 +78,6 @@ bitflags::bitflags! {
         const INPUT_DISCARD = 0x1;
         const INPUT_LAST = 0x2;
     }
-}
-
-#[repr(i32)]
-#[derive(Eq, PartialEq)]
-enum input_end_type {
-    INPUT_END_ST,
-    INPUT_END_BEL,
 }
 
 /// Input parser context.
@@ -119,14 +115,16 @@ pub struct input_ctx {
     ch: i32,
     last: utf8_data,
 
+    state: *const input_state,
     flags: input_flags,
 
-    state: *const input_state,
-
-    timer: event,
+    requests: input_requests,
+    request_count: u32,
+    request_timer: event,
 
     /// All input received since we were last in the ground state. Sent to control clients on connection.
     since_ground: *mut evbuffer,
+    ground_timer: event,
 }
 
 // Command table entry.
@@ -213,6 +211,7 @@ enum input_csi_type {
     INPUT_CSI_DECSTBM,
     INPUT_CSI_DL,
     INPUT_CSI_DSR,
+    INPUT_CSI_DSR_PRIVATE,
     INPUT_CSI_ECH,
     INPUT_CSI_ED,
     INPUT_CSI_EL,
@@ -221,6 +220,7 @@ enum input_csi_type {
     INPUT_CSI_IL,
     INPUT_CSI_MODOFF,
     INPUT_CSI_MODSET,
+    INPUT_CSI_QUERY_PRIVATE,
     INPUT_CSI_RCP,
     INPUT_CSI_REP,
     INPUT_CSI_RM,
@@ -229,8 +229,8 @@ enum input_csi_type {
     INPUT_CSI_SD,
     INPUT_CSI_SGR,
     INPUT_CSI_SM,
-    INPUT_CSI_SM_PRIVATE,
     INPUT_CSI_SM_GRAPHICS,
+    INPUT_CSI_SM_PRIVATE,
     INPUT_CSI_SU,
     INPUT_CSI_TBC,
     INPUT_CSI_VPA,
@@ -239,7 +239,7 @@ enum input_csi_type {
 }
 
 /// control (csi) command table.
-static INPUT_CSI_TABLE: [input_table_entry; 40] = [
+static INPUT_CSI_TABLE: [input_table_entry; 42] = [
     input_table_entry::new_csi('@', c"", input_csi_type::INPUT_CSI_ICH),
     input_table_entry::new_csi('A', c"", input_csi_type::INPUT_CSI_CUU),
     input_table_entry::new_csi('B', c"", input_csi_type::INPUT_CSI_CUD),
@@ -274,6 +274,8 @@ static INPUT_CSI_TABLE: [input_table_entry; 40] = [
     input_table_entry::new_csi('m', c">", input_csi_type::INPUT_CSI_MODSET),
     input_table_entry::new_csi('n', c"", input_csi_type::INPUT_CSI_DSR),
     input_table_entry::new_csi('n', c">", input_csi_type::INPUT_CSI_MODOFF),
+    input_table_entry::new_csi('n', c"?", input_csi_type::INPUT_CSI_DSR_PRIVATE),
+    input_table_entry::new_csi('p', c"?$", input_csi_type::INPUT_CSI_QUERY_PRIVATE),
     input_table_entry::new_csi('q', c" ", input_csi_type::INPUT_CSI_DECSCUSR),
     input_table_entry::new_csi('q', c">", input_csi_type::INPUT_CSI_XDA),
     input_table_entry::new_csi('r', c"", input_csi_type::INPUT_CSI_DECSTBM),
@@ -863,30 +865,30 @@ unsafe fn input_table_compare(
     }
 }
 
-/// Timer
+/// Ground timer
 ///
 /// if this expires then have been waiting for a terminator for too long, so reset to ground.
-unsafe extern "C-unwind" fn input_timer_callback(_fd: i32, _events: i16, ictx: NonNull<input_ctx>) {
+unsafe extern "C-unwind" fn input_ground_timer_callback(_fd: i32, _events: i16, ictx: NonNull<input_ctx>) {
     unsafe {
         log_debug!(
             "{}: {} expired",
-            "input_timer_callback",
+            "input_ground_timer_callback",
             _s((*(*ictx.as_ptr()).state).name.as_ptr())
         );
         input_reset(ictx.as_ptr(), 0);
     }
 }
 
-/// Start the timer.
-unsafe fn input_start_timer(ictx: *mut input_ctx) {
+/// Start the ground timer.
+unsafe fn input_start_ground_timer(ictx: *mut input_ctx) {
     unsafe {
         let tv: timeval = timeval {
             tv_sec: 5,
             tv_usec: 0,
         };
 
-        event_del(&raw mut (*ictx).timer);
-        event_add(&raw mut (*ictx).timer, &raw const tv);
+        event_del(&raw mut (*ictx).ground_timer);
+        event_add(&raw mut (*ictx).ground_timer, &raw const tv);
     }
 }
 
@@ -952,10 +954,16 @@ pub unsafe fn input_init(
         if (*ictx).since_ground.is_null() {
             fatalx("out of memory");
         }
-
         evtimer_set(
-            &raw mut (*ictx).timer,
-            input_timer_callback,
+            &raw mut (*ictx).ground_timer,
+            input_ground_timer_callback,
+            NonNull::new(ictx).unwrap(),
+        );
+
+        tailq_init(&raw mut (*ictx).requests);
+        evtimer_set(
+            &raw mut (*ictx).request_timer,
+            input_request_timer_callback,
             NonNull::new(ictx).unwrap(),
         );
 
@@ -973,10 +981,19 @@ pub unsafe fn input_free(ictx: *mut input_ctx) {
             }
         }
 
-        event_del(&raw mut (*ictx).timer);
+        {
+            let mut ir = tailq_first(&raw mut (*ictx).requests);
+            while !ir.is_null() {
+                let ir1 = tailq_next::<input_request, input_request, InputRequestEntry>(ir);
+                input_free_request(ir);
+                ir = ir1;
+            }
+        }
+        event_del(&raw mut (*ictx).request_timer);
 
         free_((*ictx).input_buf);
         evbuffer_free((*ictx).since_ground);
+        event_del(&raw mut (*ictx).ground_timer);
 
         free_(ictx);
     }
@@ -1236,28 +1253,42 @@ pub unsafe fn input_get(ictx: *mut input_ctx, validx: u32, minval: i32, defval: 
 }
 
 macro_rules! input_reply {
-    ($ictx:expr, $($args:expr),* $(,)?) => {
-        crate::input::input_reply_($ictx, format_args!($($args),*))
+    ($ictx:expr, $add:expr, $($args:expr),* $(,)?) => {
+        crate::input::input_reply_($ictx, $add, format_args!($($args),*))
     };
 }
-/// Reply to terminal query.
-unsafe fn input_reply_(ictx: *mut input_ctx, args: std::fmt::Arguments) {
+
+/// Send reply directly.
+unsafe fn input_send_reply(ictx: *mut input_ctx, reply: *const c_void) {
     unsafe {
         let bev = (*ictx).event;
-        if bev.is_null() {
-            return;
+        if !bev.is_null() {
+            let reply = reply as *const u8;
+            log_debug!("{}: {}", "input_send_reply", _s(reply));
+            bufferevent_write(bev, reply.cast(), strlen(reply));
         }
+    }
+}
 
-        let reply = CString::new(args.to_string()).unwrap();
-        log_debug!("input_reply: {}", _s(reply.as_ptr()));
-        bufferevent_write(bev, reply.as_ptr().cast(), strlen(reply.as_ptr().cast()));
+/// Reply to terminal query.
+unsafe fn input_reply_(ictx: *mut input_ctx, add: i32, args: std::fmt::Arguments) {
+    unsafe {
+        let reply = xstrdup__(args.to_string().as_str());
+
+        if add != 0 && !tailq_empty(&raw mut (*ictx).requests) {
+            let ir = input_make_request(ictx, input_request_type::INPUT_REQUEST_QUEUE);
+            (*ir).data = reply as *mut c_void;
+        } else {
+            input_send_reply(ictx, reply as *const c_void);
+            free_(reply);
+        }
     }
 }
 
 /// Clear saved state.
 unsafe fn input_clear(ictx: *mut input_ctx) {
     unsafe {
-        event_del(&raw mut (*ictx).timer);
+        event_del(&raw mut (*ictx).ground_timer);
 
         (*ictx).interm_buf[0] = b'\0';
         (*ictx).interm_len = 0;
@@ -1277,7 +1308,7 @@ unsafe fn input_clear(ictx: *mut input_ctx) {
 /// Reset for ground state.
 unsafe fn input_ground(ictx: *mut input_ctx) {
     unsafe {
-        event_del(&raw mut (*ictx).timer);
+        event_del(&raw mut (*ictx).ground_timer);
         evbuffer_drain((*ictx).since_ground, EVBUFFER_LENGTH((*ictx).since_ground));
 
         if (*ictx).input_space > INPUT_BUF_START {
@@ -1292,7 +1323,7 @@ unsafe fn input_print(ictx: *mut input_ctx) -> i32 {
     unsafe {
         let sctx = &raw mut (*ictx).ctx;
 
-        (*ictx).utf8started = 0; /* can't be valid UTF-8 */
+        input_stop_utf8(ictx); /* can't be valid UTF-8 */
 
         let set = if (*ictx).cell.set == 0 {
             (*ictx).cell.g0set
@@ -1354,7 +1385,7 @@ unsafe fn input_input(ictx: *mut input_ctx) -> i32 {
         let mut available: usize = (*ictx).input_space;
         while (*ictx).input_len + 1 >= available {
             available *= 2;
-            if available > INPUT_BUF_LIMIT {
+            if available > INPUT_BUFFER_SIZE.load(std::sync::atomic::Ordering::Relaxed) {
                 (*ictx).flags |= input_flags::INPUT_DISCARD;
                 return 0;
             }
@@ -1377,7 +1408,7 @@ unsafe fn input_c0_dispatch(ictx: *mut input_ctx) -> i32 {
         let wp = (*ictx).wp;
         let s = (*sctx).s;
 
-        (*ictx).utf8started = 0; /* can't be valid UTF-8 */
+        input_stop_utf8(ictx); /* can't be valid UTF-8 */
 
         log_debug!("{}: '{}'", "input_c0_dispatch", (*ictx).ch as u8 as char);
 
@@ -1402,12 +1433,41 @@ unsafe fn input_c0_dispatch(ictx: *mut input_ctx) -> i32 {
             }
             BS => screen_write_backspace(sctx),
             HT => {
-                while (*s).cx < screen_size_x(s) - 1 {
-                    // Don't tab beyond the end of the line.
+                // Don't tab beyond the end of the line.
+                let mut cx = (*s).cx;
+                if cx < screen_size_x(s) - 1 {
+                    let line = (*s).cy + (*(*s).grid).hsize;
+                    let mut first_gc: grid_cell = zeroed();
+                    let mut gc: grid_cell = zeroed();
+                    let mut has_content = false;
+                    grid_get_cell((*s).grid, cx, line, &raw mut first_gc);
                     // Find the next tab point, or use the last column if none.
-                    (*s).cx += 1;
-                    if (*s).tabs.as_ref().unwrap().borrow().bit_test((*s).cx) {
-                        break;
+                    loop {
+                        if !has_content {
+                            grid_get_cell((*s).grid, cx, line, &raw mut gc);
+                            if gc.data.size != 1
+                                || gc.data.data[0] != b' '
+                                || grid_cells_look_equal(&raw const gc, &raw const first_gc) == 0
+                            {
+                                has_content = true;
+                            }
+                        }
+                        cx += 1;
+                        if (*s).tabs.as_ref().unwrap().borrow().bit_test(cx) {
+                            break;
+                        }
+                        if cx >= screen_size_x(s) - 1 {
+                            break;
+                        }
+                    }
+
+                    let width = cx - (*s).cx;
+                    if has_content || width as usize > size_of::<[u8; UTF8_SIZE]>() {
+                        (*s).cx = cx;
+                    } else {
+                        grid_get_cell((*s).grid, (*s).cx, line, &raw mut gc);
+                        grid_set_tab(&raw mut gc, width);
+                        screen_write_collect_add(sctx, &raw const gc);
                     }
                 }
             }
@@ -1635,18 +1695,18 @@ unsafe fn input_csi_dispatch(ictx: *mut input_ctx) -> i32 {
                 0 => {
                     #[cfg(feature = "sixel")]
                     {
-                        input_reply!(ictx, "\x1b[?1;2;4c");
+                        input_reply!(ictx, 1, "\x1b[?1;2;4c");
                     }
                     #[cfg(not(feature = "sixel"))]
                     {
-                        input_reply!(ictx, "\x1b[?1;2c");
+                        input_reply!(ictx, 1, "\x1b[?1;2c");
                     }
                 }
                 _ => log_debug!("{}: unknown '{}'", __func__, (*ictx).ch),
             },
             Ok(input_csi_type::INPUT_CSI_DA_TWO) => match input_get(ictx, 0, 0, 0) {
                 -1 => (),
-                0 => input_reply!(ictx, "\x1b[>84;0;0c"),
+                0 => input_reply!(ictx, 1, "\x1b[>84;0;0c"),
                 _ => log_debug!("{}: unknown '{}'", __func__, (*ictx).ch as u8 as char),
             },
             Ok(input_csi_type::INPUT_CSI_ECH) => {
@@ -1674,10 +1734,53 @@ unsafe fn input_csi_dispatch(ictx: *mut input_ctx) -> i32 {
                     screen_write_deleteline(sctx, n as u32, bg);
                 }
             }
+            Ok(input_csi_type::INPUT_CSI_DSR_PRIVATE) => {
+                if input_get(ictx, 0, 0, 0) == 996 {
+                    input_report_current_theme(ictx);
+                }
+            }
+            Ok(input_csi_type::INPUT_CSI_QUERY_PRIVATE) => match input_get(ictx, 0, 0, 0) {
+                12 => {
+                    // cursor blink: 1 = blink, 2 = steady
+                    let n = if (*s).cstyle != screen_cursor_style::SCREEN_CURSOR_DEFAULT
+                        || (*s).mode.intersects(mode_flag::MODE_CURSOR_BLINKING_SET)
+                    {
+                            if (*s).mode.intersects(mode_flag::MODE_CURSOR_BLINKING) {
+                                1
+                            } else {
+                                2
+                            }
+                        } else {
+                            let oo = if !(*ictx).wp.is_null() {
+                                (*(*ictx).wp).options
+                            } else {
+                                GLOBAL_OPTIONS
+                            };
+                            let p = options_get_number_(oo, "cursor-style") as i32;
+                            // blink for 1,3,5; steady for 0,2,4,6
+                            if p == 1 || p == 3 || p == 5 { 1 } else { 2 }
+                        };
+                    input_reply!(ictx, 1, "\x1b[?12;{}$y", n);
+                }
+                2004 => {
+                    let n = if (*s).mode.intersects(mode_flag::MODE_BRACKETPASTE) { 1 } else { 2 };
+                    input_reply!(ictx, 1, "\x1b[?2004;{}$y", n);
+                }
+                1004 => {
+                    let n = if (*s).mode.intersects(mode_flag::MODE_FOCUSON) { 1 } else { 2 };
+                    input_reply!(ictx, 1, "\x1b[?1004;{}$y", n);
+                }
+                1006 => {
+                    let n = if (*s).mode.intersects(mode_flag::MODE_MOUSE_SGR) { 1 } else { 2 };
+                    input_reply!(ictx, 1, "\x1b[?1006;{}$y", n);
+                }
+                2031 => input_reply!(ictx, 1, "\x1b[?2031;2$y"),
+                _ => (),
+            },
             Ok(input_csi_type::INPUT_CSI_DSR) => match input_get(ictx, 0, 0, 0) {
                 -1 => (),
-                5 => input_reply!(ictx, "\x1b[0n"),
-                6 => input_reply!(ictx, "\x1b[{};{}R", (*s).cy + 1, (*s).cx + 1),
+                5 => input_reply!(ictx, 1, "\x1b[0n"),
+                6 => input_reply!(ictx, 1, "\x1b[{};{}R", (*s).cy + 1, (*s).cx + 1),
                 _ => log_debug!("{}: unknown '{}'", __func__, (*ictx).ch as u8 as char),
             },
             Ok(input_csi_type::INPUT_CSI_ED) => {
@@ -1730,6 +1833,16 @@ unsafe fn input_csi_dispatch(ictx: *mut input_ctx) -> i32 {
                     }
 
                     if (*ictx).flags.intersects(input_flags::INPUT_LAST) {
+                        let set = if (*ictx).cell.set == 0 {
+                            (*ictx).cell.g0set
+                        } else {
+                            (*ictx).cell.g1set
+                        };
+                        if set == 1 {
+                            (*ictx).cell.cell.attr |= grid_attr::GRID_ATTR_CHARSET;
+                        } else {
+                            (*ictx).cell.cell.attr &= !grid_attr::GRID_ATTR_CHARSET;
+                        }
                         utf8_copy(&raw mut (*ictx).cell.cell.data, &raw const (*ictx).last);
                         for _ in 0..n {
                             screen_write_collect_add(sctx, &raw const (*ictx).cell.cell);
@@ -1777,11 +1890,15 @@ unsafe fn input_csi_dispatch(ictx: *mut input_ctx) -> i32 {
                 let n = input_get(ictx, 0, 0, 0);
                 if n != -1 {
                     screen_set_cursor_style(n as u32, &raw mut (*s).cstyle, &raw mut (*s).mode);
+                    if n == 0 {
+                        // Go back to default blinking state.
+                        screen_write_mode_clear(sctx, mode_flag::MODE_CURSOR_BLINKING_SET);
+                    }
                 }
             }
             Ok(input_csi_type::INPUT_CSI_XDA) => {
                 if input_get(ictx, 0, 0, 0) == 0 {
-                    input_reply!(ictx, "\x1bP>|tmux {}\x1b\\", getversion());
+                    input_reply!(ictx, 1, "\x1bP>|tmux {}\x1b\\", getversion());
                 }
             }
             Err(_) => (),
@@ -1845,6 +1962,7 @@ unsafe fn input_csi_dispatch_rm_private(ictx: *mut input_ctx) {
                 47 | 1047 => screen_write_alternateoff(sctx, gc, 0),
                 1049 => screen_write_alternateoff(sctx, gc, 1),
                 2004 => screen_write_mode_clear(sctx, mode_flag::MODE_BRACKETPASTE),
+                2031 => screen_write_mode_clear(sctx, mode_flag::MODE_THEME_UPDATES),
                 _ => log_debug!(
                     "{}: unknown '{}'",
                     "input_csi_dispatch_rm_private",
@@ -1919,6 +2037,7 @@ unsafe fn input_csi_dispatch_sm_private(ictx: *mut input_ctx) {
                 47 | 1047 => screen_write_alternateon(sctx, gc, 0),
                 1049 => screen_write_alternateon(sctx, gc, 1),
                 2004 => screen_write_mode_set(sctx, mode_flag::MODE_BRACKETPASTE),
+                2031 => screen_write_mode_set(sctx, mode_flag::MODE_THEME_UPDATES),
                 _ => log_debug!(
                     "{}: unknown '{}'",
                     "input_csi_dispatch_sm_private",
@@ -1943,9 +2062,9 @@ unsafe fn input_csi_dispatch_sm_graphics(ictx: *mut input_ctx) {
         let o = input_get(ictx, 2, 0, 0);
 
         if n == 1 && (m == 1 || m == 2 || m == 4) {
-            input_reply!(ictx, "\x1b[?{n};0;{SIXEL_COLOUR_REGISTERS}S");
+            input_reply!(ictx, 1, "\x1b[?{n};0;{SIXEL_COLOUR_REGISTERS}S");
         } else {
-            input_reply!(ictx, "\x1b[?{n};3;{o}S");
+            input_reply!(ictx, 1, "\x1b[?{n};3;{o}S");
         }
     }
 }
@@ -1991,21 +2110,21 @@ unsafe fn input_csi_dispatch_winops(ictx: *mut input_ctx) {
                 }
                 14 => {
                     if !w.is_null() {
-                        input_reply!(ictx, "\x1b[4;{};{}t", y * (*w).ypixel, x * (*w).xpixel);
+                        input_reply!(ictx, 1, "\x1b[4;{};{}t", y * (*w).ypixel, x * (*w).xpixel);
                     }
                 }
                 15 => {
                     if !w.is_null() {
-                        input_reply!(ictx, "\x1b[5;{};{}t", y * (*w).ypixel, x * (*w).xpixel,);
+                        input_reply!(ictx, 1, "\x1b[5;{};{}t", y * (*w).ypixel, x * (*w).xpixel,);
                     }
                 }
                 16 => {
                     if !w.is_null() {
-                        input_reply!(ictx, "\x1b[6;{};{}t", (*w).ypixel, (*w).xpixel);
+                        input_reply!(ictx, 1, "\x1b[6;{};{}t", (*w).ypixel, (*w).xpixel);
                     }
                 }
-                18 => input_reply!(ictx, "\x1b[8;{};{}t", y, x),
-                19 => input_reply!(ictx, "\x1b[9;{};{}t", y, x),
+                18 => input_reply!(ictx, 1, "\x1b[8;{};{}t", y, x),
+                19 => input_reply!(ictx, 1, "\x1b[9;{};{}t", y, x),
                 22 => {
                     m += 1;
                     match input_get(ictx, m as u32, 0, -1) {
@@ -2316,8 +2435,62 @@ unsafe fn input_enter_dcs(ictx: *mut input_ctx) {
         log_debug!("input_enter_dcs");
 
         input_clear(ictx);
-        input_start_timer(ictx);
+        input_start_ground_timer(ictx);
         (*ictx).flags &= !input_flags::INPUT_LAST;
+    }
+}
+
+/// Handle DECRQSS query.
+unsafe fn input_handle_decrqss(ictx: *mut input_ctx) -> i32 {
+    unsafe {
+        let wp = (*ictx).wp;
+        let sctx = &raw mut (*ictx).ctx;
+        let buf = (*ictx).input_buf;
+        let len = (*ictx).input_len;
+        let s = (*sctx).s;
+
+        if len < 3 || *buf.add(1) != b' ' || *buf.add(2) != b'q' {
+            // Not recognized
+            input_reply!(ictx, 1, "\x1bP0$r\x1b\\");
+            return 0;
+        }
+
+        // Cursor style query: DCS $ q SP q
+        // Reply: DCS 1 $ r SP q <Ps> SP q ST
+        let ps = if (*s).cstyle == screen_cursor_style::SCREEN_CURSOR_BLOCK
+            || (*s).cstyle == screen_cursor_style::SCREEN_CURSOR_UNDERLINE
+            || (*s).cstyle == screen_cursor_style::SCREEN_CURSOR_BAR
+        {
+            let blinking = (*s).mode.intersects(mode_flag::MODE_CURSOR_BLINKING);
+            match (*s).cstyle {
+                screen_cursor_style::SCREEN_CURSOR_BLOCK => {
+                    if blinking { 1 } else { 2 }
+                }
+                screen_cursor_style::SCREEN_CURSOR_UNDERLINE => {
+                    if blinking { 3 } else { 4 }
+                }
+                screen_cursor_style::SCREEN_CURSOR_BAR => {
+                    if blinking { 5 } else { 6 }
+                }
+                _ => 0,
+            }
+        } else {
+            // No explicit runtime style: fall back to configured cursor-style option.
+            let oo = if !wp.is_null() { (*wp).options } else { GLOBAL_OPTIONS };
+            let opt_ps = options_get_number_(oo, "cursor-style") as i32;
+            // Sanity clamp: valid Ps are 0..6 per DECSCUSR.
+            if !(0..=6).contains(&opt_ps) { 0 } else { opt_ps }
+        };
+
+        log_debug!(
+            "input_handle_decrqss: DECRQSS cursor -> Ps={} (cstyle={} mode={:#x})",
+            ps,
+            (*s).cstyle as i32,
+            (*s).mode,
+        );
+
+        input_reply!(ictx, 1, "\x1bP1$r q{} q\x1b\\", ps);
+        0
     }
 }
 
@@ -2338,9 +2511,20 @@ unsafe fn input_dcs_dispatch(ictx: *mut input_ctx) -> i32 {
             return 0;
         }
 
+        let oo = (*wp).options;
+
         if (*ictx).flags.intersects(input_flags::INPUT_DISCARD) {
             log_debug!("{}: {} bytes (discard)", func, len);
             return 0;
+        }
+        log_debug!("{}: {} bytes", func, len);
+
+        // DCS sequences with intermediate byte '$' (includes DECRQSS).
+        if (*ictx).interm_len == 1 && (*ictx).interm_buf[0] == b'$' {
+            // DECRQSS is DCS $ q Pt ST.
+            if len >= 1 && *buf == b'q' {
+                return input_handle_decrqss(ictx);
+            }
         }
 
         #[cfg(feature = "sixel")]
@@ -2349,14 +2533,24 @@ unsafe fn input_dcs_dispatch(ictx: *mut input_ctx) -> i32 {
             use crate::screen_write::screen_write_sixelimage;
 
             let w = (*wp).window;
-            if *buf == b'q'
-                && let Some(si) = NonNull::new(sixel_parse(buf, len, (*w).xpixel, (*w).ypixel))
-            {
-                screen_write_sixelimage(sctx, si.as_ptr(), (*ictx).cell.cell.bg as _);
+            if *buf == b'q' && (*ictx).interm_len == 0 {
+               if input_split(ictx) != 0 {
+                   return 0;
+               }
+
+               let mut p2 = input_get(ictx, 1, 0, 0);
+               if p2 == -1 {
+                   p2 = 0;
+               }
+
+                if let Some(si) = NonNull::new(sixel_parse(buf, len, p2 as u32, (*w).xpixel, (*w).ypixel))
+                {
+                    screen_write_sixelimage(sctx, si.as_ptr(), (*ictx).cell.cell.bg as _);
+                }
             }
         }
 
-        let allow_passthrough = options_get_number_((*wp).options, "allow-passthrough");
+        let allow_passthrough = options_get_number_(oo, "allow-passthrough");
         if allow_passthrough == 0 {
             return 0;
         }
@@ -2383,7 +2577,7 @@ unsafe fn input_enter_osc(ictx: *mut input_ctx) {
         log_debug!("input_enter_osc");
 
         input_clear(ictx);
-        input_start_timer(ictx);
+        input_start_ground_timer(ictx);
         (*ictx).flags &= !input_flags::INPUT_LAST;
     }
 }
@@ -2467,7 +2661,7 @@ unsafe fn input_enter_apc(ictx: *mut input_ctx) {
         log_debug!("input_enter_apc");
 
         input_clear(ictx);
-        input_start_timer(ictx);
+        input_start_ground_timer(ictx);
         (*ictx).flags &= !input_flags::INPUT_LAST;
     }
 }
@@ -2483,7 +2677,10 @@ unsafe fn input_exit_apc(ictx: *mut input_ctx) {
         }
         log_debug!("input_exit_apc: \"{}\"", _s((*ictx).input_buf.cast::<u8>()));
 
-        if screen_set_title((*sctx).s, (*ictx).input_buf.cast()) != 0 && !wp.is_null() {
+        if !wp.is_null()
+            && options_get_number_((*wp).options, "allow-set-title") != 0
+            && screen_set_title((*sctx).s, (*ictx).input_buf.cast()) != 0
+        {
             notify_pane(c"pane-title-changed", wp);
             server_redraw_window_borders((*wp).window);
             server_status_window((*wp).window);
@@ -2497,7 +2694,7 @@ unsafe fn input_enter_rename(ictx: *mut input_ctx) {
         log_debug!("input_enter_rename");
 
         input_clear(ictx);
-        input_start_timer(ictx);
+        input_start_ground_timer(ictx);
         (*ictx).flags &= !input_flags::INPUT_LAST;
     }
 }
@@ -2543,6 +2740,27 @@ unsafe fn input_exit_rename(ictx: *mut input_ctx) {
     }
 }
 
+/// Stop UTF-8 and enter an invalid character.
+unsafe fn input_stop_utf8(ictx: *mut input_ctx) {
+    unsafe {
+        static RC: utf8_data = utf8_data {
+            data: [
+                0xef, 0xbf, 0xbd, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0, 0, 0, 0,
+            ],
+            have: 3,
+            size: 3,
+            width: 1,
+        };
+        let sctx = &raw mut (*ictx).ctx;
+        if (*ictx).utf8started != 0 {
+            utf8_copy(&raw mut (*ictx).cell.cell.data, &raw const RC);
+            screen_write_collect_add(sctx, &raw mut (*ictx).cell.cell);
+        }
+        (*ictx).utf8started = 0;
+    }
+}
+
 /// Open UTF-8 character.
 unsafe fn input_top_bit_set(ictx: *mut input_ctx) -> i32 {
     unsafe {
@@ -2552,17 +2770,17 @@ unsafe fn input_top_bit_set(ictx: *mut input_ctx) -> i32 {
         (*ictx).flags &= !input_flags::INPUT_LAST;
 
         if (*ictx).utf8started == 0 {
-            if utf8_open(ud, (*ictx).ch as u8) != utf8_state::UTF8_MORE {
-                return 0;
-            }
             (*ictx).utf8started = 1;
+            if utf8_open(ud, (*ictx).ch as u8) != utf8_state::UTF8_MORE {
+                input_stop_utf8(ictx);
+            }
             return 0;
         }
 
         match utf8_append(ud, (*ictx).ch as u8) {
             utf8_state::UTF8_MORE => return 0,
             utf8_state::UTF8_ERROR => {
-                (*ictx).utf8started = 0;
+                input_stop_utf8(ictx);
                 return 0;
             }
             utf8_state::UTF8_DONE => (),
@@ -2582,7 +2800,14 @@ unsafe fn input_top_bit_set(ictx: *mut input_ctx) -> i32 {
 }
 
 /// Reply to a colour request.
-unsafe fn input_osc_colour_reply(ictx: *mut input_ctx, n: u32, mut c: i32) {
+unsafe fn input_osc_colour_reply(
+    ictx: *mut input_ctx,
+    add: i32,
+    n: u32,
+    idx: i32,
+    mut c: i32,
+    end_type: input_end_type,
+) {
     unsafe {
         if c != -1 {
             c = colour_force_rgb(c);
@@ -2592,24 +2817,42 @@ unsafe fn input_osc_colour_reply(ictx: *mut input_ctx, n: u32, mut c: i32) {
         }
         let (r, g, b) = colour_split_rgb(c);
 
-        let end = if (*ictx).input_end == input_end_type::INPUT_END_BEL {
+        let end = if end_type == input_end_type::INPUT_END_BEL {
             c!("\x07")
         } else {
             c!("\x1b\\")
         };
 
-        input_reply!(
-            ictx,
-            "\x1b]{};rgb:{:02x}{:02x}/{:02x}{:02x}/{:02x}{:02x}{}",
-            n,
-            r,
-            r,
-            g,
-            g,
-            b,
-            b,
-            _s(end),
-        );
+        if n == 4 {
+            input_reply!(
+                ictx,
+                add,
+                "\x1b]{};{};rgb:{:02x}{:02x}/{:02x}{:02x}/{:02x}{:02x}{}",
+                n,
+                idx,
+                r,
+                r,
+                g,
+                g,
+                b,
+                b,
+                _s(end),
+            );
+        } else {
+            input_reply!(
+                ictx,
+                add,
+                "\x1b]{};rgb:{:02x}{:02x}/{:02x}{:02x}/{:02x}{:02x}{}",
+                n,
+                r,
+                r,
+                g,
+                g,
+                b,
+                b,
+                _s(end),
+            );
+        }
     }
 }
 
@@ -2642,13 +2885,24 @@ unsafe fn input_osc_4(ictx: *mut input_ctx, p: *const u8) {
 
             s = strsep(&raw mut next, c!(";"));
             if streq_(s, "?") {
-                c = colour_palette_get(ptr_to_ref((*ictx).palette), idx as i32);
+                c = colour_palette_get(
+                    ptr_to_ref((*ictx).palette),
+                    idx as i32 | COLOUR_FLAG_256,
+                );
                 if c != -1 {
-                    input_osc_colour_reply(ictx, 4, c);
+                    input_osc_colour_reply(ictx, 1, 4, idx as i32, c, (*ictx).input_end);
+                    s = next;
+                    continue;
                 }
+                input_add_request(
+                    ictx,
+                    input_request_type::INPUT_REQUEST_PALETTE,
+                    idx as i32,
+                );
+                s = next;
                 continue;
             }
-            c = colour_parse_x11(s);
+            c = colour_parse_x11(cstr_to_str(s));
             if c == -1 {
                 s = next;
                 continue;
@@ -2720,82 +2974,14 @@ unsafe fn input_osc_8(ictx: *mut input_ctx, p: *const u8) {
     }
 }
 
-/// Get a client with a foreground for the pane.
-/// There isn't much to choose between them so just use the first.
-unsafe fn input_get_fg_client(wp: *mut window_pane) -> i32 {
+unsafe fn input_report_current_theme(ictx: *mut input_ctx) {
     unsafe {
-        let w = (*wp).window;
-        for loop_ in tailq_foreach(&raw mut CLIENTS).map(NonNull::as_ptr) {
-            if (*loop_).flags.intersects(CLIENT_UNATTACHEDFLAGS) {
-                continue;
-            }
-            if (*loop_).session.is_null() || !session_has((*loop_).session, w) {
-                continue;
-            }
-            if (*loop_).tty.fg == -1 {
-                continue;
-            }
-            return (*loop_).tty.fg;
-        }
-
-        -1
-    }
-}
-
-/// Get a client with a background for the pane.
-unsafe fn input_get_bg_client(wp: *mut window_pane) -> i32 {
-    unsafe {
-        let w = (*wp).window;
-
-        for loop_ in tailq_foreach(&raw mut CLIENTS).map(NonNull::as_ptr) {
-            if (*loop_).flags.intersects(CLIENT_UNATTACHEDFLAGS) {
-                continue;
-            }
-            if (*loop_).session.is_null() || !session_has((*loop_).session, w) {
-                continue;
-            }
-            if (*loop_).tty.bg == -1 {
-                continue;
-            }
-            return (*loop_).tty.bg;
-        }
-        -1
-    }
-}
-
-/// If any control mode client exists that has provided a bg color, return it.
-/// Otherwise, return -1.
-unsafe fn input_get_bg_control_client(wp: *mut window_pane) -> i32 {
-    unsafe {
-        if (*wp).control_bg == -1 {
-            return -1;
-        }
-
-        if tailq_foreach(&raw mut CLIENTS)
-            .any(|c| (*c.as_ptr()).flags.intersects(client_flag::CONTROL))
-        {
-            return (*wp).control_bg;
+        match window_pane_get_theme((*ictx).wp) {
+            client_theme::THEME_DARK => input_reply!(ictx, 0, "\x1b[?997;1n"),
+            client_theme::THEME_LIGHT => input_reply!(ictx, 0, "\x1b[?997;2n"),
+            client_theme::THEME_UNKNOWN => (),
         }
     }
-
-    -1
-}
-
-/// If any control mode client exists that has provided a fg color, return it.
-/// Otherwise, return -1.
-unsafe fn input_get_fg_control_client(wp: *mut window_pane) -> i32 {
-    unsafe {
-        if (*wp).control_fg == -1 {
-            return -1;
-        }
-
-        if tailq_foreach(&raw mut CLIENTS)
-            .any(|c| (*c.as_ptr()).flags.intersects(client_flag::CONTROL))
-        {
-            return (*wp).control_fg;
-        }
-    }
-    -1
 }
 
 /// Handle the OSC 10 sequence for setting and querying foreground colour.
@@ -2809,20 +2995,20 @@ unsafe fn input_osc_10(ictx: *mut input_ctx, p: *const u8) {
             if wp.is_null() {
                 return;
             }
-            c = input_get_fg_control_client(wp);
+            c = window_pane_get_fg_control_client(wp);
             if c == -1 {
                 tty_default_colours(&raw mut defaults, wp);
                 if COLOUR_DEFAULT(defaults.fg) {
-                    c = input_get_fg_client(wp);
+                    c = window_pane_get_fg(wp);
                 } else {
                     c = defaults.fg;
                 }
             }
-            input_osc_colour_reply(ictx, 10, c);
+            input_osc_colour_reply(ictx, 1, 10, 0, c, (*ictx).input_end);
             return;
         }
 
-        c = colour_parse_x11(p);
+        c = colour_parse_x11(cstr_to_str(p));
         if c == -1 {
             log_debug!("bad OSC 10: {}", _s(p));
             return;
@@ -2860,28 +3046,17 @@ unsafe fn input_osc_110(ictx: *mut input_ctx, p: *const u8) {
 unsafe fn input_osc_11(ictx: *mut input_ctx, p: *const u8) {
     unsafe {
         let wp = (*ictx).wp;
-        let mut defaults: grid_cell = zeroed();
-
-        let mut c;
 
         if streq_(p, "?") {
             if wp.is_null() {
                 return;
             }
-            c = input_get_bg_control_client(wp);
-            if c == -1 {
-                tty_default_colours(&raw mut defaults, wp);
-                if COLOUR_DEFAULT(defaults.bg) {
-                    c = input_get_bg_client(wp);
-                } else {
-                    c = defaults.bg;
-                }
-            }
-            input_osc_colour_reply(ictx, 11, c);
+            let c = window_pane_get_bg(wp);
+            input_osc_colour_reply(ictx, 1, 11, 0, c, (*ictx).input_end);
             return;
         }
 
-        c = colour_parse_x11(p);
+        let c = colour_parse_x11(cstr_to_str(p));
         if c == -1 {
             log_debug!("bad OSC 11: {}", _s(p));
             return;
@@ -2889,7 +3064,8 @@ unsafe fn input_osc_11(ictx: *mut input_ctx, p: *const u8) {
         if !(*ictx).palette.is_null() {
             (*(*ictx).palette).bg = c;
             if !wp.is_null() {
-                (*wp).flags |= window_pane_flags::PANE_STYLECHANGED;
+                (*wp).flags |=
+                    window_pane_flags::PANE_STYLECHANGED | window_pane_flags::PANE_THEMECHANGED;
             }
             screen_write_fullredraw(&raw mut (*ictx).ctx);
         }
@@ -2907,7 +3083,8 @@ unsafe fn input_osc_111(ictx: *mut input_ctx, p: *const u8) {
         if !(*ictx).palette.is_null() {
             (*(*ictx).palette).bg = 8;
             if !wp.is_null() {
-                (*wp).flags |= window_pane_flags::PANE_STYLECHANGED;
+                (*wp).flags |=
+                    window_pane_flags::PANE_STYLECHANGED | window_pane_flags::PANE_THEMECHANGED;
             }
             screen_write_fullredraw(&raw mut (*ictx).ctx);
         }
@@ -2926,12 +3103,12 @@ unsafe fn input_osc_12(ictx: *mut input_ctx, p: *const u8) {
                 if c == -1 {
                     c = (*(*ictx).ctx.s).default_ccolour;
                 }
-                input_osc_colour_reply(ictx, 12, c);
+                input_osc_colour_reply(ictx, 1, 12, 0, c, (*ictx).input_end);
             }
             return;
         }
 
-        c = colour_parse_x11(p);
+        c = colour_parse_x11(cstr_to_str(p));
         if c == -1 {
             log_debug!("bad OSC 12: {}", _s(p));
             return;
@@ -3123,5 +3300,216 @@ pub unsafe fn input_reply_clipboard(
         }
         bufferevent_write(bev, end.cast(), strlen(end));
         free_(out);
+    }
+}
+
+/// Set input buffer size.
+pub fn input_set_buffer_size(buffer_size: usize) {
+    let old = INPUT_BUFFER_SIZE.load(std::sync::atomic::Ordering::Relaxed);
+    log_debug!("input_set_buffer_size: {} -> {}", old, buffer_size);
+    INPUT_BUFFER_SIZE.store(buffer_size, std::sync::atomic::Ordering::Relaxed);
+}
+
+const INPUT_REQUEST_TIMEOUT: libc::time_t = 2;
+
+/// Request timer. Remove any requests that are too old.
+unsafe extern "C-unwind" fn input_request_timer_callback(
+    _fd: i32,
+    _events: i16,
+    ictx: NonNull<input_ctx>,
+) {
+    unsafe {
+        let ictx = ictx.as_ptr();
+        let t = libc::time(null_mut());
+
+        let mut ir = tailq_first(&raw mut (*ictx).requests);
+        while !ir.is_null() {
+            let ir1 = tailq_next::<input_request, input_request, InputRequestEntry>(ir);
+            if (*ir).t >= t - INPUT_REQUEST_TIMEOUT {
+                ir = ir1;
+                continue;
+            }
+            if (*ir).type_ == input_request_type::INPUT_REQUEST_QUEUE {
+                input_send_reply((*ir).ictx, (*ir).data);
+            }
+            input_free_request(ir);
+            ir = ir1;
+        }
+        if (*ictx).request_count != 0 {
+            input_start_request_timer(ictx);
+        }
+    }
+}
+
+/// Start the request timer.
+unsafe fn input_start_request_timer(ictx: *mut input_ctx) {
+    unsafe {
+        let tv: timeval = timeval {
+            tv_sec: 0,
+            tv_usec: 500000,
+        };
+
+        event_del(&raw mut (*ictx).request_timer);
+        event_add(&raw mut (*ictx).request_timer, &raw const tv);
+    }
+}
+
+/// Create a request.
+unsafe fn input_make_request(
+    ictx: *mut input_ctx,
+    type_: input_request_type,
+) -> *mut input_request {
+    unsafe {
+        let ir: *mut input_request = xcalloc1();
+        (*ir).type_ = type_;
+        (*ir).ictx = ictx;
+        (*ir).t = libc::time(null_mut());
+
+        (*ictx).request_count += 1;
+        if (*ictx).request_count == 1 {
+            input_start_request_timer(ictx);
+        }
+        tailq_insert_tail::<input_request, InputRequestEntry>(&raw mut (*ictx).requests, ir);
+
+        ir
+    }
+}
+
+/// Free a request.
+unsafe fn input_free_request(ir: *mut input_request) {
+    unsafe {
+        let ictx = (*ir).ictx;
+
+        if !(*ir).c.is_null() {
+            tailq_remove::<input_request, InputRequestCEntry>(
+                &raw mut (*(*ir).c).input_requests,
+                ir,
+            );
+        }
+
+        (*ictx).request_count -= 1;
+        tailq_remove::<input_request, InputRequestEntry>(&raw mut (*ictx).requests, ir);
+
+        free_((*ir).data as *mut u8);
+        free_(ir);
+    }
+}
+
+/// Add a request.
+unsafe fn input_add_request(
+    ictx: *mut input_ctx,
+    type_: input_request_type,
+    idx: i32,
+) -> i32 {
+    unsafe {
+        let wp = (*ictx).wp;
+        if wp.is_null() {
+            return -1;
+        }
+        let w = (*wp).window;
+
+        let mut c: *mut client = null_mut();
+        for loop_ in tailq_foreach(&raw mut CLIENTS).map(NonNull::as_ptr) {
+            if (*loop_).flags.intersects(CLIENT_UNATTACHEDFLAGS) {
+                continue;
+            }
+            if (*loop_).session.is_null() || !session_has((*loop_).session, w) {
+                continue;
+            }
+            if !(*loop_).tty.flags.intersects(tty_flags::TTY_STARTED) {
+                continue;
+            }
+            if c.is_null()
+                || timer::new(&raw const (*loop_).activity_time)
+                    > timer::new(&raw const (*c).activity_time)
+            {
+                c = loop_;
+            }
+        }
+        if c.is_null() {
+            return -1;
+        }
+
+        let ir = input_make_request(ictx, type_);
+        (*ir).c = c;
+        (*ir).idx = idx;
+        (*ir).end = (*ictx).input_end;
+        tailq_insert_tail::<input_request, InputRequestCEntry>(
+            &raw mut (*c).input_requests,
+            ir,
+        );
+
+        match type_ {
+            input_request_type::INPUT_REQUEST_PALETTE => {
+                let mut s: [u8; 64] = [0; 64];
+                if xsnprintf_!(s.as_mut_ptr(), s.len(), "\x1b]4;{};?\x1b\\", idx).is_ok() {
+                    tty_puts(&raw mut (*c).tty, s.as_ptr());
+                }
+            }
+            input_request_type::INPUT_REQUEST_QUEUE => {}
+        }
+
+        0
+    }
+}
+
+/// Handle a reply to a request.
+pub unsafe fn input_request_reply(
+    c: *mut client,
+    type_: input_request_type,
+    data: *mut c_void,
+) {
+    unsafe {
+        let pd = data.cast::<input_request_palette_data>();
+        let mut found: *mut input_request = null_mut();
+
+        // Find the matching request, freeing non-matching ones along the way.
+        let mut ir = tailq_first(&raw mut (*c).input_requests);
+        while !ir.is_null() {
+            let ir1 = tailq_next::<input_request, input_request, InputRequestCEntry>(ir);
+            if (*ir).type_ == type_ && (*pd).idx == (*ir).idx {
+                found = ir;
+                break;
+            }
+            input_free_request(ir);
+            ir = ir1;
+        }
+        if found.is_null() {
+            return;
+        }
+
+        // Process requests in the ictx queue up to and including found.
+        let mut complete: i32 = 0;
+        let mut ir = tailq_first(&raw mut (*(*found).ictx).requests);
+        while !ir.is_null() {
+            let ir1 = tailq_next::<input_request, input_request, InputRequestEntry>(ir);
+            if complete != 0
+                && (*ir).type_ != input_request_type::INPUT_REQUEST_QUEUE
+            {
+                break;
+            }
+            if (*ir).type_ == input_request_type::INPUT_REQUEST_QUEUE {
+                input_send_reply((*ir).ictx, (*ir).data);
+            } else if ir == found
+                && (*ir).type_ == input_request_type::INPUT_REQUEST_PALETTE
+            {
+                input_osc_colour_reply((*ir).ictx, 0, 4, (*pd).idx, (*pd).c, (*ir).end);
+                complete = 1;
+            }
+            input_free_request(ir);
+            ir = ir1;
+        }
+    }
+}
+
+/// Cancel pending requests for client.
+pub unsafe fn input_cancel_requests(c: *mut client) {
+    unsafe {
+        let mut ir = tailq_first(&raw mut (*c).input_requests);
+        while !ir.is_null() {
+            let ir1 = tailq_next::<input_request, input_request, InputRequestCEntry>(ir);
+            input_free_request(ir);
+            ir = ir1;
+        }
     }
 }

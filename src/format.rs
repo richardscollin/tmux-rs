@@ -29,6 +29,7 @@ bitflags::bitflags! {
         const FORMAT_FORCE   = 2;
         const FORMAT_NOJOBS  = 4;
         const FORMAT_VERBOSE = 8;
+        const FORMAT_LAST    = 0x10;
     }
 }
 
@@ -99,6 +100,9 @@ bitflags::bitflags! {
         const FORMAT_CHARACTER = 0x10000;
         const FORMAT_COLOUR = 0x20000;
         const FORMAT_CLIENTS = 0x40000;
+        const FORMAT_NOT = 0x80000;
+        const FORMAT_NOT_NOT = 0x100000;
+        const FORMAT_REPEAT = 0x200000;
     }
 }
 
@@ -122,6 +126,14 @@ pub enum format_type {
     FORMAT_TYPE_SESSION,
     FORMAT_TYPE_WINDOW,
     FORMAT_TYPE_PANE,
+}
+
+// Format loop sort type.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum format_loop_sort_type {
+    Index,
+    Name,
+    Time,
 }
 
 // Entry in format tree.
@@ -553,6 +565,42 @@ pub unsafe fn format_cb_session_attached_list(ft: *mut format_tree) -> format_ta
     }
 }
 
+/// Callback for `session_alert`.
+pub unsafe fn format_cb_session_alert(ft: *mut format_tree) -> format_table_type {
+    unsafe {
+        let s = (*ft).s;
+        if s.is_null() {
+            return format_table_type::None;
+        }
+        let mut alerts = String::new();
+        let mut alerted = winlink_flags::empty();
+        for wl in rb_foreach(&raw mut (*s).windows).map(NonNull::as_ptr) {
+            if !(*wl).flags.intersects(WINLINK_ALERTFLAGS) {
+                continue;
+            }
+            if !alerted.intersects(winlink_flags::WINLINK_ACTIVITY)
+                && (*wl).flags.intersects(winlink_flags::WINLINK_ACTIVITY)
+            {
+                alerts.push('#');
+                alerted |= winlink_flags::WINLINK_ACTIVITY;
+            }
+            if !alerted.intersects(winlink_flags::WINLINK_BELL)
+                && (*wl).flags.intersects(winlink_flags::WINLINK_BELL)
+            {
+                alerts.push('!');
+                alerted |= winlink_flags::WINLINK_BELL;
+            }
+            if !alerted.intersects(winlink_flags::WINLINK_SILENCE)
+                && (*wl).flags.intersects(winlink_flags::WINLINK_SILENCE)
+            {
+                alerts.push('~');
+                alerted |= winlink_flags::WINLINK_SILENCE;
+            }
+        }
+        alerts.into()
+    }
+}
+
 /// Callback for `session_alerts`.
 pub unsafe fn format_cb_session_alerts(ft: *mut format_tree) -> format_table_type {
     unsafe {
@@ -891,11 +939,7 @@ pub unsafe fn format_cb_current_path(ft: *mut format_tree) -> format_table_type 
             return format_table_type::None;
         }
 
-        let cwd = osdep_get_cwd((*wp).fd);
-        if cwd.is_null() {
-            return format_table_type::None;
-        }
-        format!("{}", _s(cwd)).into()
+        osdep_get_cwd((*wp).fd, (*wp).pid).map(Into::into).unwrap_or_default()
     }
 }
 
@@ -1227,6 +1271,15 @@ pub unsafe fn format_cb_mouse_hyperlink(ft: *mut format_tree) -> format_table_ty
         if cmd_mouse_at(wp.as_ptr(), &raw mut (*ft).m, &mut x, &mut y, 0) != 0 {
             return format_table_type::None;
         }
+
+        if !tailq_empty(&raw const (*wp.as_ptr()).modes) {
+            if window_pane_mode(wp.as_ptr()) != WINDOW_PANE_NO_MODE {
+                return window_copy_get_hyperlink(wp.as_ptr(), x, y)
+                    .map(Into::into)
+                    .unwrap_or_default();
+            }
+            return format_table_type::None;
+        }
         let gd = (*wp.as_ptr()).base.grid;
         format_grid_hyperlink(gd, x, (*gd).hsize + y, (*wp.as_ptr()).screen)
             .map(Into::into)
@@ -1355,6 +1408,20 @@ pub unsafe fn format_cb_buffer_name(ft: *mut format_tree) -> format_table_type {
     unsafe {
         if let Some(pb) = NonNull::new((*ft).pb) {
             return paste_buffer_name(pb).to_string().into();
+        }
+        format_table_type::None
+    }
+}
+
+pub unsafe fn format_cb_buffer_full(ft: *mut format_tree) -> format_table_type {
+    unsafe {
+        if !(*ft).pb.is_null() {
+            let mut size = 0usize;
+            let s = paste_buffer_data((*ft).pb, &mut size);
+            if !s.is_null() {
+                let data = std::slice::from_raw_parts(s, size);
+                return String::from_utf8_lossy(data).into_owned().into();
+            }
         }
         format_table_type::None
     }
@@ -1597,6 +1664,19 @@ pub unsafe fn format_cb_client_width(ft: *mut format_tree) -> format_table_type 
     }
 }
 
+pub unsafe fn format_cb_client_theme(ft: *mut format_tree) -> format_table_type {
+    unsafe {
+        if !(*ft).c.is_null() {
+            match (*(*ft).c).theme {
+                client_theme::THEME_DARK => return "dark".into(),
+                client_theme::THEME_LIGHT => return "light".into(),
+                client_theme::THEME_UNKNOWN => return format_table_type::None,
+            }
+        }
+        format_table_type::None
+    }
+}
+
 pub unsafe fn format_cb_client_written(ft: *mut format_tree) -> format_table_type {
     unsafe {
         if !(*ft).c.is_null() {
@@ -1618,11 +1698,59 @@ pub unsafe fn format_cb_config_files(_ft: *mut format_tree) -> format_table_type
     s.into()
 }
 
+/// Callback for `cursor_colour`.
+pub unsafe fn format_cb_cursor_colour(ft: *mut format_tree) -> format_table_type {
+    unsafe {
+        let wp = (*ft).wp;
+        if !wp.is_null() && !(*wp).screen.is_null() {
+            if (*(*wp).screen).ccolour != -1 {
+                return colour_tostring((*(*wp).screen).ccolour).into_owned().into();
+            }
+            return colour_tostring((*(*wp).screen).default_ccolour)
+                .into_owned()
+                .into();
+        }
+        format_table_type::None
+    }
+}
+
 /// Callback for `cursor_flag`.
 pub unsafe fn format_cb_cursor_flag(ft: *mut format_tree) -> format_table_type {
     unsafe {
         if !(*ft).wp.is_null() {
             if (*(*ft).wp).base.mode.intersects(mode_flag::MODE_CURSOR) {
+                return "1".into();
+            }
+            return "0".into();
+        }
+        format_table_type::None
+    }
+}
+
+/// Callback for `cursor_shape`.
+pub unsafe fn format_cb_cursor_shape(ft: *mut format_tree) -> format_table_type {
+    unsafe {
+        if !(*ft).wp.is_null() && !(*(*ft).wp).screen.is_null() {
+            return match (*(*(*ft).wp).screen).cstyle {
+                screen_cursor_style::SCREEN_CURSOR_BLOCK => "block",
+                screen_cursor_style::SCREEN_CURSOR_UNDERLINE => "underline",
+                screen_cursor_style::SCREEN_CURSOR_BAR => "bar",
+                _ => "default",
+            }
+            .into();
+        }
+        format_table_type::None
+    }
+}
+
+/// Callback for `cursor_very_visible`.
+pub unsafe fn format_cb_cursor_very_visible(ft: *mut format_tree) -> format_table_type {
+    unsafe {
+        if !(*ft).wp.is_null() && !(*(*ft).wp).screen.is_null() {
+            if (*(*(*ft).wp).screen)
+                .mode
+                .intersects(mode_flag::MODE_CURSOR_VERY_VISIBLE)
+            {
                 return "1".into();
             }
             return "0".into();
@@ -1646,6 +1774,22 @@ pub unsafe fn format_cb_cursor_y(ft: *mut format_tree) -> format_table_type {
     unsafe {
         if !(*ft).wp.is_null() {
             return format!("{}", (*(*ft).wp).base.cy).into();
+        }
+        format_table_type::None
+    }
+}
+
+/// Callback for `cursor_blinking`.
+pub unsafe fn format_cb_cursor_blinking(ft: *mut format_tree) -> format_table_type {
+    unsafe {
+        if !(*ft).wp.is_null() && !(*(*ft).wp).screen.is_null() {
+            if (*(*(*ft).wp).screen)
+                .mode
+                .intersects(mode_flag::MODE_CURSOR_BLINKING)
+            {
+                return "1".into();
+            }
+            return "0".into();
         }
         format_table_type::None
     }
@@ -1707,6 +1851,15 @@ pub unsafe fn format_cb_keypad_flag(ft: *mut format_tree) -> format_table_type {
             return "0".into();
         }
         format_table_type::None
+    }
+}
+
+/// Callback for `loop_last_flag`.
+pub unsafe fn format_cb_loop_last_flag(ft: *mut format_tree) -> format_table_type {
+    if unsafe { (*ft).flags.intersects(format_flags::FORMAT_LAST) } {
+        "1".into()
+    } else {
+        "0".into()
     }
 }
 
@@ -2277,6 +2430,71 @@ pub unsafe fn format_cb_server_sessions(_ft: *mut format_tree) -> format_table_t
     }
 }
 
+/// Callback for `session_active`.
+pub unsafe fn format_cb_session_active(ft: *mut format_tree) -> format_table_type {
+    unsafe {
+        if (*ft).s.is_null() || (*ft).c.is_null() {
+            return format_table_type::None;
+        }
+        if (*(*ft).c).session == (*ft).s {
+            "1".into()
+        } else {
+            "0".into()
+        }
+    }
+}
+
+/// Callback for `session_activity_flag`.
+pub unsafe fn format_cb_session_activity_flag(ft: *mut format_tree) -> format_table_type {
+    unsafe {
+        if !(*ft).s.is_null()
+            && rb_foreach(&raw mut (*(*ft).s).windows)
+                .next()
+                .is_some()
+        {
+            if (*(*ft).wl).flags.intersects(winlink_flags::WINLINK_ACTIVITY) {
+                return "1".into();
+            }
+            return "0".into();
+        }
+        format_table_type::None
+    }
+}
+
+/// Callback for `session_bell_flag`.
+pub unsafe fn format_cb_session_bell_flag(ft: *mut format_tree) -> format_table_type {
+    unsafe {
+        if !(*ft).s.is_null()
+            && rb_foreach(&raw mut (*(*ft).s).windows)
+                .next()
+                .is_some()
+        {
+            if (*(*ft).wl).flags.intersects(winlink_flags::WINLINK_BELL) {
+                return "1".into();
+            }
+            return "0".into();
+        }
+        format_table_type::None
+    }
+}
+
+/// Callback for `session_silence_flag`.
+pub unsafe fn format_cb_session_silence_flag(ft: *mut format_tree) -> format_table_type {
+    unsafe {
+        if !(*ft).s.is_null()
+            && rb_foreach(&raw mut (*(*ft).s).windows)
+                .next()
+                .is_some()
+        {
+            if (*(*ft).wl).flags.intersects(winlink_flags::WINLINK_SILENCE) {
+                return "1".into();
+            }
+            return "0".into();
+        }
+        format_table_type::None
+    }
+}
+
 /// Callback for `session_attached`.
 pub unsafe fn format_cb_session_attached(ft: *mut format_tree) -> format_table_type {
     unsafe {
@@ -2433,12 +2651,22 @@ pub unsafe fn format_cb_session_windows(ft: *mut format_tree) -> format_table_ty
 
 /// Callback for `socket_path`.
 pub unsafe fn format_cb_socket_path(_ft: *mut format_tree) -> format_table_type {
-    unsafe { format!("{}", _s(SOCKET_PATH)).into() }
+    SOCKET_PATH.get().unwrap().clone().into()
 }
 
 /// Callback for version.
 pub fn format_cb_version(_ft: *mut format_tree) -> format_table_type {
     getversion().into()
+}
+
+/// Callback for `sixel_support`.
+pub fn format_cb_sixel_support(_ft: *mut format_tree) -> format_table_type {
+    if cfg!(feature = "sixel") {
+        "1"
+    } else {
+        "0"
+    }
+    .into()
 }
 
 /// Callback for `active_window_index`.
@@ -2621,8 +2849,16 @@ pub unsafe fn format_cb_window_last_flag(ft: *mut format_tree) -> format_table_t
 pub unsafe fn format_cb_window_linked(ft: *mut format_tree) -> format_table_type {
     unsafe {
         if !(*ft).wl.is_null() {
-            if session_is_linked((*(*ft).wl).session, (*(*ft).wl).window) {
-                return "1".into();
+            let mut found = 0;
+            for s in rb_foreach(&raw mut SESSIONS).map(NonNull::as_ptr) {
+                for wl in rb_foreach(&raw mut (*s).windows).map(NonNull::as_ptr) {
+                    if (*wl).window == (*(*ft).wl).window {
+                        if found != 0 {
+                            return "1".into();
+                        }
+                        found = 1;
+                    }
+                }
             }
             return "0".into();
         }
@@ -2633,10 +2869,29 @@ pub unsafe fn format_cb_window_linked(ft: *mut format_tree) -> format_table_type
 /// Callback for `window_linked_sessions`.
 pub unsafe fn format_cb_window_linked_sessions(ft: *mut format_tree) -> format_table_type {
     unsafe {
-        if !(*ft).wl.is_null() {
-            return format!("{}", (*(*(*ft).wl).window).references).into();
+        if (*ft).wl.is_null() {
+            return format_table_type::None;
         }
-        format_table_type::None
+        let w = (*(*ft).wl).window;
+        let mut n: u32 = 0;
+
+        for sg in rb_foreach(&raw mut SESSION_GROUPS).map(NonNull::as_ptr) {
+            let s = tailq_first(&raw mut (*sg).sessions);
+            if !s.is_null()
+                && winlink_find_by_window(&raw mut (*s).windows, w).is_some()
+            {
+                n += 1;
+            }
+        }
+        for s in rb_foreach(&raw mut SESSIONS).map(NonNull::as_ptr) {
+            if !session_group_contains(s).is_null() {
+                continue;
+            }
+            if winlink_find_by_window(&raw mut (*s).windows, w).is_some() {
+                n += 1;
+            }
+        }
+        format!("{n}").into()
     }
 }
 
@@ -2782,7 +3037,7 @@ pub unsafe fn format_cb_buffer_created(ft: *mut format_tree) -> format_table_typ
     unsafe {
         if let Some(pb) = NonNull::new((*ft).pb) {
             format_table_type::Time(timeval {
-                tv_sec: paste_buffer_created(pb),
+                tv_sec: paste_buffer_created(pb) as _,
                 tv_usec: 0,
             })
         } else {
@@ -2938,6 +3193,7 @@ static FORMAT_TABLE: &[format_table_entry] = &[
     format_table_entry::new("alternate_saved_x", format_cb_alternate_saved_x),
     format_table_entry::new("alternate_saved_y", format_cb_alternate_saved_y),
     format_table_entry::new("buffer_created", format_cb_buffer_created),
+    format_table_entry::new("buffer_full", format_cb_buffer_full),
     format_table_entry::new("buffer_mode_format", format_cb_buffer_mode_format),
     format_table_entry::new("buffer_name", format_cb_buffer_name),
     format_table_entry::new("buffer_sample", format_cb_buffer_sample),
@@ -2961,6 +3217,7 @@ static FORMAT_TABLE: &[format_table_entry] = &[
     format_table_entry::new("client_termfeatures", format_cb_client_termfeatures),
     format_table_entry::new("client_termname", format_cb_client_termname),
     format_table_entry::new("client_termtype", format_cb_client_termtype),
+    format_table_entry::new("client_theme", format_cb_client_theme),
     format_table_entry::new("client_tty", format_cb_client_tty),
     format_table_entry::new("client_uid", format_cb_client_uid),
     format_table_entry::new("client_user", format_cb_client_user),
@@ -2968,8 +3225,12 @@ static FORMAT_TABLE: &[format_table_entry] = &[
     format_table_entry::new("client_width", format_cb_client_width),
     format_table_entry::new("client_written", format_cb_client_written),
     format_table_entry::new("config_files", format_cb_config_files),
+    format_table_entry::new("cursor_blinking", format_cb_cursor_blinking),
     format_table_entry::new("cursor_character", format_cb_cursor_character),
+    format_table_entry::new("cursor_colour", format_cb_cursor_colour),
     format_table_entry::new("cursor_flag", format_cb_cursor_flag),
+    format_table_entry::new("cursor_shape", format_cb_cursor_shape),
+    format_table_entry::new("cursor_very_visible", format_cb_cursor_very_visible),
     format_table_entry::new("cursor_x", format_cb_cursor_x),
     format_table_entry::new("cursor_y", format_cb_cursor_y),
     format_table_entry::new("history_all_bytes", format_cb_history_all_bytes),
@@ -2982,6 +3243,7 @@ static FORMAT_TABLE: &[format_table_entry] = &[
     format_table_entry::new("keypad_cursor_flag", format_cb_keypad_cursor_flag),
     format_table_entry::new("keypad_flag", format_cb_keypad_flag),
     format_table_entry::new("last_window_index", format_cb_last_window_index),
+    format_table_entry::new("loop_last_flag", format_cb_loop_last_flag),
     format_table_entry::new("mouse_all_flag", format_cb_mouse_all_flag),
     format_table_entry::new("mouse_any_flag", format_cb_mouse_any_flag),
     format_table_entry::new("mouse_button_flag", format_cb_mouse_button_flag),
@@ -3042,10 +3304,14 @@ static FORMAT_TABLE: &[format_table_entry] = &[
     format_table_entry::new("scroll_region_lower", format_cb_scroll_region_lower),
     format_table_entry::new("scroll_region_upper", format_cb_scroll_region_upper),
     format_table_entry::new("server_sessions", format_cb_server_sessions),
+    format_table_entry::new("session_active", format_cb_session_active),
     format_table_entry::new("session_activity", format_cb_session_activity),
+    format_table_entry::new("session_activity_flag", format_cb_session_activity_flag),
+    format_table_entry::new("session_alert", format_cb_session_alert),
     format_table_entry::new("session_alerts", format_cb_session_alerts),
     format_table_entry::new("session_attached", format_cb_session_attached),
     format_table_entry::new("session_attached_list", format_cb_session_attached_list),
+    format_table_entry::new("session_bell_flag", format_cb_session_bell_flag),
     format_table_entry::new("session_created", format_cb_session_created),
     format_table_entry::new("session_format", format_cb_session_format),
     format_table_entry::new("session_group", format_cb_session_group),
@@ -3067,8 +3333,10 @@ static FORMAT_TABLE: &[format_table_entry] = &[
     format_table_entry::new("session_marked", format_cb_session_marked),
     format_table_entry::new("session_name", format_cb_session_name),
     format_table_entry::new("session_path", format_cb_session_path),
+    format_table_entry::new("session_silence_flag", format_cb_session_silence_flag),
     format_table_entry::new("session_stack", format_cb_session_stack),
     format_table_entry::new("session_windows", format_cb_session_windows),
+    format_table_entry::new("sixel_support", format_cb_sixel_support),
     format_table_entry::new("socket_path", format_cb_socket_path),
     format_table_entry::new("start_time", format_cb_start_time),
     format_table_entry::new("tree_mode_format", format_cb_tree_mode_format),
@@ -3121,19 +3389,15 @@ static FORMAT_TABLE: &[format_table_entry] = &[
     format_table_entry::new("wrap_flag", format_cb_wrap_flag),
 ];
 
-pub unsafe fn format_table_compare(
-    key: *const u8,
-    entry: *const format_table_entry,
-) -> std::cmp::Ordering {
-    unsafe { strcmp_(key, (*entry).key) }
+fn format_table_compare(key: &str, entry: &format_table_entry) -> std::cmp::Ordering {
+    key.cmp(entry.key)
 }
 
-pub unsafe fn format_table_get(key: *const u8) -> Option<&'static format_table_entry> {
-    unsafe {
-        match FORMAT_TABLE.binary_search_by(|e| format_table_compare(key, e).reverse()) {
-            Ok(idx) => Some(&FORMAT_TABLE[idx]),
-            Err(_) => None,
-        }
+pub fn format_table_get(key: Option<&str>) -> Option<&'static format_table_entry> {
+    let key = key?;
+    match FORMAT_TABLE.binary_search_by(|e| format_table_compare(key, e).reverse()) {
+        Ok(idx) => Some(&FORMAT_TABLE[idx]),
+        Err(_) => None,
     }
 }
 
@@ -3293,7 +3557,7 @@ pub unsafe fn format_add_tv(ft: *mut format_tree, key: *const u8, tv: *const tim
         let fe = Box::leak(Box::new(format_entry {
             key: xstrdup(key).as_ptr(),
             value: null_mut(),
-            time: (*tv).tv_sec,
+            time: (*tv).tv_sec as _,
             cb: None,
             entry: zeroed(),
         })) as *mut format_entry;
@@ -3422,14 +3686,14 @@ pub unsafe fn format_pretty_time(t: time_t, seconds: i32) -> *mut u8 {
 /// Find a format entry.
 fn format_find(
     ft: *mut format_tree,
-    key: *const u8,
+    key: Option<&str>,
     modifiers: format_modifiers,
     time_format: *const u8,
 ) -> *mut u8 {
     unsafe {
         let mut s = MaybeUninit::<[u8; 512]>::uninit();
         let s = s.as_mut_ptr() as *mut u8;
-        let mut fe_find = MaybeUninit::<format_entry>::uninit();
+        let Some(key) = key else { return null_mut() };
 
         const SIZEOF_S: usize = 512;
         let mut t: time_t = 0;
@@ -3437,30 +3701,30 @@ fn format_find(
         let mut found = null_mut();
 
         'found: {
-            let mut o = options_parse_get(GLOBAL_OPTIONS, cstr_to_str(key), &raw mut idx, 0);
+            let mut o = options_parse_get(GLOBAL_OPTIONS, key, &raw mut idx, 0);
             if o.is_null() && !(*ft).wp.is_null() {
-                o = options_parse_get((*(*ft).wp).options, cstr_to_str(key), &raw mut idx, 0);
+                o = options_parse_get((*(*ft).wp).options, key, &raw mut idx, 0);
             }
             if o.is_null() && !(*ft).w.is_null() {
-                o = options_parse_get((*(*ft).w).options, cstr_to_str(key), &raw mut idx, 0);
+                o = options_parse_get((*(*ft).w).options, key, &raw mut idx, 0);
             }
             if o.is_null() {
-                o = options_parse_get(GLOBAL_W_OPTIONS, cstr_to_str(key), &raw mut idx, 0);
+                o = options_parse_get(GLOBAL_W_OPTIONS, key, &raw mut idx, 0);
             }
             if o.is_null() && !(*ft).s.is_null() {
-                o = options_parse_get((*(*ft).s).options, cstr_to_str(key), &raw mut idx, 0);
+                o = options_parse_get((*(*ft).s).options, key, &raw mut idx, 0);
             }
             if o.is_null() {
-                o = options_parse_get(GLOBAL_S_OPTIONS, cstr_to_str(key), &raw mut idx, 0);
+                o = options_parse_get(GLOBAL_S_OPTIONS, key, &raw mut idx, 0);
             }
             if !o.is_null() {
                 found = options_to_string(o, idx, 1);
                 break 'found;
             }
 
-            if let Some(fte) = format_table_get(key) {
+            if let Some(fte) = format_table_get(Some(key)) {
                 match (fte.cb)(ft) {
-                    format_table_type::Time(tv) => t = tv.tv_sec,
+                    format_table_type::Time(tv) => t = tv.tv_sec as _,
                     format_table_type::String(string) => {
                         found = CString::new(string.into_owned()).unwrap().into_raw().cast();
                     }
@@ -3469,8 +3733,9 @@ fn format_find(
                 break 'found;
             }
 
-            (*fe_find.as_mut_ptr()).key = key.cast_mut(); // TODO: check if this is correct casting away const
-            let fe = rb_find(&raw mut (*ft).tree, fe_find.as_mut_ptr());
+            let fe = rb_find_by(&raw mut (*ft).tree, |fe: &format_entry| {
+                strcmp_(fe.key, key).reverse()
+            });
             if !fe.is_null() {
                 if (*fe).time != 0 {
                     t = (*fe).time;
@@ -3494,10 +3759,10 @@ fn format_find(
             if !modifiers.intersects(format_modifiers::FORMAT_TIMESTRING) {
                 let mut envent = null_mut();
                 if !(*ft).s.is_null() {
-                    envent = environ_find((*(*ft).s).environ, key);
+                    envent = environ_find_((*(*ft).s).environ, key);
                 }
                 if envent.is_null() {
-                    envent = environ_find(GLOBAL_ENVIRON, key);
+                    envent = environ_find_(GLOBAL_ENVIRON, key);
                 }
                 if !envent.is_null() && (*envent).value.is_some() {
                     found = xstrdup((*envent).value.unwrap().as_ptr()).as_ptr();
@@ -3578,6 +3843,7 @@ pub unsafe fn format_unescape(mut s: *const u8) -> *mut u8 {
                 s = s.add(1);
                 *cp = *s;
                 cp = cp.add(1);
+                s = s.add(1);
                 continue;
             }
             if *s == b'}' {
@@ -3585,6 +3851,7 @@ pub unsafe fn format_unescape(mut s: *const u8) -> *mut u8 {
             }
             *cp = *s;
             cp = cp.add(1);
+            s = s.add(1);
         }
         *cp = b'\0';
         out
@@ -3681,8 +3948,8 @@ pub unsafe fn format_choose(
 }
 
 /// Is this true?
-pub unsafe fn format_true(s: *const u8) -> bool {
-    unsafe { !s.is_null() && *s != b'\0' && (*s != b'0' || *s.add(1) != b'\0') }
+pub fn format_true(s: Option<&str>) -> bool {
+    s.is_some_and(|v| !v.is_empty() && v != "0")
 }
 
 /// Check if modifier end.
@@ -3758,7 +4025,7 @@ pub unsafe fn format_build_modifiers(
             }
 
             // Check single character modifiers with no arguments.
-            if !strchr(c!("labcdnwETSWPL<>"), *cp as i32).is_null() && format_is_end(*cp.add(1)) {
+            if !strchr(c!("labcdnwETSWPL!<>"), *cp as i32).is_null() && format_is_end(*cp.add(1)) {
                 format_add_modifier(&raw mut list, count, cp, 1, null_mut(), 0);
                 cp = cp.add(1);
                 continue;
@@ -3767,6 +4034,7 @@ pub unsafe fn format_build_modifiers(
             // Then try double character with no arguments.
             if (memcmp(c!("||").cast(), cp.cast(), 2) == 0
                 || memcmp(c!("&&").cast(), cp.cast(), 2) == 0
+                || memcmp(c!("!!").cast(), cp.cast(), 2) == 0
                 || memcmp(c!("!=").cast(), cp.cast(), 2) == 0
                 || memcmp(c!("==").cast(), cp.cast(), 2) == 0
                 || memcmp(c!("<=").cast(), cp.cast(), 2) == 0
@@ -3779,7 +4047,7 @@ pub unsafe fn format_build_modifiers(
             }
 
             // Now try single character with arguments.
-            if strchr(c!("mCNst=peq"), *cp as i32).is_null() {
+            if strchr(c!("mCLNPSst=pReqW"), *cp as i32).is_null() {
                 break;
             }
             let mut c = *cp;
@@ -3945,22 +4213,71 @@ pub unsafe fn format_session_name(es: *mut format_expand_state, fmt: *const u8) 
     }
 }
 
-pub unsafe fn format_loop_sessions(es: *mut format_expand_state, fmt: *const u8) -> *mut u8 {
+pub unsafe fn format_loop_sessions(
+    es: *mut format_expand_state,
+    fmt: *const u8,
+    sort_field: format_loop_sort_type,
+    sort_reversed: bool,
+) -> *mut u8 {
     unsafe {
         let ft = (*es).ft;
         let c = (*ft).client;
         let item = (*ft).item;
+        let mut all: *mut u8 = null_mut();
+        let mut active: *mut u8 = null_mut();
         let mut value: *mut u8 = xcalloc(1, 1).as_ptr().cast();
         let mut valuelen = 1;
 
-        for s in rb_foreach(&raw mut SESSIONS).map(NonNull::as_ptr) {
+        if format_choose(es, fmt, &raw mut all, &raw mut active, 0) != 0 {
+            all = xstrdup(fmt).as_ptr();
+            active = null_mut();
+        }
+
+        let mut l: Vec<*mut session> =
+            rb_foreach(&raw mut SESSIONS).map(NonNull::as_ptr).collect();
+
+        l.sort_by(|a, b| {
+            use std::cmp::Ordering;
+            let sa = *a;
+            let sb = *b;
+            let result = match sort_field {
+                format_loop_sort_type::Index => (*sa).id.cmp(&(*sb).id),
+                format_loop_sort_type::Time => {
+                    let ta = &(*sa).activity_time;
+                    let tb = &(*sb).activity_time;
+                    match (tb.tv_sec, tb.tv_usec).cmp(&(ta.tv_sec, ta.tv_usec)) {
+                        Ordering::Equal => (*sa).name.cmp(&(*sb).name),
+                        other => other,
+                    }
+                }
+                format_loop_sort_type::Name => (*sa).name.cmp(&(*sb).name),
+            };
+            if sort_reversed {
+                result.reverse()
+            } else {
+                result
+            }
+        });
+
+        let n = l.len();
+        for (i, &s) in l.iter().enumerate() {
             format_log1!(es, c!("format_loop_sessions"), "session loop: ${}", (*s).id,);
-            let nft = format_create(c, item, FORMAT_NONE, (*ft).flags);
+            let use_ = if !active.is_null() && !(*ft).c.is_null() && (*s).id == (*(*(*ft).c).session).id {
+                active
+            } else {
+                all
+            };
+            let last = if i == n - 1 {
+                format_flags::FORMAT_LAST
+            } else {
+                format_flags::empty()
+            };
+            let nft = format_create(c, item, FORMAT_NONE, (*ft).flags | last);
             format_defaults(nft, (*ft).c, NonNull::new(s), None, None);
             let mut next = zeroed();
             format_copy_state(&mut next, es, format_expand_flags::empty());
             next.ft = nft;
-            let expanded = format_expand1(&mut next, fmt);
+            let expanded = format_expand1(&mut next, use_);
             format_free(next.ft);
 
             valuelen += strlen(expanded);
@@ -3969,6 +4286,8 @@ pub unsafe fn format_loop_sessions(es: *mut format_expand_state, fmt: *const u8)
             free_(expanded);
         }
 
+        free_(active);
+        free_(all);
         value
     }
 }
@@ -3993,7 +4312,12 @@ pub unsafe fn format_window_name(es: *mut format_expand_state, fmt: *const u8) -
     }
 }
 
-pub unsafe fn format_loop_windows(es: *mut format_expand_state, fmt: *const u8) -> *mut u8 {
+pub unsafe fn format_loop_windows(
+    es: *mut format_expand_state,
+    fmt: *const u8,
+    sort_field: format_loop_sort_type,
+    sort_reversed: bool,
+) -> *mut u8 {
     unsafe {
         let ft = (*es).ft;
         let c = (*ft).client;
@@ -4013,7 +4337,39 @@ pub unsafe fn format_loop_windows(es: *mut format_expand_state, fmt: *const u8) 
             active = null_mut();
         }
 
-        for wl in rb_foreach(&raw mut (*(*ft).s).windows).map(NonNull::as_ptr) {
+        let mut l: Vec<*mut winlink> = rb_foreach(&raw mut (*(*ft).s).windows)
+            .map(NonNull::as_ptr)
+            .collect();
+
+        if sort_field != format_loop_sort_type::Index {
+            l.sort_by(|a, b| {
+                use std::cmp::Ordering;
+                let wa = (*(*a)).window;
+                let wb = (*(*b)).window;
+                let result = match sort_field {
+                    format_loop_sort_type::Index => unreachable!(),
+                    format_loop_sort_type::Time => {
+                        let ta = &(*wa).activity_time;
+                        let tb = &(*wb).activity_time;
+                        match (tb.tv_sec, tb.tv_usec).cmp(&(ta.tv_sec, ta.tv_usec)) {
+                            Ordering::Equal => strcmp((*wa).name, (*wb).name).cmp(&0),
+                            other => other,
+                        }
+                    }
+                    format_loop_sort_type::Name => strcmp((*wa).name, (*wb).name).cmp(&0),
+                };
+                if sort_reversed {
+                    result.reverse()
+                } else {
+                    result
+                }
+            });
+        } else if sort_reversed {
+            l.reverse();
+        }
+
+        let n = l.len();
+        for (i, &wl) in l.iter().enumerate() {
             let w = (*wl).window;
             format_log1!(
                 es,
@@ -4028,7 +4384,17 @@ pub unsafe fn format_loop_windows(es: *mut format_expand_state, fmt: *const u8) 
                 all
             };
 
-            let nft = format_create(c, item, FORMAT_WINDOW as i32 | (*w).id as i32, (*ft).flags);
+            let last = if i == n - 1 {
+                format_flags::FORMAT_LAST
+            } else {
+                format_flags::empty()
+            };
+            let nft = format_create(
+                c,
+                item,
+                FORMAT_WINDOW as i32 | (*w).id as i32,
+                (*ft).flags | last,
+            );
             format_defaults(nft, (*ft).c, NonNull::new((*ft).s), NonNull::new(wl), None);
             let mut next = zeroed();
             format_copy_state(&raw mut next, es, format_expand_flags::empty());
@@ -4049,7 +4415,11 @@ pub unsafe fn format_loop_windows(es: *mut format_expand_state, fmt: *const u8) 
 }
 
 /// Loop over panes.
-pub unsafe fn format_loop_panes(es: *mut format_expand_state, fmt: *const u8) -> *mut u8 {
+pub unsafe fn format_loop_panes(
+    es: *mut format_expand_state,
+    fmt: *const u8,
+    sort_reversed: bool,
+) -> *mut u8 {
     unsafe {
         let ft = (*es).ft;
         let c = (*ft).client;
@@ -4067,19 +4437,44 @@ pub unsafe fn format_loop_panes(es: *mut format_expand_state, fmt: *const u8) ->
             active = null_mut();
         }
 
+        let mut l: Vec<*mut window_pane> =
+            tailq_foreach::<_, discr_entry>(&raw mut (*(*ft).w).panes)
+                .map(NonNull::as_ptr)
+                .collect();
+
+        l.sort_by(|a, b| {
+            let result = (*(*a)).id.cmp(&(*(*b)).id);
+            if sort_reversed {
+                result.reverse()
+            } else {
+                result
+            }
+        });
+
         let mut value: *mut u8 = xcalloc(1, 1).as_ptr().cast();
         let mut valuelen = 1;
+        let n = l.len();
 
         let mut next = MaybeUninit::<format_expand_state>::uninit();
         let next = next.as_mut_ptr();
-        for wp in tailq_foreach::<_, discr_entry>(&raw mut (*(*ft).w).panes).map(NonNull::as_ptr) {
+        for (i, &wp) in l.iter().enumerate() {
             format_log1!(es, c!("format_loop_panes"), "pane loop: %{}", (*wp).id,);
             let use_ = if !active.is_null() && wp == (*(*ft).w).active {
                 active
             } else {
                 all
             };
-            let nft = format_create(c, item, FORMAT_PANE as i32 | (*wp).id as i32, (*ft).flags);
+            let last = if i == n - 1 {
+                format_flags::FORMAT_LAST
+            } else {
+                format_flags::empty()
+            };
+            let nft = format_create(
+                c,
+                item,
+                FORMAT_PANE as i32 | (*wp).id as i32,
+                (*ft).flags | last,
+            );
             format_defaults(
                 nft,
                 (*ft).c,
@@ -4094,7 +4489,6 @@ pub unsafe fn format_loop_panes(es: *mut format_expand_state, fmt: *const u8) ->
 
             valuelen += strlen(expanded);
             value = xrealloc(value.cast(), valuelen).as_ptr().cast();
-
             strlcat(value, expanded, valuelen);
             free_(expanded);
         }
@@ -4107,7 +4501,12 @@ pub unsafe fn format_loop_panes(es: *mut format_expand_state, fmt: *const u8) ->
 }
 
 /// Loop over clients.
-pub unsafe fn format_loop_clients(es: *mut format_expand_state, fmt: *const u8) -> *mut u8 {
+pub unsafe fn format_loop_clients(
+    es: *mut format_expand_state,
+    fmt: *const u8,
+    sort_field: format_loop_sort_type,
+    sort_reversed: bool,
+) -> *mut u8 {
     unsafe {
         let ft = (*es).ft;
         let item = (*ft).item;
@@ -4117,14 +4516,50 @@ pub unsafe fn format_loop_clients(es: *mut format_expand_state, fmt: *const u8) 
         let mut value = xcalloc(1, 1).as_ptr();
         let mut valuelen = 1;
 
-        for c in tailq_foreach(&raw mut CLIENTS).map(NonNull::as_ptr) {
+        let mut l: Vec<*mut client> =
+            tailq_foreach(&raw mut CLIENTS).map(NonNull::as_ptr).collect();
+
+        if sort_field != format_loop_sort_type::Index {
+            l.sort_by(|a, b| {
+                use std::cmp::Ordering;
+                let ca = *a;
+                let cb = *b;
+                let result = match sort_field {
+                    format_loop_sort_type::Index => Ordering::Equal,
+                    format_loop_sort_type::Time => {
+                        let ta = &(*ca).activity_time;
+                        let tb = &(*cb).activity_time;
+                        match (tb.tv_sec, tb.tv_usec).cmp(&(ta.tv_sec, ta.tv_usec)) {
+                            Ordering::Equal => strcmp((*ca).name, (*cb).name).cmp(&0),
+                            other => other,
+                        }
+                    }
+                    format_loop_sort_type::Name => strcmp((*ca).name, (*cb).name).cmp(&0),
+                };
+                if sort_reversed {
+                    result.reverse()
+                } else {
+                    result
+                }
+            });
+        } else if sort_reversed {
+            l.reverse();
+        }
+
+        let n = l.len();
+        for (i, &c) in l.iter().enumerate() {
             format_log1!(
                 es,
                 c!("format_loop_clients"),
                 "client loop: {}",
                 _s((*c).name),
             );
-            let nft = format_create(c, item, 0, (*ft).flags);
+            let last = if i == n - 1 {
+                format_flags::FORMAT_LAST
+            } else {
+                format_flags::empty()
+            };
+            let nft = format_create(c, item, 0, (*ft).flags | last);
             format_defaults(
                 nft,
                 c,
@@ -4328,6 +4763,64 @@ pub unsafe fn format_replace_expression(
     }
 }
 
+/// Handle unary boolean operators, "!" and "!!".
+unsafe fn format_bool_op_1(
+    es: *mut format_expand_state,
+    fmt: *const u8,
+    not: bool,
+) -> *mut u8 {
+    unsafe {
+        let expanded = format_expand1(es, fmt);
+        let mut result = format_true(cstr_to_str_(expanded));
+        if not {
+            result = !result;
+        }
+        free_(expanded);
+        xstrdup(if result { c!("1") } else { c!("0") })
+            .as_ptr()
+    }
+}
+
+/// Handle n-ary boolean operators, "&&" and "||".
+unsafe fn format_bool_op_n(
+    es: *mut format_expand_state,
+    fmt: *const u8,
+    and: bool,
+) -> *mut u8 {
+    unsafe {
+        let mut result = and;
+        let mut cp1 = fmt;
+
+        while if and { result } else { !result } {
+            let cp2 = format_skip(cp1, c!(","));
+
+            let raw = if cp2.is_null() {
+                xstrdup(cp1).as_ptr()
+            } else {
+                xstrndup(cp1, cp2.offset_from(cp1) as usize).as_ptr()
+            };
+            let expanded = format_expand1(es, raw);
+            free_(raw);
+
+            if and {
+                result = result && format_true(cstr_to_str_(expanded));
+            } else {
+                result = result || format_true(cstr_to_str_(expanded));
+            }
+            free_(expanded);
+
+            if cp2.is_null() {
+                break;
+            } else {
+                cp1 = cp2.add(1);
+            }
+        }
+
+        xstrdup(if result { c!("1") } else { c!("0") })
+            .as_ptr()
+    }
+}
+
 /// Replace a key.
 pub unsafe fn format_replace(
     es: *mut format_expand_state,
@@ -4343,13 +4836,13 @@ pub unsafe fn format_replace(
         let ft = (*es).ft;
         let wp = (*ft).wp;
         let mut copy: *const u8;
-        let cp: *const u8;
+        let mut cp: *const u8;
         let mut marker: *const u8 = null();
 
-        let mut time_format: *const u8 = null();
+        let mut time_format: *mut u8 = null_mut();
 
         let copy0: *mut u8;
-        let condition: *mut u8;
+        let mut condition: *mut u8;
         let mut found: *mut u8;
         let mut new: *mut u8;
         let mut value: *mut u8 = null_mut();
@@ -4366,6 +4859,7 @@ pub unsafe fn format_replace(
 
         let list: *mut format_modifier;
         let mut cmp: *mut format_modifier = null_mut();
+        let mut bool_op_n: *mut format_modifier = null_mut();
         let mut search: *mut format_modifier = null_mut();
 
         let mut sub: *mut *mut format_modifier = null_mut();
@@ -4374,6 +4868,8 @@ pub unsafe fn format_replace(
         // let mut i = 0u32;
         let mut count = 0u32;
         let mut nsub = 0u32;
+        let mut sort_field = format_loop_sort_type::Index;
+        let mut sort_reversed = false;
 
         let mut next = MaybeUninit::<format_expand_state>::uninit();
         let next = next.as_mut_ptr();
@@ -4480,21 +4976,90 @@ pub unsafe fn format_replace(
                                     modifiers |= format_modifiers::FORMAT_SESSION_NAME;
                                 }
                             }
-                            b'S' => modifiers |= format_modifiers::FORMAT_SESSIONS,
-                            b'W' => modifiers |= format_modifiers::FORMAT_WINDOWS,
-                            b'P' => modifiers |= format_modifiers::FORMAT_PANES,
-                            b'L' => modifiers |= format_modifiers::FORMAT_CLIENTS,
+                            b'S' => {
+                                modifiers |= format_modifiers::FORMAT_SESSIONS;
+                                if (*fm).argc < 1 {
+                                    sort_field = format_loop_sort_type::Index;
+                                    sort_reversed = false;
+                                } else {
+                                    if !strchr(*(*fm).argv, b'i' as i32).is_null() {
+                                        sort_field = format_loop_sort_type::Index;
+                                    } else if !strchr(*(*fm).argv, b'n' as i32).is_null() {
+                                        sort_field = format_loop_sort_type::Name;
+                                    } else if !strchr(*(*fm).argv, b't' as i32).is_null() {
+                                        sort_field = format_loop_sort_type::Time;
+                                    } else {
+                                        sort_field = format_loop_sort_type::Index;
+                                    }
+                                    sort_reversed =
+                                        !strchr(*(*fm).argv, b'r' as i32).is_null();
+                                }
+                            }
+                            b'W' => {
+                                modifiers |= format_modifiers::FORMAT_WINDOWS;
+                                if (*fm).argc < 1 {
+                                    sort_field = format_loop_sort_type::Index;
+                                    sort_reversed = false;
+                                } else {
+                                    if !strchr(*(*fm).argv, b'i' as i32).is_null() {
+                                        sort_field = format_loop_sort_type::Index;
+                                    } else if !strchr(*(*fm).argv, b'n' as i32).is_null() {
+                                        sort_field = format_loop_sort_type::Name;
+                                    } else if !strchr(*(*fm).argv, b't' as i32).is_null() {
+                                        sort_field = format_loop_sort_type::Time;
+                                    } else {
+                                        sort_field = format_loop_sort_type::Index;
+                                    }
+                                    sort_reversed =
+                                        !strchr(*(*fm).argv, b'r' as i32).is_null();
+                                }
+                            }
+                            b'P' => {
+                                modifiers |= format_modifiers::FORMAT_PANES;
+                                if (*fm).argc < 1 {
+                                    sort_reversed = false;
+                                } else {
+                                    sort_reversed =
+                                        !strchr(*(*fm).argv, b'r' as i32).is_null();
+                                }
+                            }
+                            b'!' => modifiers |= format_modifiers::FORMAT_NOT,
+                            b'L' => {
+                                modifiers |= format_modifiers::FORMAT_CLIENTS;
+                                if (*fm).argc < 1 {
+                                    sort_field = format_loop_sort_type::Index;
+                                    sort_reversed = false;
+                                } else {
+                                    if !strchr(*(*fm).argv, b'i' as i32).is_null() {
+                                        sort_field = format_loop_sort_type::Index;
+                                    } else if !strchr(*(*fm).argv, b'n' as i32).is_null() {
+                                        sort_field = format_loop_sort_type::Name;
+                                    } else if !strchr(*(*fm).argv, b't' as i32).is_null() {
+                                        sort_field = format_loop_sort_type::Time;
+                                    } else {
+                                        sort_field = format_loop_sort_type::Index;
+                                    }
+                                    sort_reversed =
+                                        !strchr(*(*fm).argv, b'r' as i32).is_null();
+                                }
+                            }
+                            b'R' => modifiers |= format_modifiers::FORMAT_REPEAT,
                             _ => (),
                         }
-                    } else if (*fm).size == 2
-                        && (streq_((*fm).modifier.as_ptr(), "||")
+                    } else if (*fm).size == 2 {
+                        if streq_((*fm).modifier.as_ptr(), "||")
                             || streq_((*fm).modifier.as_ptr(), "&&")
-                            || streq_((*fm).modifier.as_ptr(), "==")
+                        {
+                            bool_op_n = fm;
+                        } else if streq_((*fm).modifier.as_ptr(), "!!") {
+                            modifiers |= format_modifiers::FORMAT_NOT_NOT;
+                        } else if streq_((*fm).modifier.as_ptr(), "==")
                             || streq_((*fm).modifier.as_ptr(), "!=")
                             || streq_((*fm).modifier.as_ptr(), ">=")
-                            || streq_((*fm).modifier.as_ptr(), "<="))
-                    {
-                        cmp = fm;
+                            || streq_((*fm).modifier.as_ptr(), "<=")
+                        {
+                            cmp = fm;
+                        }
                     }
                 }
 
@@ -4535,22 +5100,25 @@ pub unsafe fn format_replace(
 
                 // Is this a loop, comparison or condition?
                 if modifiers.intersects(format_modifiers::FORMAT_SESSIONS) {
-                    value = format_loop_sessions(es, copy);
+                    value =
+                        format_loop_sessions(es, copy, sort_field, sort_reversed);
                     if value.is_null() {
                         break 'fail;
                     }
                 } else if modifiers.intersects(format_modifiers::FORMAT_WINDOWS) {
-                    value = format_loop_windows(es, copy);
+                    value =
+                        format_loop_windows(es, copy, sort_field, sort_reversed);
                     if value.is_null() {
                         break 'fail;
                     }
                 } else if modifiers.intersects(format_modifiers::FORMAT_PANES) {
-                    value = format_loop_panes(es, copy);
+                    value = format_loop_panes(es, copy, sort_reversed);
                     if value.is_null() {
                         break 'fail;
                     }
                 } else if modifiers.intersects(format_modifiers::FORMAT_CLIENTS) {
-                    value = format_loop_clients(es, copy);
+                    value =
+                        format_loop_clients(es, copy, sort_field, sort_reversed);
                     if value.is_null() {
                         break 'fail;
                     }
@@ -4575,6 +5143,38 @@ pub unsafe fn format_replace(
                         value = format_search(search, wp, new);
                     }
                     free_(new);
+                } else if modifiers.intersects(format_modifiers::FORMAT_REPEAT) {
+                    // Repeat multiple times.
+                    if format_choose(es, copy, &raw mut left, &raw mut right, 1) != 0 {
+                        format_log1!(es, __func__, "repeat syntax error: {}", _s(copy));
+                        break 'fail;
+                    }
+                    match strtonum::<i32>(right, 1, 10000) {
+                        Err(_) => {
+                            value = xstrdup(c!("")).as_ptr();
+                        }
+                        Ok(nrep) => {
+                            value = xstrdup(c!("")).as_ptr();
+                            for _i in 0..nrep {
+                                new = format_nul!("{}{}", _s(value), _s(left));
+                                free_(value);
+                                value = new;
+                            }
+                        }
+                    }
+                    free_(right);
+                    free_(left);
+                } else if modifiers.intersects(format_modifiers::FORMAT_NOT) {
+                    value = format_bool_op_1(es, copy, true);
+                } else if modifiers.intersects(format_modifiers::FORMAT_NOT_NOT) {
+                    value = format_bool_op_1(es, copy, false);
+                } else if !bool_op_n.is_null() {
+                    // N-ary boolean operator.
+                    if streq_((*bool_op_n).modifier.as_ptr(), "||") {
+                        value = format_bool_op_n(es, copy, false);
+                    } else if streq_((*bool_op_n).modifier.as_ptr(), "&&") {
+                        value = format_bool_op_n(es, copy, true);
+                    }
                 } else if !cmp.is_null() {
                     // Comparison of left and right.
                     if format_choose(es, copy, &raw mut left, &raw mut right, 1) != 0 {
@@ -4602,19 +5202,7 @@ pub unsafe fn format_replace(
                         _s(right),
                     );
 
-                    if streq_((*cmp).modifier.as_ptr(), "||") {
-                        if format_true(left) || format_true(right) {
-                            value = xstrdup(c!("1")).as_ptr();
-                        } else {
-                            value = xstrdup(c!("0")).as_ptr();
-                        }
-                    } else if streq_((*cmp).modifier.as_ptr(), "&&") {
-                        if format_true(left) && format_true(right) {
-                            value = xstrdup(c!("1")).as_ptr();
-                        } else {
-                            value = xstrdup(c!("0")).as_ptr();
-                        }
-                    } else if streq_((*cmp).modifier.as_ptr(), "==") {
+                    if streq_((*cmp).modifier.as_ptr(), "==") {
                         if strcmp(left, right) == 0 {
                             value = xstrdup(c!("1")).as_ptr();
                         } else {
@@ -4657,65 +5245,98 @@ pub unsafe fn format_replace(
                     free_(right);
                     free_(left);
                 } else if *copy == b'?' {
-                    // Conditional: check first and choose second or third.
-                    cp = format_skip(copy.add(1), c!(","));
-                    if cp.is_null() {
-                        format_log1!(es, __func__, "condition syntax error: {}", _s(copy.add(1)),);
-                        break 'fail;
-                    }
-                    condition =
-                        xstrndup(copy.add(1), cp.offset_from(copy.add(1)) as usize).as_ptr();
-                    format_log1!(es, __func__, "condition is: {}", _s(condition));
-
-                    found = format_find(ft, condition, modifiers, time_format);
-                    if found.is_null() {
-                        // If the condition not found, try to expand it. If
-                        // the expansion doesn't have any effect, then assume
-                        // false.
-                        found = format_expand1(es, condition);
-                        if strcmp(found, condition) == 0 {
-                            free_(found);
-                            found = xstrdup(c!("")).as_ptr();
+                    // Conditional: For each pair of (condition, value), check
+                    // the condition and return the value if true. If no
+                    // condition matches, return the last unpaired arg if there
+                    // is one, or the empty string if not.
+                    cp = copy.add(1);
+                    loop {
+                        let cp2 = format_skip(cp, c!(","));
+                        if cp2.is_null() {
                             format_log1!(
                                 es,
                                 __func__,
-                                "condition '{}' not found; assuming false",
+                                "no condition matched in '{}'; using last arg",
+                                _s(copy.add(1)),
+                            );
+                            value = format_expand1(es, cp);
+                            break;
+                        }
+
+                        condition =
+                            xstrndup(cp, cp2.offset_from(cp) as usize).as_ptr();
+                        format_log1!(es, __func__, "condition is: {}", _s(condition));
+
+                        found = format_find(ft, cstr_to_str_(condition), modifiers, time_format);
+                        if found.is_null() {
+                            // If the condition not found, try to expand it. If
+                            // the expansion doesn't have any effect, then assume
+                            // false.
+                            found = format_expand1(es, condition);
+                            if strcmp(found, condition) == 0 {
+                                free_(found);
+                                found = xstrdup(c!("")).as_ptr();
+                                format_log1!(
+                                    es,
+                                    __func__,
+                                    "condition '{}' not found; assuming false",
+                                    _s(condition),
+                                );
+                            }
+                        } else {
+                            format_log1!(
+                                es,
+                                __func__,
+                                "condition '{}' found: {}",
+                                _s(condition),
+                                _s(found),
+                            );
+                        }
+
+                        cp = cp2.add(1);
+                        let cp2 = format_skip(cp, c!(","));
+                        if format_true(cstr_to_str_(found)) {
+                            format_log1!(
+                                es,
+                                __func__,
+                                "condition '{}' is true",
+                                _s(condition),
+                            );
+                            if cp2.is_null() {
+                                value = format_expand1(es, cp);
+                            } else {
+                                right = xstrndup(cp, cp2.offset_from(cp) as usize).as_ptr();
+                                value = format_expand1(es, right);
+                                free_(right);
+                            }
+                            free_(condition);
+                            free_(found);
+                            break;
+                        } else {
+                            format_log1!(
+                                es,
+                                __func__,
+                                "condition '{}' is false",
                                 _s(condition),
                             );
                         }
-                    } else {
-                        format_log1!(
-                            es,
-                            __func__,
-                            "condition '{}' found: {}",
-                            _s(condition),
-                            _s(found),
-                        );
-                    }
 
-                    if format_choose(es, cp.add(1), &raw mut left, &raw mut right, 0) != 0 {
-                        format_log1!(
-                            es,
-                            __func__,
-                            "condition '{}' syntax error: {}",
-                            _s(condition),
-                            _s(cp.add(1)),
-                        );
+                        free_(condition);
                         free_(found);
-                        break 'fail;
-                    }
-                    if format_true(found) {
-                        format_log1!(es, __func__, "condition '{}' is true", _s(condition));
-                        value = format_expand1(es, left);
-                    } else {
-                        format_log1!(es, __func__, "condition '{}' is false", _s(condition));
-                        value = format_expand1(es, right);
-                    }
-                    free_(right);
-                    free_(left);
 
-                    free_(condition);
-                    free_(found);
+                        if cp2.is_null() {
+                            format_log1!(
+                                es,
+                                __func__,
+                                "no condition matched in '{}'; using empty string",
+                                _s(copy.add(1)),
+                            );
+                            value = xstrdup(c!("")).as_ptr();
+                            break;
+                        }
+
+                        cp = cp2.add(1);
+                    }
                 } else if !mexp.is_null() {
                     value = format_replace_expression(mexp, es, copy);
                     if value.is_null() {
@@ -4725,7 +5346,7 @@ pub unsafe fn format_replace(
                     format_log1!(es, __func__, "expanding inner format '{}'", _s(copy));
                     value = format_expand1(es, copy);
                 } else {
-                    value = format_find(ft, copy, modifiers, time_format);
+                    value = format_find(ft, cstr_to_str_(copy), modifiers, time_format);
                     if value.is_null() {
                         format_log1!(es, __func__, "format '{}' not found", _s(copy));
                         value = xstrdup(c!("")).as_ptr();
@@ -4862,6 +5483,7 @@ pub unsafe fn format_replace(
             free_(sub);
             format_free_modifiers(list, count);
             free_(copy0);
+            free_(time_format);
             return 0;
         }
 
@@ -4871,6 +5493,7 @@ pub unsafe fn format_replace(
         free_(sub);
         format_free_modifiers(list, count);
         free_(copy0);
+        free_(time_format);
         -1
     }
 }
@@ -5346,6 +5969,18 @@ pub unsafe fn format_defaults_paste_buffer(ft: *mut format_tree, pb: *mut paste_
 }
 
 /// Return word at given coordinates. Caller frees.
+unsafe fn format_is_word_separator(ws: *const u8, gc: *const grid_cell) -> bool {
+    unsafe {
+        if utf8_cstrhas(ws, &raw const (*gc).data) {
+            return true;
+        }
+        if (*gc).flags.intersects(grid_flag::TAB) {
+            return true;
+        }
+        (*gc).data.size == 1 && (*gc).data.data[0] == b' '
+    }
+}
+
 pub unsafe fn format_grid_word(gd: *mut grid, mut x: u32, mut y: u32) -> String {
     unsafe {
         let mut ud: Vec<utf8_data> = Vec::new();
@@ -5357,11 +5992,8 @@ pub unsafe fn format_grid_word(gd: *mut grid, mut x: u32, mut y: u32) -> String 
 
         loop {
             grid_get_cell(gd, x, y, gc);
-            if (*gc).flags.intersects(grid_flag::PADDING) {
-                break;
-            }
-            if utf8_cstrhas(ws, &raw const (*gc).data)
-                || ((*gc).data.size == 1 && (*gc).data.data[0] == b' ')
+            if !(*gc).flags.intersects(grid_flag::PADDING)
+                && format_is_word_separator(ws, gc)
             {
                 found = true;
                 break;
@@ -5404,11 +6036,9 @@ pub unsafe fn format_grid_word(gd: *mut grid, mut x: u32, mut y: u32) -> String 
 
             grid_get_cell(gd, x, y, gc);
             if (*gc).flags.intersects(grid_flag::PADDING) {
-                break;
+                continue;
             }
-            if utf8_cstrhas(ws, &raw mut (*gc).data)
-                || ((*gc).data.size == 1 && (*gc).data.data[0] == b' ')
-            {
+            if format_is_word_separator(ws, gc) {
                 break;
             }
 
@@ -5428,10 +6058,16 @@ pub unsafe fn format_grid_line(gd: *mut grid, y: u32) -> String {
         for x in 0..grid_line_length(gd, y) {
             grid_get_cell(gd, x, y, gc);
             if (*gc).flags.intersects(grid_flag::PADDING) {
-                break;
+                continue;
             }
 
-            ud.push((*gc).data);
+            if (*gc).flags.intersects(grid_flag::TAB) {
+                let mut tab_ud: utf8_data = zeroed();
+                utf8_set(&raw mut tab_ud, b'\t');
+                ud.push(tab_ud);
+            } else {
+                ud.push((*gc).data);
+            }
         }
         utf8_to_string(&ud)
     }
@@ -5440,7 +6076,7 @@ pub unsafe fn format_grid_line(gd: *mut grid, y: u32) -> String {
 /// Return hyperlink at given coordinates. Caller frees.
 pub unsafe fn format_grid_hyperlink(
     gd: *mut grid,
-    x: u32,
+    mut x: u32,
     y: u32,
     s: *mut screen,
 ) -> Option<String> {
@@ -5449,9 +6085,15 @@ pub unsafe fn format_grid_hyperlink(
         let mut gc = MaybeUninit::<grid_cell>::uninit();
         let gc = gc.as_mut_ptr();
 
-        grid_get_cell(gd, x, y, gc);
-        if (*gc).flags.intersects(grid_flag::PADDING) {
-            return None;
+        loop {
+            grid_get_cell(gd, x, y, gc);
+            if !(*gc).flags.intersects(grid_flag::PADDING) {
+                break;
+            }
+            if x == 0 {
+                return None;
+            }
+            x -= 1;
         }
         if (*s).hyperlinks.is_null() || (*gc).link == 0 {
             return None;
@@ -5466,5 +6108,252 @@ pub unsafe fn format_grid_hyperlink(
             return None;
         }
         Some(cstr_to_str(uri).to_string())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::ffi::CString;
+
+    fn cstr(s: &str) -> CString {
+        CString::new(s).unwrap()
+    }
+
+    unsafe fn to_string_free(p: *mut u8) -> String {
+        unsafe {
+            let s = cstr_to_str(p).to_string();
+            free_(p);
+            s
+        }
+    }
+
+    #[test]
+    fn test_format_quote_shell() {
+        let cases: &[(&str, &str)] = &[
+            ("hello", "hello"),
+            ("", ""),
+            ("echo foo | bar", "echo\\ foo\\ \\|\\ bar"),
+            ("a&b;c", "a\\&b\\;c"),
+            ("$HOME", "\\$HOME"),
+            ("it's", "it\\'s"),
+            ("a b", "a\\ b"),
+        ];
+        for &(input, expected) in cases {
+            let cs = cstr(input);
+            let result = unsafe { to_string_free(format_quote_shell(cs.as_ptr().cast())) };
+            assert_eq!(result, expected, "quote_shell({input:?})");
+        }
+    }
+
+    #[test]
+    fn test_format_quote_style() {
+        let cases: &[(&str, &str)] = &[
+            ("hello", "hello"),
+            ("", ""),
+            ("fg=#ff0000", "fg=##ff0000"),
+            ("##", "####"),
+            ("no hash here", "no hash here"),
+        ];
+        for &(input, expected) in cases {
+            let cs = cstr(input);
+            let result = unsafe { to_string_free(format_quote_style(cs.as_ptr().cast())) };
+            assert_eq!(result, expected, "quote_style({input:?})");
+        }
+    }
+
+    #[test]
+    fn test_format_unescape() {
+        let cases: &[(&str, &str)] = &[
+            ("", ""),
+            ("hello", "hello"),
+            ("#,", ","),
+            ("##", "#"),
+            ("#}", "}"),
+            ("#{#,}", "#{#,}"),  // inside brackets, escapes are preserved
+        ];
+        for &(input, expected) in cases {
+            let cs = cstr(input);
+            let result = unsafe { to_string_free(format_unescape(cs.as_ptr().cast())) };
+            assert_eq!(result, expected, "unescape({input:?})");
+        }
+    }
+
+    #[test]
+    fn test_format_strip() {
+        let cases: &[(&str, &str)] = &[
+            ("", ""),
+            ("hello", "hello"),
+            ("#,", ","),
+            ("##", ""),          // both #s stripped (strchr finds NUL)
+            ("#{#,}", "#{#,}"),  // inside brackets, escapes are kept
+        ];
+        for &(input, expected) in cases {
+            let cs = cstr(input);
+            let result = unsafe { to_string_free(format_strip(cs.as_ptr().cast())) };
+            assert_eq!(result, expected, "strip({input:?})");
+        }
+    }
+
+    #[test]
+    fn test_format_skip() {
+        // (input, end_chars, expected_offset_or_null)
+        let cases: &[(&str, &str, Option<usize>)] = &[
+            ("abc,xyz", ",", Some(3)),
+            ("#{a,b},xyz", ",", Some(6)),    // comma inside #{} skipped
+            ("abc", ",", None),              // no match
+            ("a#,b,c", ",", Some(4)),        // #, is escaped, real comma at 4
+            ("abc:def", ":", Some(3)),
+        ];
+        for &(input, end_chars, expected) in cases {
+            let cs = cstr(input);
+            let ec = cstr(end_chars);
+            let result = unsafe { format_skip(cs.as_ptr().cast(), ec.as_ptr().cast()) };
+            match expected {
+                None => assert!(result.is_null(), "skip({input:?}, {end_chars:?}) expected null"),
+                Some(off) => {
+                    assert!(!result.is_null(), "skip({input:?}, {end_chars:?}) expected non-null");
+                    let actual = unsafe { result.offset_from(cs.as_ptr().cast::<u8>()) } as usize;
+                    assert_eq!(actual, off, "skip({input:?}, {end_chars:?})");
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn test_format_match() {
+        unsafe {
+            // Helper to build a format_modifier with optional flags string
+            let run = |flags: &str, pattern: &str, text: &str| -> String {
+                let mut fm: format_modifier = zeroed();
+                let argv: *mut *mut u8;
+                let _cflags: CString;
+                if flags.is_empty() {
+                    fm.argc = 0;
+                    fm.argv = null_mut();
+                    argv = null_mut();
+                } else {
+                    _cflags = cstr(flags);
+                    argv = xmalloc(size_of::<*mut u8>()).as_ptr().cast();
+                    *argv = xstrdup(_cflags.as_ptr().cast()).as_ptr();
+                    fm.argc = 1;
+                    fm.argv = argv;
+                }
+                let p = cstr(pattern);
+                let t = cstr(text);
+                let result = to_string_free(format_match(&mut fm, p.as_ptr().cast(), t.as_ptr().cast()));
+                if !argv.is_null() {
+                    free_(*argv);
+                    free_(argv);
+                }
+                result
+            };
+
+            // Glob matching
+            assert_eq!(run("", "hello", "hello"), "1");
+            assert_eq!(run("", "hel*", "hello"), "1");
+            assert_eq!(run("", "xyz*", "hello"), "0");
+            assert_eq!(run("i", "HELLO", "hello"), "1");  // case-insensitive glob
+
+            // Regex matching
+            assert_eq!(run("r", "^hel+o$", "hello"), "1");
+            assert_eq!(run("r", "^xyz$", "hello"), "0");
+            assert_eq!(run("ri", "^HELLO$", "hello"), "1");  // case-insensitive regex
+            assert_eq!(run("r", "[invalid", "hello"), "0");  // invalid regex
+        }
+    }
+
+    #[test]
+    fn test_format_sub() {
+        unsafe {
+            let run = |flags: &str, text: &str, pattern: &str, with: &str| -> String {
+                let mut fm: format_modifier = zeroed();
+                if flags.is_empty() {
+                    fm.argc = 0;
+                    fm.argv = null_mut();
+                } else {
+                    // Need 3 argv entries for case-insensitive flag in argv[2]
+                    let argv: *mut *mut u8 =
+                        xmalloc(3 * size_of::<*mut u8>()).as_ptr().cast();
+                    let empty = cstr("");
+                    *argv = xstrdup(empty.as_ptr().cast()).as_ptr();
+                    *argv.add(1) = xstrdup(empty.as_ptr().cast()).as_ptr();
+                    let fl = cstr(flags);
+                    *argv.add(2) = xstrdup(fl.as_ptr().cast()).as_ptr();
+                    fm.argc = 3;
+                    fm.argv = argv;
+                }
+                let t = cstr(text);
+                let p = cstr(pattern);
+                let w = cstr(with);
+                let result = to_string_free(format_sub(
+                    &mut fm, t.as_ptr().cast(), p.as_ptr().cast(), w.as_ptr().cast(),
+                ));
+                if !fm.argv.is_null() {
+                    for i in 0..fm.argc as usize {
+                        free_(*fm.argv.add(i));
+                    }
+                    free_(fm.argv);
+                }
+                result
+            };
+
+            assert_eq!(run("", "hello world", "world", "rust"), "hello rust");
+            assert_eq!(run("", "hello", "xyz", "abc"), "hello");  // no match
+            assert_eq!(run("i", "Hello World", "hello", "goodbye"), "goodbye World");
+        }
+    }
+
+    #[test]
+    fn test_format_pretty_time() {
+        unsafe {
+            let now = libc::time(null_mut());
+
+            // Recent (< 24h): HH:MM
+            let r = to_string_free(format_pretty_time(now - 30, 0));
+            assert_eq!(r.len(), 5, "expected HH:MM, got '{r}'");
+            assert_eq!(r.as_bytes()[2], b':');
+
+            // Recent with seconds: HH:MM:SS
+            let r = to_string_free(format_pretty_time(now - 30, 1));
+            assert_eq!(r.len(), 8, "expected HH:MM:SS, got '{r}'");
+
+            // 3 days ago: DayDD (e.g. "Mon10")
+            let r = to_string_free(format_pretty_time(now - 3 * 24 * 3600, 0));
+            assert_eq!(r.len(), 5, "expected DayDD, got '{r}'");
+
+            // 60 days ago: DDMon
+            let r = to_string_free(format_pretty_time(now - 60 * 24 * 3600, 0));
+            assert_eq!(r.len(), 5, "expected DDMon, got '{r}'");
+
+            // 400 days ago: MonYY
+            let r = to_string_free(format_pretty_time(now - 400 * 24 * 3600, 0));
+            assert_eq!(r.len(), 5, "expected MonYY, got '{r}'");
+
+            // Future time: clamped to now (age=0, < 24h path)
+            let r = to_string_free(format_pretty_time(now + 1000, 0));
+            assert_eq!(r.len(), 5, "expected HH:MM for future, got '{r}'");
+        }
+    }
+
+    #[test]
+    fn test_format_true() {
+        let cases: &[(&str, bool)] = &[
+            ("", false),
+            ("0", false),
+            ("1", true),
+            ("5", true),
+            ("hello", true),
+            ("0x", true),  // "0" followed by non-NUL is true
+        ];
+        for &(input, expected) in cases {
+            assert_eq!(
+                format_true(Some(input)),
+                expected,
+                "format_true({input:?})"
+            );
+        }
+        // None is false
+        assert!(!format_true(None));
     }
 }

@@ -13,15 +13,14 @@
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 use crate::compat::queue::tailq_first;
-use crate::libc::{WEXITSTATUS, WIFEXITED, WIFSIGNALED, WTERMSIG, memcpy, strtod};
 use crate::*;
 
 pub static CMD_RUN_SHELL_ENTRY: cmd_entry = cmd_entry {
     name: "run-shell",
     alias: Some("run"),
 
-    args: args_parse::new("bd:Ct:c:", 0, 2, Some(cmd_run_shell_args_parse)),
-    usage: "[-bC] [-c start-directory] [-d delay] [-t target-pane] [shell-command]",
+    args: args_parse::new("bd:Ct:Es:c:", 0, 1, Some(cmd_run_shell_args_parse)),
+    usage: "[-bCE] [-c start-directory] [-d delay] [-t target-pane] [shell-command]",
 
     target: cmd_entry_flag::new(
         b't',
@@ -50,10 +49,9 @@ pub struct cmd_run_shell_data<'a> {
 pub unsafe fn cmd_run_shell_args_parse(
     args: *mut args,
     _idx: u32,
-    _cause: *mut *mut u8,
 ) -> args_parse_type {
     unsafe {
-        if args_has(args, 'C') {
+        if args_has(&*args, 'C') {
             return args_parse_type::ARGS_PARSE_COMMANDS_OR_STRING;
         }
     }
@@ -61,6 +59,7 @@ pub unsafe fn cmd_run_shell_args_parse(
     args_parse_type::ARGS_PARSE_STRING
 }
 
+#[cfg(not(target_os = "windows"))]
 pub unsafe fn cmd_run_shell_print(job: *mut job, msg: *const u8) {
     unsafe {
         let cdata: *mut cmd_run_shell_data = job_get_data(job) as *mut cmd_run_shell_data;
@@ -111,35 +110,37 @@ pub unsafe fn cmd_run_shell_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
         let wp = (*target).wp;
         let mut d: f64 = 0.0;
         let mut end: *mut u8 = null_mut();
-        let wait = !args_has(args, 'b');
+        let wait = !args_has(&*args, 'b');
 
-        let delay = args_get(args, b'd');
+        let delay = args_get(&*args, b'd');
         if !delay.is_null() {
             d = strtod(delay, &raw mut end);
             if *end != b'\0' {
                 cmdq_error!(item, "invalid delay time: {}", _s(delay));
                 return cmd_retval::CMD_RETURN_ERROR;
             }
-        } else if args_count(args) == 0 {
+        } else if args_count(&*args) == 0 {
             return cmd_retval::CMD_RETURN_NORMAL;
         }
 
         let cdata = xcalloc1::<cmd_run_shell_data>() as *mut cmd_run_shell_data;
-        if !args_has(args, 'C') {
-            let cmd = args_string(args, 0);
-            if !cmd.is_null() {
-                (*cdata).cmd = format_single_from_target(item, cmd);
+        if !args_has(&*args, 'C') {
+            if let Some(cmd) = args_string(&*args, 0) {
+                (*cdata).cmd = format_single_from_target(item, cmd.as_ptr().cast());
             }
         } else {
             (*cdata).state = args_make_commands_prepare(self_, item, 0, null_mut(), wait, true);
         }
 
-        if args_has(args, 't') && !wp.is_null() {
+        if args_has(&*args, 't') && !wp.is_null() {
             (*cdata).wp_id = (*wp).id as i32;
         } else {
             (*cdata).wp_id = -1;
         }
 
+        if args_has(&*args, 'E') {
+            (*cdata).flags |= job_flag::JOB_SHOWSTDERR;
+        }
         if wait {
             (*cdata).client = c;
             (*cdata).item = item;
@@ -150,7 +151,7 @@ pub unsafe fn cmd_run_shell_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
         if !(*cdata).client.is_null() {
             (*(*cdata).client).references += 1;
         }
-        if args_has(args, 'c') {
+        if args_has(&*args, 'c') {
             (*cdata).cwd = xstrdup(args_get_(args, 'c')).as_ptr();
         } else {
             (*cdata).cwd = xstrdup(server_client_get_cwd(c, s)).as_ptr();
@@ -168,7 +169,7 @@ pub unsafe fn cmd_run_shell_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
         );
         if !delay.is_null() {
             let mut tv: timeval = timeval {
-                tv_sec: d as time_t,
+                tv_sec: d as _,
                 tv_usec: (d - (d as time_t as f64)) as libc::suseconds_t * 1000000,
             };
             evtimer_add(&raw mut (*cdata).timer, &raw mut tv);
@@ -193,8 +194,6 @@ pub unsafe extern "C-unwind" fn cmd_run_shell_timer(
         let c = (*cdata).client;
         let cmd = (*cdata).cmd;
         let item = (*cdata).item;
-        let mut error = null_mut::<u8>();
-
         if (*cdata).state.is_null() {
             if cmd.is_null() {
                 if !(*cdata).item.is_null() {
@@ -225,21 +224,26 @@ pub unsafe extern "C-unwind" fn cmd_run_shell_timer(
             return;
         }
 
-        let cmdlist = args_make_commands((*cdata).state, 0, null_mut(), &raw mut error);
-        if cmdlist.is_null() {
-            if (*cdata).item.is_null() {
-                *error = (*error).to_ascii_uppercase();
-                status_message_set!(c, -1, 1, false, "{}", _s(error));
-            } else {
-                cmdq_error!((*cdata).item, "{}", _s(error));
+        match args_make_commands((*cdata).state, 0, null_mut()) {
+            Err(mut error) => {
+                if (*cdata).item.is_null() {
+                    // Uppercase first character for status message
+                    if let Some(first) = error.as_bytes_mut().first_mut() {
+                        first.make_ascii_uppercase();
+                    }
+                    status_message_set!(c, -1, 1, false, false, "{}", error);
+                } else {
+                    cmdq_error!((*cdata).item, "{}", error);
+                }
             }
-            free_(error);
-        } else if item.is_null() {
-            let new_item = cmdq_get_command(cmdlist, null_mut());
-            cmdq_append(c, new_item);
-        } else {
-            let new_item = cmdq_get_command(cmdlist, cmdq_get_state(item));
-            cmdq_insert_after(item, new_item);
+            Ok(cmdlist) if item.is_null() => {
+                let new_item = cmdq_get_command(cmdlist, null_mut());
+                cmdq_append(c, new_item);
+            }
+            Ok(cmdlist) => {
+                let new_item = cmdq_get_command(cmdlist, cmdq_get_state(item));
+                cmdq_insert_after(item, new_item);
+            }
         }
 
         if !(*cdata).item.is_null() {
@@ -249,7 +253,14 @@ pub unsafe extern "C-unwind" fn cmd_run_shell_timer(
     }
 }
 
+#[cfg(target_os = "windows")]
+pub unsafe fn cmd_run_shell_callback(_job: *mut job) {
+    todo!()
+}
+
+#[cfg(not(target_os = "windows"))]
 pub unsafe fn cmd_run_shell_callback(job: *mut job) {
+    use crate::libc::{WEXITSTATUS, WIFEXITED, WIFSIGNALED, WTERMSIG, memcpy};
     unsafe {
         let cdata = job_get_data(job) as *mut cmd_run_shell_data;
         let event = job_get_event(job);

@@ -11,6 +11,7 @@
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+use std::ffi::CString;
 use crate::compat::strlcat;
 use crate::libc::strcmp;
 use crate::*;
@@ -91,7 +92,7 @@ unsafe fn cmd_list_keys_print_notes(
         while !bd.is_null() {
             if (only != KEYC_UNKNOWN && (*bd).key != only)
                 || KEYC_IS_MOUSE((*bd).key)
-                || (((*bd).note.is_null() || *(*bd).note == b'\0') && !args_has(args, 'a'))
+                || (((*bd).note.is_null() || *(*bd).note == b'\0') && !args_has(&*args, 'a'))
             {
                 bd = key_bindings_next(table, bd);
                 continue;
@@ -102,19 +103,18 @@ unsafe fn cmd_list_keys_print_notes(
             let note = if (*bd).note.is_null() || *(*bd).note == b'\0' {
                 cmd_list_print(&*(*bd).cmdlist, 1)
             } else {
-                xstrdup((*bd).note).as_ptr()
+                CString::from(std::ffi::CStr::from_ptr((*bd).note.cast()))
             };
 
             let tmp = utf8_padcstr(key, keywidth + 1);
-            if args_has(args, '1') && !tc.is_null() {
-                status_message_set!(tc, -1, 1, false, "{}{}{}", _s(prefix), _s(tmp), _s(note));
+            if args_has(&*args, '1') && !tc.is_null() {
+                status_message_set!(tc, -1, 1, false, false, "{}{}{}", _s(prefix), _s(tmp), _s(note.as_ptr()));
             } else {
-                cmdq_print!(item, "{}{}{}", _s(prefix), _s(tmp), _s(note));
+                cmdq_print!(item, "{}{}{}", _s(prefix), _s(tmp), _s(note.as_ptr()));
             }
             free_(tmp);
-            free_(note);
 
-            if args_has(args, '1') {
+            if args_has(&*args, '1') {
                 break;
             }
             bd = key_bindings_next(table, bd);
@@ -126,7 +126,7 @@ unsafe fn cmd_list_keys_print_notes(
 unsafe fn cmd_list_keys_get_prefix(args: *mut args, prefix: *mut key_code) -> NonNull<u8> {
     unsafe {
         *prefix = options_get_number___::<i64>(&*GLOBAL_S_OPTIONS, "prefix") as _;
-        if !args_has(args, 'P') {
+        if !args_has(&*args, 'P') {
             if *prefix != KEYC_NONE {
                 let s = format_nul!("{} ", _s(key_string_lookup_key(*prefix, 0)));
                 NonNull::new(s).unwrap()
@@ -155,8 +155,9 @@ unsafe fn cmd_list_keys_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retva
         }
 
         'out: {
-            let keystr = args_string(args, 0);
-            if !keystr.is_null() {
+            let keystr = args_string(&*args, 0);
+            if let Some(keystr_cstr) = keystr {
+                let keystr = keystr_cstr.as_ptr().cast();
                 only = key_string_lookup_string(keystr);
                 if only == KEYC_UNKNOWN {
                     cmdq_error!(item, "invalid key: {}", _s(keystr));
@@ -165,13 +166,13 @@ unsafe fn cmd_list_keys_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retva
                 only &= KEYC_MASK_KEY | KEYC_MASK_MODIFIERS;
             }
 
-            let tablename = args_get(args, b'T');
+            let tablename = args_get(&*args, b'T');
             if !tablename.is_null() && key_bindings_get_table(tablename, false).is_null() {
                 cmdq_error!(item, "table {} doesn't exist", _s(tablename));
                 return cmd_retval::CMD_RETURN_ERROR;
             }
 
-            if args_has(args, 'N') {
+            if args_has(&*args, 'N') {
                 let start;
                 if tablename.is_null() {
                     start = cmd_list_keys_get_prefix(args, &raw mut prefix).as_ptr();
@@ -208,7 +209,7 @@ unsafe fn cmd_list_keys_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retva
                     }
                     free_(empty);
                 } else {
-                    start = if args_has(args, 'P') {
+                    start = if args_has(&*args, 'P') {
                         xstrdup(args_get_(args, 'P')).as_ptr()
                     } else {
                         xstrdup(c!("")).as_ptr()
@@ -311,23 +312,22 @@ unsafe fn cmd_list_keys_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retva
                     tmpused = strlcat(tmp.as_ptr(), c!(" "), tmpsize);
                     free_(cp);
 
-                    cp = cmd_list_print(&*(*bd).cmdlist, 1);
-                    cplen = strlen(cp);
+                    let cp2 = cmd_list_print(&*(*bd).cmdlist, 1);
+                    cplen = cp2.as_bytes().len();
                     while tmpused + cplen + 1 >= tmpsize {
                         tmpsize *= 2;
                         tmp = xrealloc_(tmp.as_ptr(), tmpsize);
                     }
-                    strlcat(tmp.as_ptr(), cp, tmpsize);
-                    free_(cp);
+                    strlcat(tmp.as_ptr(), cp2.as_ptr().cast(), tmpsize);
 
-                    if args_has(args, '1') && tc.is_null() {
-                        status_message_set!(tc, -1, 1, false, "bind-key {}", _s(tmp.as_ptr()));
+                    if args_has(&*args, '1') && tc.is_null() {
+                        status_message_set!(tc, -1, 1, false, false, "bind-key {}", _s(tmp.as_ptr()));
                     } else {
                         cmdq_print!(item, "bind-key {}", _s(tmp.as_ptr()));
                     }
                     free_(key);
 
-                    if args_has(args, '1') {
+                    if args_has(&*args, '1') {
                         break;
                     }
                     bd = key_bindings_next(table, bd);
@@ -339,10 +339,34 @@ unsafe fn cmd_list_keys_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retva
         }
 
         if only != KEYC_UNKNOWN && found == 0 {
-            cmdq_error!(item, "unknown key list: {}", _s(args_string(args, 0)));
+            cmdq_error!(item, "unknown key list: {}", _s(args_string(&*args, 0).unwrap().as_ptr()));
             return cmd_retval::CMD_RETURN_ERROR;
         }
         cmd_retval::CMD_RETURN_NORMAL
+    }
+}
+
+unsafe fn cmd_list_single_command(
+    entry: &cmd_entry,
+    ft: *mut format_tree,
+    template: *const u8,
+    item: *mut cmdq_item,
+) {
+    unsafe {
+        format_add!(ft, "command_list_name", "{}", entry.name);
+        format_add!(
+            ft,
+            "command_list_alias",
+            "{}",
+            entry.alias.unwrap_or_default()
+        );
+        format_add!(ft, "command_list_usage", "{}", entry.usage);
+
+        let line = format_expand(ft, template);
+        if *line != b'\0' {
+            cmdq_print!(item, "{}", _s(line));
+        }
+        free_(line);
     }
 }
 
@@ -369,30 +393,22 @@ unsafe fn cmd_list_keys_commands(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
         );
         format_defaults(ft, null_mut(), None, None, None);
 
-        let command = args_string(args, 0);
-
-        for entry in CMD_TABLE {
-            if !command.is_null()
-                && (!streq_(command, entry.name)
-                    && entry.alias.is_none_or(|alias| !streq_(command, alias)))
-            {
-                continue;
+        let command = args_string(&*args, 0);
+        if let Some(command) = command {
+            match cmd_find(command.to_str().unwrap()) {
+                Ok(entry) => {
+                    cmd_list_single_command(entry, ft, template, item);
+                }
+                Err(cause) => {
+                    cmdq_error!(item, "{}", cause);
+                    format_free(ft);
+                    return cmd_retval::CMD_RETURN_ERROR;
+                }
             }
-
-            format_add!(ft, "command_list_name", "{}", entry.name);
-            format_add!(
-                ft,
-                "command_list_alias",
-                "{}",
-                entry.alias.unwrap_or_default()
-            );
-            format_add!(ft, "command_list_usage", "{}", entry.usage);
-
-            let line = format_expand(ft, template);
-            if *line != b'\0' {
-                cmdq_print!(item, "{}", _s(line));
+        } else {
+            for entry in CMD_TABLE {
+                cmd_list_single_command(entry, ft, template, item);
             }
-            free_(line);
         }
 
         format_free(ft);

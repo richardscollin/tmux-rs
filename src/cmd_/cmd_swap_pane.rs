@@ -47,18 +47,18 @@ unsafe fn cmd_swap_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retva
         let mut src_w = (*(*source).wl).window;
         let mut src_wp = (*source).wp;
 
-        if window_push_zoom(dst_w, false, args_has(args, 'Z')) {
+        if window_push_zoom(dst_w, false, args_has(&*args, 'Z')) {
             server_redraw_window(dst_w);
         }
 
         'out: {
-            if args_has(args, 'D') {
+            if args_has(&*args, 'D') {
                 src_w = dst_w;
                 src_wp = tailq_next::<_, _, discr_entry>(dst_wp);
                 if src_wp.is_null() {
                     src_wp = tailq_first(&raw mut (*dst_w).panes);
                 }
-            } else if args_has(args, 'U') {
+            } else if args_has(&*args, 'U') {
                 src_w = dst_w;
                 src_wp = tailq_prev::<_, _, discr_entry>(dst_wp);
                 if src_wp.is_null() {
@@ -66,7 +66,7 @@ unsafe fn cmd_swap_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retva
                 }
             }
 
-            if src_w != dst_w && window_push_zoom(src_w, false, args_has(args, 'Z')) {
+            if src_w != dst_w && window_push_zoom(src_w, false, args_has(&*args, 'Z')) {
                 server_redraw_window(src_w);
             }
 
@@ -98,10 +98,12 @@ unsafe fn cmd_swap_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retva
 
             (*src_wp).window = dst_w;
             options_set_parent(&mut *(*src_wp).options, (*dst_w).options);
-            (*src_wp).flags |= window_pane_flags::PANE_STYLECHANGED;
+            (*src_wp).flags |=
+                window_pane_flags::PANE_STYLECHANGED | window_pane_flags::PANE_THEMECHANGED;
             (*dst_wp).window = src_w;
             options_set_parent(&mut *(*dst_wp).options, (*src_w).options);
-            (*dst_wp).flags |= window_pane_flags::PANE_STYLECHANGED;
+            (*dst_wp).flags |=
+                window_pane_flags::PANE_STYLECHANGED | window_pane_flags::PANE_THEMECHANGED;
 
             let sx = (*src_wp).sx;
             let sy = (*src_wp).sy;
@@ -114,7 +116,7 @@ unsafe fn cmd_swap_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retva
             (*dst_wp).yoff = yoff;
             window_pane_resize(dst_wp, sx, sy);
 
-            if !args_has(args, 'd') {
+            if !args_has(&*args, 'd') {
                 if src_w != dst_w {
                     window_set_active_pane(src_w, dst_wp, 1);
                     window_set_active_pane(dst_w, src_wp, 1);
@@ -133,10 +135,12 @@ unsafe fn cmd_swap_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retva
             if src_w != dst_w {
                 window_pane_stack_remove(&raw mut (*src_w).last_panes, src_wp);
                 window_pane_stack_remove(&raw mut (*dst_w).last_panes, dst_wp);
-                colour_palette_from_option(Some(&mut (*src_wp).palette), (*src_wp).options);
-                colour_palette_from_option(Some(&mut (*dst_wp).palette), (*dst_wp).options);
+                colour_palette_from_option(Some(&mut (*src_wp).palette), &mut *(*src_wp).options);
+                colour_palette_from_option(Some(&mut (*dst_wp).palette), &mut *(*dst_wp).options);
+                layout_fix_panes(src_w, null_mut());
+                server_redraw_window(src_w);
             }
-            server_redraw_window(src_w);
+            layout_fix_panes(dst_w, null_mut());
             server_redraw_window(dst_w);
             notify_window(c"window-layout-changed", src_w);
             if src_w != dst_w {

@@ -11,7 +11,7 @@
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-use crate::libc::{O_APPEND, O_TRUNC};
+use crate::tmux_protocol::FileOpenFlags;
 use crate::*;
 
 pub static CMD_SAVE_BUFFER_ENTRY: cmd_entry = cmd_entry {
@@ -56,7 +56,7 @@ unsafe fn cmd_save_buffer_done(
 
     unsafe {
         if error != 0 {
-            cmdq_error!(item, "{}: {}", _s(path), strerror(error));
+            cmdq_error!(item, "{}: {}", strerror(error), _s(path));
         }
         cmdq_continue(item);
     }
@@ -93,18 +93,18 @@ unsafe fn cmd_save_buffer_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
                     fatalx("out of memory");
                 }
                 evbuffer_add(evb, bufdata as _, bufsize);
-                cmdq_print_data(item, 1, evb);
+                cmdq_print_data(item, evb);
                 evbuffer_free(evb);
                 return cmd_retval::CMD_RETURN_NORMAL;
             }
             path = xstrdup_(c"-").as_ptr();
         } else {
-            path = format_single_from_target(item, args_string(args, 0));
+            path = format_single_from_target(item, args_string(&*args, 0).unwrap().as_ptr().cast());
         }
-        let flags = if args_has(args, 'a') {
-            O_APPEND
+        let flags = if args_has(&*args, 'a') {
+            FileOpenFlags::Append
         } else {
-            O_TRUNC
+            FileOpenFlags::Truncate
         };
         file_write(
             cmdq_get_client(item),

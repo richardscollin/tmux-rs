@@ -46,7 +46,7 @@ impl tty_default_key_raw {
     }
 }
 
-static TTY_DEFAULT_RAW_KEYS: [tty_default_key_raw; 100] = [
+static TTY_DEFAULT_RAW_KEYS: [tty_default_key_raw; 102] = [
     // Application escape.
     tty_default_key_raw::new(c"\x1bO[", '\x1b' as u64),
     // Numeric keypad. Just use the vt100 escape sequences here and always
@@ -193,10 +193,13 @@ static TTY_DEFAULT_RAW_KEYS: [tty_default_key_raw; 100] = [
     tty_default_key_raw::new(c"\x1b[I", keyc::KEYC_FOCUS_IN as u64),
     tty_default_key_raw::new(c"\x1b[O", keyc::KEYC_FOCUS_OUT as u64),
     // Paste keys.
-    tty_default_key_raw::new(c"\x1b[200~", keyc::KEYC_PASTE_START as u64),
-    tty_default_key_raw::new(c"\x1b[201~", keyc::KEYC_PASTE_END as u64),
+    tty_default_key_raw::new(c"\x1b[200~", keyc::KEYC_PASTE_START as u64 | KEYC_IMPLIED_META),
+    tty_default_key_raw::new(c"\x1b[201~", keyc::KEYC_PASTE_END as u64 | KEYC_IMPLIED_META),
     // Extended keys.
     tty_default_key_raw::new(c"\x1b[1;5Z", '\x09' as u64 | KEYC_CTRL | KEYC_SHIFT),
+    // Theme reporting.
+    tty_default_key_raw::new(c"\x1b[?997;1n", keyc::KEYC_REPORT_DARK_THEME as u64),
+    tty_default_key_raw::new(c"\x1b[?997;2n", keyc::KEYC_REPORT_LIGHT_THEME as u64),
 ];
 
 /// Default xterm keys.
@@ -1034,8 +1037,82 @@ unsafe fn tty_keys_next1(
     }
 }
 
-// Process at least one key in the buffer. Return 0 if no keys present.
+/// Process window size change escape sequences.
+unsafe fn tty_keys_winsz(tty: *mut tty, buf: &[u8], size: &mut usize) -> i32
+{
+    unsafe {
+       let c: *mut client = (*tty).client;
+       *size = 0;
 
+       // If we did not request this, ignore it.
+       if !(*tty).flags.intersects(tty_flags::TTY_WINSIZEQUERY) {
+           return -1;
+       }
+
+       // First two bytes are always \033[.
+       if buf[0] != b'\x1b' {
+           return -1;
+       }
+       if  buf.len() == 1 {
+           return 1;
+       }
+       if  buf[1] != b'[' {
+            return  -1;
+       }
+       if buf.len() == 2 {
+           return 1;
+       }
+
+
+       // Stop at either 't' or anything that isn't a number or ';'.
+       let Some(end) = buf[2..].iter().copied().position(|ch| !ch.is_ascii_digit() && ch != b';') else {
+           return 1;
+       };
+       if buf[end] != b't' {
+           return -1;
+       }
+
+       let tmp = std::str::from_utf8(&buf[2..end]).unwrap();
+       let mut it = tmp.split(";").flat_map(|s| {
+           s.parse::<u32>().ok()
+       });
+
+       // Try to parse the window size sequence.
+       match it.next() {
+           Some(8) => {
+               // sscanf "8;%u;%u"
+               if let (Some(sy), Some(sx), None) = (it.next(), it.next(), it.next()) {
+                   // Window size in characters.
+                   tty_set_size(tty, sx, sy, (*tty).xpixel, (*tty).ypixel);
+
+                   *size = end + 1;
+                   return 0;
+               }
+           },
+           Some(4) => {
+               // sscanf "4;%u;%u"
+               if let (Some(ypixel), Some(xpixel), None) = (it.next(), it.next(), it.next()) {
+                   // Window size in pixels.
+                   let char_x = if xpixel != 0 && (*tty).sx != 0 { xpixel / (*tty).sx } else { 0 };
+                   let char_y = if ypixel != 0 && (*tty).sy != 0 { ypixel / (*tty).sy } else { 0 };
+                   tty_set_size(tty, (*tty).sx, (*tty).sy, char_x, char_y);
+                   tty_invalidate(tty);
+
+                   (*tty).flags &= !tty_flags::TTY_WINSIZEQUERY;
+                   *size = end + 1;
+                   return 0;
+               }
+           },
+           _ => (),
+       }
+
+       log_debug!("{}: unrecognized window size sequence: {}", _s((*c).name), tmp);
+
+       -1
+    }
+}
+
+/// Process at least one key in the buffer. Return 0 if no keys present.
 pub unsafe fn tty_keys_next(tty: *mut tty) -> i32 {
     unsafe {
         let c = (*tty).client;
@@ -1128,10 +1205,31 @@ pub unsafe fn tty_keys_next(tty: *mut tty) -> i32 {
                                 0 => {
                                     // yes
                                     key = KEYC_UNKNOWN;
+                                    session_theme_changed((*(*tty).client).session);
                                     break 'complete_key;
                                 }
                                 -1 => (), // no, or not valid
-                                1 => break 'partial_key,
+                                1 => {
+                                    session_theme_changed((*(*tty).client).session);
+                                    break 'partial_key;
+                                }
+                                _ => (),
+                            }
+
+                            // Is this a palette response?
+                            match tty_keys_palette(
+                                tty,
+                                buf.cast(),
+                                len,
+                                &raw mut size,
+                            ) {
+                                0 => {
+                                    // yes
+                                    key = KEYC_UNKNOWN;
+                                    break 'complete_key;
+                                }
+                                -1 => (), // no, or not valid
+                                1 => break 'partial_key, // partial
                                 _ => (),
                             }
 
@@ -1169,7 +1267,19 @@ pub unsafe fn tty_keys_next(tty: *mut tty) -> i32 {
                                 1 => break 'partial_key,
                                 _ => (),
                             }
+
+                            // TODO should this be inside if start?
+                            match tty_keys_winsz(tty, std::slice::from_raw_parts(buf, len), &mut size) {
+                                0 => {
+                                    key = KEYC_UNKNOWN;
+                                    break 'complete_key;
+                                }
+                                -1 => (), // no, or not valid
+                                1 => break 'partial_key,
+                                _ => unreachable!(),
+                            }
                         } // if start
+
 
                         // 'first_key:
                         // Try to lookup complete key.
@@ -1238,6 +1348,18 @@ pub unsafe fn tty_keys_next(tty: *mut tty) -> i32 {
                             key = b' ' as u64 | KEYC_CTRL | (key & KEYC_META);
                         }
 
+                        // Check for backspace key using termios VERASE - the terminfo
+                        // kbs entry is extremely unreliable, so cannot be safely
+                        // used. termios should have a better idea.
+                        let bspace: libc::cc_t = (*tty).tio.c_cc[libc::VERASE];
+                        if bspace != libc::_POSIX_VDISABLE
+                            && (key & KEYC_MASK_KEY) == bspace as u64
+                        {
+                            log_debug!("{}: key {:#x} is backspace", _s((*c).name), key);
+                            key = keyc::KEYC_BSPACE as u64
+                                | (key & (KEYC_META | KEYC_IMPLIED_META));
+                        }
+
                         // Fix up all C0 control codes that don't have a dedicated key into
                         // corresponding Ctrl keys. Convert characters in the A-Z range into
                         // lowercase, so ^A becomes a|CTRL.
@@ -1274,6 +1396,16 @@ pub unsafe fn tty_keys_next(tty: *mut tty) -> i32 {
                     if delay == 0 {
                         delay = 1;
                     }
+                    if (*tty)
+                        .flags
+                        .intersects(tty_flags::TTY_WAITFG | tty_flags::TTY_WAITBG)
+                        || !(*tty).flags.contains(TTY_ALL_REQUEST_FLAGS)
+                    {
+                        log_debug!("{}: increasing delay for active query", _s((*c).name));
+                        if delay < 500 {
+                            delay = 500;
+                        }
+                    }
                     tv.tv_sec = delay / 1000;
                     tv.tv_usec = ((delay % 1000) * 1000) as libc::suseconds_t;
 
@@ -1294,19 +1426,6 @@ pub unsafe fn tty_keys_next(tty: *mut tty) -> i32 {
                 // complete_key:
                 // log_debug("%s: complete key %.*s %#llx", (*c).name, (int)size, buf, key);
 
-                // Check for backspace key using termios VERASE - the terminfo
-                // kbs entry is extremely unreliable, so cannot be safely
-                // used. termios should have a better idea.
-
-                let bspace: libc::cc_t = (*tty).tio.c_cc[libc::VERASE];
-                if bspace != libc::_POSIX_VDISABLE && (key & KEYC_MASK_KEY) as libc::cc_t == bspace
-                {
-                    key = (key & KEYC_MASK_MODIFIERS) | keyc::KEYC_BSPACE as u64;
-                }
-
-                // Remove data from buffer.
-                evbuffer_drain((*tty).in_, size);
-
                 // Remove key timer.
                 if event_initialized(&raw const (*tty).key_timer) != 0 {
                     evtimer_del(&raw mut (*tty).key_timer);
@@ -1326,11 +1445,23 @@ pub unsafe fn tty_keys_next(tty: *mut tty) -> i32 {
 
                 // Fire the key.
                 if key != KEYC_UNKNOWN {
-                    let event = Box::leak(Box::new(key_event { key, m })) as *mut key_event;
-                    if server_client_handle_key(c, event) == 0 {
+                    let event = Box::leak(Box::new(
+                        key_event {
+                            key,
+                            m,
+                            buf: xmalloc(size).as_mut() as *mut c_void as *mut u8,
+                            len: size,
+                    })) as *mut key_event;
+                    memcpy_((*event).buf, buf, (*event).len);
+
+                    if !server_client_handle_key(c, event) {
+                        free_((*event).buf);
                         free_(event);
                     }
                 }
+
+                // Remove data from buffer.
+                evbuffer_drain((*tty).in_, size);
 
                 return 1;
             }
@@ -1367,7 +1498,6 @@ unsafe fn tty_keys_extended_key(
 ) -> i32 {
     unsafe {
         let c = (*tty).client;
-        let end: usize = 0;
         let mut number: u32 = 0;
         let mut modifiers: u32 = 0;
         const SIZE_OF_TMP: usize = 64;
@@ -1394,13 +1524,15 @@ unsafe fn tty_keys_extended_key(
 
         // Look for a terminator. Stop at either '~' or anything that isn't a
         // number or ';'.
-        for end in 2..len.min(SIZE_OF_TMP) {
+        let mut end: usize = 2;
+        while end < len && end < SIZE_OF_TMP {
             if *buf.add(end) == b'~' {
                 break;
             }
             if !(*buf.add(end)).is_ascii_digit() && *buf.add(end) != b';' {
                 break;
             }
+            end += 1;
         }
         if end == len {
             return 1;
@@ -1410,8 +1542,8 @@ unsafe fn tty_keys_extended_key(
         }
 
         // Copy to the buffer.
-        libc::memcpy(tmp.as_mut_ptr().cast(), buf.add(2).cast(), end);
-        tmp[end] = 0;
+        libc::memcpy(tmp.as_mut_ptr().cast(), buf.add(2).cast(), end - 2);
+        tmp[end - 2] = 0;
 
         // Try to parse either form of key.
         if *buf.add(end) == b'~' {
@@ -1863,13 +1995,16 @@ unsafe fn tty_keys_device_attributes(
             if 3 + i == len {
                 return 1;
             }
-            if *buf.add(3 + i) == b'c' {
+            if *buf.add(3 + i) >= b'a' && *buf.add(3 + i) <= b'z' {
                 found = true;
                 break;
             }
             tmp[i] = *buf.add(3 + i);
         }
         if !found {
+            return -1;
+        }
+        if *buf.add(3 + i) != b'c' {
             return -1;
         }
         tmp[i] = b'\0';
@@ -1905,6 +2040,9 @@ unsafe fn tty_keys_device_attributes(
                 }
                 if p[i as usize] == 28 {
                     tty_add_features(features, "rectfill", c!(","));
+                }
+                if p[i as usize] == 52 {
+                    tty_add_features(features, "clipboard", c!(","));
                 }
             }
         }
@@ -1965,13 +2103,16 @@ unsafe fn tty_keys_device_attributes2(
             if 3 + i == len {
                 return 1;
             }
-            if *buf.add(3 + i) == b'c' {
+            if *buf.add(3 + i) >= b'a' && *buf.add(3 + i) <= b'z' {
                 found = true;
                 break;
             }
             tmp[i] = *buf.add(3 + i);
         }
         if !found {
+            return -1;
+        }
+        if *buf.add(3 + i) != b'c' {
             return -1;
         }
         tmp[i] = b'\0';
@@ -2095,6 +2236,8 @@ unsafe fn tty_keys_extended_device_attributes(
             tty_default_features(features, c!("XTerm"), 0);
         } else if libc::strncmp(tmp.as_ptr(), c!("mintty "), 7) == 0 {
             tty_default_features(features, c!("mintty"), 0);
+        } else if libc::strncmp(tmp.as_ptr(), c!("foot("), 5) == 0 {
+            tty_default_features(features, c!("foot"), 0);
         }
         // log_debug( c!("%s: received extended DA %.*s\0"), (*c).name, *size as i32, buf);
 
@@ -2185,7 +2328,7 @@ pub unsafe fn tty_keys_colours(
         }
         *size = 6 + i;
 
-        let n: i32 = colour_parse_x11(tmp.as_ptr());
+        let n: i32 = colour_parse_x11(cstr_to_str(tmp.as_ptr()));
         if n != -1 && *buf.add(3) == b'0' {
             if !c.is_null() {
                 // log_debug( c!("%s fg is %s\0"), (*c).name, colour_tostring(n));
@@ -2193,6 +2336,7 @@ pub unsafe fn tty_keys_colours(
                 // log_debug( c!("fg is %s\0"), colour_tostring(n));
             }
             *fg = n;
+            (*tty).flags &= !tty_flags::TTY_WAITFG;
         } else if n != -1 {
             if !c.is_null() {
                 // log_debug( c!("%s bg is %s\0"), (*c).name, colour_tostring(n));
@@ -2200,7 +2344,100 @@ pub unsafe fn tty_keys_colours(
                 // log_debug( c!("bg is %s\0"), colour_tostring(n));
             }
             *bg = n;
+            (*tty).flags &= !tty_flags::TTY_WAITBG;
         }
+
+        0
+    }
+}
+
+/// Handle OSC 4 palette colour responses.
+unsafe fn tty_keys_palette(
+    tty: *mut tty,
+    buf: *const u8,
+    len: usize,
+    size: *mut usize,
+) -> i32 {
+    unsafe {
+        let c = (*tty).client;
+        let mut tmp: [u8; 128] = [0; 128];
+
+        *size = 0;
+
+        // First three bytes are always \x1b]4.
+        if *buf != b'\x1b' {
+            return -1;
+        }
+        if len == 1 {
+            return 1;
+        }
+        if *buf.add(1) != b']' {
+            return -1;
+        }
+        if len == 2 {
+            return 1;
+        }
+        if *buf.add(2) != b'4' {
+            return -1;
+        }
+        if len == 3 {
+            return 1;
+        }
+        if *buf.add(3) != b';' {
+            return -1;
+        }
+        if len == 4 {
+            return 1;
+        }
+
+        // Parse index.
+        let mut endptr: *mut u8 = null_mut();
+        let idx = strtol(buf.add(4), &raw mut endptr, 10);
+        if std::ptr::eq(endptr, buf.add(4)) || *endptr != b';' {
+            return -1;
+        }
+        if !(0..=255).contains(&idx) {
+            return -1;
+        }
+
+        // Copy the rest up to \x1b\ or \x07.
+        let start = endptr.offset_from(buf) as usize + 1;
+        let mut i = start;
+        while i < len && i - start < tmp.len() {
+            if *buf.add(i - 1) == b'\x1b' && *buf.add(i) == b'\\' {
+                break;
+            }
+            if *buf.add(i) == b'\x07' {
+                break;
+            }
+            tmp[i - start] = *buf.add(i);
+            i += 1;
+        }
+        if i - start == tmp.len() {
+            return -1;
+        }
+        if i == len {
+            return 1;
+        }
+        if i > start && *buf.add(i - 1) == b'\x1b' {
+            tmp[i - start - 1] = b'\0';
+        } else {
+            tmp[i - start] = b'\0';
+        }
+        *size = i + 1;
+
+        // Work out the colour.
+        let mut pd = input_request_palette_data { idx: 0, c: 0 };
+        pd.c = colour_parse_x11(cstr_to_str(tmp.as_ptr()));
+        if pd.c == -1 {
+            return 0;
+        }
+        pd.idx = idx as i32;
+        input_request_reply(
+            c,
+            input_request_type::INPUT_REQUEST_PALETTE,
+            (&raw mut pd).cast(),
+        );
 
         0
     }

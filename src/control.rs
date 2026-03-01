@@ -348,20 +348,18 @@ pub unsafe fn control_vwrite(c: *mut client, args: std::fmt::Arguments) {
 
         let mut s = args.to_string();
         s.push('\0');
-        let s: *mut u8 = s.as_mut_ptr().cast();
 
         log_debug!(
             "{}: {}: writing line: {}",
             "control_vwrite",
             _s((*c).name),
-            _s(s)
+            _s(s.as_bytes().as_ptr())
         );
 
-        bufferevent_write((*cs).write_event, s.cast(), strlen(s));
+        bufferevent_write((*cs).write_event, s.as_bytes().as_ptr().cast(), s.len() - 1);
         bufferevent_write((*cs).write_event, c!("\n").cast(), 1);
 
         bufferevent_enable((*cs).write_event, EV_WRITE);
-        free_(s);
     }
 }
 
@@ -434,7 +432,7 @@ pub unsafe fn control_check_age(
             if age < CONTROL_MAXIMUM_AGE {
                 return 0;
             }
-            (*c).exit_message = xstrdup_(c"too far behind").as_ptr();
+            (*c).exit_message = ManuallyDrop::new(Some("too far behind".to_string()));
             (*c).flags |= client_flag::EXIT;
             control_discard(c);
         }
@@ -549,8 +547,6 @@ pub unsafe extern "C-unwind" fn control_read_callback(_bufev: *mut bufferevent, 
     unsafe {
         let cs = (*c).control_state;
         let buffer = (*(*cs).read_event).input;
-        let mut error = null_mut();
-
         loop {
             let line = evbuffer_readln(buffer, null_mut(), evbuffer_eol_style::EVBUFFER_EOL_LF);
             if line.is_null() {
@@ -565,8 +561,8 @@ pub unsafe extern "C-unwind" fn control_read_callback(_bufev: *mut bufferevent, 
 
             let state =
                 cmdq_new_state(null_mut(), null_mut(), cmdq_state_flags::CMDQ_STATE_CONTROL);
-            let status = cmd_parse_and_append(cstr_to_str(line), None, c, state, &raw mut error);
-            if status == cmd_parse_status::CMD_PARSE_ERROR {
+            if let Err(error) = cmd_parse_and_append(cstr_to_str(line), None, c, state) {
+                let error = xstrdup__(error.as_str());
                 cmdq_append(c, cmdq_get_callback!(control_error, error).as_ptr());
             }
             cmdq_free_state(state);

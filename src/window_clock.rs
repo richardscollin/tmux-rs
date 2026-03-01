@@ -26,6 +26,7 @@ pub static WINDOW_CLOCK_MODE: window_mode = window_mode {
     key_table: None,
     command: None,
     formats: None,
+    get_screen: None,
 };
 
 #[repr(C)]
@@ -163,7 +164,7 @@ pub unsafe extern "C-unwind" fn window_clock_timer_callback(
         t = libc::time(null_mut());
         libc::gmtime_r(&raw mut t, &raw mut now);
         libc::gmtime_r(&raw mut (*data).tim, &raw mut then);
-        if now.tm_min == then.tm_min {
+        if now.tm_sec == then.tm_sec {
             return;
         }
         (*data).tim = t;
@@ -262,11 +263,16 @@ pub unsafe fn window_clock_draw_screen(wme: NonNull<window_mode_entry>) {
 
         let mut t = libc::time(null_mut());
         let tm = libc::localtime(&raw mut t);
-        if style == 0 {
+        if style == 0 || style == 2 {
+            let timeformat = if style == 2 {
+                c!("%l:%M:%S ")
+            } else {
+                c!("%l:%M ")
+            };
             libc::strftime(
                 &raw mut tim as _,
                 SIZEOF_TIM,
-                c!("%l:%M "),
+                timeformat,
                 libc::localtime(&raw mut t),
             );
             if (*tm).tm_hour >= 12 {
@@ -275,7 +281,12 @@ pub unsafe fn window_clock_draw_screen(wme: NonNull<window_mode_entry>) {
                 strlcat(&raw mut tim as _, c!("AM"), SIZEOF_TIM);
             }
         } else {
-            libc::strftime(&raw mut tim as _, SIZEOF_TIM, c!("%H:%M"), tm);
+            let timeformat = if style == 3 {
+                c!("%H:%M:%S")
+            } else {
+                c!("%H:%M")
+            };
+            libc::strftime(&raw mut tim as _, SIZEOF_TIM, timeformat, tm);
         }
 
         screen_write_clearscreen(&raw mut ctx, 8);

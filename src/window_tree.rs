@@ -21,8 +21,7 @@ const WINDOW_TREE_DEFAULT_FORMAT: &str = concat!(
     "#{pane_current_command}#{?pane_active,*,}#{?pane_marked,M,}",
     "#{?#{&&:#{pane_title},#{!=:#{pane_title},#{host_short}}},: ",
     "\"#{pane_title}\",}",
-    ",",
-    "#{?window_format,",
+    ",window_format,",
     "#{?window_marked_flag,#[reverse],}",
     "#{window_name}#{window_flags}",
     "#{?#{&&:#{==:#{window_panes},1},#{&&:#{pane_title},#{!=:#{pane_title},#{",
@@ -34,19 +33,14 @@ const WINDOW_TREE_DEFAULT_FORMAT: &str = concat!(
     "#{session_group_list}),",
     "}",
     "#{?session_attached, (attached),}",
-    "}",
     "}"
 );
 
 const WINDOW_TREE_DEFAULT_KEY_FORMAT: &CStr = cstring_concat!(
     "#{?#{e|<:#{line},10},",
     "#{line}",
-    ",",
-    "#{?#{e|<:#{line},36},",
+    ",#{e|<:#{line},36},",
     "M-#{a:#{e|+:97,#{e|-:#{line},10}}}",
-    ",",
-    "",
-    "}",
     "}"
 );
 
@@ -77,6 +71,7 @@ pub static WINDOW_TREE_MODE: window_mode = window_mode {
     key_table: None,
     command: None,
     formats: None,
+    get_screen: None,
 };
 
 #[derive(num_enum::TryFromPrimitive)]
@@ -117,6 +112,7 @@ struct window_tree_modedata {
     key_format: *mut u8,
     command: *mut u8,
     squash_groups: bool,
+    prompt_flags: prompt_flags,
 
     item_list: *mut *mut window_tree_itemdata,
     item_size: u32,
@@ -226,11 +222,18 @@ unsafe fn window_tree_build_pane(
         (*item).winlink = (*wl).idx;
         (*item).pane = (*wp).id as i32;
 
-        let text: *mut u8 =
-            format_single(null_mut(), cstr_to_str((*data.as_ptr()).format), null_mut(), s, wl, wp);
+        let ft = format_create(
+            null_mut(),
+            null_mut(),
+            (FORMAT_PANE | (*wp).id) as i32,
+            format_flags::empty(),
+        );
+        format_defaults(ft, null_mut(), NonNull::new(s), NonNull::new(wl), NonNull::new(wp));
+        let text = format_expand(ft, (*data.as_ptr()).format);
         let name = format_nul!("{idx}");
+        format_free(ft);
 
-        mode_tree_add(
+        let mti = mode_tree_add(
             (*data.as_ptr()).data,
             parent,
             item.cast(),
@@ -241,6 +244,7 @@ unsafe fn window_tree_build_pane(
         );
         free_(text);
         free_(name);
+        mode_tree_align(mti, 1);
     }
 }
 
@@ -256,7 +260,7 @@ unsafe fn window_tree_filter_pane(
         };
 
         let cp: *mut u8 = format_single(null_mut(), filter, null_mut(), s, wl, wp);
-        let result = format_true(cp);
+        let result = format_true(cstr_to_str_(cp));
         free_(cp);
 
         result
@@ -290,15 +294,16 @@ unsafe fn window_tree_build_window(
             (*item).winlink = (*wl).idx;
             (*item).pane = -1;
 
-            text = format_single(
+            let ft = format_create(
                 null_mut(),
-                cstr_to_str((*data.as_ptr()).format),
                 null_mut(),
-                s,
-                wl,
-                null_mut(),
+                (FORMAT_PANE | (*(*(*wl).window).active).id) as i32,
+                format_flags::empty(),
             );
+            format_defaults(ft, null_mut(), NonNull::new(s), NonNull::new(wl), None);
+            text = format_expand(ft, (*data.as_ptr()).format);
             name = format_nul!("{}", (*wl).idx);
+            format_free(ft);
 
             let expanded = !matches!(
                 (*data.as_ptr()).type_,
@@ -316,16 +321,16 @@ unsafe fn window_tree_build_window(
             );
             free_(text);
             free_(name);
+            mode_tree_align(mti, 1);
 
             let wp = tailq_first(&raw mut (*(*wl).window).panes);
             if wp.is_null() {
                 break 'empty;
             }
-            if tailq_next::<_, window_pane, discr_entry>(wp).is_null() {
-                if !window_tree_filter_pane(s, wl, wp, cstr_to_str_(filter)) {
-                    break 'empty;
-                }
-                return 1;
+            if tailq_next::<_, window_pane, discr_entry>(wp).is_null()
+                && !window_tree_filter_pane(s, wl, wp, cstr_to_str_(filter))
+            {
+                break 'empty;
             }
 
             l = null_mut();
@@ -386,6 +391,7 @@ unsafe fn window_tree_build_session(
 ) {
     unsafe {
         let data: NonNull<window_tree_modedata> = modedata.cast();
+        let wl = (*s).curw;
 
         let item = window_tree_add_item(data);
         let data = data.as_ptr();
@@ -394,14 +400,15 @@ unsafe fn window_tree_build_session(
         (*item).winlink = -1;
         (*item).pane = -1;
 
-        let text = format_single(
-            null_mut(),
-            cstr_to_str((*data).format),
-            null_mut(),
-            s,
+        let ft = format_create(
             null_mut(),
             null_mut(),
+            (FORMAT_PANE | (*(*(*wl).window).active).id) as i32,
+            format_flags::empty(),
         );
+        format_defaults(ft, null_mut(), NonNull::new(s), None, None);
+        let text = format_expand(ft, (*data).format);
+        format_free(ft);
 
         let expanded = (*data).type_ != window_tree_type::WINDOW_TREE_SESSION;
         let mti = mode_tree_add(
@@ -729,6 +736,7 @@ unsafe fn window_tree_draw_session(
 
             label = format_nul!(" {}:{} ", (*wl).idx, _s((*w).name));
             if strlen(label) > width as usize {
+                free_(label);
                 label = format_nul!(" {} ", (*wl).idx);
             }
             window_tree_draw_label(ctx, cx + offset, cy, width, sy, &raw mut gc, label);
@@ -939,6 +947,7 @@ unsafe fn window_tree_search(
     _modedata: *mut c_void,
     itemdata: NonNull<c_void>,
     ss: *const u8,
+    icase: i32,
 ) -> bool {
     unsafe {
         let item: NonNull<window_tree_itemdata> = itemdata.cast();
@@ -951,12 +960,29 @@ unsafe fn window_tree_search(
             window_tree_type::WINDOW_TREE_NONE => return false,
             window_tree_type::WINDOW_TREE_SESSION => {
                 if let Some(s) = s {
+                    if icase != 0 {
+                        return (*s.as_ptr())
+                            .name
+                            .to_ascii_lowercase()
+                            .contains(&cstr_to_str(ss).to_ascii_lowercase());
+                    }
                     return (*s.as_ptr()).name.find(cstr_to_str(ss)).is_some();
                 }
             }
             window_tree_type::WINDOW_TREE_WINDOW => {
                 if let (Some(_s), Some(wl)) = (s, wl) {
-                    return !libc::strstr((*(*wl.as_ptr()).window).name, ss).is_null();
+                    if icase != 0 {
+                        return !libc::strcasestr(
+                            (*(*wl.as_ptr()).window).name,
+                            ss,
+                        )
+                        .is_null();
+                    }
+                    return !libc::strstr(
+                        (*(*wl.as_ptr()).window).name,
+                        ss,
+                    )
+                    .is_null();
                 }
             }
             window_tree_type::WINDOW_TREE_PANE => {
@@ -964,9 +990,14 @@ unsafe fn window_tree_search(
                     let cmd: *mut u8 =
                         osdep_get_name((*wp.as_ptr()).fd, (&raw const (*wp.as_ptr()).tty).cast());
                     if cmd.is_null() || *cmd == b'\0' {
+                        free_(cmd);
                         return false;
                     } else {
-                        let retval = !libc::strstr(cmd, ss).is_null();
+                        let retval = if icase != 0 {
+                            !libc::strcasestr(cmd, ss).is_null()
+                        } else {
+                            !libc::strstr(cmd, ss).is_null()
+                        };
                         free_(cmd);
                         return retval;
                     }
@@ -1023,6 +1054,120 @@ unsafe fn window_tree_get_key(
     }
 }
 
+unsafe fn window_tree_cmp_window(
+    a: *mut winlink,
+    b: *mut winlink,
+    sort_crit: *const mode_tree_sort_criteria,
+) -> i32 {
+    unsafe {
+        let wa = (*a).window;
+        let wb = (*b).window;
+        let mut result = 0;
+
+        match window_tree_sort_type::try_from((*sort_crit).field as i32) {
+            Ok(window_tree_sort_type::WINDOW_TREE_BY_INDEX) => {
+                result = (*a).idx - (*b).idx;
+            }
+            Ok(window_tree_sort_type::WINDOW_TREE_BY_TIME) => {
+                result = match timer::new(&raw const (*wa).activity_time)
+                    .cmp(&timer::new(&raw const (*wb).activity_time))
+                {
+                    std::cmp::Ordering::Greater => -1,
+                    std::cmp::Ordering::Less => 1,
+                    std::cmp::Ordering::Equal => (*a).idx - (*b).idx,
+                };
+            }
+            Ok(window_tree_sort_type::WINDOW_TREE_BY_NAME) => {
+                result = strcmp((*wa).name, (*wb).name);
+            }
+            _ => {}
+        }
+        if (*sort_crit).reversed {
+            result = -result;
+        }
+        result
+    }
+}
+
+unsafe fn window_tree_swap(
+    cur_itemdata: *mut c_void,
+    other_itemdata: *mut c_void,
+    sort_crit: *const mode_tree_sort_criteria,
+) -> i32 {
+    unsafe {
+        let cur: NonNull<window_tree_itemdata> = NonNull::new(cur_itemdata.cast()).unwrap();
+        let other: NonNull<window_tree_itemdata> = NonNull::new(other_itemdata.cast()).unwrap();
+
+        if (*cur.as_ptr()).type_ != (*other.as_ptr()).type_ {
+            return 0;
+        }
+        if (*cur.as_ptr()).type_ != window_tree_type::WINDOW_TREE_WINDOW {
+            return 0;
+        }
+
+        let mut cur_session = None;
+        let mut cur_winlink = None;
+        let mut cur_pane = None;
+        let mut other_session = None;
+        let mut other_winlink = None;
+        let mut other_pane = None;
+
+        window_tree_pull_item(cur, &raw mut cur_session, &raw mut cur_winlink, &raw mut cur_pane);
+        window_tree_pull_item(
+            other,
+            &raw mut other_session,
+            &raw mut other_winlink,
+            &raw mut other_pane,
+        );
+
+        let Some(cur_session) = cur_session.map(NonNull::as_ptr) else {
+            return 0;
+        };
+        let Some(other_session) = other_session.map(NonNull::as_ptr) else {
+            return 0;
+        };
+        if cur_session != other_session {
+            return 0;
+        }
+
+        let Some(cur_wl) = cur_winlink.map(NonNull::as_ptr) else {
+            return 0;
+        };
+        let Some(other_wl) = other_winlink.map(NonNull::as_ptr) else {
+            return 0;
+        };
+
+        if (*sort_crit).field != window_tree_sort_type::WINDOW_TREE_BY_INDEX as u32
+            && window_tree_cmp_window(cur_wl, other_wl, sort_crit) != 0
+        {
+            // Swapping indexes would not swap positions in the tree, so
+            // prevent swapping to avoid confusing the user.
+            return 0;
+        }
+
+        let other_window = (*other_wl).window;
+        tailq_remove::<_, discr_wentry>(&raw mut (*other_window).winlinks, other_wl);
+        let cur_window = (*cur_wl).window;
+        tailq_remove::<_, discr_wentry>(&raw mut (*cur_window).winlinks, cur_wl);
+
+        (*other_wl).window = cur_window;
+        tailq_insert_tail::<_, discr_wentry>(&raw mut (*cur_window).winlinks, other_wl);
+        (*cur_wl).window = other_window;
+        tailq_insert_tail::<_, discr_wentry>(&raw mut (*other_window).winlinks, cur_wl);
+
+        if (*cur_session).curw == cur_wl {
+            session_set_current(cur_session, other_wl);
+        } else if (*cur_session).curw == other_wl {
+            session_set_current(cur_session, cur_wl);
+        }
+        session_group_synchronize_from(cur_session);
+        server_redraw_session_group(cur_session);
+        recalculate_sizes();
+
+        1
+    }
+}
+
 unsafe fn window_tree_init(
     wme: NonNull<window_mode_entry>,
     fs: *mut cmd_find_state,
@@ -1039,31 +1184,34 @@ unsafe fn window_tree_init(
         (*data).wp = wp;
         (*data).references = 1;
 
-        if args_has(args, 's') {
+        if args_has(&*args, 's') {
             (*data).type_ = window_tree_type::WINDOW_TREE_SESSION;
-        } else if args_has(args, 'w') {
+        } else if args_has(&*args, 'w') {
             (*data).type_ = window_tree_type::WINDOW_TREE_WINDOW;
         } else {
             (*data).type_ = window_tree_type::WINDOW_TREE_PANE;
         }
         memcpy__(&raw mut (*data).fs, fs);
 
-        if args.is_null() || !args_has(args, 'F') {
+        if args.is_null() || !args_has(&*args, 'F') {
             (*data).format = xstrdup__(WINDOW_TREE_DEFAULT_FORMAT);
         } else {
             (*data).format = xstrdup(args_get_(args, 'F')).as_ptr();
         }
-        if args.is_null() || !args_has(args, 'K') {
+        if args.is_null() || !args_has(&*args, 'K') {
             (*data).key_format = xstrdup_(WINDOW_TREE_DEFAULT_KEY_FORMAT).as_ptr();
         } else {
             (*data).key_format = xstrdup(args_get_(args, 'K')).as_ptr();
         }
-        if args.is_null() || args_count(args) == 0 {
+        if args.is_null() || args_count(&*args) == 0 {
             (*data).command = xstrdup__(WINDOW_TREE_DEFAULT_COMMAND);
         } else {
-            (*data).command = xstrdup(args_string(args, 0)).as_ptr();
+            (*data).command = xstrdup(args_string(&*args, 0).unwrap().as_ptr().cast()).as_ptr();
         }
-        (*data).squash_groups = !args_has(args, 'G');
+        (*data).squash_groups = !args_has(&*args, 'G');
+        if args_has(&*args, 'y') {
+            (*data).prompt_flags = prompt_flags::PROMPT_ACCEPT;
+        }
 
         (*data).data = mode_tree_start(
             wp,
@@ -1074,6 +1222,7 @@ unsafe fn window_tree_init(
             Some(window_tree_menu),
             None,
             Some(window_tree_get_key),
+            Some(window_tree_swap),
             data.cast(),
             WINDOW_TREE_MENU_ITEMS.as_slice(),
             &WINDOW_TREE_SORT_LIST,
@@ -1530,7 +1679,7 @@ unsafe fn window_tree_key(
                         window_tree_kill_current_callback,
                         window_tree_command_free,
                         data,
-                        prompt_flags::PROMPT_SINGLE | prompt_flags::PROMPT_NOFORMAT,
+                        prompt_flags::PROMPT_SINGLE | prompt_flags::PROMPT_NOFORMAT | (*data).prompt_flags,
                         prompt_type::PROMPT_TYPE_COMMAND,
                     );
                     free_(prompt);
@@ -1550,7 +1699,7 @@ unsafe fn window_tree_key(
                         window_tree_kill_tagged_callback,
                         window_tree_command_free,
                         data,
-                        prompt_flags::PROMPT_SINGLE | prompt_flags::PROMPT_NOFORMAT,
+                        prompt_flags::PROMPT_SINGLE | prompt_flags::PROMPT_NOFORMAT | (*data).prompt_flags,
                         prompt_type::PROMPT_TYPE_COMMAND,
                     );
                     free_(prompt);

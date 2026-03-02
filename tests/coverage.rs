@@ -51,6 +51,7 @@ mod coverage {
     mod set_option;
     mod show_environment;
     mod show_messages;
+    mod source_file;
     mod show_options;
     mod show_prompt_history;
     mod status;

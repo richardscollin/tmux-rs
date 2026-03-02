@@ -32,6 +32,7 @@ mod coverage {
     mod load_buffer;
     mod lock_server;
     mod move_window;
+    mod new_window;
     mod paste_buffer;
     mod pipe_pane;
     mod rename_session;

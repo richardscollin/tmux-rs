@@ -99,15 +99,19 @@ pub unsafe fn tty_resize(tty: *mut tty) {
 
         if libc::ioctl((*c).fd, libc::TIOCGWINSZ, &raw mut ws) != -1 {
             sx = ws.ws_col as u32;
-            xpixel = (ws.ws_xpixel as u32).checked_div(sx).unwrap_or_else(|| {
+            if sx == 0 {
                 sx = 80;
-                0
-            });
+                xpixel = 0;
+            } else {
+                xpixel = ws.ws_xpixel as u32 / sx;
+            }
             sy = ws.ws_row as u32;
-            ypixel = (ws.ws_ypixel as u32).checked_div(sy).unwrap_or_else(|| {
+            if sy == 0 {
                 sy = 24;
-                0
-            });
+                ypixel = 0;
+            } else {
+                ypixel = ws.ws_ypixel as u32 / sy;
+            }
         } else {
             sx = 80;
             sy = 24;

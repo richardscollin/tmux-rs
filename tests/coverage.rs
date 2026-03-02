@@ -34,6 +34,7 @@ mod coverage {
     mod move_window;
     mod paste_buffer;
     mod pipe_pane;
+    mod rename_session;
     mod rename_window;
     mod resize_pane;
     mod resize_window;
@@ -43,11 +44,14 @@ mod coverage {
     mod save_buffer;
     mod select_layout;
     mod select_window;
+    mod send_keys;
     mod server_access;
     mod set_buffer;
     mod set_environment;
+    mod set_option;
     mod show_environment;
     mod show_messages;
+    mod show_options;
     mod show_prompt_history;
     mod status;
     mod swap_pane;

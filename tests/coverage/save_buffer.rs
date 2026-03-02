@@ -94,10 +94,7 @@ fn show_buffer_control_mode() {
     tmux.run(&["set", "-g", "window-size", "manual"]);
 
     tmux.run(&["set-buffer", "control test data"]);
-    let output = tmux.run_with_stdin(
-        &["-C", "attach"],
-        b"show-buffer\ndetach-client\n",
-    );
+    let output = tmux.run_with_stdin(&["-C", "attach"], b"show-buffer\ndetach-client\n");
     assert!(output.status.success());
     let stdout = String::from_utf8_lossy(&output.stdout);
     assert!(
@@ -115,10 +112,7 @@ fn show_buffer_named_control() {
     tmux.run(&["set", "-g", "window-size", "manual"]);
 
     tmux.run(&["set-buffer", "-b", "test", "named buf data"]);
-    let output = tmux.run_with_stdin(
-        &["-C", "attach"],
-        b"show-buffer -b test\ndetach-client\n",
-    );
+    let output = tmux.run_with_stdin(&["-C", "attach"], b"show-buffer -b test\ndetach-client\n");
     assert!(output.status.success());
     let stdout = String::from_utf8_lossy(&output.stdout);
     assert!(

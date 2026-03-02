@@ -82,10 +82,7 @@ fn show_messages_terminals_with_client() {
     tmux.run(&["set", "-g", "window-size", "manual"]);
 
     // Attach control-mode client so TTY_TERMS has entries, then show terminals
-    let output = tmux.run_with_stdin(
-        &["-C", "attach"],
-        b"show-messages -T\ndetach-client\n",
-    );
+    let output = tmux.run_with_stdin(&["-C", "attach"], b"show-messages -T\ndetach-client\n");
     assert!(output.status.success());
 }
 
@@ -98,10 +95,7 @@ fn show_messages_terminals_and_jobs_with_client() {
     tmux.run(&["set", "-g", "window-size", "manual"]);
 
     // -T then -J: if -T printed terminals, blank > 0 triggers the blank line
-    let output = tmux.run_with_stdin(
-        &["-C", "attach"],
-        b"show-messages -T -J\ndetach-client\n",
-    );
+    let output = tmux.run_with_stdin(&["-C", "attach"], b"show-messages -T -J\ndetach-client\n");
     assert!(output.status.success());
 }
 

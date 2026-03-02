@@ -117,7 +117,13 @@ fn if_shell_background_false() {
     tmux.run(&["set", "-g", "window-size", "manual"]);
 
     tmux.run(&["set", "-g", "@result", "unchanged"]);
-    tmux.run(&["if", "-b", "false", "set -g @result changed", "set -g @result else"]);
+    tmux.run(&[
+        "if",
+        "-b",
+        "false",
+        "set -g @result changed",
+        "set -g @result else",
+    ]);
     sleep_ms(500);
     let out = tmux.run(&["show", "-gv", "@result"]);
     assert_eq!(out.trim(), "else");
@@ -132,7 +138,13 @@ fn if_shell_format_expansion() {
     tmux.run(&["set", "-g", "window-size", "manual"]);
 
     // #{session_windows} should be "1" (truthy)
-    tmux.run(&["if", "-F", "#{session_windows}", "set -g @result yes", "set -g @result no"]);
+    tmux.run(&[
+        "if",
+        "-F",
+        "#{session_windows}",
+        "set -g @result yes",
+        "set -g @result no",
+    ]);
     let out = tmux.run(&["show", "-gv", "@result"]);
     assert_eq!(out.trim(), "yes");
 }

@@ -163,7 +163,10 @@ fn set_environment_format() {
     tmux.run(&["setenv", "-g", "-F", "FMT_VAR", "#{session_name}"]);
     let out = tmux.run(&["showenv", "-g", "FMT_VAR"]);
     // The format should have been expanded (not literal #{session_name})
-    assert!(!out.contains("#{session_name}"), "format should be expanded, got: {out}");
+    assert!(
+        !out.contains("#{session_name}"),
+        "format should be expanded, got: {out}"
+    );
 }
 
 /// Target nonexistent session.

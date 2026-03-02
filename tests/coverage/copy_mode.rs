@@ -15,7 +15,10 @@ fn copy_mode_enter_and_quit() {
     // -q exits all modes
     tmux.run(&["copy-mode", "-q"]);
     let mode = tmux.display("#{pane_mode}");
-    assert!(mode.trim().is_empty(), "expected no mode after -q, got: {mode}");
+    assert!(
+        mode.trim().is_empty(),
+        "expected no mode after -q, got: {mode}"
+    );
 }
 
 /// Enter copy-mode with -u (page up).

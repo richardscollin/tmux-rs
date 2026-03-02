@@ -14,7 +14,9 @@ fn unbind_key_basic() {
 
     let keys = tmux.run(&["list-keys", "-T", "prefix"]);
     assert!(
-        !keys.lines().any(|l| l.contains(" x ") && l.contains("display")),
+        !keys
+            .lines()
+            .any(|l| l.contains(" x ") && l.contains("display")),
         "key 'x' should no longer be bound"
     );
 }

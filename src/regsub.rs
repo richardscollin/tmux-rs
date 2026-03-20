@@ -56,6 +56,7 @@ pub unsafe fn regsub_expand(
                             (*m.add(i as _)).rm_so as usize,
                             (*m.add(i as _)).rm_eo as usize,
                         );
+                        cp = cp.add(1);
                         continue;
                     }
                 }

@@ -1178,18 +1178,9 @@ pub unsafe fn layout_spread_cell(w: *mut window, parent: *mut layout_cell) -> c_
         let status: pane_status = (options_get_number_((*w).options, "pane-border-status") as i32)
             .try_into()
             .unwrap();
-        let scrollbars = options_get_number_((*w).options, "pane-scrollbars") as i32;
-        let sb_style = &raw const (*(*w).active).scrollbar_style;
-
         // Calculate available size
         let size = match (*parent).type_ {
-            layout_type::LAYOUT_LEFTRIGHT => {
-                if scrollbars != 0 {
-                    (*parent).sx - (*sb_style).width as u32 + (*sb_style).pad as u32
-                } else {
-                    (*parent).sx
-                }
-            }
+            layout_type::LAYOUT_LEFTRIGHT => (*parent).sx,
             layout_type::LAYOUT_TOPBOTTOM => {
                 if layout_add_horizontal_border(w, parent, status) {
                     (*parent).sy - 1

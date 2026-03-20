@@ -120,6 +120,55 @@ fn join_pane_percentage() {
     assert_eq!(panes.lines().count(), 2);
 }
 
+/// Join pane horizontal with -l size.
+#[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
+fn join_pane_horizontal_size() {
+    let tmux = TmuxServer::new("joinp_hsize");
+    tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
+    tmux.run(&["set", "-g", "window-size", "manual"]);
+    tmux.run(&["neww", "-d"]);
+
+    // -h -l: horizontal join with explicit size
+    tmux.run(&["joinp", "-h", "-l", "20", "-s", ":1.0", "-t", ":0"]);
+    let panes = tmux.run(&["lsp", "-t", ":0", "-F", "#{pane_id}"]);
+    assert_eq!(panes.lines().count(), 2);
+}
+
+/// Join pane with -f (fullsize) — BUG-005 may apply here too.
+#[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
+fn join_pane_fullsize() {
+    let tmux = TmuxServer::new("joinp_full");
+    tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
+    tmux.run(&["set", "-g", "window-size", "manual"]);
+    tmux.run(&["split-window", "-d"]);
+    tmux.run(&["neww", "-d"]);
+
+    // -f: fullsize join (may crash like split-window -f per BUG-005)
+    let out = tmux.try_run(&["joinp", "-f", "-l", "5", "-s", ":1.0", "-t", ":0"]);
+    let _ = out;
+}
+
+/// Join pane cross-window (source window becomes empty and is removed).
+#[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
+fn join_pane_removes_source_window() {
+    let tmux = TmuxServer::new("joinp_rmsrc");
+    tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
+    tmux.run(&["set", "-g", "window-size", "manual"]);
+    tmux.run(&["neww", "-d"]);
+
+    let count_before = tmux.display("#{session_windows}");
+    assert_eq!(count_before, "2");
+
+    // Join the only pane from window 1 to window 0 — window 1 should be destroyed
+    tmux.run(&["joinp", "-s", ":1.0", "-t", ":0"]);
+
+    let count_after = tmux.display("#{session_windows}");
+    assert_eq!(count_after, "1", "source window should be removed when empty");
+}
+
 /// move-pane alias uses same exec function.
 #[test]
 #[cfg_attr(not(feature = "coverage-tests"), ignore)]

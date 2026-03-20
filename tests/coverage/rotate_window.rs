@@ -153,6 +153,36 @@ fn rotate_window_down_twice() {
     );
 }
 
+/// Rotate down with active pane in the middle (tailq_prev not null).
+#[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
+fn rotate_window_down_mid_active() {
+    let tmux = TmuxServer::new("rotatew_dmid");
+    tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
+    tmux.run(&["set", "-g", "window-size", "manual"]);
+    tmux.run(&["splitw", "-d"]);
+    tmux.run(&["splitw", "-d"]);
+
+    // Select middle pane — tailq_prev(active) won't be null
+    tmux.run(&["select-pane", "-t", ":.1"]);
+    tmux.run(&["rotatew", "-D"]);
+}
+
+/// Rotate up with active pane at end (not first).
+#[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
+fn rotate_window_up_end_active() {
+    let tmux = TmuxServer::new("rotatew_uend");
+    tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
+    tmux.run(&["set", "-g", "window-size", "manual"]);
+    tmux.run(&["splitw", "-d"]);
+    tmux.run(&["splitw", "-d"]);
+
+    // Select last pane
+    tmux.run(&["select-pane", "-t", ":.2"]);
+    tmux.run(&["rotatew", "-U"]);
+}
+
 /// Rotate down with -Z preserves zoom.
 #[test]
 #[cfg_attr(not(feature = "coverage-tests"), ignore)]

@@ -109,6 +109,67 @@ fn move_window_cross_session() {
     assert!(dst_wins.contains("5"));
 }
 
+/// Move-window -a without explicit target window (null wl branch).
+#[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
+fn move_window_after_no_target() {
+    let tmux = TmuxServer::new("movew_a_notgt");
+    tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
+    tmux.run(&["set", "-g", "window-size", "manual"]);
+    tmux.run(&["neww", "-d"]);
+
+    // -a without -t: uses current window, wl may be null triggering curw fallback
+    tmux.run(&["movew", "-a", "-s", ":1"]);
+}
+
+/// Move-window cross-session with renumber-windows on.
+#[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
+fn move_window_cross_renumber() {
+    let tmux = TmuxServer::new("movew_xrenum");
+    tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24", "-s", "src"]);
+    tmux.run(&["set", "-g", "window-size", "manual"]);
+    tmux.run(&["new", "-d", "-x80", "-y24", "-s", "dst"]);
+    tmux.run(&["neww", "-d", "-t", "src"]);
+    tmux.run(&["neww", "-d", "-t", "src"]);
+
+    // Enable renumber-windows on source
+    tmux.run(&["set", "-t", "src", "renumber-windows", "on"]);
+
+    // Move middle window to dst — source should renumber
+    tmux.run(&["movew", "-s", "src:1", "-t", "dst:5"]);
+
+    let src_wins = tmux.run(&["lsw", "-t", "src", "-F", "#{window_index}"]);
+    // Source had windows 0,1,2, moved 1 away, renumber should give 0,1
+    let lines: Vec<&str> = src_wins.trim().lines().collect();
+    assert_eq!(lines.len(), 2, "source should have 2 windows, got: {src_wins}");
+}
+
+/// Move-window -r with bad target session.
+#[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
+fn move_window_renumber_bad_target() {
+    let tmux = TmuxServer::new("movew_rbad");
+    tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
+    tmux.run(&["set", "-g", "window-size", "manual"]);
+
+    // -r with bad target may succeed silently (CMD_FIND_QUIET)
+    let out = tmux.try_run(&["movew", "-r", "-t", "nonexistent_session"]);
+    let _ = out;
+}
+
+/// Move-window -b without explicit target (null wl fallback).
+#[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
+fn move_window_before_no_target() {
+    let tmux = TmuxServer::new("movew_b_notgt");
+    tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
+    tmux.run(&["set", "-g", "window-size", "manual"]);
+    tmux.run(&["neww", "-d"]);
+
+    tmux.run(&["movew", "-b", "-s", ":1"]);
+}
+
 /// Link-window basic.
 #[test]
 #[cfg_attr(not(feature = "coverage-tests"), ignore)]

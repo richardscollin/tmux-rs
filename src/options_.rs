@@ -870,6 +870,26 @@ pub unsafe fn options_get_number_(oo: *const options, name: &str) -> i64 {
     }
 }
 
+/// Returns the option value as a number, or `default` if the option is not set.
+/// Panics if the option exists but is not a number or is out of range.
+#[track_caller]
+pub fn options_get_number_or<T: TryFrom<i64>>(oo: &options, name: &str, default: T) -> T {
+    unsafe {
+        let o = options_get_const(oo, name);
+        if o.is_null() {
+            return default;
+        }
+        if !OPTIONS_IS_NUMBER(o) {
+            panic!("option {name} is not a number");
+        }
+
+        match T::try_from((*o).value.number) {
+            Ok(value) => value,
+            Err(_) => panic!("options_get_number out of range"),
+        }
+    }
+}
+
 /// panics if internally stored value is out of range of returned type
 #[track_caller]
 pub fn options_get_number___<T: TryFrom<i64>>(oo: &options, name: &str) -> T {

@@ -28,8 +28,8 @@ pub unsafe fn layout_checksum(mut layout: *const u8) -> u16 {
     unsafe {
         let mut csum = 0u16;
         while *layout != b'\0' {
-            csum = (csum >> 1) + ((csum & 1) << 15);
-            csum += *layout as u16;
+            csum = (csum >> 1).wrapping_add((csum & 1) << 15);
+            csum = csum.wrapping_add(*layout as u16);
             layout = layout.add(1);
         }
         csum

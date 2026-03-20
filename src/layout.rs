@@ -935,7 +935,7 @@ pub unsafe fn layout_resize_child_cells(w: *mut window, lc: *mut layout_cell) {
                     count - idx as u32,
                     available,
                 );
-                available -= (*lcchild).sx + 1;
+                available = available.wrapping_sub((*lcchild).sx + 1);
             }
             if (*lc).type_ == layout_type::LAYOUT_LEFTRIGHT {
                 (*lcchild).sy = (*lc).sy;
@@ -949,7 +949,7 @@ pub unsafe fn layout_resize_child_cells(w: *mut window, lc: *mut layout_cell) {
                     count - idx as u32,
                     available,
                 );
-                available -= (*lcchild).sy + 1;
+                available = available.wrapping_sub((*lcchild).sy + 1);
             }
             layout_resize_child_cells(w, lcchild);
         }

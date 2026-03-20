@@ -37,7 +37,11 @@ fn format_length() {
     // n: string length
     let out = tmux.display("#{n:session_name}");
     let name = tmux.display("#{session_name}");
-    assert_eq!(out, name.len().to_string(), "length should match session name length");
+    assert_eq!(
+        out,
+        name.len().to_string(),
+        "length should match session name length"
+    );
 }
 
 #[test]

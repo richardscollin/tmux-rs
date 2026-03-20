@@ -69,7 +69,11 @@ fn unlink_window() {
     tmux.run(&["unlink-window", "-t", "sess2:1"]);
 
     let count2 = tmux.run(&["display-message", "-t", "sess2", "-p", "#{session_windows}"]);
-    assert_eq!(count2.trim(), "1", "sess2 should have 1 window after unlink");
+    assert_eq!(
+        count2.trim(),
+        "1",
+        "sess2 should have 1 window after unlink"
+    );
 
     // sess1 should still have its window
     let count1 = tmux.run(&["display-message", "-t", "sess1", "-p", "#{session_windows}"]);

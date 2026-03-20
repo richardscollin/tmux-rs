@@ -38,7 +38,10 @@ fn select_layout_next() {
     tmux.run(&["next-layout"]);
     let layout_after = tmux.display("#{window_layout}");
     // Layout should change
-    assert_ne!(layout_before, layout_after, "next-layout should change the layout");
+    assert_ne!(
+        layout_before, layout_after,
+        "next-layout should change the layout"
+    );
 }
 
 #[test]

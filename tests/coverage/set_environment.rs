@@ -39,7 +39,10 @@ fn setenv_unset() {
     let out = tmux.try_run(&["showenv", "-g", "DELVAR"]);
     // Should be gone or show as unset
     let stdout = String::from_utf8_lossy(&out.stdout);
-    assert!(!stdout.contains("DELVAR=delval"), "should be unset, got: {stdout}");
+    assert!(
+        !stdout.contains("DELVAR=delval"),
+        "should be unset, got: {stdout}"
+    );
 }
 
 #[test]
@@ -54,7 +57,10 @@ fn setenv_clear() {
     tmux.run(&["setenv", "-gr", "CLEARVAR"]);
     let out = tmux.run(&["showenv", "-g", "CLEARVAR"]);
     // Should show as -CLEARVAR (marked for removal)
-    assert!(out.contains("-CLEARVAR"), "should be marked for removal, got: {out}");
+    assert!(
+        out.contains("-CLEARVAR"),
+        "should be marked for removal, got: {out}"
+    );
 }
 
 #[test]
@@ -68,11 +74,17 @@ fn setenv_hidden() {
     tmux.run(&["setenv", "-gh", "HIDDENVAR", "secret"]);
     // Hidden vars don't show in normal showenv
     let out = tmux.run(&["showenv", "-g"]);
-    assert!(!out.contains("HIDDENVAR"), "hidden var should not show in normal output");
+    assert!(
+        !out.contains("HIDDENVAR"),
+        "hidden var should not show in normal output"
+    );
 
     // But should show with -h flag
     let out = tmux.run(&["showenv", "-gh", "HIDDENVAR"]);
-    assert!(out.contains("secret"), "hidden var should show with -h, got: {out}");
+    assert!(
+        out.contains("secret"),
+        "hidden var should show with -h, got: {out}"
+    );
 }
 
 #[test]
@@ -139,7 +151,10 @@ fn setenv_unset_with_value() {
     let out = tmux.try_run(&["setenv", "-gu", "VAR", "val"]);
     assert!(!out.status.success());
     let stderr = String::from_utf8_lossy(&out.stderr);
-    assert!(stderr.contains("can't specify a value with -u"), "got: {stderr}");
+    assert!(
+        stderr.contains("can't specify a value with -u"),
+        "got: {stderr}"
+    );
 }
 
 #[test]
@@ -153,5 +168,8 @@ fn setenv_clear_with_value() {
     let out = tmux.try_run(&["setenv", "-gr", "VAR", "val"]);
     assert!(!out.status.success());
     let stderr = String::from_utf8_lossy(&out.stderr);
-    assert!(stderr.contains("can't specify a value with -r"), "got: {stderr}");
+    assert!(
+        stderr.contains("can't specify a value with -r"),
+        "got: {stderr}"
+    );
 }

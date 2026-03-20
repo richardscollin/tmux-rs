@@ -29,9 +29,9 @@ fn select_pane_directional() {
     tmux.run(&["set", "-g", "window-size", "manual"]);
 
     // Create a 2x2 grid of panes
-    tmux.run(&["split-window", "-d", "-h"]);  // left|right
-    tmux.run(&["split-window", "-d", "-v", "-t", ":.0"]);  // top-left, bottom-left
-    tmux.run(&["split-window", "-d", "-v", "-t", ":.2"]);  // top-right, bottom-right
+    tmux.run(&["split-window", "-d", "-h"]); // left|right
+    tmux.run(&["split-window", "-d", "-v", "-t", ":.0"]); // top-left, bottom-left
+    tmux.run(&["split-window", "-d", "-v", "-t", ":.2"]); // top-right, bottom-right
 
     // Start at pane 0 (top-left)
     tmux.run(&["select-pane", "-t", ":.0"]);
@@ -40,7 +40,10 @@ fn select_pane_directional() {
     tmux.run(&["select-pane", "-R"]);
     let pane = tmux.display("#{pane_index}");
     // Should be in a right pane (2 or 3)
-    assert!(pane == "2" || pane == "3", "expected right pane, got: {pane}");
+    assert!(
+        pane == "2" || pane == "3",
+        "expected right pane, got: {pane}"
+    );
 
     // -L: move left
     tmux.run(&["select-pane", "-L"]);

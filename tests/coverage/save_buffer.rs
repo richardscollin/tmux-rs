@@ -36,7 +36,10 @@ fn show_buffer_nonexistent() {
     let out = tmux.try_run(&["show-buffer", "-b", "nosuch"]);
     assert!(!out.status.success());
     let stderr = String::from_utf8_lossy(&out.stderr);
-    assert!(stderr.contains("no buffer"), "expected 'no buffer' error, got: {stderr}");
+    assert!(
+        stderr.contains("no buffer"),
+        "expected 'no buffer' error, got: {stderr}"
+    );
 }
 
 #[test]
@@ -49,7 +52,10 @@ fn show_buffer_no_buffers() {
     let out = tmux.try_run(&["show-buffer"]);
     assert!(!out.status.success());
     let stderr = String::from_utf8_lossy(&out.stderr);
-    assert!(stderr.contains("no buffer"), "expected 'no buffer' error, got: {stderr}");
+    assert!(
+        stderr.contains("no buffer"),
+        "expected 'no buffer' error, got: {stderr}"
+    );
 }
 
 #[test]

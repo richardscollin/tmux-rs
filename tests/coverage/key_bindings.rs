@@ -13,7 +13,10 @@ fn bind_key_with_note() {
     tmux.run(&["bind-key", "-N", "My note", "X", "display-message", "test"]);
 
     let keys = tmux.run(&["list-keys", "-T", "prefix", "-N"]);
-    assert!(keys.contains("My note"), "note should appear in list-keys, got: {keys}");
+    assert!(
+        keys.contains("My note"),
+        "note should appear in list-keys, got: {keys}"
+    );
 }
 
 #[test]
@@ -42,7 +45,10 @@ fn bind_key_rebind() {
     tmux.run(&["bind-key", "-N", "second", "Z", "display-message", "two"]);
 
     let keys = tmux.run(&["list-keys", "-T", "prefix", "-N"]);
-    assert!(keys.contains("second"), "note should be updated, got: {keys}");
+    assert!(
+        keys.contains("second"),
+        "note should be updated, got: {keys}"
+    );
 }
 
 #[test]
@@ -53,8 +59,22 @@ fn bind_key_custom_table() {
     tmux.run(&["set", "-g", "window-size", "manual"]);
 
     // Bind in custom table
-    tmux.run(&["bind-key", "-T", "custom", "a", "display-message", "custom-a"]);
-    tmux.run(&["bind-key", "-T", "custom", "b", "display-message", "custom-b"]);
+    tmux.run(&[
+        "bind-key",
+        "-T",
+        "custom",
+        "a",
+        "display-message",
+        "custom-a",
+    ]);
+    tmux.run(&[
+        "bind-key",
+        "-T",
+        "custom",
+        "b",
+        "display-message",
+        "custom-b",
+    ]);
 
     let keys = tmux.run(&["list-keys", "-T", "custom"]);
     assert!(keys.contains("a") && keys.contains("b"), "got: {keys}");
@@ -103,7 +123,11 @@ fn list_keys_all() {
     let out = tmux.run(&["list-keys"]);
     assert!(!out.is_empty());
     // Should include prefix table bindings
-    assert!(out.contains("prefix"), "got first 200 chars: {}", &out[..out.len().min(200)]);
+    assert!(
+        out.contains("prefix"),
+        "got first 200 chars: {}",
+        &out[..out.len().min(200)]
+    );
 }
 
 #[test]

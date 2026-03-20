@@ -177,7 +177,15 @@ fn find_window_by_name() {
 #[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn find_session_by_prefix() {
     let tmux = TmuxServer::new("find_sprefix");
-    tmux.run(&["-f/dev/null", "new", "-d", "-s", "unique_session", "-x80", "-y24"]);
+    tmux.run(&[
+        "-f/dev/null",
+        "new",
+        "-d",
+        "-s",
+        "unique_session",
+        "-x80",
+        "-y24",
+    ]);
     tmux.run(&["set", "-g", "window-size", "manual"]);
 
     // Find session by unique prefix

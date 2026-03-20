@@ -166,7 +166,10 @@ fn join_pane_removes_source_window() {
     tmux.run(&["joinp", "-s", ":1.0", "-t", ":0"]);
 
     let count_after = tmux.display("#{session_windows}");
-    assert_eq!(count_after, "1", "source window should be removed when empty");
+    assert_eq!(
+        count_after, "1",
+        "source window should be removed when empty"
+    );
 }
 
 /// move-pane alias uses same exec function.

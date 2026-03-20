@@ -35,7 +35,10 @@ fn paste_buffer_delete() {
 
     // Buffer should be gone
     let out = tmux.try_run(&["show-buffer"]);
-    assert!(!out.status.success(), "buffer should be deleted after paste-buffer -d");
+    assert!(
+        !out.status.success(),
+        "buffer should be deleted after paste-buffer -d"
+    );
 }
 
 #[test]
@@ -68,7 +71,10 @@ fn paste_buffer_named_nonexistent() {
 
     // paste-buffer -b nonexistent: should fail
     let out = tmux.try_run(&["paste-buffer", "-b", "nosuchbuffer"]);
-    assert!(!out.status.success(), "paste-buffer with nonexistent buffer should fail");
+    assert!(
+        !out.status.success(),
+        "paste-buffer with nonexistent buffer should fail"
+    );
 }
 
 #[test]

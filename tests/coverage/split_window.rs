@@ -116,7 +116,10 @@ fn split_window_detached() {
     let pane_before = tmux.display("#{pane_index}");
     tmux.run(&["split-window", "-d"]);
     let pane_after = tmux.display("#{pane_index}");
-    assert_eq!(pane_before, pane_after, "active pane should not change with -d");
+    assert_eq!(
+        pane_before, pane_after,
+        "active pane should not change with -d"
+    );
 }
 
 #[test]
@@ -128,7 +131,10 @@ fn split_window_print() {
 
     // -P: print info
     let out = tmux.run(&["split-window", "-P"]);
-    assert!(out.contains(":"), "expected session:window.pane, got: {out}");
+    assert!(
+        out.contains(":"),
+        "expected session:window.pane, got: {out}"
+    );
 }
 
 #[test]

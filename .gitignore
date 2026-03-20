@@ -1,6 +1,8 @@
 # Rust build cache and outputs
 target
 
+upstream
+
 # Nix outputs
 /result
 # tmux log files

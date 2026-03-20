@@ -132,7 +132,9 @@ fn layout_cycle_next_prev() {
     // Cycle through layouts — BUG-006 may crash on even-horizontal
     for _ in 0..6 {
         let out = tmux.try_run(&["next-layout"]);
-        if !out.status.success() { break; }
+        if !out.status.success() {
+            break;
+        }
     }
 }
 

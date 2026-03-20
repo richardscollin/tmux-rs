@@ -12,8 +12,14 @@ fn show_options_global() {
 
     // show-options -g: show all global session options
     let out = tmux.run(&["show-options", "-g"]);
-    assert!(out.contains("base-index"), "global options should include base-index");
-    assert!(out.contains("status"), "global options should include status");
+    assert!(
+        out.contains("base-index"),
+        "global options should include base-index"
+    );
+    assert!(
+        out.contains("status"),
+        "global options should include status"
+    );
 }
 
 #[test]
@@ -54,7 +60,10 @@ fn show_options_value_only() {
     // show-options -gv base-index: show value only
     let out = tmux.run(&["show-options", "-gv", "base-index"]);
     // Should just be the value (e.g., "0") without the option name
-    assert!(!out.contains("base-index"), "with -v should not show option name");
+    assert!(
+        !out.contains("base-index"),
+        "with -v should not show option name"
+    );
     assert!(!out.trim().is_empty(), "should have a value");
 }
 
@@ -97,7 +106,10 @@ fn show_options_quiet_invalid() {
 
     // show-options -q with invalid option: should succeed silently
     let out = tmux.try_run(&["show-options", "-gq", "not-a-real-option"]);
-    assert!(out.status.success(), "with -q should succeed even on invalid option");
+    assert!(
+        out.status.success(),
+        "with -q should succeed even on invalid option"
+    );
 }
 
 #[test]
@@ -149,7 +161,10 @@ fn show_options_user_option_quiet() {
 
     // show-options -q for nonexistent @-option: should succeed silently
     let out = tmux.try_run(&["show-options", "-gq", "@nosuchoption"]);
-    assert!(out.status.success(), "with -q should succeed on missing user option");
+    assert!(
+        out.status.success(),
+        "with -q should succeed on missing user option"
+    );
 }
 
 #[test]

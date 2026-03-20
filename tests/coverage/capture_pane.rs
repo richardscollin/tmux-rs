@@ -136,7 +136,10 @@ fn capture_pane_alternate_quiet() {
 
     // -a -q: alternate screen, quiet — should succeed with empty output
     let out = tmux.try_run(&["capture-pane", "-p", "-a", "-q"]);
-    assert!(out.status.success(), "capture-pane -a -q should succeed silently");
+    assert!(
+        out.status.success(),
+        "capture-pane -a -q should succeed silently"
+    );
 }
 
 #[test]

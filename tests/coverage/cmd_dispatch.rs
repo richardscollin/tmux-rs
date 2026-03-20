@@ -115,5 +115,9 @@ fn cmd_list_commands_format() {
 
     // list-commands -F with custom format
     let out = tmux.run(&["list-commands", "-F", "#{command_list_name}"]);
-    assert!(out.contains("set-option"), "got: {}", &out[..out.len().min(200)]);
+    assert!(
+        out.contains("set-option"),
+        "got: {}",
+        &out[..out.len().min(200)]
+    );
 }

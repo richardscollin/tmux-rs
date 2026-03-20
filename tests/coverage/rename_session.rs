@@ -26,7 +26,10 @@ fn rename_session_invalid() {
     let out = tmux.try_run(&["rename-session", ""]);
     assert!(!out.status.success());
     let stderr = String::from_utf8_lossy(&out.stderr);
-    assert!(stderr.contains("invalid session") || stderr.contains("bad session"), "got: {stderr}");
+    assert!(
+        stderr.contains("invalid session") || stderr.contains("bad session"),
+        "got: {stderr}"
+    );
 }
 
 #[test]

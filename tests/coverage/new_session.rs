@@ -21,7 +21,17 @@ fn new_session_named() {
 #[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn new_session_with_window_name() {
     let tmux = TmuxServer::new("newsess_wname");
-    tmux.run(&["-f/dev/null", "new", "-d", "-s", "wntest", "-n", "mywin", "-x80", "-y24"]);
+    tmux.run(&[
+        "-f/dev/null",
+        "new",
+        "-d",
+        "-s",
+        "wntest",
+        "-n",
+        "mywin",
+        "-x80",
+        "-y24",
+    ]);
     tmux.run(&["set", "-g", "window-size", "manual"]);
 
     let name = tmux.run(&["display-message", "-t", "wntest", "-p", "#{window_name}"]);
@@ -64,7 +74,10 @@ fn new_session_print() {
 
     // -P: print session info
     let out = tmux.run(&["new-session", "-d", "-s", "printed", "-P", "-x80", "-y24"]);
-    assert!(out.contains("printed:"), "expected session info, got: {out}");
+    assert!(
+        out.contains("printed:"),
+        "expected session info, got: {out}"
+    );
 }
 
 #[test]
@@ -75,7 +88,17 @@ fn new_session_print_format() {
     tmux.run(&["set", "-g", "window-size", "manual"]);
 
     // -P -F: custom format
-    let out = tmux.run(&["new-session", "-d", "-s", "pfmt2", "-P", "-F", "#{session_name}", "-x80", "-y24"]);
+    let out = tmux.run(&[
+        "new-session",
+        "-d",
+        "-s",
+        "pfmt2",
+        "-P",
+        "-F",
+        "#{session_name}",
+        "-x80",
+        "-y24",
+    ]);
     assert_eq!(out.trim(), "pfmt2");
 }
 
@@ -87,14 +110,33 @@ fn new_session_environment() {
     tmux.run(&["set", "-g", "window-size", "manual"]);
 
     // -e: set environment
-    tmux.run(&["new-session", "-d", "-s", "envs", "-e", "MYVAR=hello", "-x80", "-y24"]);
+    tmux.run(&[
+        "new-session",
+        "-d",
+        "-s",
+        "envs",
+        "-e",
+        "MYVAR=hello",
+        "-x80",
+        "-y24",
+    ]);
 }
 
 #[test]
 #[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn new_session_cwd() {
     let tmux = TmuxServer::new("newsess_cwd");
-    tmux.run(&["-f/dev/null", "new", "-d", "-s", "cwdtest", "-c", "/tmp", "-x80", "-y24"]);
+    tmux.run(&[
+        "-f/dev/null",
+        "new",
+        "-d",
+        "-s",
+        "cwdtest",
+        "-c",
+        "/tmp",
+        "-x80",
+        "-y24",
+    ]);
     tmux.run(&["set", "-g", "window-size", "manual"]);
 
     let sessions = tmux.run(&["list-sessions", "-F", "#{session_name}"]);

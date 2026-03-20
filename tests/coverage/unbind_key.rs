@@ -44,7 +44,14 @@ fn unbind_key_custom_table() {
     tmux.run(&["set", "-g", "window-size", "manual"]);
 
     // Bind in a custom table, then unbind with -T
-    tmux.run(&["bind-key", "-T", "mytable", "y", "display-message", "custom"]);
+    tmux.run(&[
+        "bind-key",
+        "-T",
+        "mytable",
+        "y",
+        "display-message",
+        "custom",
+    ]);
     tmux.run(&["unbind-key", "-T", "mytable", "y"]);
 }
 
@@ -100,7 +107,10 @@ fn unbind_key_errors() {
     // unbind-key with no key and no -a: should error "missing key"
     let out = tmux.try_run(&["unbind-key"]);
     let stderr = String::from_utf8_lossy(&out.stderr);
-    assert!(stderr.contains("missing key"), "expected 'missing key' error, got: {stderr}");
+    assert!(
+        stderr.contains("missing key"),
+        "expected 'missing key' error, got: {stderr}"
+    );
 
     // unbind-key -a with a key: should error "key given with -a"
     let out = tmux.try_run(&["unbind-key", "-a", "x"]);
@@ -113,7 +123,10 @@ fn unbind_key_errors() {
     // unbind-key with unknown key
     let out = tmux.try_run(&["unbind-key", "NOTAKEY"]);
     let stderr = String::from_utf8_lossy(&out.stderr);
-    assert!(stderr.contains("unknown key"), "expected 'unknown key' error, got: {stderr}");
+    assert!(
+        stderr.contains("unknown key"),
+        "expected 'unknown key' error, got: {stderr}"
+    );
 
     // unbind-key -T nonexistent table
     let out = tmux.try_run(&["unbind-key", "-T", "notable", "x"]);

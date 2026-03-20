@@ -29,7 +29,11 @@ fn list_panes_session() {
     let out = tmux.run(&["list-panes", "-s"]);
     let lines: Vec<&str> = out.trim().lines().collect();
     // Window 0 has 1 pane, window 1 has 2 panes = 3 total
-    assert_eq!(lines.len(), 3, "should list 3 panes across session, got: {out}");
+    assert_eq!(
+        lines.len(),
+        3,
+        "should list 3 panes across session, got: {out}"
+    );
 }
 
 #[test]
@@ -43,7 +47,10 @@ fn list_panes_all() {
     // -a: list panes across all sessions
     let out = tmux.run(&["list-panes", "-a"]);
     let lines: Vec<&str> = out.trim().lines().collect();
-    assert!(lines.len() >= 2, "should list panes from all sessions, got: {out}");
+    assert!(
+        lines.len() >= 2,
+        "should list panes from all sessions, got: {out}"
+    );
 }
 
 #[test]
@@ -68,6 +75,16 @@ fn list_panes_filter() {
     tmux.run(&["split-window", "-d"]);
 
     // -f: filter panes
-    let out = tmux.run(&["list-panes", "-f", "#{==:#{pane_index},0}", "-F", "#{pane_index}"]);
-    assert_eq!(out.trim(), "0", "filter should only show pane 0, got: {out}");
+    let out = tmux.run(&[
+        "list-panes",
+        "-f",
+        "#{==:#{pane_index},0}",
+        "-F",
+        "#{pane_index}",
+    ]);
+    assert_eq!(
+        out.trim(),
+        "0",
+        "filter should only show pane 0, got: {out}"
+    );
 }

@@ -53,7 +53,10 @@ fn source_file_quiet() {
 
     // -q: quiet mode — nonexistent file should not error
     let out = tmux.try_run(&["source-file", "-q", "/nonexistent/path/file.conf"]);
-    assert!(out.status.success(), "source-file -q should succeed on missing file");
+    assert!(
+        out.status.success(),
+        "source-file -q should succeed on missing file"
+    );
 }
 
 #[test]
@@ -119,7 +122,10 @@ fn source_file_nested() {
 
     // Create a file that sources another file
     let inner = tmux.write_temp("set -g @nested_inner yes\n");
-    let outer_content = format!("source-file {}\nset -g @nested_outer yes\n", inner.path_str());
+    let outer_content = format!(
+        "source-file {}\nset -g @nested_outer yes\n",
+        inner.path_str()
+    );
     let outer = tmux.write_temp(&outer_content);
     tmux.run(&["source-file", outer.path_str()]);
 

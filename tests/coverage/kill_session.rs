@@ -19,7 +19,10 @@ fn kill_session_default() {
 
     let sessions = tmux.run(&["list-sessions", "-F", "#{session_name}"]);
     assert!(sessions.contains("main"));
-    assert!(!sessions.contains("extra"), "extra session should be killed");
+    assert!(
+        !sessions.contains("extra"),
+        "extra session should be killed"
+    );
 }
 
 #[test]
@@ -44,7 +47,15 @@ fn kill_session_all_others() {
 #[cfg_attr(not(feature = "coverage-tests"), ignore)]
 fn kill_session_clear_alerts() {
     let tmux = TmuxServer::new("kill_session_alerts");
-    tmux.run(&["-f/dev/null", "new", "-d", "-s", "alerttest", "-x80", "-y24"]);
+    tmux.run(&[
+        "-f/dev/null",
+        "new",
+        "-d",
+        "-s",
+        "alerttest",
+        "-x80",
+        "-y24",
+    ]);
     tmux.run(&["set", "-g", "window-size", "manual"]);
 
     // kill-session -C: clear alert flags without killing the session
@@ -52,5 +63,8 @@ fn kill_session_clear_alerts() {
 
     // Session should still exist
     let sessions = tmux.run(&["list-sessions", "-F", "#{session_name}"]);
-    assert!(sessions.contains("alerttest"), "session should survive -C flag");
+    assert!(
+        sessions.contains("alerttest"),
+        "session should survive -C flag"
+    );
 }

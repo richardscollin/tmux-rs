@@ -130,7 +130,10 @@ fn set_option_invalid_quiet() {
 
     // -q: quiet mode
     let out = tmux.try_run(&["set", "-gq", "not-a-real-option", "value"]);
-    assert!(out.status.success(), "set -q should succeed silently on invalid option");
+    assert!(
+        out.status.success(),
+        "set -q should succeed silently on invalid option"
+    );
 }
 
 #[test]
@@ -144,7 +147,10 @@ fn set_option_format_value() {
     tmux.run(&["set", "-gF", "@fmtopt", "#{session_name}"]);
     let val = tmux.run(&["show-options", "-gv", "@fmtopt"]);
     // Should be the actual session name, not the literal format string
-    assert!(!val.trim().contains("#{"), "format should be expanded, got: {val}");
+    assert!(
+        !val.trim().contains("#{"),
+        "format should be expanded, got: {val}"
+    );
 }
 
 #[test]
@@ -183,7 +189,12 @@ fn set_hook_run() {
 
     // set-hook -R: fire the hook immediately
     // Set a hook first
-    tmux.run(&["set-hook", "-g", "client-attached", "display-message 'attached'"]);
+    tmux.run(&[
+        "set-hook",
+        "-g",
+        "client-attached",
+        "display-message 'attached'",
+    ]);
     // Fire it with -R
     let out = tmux.try_run(&["set-hook", "-gR", "client-attached"]);
     let _ = out;

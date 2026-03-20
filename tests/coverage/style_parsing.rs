@@ -104,7 +104,12 @@ fn style_push_pop() {
     tmux.run(&["set", "-g", "window-size", "manual"]);
 
     // Push/pop styles in status format
-    tmux.run(&["set", "-g", "status-right", "#[push-default]#[fg=red]RED#[pop-default]normal"]);
+    tmux.run(&[
+        "set",
+        "-g",
+        "status-right",
+        "#[push-default]#[fg=red]RED#[pop-default]normal",
+    ]);
     let out = tmux.run(&["show", "-gv", "status-right"]);
     assert!(out.contains("push-default"), "got: {out}");
 }

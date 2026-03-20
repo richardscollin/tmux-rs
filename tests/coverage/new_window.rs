@@ -135,7 +135,10 @@ fn new_window_print() {
     // -P: print window info
     let out = tmux.run(&["new-window", "-P"]);
     // Should contain session:window.pane format
-    assert!(out.contains(":"), "expected session:window.pane format, got: {out}");
+    assert!(
+        out.contains(":"),
+        "expected session:window.pane format, got: {out}"
+    );
 }
 
 #[test]

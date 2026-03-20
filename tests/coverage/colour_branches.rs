@@ -10,7 +10,9 @@ fn colour_named_colours() {
     tmux.run(&["set", "-g", "window-size", "manual"]);
 
     // Named colours
-    for colour in &["red", "green", "blue", "yellow", "cyan", "magenta", "white", "black"] {
+    for colour in &[
+        "red", "green", "blue", "yellow", "cyan", "magenta", "white", "black",
+    ] {
         tmux.run(&["set", "-g", "status-style", &format!("fg={colour}")]);
     }
 }
@@ -23,8 +25,16 @@ fn colour_bright_names() {
     tmux.run(&["set", "-g", "window-size", "manual"]);
 
     // Bright colour names
-    for colour in &["brightred", "brightgreen", "brightblue", "brightyellow",
-                     "brightcyan", "brightmagenta", "brightwhite", "brightblack"] {
+    for colour in &[
+        "brightred",
+        "brightgreen",
+        "brightblue",
+        "brightyellow",
+        "brightcyan",
+        "brightmagenta",
+        "brightwhite",
+        "brightblack",
+    ] {
         tmux.run(&["set", "-g", "status-style", &format!("fg={colour}")]);
     }
 }
@@ -125,9 +135,22 @@ fn colour_x11_names() {
     tmux.run(&["set", "-g", "window-size", "manual"]);
 
     // X11 colour names
-    for name in &["coral", "gold", "khaki", "orchid", "plum", "salmon",
-                   "sienna", "tan", "tomato", "violet", "wheat",
-                   "SteelBlue", "DarkOrange", "LightGreen"] {
+    for name in &[
+        "coral",
+        "gold",
+        "khaki",
+        "orchid",
+        "plum",
+        "salmon",
+        "sienna",
+        "tan",
+        "tomato",
+        "violet",
+        "wheat",
+        "SteelBlue",
+        "DarkOrange",
+        "LightGreen",
+    ] {
         let out = tmux.try_run(&["set", "-g", "status-style", &format!("fg={name}")]);
         let _ = out;
     }

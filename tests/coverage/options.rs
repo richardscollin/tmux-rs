@@ -138,7 +138,12 @@ fn options_hook() {
     tmux.run(&["set", "-g", "window-size", "manual"]);
 
     // Set a hook
-    tmux.run(&["set-hook", "-g", "after-new-window", "set -g @hook_fired yes"]);
+    tmux.run(&[
+        "set-hook",
+        "-g",
+        "after-new-window",
+        "set -g @hook_fired yes",
+    ]);
 
     // Trigger the hook
     tmux.run(&["new-window"]);

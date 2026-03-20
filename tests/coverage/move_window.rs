@@ -142,7 +142,11 @@ fn move_window_cross_renumber() {
     let src_wins = tmux.run(&["lsw", "-t", "src", "-F", "#{window_index}"]);
     // Source had windows 0,1,2, moved 1 away, renumber should give 0,1
     let lines: Vec<&str> = src_wins.trim().lines().collect();
-    assert_eq!(lines.len(), 2, "source should have 2 windows, got: {src_wins}");
+    assert_eq!(
+        lines.len(),
+        2,
+        "source should have 2 windows, got: {src_wins}"
+    );
 }
 
 /// Move-window -r with bad target session.

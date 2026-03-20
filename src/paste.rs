@@ -106,7 +106,7 @@ pub unsafe fn paste_is_empty() -> bool {
     unsafe { PASTE_BY_TIME.rbh_root.is_null() }
 }
 
-pub unsafe fn paste_get_top(name: *mut Option<&str>) -> *mut paste_buffer {
+pub unsafe fn paste_get_top(name: *mut Option<String>) -> *mut paste_buffer {
     unsafe {
         let mut pb = rb_min::<_, discr_time_entry>(&raw mut PASTE_BY_TIME);
         while !pb.is_null() && (*pb).automatic == 0 {
@@ -116,7 +116,7 @@ pub unsafe fn paste_get_top(name: *mut Option<&str>) -> *mut paste_buffer {
             return null_mut();
         }
         if !name.is_null() {
-            *name = Some(&(*pb).name);
+            *name = Some((*pb).name.to_string());
         }
 
         pb

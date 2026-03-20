@@ -48,16 +48,16 @@ unsafe fn cmd_set_buffer_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retv
         let mut pb;
         let olddata;
 
-        let mut bufname = cstr_to_str_(args_get_(args, 'b'));
+        let mut bufname = cstr_to_str_(args_get_(args, 'b')).map(|s| s.to_string());
         if bufname.is_none() {
             pb = null_mut();
         } else {
-            pb = paste_get_name(bufname);
+            pb = paste_get_name(bufname.as_deref());
         }
 
         if std::ptr::eq(cmd_get_entry(self_), &CMD_DELETE_BUFFER_ENTRY) {
             if pb.is_null() {
-                if let Some(bufname) = bufname {
+                if let Some(bufname) = &bufname {
                     cmdq_error!(item, "unknown buffer: {}", bufname);
                     return cmd_retval::CMD_RETURN_ERROR;
                 }
@@ -73,7 +73,7 @@ unsafe fn cmd_set_buffer_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retv
 
         if args_has(&*args, 'n') {
             if pb.is_null() {
-                if let Some(bufname) = bufname {
+                if let Some(bufname) = &bufname {
                     cmdq_error!(item, "unknown buffer: {}", bufname);
                     return cmd_retval::CMD_RETURN_ERROR;
                 }
@@ -83,7 +83,7 @@ unsafe fn cmd_set_buffer_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retv
                 cmdq_error!(item, "no buffer");
                 return cmd_retval::CMD_RETURN_ERROR;
             }
-            if let Err(cause) = paste_rename(bufname, cstr_to_str_(args_get_(args, 'n'))) {
+            if let Err(cause) = paste_rename(bufname.as_deref(), cstr_to_str_(args_get_(args, 'n'))) {
                 cmdq_error!(item, "{}", cause);
                 return cmd_retval::CMD_RETURN_ERROR;
             }
@@ -114,7 +114,7 @@ unsafe fn cmd_set_buffer_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retv
         memcpy_(bufdata.add(bufsize), args_string(&*args, 0).unwrap().as_ptr().cast(), newsize);
         bufsize += newsize;
 
-        if let Err(cause) = paste_set(bufdata, bufsize, bufname) {
+        if let Err(cause) = paste_set(bufdata, bufsize, bufname.as_deref()) {
             cmdq_error!(item, "{}", cause);
             free_(bufdata);
             return cmd_retval::CMD_RETURN_ERROR;

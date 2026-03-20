@@ -5730,7 +5730,7 @@ pub unsafe fn window_copy_append_selection(wme: *mut window_mode_entry) {
             notify_pane(c"pane-set-clipboard", wp);
         }
 
-        let mut bufname = None;
+        let mut bufname: Option<String> = None;
         let pb = paste_get_top(&raw mut bufname);
         if !pb.is_null() {
             let bufdata = paste_buffer_data(pb, &raw mut bufsize);
@@ -5739,7 +5739,7 @@ pub unsafe fn window_copy_append_selection(wme: *mut window_mode_entry) {
             libc::memcpy(buf.cast(), bufdata.cast(), bufsize);
             len += bufsize;
         }
-        if paste_set(buf, len, bufname).is_err() {
+        if paste_set(buf, len, bufname.as_deref()).is_err() {
             free_(buf);
         }
     }

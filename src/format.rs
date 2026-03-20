@@ -5498,6 +5498,63 @@ pub unsafe fn format_replace(
     }
 }
 
+/// Escape `%` as `%%` inside `#{}` blocks so that strftime does not interpret
+/// them. Returns `None` if no escaping was needed (no `%` inside braces).
+unsafe fn format_escape_percent_in_braces(fmt: *const u8) -> Option<Vec<u8>> {
+    unsafe {
+        // Quick scan: do we have both #{...} and % in the string?
+        if strchr(fmt, b'%' as i32).is_null() {
+            return None;
+        }
+
+        let mut result: Vec<u8> = Vec::new();
+        let mut p = fmt;
+        let mut brackets: i32 = 0;
+        let mut needs_escape = false;
+
+        // First pass: check if any % appears inside #{}
+        while *p != b'\0' {
+            if *p == b'#' && *p.add(1) == b'{' {
+                brackets += 1;
+                p = p.add(1); // skip to {
+            } else if *p == b'}' && brackets > 0 {
+                brackets -= 1;
+            } else if *p == b'%' && brackets > 0 {
+                needs_escape = true;
+                break;
+            }
+            p = p.add(1);
+        }
+
+        if !needs_escape {
+            return None;
+        }
+
+        // Second pass: build escaped string
+        p = fmt;
+        brackets = 0;
+        while *p != b'\0' {
+            if *p == b'#' && *p.add(1) == b'{' {
+                brackets += 1;
+                result.push(*p);
+                p = p.add(1);
+                result.push(*p);
+            } else if *p == b'}' && brackets > 0 {
+                brackets -= 1;
+                result.push(*p);
+            } else if *p == b'%' && brackets > 0 {
+                result.push(b'%');
+                result.push(b'%');
+            } else {
+                result.push(*p);
+            }
+            p = p.add(1);
+        }
+        result.push(b'\0');
+        Some(result)
+    }
+}
+
 /// Expand keys in a template.
 pub unsafe fn format_expand1(es: *mut format_expand_state, mut fmt: *const u8) -> *mut u8 {
     unsafe {
@@ -5537,7 +5594,14 @@ pub unsafe fn format_expand1(es: *mut format_expand_state, mut fmt: *const u8) -
                 (*es).time = libc::time(null_mut());
                 localtime_r(&raw mut (*es).time, &raw mut (*es).tm);
             }
-            if strftime(expanded, SIZEOF_EXPANDED, fmt, &raw mut (*es).tm) == 0 {
+            // Escape % characters inside #{} blocks so strftime doesn't
+            // consume them. For example, #{e|%:10,3} should not have its
+            // % interpreted as a strftime conversion specifier.
+            let escaped_fmt = format_escape_percent_in_braces(fmt);
+            let escaped_ptr = escaped_fmt
+                .as_ref()
+                .map_or(fmt, |v| v.as_ptr() as *const u8);
+            if strftime(expanded, SIZEOF_EXPANDED, escaped_ptr, &raw mut (*es).tm) == 0 {
                 format_log1!(es, c!("format_expand1"), "format is too long",);
                 return xstrdup(c!("")).as_ptr();
             }

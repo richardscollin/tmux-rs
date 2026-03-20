@@ -303,12 +303,12 @@ pub unsafe fn key_bindings_remove_table(name: *const u8) {
         let table = key_bindings_get_table(name, false);
         if !table.is_null() {
             rb_remove(&raw mut KEY_TABLES, table);
-            key_bindings_unref_table(table);
-        }
-        for c in crate::compat::queue::tailq_foreach(&raw mut CLIENTS).map(NonNull::as_ptr) {
-            if (*c).keytable == table {
-                server_client_set_key_table(c, null_mut());
+            for c in crate::compat::queue::tailq_foreach(&raw mut CLIENTS).map(NonNull::as_ptr) {
+                if (*c).keytable == table {
+                    server_client_set_key_table(c, null_mut());
+                }
             }
+            key_bindings_unref_table(table);
         }
     }
 }

@@ -6,8 +6,10 @@ mod coverage {
     pub use super::common::*;
 
     mod alerts;
+    mod attach_session;
     mod bind_key;
     mod break_pane;
+    mod capture_pane;
     mod cmd_choose_tree;
     mod cmd_confirm_before;
     mod cmd_display_menu;
@@ -32,6 +34,7 @@ mod coverage {
     mod load_buffer;
     mod lock_server;
     mod move_window;
+    mod new_session;
     mod new_window;
     mod paste_buffer;
     mod pipe_pane;
@@ -42,6 +45,7 @@ mod coverage {
     mod respawn_pane;
     mod respawn_window;
     mod rotate_window;
+    mod run_shell;
     mod save_buffer;
     mod select_layout;
     mod select_pane;
@@ -56,10 +60,13 @@ mod coverage {
     mod source_file;
     mod show_options;
     mod show_prompt_history;
+    mod split_window;
     mod status;
     mod swap_pane;
     mod swap_window;
+    mod switch_client;
     mod unbind_key;
+    mod wait_for;
     mod window_clock;
     mod window_copy;
 }

@@ -89,3 +89,32 @@ fn copy_mode_hide_position() {
     let mode = tmux.display("#{pane_mode}");
     assert_eq!(mode.trim(), "copy-mode");
 }
+
+#[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
+fn copy_mode_page_down_half() {
+    let tmux = TmuxServer::new("copymode_pdh");
+    tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
+    tmux.run(&["set", "-g", "window-size", "manual"]);
+
+    // Enter copy mode, page down with -e (exit at bottom)
+    tmux.run(&["copy-mode"]);
+    tmux.run(&["copy-mode", "-de"]);
+
+    // May or may not still be in copy mode depending on scrollback
+    tmux.run(&["copy-mode", "-q"]);
+}
+
+#[test]
+#[cfg_attr(not(feature = "coverage-tests"), ignore)]
+fn copy_mode_history() {
+    let tmux = TmuxServer::new("copymode_hist");
+    tmux.run(&["-f/dev/null", "new", "-d", "-x80", "-y24"]);
+    tmux.run(&["set", "-g", "window-size", "manual"]);
+
+    // copy-mode -H: enter with history (shows scrollback)
+    tmux.run(&["copy-mode", "-H"]);
+    let mode = tmux.display("#{pane_mode}");
+    assert_eq!(mode, "copy-mode");
+    tmux.run(&["copy-mode", "-q"]);
+}

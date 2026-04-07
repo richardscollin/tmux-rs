@@ -11,7 +11,7 @@ pub struct TmuxServer {
 impl TmuxServer {
     pub fn new(test_name: &str) -> Self {
         let binary = PathBuf::from(Self::binary_path());
-        let socket = format!("regress_{}", test_name);
+        let socket = format!("regress_{}_{:08x}", test_name, random_u32());
         let server = Self { binary, socket };
         server.kill_server();
         server
@@ -145,6 +145,13 @@ impl TempFile {
     pub fn read_to_bytes(&self) -> Vec<u8> {
         std::fs::read(self.path()).unwrap_or_default()
     }
+}
+
+fn random_u32() -> u32 {
+    use std::hash::{BuildHasher, Hasher};
+    std::collections::hash_map::RandomState::new()
+        .build_hasher()
+        .finish() as u32
 }
 
 pub fn sleep_ms(ms: u64) {

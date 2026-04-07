@@ -12,7 +12,6 @@
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-use crate::libc::{WEXITSTATUS, WIFEXITED};
 use crate::*;
 
 pub static CMD_IF_SHELL_ENTRY: cmd_entry = cmd_entry {
@@ -42,7 +41,7 @@ pub struct cmd_if_shell_data<'a> {
     pub item: *mut cmdq_item,
 }
 
-fn cmd_if_shell_args_parse(_: *mut args, idx: u32, _: *mut *mut u8) -> args_parse_type {
+fn cmd_if_shell_args_parse(_: *mut args, idx: u32) -> args_parse_type {
     if idx == 1 || idx == 2 {
         args_parse_type::ARGS_PARSE_COMMANDS_OR_STRING
     } else {
@@ -56,11 +55,11 @@ unsafe fn cmd_if_shell_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retval
         let target = cmdq_get_target(item);
         let tc = cmdq_get_target_client(item);
         let s = (*target).s;
-        let count = args_count(args);
-        let wait = !args_has(args, 'b');
+        let count = args_count(&*args);
+        let wait = !args_has(&*args, 'b');
 
-        let shellcmd = format_single_from_target(item, args_string(args, 0));
-        if args_has(args, 'F') {
+        let shellcmd = format_single_from_target(item, args_string(&*args, 0).unwrap().as_ptr().cast());
+        if args_has(&*args, 'F') {
             let cmdlist = if *shellcmd != b'0' && *shellcmd != b'\0' {
                 args_make_commands_now(self_, item, 1, false)
             } else if count == 3 {
@@ -114,7 +113,7 @@ unsafe fn cmd_if_shell_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retval
         {
             cmdq_error!(item, "failed to run command: {}", _s(shellcmd));
             free_(shellcmd);
-            free_(cdata);
+            cmd_if_shell_free(cdata as _);
             return cmd_retval::CMD_RETURN_ERROR;
         }
         free_(shellcmd);
@@ -126,13 +125,20 @@ unsafe fn cmd_if_shell_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retval
     }
 }
 
+#[cfg(target_os = "windows")]
+unsafe fn cmd_if_shell_callback(_job: *mut job) {
+    todo!()
+}
+
+
+#[cfg(not(target_os = "windows"))]
 unsafe fn cmd_if_shell_callback(job: *mut job) {
+    use crate::libc::{WEXITSTATUS, WIFEXITED};
+
     unsafe {
         let cdata = job_get_data(job) as *mut cmd_if_shell_data;
         let c = (*cdata).client;
         let item = (*cdata).item;
-        let mut error: *mut u8 = null_mut();
-
         let state: *mut args_command_state;
         let status = job_get_status(job);
 
@@ -146,21 +152,26 @@ unsafe fn cmd_if_shell_callback(job: *mut job) {
                 break 'out;
             }
 
-            let cmdlist = args_make_commands(state, 0, null_mut(), &raw mut error);
-            if cmdlist.is_null() {
-                if (*cdata).item.is_null() {
-                    *error = (*error).to_ascii_uppercase();
-                    status_message_set!(c, -1, 1, false, "{}", _s(error));
-                } else {
-                    cmdq_error!((*cdata).item, "{}", _s(error));
+            match args_make_commands(state, 0, null_mut()) {
+                Err(mut error) => {
+                    if (*cdata).item.is_null() {
+                        // Uppercase first character for status message
+                        if let Some(first) = error.as_bytes_mut().first_mut() {
+                            first.make_ascii_uppercase();
+                        }
+                        status_message_set!(c, -1, 1, false, false, "{}", error);
+                    } else {
+                        cmdq_error!((*cdata).item, "{}", error);
+                    }
                 }
-                free_(error);
-            } else if item.is_null() {
-                let new_item = cmdq_get_command(cmdlist, null_mut());
-                cmdq_append(c, new_item);
-            } else {
-                let new_item = cmdq_get_command(cmdlist, cmdq_get_state(item));
-                cmdq_insert_after(item, new_item);
+                Ok(cmdlist) if item.is_null() => {
+                    let new_item = cmdq_get_command(cmdlist, null_mut());
+                    cmdq_append(c, new_item);
+                }
+                Ok(cmdlist) => {
+                    let new_item = cmdq_get_command(cmdlist, cmdq_get_state(item));
+                    cmdq_insert_after(item, new_item);
+                }
             }
         }
 

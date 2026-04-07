@@ -21,7 +21,7 @@ pub static CMD_NEW_WINDOW_ENTRY: cmd_entry = cmd_entry {
     alias: Some("neww"),
 
     args: args_parse::new("abc:de:F:kn:PSt:", 0, -1, None),
-    usage: "[-abdkPS] [-c start-directory] [-e environment] [-F format] [-n window-name] [-t target-window] [shell-command]",
+    usage: "[-abdkPS] [-c start-directory] [-e environment] [-F format] [-n window-name] [-t target-window] [shell-command [argument ...]]",
 
     target: cmd_entry_flag::new(
         b't',
@@ -47,12 +47,10 @@ unsafe fn cmd_new_window_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retv
         let mut new_wl: *mut winlink = null_mut();
         let mut idx = (*target).idx;
         // before;
-        let mut cause = null_mut();
-
         // If -S and -n are given and -t is not and a single window with this
         // name already exists, select it.
-        let name = args_get(args, b'n');
-        if args_has(args, 'S') && !name.is_null() && (*target).idx == -1 {
+        let name = args_get(&*args, b'n');
+        if args_has(&*args, 'S') && !name.is_null() && (*target).idx == -1 {
             let expanded = format_single(item, cstr_to_str(name), c, s, null_mut(), null_mut());
             for wl in rb_foreach(&raw mut (*s).windows).map(NonNull::as_ptr) {
                 if libc::strcmp((*(*wl).window).name, expanded) != 0 {
@@ -69,7 +67,7 @@ unsafe fn cmd_new_window_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retv
 
             free_(expanded);
             if !new_wl.is_null() {
-                if args_has(args, 'd') {
+                if args_has(&*args, 'd') {
                     return cmd_retval::CMD_RETURN_NORMAL;
                 }
                 if session_set_current(s, new_wl) == 0 {
@@ -83,8 +81,8 @@ unsafe fn cmd_new_window_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retv
             }
         }
 
-        let before = args_has(args, 'b');
-        if args_has(args, 'a') || before {
+        let before = args_has(&*args, 'b');
+        if args_has(&*args, 'a') || before {
             idx = winlink_shuffle_up(s, wl, before);
             if idx == -1 {
                 idx = (*target).idx;
@@ -95,45 +93,45 @@ unsafe fn cmd_new_window_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retv
         sc.s = s;
         sc.tc = tc;
 
-        sc.name = args_get(args, b'n');
+        sc.name = args_get(&*args, b'n');
         args_to_vector(args, &raw mut sc.argc, &raw mut sc.argv);
         sc.environ = environ_create().as_ptr();
 
-        let mut av = args_first_value(args, b'e');
-        while !av.is_null() {
-            environ_put(sc.environ, (*av).union_.string, environ_flags::empty());
-            av = args_next_value(av);
+        for av in args_entry_values(&*args, b'e') {
+            let args_value::String { string } = av else { continue };
+            environ_put(sc.environ, string.as_ptr().cast(), environ_flags::empty());
         }
 
         sc.idx = idx;
         sc.cwd = args_get_(args, 'c');
 
         sc.flags = spawn_flags::empty();
-        if args_has(args, 'd') {
+        if args_has(&*args, 'd') {
             sc.flags |= SPAWN_DETACHED;
         }
-        if args_has(args, 'k') {
+        if args_has(&*args, 'k') {
             sc.flags |= SPAWN_KILL;
         }
 
-        let new_wl = spawn_window(&raw mut sc, &raw mut cause);
-        if new_wl.is_null() {
-            cmdq_error!(item, "create window failed: {}", _s(cause));
-            free_(cause);
-            if !sc.argv.is_null() {
-                cmd_free_argv(sc.argc, sc.argv);
+        let new_wl = match spawn_window(&raw mut sc) {
+            Err(cause) => {
+                cmdq_error!(item, "create window failed: {}", cause);
+                if !sc.argv.is_null() {
+                    cmd_free_argv(sc.argc, sc.argv);
+                }
+                environ_free(sc.environ);
+                return cmd_retval::CMD_RETURN_ERROR;
             }
-            environ_free(sc.environ);
-            return cmd_retval::CMD_RETURN_ERROR;
-        }
-        if !args_has(args, 'd') || new_wl == (*s).curw {
+            Ok(wl) => wl,
+        };
+        if !args_has(&*args, 'd') || new_wl == (*s).curw {
             cmd_find_from_winlink(current, new_wl, cmd_find_flags::empty());
             server_redraw_session_group(s);
         } else {
             server_status_session_group(s);
         }
 
-        if args_has(args, 'P') {
+        if args_has(&*args, 'P') {
             let mut template = args_get_(args, 'F');
             if template.is_null() {
                 template = NEW_WINDOW_TEMPLATE;

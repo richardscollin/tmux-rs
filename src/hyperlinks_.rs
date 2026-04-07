@@ -230,3 +230,120 @@ pub unsafe fn hyperlinks_free(hl: *mut hyperlinks) {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_hyperlinks_put_and_get() {
+        unsafe {
+            let hl = hyperlinks_init();
+
+            let inner = hyperlinks_put(hl, c!("https://example.com"), c!("myid"));
+            assert!(inner > 0);
+
+            let mut uri_out: *const u8 = null();
+            let mut internal_id_out: *const u8 = null();
+            let mut external_id_out: *const u8 = null();
+
+            // Get with all output pointers non-null (coverage: lines 187-191)
+            let found = hyperlinks_get(
+                hl,
+                inner,
+                &raw mut uri_out,
+                &raw mut internal_id_out,
+                &raw mut external_id_out,
+            );
+            assert!(found);
+            assert!(!uri_out.is_null());
+            assert!(!internal_id_out.is_null());
+            assert!(!external_id_out.is_null());
+
+            hyperlinks_free(hl);
+        }
+    }
+
+    #[test]
+    fn test_hyperlinks_duplicate_uri() {
+        unsafe {
+            let hl = hyperlinks_init();
+
+            // Insert with a named internal_id
+            let inner1 = hyperlinks_put(hl, c!("https://example.com"), c!("sameid"));
+
+            // Insert same URI + same internal_id again - should return existing inner
+            // (coverage: lines 142-146, dedup path)
+            let inner2 = hyperlinks_put(hl, c!("https://example.com"), c!("sameid"));
+
+            assert_eq!(inner1, inner2, "duplicate URI+id should return same inner");
+
+            hyperlinks_free(hl);
+        }
+    }
+
+    #[test]
+    fn test_hyperlinks_anonymous_uri_unique() {
+        unsafe {
+            let hl = hyperlinks_init();
+
+            // Anonymous URIs (null internal_id) should each get a unique inner
+            let inner1 = hyperlinks_put(hl, c!("https://example.com"), null());
+            let inner2 = hyperlinks_put(hl, c!("https://example.com"), null());
+
+            assert_ne!(inner1, inner2, "anonymous URIs should be unique");
+
+            hyperlinks_free(hl);
+        }
+    }
+
+    #[test]
+    fn test_hyperlinks_get_nonexistent() {
+        unsafe {
+            let hl = hyperlinks_init();
+
+            let mut uri_out: *const u8 = null();
+            let found = hyperlinks_get(hl, 9999, &raw mut uri_out, null_mut(), null_mut());
+            assert!(!found);
+
+            hyperlinks_free(hl);
+        }
+    }
+
+    #[test]
+    fn test_hyperlinks_copy_and_free() {
+        unsafe {
+            let hl = hyperlinks_init();
+            hyperlinks_put(hl, c!("https://example.com"), c!("id1"));
+
+            // Copy increments references
+            let hl2 = hyperlinks_copy(hl);
+            assert_eq!((*hl).references, 2);
+
+            // Free the copy - should NOT actually free (refs > 0)
+            // (coverage: lines 226-229)
+            hyperlinks_free(hl2);
+            assert_eq!((*hl).references, 1);
+
+            // Final free
+            hyperlinks_free(hl);
+        }
+    }
+
+    #[test]
+    fn test_hyperlinks_get_with_null_id_out() {
+        unsafe {
+            let hl = hyperlinks_init();
+
+            let inner = hyperlinks_put(hl, c!("https://example.com"), c!("myid"));
+
+            // Get with internal_id_out = null (coverage: line 189 null branch)
+            let mut uri_out: *const u8 = null();
+            let found = hyperlinks_get(hl, inner, &raw mut uri_out, null_mut(), null_mut());
+            assert!(found);
+            assert!(!uri_out.is_null());
+
+            hyperlinks_free(hl);
+        }
+    }
+}

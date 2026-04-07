@@ -917,7 +917,10 @@ pub unsafe fn format_draw(
         let mut fr = null_mut();
         let mut frs: format_ranges = zeroed();
 
+        let mut base_default: grid_cell = zeroed();
+        memcpy__(&raw mut base_default, base);
         memcpy__(&raw mut current_default, base);
+        let base = &raw const base_default;
         style_set(&raw mut sy, &raw mut current_default);
         tailq_init(&raw mut frs);
         // log_debug("%s: %s", __func__, expanded);
@@ -1043,6 +1046,10 @@ pub unsafe fn format_draw(
                     sy.default_type = style_default_type::STYLE_DEFAULT_BASE;
                 } else if sy.default_type == style_default_type::STYLE_DEFAULT_POP {
                     memcpy__(&raw mut current_default, base);
+                    sy.default_type = style_default_type::STYLE_DEFAULT_BASE;
+                } else if sy.default_type == style_default_type::STYLE_DEFAULT_SET {
+                    memcpy__(&raw mut base_default, &raw const saved_sy.gc);
+                    memcpy__(&raw mut current_default, &raw const saved_sy.gc);
                     sy.default_type = style_default_type::STYLE_DEFAULT_BASE;
                 }
 

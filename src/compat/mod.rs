@@ -1,4 +1,5 @@
 pub mod b64;
+pub mod closefrom;
 pub mod fdforkpty;
 pub mod getdtablecount;
 pub mod getopt;
@@ -8,10 +9,8 @@ pub mod imsg_buffer;
 pub mod queue;
 pub mod reallocarray;
 pub mod recallocarray;
-pub mod systemd;
 pub mod tree;
 
-mod closefrom;
 mod freezero;
 mod getpeereid;
 mod setproctitle;
@@ -21,7 +20,6 @@ mod strtonum;
 mod unvis;
 mod vis;
 
-pub use closefrom::closefrom;
 pub use freezero::freezero;
 pub use getpeereid::getpeereid;
 pub use setproctitle::setproctitle_;
@@ -40,16 +38,26 @@ pub use vis::*;
 //     pub fn bsd_getopt(argc: c_int, argv: *const *mut c_char, shortopts: *const c_char) -> c_int;
 // }
 
-pub const HOST_NAME_MAX: usize = 255;
-
-pub const WAIT_ANY: libc::pid_t = -1;
-
-pub const ACCESSPERMS: libc::mode_t = libc::S_IRWXU | libc::S_IRWXG | libc::S_IRWXO;
-
-// #define S_ISDIR(mode)  (((mode) & S_IFMT) == S_IFDIR)
-// TODO move this to a better spot
-#[expect(non_snake_case)]
-#[inline]
-pub fn S_ISDIR(mode: libc::mode_t) -> bool {
-    mode & libc::S_IFMT == libc::S_IFDIR
+/// Portable trait to extract a raw file descriptor (`c_int`) from a `File`.
+/// On unix, delegates to `std::os::unix::io::IntoRawFd`.
+/// On windows, uses `IntoRawHandle` and casts to `c_int`.
+pub trait FileIntoRawFd {
+    fn into_fd(self) -> core::ffi::c_int;
 }
+
+impl FileIntoRawFd for std::fs::File {
+    #[cfg(unix)]
+    fn into_fd(self) -> core::ffi::c_int {
+        std::os::unix::io::IntoRawFd::into_raw_fd(self)
+    }
+
+    #[cfg(windows)]
+    fn into_fd(self) -> core::ffi::c_int {
+        std::os::windows::io::IntoRawHandle::into_raw_handle(self) as core::ffi::c_int
+    }
+}
+
+pub const HOST_NAME_MAX: usize = 255;
+pub const WAIT_ANY: crate::libc::pid_t = -1;
+pub const ACCESSPERMS: crate::libc::mode_t =
+    crate::libc::S_IRWXU | crate::libc::S_IRWXG | crate::libc::S_IRWXO;

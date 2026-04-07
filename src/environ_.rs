@@ -84,6 +84,12 @@ pub unsafe fn environ_find(env: *mut environ, name: *const u8) -> *mut environ_e
     unsafe { rb_find(env, envent) }
 }
 
+pub unsafe fn environ_find_(env: *mut environ, name: &str) -> *mut environ_entry {
+    unsafe {
+        rb_find_by(env, |e: &environ_entry| strcmp_(transmute_ptr(e.name), name).reverse())
+    }
+}
+
 macro_rules! environ_set {
    ($env:expr, $name:expr, $flags:expr, $fmt:literal $(, $args:expr)* $(,)?) => {
         crate::environ_::environ_set_($env, $name, $flags, format_args!($fmt $(, $args)*))
@@ -197,6 +203,7 @@ pub unsafe fn environ_update(oo: *mut options, src: *mut environ, dst: *mut envi
     }
 }
 
+#[cfg(not(target_os = "windows"))]
 pub unsafe fn environ_push(env: *mut environ) {
     unsafe {
         environ = xcalloc_::<*mut u8>(1).as_ptr();
@@ -264,6 +271,7 @@ pub unsafe fn environ_for_session(s: *mut session, no_term: c_int) -> *mut envir
                 "{}",
                 getversion()
             );
+            environ_set!(env, c!("COLORTERM"), environ_flags::empty(), "truecolor");
         }
 
         #[cfg(feature = "systemd")]
@@ -280,11 +288,133 @@ pub unsafe fn environ_for_session(s: *mut session, no_term: c_int) -> *mut envir
             c!("TMUX"),
             environ_flags::empty(),
             "{},{},{}",
-            _s(SOCKET_PATH),
+            SOCKET_PATH.get().unwrap(),
             std::process::id(),
             idx,
         );
 
         env
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_environ_set_and_find() {
+        unsafe {
+            let env = environ_create().as_ptr();
+            environ_set!(env, c!("FOO"), environ_flags::empty(), "bar");
+
+            let entry = environ_find(env, c!("FOO"));
+            assert!(!entry.is_null());
+            assert_eq!(cstr_to_str(transmute_ptr((*entry).value)), "bar");
+
+            environ_free(env);
+        }
+    }
+
+    #[test]
+    fn test_environ_unset() {
+        unsafe {
+            let env = environ_create().as_ptr();
+            environ_set!(env, c!("REMOVE_ME"), environ_flags::empty(), "value");
+
+            // Verify it exists
+            assert!(!environ_find(env, c!("REMOVE_ME")).is_null());
+
+            // Unset it
+            environ_unset(env, c!("REMOVE_ME"));
+
+            // Verify it's gone
+            assert!(environ_find(env, c!("REMOVE_ME")).is_null());
+
+            // Unset of non-existent key should be a no-op
+            environ_unset(env, c!("NONEXISTENT"));
+
+            environ_free(env);
+        }
+    }
+
+    #[test]
+    fn test_environ_first_and_next() {
+        unsafe {
+            let env = environ_create().as_ptr();
+            environ_set!(env, c!("AAA"), environ_flags::empty(), "1");
+            environ_set!(env, c!("BBB"), environ_flags::empty(), "2");
+            environ_set!(env, c!("CCC"), environ_flags::empty(), "3");
+
+            // Iterate using first/next
+            let mut names = Vec::new();
+            let mut entry = environ_first(env);
+            while !entry.is_null() {
+                names.push(cstr_to_str(transmute_ptr((*entry).name)).to_string());
+                entry = environ_next(entry);
+            }
+
+            assert_eq!(names.len(), 3);
+            // RB-tree is sorted by strcmp, so alphabetical order
+            assert_eq!(names, vec!["AAA", "BBB", "CCC"]);
+
+            environ_free(env);
+        }
+    }
+
+    #[test]
+    fn test_environ_put_with_equals() {
+        unsafe {
+            let env = environ_create().as_ptr();
+            environ_put(env, c!("MY_VAR=hello"), environ_flags::empty());
+
+            let entry = environ_find(env, c!("MY_VAR"));
+            assert!(!entry.is_null());
+            assert_eq!(cstr_to_str(transmute_ptr((*entry).value)), "hello");
+
+            environ_free(env);
+        }
+    }
+
+    #[test]
+    fn test_environ_put_without_equals() {
+        unsafe {
+            let env = environ_create().as_ptr();
+
+            // put with no '=' should be a no-op (coverage: line 142-143)
+            environ_put(env, c!("NOEQUALS"), environ_flags::empty());
+
+            // Should not have been added
+            assert!(environ_find(env, c!("NOEQUALS")).is_null());
+
+            environ_free(env);
+        }
+    }
+
+    #[test]
+    fn test_environ_first_empty() {
+        unsafe {
+            let env = environ_create().as_ptr();
+
+            // first on empty env should return null
+            assert!(environ_first(env).is_null());
+
+            environ_free(env);
+        }
+    }
+
+    #[test]
+    fn test_environ_clear_and_find() {
+        unsafe {
+            let env = environ_create().as_ptr();
+            environ_set!(env, c!("KEY"), environ_flags::empty(), "val");
+
+            // Clear sets value to None but keeps the entry
+            environ_clear(env, c!("KEY"));
+            let entry = environ_find(env, c!("KEY"));
+            assert!(!entry.is_null());
+            assert!((*entry).value.is_none());
+
+            environ_free(env);
+        }
     }
 }

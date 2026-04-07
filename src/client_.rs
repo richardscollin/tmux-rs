@@ -11,27 +11,31 @@
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+#[cfg_attr(target_os = "windows", expect(unused_imports))]
 use std::io::Write;
 
+#[cfg_attr(target_os = "windows", expect(unused_imports))]
 use crate::compat::{
-    WAIT_ANY, closefrom,
     imsg::{IMSG_HEADER_SIZE, MAX_IMSGSIZE, imsg},
 };
+#[cfg_attr(target_os = "windows", expect(unused_imports))]
 use crate::libc::{
-    AF_UNIX, CREAD, CS8, EAGAIN, ECHILD, ECONNREFUSED, EINTR, ENAMETOOLONG, ENOENT, HUPCL, ICRNL,
-    IXANY, LOCK_EX, LOCK_NB, O_CREAT, O_WRONLY, ONLCR, OPOST, SA_RESTART, SIG_DFL, SIG_IGN,
-    SIGCHLD, SIGCONT, SIGHUP, SIGTERM, SIGTSTP, SIGWINCH, SOCK_STREAM, STDERR_FILENO, STDIN_FILENO,
-    STDOUT_FILENO, TCSAFLUSH, TCSANOW, VMIN, VTIME, WNOHANG, cfgetispeed, cfgetospeed, cfmakeraw,
-    cfsetispeed, cfsetospeed, close, connect, dup, execl, flock, getppid, isatty, kill, memcpy,
-    memset, open, sigaction, sigemptyset, sockaddr, sockaddr_un, socket, strerror, strlen,
-    strsignal, system, tcgetattr, tcsetattr, unlink, waitpid,
+    EAGAIN, ECHILD, ECONNREFUSED, EINTR, ENAMETOOLONG, ENOENT,
+    STDERR_FILENO, STDIN_FILENO,
+    STDOUT_FILENO,
+    close, connect, dup, execl, memcpy,
+    memset, sockaddr, socket, strerror, strlen,
+    system,
 };
 use crate::*;
+#[cfg_attr(target_os = "windows", expect(unused_imports))]
 use crate::options_::options_free;
+
 
 pub static mut CLIENT_PROC: *mut tmuxproc = null_mut();
 pub static mut CLIENT_PEER: *mut tmuxpeer = null_mut();
 pub static mut CLIENT_FLAGS: client_flag = client_flag::empty();
+#[cfg(not(target_os = "windows"))]
 pub static mut CLIENT_SUSPENDED: i32 = 0;
 
 #[repr(i32)]
@@ -59,15 +63,28 @@ static mut CLIENT_EXECCMD: *mut u8 = null_mut();
 static mut CLIENT_ATTACHED: i32 = 0;
 static mut CLIENT_FILES: client_files = rb_initializer();
 
-pub unsafe fn client_get_lock(lockfile: *mut u8) -> i32 {
-    unsafe {
-        log_debug!("lock file is {}", _s(lockfile));
+#[cfg(not(target_os = "windows"))]
+pub unsafe fn client_get_lock(lockfile: &str) -> i32 {
+    use crate::libc::{flock, LOCK_EX, LOCK_NB};
+    use crate::compat::FileIntoRawFd;
+    use std::os::unix::fs::OpenOptionsExt;
 
-        let lockfd = open(lockfile, O_WRONLY | O_CREAT, 0o600);
-        if lockfd == -1 {
-            log_debug!("open failed: {}", strerror(errno!()));
-            return -1;
-        }
+    unsafe {
+        log_debug!("lock file is {}", lockfile);
+
+        let lockfd = match std::fs::OpenOptions::new()
+            .write(true)
+            .create(true)
+            .truncate(false)
+            .mode(0o600)
+            .open(lockfile)
+        {
+            Ok(file) => file.into_fd(),
+            Err(e) => {
+                log_debug!("open failed: {}", e);
+                return -1;
+            }
+        };
 
         if flock(lockfd, LOCK_EX | LOCK_NB) == -1 {
             log_debug!("flock failed: {}", strerror(errno!()));
@@ -84,21 +101,31 @@ pub unsafe fn client_get_lock(lockfile: *mut u8) -> i32 {
     }
 }
 
-pub unsafe fn client_connect(base: *mut event_base, path: *const u8, flags: client_flag) -> i32 {
+
+#[cfg(not(target_os = "windows"))]
+pub unsafe fn client_connect(base: *mut event_base, path: &str, flags: client_flag) -> i32 {
+    use crate::libc::{AF_UNIX,SOCK_STREAM,sockaddr_un};
+
     unsafe {
         let mut sa: sockaddr_un = zeroed();
         let mut fd;
         let mut lockfd = -1;
         let mut locked: i32 = 0;
-        let mut lockfile: *mut u8 = null_mut();
+        let mut lockfile: Option<String> = None;
 
         sa.sun_family = AF_UNIX as libc::sa_family_t;
-        let size = strlcpy(&raw mut sa.sun_path as _, path, size_of_val(&sa.sun_path));
-        if size >= size_of_val(&sa.sun_path) {
+        let path_bytes = path.as_bytes();
+        if path_bytes.len() >= size_of_val(&sa.sun_path) {
             errno!() = ENAMETOOLONG;
             return -1;
         }
-        log_debug!("socket is {}", _s(path));
+        std::ptr::copy_nonoverlapping(
+            path_bytes.as_ptr(),
+            sa.sun_path.as_mut_ptr().cast(),
+            path_bytes.len(),
+        );
+        sa.sun_path[path_bytes.len()] = 0;
+        log_debug!("socket is {}", path);
 
         'failed: {
             'retry: loop {
@@ -127,13 +154,10 @@ pub unsafe fn client_connect(base: *mut event_base, path: *const u8, flags: clie
                     close(fd);
 
                     if locked == 0 {
-                        lockfile = format_nul!("{}.lock", _s(path));
-                        lockfd = client_get_lock(lockfile);
+                        lockfile = Some(format!("{path}.lock"));
+                        lockfd = client_get_lock(lockfile.as_ref().unwrap());
                         if lockfd < 0 {
                             log_debug!("didn't get lock ({})", lockfd);
-
-                            free_(lockfile);
-                            lockfile = null_mut();
 
                             if lockfd == -2 {
                                 continue 'retry;
@@ -145,19 +169,19 @@ pub unsafe fn client_connect(base: *mut event_base, path: *const u8, flags: clie
                         continue 'retry;
                     }
 
-                    if lockfd >= 0 && unlink(path) != 0 && errno!() != ENOENT {
-                        free_(lockfile);
+                    if lockfd >= 0
+                        && matches!(std::fs::remove_file(path), Err(e) if e.kind() != std::io::ErrorKind::NotFound)
+                    {
                         close(lockfd);
                         return -1;
                     }
-                    fd = server_start(CLIENT_PROC, flags, base, lockfd, lockfile);
+                    fd = server_start(CLIENT_PROC, flags, base, lockfd, lockfile.as_deref());
                 }
 
                 break 'retry;
             }
 
             if locked != 0 && lockfd >= 0 {
-                free_(lockfile);
                 close(lockfd);
             }
             setblocking(fd, 0);
@@ -166,7 +190,6 @@ pub unsafe fn client_connect(base: *mut event_base, path: *const u8, flags: clie
 
         // failed:
         if locked != 0 {
-            free_(lockfile as _);
             close(lockfd);
         }
         close(fd);
@@ -174,6 +197,7 @@ pub unsafe fn client_connect(base: *mut event_base, path: *const u8, flags: clie
     }
 }
 
+#[cfg(not(target_os = "windows"))]
 pub unsafe fn client_exit_message() -> Cow<'static, str> {
     match unsafe { CLIENT_EXITREASON } {
         client_exitreason::CLIENT_EXIT_DETACHED => {
@@ -213,7 +237,199 @@ unsafe fn client_exit() {
     }
 }
 
+
+#[cfg(target_os = "windows")]
+pub unsafe extern "C-unwind" fn client_main(
+    _base: *mut event_base,
+    _argc: i32,
+    _argv: *mut *mut u8,
+    mut flags: client_flag,
+    _feat: i32,
+) -> i32 {
+    use crate::server::{SERVER_PROC, server_start_windows};
+
+    unsafe {
+        flags |= client_flag::NOFORK | client_flag::STARTSERVER;
+
+        // Set console to raw mode and enable VT processing BEFORE anything
+        // spawns the stdin reader thread.  ReadFile() on a cooked-mode console
+        // blocks until Enter, so the mode must be set first.
+        libc::enable_vt_processing();
+        libc::set_console_raw_mode();
+
+        CLIENT_PROC = proc_start("client");
+        CLIENT_FLAGS = flags;
+
+        // Initialize server and get the client-side fd of the internal socketpair
+        let client_fd = server_start_windows(CLIENT_PROC, flags);
+        if client_fd < 0 {
+            eprintln!("server_start_windows failed");
+            return 1;
+        }
+
+        // Create a peer on the client side for sending messages to the server
+        CLIENT_PEER = proc_add_peer(
+            SERVER_PROC,
+            client_fd,
+            Some(client_dispatch),
+            null_mut(),
+        );
+
+        // Send identification messages
+        client_send_identify_windows();
+
+        // Send MSG_COMMAND with argc=0 → triggers "new-session" on the server
+        let data: *mut msg_command = xmalloc(size_of::<msg_command>()).cast().as_ptr();
+        (*data).argc = 0;
+        proc_send(
+            CLIENT_PEER,
+            msgtype::MSG_COMMAND,
+            -1,
+            data as *const c_void,
+            size_of::<msg_command>(),
+        );
+        free_(data);
+
+        // Flush all messages so the server processes them on the first event loop iteration
+        proc_flush_peer(CLIENT_PEER);
+
+        // Enter the unified event loop (server + client events on the same base)
+        proc_loop(SERVER_PROC, Some(crate::server::server_loop));
+
+        // tty_stop_tty wrote cleanup sequences (RMCUP etc.) to the relay socket,
+        // but the stdout writer thread may not have flushed them to the console
+        // before we exit and kill all threads.  Write the essential sequences
+        // directly to the console stdout handle to guarantee cleanup.
+        {
+            use windows_sys::Win32::Foundation::INVALID_HANDLE_VALUE;
+            use windows_sys::Win32::Storage::FileSystem::WriteFile;
+            use windows_sys::Win32::System::Console::{GetStdHandle, STD_OUTPUT_HANDLE};
+
+            let stdout = GetStdHandle(STD_OUTPUT_HANDLE);
+            if stdout != INVALID_HANDLE_VALUE && !stdout.is_null() {
+                // Leave alternate screen, show cursor, reset attributes
+                let cleanup = b"\x1b[?1049l\x1b[?25h\x1b[0m";
+                let mut written: u32 = 0;
+                WriteFile(
+                    stdout,
+                    cleanup.as_ptr(),
+                    cleanup.len() as u32,
+                    &mut written,
+                    std::ptr::null_mut(),
+                );
+            }
+        }
+
+        // Restore console to its original mode so the terminal isn't left broken
+        libc::restore_original_console_mode();
+        libc::restore_console_codepage();
+
+        job_kill_all();
+        0
+    }
+}
+
+/// Send identification messages for the Windows embedded client.
+/// Unlike Unix, we skip MSG_IDENTIFY_STDIN/STDOUT (no fd passing on Windows).
+#[cfg(target_os = "windows")]
+unsafe fn client_send_identify_windows() {
+    unsafe {
+        // Send flags
+        let mut longflags: u64 = (*&raw const CLIENT_FLAGS).bits();
+        proc_send(
+            CLIENT_PEER,
+            msgtype::MSG_IDENTIFY_LONGFLAGS,
+            -1,
+            &raw mut longflags as *mut _ as *const c_void,
+            size_of::<u64>(),
+        );
+
+        // Send terminal type
+        let term = c"xterm-256color";
+        proc_send(
+            CLIENT_PEER,
+            msgtype::MSG_IDENTIFY_TERM,
+            -1,
+            term.as_ptr() as *const c_void,
+            term.to_bytes_with_nul().len(),
+        );
+
+        // Send features (0 = no special features)
+        let mut feat: i32 = 0;
+        proc_send(
+            CLIENT_PEER,
+            msgtype::MSG_IDENTIFY_FEATURES,
+            -1,
+            &raw mut feat as *mut _ as *const c_void,
+            size_of::<i32>(),
+        );
+
+        // Send tty name (empty on Windows)
+        let ttyname = c"windows-console";
+        proc_send(
+            CLIENT_PEER,
+            msgtype::MSG_IDENTIFY_TTYNAME,
+            -1,
+            ttyname.as_ptr() as *const c_void,
+            ttyname.to_bytes_with_nul().len(),
+        );
+
+        // Send current working directory
+        let cwd = find_cwd()
+            .map(|e| CString::new(e.into_os_string().into_string().unwrap()).unwrap())
+            .or_else(|| find_home().map(|c| c.to_owned()));
+        let cwd = cwd.as_deref().unwrap_or(c"C:\\");
+        proc_send(
+            CLIENT_PEER,
+            msgtype::MSG_IDENTIFY_CWD,
+            -1,
+            cwd.as_ptr() as *const c_void,
+            cwd.to_bytes_with_nul().len(),
+        );
+
+        // Skip MSG_IDENTIFY_STDIN and MSG_IDENTIFY_STDOUT — fd passing doesn't
+        // work on Windows. The server will see fd=-1 for these.
+
+        // Send client PID
+        let mut pid = std::process::id() as i32;
+        proc_send(
+            CLIENT_PEER,
+            msgtype::MSG_IDENTIFY_CLIENTPID,
+            -1,
+            &raw mut pid as *mut _ as *const c_void,
+            size_of::<i32>(),
+        );
+
+        // Send environment variables
+        for (key, value) in std::env::vars() {
+            let entry = format!("{key}={value}");
+            if let Ok(cstr) = CString::new(entry) {
+                let bytes = cstr.to_bytes_with_nul();
+                if bytes.len() <= crate::compat::imsg::MAX_IMSGSIZE - crate::compat::imsg::IMSG_HEADER_SIZE {
+                    proc_send(
+                        CLIENT_PEER,
+                        msgtype::MSG_IDENTIFY_ENVIRON,
+                        -1,
+                        cstr.as_ptr() as *const c_void,
+                        bytes.len(),
+                    );
+                }
+            }
+        }
+
+        // Signal end of identification
+        proc_send(
+            CLIENT_PEER,
+            msgtype::MSG_IDENTIFY_DONE,
+            -1,
+            null_mut(),
+            0,
+        );
+    }
+}
+
 #[expect(clippy::deref_addrof)]
+#[cfg(not(target_os = "windows"))]
 pub unsafe extern "C-unwind" fn client_main(
     base: *mut event_base,
     argc: i32,
@@ -221,6 +437,12 @@ pub unsafe extern "C-unwind" fn client_main(
     mut flags: client_flag,
     feat: i32,
 ) -> i32 {
+    use crate::libc::{
+        CREAD, CS8, HUPCL, ICRNL, IXANY, ONLCR, OPOST, cfsetispeed, cfsetospeed, TCSAFLUSH, TCSANOW, VMIN, VTIME,
+        cfgetispeed, cfgetospeed, cfmakeraw, getppid,kill, isatty, tcgetattr, 
+tcsetattr, 
+    };
+
     unsafe {
         let data: *mut msg_command;
         let fd;
@@ -229,10 +451,7 @@ pub unsafe extern "C-unwind" fn client_main(
         let mut tio: termios = zeroed();
         let mut saved_tio: termios = zeroed();
         let mut caps: *mut *mut u8 = null_mut();
-        let mut cause: *mut u8 = null_mut();
         let mut ncaps: u32 = 0;
-        let values: *mut args_value;
-
         if !SHELL_COMMAND.is_null() {
             msg = msgtype::MSG_SHELL;
             flags |= client_flag::STARTSERVER;
@@ -242,8 +461,8 @@ pub unsafe extern "C-unwind" fn client_main(
         } else {
             msg = msgtype::MSG_COMMAND;
 
-            values = args_from_vector(argc, argv);
-            match cmd_parse_from_arguments(values, argc as u32, None) {
+            let values = args_from_vector(argc, argv);
+            match cmd_parse_from_arguments(&values, None) {
                 Ok(cmdlist) => {
                     if cmd_list_any_have(cmdlist, cmd_flag::CMD_STARTSERVER) {
                         flags |= client_flag::STARTSERVER;
@@ -254,11 +473,12 @@ pub unsafe extern "C-unwind" fn client_main(
                     free_(error);
                 }
             }
-            args_free_values(values, argc as u32);
-            free_(values);
         }
 
-        CLIENT_PROC = proc_start(c"client");
+        CLIENT_PROC = proc_start("client");
+        // With event-tokio, defer proc_set_signals to after fork so no
+        // tokio tasks exist at fork time.
+        #[cfg(not(feature = "event-tokio"))]
         proc_set_signals(CLIENT_PROC, Some(client_signal));
 
         CLIENT_FLAGS = flags;
@@ -274,22 +494,30 @@ pub unsafe extern "C-unwind" fn client_main(
                 fn systemd_activated() -> i32;
             }
             if systemd_activated() != 0 {
-                fd = server_start(CLIENT_PROC, flags, base, 0, null_mut());
+                fd = server_start(CLIENT_PROC, flags, base, 0, None);
             } else {
-                fd = client_connect(base, SOCKET_PATH, CLIENT_FLAGS);
+                fd = client_connect(base, SOCKET_PATH.get().unwrap(), CLIENT_FLAGS);
             }
         }
         #[cfg(not(feature = "systemd"))]
         {
-            fd = client_connect(base, SOCKET_PATH, CLIENT_FLAGS);
+            fd = client_connect(base, SOCKET_PATH.get().unwrap(), CLIENT_FLAGS);
+        }
+
+        // With event-tokio, init the event system and signals after the
+        // fork (server_start/client_connect have returned to the parent).
+        #[cfg(feature = "event-tokio")]
+        {
+            let _base = osdep_event_init();
+            proc_set_signals(CLIENT_PROC, Some(client_signal));
         }
         if fd == -1 {
             if errno!() == ECONNREFUSED {
-                eprintln!("no server running on {}", _s(SOCKET_PATH));
+                eprintln!("no server running on {}", SOCKET_PATH.get().unwrap());
             } else {
                 eprintln!(
                     "error connecting to {} ({})",
-                    _s(SOCKET_PATH),
+                    SOCKET_PATH.get().unwrap(),
                     strerror(errno!())
                 );
             }
@@ -319,16 +547,14 @@ pub unsafe extern "C-unwind" fn client_main(
 
         if isatty(STDIN_FILENO) != 0
             && !termname.is_empty()
-            && tty_term_read_list(
+            && let Err(cause) = tty_term_read_list(
                 termname.as_ptr().cast(),
                 STDIN_FILENO,
                 &raw mut caps,
                 &raw mut ncaps,
-                &raw mut cause,
-            ) != 0
+            )
         {
-            eprintln!("{}", _s(cause));
-            free_(cause);
+            eprintln!("{cause}");
             return 1;
         }
 
@@ -409,18 +635,21 @@ pub unsafe extern "C-unwind" fn client_main(
 
         if CLIENT_ATTACHED != 0 {
             if CLIENT_EXITREASON != client_exitreason::CLIENT_EXIT_NONE {
-                println!("[{}]", client_exit_message());
+                _ = writeln!(std::io::stdout(), "[{}]", client_exit_message());
             }
 
-            let ppid = getppid();
-            if CLIENT_EXITTYPE == msgtype::MSG_DETACHKILL && ppid > 1 {
-                kill(ppid, SIGHUP);
+            #[cfg(not(target_os = "windows"))]
+            {
+                let ppid = getppid();
+                if CLIENT_EXITTYPE == msgtype::MSG_DETACHKILL && ppid > 1 {
+                    kill(ppid, libc::SIGHUP);
+                }
             }
         } else if (*&raw const CLIENT_FLAGS).intersects(client_flag::CONTROL) {
             if CLIENT_EXITREASON != client_exitreason::CLIENT_EXIT_NONE {
-                println!("%exit {}", client_exit_message());
+                _ = writeln!(std::io::stdout(), "%exit {}", client_exit_message());
             } else {
-                println!("%exit");
+                _ = writeln!(std::io::stdout(), "%exit");
             }
             // flush stdout (should already be flushed by println! macro)
             if (*&raw const CLIENT_FLAGS).intersects(client_flag::CONTROL_WAITEXIT) {
@@ -449,6 +678,7 @@ pub unsafe extern "C-unwind" fn client_main(
     }
 }
 
+#[cfg(not(target_os = "windows"))]
 unsafe fn client_send_identify(
     ttynam: *const u8,
     termname: &CStr,
@@ -559,6 +789,7 @@ unsafe fn client_send_identify(
 
 #[expect(clippy::deref_addrof)]
 unsafe fn client_exec(shell: *mut u8, shellcmd: *mut u8) {
+    use crate::compat::closefrom::closefrom;
     unsafe {
         log_debug!("shell {}, command {}", _s(shell), _s(shellcmd));
         let argv0 = shell_argv0(
@@ -587,14 +818,18 @@ unsafe fn client_exec(shell: *mut u8, shellcmd: *mut u8) {
     }
 }
 
+#[cfg(not(target_os = "windows"))]
 unsafe fn client_signal(sig: i32) {
+    use crate::libc::{WNOHANG, strsignal, waitpid};
+    use crate::compat::WAIT_ANY;
+
     unsafe {
-        let mut sigact: sigaction = zeroed();
+        let mut sigact: libc::sigaction = zeroed();
         let mut status: i32 = 0;
         let mut pid: pid_t;
 
         log_debug!("{}: {}", "client_signal", _s(strsignal(sig).cast::<u8>()));
-        if sig == SIGCHLD {
+        if sig == libc::SIGCHLD {
             loop {
                 pid = waitpid(WAIT_ANY, &raw mut status, WNOHANG);
                 if pid == 0 {
@@ -608,32 +843,32 @@ unsafe fn client_signal(sig: i32) {
                 }
             }
         } else if CLIENT_ATTACHED == 0 {
-            if sig == SIGTERM || sig == SIGHUP {
+            if sig == libc::SIGTERM || sig == libc::SIGHUP {
                 proc_exit(CLIENT_PROC);
             }
         } else {
             match sig {
-                SIGHUP => {
+                libc::SIGHUP => {
                     CLIENT_EXITREASON = client_exitreason::CLIENT_EXIT_LOST_TTY;
                     CLIENT_EXITVAL = 1;
                     proc_send(CLIENT_PEER, msgtype::MSG_EXITING, -1, null_mut(), 0);
                 }
-                SIGTERM => {
+                libc::SIGTERM => {
                     if CLIENT_SUSPENDED == 0 {
                         CLIENT_EXITREASON = client_exitreason::CLIENT_EXIT_TERMINATED;
                     }
                     CLIENT_EXITVAL = 1;
                     proc_send(CLIENT_PEER, msgtype::MSG_EXITING, -1, null_mut(), 0);
                 }
-                SIGWINCH => {
+                libc::SIGWINCH => {
                     proc_send(CLIENT_PEER, msgtype::MSG_RESIZE, -1, null_mut(), 0);
                 }
-                SIGCONT => {
-                    memset(&raw mut sigact as _, 0, size_of::<sigaction>());
-                    sigemptyset(&raw mut sigact.sa_mask);
-                    sigact.sa_flags = SA_RESTART;
-                    sigact.sa_sigaction = SIG_IGN;
-                    if sigaction(SIGTSTP, &raw mut sigact, null_mut()) != 0 {
+                libc::SIGCONT => {
+                    memset(&raw mut sigact as _, 0, size_of::<libc::sigaction>());
+                    libc::sigemptyset(&raw mut sigact.sa_mask);
+                    sigact.sa_flags = libc::SA_RESTART;
+                    sigact.sa_sigaction = libc::SIG_IGN;
+                    if libc::sigaction(libc::SIGTSTP, &raw mut sigact, null_mut()) != 0 {
                         fatal("sigaction failed");
                     }
                     proc_send(CLIENT_PEER, msgtype::MSG_WAKEUP, -1, null_mut(), 0);
@@ -815,7 +1050,8 @@ unsafe fn client_dispatch_wait(imsg: *mut imsg) {
 #[expect(clippy::deref_addrof)]
 unsafe fn client_dispatch_attached(imsg: *mut imsg) {
     unsafe {
-        let mut sigact: sigaction = zeroed();
+        #[cfg(not(target_os = "windows"))]
+        let mut sigact: libc::sigaction = zeroed();
         let data: *mut u8 = (*imsg).data as _;
         let datalen = (*imsg).hdr.len as usize - IMSG_HEADER_SIZE;
 
@@ -884,20 +1120,21 @@ unsafe fn client_dispatch_attached(imsg: *mut imsg) {
                 CLIENT_EXITREASON = client_exitreason::CLIENT_EXIT_SERVER_EXITED;
                 CLIENT_EXITVAL = 1;
             }
+            #[cfg(not(target_os = "windows"))]
             msgtype::MSG_SUSPEND => {
                 if datalen != 0 {
                     fatalx("bad MSG_SUSPEND size");
                 }
 
-                memset(&raw mut sigact as _, 0, size_of::<sigaction>());
-                sigemptyset(&raw mut sigact.sa_mask);
-                sigact.sa_flags = SA_RESTART;
-                sigact.sa_sigaction = SIG_DFL;
-                if sigaction(SIGTSTP, &raw mut sigact, null_mut()) != 0 {
+                memset(&raw mut sigact as _, 0, size_of::<libc::sigaction>());
+                libc::sigemptyset(&raw mut sigact.sa_mask);
+                sigact.sa_flags = libc::SA_RESTART;
+                sigact.sa_sigaction = libc::SIG_DFL;
+                if libc::sigaction(libc::SIGTSTP, &raw mut sigact, null_mut()) != 0 {
                     fatal("sigaction failed");
                 }
                 CLIENT_SUSPENDED = 1;
-                kill(std::process::id() as i32, SIGTSTP);
+                kill(std::process::id() as i32, libc::SIGTSTP);
             }
             msgtype::MSG_LOCK => {
                 if datalen == 0 || *data.add(datalen - 1) != b'\0' {

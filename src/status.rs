@@ -116,6 +116,7 @@ pub fn status_prompt_load_history() {
 }
 
 /// Save status prompt history to file.
+#[cfg(not(target_os = "windows"))]
 pub unsafe fn status_prompt_save_history() {
     unsafe {
         let Some(history_file) = status_prompt_find_history_file() else {
@@ -165,7 +166,7 @@ unsafe extern "C-unwind" fn status_timer_callback(_fd: i32, _events: i16, c: Non
 
         let mut tv: timeval = zeroed();
         timerclear(&raw mut tv);
-        tv.tv_sec = options_get_number_((*s).options, "status-interval");
+        tv.tv_sec = options_get_number_((*s).options, "status-interval") as _;
 
         if tv.tv_sec != 0 {
             evtimer_add(&raw mut (*c).status.timer, &raw const tv);
@@ -488,8 +489,8 @@ pub unsafe fn status_redraw(c: *mut client) -> i32 {
 }
 
 macro_rules! status_message_set {
-   ($c:expr, $delay:expr, $ignore_styles:expr, $ignore_keys:expr, $fmt:literal $(, $args:expr)* $(,)?) => {
-        crate::status::status_message_set_($c, $delay, $ignore_styles, $ignore_keys, format_args!($fmt $(, $args)*))
+   ($c:expr, $delay:expr, $ignore_styles:expr, $ignore_keys:expr, $no_freeze:expr, $fmt:literal $(, $args:expr)* $(,)?) => {
+        crate::status::status_message_set_($c, $delay, $ignore_styles, $ignore_keys, $no_freeze, format_args!($fmt $(, $args)*))
     };
 }
 pub(crate) use status_message_set;
@@ -500,6 +501,7 @@ pub unsafe fn status_message_set_(
     mut delay: i32,
     ignore_styles: i32,
     ignore_keys: bool,
+    no_freeze: bool,
     args: std::fmt::Arguments,
 ) {
     unsafe {
@@ -526,7 +528,7 @@ pub unsafe fn status_message_set_(
             delay = options_get_number_((*(*c).session).options, "display-time") as i32;
         }
         if delay > 0 {
-            tv.tv_sec = (delay / 1000) as libc::time_t;
+            tv.tv_sec = (delay / 1000) as _;
             tv.tv_usec = (delay as libc::suseconds_t % 1000) * (1000 as libc::suseconds_t);
 
             if event_initialized(&raw mut (*c).message_timer) != 0 {
@@ -546,7 +548,10 @@ pub unsafe fn status_message_set_(
         }
         (*c).message_ignore_styles = ignore_styles;
 
-        (*c).tty.flags |= tty_flags::TTY_NOCURSOR | tty_flags::TTY_FREEZE;
+        if !no_freeze {
+            (*c).tty.flags |= tty_flags::TTY_FREEZE;
+        }
+        (*c).tty.flags |= tty_flags::TTY_NOCURSOR;
         (*c).flags |= client_flag::REDRAWSTATUS;
     }
 }
@@ -657,6 +662,18 @@ pub unsafe fn status_message_redraw(c: *mut client) -> i32 {
     }
 }
 
+/// Accept prompt immediately.
+unsafe fn status_prompt_accept(_item: *mut cmdq_item, data: *mut c_void) -> cmd_retval {
+    unsafe {
+        let c: *mut client = data.cast();
+        if !(*c).prompt_string.is_null() {
+            (*c).prompt_inputcb.unwrap()(c, NonNull::new((*c).prompt_data).unwrap(), c!("y"), 1);
+            status_prompt_clear(c);
+        }
+        cmd_retval::CMD_RETURN_NORMAL
+    }
+}
+
 /// Enable status line prompt.
 pub unsafe fn status_prompt_set<T>(
     c: *mut client,
@@ -681,18 +698,19 @@ pub unsafe fn status_prompt_set<T>(
         if input.is_null() {
             input = c!("");
         }
-        let tmp = if flags.intersects(prompt_flags::PROMPT_NOFORMAT) {
-            xstrdup(input).as_ptr()
-        } else {
-            format_expand_time(ft, input)
-        };
 
         status_message_clear(NonNull::new_unchecked(c));
         status_prompt_clear(c);
         status_push_screen(c);
 
-        (*c).prompt_string = format_expand_time(ft, msg);
+        (*c).prompt_formats = ft;
+        (*c).prompt_string = xstrdup(msg).as_ptr();
 
+        let tmp = if flags.intersects(prompt_flags::PROMPT_NOFORMAT) {
+            xstrdup(input).as_ptr()
+        } else {
+            format_expand_time(ft, input)
+        };
         if flags.intersects(prompt_flags::PROMPT_INCREMENTAL) {
             (*c).prompt_last = xstrdup(tmp).as_ptr();
             (*c).prompt_buffer = utf8_fromcstr(c!(""));
@@ -701,6 +719,7 @@ pub unsafe fn status_prompt_set<T>(
             (*c).prompt_buffer = utf8_fromcstr(tmp);
         }
         (*c).prompt_index = utf8_strlen((*c).prompt_buffer);
+        free_(tmp);
 
         (*c).prompt_inputcb = Some(std::mem::transmute::<
             unsafe fn(*mut client, NonNull<T>, *const u8, i32) -> i32,
@@ -723,16 +742,22 @@ pub unsafe fn status_prompt_set<T>(
         (*c).prompt_mode = prompt_mode::PROMPT_ENTRY;
 
         if !flags.intersects(prompt_flags::PROMPT_INCREMENTAL) {
-            (*c).tty.flags |= tty_flags::TTY_NOCURSOR | tty_flags::TTY_FREEZE;
+            (*c).tty.flags |= tty_flags::TTY_FREEZE;
         }
         (*c).flags |= client_flag::REDRAWSTATUS;
+
+        if flags.intersects(prompt_flags::PROMPT_SINGLE)
+            && flags.intersects(prompt_flags::PROMPT_ACCEPT)
+        {
+            cmdq_append(
+                c,
+                cmdq_get_callback!(status_prompt_accept, c.cast()).as_ptr(),
+            );
+        }
 
         if flags.intersects(prompt_flags::PROMPT_INCREMENTAL) {
             (*c).prompt_inputcb.unwrap()(c, NonNull::new((*c).prompt_data).unwrap(), c!("="), 0);
         }
-
-        free_(tmp);
-        format_free(ft);
     }
 }
 
@@ -751,6 +776,9 @@ pub unsafe fn status_prompt_clear(c: *mut client) {
 
         free_((*c).prompt_last);
         (*c).prompt_last = null_mut();
+
+        format_free((*c).prompt_formats);
+        (*c).prompt_formats = null_mut();
 
         free_((*c).prompt_string);
         (*c).prompt_string = null_mut();
@@ -771,17 +799,14 @@ pub unsafe fn status_prompt_clear(c: *mut client) {
 /// Update status line prompt with a new prompt string.
 pub unsafe fn status_prompt_update(c: *mut client, msg: *const u8, input: *const u8) {
     unsafe {
-        let ft = format_create(c, null_mut(), FORMAT_NONE, format_flags::empty());
-        format_defaults(ft, c, None, None, None);
-
-        let tmp = format_expand_time(ft, input);
-
         free_((*c).prompt_string);
-        (*c).prompt_string = format_expand_time(ft, msg);
+        (*c).prompt_string = xstrdup(msg).as_ptr();
 
         free_((*c).prompt_buffer);
+        let tmp = format_expand_time((*c).prompt_formats, input);
         (*c).prompt_buffer = utf8_fromcstr(tmp);
         (*c).prompt_index = utf8_strlen((*c).prompt_buffer);
+        free_(tmp);
 
         libc::memset(
             (&raw mut (*c).prompt_hindex).cast(),
@@ -790,9 +815,65 @@ pub unsafe fn status_prompt_update(c: *mut client, msg: *const u8, input: *const
         );
 
         (*c).flags |= client_flag::REDRAWSTATUS;
+    }
+}
 
-        free_(tmp);
-        format_free(ft);
+/// Redraw character. Return 1 if can continue redrawing, 0 otherwise.
+unsafe fn status_prompt_redraw_character(
+    ctx: *mut screen_write_ctx,
+    offset: u32,
+    pwidth: u32,
+    width: *mut u32,
+    gc: *mut grid_cell,
+    ud: *const utf8_data,
+) -> i32 {
+    unsafe {
+        if *width < offset {
+            *width += (*ud).width as u32;
+            return 1;
+        }
+        if *width >= offset + pwidth {
+            return 0;
+        }
+        *width += (*ud).width as u32;
+        if *width > offset + pwidth {
+            return 0;
+        }
+
+        let ch = (*ud).data[0];
+        if (*ud).size == 1 && (ch <= 0x1f || ch == 0x7f) {
+            (*gc).data.data[0] = b'^';
+            (*gc).data.data[1] = if ch == 0x7f { b'?' } else { ch | 0x40 };
+            (*gc).data.size = 2;
+            (*gc).data.have = 2;
+            (*gc).data.width = 2;
+        } else {
+            utf8_copy(&raw mut (*gc).data, ud);
+        }
+        screen_write_cell(ctx, gc);
+        1
+    }
+}
+
+/// Redraw quote indicator '^' if necessary. Return 1 if can continue redrawing, 0 otherwise.
+unsafe fn status_prompt_redraw_quote(
+    c: *const client,
+    pcursor: u32,
+    ctx: *mut screen_write_ctx,
+    offset: u32,
+    pwidth: u32,
+    width: *mut u32,
+    gc: *mut grid_cell,
+) -> i32 {
+    unsafe {
+        if (*c).prompt_flags.intersects(prompt_flags::PROMPT_QUOTENEXT)
+            && (*(*ctx).s).cx == pcursor + 1
+        {
+            let mut ud: utf8_data = zeroed();
+            utf8_set(&raw mut ud, b'^');
+            return status_prompt_redraw_character(ctx, offset, pwidth, width, gc, &raw const ud);
+        }
+        1
     }
 }
 
@@ -805,10 +886,11 @@ pub unsafe fn status_prompt_redraw(c: *mut client) -> i32 {
         let s = (*c).session;
 
         let offset: u32;
+        let mut n: i32;
 
         let mut gc: grid_cell = zeroed();
-        let mut cursorgc: grid_cell = zeroed();
         let mut old_screen: screen;
+        let prompt: *mut u8;
 
         'finished: {
             if (*c).tty.sx == 0 || (*c).tty.sy == 0 {
@@ -822,23 +904,33 @@ pub unsafe fn status_prompt_redraw(c: *mut client) -> i32 {
             }
             screen_init((*sl).active, (*c).tty.sx, lines, 0);
 
+            n = options_get_number_((*s).options, "prompt-cursor-colour") as i32;
+            (*(*sl).active).default_ccolour = n;
+            n = options_get_number_((*s).options, "prompt-cursor-style") as i32;
+            screen_set_cursor_style(
+                n as u32,
+                &raw mut (*(*sl).active).default_cstyle,
+                &raw mut (*(*sl).active).default_mode,
+            );
+
             let mut promptline = status_prompt_line_at(c);
             if promptline > lines - 1 {
                 promptline = lines - 1;
             }
 
-            let ft = format_create_defaults(null_mut(), c, null_mut(), null_mut(), null_mut());
+            let ft = (*c).prompt_formats;
             if (*c).prompt_mode == prompt_mode::PROMPT_COMMAND {
                 style_apply(&raw mut gc, (*s).options, c!("message-command-style"), ft);
             } else {
                 style_apply(&raw mut gc, (*s).options, c!("message-style"), ft);
             }
-            format_free(ft);
 
-            memcpy__(&raw mut cursorgc, &raw const gc);
-            cursorgc.attr ^= grid_attr::GRID_ATTR_REVERSE;
+            let tmp = utf8_tocstr((*c).prompt_buffer);
+            format_add!(ft, "prompt-input", "{}", _s(tmp));
+            prompt = format_expand_time(ft, (*c).prompt_string);
+            free_(tmp);
 
-            let mut start = format_width(cstr_to_str((*c).prompt_string));
+            let mut start = format_width(cstr_to_str(prompt));
             if start > (*c).tty.sx {
                 start = (*c).tty.sx;
             }
@@ -861,7 +953,7 @@ pub unsafe fn status_prompt_redraw(c: *mut client) -> i32 {
                 &raw mut ctx,
                 &raw const gc,
                 start,
-                cstr_to_str((*c).prompt_string),
+                cstr_to_str(prompt),
                 null_mut(),
                 0,
             );
@@ -874,6 +966,9 @@ pub unsafe fn status_prompt_redraw(c: *mut client) -> i32 {
 
             let pcursor = utf8_strwidth((*c).prompt_buffer, (*c).prompt_index as isize);
             let mut pwidth = utf8_strwidth((*c).prompt_buffer, -1);
+            if (*c).prompt_flags.intersects(prompt_flags::PROMPT_QUOTENEXT) {
+                pwidth += 1;
+            }
             if pcursor >= left {
                 // The cursor would be outside the screen so start drawing
                 // with it on the right.
@@ -886,39 +981,49 @@ pub unsafe fn status_prompt_redraw(c: *mut client) -> i32 {
                 pwidth = left;
             }
             (*c).prompt_cursor =
-                (start as isize + (*c).prompt_index as isize - offset as isize) as i32;
+                (start as isize + pcursor as isize - offset as isize) as i32;
 
-            let mut width = 0;
+            let mut width: u32 = 0;
             let mut i = 0;
             while (*(*c).prompt_buffer.add(i)).size != 0 {
-                if width < offset {
-                    width += (*(*c).prompt_buffer.add(i)).width as u32;
-                    i += 1;
-                    continue;
-                }
-                if width >= offset + pwidth {
+                if status_prompt_redraw_quote(
+                    c,
+                    pcursor,
+                    &raw mut ctx,
+                    offset,
+                    pwidth,
+                    &raw mut width,
+                    &raw mut gc,
+                ) == 0
+                {
                     break;
                 }
-                width += (*(*c).prompt_buffer.add(i)).width as u32;
-                if width > offset + pwidth {
+                if status_prompt_redraw_character(
+                    &raw mut ctx,
+                    offset,
+                    pwidth,
+                    &raw mut width,
+                    &raw mut gc,
+                    (*c).prompt_buffer.add(i),
+                ) == 0
+                {
                     break;
-                }
-
-                if i != (*c).prompt_index {
-                    utf8_copy(&raw mut gc.data, (*c).prompt_buffer.add(i));
-                    screen_write_cell(&raw mut ctx, &raw const gc);
-                } else {
-                    utf8_copy(&raw mut cursorgc.data, (*c).prompt_buffer.add(i));
-                    screen_write_cell(&raw mut ctx, &raw const cursorgc);
                 }
                 i += 1;
             }
-            if (*(*sl).active).cx < screen_size_x((*sl).active) && (*c).prompt_index >= i {
-                screen_write_putc(&raw mut ctx, &raw const cursorgc, b' ');
-            }
+            status_prompt_redraw_quote(
+                c,
+                pcursor,
+                &raw mut ctx,
+                offset,
+                pwidth,
+                &raw mut width,
+                &raw mut gc,
+            );
         }
         // finished:
         screen_write_stop(&raw mut ctx);
+        free_(prompt);
 
         if grid_compare((*(*sl).active).grid, old_screen.grid) == 0 {
             screen_free(&raw mut old_screen);
@@ -969,6 +1074,8 @@ unsafe fn status_prompt_translate_key(
                 | code::N_CTRL
                 | code::P_CTRL
                 | code::T_CTRL
+                | code::U_CTRL
+                | code::V_CTRL
                 | code::W_CTRL
                 | code::Y_CTRL
                 | code::LF
@@ -1452,6 +1559,27 @@ pub unsafe fn status_prompt_key(c: *mut client, mut key: key_code) -> i32 {
                     }
                     key &= !KEYC_MASK_FLAGS;
 
+                    if (*c).prompt_flags.intersects(
+                        prompt_flags::PROMPT_SINGLE | prompt_flags::PROMPT_QUOTENEXT,
+                    ) {
+                        if (key & KEYC_MASK_KEY) == keyc::KEYC_BSPACE as u64 {
+                            key = 0x7f;
+                        } else if (key & KEYC_MASK_KEY) > 0x7f {
+                            if !KEYC_IS_UNICODE(key) {
+                                return 0;
+                            }
+                            key &= KEYC_MASK_KEY;
+                        } else {
+                            key &= if key & KEYC_CTRL != 0 {
+                                0x1f
+                            } else {
+                                KEYC_MASK_KEY
+                            };
+                        }
+                        (*c).prompt_flags &= !prompt_flags::PROMPT_QUOTENEXT;
+                        break 'append_key;
+                    }
+
                     let keys = modekey::try_from(options_get_number_(
                         (*(*c).session).options,
                         "status-keys",
@@ -1720,6 +1848,9 @@ pub unsafe fn status_prompt_key(c: *mut client, mut key: key_code) -> i32 {
                             break 'changed;
                         }
                     }
+                    code::V_CTRL => {
+                        (*c).prompt_flags |= prompt_flags::PROMPT_QUOTENEXT;
+                    }
                     _ => break 'append_key,
                 }
 
@@ -1728,6 +1859,9 @@ pub unsafe fn status_prompt_key(c: *mut client, mut key: key_code) -> i32 {
             } // append_key:
             if key <= 0x7f {
                 utf8_set(&raw mut tmp, key as u8);
+                if key <= 0x1f || key == 0x7f {
+                    tmp.width = 2;
+                }
             } else if KEYC_IS_UNICODE(key) {
                 tmp = utf8_to_data(key as u32);
             } else {
@@ -2430,6 +2564,7 @@ mod code {
     pub const S_CTRL: u64 = 's' as u64 | KEYC_CTRL;
     pub const T_CTRL: u64 = 't' as u64 | KEYC_CTRL;
     pub const U_CTRL: u64 = 'u' as u64 | KEYC_CTRL;
+    pub const V_CTRL: u64 = 'v' as u64 | KEYC_CTRL;
     pub const W_CTRL: u64 = 'w' as u64 | KEYC_CTRL;
     pub const Y_CTRL: u64 = 'y' as u64 | KEYC_CTRL;
 
@@ -2448,4 +2583,36 @@ mod code {
     pub const CR: u64 = '\r' as u64;
     pub const LF: u64 = '\n' as u64;
     pub const ESC: u64 = '\x1b' as u64;
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    #[cfg_attr(not(feature = "coverage-tests"), ignore)]
+    fn test_prompt_type_string() {
+        assert_eq!(status_prompt_type_string(0), "command");
+        assert_eq!(status_prompt_type_string(1), "search");
+        assert_eq!(status_prompt_type_string(2), "target");
+        assert_eq!(status_prompt_type_string(3), "window-target");
+        assert_eq!(status_prompt_type_string(4), "invalid");
+        assert_eq!(status_prompt_type_string(u32::MAX), "invalid");
+    }
+
+    #[test]
+    #[cfg_attr(not(feature = "coverage-tests"), ignore)]
+    fn test_prompt_type() {
+        unsafe {
+            assert!(status_prompt_type(c!("command")) == prompt_type::PROMPT_TYPE_COMMAND);
+            assert!(status_prompt_type(c!("search")) == prompt_type::PROMPT_TYPE_SEARCH);
+            assert!(status_prompt_type(c!("target")) == prompt_type::PROMPT_TYPE_TARGET);
+            assert!(
+                status_prompt_type(c!("window-target"))
+                    == prompt_type::PROMPT_TYPE_WINDOW_TARGET
+            );
+            assert!(status_prompt_type(c!("bogus")) == prompt_type::PROMPT_TYPE_INVALID);
+            assert!(status_prompt_type(c!("")) == prompt_type::PROMPT_TYPE_INVALID);
+        }
+    }
 }

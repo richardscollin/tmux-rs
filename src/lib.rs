@@ -48,6 +48,9 @@ macro_rules! cfg_pub_mods {
     };
 }
 
+#[cfg(target_os = "windows")]
+mod conpty;
+
 cfg_pub_mods! {
     mod alerts;
     mod arguments;
@@ -129,7 +132,7 @@ use std::{
     ffi::{
         CStr, CString, c_int, c_long, c_longlong, c_short, c_uchar, c_uint, c_ulonglong, c_void,
     },
-    mem::{MaybeUninit, size_of, zeroed},
+    mem::{ManuallyDrop, MaybeUninit, size_of, zeroed},
     ptr::{NonNull, addr_of, addr_of_mut, null, null_mut},
     rc::Rc,
     sync::{
@@ -241,13 +244,15 @@ const TMUX_SOCK: &str = env_or!("TMUX_SOCK", "$TMUX_TMPDIR:/tmp/");
 const TMUX_TERM: &str = env_or!("TMUX_TERM", "screen");
 const TMUX_LOCK_CMD: &str = env_or!("TMUX_LOCK_CMD", "lock -np");
 
+const TMUX_SOCK_PERM: u32 = 7; /* o+rwx */
+
 // /usr/include/paths.h
 const _PATH_TTY: *const u8 = c!("/dev/tty");
 const _PATH_BSHELL: *const u8 = c!("/bin/sh");
 const _PATH_BSHELL_STR: &str = "/bin/sh";
 const _PATH_DEFPATH: *const u8 = c!("/usr/bin:/bin");
 const _PATH_DEV: *const u8 = c!("/dev/");
-const _PATH_DEVNULL: *const u8 = c!("/dev/null");
+const PATH_DEVNULL: &str = "/dev/null";
 const _PATH_VI: &str = "/usr/bin/vi";
 const SIZEOF_PATH_DEV: usize = 6;
 const TTY_NAME_MAX: usize = 32;
@@ -341,6 +346,13 @@ fn KEYC_IS_MOUSE(key: key_code) -> bool {
     const KEYC_BSPACE: c_ulonglong = keyc::KEYC_BSPACE as c_ulonglong;
 
     (key & KEYC_MASK_KEY) >= KEYC_MOUSE && (key & KEYC_MASK_KEY) < KEYC_BSPACE
+}
+
+#[expect(non_snake_case)]
+#[inline]
+fn KEYC_IS_PASTE(key: key_code) -> bool {
+    (key & KEYC_MASK_KEY) == keyc::KEYC_PASTE_START as u64
+        || (key & KEYC_MASK_KEY) == keyc::KEYC_PASTE_END as u64
 }
 
 #[expect(non_snake_case)]
@@ -650,7 +662,7 @@ enum tty_code_code {
     TTYC_XT,
 }
 
-const WHITESPACE: *const u8 = c!(" ");
+const WHITESPACE: *const u8 = c!("\t ");
 
 #[repr(i32)]
 #[derive(Copy, Clone, Eq, PartialEq, num_enum::TryFromPrimitive)]
@@ -683,6 +695,7 @@ bitflags::bitflags! {
         const MODE_CURSOR_VERY_VISIBLE = 0x10000;
         const MODE_CURSOR_BLINKING_SET = 0x20000;
         const MODE_KEYS_EXTENDED_2 = 0x40000;
+        const MODE_THEME_UPDATES = 0x80000;
     }
 }
 
@@ -757,6 +770,7 @@ bitflags::bitflags! {
         const SELECTED = 0x10;
         const NOPALETTE = 0x20;
         const CLEARED = 0x40;
+        const TAB = 0x80;
     }
 }
 
@@ -803,6 +817,7 @@ enum cell_type {
     CELL_RIGHTJOIN = 10,
     CELL_JOIN = 11,
     CELL_OUTSIDE = 12,
+    CELL_SCROLLBAR = 13,
 }
 
 /// Cell borders.
@@ -979,6 +994,7 @@ enum style_default_type {
     STYLE_DEFAULT_BASE,
     STYLE_DEFAULT_PUSH,
     STYLE_DEFAULT_POP,
+    STYLE_DEFAULT_SET,
 }
 
 /// Style option.
@@ -996,8 +1012,14 @@ struct style {
     range_argument: u32,
     range_string: [u8; 16],
 
+    width: i32,
+    pad: i32,
+
     default_type: style_default_type,
 }
+
+pub const STYLE_WIDTH_DEFAULT: i32 = -1;
+pub const STYLE_PAD_DEFAULT: i32 = -1;
 
 #[cfg(feature = "sixel")]
 impl crate::compat::queue::Entry<image, discr_all_entry> for image {
@@ -1083,6 +1105,8 @@ struct screen {
 
     #[cfg(feature = "sixel")]
     images: images,
+    #[cfg(feature = "sixel")]
+    saved_images: images,
 
     write_list: *mut screen_write_cline,
 
@@ -1134,6 +1158,7 @@ enum pane_lines {
     PANE_LINES_HEAVY,
     PANE_LINES_SIMPLE,
     PANE_LINES_NUMBER,
+    PANE_LINES_SPACES,
 }
 
 #[repr(i32)]
@@ -1160,6 +1185,9 @@ struct screen_redraw_ctx {
 
     pane_status: pane_status,
     pane_lines: pane_lines,
+
+    pane_scrollbars: i32,
+    pane_scrollbars_pos: i32,
 
     no_pane_gc: grid_cell,
     no_pane_gc_set: i32,
@@ -1244,6 +1272,7 @@ struct window_mode {
         ),
     >,
     formats: Option<unsafe fn(*mut window_mode_entry, *mut format_tree)>,
+    get_screen: Option<unsafe fn(*mut window_mode_entry) -> *mut screen>,
 }
 
 // Active window mode.
@@ -1261,6 +1290,62 @@ struct window_mode_entry {
 
     // #[entry]
     entry: tailq_entry<window_mode_entry>,
+}
+
+/// Type of request to client.
+#[repr(u32)]
+#[derive(Copy, Clone, Eq, PartialEq)]
+enum input_request_type {
+    INPUT_REQUEST_PALETTE = 0,
+    INPUT_REQUEST_QUEUE,
+}
+
+/// Palette request reply data.
+#[repr(C)]
+struct input_request_palette_data {
+    idx: i32,
+    c: i32,
+}
+
+#[repr(i32)]
+#[derive(Copy, Clone, Eq, PartialEq)]
+enum input_end_type {
+    INPUT_END_ST,
+    INPUT_END_BEL,
+}
+
+/// Request sent to client on behalf of pane.
+type input_requests = tailq_head<input_request>;
+
+struct InputRequestEntry;
+struct InputRequestCEntry;
+
+#[repr(C)]
+struct input_request {
+    c: *mut client,
+    ictx: *mut input_ctx,
+
+    type_: input_request_type,
+    t: libc::time_t,
+    end: input_end_type,
+
+    idx: i32,
+    data: *mut c_void,
+
+    entry: tailq_entry<input_request>,
+    centry: tailq_entry<input_request>,
+}
+
+impl compat::queue::Entry<input_request, InputRequestEntry> for input_request {
+    unsafe fn entry(this: *mut Self) -> *mut tailq_entry<input_request> {
+        unsafe { &raw mut (*this).entry }
+    }
+}
+
+impl compat::queue::Entry<input_request, InputRequestCEntry> for input_request {
+    unsafe fn entry(this: *mut Self) -> *mut tailq_entry<input_request> {
+        unsafe { &raw mut (*this).centry }
+    }
 }
 
 /// Offsets into pane buffer.
@@ -1301,7 +1386,9 @@ bitflags::bitflags! {
         const PANE_STATUSDRAWN = 0x400;
         const PANE_EMPTY = 0x800;
         const PANE_STYLECHANGED = 0x1000;
-        const PANE_UNSEENCHANGES = 0x2000;
+        const PANE_THEMECHANGED = 0x2000;
+        const PANE_UNSEENCHANGES = 0x4000;
+        const PANE_REDRAWSCROLLBAR = 0x8000;
     }
 }
 
@@ -1324,6 +1411,9 @@ struct window_pane {
     yoff: u32,
 
     flags: window_pane_flags,
+
+    sb_slider_y: u32,
+    sb_slider_h: u32,
 
     argc: i32,
     argv: *mut *mut u8,
@@ -1370,6 +1460,8 @@ struct window_pane {
 
     control_bg: i32,
     control_fg: i32,
+
+    scrollbar_style: style,
 
     /// link in list of all panes
     entry: tailq_entry<window_pane>,
@@ -1521,6 +1613,21 @@ enum pane_status {
     PANE_STATUS_BOTTOM,
 }
 
+pub const PANE_SCROLLBARS_OFF: i32 = 0;
+pub const PANE_SCROLLBARS_MODAL: i32 = 1;
+pub const PANE_SCROLLBARS_ALWAYS: i32 = 2;
+pub const PANE_SCROLLBARS_RIGHT: i32 = 0;
+pub const PANE_SCROLLBARS_LEFT: i32 = 1;
+/// Pane scrollbars width, padding and fill character.
+pub const PANE_SCROLLBARS_DEFAULT_PADDING: i32 = 0;
+pub const PANE_SCROLLBARS_DEFAULT_WIDTH: i32 = 1;
+pub const PANE_SCROLLBARS_CHARACTER: u8 = b' ';
+
+/// True if screen is in alternate screen.
+unsafe fn screen_is_alternate(s: *const screen) -> bool {
+    unsafe { !(*s).saved_grid.is_null() }
+}
+
 /// Layout direction.
 #[repr(i32)]
 #[derive(Copy, Clone, Eq, PartialEq, num_enum::TryFromPrimitive)]
@@ -1582,8 +1689,13 @@ struct session_group {
 }
 type session_groups = rb_head<session_group>;
 
-const SESSION_PASTING: i32 = 0x1;
-const SESSION_ALERTED: i32 = 0x2;
+bitflags::bitflags! {
+    #[repr(transparent)]
+    #[derive(Copy, Clone)]
+    struct session_flags: i32 {
+        const SESSION_ALERTED = 0x1;
+    }
+}
 
 #[repr(C)]
 struct session {
@@ -1607,7 +1719,7 @@ struct session {
 
     options: *mut options,
 
-    flags: i32,
+    flags: session_flags,
 
     attached: u32,
 
@@ -1703,6 +1815,9 @@ struct mouse_event {
 struct key_event {
     key: key_code,
     m: mouse_event,
+
+    buf: *mut u8,
+    len: usize,
 }
 
 bitflags::bitflags! {
@@ -1745,18 +1860,21 @@ bitflags::bitflags! {
     #[repr(transparent)]
     #[derive(Copy, Clone)]
     struct tty_flags: i32 {
-        const TTY_NOCURSOR = 0x1;
-        const TTY_FREEZE = 0x2;
-        const TTY_TIMER = 0x4;
-        const TTY_NOBLOCK = 0x8;
-        const TTY_STARTED = 0x10;
-        const TTY_OPENED = 0x20;
-        const TTY_OSC52QUERY = 0x40;
-        const TTY_BLOCK = 0x80;
-        const TTY_HAVEDA = 0x100; // Primary DA.
-        const TTY_HAVEXDA = 0x200;
-        const TTY_SYNCING = 0x400;
-        const TTY_HAVEDA2 = 0x800; // Secondary DA.
+        const TTY_NOCURSOR     = 0x00001;
+        const TTY_FREEZE       = 0x00002;
+        const TTY_TIMER        = 0x00004;
+        const TTY_NOBLOCK      = 0x00008;
+        const TTY_STARTED      = 0x00010;
+        const TTY_OPENED       = 0x00020;
+        const TTY_OSC52QUERY   = 0x00040;
+        const TTY_BLOCK        = 0x00080;
+        const TTY_HAVEDA       = 0x00100;
+        const TTY_HAVEXDA      = 0x00200;
+        const TTY_SYNCING      = 0x00400;
+        const TTY_HAVEDA2      = 0x00800;
+        const TTY_WINSIZEQUERY = 0x01000;
+        const TTY_WAITFG       = 0x02000;
+        const TTY_WAITBG       = 0x04000;
     }
 }
 const TTY_ALL_REQUEST_FLAGS: tty_flags = tty_flags::TTY_HAVEDA
@@ -1818,6 +1936,8 @@ struct tty {
     mouse_last_y: u32,
     mouse_last_b: u32,
     mouse_drag_flag: i32,
+    mouse_scrolling_flag: i32,
+    mouse_slider_mpos: i32,
     mouse_drag_update: Option<unsafe fn(*mut client, *mut mouse_event)>,
     mouse_drag_release: Option<unsafe fn(*mut client, *mut mouse_event)>,
 
@@ -1889,32 +2009,63 @@ struct message_entry {
 }
 type message_list = tailq_head<message_entry>;
 
-/// Argument type.
-#[repr(i32)]
-#[derive(Copy, Clone, Eq, PartialEq)]
-enum args_type {
-    ARGS_NONE,
-    ARGS_STRING,
-    ARGS_COMMANDS,
-}
-
-#[repr(C)]
-union args_value_union {
-    string: *mut u8,
-    cmdlist: *mut cmd_list,
-}
-
-impl_tailq_entry!(args_value, entry, tailq_entry<args_value>);
 /// Argument value.
-#[repr(C)]
-struct args_value {
-    type_: args_type,
-    union_: args_value_union,
-    cached: *mut u8,
-    // #[entry]
-    entry: tailq_entry<args_value>,
+enum args_value {
+    #[expect(dead_code)]
+    None,
+    String {
+        string: std::ffi::CString,
+    },
+    Commands {
+        cmdlist: *mut cmd_list,
+        cached: std::cell::OnceCell<std::ffi::CString>,
+    },
 }
-type args_tree = rb_head<args_entry>;
+
+impl args_value {
+    /// Create a `String` variant by taking ownership of a raw `*mut u8` (C string).
+    ///
+    /// # Safety
+    /// `ptr` must be a valid, nul-terminated, malloc'd C string.
+    unsafe fn new_string(ptr: *mut u8) -> Self {
+        args_value::String {
+            string: unsafe { std::ffi::CString::from_raw(ptr.cast()) },
+        }
+    }
+}
+
+impl Clone for args_value {
+    fn clone(&self) -> Self {
+        unsafe {
+            match self {
+                args_value::None => args_value::None,
+                args_value::String { string } => args_value::String {
+                    string: string.clone(),
+                },
+                args_value::Commands { cmdlist, .. } => {
+                    (**cmdlist).references += 1;
+                    args_value::Commands {
+                        cmdlist: *cmdlist,
+                        cached: std::cell::OnceCell::new(),
+                    }
+                }
+            }
+        }
+    }
+}
+
+impl Drop for args_value {
+    fn drop(&mut self) {
+        // CString/OnceCell<CString> handle their own deallocation.
+        // Only Commands.cmdlist needs manual cleanup.
+        if let args_value::Commands { cmdlist, .. } = self {
+            unsafe {
+                cmd_list_free(*cmdlist);
+            }
+        }
+    }
+}
+type args_tree = std::collections::BTreeMap<u8, Box<args_entry>>;
 
 /// Arguments parsing type.
 #[repr(C)]
@@ -1927,7 +2078,7 @@ enum args_parse_type {
     ARGS_PARSE_COMMANDS,
 }
 
-type args_parse_cb = Option<unsafe fn(*mut args, u32, *mut *mut u8) -> args_parse_type>;
+type args_parse_cb = Option<unsafe fn(*mut args, u32) -> args_parse_type>;
 #[repr(C)]
 struct args_parse {
     template: &'static str,
@@ -2004,14 +2155,6 @@ enum cmd_retval {
 }
 
 // Command parse result.
-#[repr(i32)]
-#[derive(Copy, Clone, Default, Eq, PartialEq)]
-enum cmd_parse_status {
-    #[default]
-    CMD_PARSE_ERROR,
-    CMD_PARSE_SUCCESS,
-}
-
 type cmd_parse_result = Result<*mut cmd_list /* cmdlist */, *mut u8 /* error */>;
 
 bitflags::bitflags! {
@@ -2039,6 +2182,9 @@ impl AtomicCmdParseInputFlags {
         cmd_parse_input_flags::from_bits(self.0.load(std::sync::atomic::Ordering::SeqCst))
             .unwrap()
             .intersects(rhs)
+    }
+    fn bits(&self) -> i32 {
+        self.0.load(std::sync::atomic::Ordering::SeqCst)
     }
 }
 impl std::ops::BitOrAssign<cmd_parse_input_flags> for &AtomicCmdParseInputFlags {
@@ -2221,6 +2367,15 @@ struct overlay_ranges {
     nx: [u32; OVERLAY_MAX_RANGES],
 }
 
+#[repr(i32)]
+#[derive(Copy, Clone, Eq, PartialEq, Default)]
+pub enum client_theme {
+    #[default]
+    THEME_UNKNOWN = 0,
+    THEME_LIGHT = 1,
+    THEME_DARK = 2,
+}
+
 type prompt_input_cb = Option<unsafe fn(*mut client, NonNull<c_void>, *const u8, i32) -> i32>;
 type prompt_free_cb = Option<unsafe fn(NonNull<c_void>)>;
 
@@ -2274,6 +2429,9 @@ bitflags::bitflags! {
         const WINDOWSIZECHANGED  = 0x0400000000u64;
         const CLIPBOARDBUFFER    = 0x0800000000u64;
         const BRACKETPASTING     = 0x1000000000u64;
+        const ASSUMEPASTING      = 0x2000000000u64;
+        const REDRAWSCROLLBARS   = 0x4000000000u64;
+        const NO_DETACH_ON_DESTROY = 0x8000000000u64;
     }
 }
 
@@ -2282,7 +2440,8 @@ const CLIENT_ALLREDRAWFLAGS: client_flag = client_flag::REDRAWWINDOW
     .union(client_flag::REDRAWSTATUSALWAYS)
     .union(client_flag::REDRAWBORDERS)
     .union(client_flag::REDRAWOVERLAY)
-    .union(client_flag::REDRAWPANES);
+    .union(client_flag::REDRAWPANES)
+    .union(client_flag::REDRAWSCROLLBARS);
 const CLIENT_UNATTACHEDFLAGS: client_flag = client_flag::DEAD
     .union(client_flag::SUSPENDED)
     .union(client_flag::EXIT);
@@ -2300,6 +2459,8 @@ bitflags::bitflags! {
         const PROMPT_INCREMENTAL = 0x4;
         const PROMPT_NOFORMAT = 0x8;
         const PROMPT_KEY = 0x10;
+        const PROMPT_ACCEPT = 0x20;
+        const PROMPT_QUOTENEXT = 0x40;
     }
 }
 
@@ -2323,6 +2484,7 @@ struct client {
 
     creation_time: timeval,
     activity_time: timeval,
+    last_activity_time: timeval,
 
     environ: *mut environ,
     jobs: *mut format_job_tree,
@@ -2351,17 +2513,22 @@ struct client {
     click_event: mouse_event,
 
     status: status_line,
+    theme: client_theme,
+
+    input_requests: input_requests,
 
     flags: client_flag,
 
     exit_type: exit_type,
     exit_msgtype: msgtype,
     exit_session: *mut u8,
-    exit_message: *mut u8,
+    exit_message: ManuallyDrop<Option<String>>,
 
     keytable: *mut key_table,
+    last_key: key_code,
 
     redraw_panes: u64,
+    redraw_scrollbars: u64,
 
     message_ignore_keys: c_int,
     message_ignore_styles: c_int,
@@ -2369,6 +2536,7 @@ struct client {
     message_timer: event,
 
     prompt_string: *mut u8,
+    pub prompt_formats: *mut format_tree,
     prompt_buffer: *mut utf8_data,
     prompt_last: *mut u8,
     prompt_index: usize,
@@ -2402,6 +2570,7 @@ struct client {
     overlay_timer: event,
 
     files: client_files,
+    source_file_depth: c_uint,
 
     clipboard_panes: *mut c_uint,
     clipboard_npanes: c_uint,
@@ -2636,13 +2805,14 @@ bitflags::bitflags! {
         const JOB_KEEPWRITE = 2;
         const JOB_PTY = 4;
         const JOB_DEFAULTSHELL = 8;
+        const JOB_SHOWSTDERR = 16;
     }
 }
 
 // unsafe fn args_get(_: *mut args, _: c_uchar) -> *const c_char;
 unsafe fn args_get_(args: *mut args, flag: char) -> *const u8 {
     debug_assert!(flag.is_ascii());
-    unsafe { args_get(args, flag as u8) }
+    unsafe { args_get(&*args, flag as u8) }
 }
 
 unsafe impl Sync for SyncCharPtr {}

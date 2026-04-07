@@ -12,7 +12,7 @@
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 use crate::event_::{event_add, event_initialized};
-use crate::libc::{gettimeofday, memcpy, strchr, strcmp, strcspn, strlen, strncmp};
+use crate::libc::{memcpy, strchr, strcmp, strcspn, strlen, strncmp};
 use crate::*;
 use crate::options_::*;
 
@@ -43,7 +43,6 @@ pub unsafe fn name_time_expired(w: *mut window, tv: *mut timeval) -> c_int {
 
 pub unsafe fn check_window_name(w: *mut window) {
     unsafe {
-        let mut tv: timeval = zeroed();
         let mut next: timeval = zeroed();
 
         if (*w).active.is_null() {
@@ -63,7 +62,7 @@ pub unsafe fn check_window_name(w: *mut window) {
         }
         log_debug!("@{} pane changed", (*w).id);
 
-        gettimeofday(&raw mut tv, null_mut());
+        let mut tv: timeval = gettimeofday_();
         let left = name_time_expired(w, &raw mut tv);
         if left != 0 {
             if event_initialized(&raw mut (*w).name_event) == 0 {
@@ -76,7 +75,7 @@ pub unsafe fn check_window_name(w: *mut window) {
             if evtimer_pending(&raw mut (*w).name_event, null_mut()) == 0 {
                 log_debug!("@{} timer queued ({})", (*w).id, left);
                 timerclear(&raw mut next);
-                next.tv_usec = left as libc::suseconds_t;
+                next.tv_usec = left as _;
                 event_add(&raw mut (*w).name_event, &raw const next);
             } else {
                 log_debug!("@{} timer already queued ({})", (*w).id, left);
@@ -184,5 +183,70 @@ pub unsafe fn parse_window_name(in_: *const u8) -> String {
         };
         free(copy as _);
         tmp
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_window_name_simple() {
+        let name = unsafe { parse_window_name(c!("bash")) };
+        assert_eq!(name, "bash");
+    }
+
+    #[test]
+    fn test_parse_window_name_with_path() {
+        let name = unsafe { parse_window_name(c!("/usr/bin/bash")) };
+        assert_eq!(name, "bash");
+    }
+
+    #[test]
+    fn test_parse_window_name_exec_prefix() {
+        // "exec " prefix should be stripped (coverage: line 155-156)
+        let name = unsafe { parse_window_name(c!("exec vim")) };
+        assert_eq!(name, "vim");
+    }
+
+    #[test]
+    fn test_parse_window_name_exec_with_path() {
+        let name = unsafe { parse_window_name(c!("exec /usr/bin/vim")) };
+        assert_eq!(name, "vim");
+    }
+
+    #[test]
+    fn test_parse_window_name_quoted() {
+        // Leading quote should be stripped
+        let name = unsafe { parse_window_name(c!("\"bash\"")) };
+        assert_eq!(name, "bash");
+    }
+
+    #[test]
+    fn test_parse_window_name_with_args() {
+        // Only the command name (before first space) should be kept
+        let name = unsafe { parse_window_name(c!("vim -u NONE file.txt")) };
+        assert_eq!(name, "vim");
+    }
+
+    #[test]
+    fn test_parse_window_name_leading_dash() {
+        // Leading dashes/spaces should be stripped
+        let name = unsafe { parse_window_name(c!("-bash")) };
+        assert_eq!(name, "bash");
+    }
+
+    #[test]
+    fn test_parse_window_name_trailing_control_chars() {
+        // Trailing non-alphanumeric, non-punctuation chars should be stripped (coverage: lines 170-176)
+        // Control character \x01 is neither alphanumeric nor punctuation
+        let name = unsafe { parse_window_name(b"bash\x01\0".as_ptr()) };
+        assert_eq!(name, "bash");
+    }
+
+    #[test]
+    fn test_parse_window_name_trailing_control_multiple() {
+        let name = unsafe { parse_window_name(b"vim\x01\x02\x03\0".as_ptr()) };
+        assert_eq!(name, "vim");
     }
 }

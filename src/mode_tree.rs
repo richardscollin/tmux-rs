@@ -26,11 +26,13 @@ pub type mode_tree_draw_cb = Option<
     ),
 >;
 pub type mode_tree_search_cb =
-    Option<unsafe fn(_: *mut c_void, _: NonNull<c_void>, _: *const u8) -> bool>;
+    Option<unsafe fn(_: *mut c_void, _: NonNull<c_void>, _: *const u8, _: i32) -> bool>;
 pub type mode_tree_menu_cb = Option<unsafe fn(_: NonNull<c_void>, _: *mut client, _: key_code)>;
 pub type mode_tree_height_cb = Option<unsafe fn(_: *mut c_void, _: c_uint) -> c_uint>;
 pub type mode_tree_key_cb =
     Option<unsafe fn(_: NonNull<c_void>, _: NonNull<c_void>, _: c_uint) -> key_code>;
+pub type mode_tree_swap_cb =
+    Option<unsafe fn(_: *mut c_void, _: *mut c_void, _: *const mode_tree_sort_criteria) -> i32>;
 pub type mode_tree_each_cb =
     Option<unsafe fn(_: NonNull<c_void>, _: NonNull<c_void>, _: *mut client, _: key_code)>;
 
@@ -39,6 +41,14 @@ pub type mode_tree_each_cb =
 enum mode_tree_search_dir {
     MODE_TREE_SEARCH_FORWARD,
     MODE_TREE_SEARCH_BACKWARD,
+}
+
+#[repr(C)]
+#[derive(Copy, Clone, Eq, PartialEq)]
+enum mode_tree_preview {
+    MODE_TREE_PREVIEW_OFF,
+    MODE_TREE_PREVIEW_NORMAL,
+    MODE_TREE_PREVIEW_BIG
 }
 
 pub type mode_tree_list = tailq_head<mode_tree_item>;
@@ -62,6 +72,7 @@ pub struct mode_tree_data {
     menucb: mode_tree_menu_cb,
     heightcb: mode_tree_height_cb,
     keycb: mode_tree_key_cb,
+    swapcb: mode_tree_swap_cb,
 
     children: mode_tree_list,
     saved: mode_tree_list,
@@ -69,6 +80,7 @@ pub struct mode_tree_data {
     line_list: Vec<mode_tree_line>,
 
     depth: u32,
+    maxdepth: u32,
 
     width: u32,
     height: u32,
@@ -78,11 +90,12 @@ pub struct mode_tree_data {
 
     screen: screen,
 
-    preview: bool,
+    preview: mode_tree_preview,
     search: *mut u8,
     filter: *mut u8,
     no_matches: i32,
     search_dir: mode_tree_search_dir,
+    search_icase: i32,
 }
 
 #[repr(C)]
@@ -104,6 +117,7 @@ pub struct mode_tree_item {
 
     draw_as_parent: i32,
     no_tag: i32,
+    align: i32,
 
     children: mode_tree_list,
     entry: tailq_entry<mode_tree_item>,
@@ -131,6 +145,19 @@ static MODE_TREE_MENU_ITEMS: [menu_item; 4] = [
     menu_item::new("", KEYC_NONE, null_mut()),
     menu_item::new("Cancel", 'q' as u64, null_mut()),
 ];
+
+unsafe fn mode_tree_is_lowercase(ptr: *const u8) -> i32 {
+    unsafe {
+        let mut p = ptr;
+        while *p != b'\0' {
+            if *p as i32 != libc::tolower(*p as i32) {
+                return 0;
+            }
+            p = p.add(1);
+        }
+        1
+    }
+}
 
 unsafe fn mode_tree_find_item(mtl: *mut mode_tree_list, tag: u64) -> *mut mode_tree_item {
     unsafe {
@@ -189,6 +216,9 @@ unsafe fn mode_tree_build_lines(mtd: *mut mode_tree_data, mtl: *mut mode_tree_li
         let mut flat = 1;
 
         (*mtd).depth = depth;
+        if depth > (*mtd).maxdepth {
+            (*mtd).maxdepth = depth;
+        }
         for mti in tailq_foreach(mtl).map(NonNull::as_ptr) {
             (*mtd).line_list.push(mode_tree_line {
                 item: mti,
@@ -286,6 +316,47 @@ pub unsafe fn mode_tree_down(mtd: *mut mode_tree_data, wrap: i32) -> bool {
     }
 }
 
+unsafe fn mode_tree_swap(mtd: *mut mode_tree_data, direction: i32) {
+    unsafe {
+        if (*mtd).swapcb.is_none() {
+            return;
+        }
+
+        let current_depth = (&(*mtd).line_list)[(*mtd).current as usize].depth;
+
+        // Find the next line at the same depth with the same parent.
+        let mut swap_with = (*mtd).current as i32;
+        loop {
+            if direction < 0 && swap_with < -direction {
+                return;
+            }
+            if direction > 0
+                && (swap_with + direction) as u32 >= (*mtd).line_list.len() as u32
+            {
+                return;
+            }
+            swap_with += direction;
+            let swap_with_depth = (&(*mtd).line_list)[swap_with as usize].depth;
+            if swap_with_depth <= current_depth {
+                if swap_with_depth != current_depth {
+                    return;
+                }
+                break;
+            }
+        }
+
+        if ((*mtd).swapcb.unwrap())(
+            (*(&(*mtd).line_list)[(*mtd).current as usize].item).itemdata,
+            (*(&(*mtd).line_list)[swap_with as usize].item).itemdata,
+            &(*mtd).sort_crit,
+        ) != 0
+        {
+            (*mtd).current = swap_with as u32;
+            mode_tree_build(mtd);
+        }
+    }
+}
+
 pub unsafe fn mode_tree_get_current(mtd: *mut mode_tree_data) -> NonNull<c_void> {
     NonNull::new(unsafe { (*(&mut (*mtd).line_list)[(*mtd).current as usize].item).itemdata })
         .unwrap()
@@ -345,8 +416,14 @@ pub unsafe fn mode_tree_set_current(mtd: *mut mode_tree_data, tag: u64) -> bool 
             }
             return true;
         }
-        (*mtd).current = 0;
-        (*mtd).offset = 0;
+        if (*mtd).current >= (*mtd).line_list.len() as u32 {
+            (*mtd).current = (*mtd).line_list.len() as u32 - 1;
+            if (*mtd).current > (*mtd).height - 1 {
+                (*mtd).offset = (*mtd).current - (*mtd).height + 1;
+            } else {
+                (*mtd).offset = 0;
+            }
+        }
         false
     }
 }
@@ -403,6 +480,7 @@ pub unsafe fn mode_tree_start(
     menucb: mode_tree_menu_cb,
     heightcb: mode_tree_height_cb,
     keycb: mode_tree_key_cb,
+    swapcb: mode_tree_swap_cb,
     modedata: *mut c_void,
     menu: &'static [menu_item],
     sort_list: &'static [&'static str],
@@ -415,7 +493,13 @@ pub unsafe fn mode_tree_start(
             modedata,
             menu,
             sort_list,
-            preview: !args_has(args, 'N'),
+            preview: if args_has_count(&*args, b'N') > 1 {
+                mode_tree_preview::MODE_TREE_PREVIEW_BIG
+            } else if args_has(&*args, 'N') {
+                mode_tree_preview::MODE_TREE_PREVIEW_OFF
+            } else {
+                mode_tree_preview::MODE_TREE_PREVIEW_NORMAL
+            },
 
             buildcb,
             drawcb,
@@ -423,6 +507,7 @@ pub unsafe fn mode_tree_start(
             menucb,
             heightcb,
             keycb,
+            swapcb,
             dead: 0,
             zoomed: 0,
             sort_crit: mode_tree_sort_criteria::default(),
@@ -430,19 +515,21 @@ pub unsafe fn mode_tree_start(
             saved: zeroed(),
             line_list: Vec::default(),
             depth: Default::default(),
+            maxdepth: Default::default(),
             width: Default::default(),
             height: Default::default(),
             offset: Default::default(),
             current: Default::default(),
             screen: zeroed(),
             search: Default::default(),
-            filter: if args_has(args, 'f') {
+            filter: if args_has(&*args, 'f') {
                 xstrdup(args_get_(args, 'f')).as_ptr()
             } else {
                 null_mut()
             },
             no_matches: Default::default(),
             search_dir: zeroed(),
+            search_icase: Default::default(),
         });
 
         let sort = args_get_(args, 'O');
@@ -451,7 +538,7 @@ pub unsafe fn mode_tree_start(
         {
             mtd.sort_crit.field = pos as u32;
         }
-        mtd.sort_crit.reversed = args_has(args, 'r');
+        mtd.sort_crit.reversed = args_has(&*args, 'r');
 
         tailq_init(&mut mtd.children);
 
@@ -472,7 +559,7 @@ pub unsafe fn mode_tree_zoom(mtd: *mut mode_tree_data, args: *mut args) {
     unsafe {
         let wp: *mut window_pane = (*mtd).wp;
 
-        if args_has(args, 'Z') {
+        if args_has(&*args, 'Z') {
             (*mtd).zoomed = ((*(*wp).window).flags & window_flag::ZOOMED).bits();
             if (*mtd).zoomed == 0 && window_zoom(wp) == 0 {
                 server_redraw_window((*wp).window);
@@ -493,13 +580,29 @@ pub unsafe fn mode_tree_set_height(mtd: *mut mode_tree_data) {
                 (*mtd).height = screen_size_y(s) - height;
             }
         } else {
-            (*mtd).height = (screen_size_y(s) / 3) * 2;
-            if (*mtd).height > (*mtd).line_list.len() as u32 {
-                (*mtd).height = screen_size_y(s) / 2;
+            match (*mtd).preview {
+                mode_tree_preview::MODE_TREE_PREVIEW_NORMAL => {
+                    (*mtd).height = (screen_size_y(s) / 3) * 2;
+                       if (*mtd).height as usize > (*mtd).line_list.len() {
+                           (*mtd).height = screen_size_y(s) / 2;
+                       }
+                       if (*mtd).height < 10 {
+                           (*mtd).height = screen_size_y(s);
+                       }
+                }
+                mode_tree_preview::MODE_TREE_PREVIEW_BIG => {
+                    (*mtd).height = screen_size_y(s) / 4;
+                       if (*mtd).height as usize > (*mtd).line_list.len() {
+                           (*mtd).height = (*mtd).line_list.len() as u32;
+                       }
+                       if (*mtd).height < 2 {
+                           (*mtd).height = 2;
+                       }
+                }
+                mode_tree_preview::MODE_TREE_PREVIEW_OFF => {
+                    (*mtd).height = screen_size_y(s);
+                }
             }
-        }
-        if (*mtd).height < 10 {
-            (*mtd).height = screen_size_y(s);
         }
         if screen_size_y(s) - (*mtd).height < 2 {
             (*mtd).height = screen_size_y(s);
@@ -540,6 +643,7 @@ pub unsafe fn mode_tree_build(mtd: *mut mode_tree_data) {
         tailq_init(&raw mut (*mtd).saved);
 
         mode_tree_clear_lines(mtd);
+        (*mtd).maxdepth = 0;
         mode_tree_build_lines(mtd, &raw mut (*mtd).children, 0);
 
         if !(*mtd).line_list.is_empty() && tag == u64::MAX {
@@ -548,7 +652,7 @@ pub unsafe fn mode_tree_build(mtd: *mut mode_tree_data) {
         mode_tree_set_current(mtd, tag);
 
         (*mtd).width = screen_size_x(s);
-        if (*mtd).preview {
+        if (*mtd).preview != mode_tree_preview::MODE_TREE_PREVIEW_OFF {
             mode_tree_set_height(mtd);
         } else {
             (*mtd).height = screen_size_y(s);
@@ -655,6 +759,12 @@ pub unsafe fn mode_tree_no_tag(mti: *mut mode_tree_item) {
     }
 }
 
+pub unsafe fn mode_tree_align(mti: *mut mode_tree_item, align: i32) {
+    unsafe {
+        (*mti).align = align;
+    }
+}
+
 pub unsafe fn mode_tree_remove(mtd: *mut mode_tree_data, mti: *mut mode_tree_item) {
     unsafe {
         let parent: *mut mode_tree_item = (*mti).parent;
@@ -701,6 +811,17 @@ pub unsafe fn mode_tree_draw(mtd: &mut mode_tree_data) {
                 }
                 if (*mti).keylen as i32 + 3 > keylen {
                     keylen = (*mti).keylen as i32 + 3;
+                }
+            }
+
+            let mut alignlen = vec![0i32; mtd.maxdepth as usize + 1];
+            for line in &mtd.line_list {
+                let mti = line.item;
+                if (*mti).align != 0 {
+                    let nlen = strlen((*mti).name) as i32;
+                    if nlen > alignlen[line.depth as usize] {
+                        alignlen[line.depth as usize] = nlen;
+                    }
                 }
             }
 
@@ -759,10 +880,11 @@ pub unsafe fn mode_tree_draw(mtd: &mut mode_tree_data) {
 
                 let tag = if (*mti).tagged != 0 { c!("*") } else { c!("") };
                 let text = format_nul!(
-                    "{1:<0$}{2}{3}{4}{5}",
+                    "{1:<0$}{2}{4:>3$}{5}{6}",
                     keylen as usize,
                     _s(key),
                     _s(start),
+                    ((*mti).align * alignlen[mtd.line_list[i].depth as usize]) as usize,
                     _s((*mti).name),
                     _s(tag),
                     if !(*mti).text.is_null() { ": " } else { "" },
@@ -814,8 +936,12 @@ pub unsafe fn mode_tree_draw(mtd: &mut mode_tree_data) {
                 }
             }
 
+            if mtd.preview == mode_tree_preview::MODE_TREE_PREVIEW_OFF {
+                break 'done;
+            }
+
             let sy = screen_size_y(s);
-            if !mtd.preview || sy <= 4 || h <= 4 || sy - h <= 4 || w <= 4 {
+            if sy <= 4 || h <= 4 || sy - h <= 4 || w <= 4 {
                 break 'done;
             }
 
@@ -895,6 +1021,8 @@ pub unsafe fn mode_tree_draw(mtd: &mut mode_tree_data) {
 
 pub unsafe fn mode_tree_search_backward(mtd: *mut mode_tree_data) -> *mut mode_tree_item {
     unsafe {
+        let icase = (*mtd).search_icase;
+
         if (*mtd).search.is_null() {
             return null_mut();
         }
@@ -928,7 +1056,14 @@ pub unsafe fn mode_tree_search_backward(mtd: *mut mode_tree_data) -> *mut mode_t
             }
 
             let Some(searchcb) = (*mtd).searchcb else {
-                if cstr_to_str((*mti).name).contains(cstr_to_str((*mtd).search)) {
+                if icase == 0
+                    && !libc::strstr((*mti).name, (*mtd).search).is_null()
+                {
+                    return mti;
+                }
+                if icase != 0
+                    && !libc::strcasestr((*mti).name, (*mtd).search).is_null()
+                {
                     return mti;
                 }
                 continue;
@@ -937,6 +1072,7 @@ pub unsafe fn mode_tree_search_backward(mtd: *mut mode_tree_data) -> *mut mode_t
                 (*mtd).modedata,
                 NonNull::new((*mti).itemdata).unwrap(),
                 (*mtd).search,
+                icase,
             ) {
                 return mti;
             }
@@ -947,6 +1083,8 @@ pub unsafe fn mode_tree_search_backward(mtd: *mut mode_tree_data) -> *mut mode_t
 
 pub unsafe fn mode_tree_search_forward(mtd: *mut mode_tree_data) -> *mut mode_tree_item {
     unsafe {
+        let icase = (*mtd).search_icase;
+
         if (*mtd).search.is_null() {
             return null_mut();
         }
@@ -979,7 +1117,14 @@ pub unsafe fn mode_tree_search_forward(mtd: *mut mode_tree_data) -> *mut mode_tr
             }
 
             let Some(searchcb) = (*mtd).searchcb else {
-                if cstr_to_str((*mti).name).contains(cstr_to_str((*mtd).search)) {
+                if icase == 0
+                    && !libc::strstr((*mti).name, (*mtd).search).is_null()
+                {
+                    return mti;
+                }
+                if icase != 0
+                    && !libc::strcasestr((*mti).name, (*mtd).search).is_null()
+                {
                     return mti;
                 }
                 continue;
@@ -988,6 +1133,7 @@ pub unsafe fn mode_tree_search_forward(mtd: *mut mode_tree_data) -> *mut mode_tr
                 (*mtd).modedata,
                 NonNull::new((*mti).itemdata).unwrap(),
                 (*mtd).search,
+                icase,
             ) {
                 return mti;
             }
@@ -1039,6 +1185,7 @@ pub unsafe fn mode_tree_search_callback(
             return 0;
         }
         (*mtd).search = xstrdup(s).as_ptr();
+        (*mtd).search_icase = mode_tree_is_lowercase(s);
         mode_tree_search_set(mtd);
 
         0
@@ -1170,6 +1317,8 @@ pub unsafe fn mode_tree_display_menu(
             mtm.cast(),
         ) != 0
         {
+            mode_tree_remove_ref(mtd);
+            drop(Box::from_raw(mtm));
             menu_free(menu);
         }
     }
@@ -1202,7 +1351,7 @@ pub unsafe fn mode_tree_key(
                 if *key == keyc::KEYC_MOUSEDOWN3_PANE as u64 {
                     mode_tree_display_menu(mtd, c, x, y, 1);
                 }
-                if !(*mtd).preview {
+                if (*mtd).preview == mode_tree_preview::MODE_TREE_PREVIEW_OFF {
                     *key = KEYC_NONE;
                 }
                 return 0;
@@ -1293,8 +1442,13 @@ pub unsafe fn mode_tree_key(
             pub const SLASH: u64 = '/' as u64;
             pub const S_CTRL: u64 = 's' as u64 | KEYC_CTRL;
 
+            pub const K_UPPER: u64 = 'K' as u64;
+            pub const J_UPPER: u64 = 'J' as u64;
+
             pub const KEYC_UP: u64 = keyc::KEYC_UP as u64;
             pub const KEYC_DOWN: u64 = keyc::KEYC_DOWN as u64;
+            pub const KEYC_UP_SHIFT: u64 = keyc::KEYC_UP as u64 | KEYC_SHIFT;
+            pub const KEYC_DOWN_SHIFT: u64 = keyc::KEYC_DOWN as u64 | KEYC_SHIFT;
 
             pub const KEYC_WHEELUP_PANE: u64 = keyc::KEYC_WHEELUP_PANE as u64;
             pub const KEYC_WHEELDOWN_PANE: u64 = keyc::KEYC_WHEELDOWN_PANE as u64;
@@ -1317,6 +1471,14 @@ pub unsafe fn mode_tree_key(
 
             code::KEYC_DOWN | code::J | code::KEYC_WHEELDOWN_PANE | code::N_CTRL => {
                 mode_tree_down(mtd, 1);
+            }
+
+            code::KEYC_UP_SHIFT | code::K_UPPER => {
+                mode_tree_swap(mtd, -1);
+            }
+
+            code::KEYC_DOWN_SHIFT | code::J_UPPER => {
+                mode_tree_swap(mtd, 1);
             }
 
             code::KEYC_PPAGE | code::B_CTRL => {
@@ -1429,6 +1591,7 @@ pub unsafe fn mode_tree_key(
             }
             code::QUESTION_MARK | code::SLASH | code::S_CTRL => {
                 (*mtd).references += 1;
+                (*mtd).search_dir = mode_tree_search_dir::MODE_TREE_SEARCH_FORWARD;
                 status_prompt_set(
                     c,
                     null_mut(),
@@ -1464,9 +1627,13 @@ pub unsafe fn mode_tree_key(
                 );
             }
             code::V => {
-                (*mtd).preview = !(*mtd).preview;
+                (*mtd).preview = match (*mtd).preview {
+                    mode_tree_preview::MODE_TREE_PREVIEW_OFF => mode_tree_preview::MODE_TREE_PREVIEW_BIG,
+                    mode_tree_preview::MODE_TREE_PREVIEW_NORMAL => mode_tree_preview::MODE_TREE_PREVIEW_OFF,
+                    mode_tree_preview::MODE_TREE_PREVIEW_BIG => mode_tree_preview::MODE_TREE_PREVIEW_NORMAL,
+                };
                 mode_tree_build(mtd);
-                if (*mtd).preview {
+                if (*mtd).preview != mode_tree_preview::MODE_TREE_PREVIEW_OFF {
                     mode_tree_check_selected(mtd);
                 }
             }
@@ -1483,18 +1650,18 @@ pub unsafe fn mode_tree_run_command(
     name: Option<&str>,
 ) {
     unsafe {
-        let mut error: *mut u8 = null_mut();
-
         let command = cmd_template_replace(template, name, 1);
         if !command.is_null() && *command != b'\0' {
             let state = cmdq_new_state(fs, null_mut(), cmdq_state_flags::empty());
-            let status = cmd_parse_and_append(cstr_to_str(command), None, c, state, &raw mut error);
-            if status == cmd_parse_status::CMD_PARSE_ERROR {
-                if !c.is_null() {
-                    *error = (*error).to_ascii_uppercase();
-                    status_message_set!(c, -1, 1, false, "{}", _s(error));
+            if let Err(mut error) = cmd_parse_and_append(cstr_to_str(command), None, c, state)
+                && !c.is_null()
+            {
+                // Uppercase the first character
+                if let Some(first) = error.get(..1) {
+                    let upper = first.to_ascii_uppercase();
+                    error.replace_range(..1, &upper);
                 }
-                free_(error);
+                status_message_set!(c, -1, 1, false, false, "{}", error);
             }
             cmdq_free_state(state);
         }

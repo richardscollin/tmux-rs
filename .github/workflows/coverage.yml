@@ -4,9 +4,14 @@ name: Coverage
 on:
   push
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   coverage:
     name: Coverage
+    timeout-minutes: 15
     runs-on: ubuntu-latest
 
     steps:
@@ -29,10 +34,6 @@ jobs:
         run: |
           cargo +nightly llvm-cov --no-report nextest --profile ci
           mv ./target/nextest/ci/junit.xml junit.xml
-
-          source <(cargo llvm-cov show-env --export-prefix --branch)
-          cargo +nightly build
-          make -C regress
 
           cargo llvm-cov report --lcov --output-path lcov.info
 

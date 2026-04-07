@@ -132,11 +132,41 @@ pub struct msg_read_cancel {
     pub stream: i32,
 }
 
+/// Flags for file write open operations.
+#[repr(i32)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub enum FileOpenFlags {
+    /// No special flags (used for stdout/stderr streams).
+    None = 0,
+    /// Append to the file.
+    Append = crate::libc::O_APPEND,
+    /// Truncate the file.
+    Truncate = crate::libc::O_TRUNC,
+}
+
+impl From<FileOpenFlags> for std::fs::OpenOptions {
+    fn from(flags: FileOpenFlags) -> std::fs::OpenOptions {
+        let mut opts = std::fs::OpenOptions::new();
+        match flags {
+            FileOpenFlags::None => {
+                opts.write(true);
+            }
+            FileOpenFlags::Append => {
+                opts.write(true).create(true).append(true);
+            }
+            FileOpenFlags::Truncate => {
+                opts.write(true).create(true).truncate(true);
+            }
+        }
+        opts
+    }
+}
+
 #[repr(C)]
 pub struct msg_write_open {
     pub stream: i32,
     pub fd: i32,
-    pub flags: i32,
+    pub flags: FileOpenFlags,
 }
 
 #[repr(C)]

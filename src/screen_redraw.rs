@@ -75,6 +75,10 @@ pub unsafe fn screen_redraw_border_set(
                 (*gc).attr &= !grid_attr::GRID_ATTR_CHARSET;
                 utf8_set(&mut (*gc).data, SIMPLE_BORDERS[cell_type as usize]);
             }
+            pane_lines::PANE_LINES_SPACES => {
+                (*gc).attr &= !grid_attr::GRID_ATTR_CHARSET;
+                utf8_set(&mut (*gc).data, b' ');
+            }
             _ => {
                 (*gc).attr |= grid_attr::GRID_ATTR_CHARSET;
                 utf8_set(&mut (*gc).data, CELL_BORDERS[cell_type as usize]);
@@ -113,10 +117,18 @@ pub unsafe fn screen_redraw_pane_border(
 ) -> screen_redraw_border_type {
     unsafe {
         let oo = (*(*wp).window).options;
-        let mut split = 0;
         let ex = (*wp).xoff + (*wp).sx;
         let ey = (*wp).yoff + (*wp).sy;
         let pane_status = (*ctx).pane_status;
+        let pane_scrollbars = (*ctx).pane_scrollbars;
+        let sb_pos = if pane_scrollbars != 0 {
+            (*ctx).pane_scrollbars_pos
+        } else {
+            0
+        };
+        let mut hsplit = false;
+        let mut vsplit = false;
+        let mut sb_w: u32 = 0;
 
         // Inside pane
         if px >= (*wp).xoff && px < ex && py >= (*wp).yoff && py < ey {
@@ -129,47 +141,69 @@ pub unsafe fn screen_redraw_pane_border(
         ) {
             Ok(pane_border_indicator::PANE_BORDER_COLOUR)
             | Ok(pane_border_indicator::PANE_BORDER_BOTH) => {
-                split = 1;
+                hsplit = screen_redraw_two_panes((*wp).window, 0);
+                vsplit = screen_redraw_two_panes((*wp).window, 1);
             }
             _ => (),
         }
 
+        // Are scrollbars enabled?
+        if window_pane_show_scrollbar(wp, pane_scrollbars) {
+            sb_w = (*wp).scrollbar_style.width as u32 + (*wp).scrollbar_style.pad as u32;
+        }
+
         // Left/right borders
-        if pane_status == pane_status::PANE_STATUS_OFF {
-            if screen_redraw_two_panes((*wp).window, 0) && split != 0 {
-                if (*wp).xoff == 0 && px == (*wp).sx && py <= (*wp).sy / 2 {
+        if ((*wp).yoff == 0 || py >= (*wp).yoff - 1) && py <= ey {
+            if sb_pos == PANE_SCROLLBARS_LEFT {
+                if (*wp).xoff - sb_w == 0
+                    && px == (*wp).sx + sb_w
+                    && (!hsplit || py <= (*wp).sy / 2)
+                {
                     return screen_redraw_border_type::SCREEN_REDRAW_BORDER_RIGHT;
                 }
-                if (*wp).xoff != 0 && px == (*wp).xoff - 1 && py > (*wp).sy / 2 {
-                    return screen_redraw_border_type::SCREEN_REDRAW_BORDER_LEFT;
+                if (*wp).xoff - sb_w != 0 {
+                    if px == (*wp).xoff - sb_w - 1
+                        && (!hsplit || py > (*wp).sy / 2)
+                    {
+                        return screen_redraw_border_type::SCREEN_REDRAW_BORDER_LEFT;
+                    }
+                    if px == (*wp).xoff + (*wp).sx + sb_w - 1 {
+                        return screen_redraw_border_type::SCREEN_REDRAW_BORDER_RIGHT;
+                    }
                 }
-            } else if ((*wp).yoff == 0 || py >= (*wp).yoff - 1) && py <= ey {
-                if (*wp).xoff != 0 && px == (*wp).xoff - 1 {
-                    return screen_redraw_border_type::SCREEN_REDRAW_BORDER_LEFT;
-                }
-                if px == ex {
+            } else {
+                // PANE_SCROLLBARS_RIGHT or disabled
+                if (*wp).xoff == 0
+                    && px == (*wp).sx + sb_w
+                    && (!hsplit || py <= (*wp).sy / 2)
+                {
                     return screen_redraw_border_type::SCREEN_REDRAW_BORDER_RIGHT;
                 }
-            }
-        } else if ((*wp).yoff == 0 || py >= (*wp).yoff - 1) && py <= ey {
-            if (*wp).xoff != 0 && px == (*wp).xoff - 1 {
-                return screen_redraw_border_type::SCREEN_REDRAW_BORDER_LEFT;
-            }
-            if px == ex {
-                return screen_redraw_border_type::SCREEN_REDRAW_BORDER_RIGHT;
+                if (*wp).xoff != 0 {
+                    if px == (*wp).xoff - 1
+                        && (!hsplit || py > (*wp).sy / 2)
+                    {
+                        return screen_redraw_border_type::SCREEN_REDRAW_BORDER_LEFT;
+                    }
+                    if px == (*wp).xoff + (*wp).sx + sb_w {
+                        return screen_redraw_border_type::SCREEN_REDRAW_BORDER_RIGHT;
+                    }
+                }
             }
         }
 
         // Top/bottom borders
-        if pane_status == pane_status::PANE_STATUS_OFF {
-            if screen_redraw_two_panes((*wp).window, 1) && split != 0 {
-                if (*wp).yoff == 0 && py == (*wp).sy && px <= (*wp).sx / 2 {
-                    return screen_redraw_border_type::SCREEN_REDRAW_BORDER_BOTTOM;
-                }
-                if (*wp).yoff != 0 && py == (*wp).yoff - 1 && px > (*wp).sx / 2 {
-                    return screen_redraw_border_type::SCREEN_REDRAW_BORDER_TOP;
-                }
-            } else if ((*wp).xoff == 0 || px >= (*wp).xoff - 1) && px <= ex {
+        if vsplit && pane_status == pane_status::PANE_STATUS_OFF && sb_w == 0 {
+            if (*wp).yoff == 0 && py == (*wp).sy && px <= (*wp).sx / 2 {
+                return screen_redraw_border_type::SCREEN_REDRAW_BORDER_BOTTOM;
+            }
+            if (*wp).yoff != 0 && py == (*wp).yoff - 1 && px > (*wp).sx / 2 {
+                return screen_redraw_border_type::SCREEN_REDRAW_BORDER_TOP;
+            }
+        } else if sb_pos == PANE_SCROLLBARS_LEFT {
+            if ((*wp).xoff - sb_w == 0 || px >= (*wp).xoff - sb_w)
+                && (px <= ex || (sb_w != 0 && px < ex + sb_w))
+            {
                 if (*wp).yoff != 0 && py == (*wp).yoff - 1 {
                     return screen_redraw_border_type::SCREEN_REDRAW_BORDER_TOP;
                 }
@@ -177,16 +211,18 @@ pub unsafe fn screen_redraw_pane_border(
                     return screen_redraw_border_type::SCREEN_REDRAW_BORDER_BOTTOM;
                 }
             }
-        } else if pane_status == pane_status::PANE_STATUS_TOP {
-            if ((*wp).xoff == 0 || px >= (*wp).xoff - 1)
-                && px <= ex
-                && (*wp).yoff != 0
-                && py == (*wp).yoff - 1
+        } else {
+            // PANE_SCROLLBARS_RIGHT
+            if ((*wp).xoff == 0 || px >= (*wp).xoff)
+                && (px <= ex || (sb_w != 0 && px < ex + sb_w))
             {
-                return screen_redraw_border_type::SCREEN_REDRAW_BORDER_TOP;
+                if (*wp).yoff != 0 && py == (*wp).yoff - 1 {
+                    return screen_redraw_border_type::SCREEN_REDRAW_BORDER_TOP;
+                }
+                if py == ey {
+                    return screen_redraw_border_type::SCREEN_REDRAW_BORDER_BOTTOM;
+                }
             }
-        } else if ((*wp).xoff == 0 || px >= (*wp).xoff - 1) && px <= ex && py == ey {
-            return screen_redraw_border_type::SCREEN_REDRAW_BORDER_BOTTOM;
         }
 
         // Outside pane
@@ -199,14 +235,19 @@ pub unsafe fn screen_redraw_cell_border(ctx: *mut screen_redraw_ctx, px: u32, py
     unsafe {
         let c = (*ctx).c;
         let w = (*(*(*c).session).curw).window;
+        let mut sy = (*w).sy;
+
+        if (*ctx).pane_status == pane_status::PANE_STATUS_BOTTOM {
+            sy -= 1;
+        }
 
         // Outside the window?
-        if px > (*w).sx || py > (*w).sy {
+        if px > (*w).sx || py > sy {
             return 0;
         }
 
         // On the window border?
-        if px == (*w).sx || py == (*w).sy {
+        if px == (*w).sx || py == sy {
             return 1;
         }
 
@@ -245,8 +286,12 @@ pub unsafe fn screen_redraw_type_of_cell(
         let pane_status = (*ctx).pane_status;
         let w = (*(*(*c).session).curw).window;
         let sx = (*w).sx;
-        let sy = (*w).sy;
+        let mut sy = (*w).sy;
         let mut borders = 0;
+
+        if pane_status == pane_status::PANE_STATUS_BOTTOM {
+            sy -= 1;
+        }
 
         // Is this outside the window?
         if px > sx || py > sy {
@@ -274,7 +319,7 @@ pub unsafe fn screen_redraw_type_of_cell(
                 if py == 0 || screen_redraw_cell_border(ctx, px, py - 1) != 0 {
                     borders |= 2;
                 }
-                if py != sy - 1 && screen_redraw_cell_border(ctx, px, py + 1) != 0 {
+                if py != sy && screen_redraw_cell_border(ctx, px, py + 1) != 0 {
                     borders |= 1;
                 }
             }
@@ -321,16 +366,21 @@ pub unsafe fn screen_redraw_check_cell(
         let mut wp: *mut window_pane;
         let mut active: *mut window_pane;
         let pane_status = (*ctx).pane_status;
+        let pane_scrollbars = (*ctx).pane_scrollbars;
+        let sb_pos = (*ctx).pane_scrollbars_pos;
+        let mut sb_w: i32;
+        let sx = (*w).sx;
+        let sy = (*w).sy;
         let mut border: i32;
         let mut right: u32;
         let mut line: u32;
 
         *wpp = null_mut();
 
-        if px > (*w).sx || py > (*w).sy {
+        if px > sx || py > sy {
             return cell_type::CELL_OUTSIDE;
         }
-        if px == (*w).sx || py == (*w).sy {
+        if px == sx || py == sy {
             // window border
             return screen_redraw_type_of_cell(ctx, px, py);
         }
@@ -347,7 +397,7 @@ pub unsafe fn screen_redraw_check_cell(
                     if pane_status == pane_status::PANE_STATUS_TOP {
                         line = (*wp).yoff - 1;
                     } else {
-                        line = (*wp).yoff + (*wp).sy;
+                        line = (*wp).yoff + sy;
                     }
                     right = (*wp).xoff + 2 + (*wp).status_size as u32 - 1;
 
@@ -374,6 +424,29 @@ pub unsafe fn screen_redraw_check_cell(
                     break 'next2;
                 }
                 *wpp = wp;
+
+                // Check if CELL_SCROLLBAR
+                sb_w = (*wp).scrollbar_style.width + (*wp).scrollbar_style.pad;
+                if window_pane_show_scrollbar(wp, pane_scrollbars) {
+                    let line = if pane_status == pane_status::PANE_STATUS_TOP {
+                        (*wp).yoff as i32 - 1
+                    } else {
+                        ((*wp).yoff + (*wp).sy) as i32
+                    };
+
+                    if ((pane_status != pane_status::PANE_STATUS_OFF && py as i32 != line)
+                        || ((*wp).yoff == 0 && py < (*wp).sy)
+                        || (py >= (*wp).yoff && py < (*wp).yoff + (*wp).sy))
+                        && ((sb_pos == PANE_SCROLLBARS_RIGHT
+                            && px >= (*wp).xoff + (*wp).sx
+                            && px < (*wp).xoff + (*wp).sx + sb_w as u32)
+                            || (sb_pos == PANE_SCROLLBARS_LEFT
+                                && px >= (*wp).xoff - sb_w as u32
+                                && px < (*wp).xoff))
+                    {
+                        return cell_type::CELL_SCROLLBAR;
+                    }
+                }
 
                 // If definitely inside, return. If not on border, skip.
                 // Otherwise work out the cell.
@@ -430,6 +503,12 @@ pub unsafe fn screen_redraw_make_pane_status(
         let mut ctx: MaybeUninit<screen_write_ctx> = MaybeUninit::uninit();
         let mut old: screen;
         let pane_status = (*rctx).pane_status;
+        let pane_scrollbars = (*rctx).pane_scrollbars;
+        let mut sb_w: u32 = 0;
+
+        if window_pane_show_scrollbar(wp.as_ptr(), pane_scrollbars) {
+            sb_w = ((*wp.as_ptr()).scrollbar_style.width + (*wp.as_ptr()).scrollbar_style.pad) as u32;
+        }
 
         let ft = format_create(
             c,
@@ -458,8 +537,8 @@ pub unsafe fn screen_redraw_make_pane_status(
             (*wp).status_size = 0;
             width = 0;
         } else {
-            (*wp).status_size = (*wp).sx as usize - 4;
-            width = (*wp).sx - 4;
+            (*wp).status_size = ((*wp).sx + sb_w - 2) as usize;
+            width = (*wp).sx + sb_w - 2;
         }
 
         old = (*wp).status_screen.clone();
@@ -573,11 +652,13 @@ pub unsafe fn screen_redraw_draw_pane_status(ctx: *mut screen_redraw_ctx) {
 }
 
 /// Update status line and change flags if unchanged.
-unsafe fn screen_redraw_update(c: *mut client, mut flags: client_flag) -> client_flag {
+unsafe fn screen_redraw_update(
+    ctx: *mut screen_redraw_ctx,
+    mut flags: client_flag,
+) -> client_flag {
     unsafe {
+        let c = (*ctx).c;
         let w = (*(*(*c).session).curw).window;
-        let wo = (*w).options;
-        let mut ctx = MaybeUninit::<screen_redraw_ctx>::uninit();
 
         let mut redraw = if !(*c).message_string.is_null() {
             status_message_redraw(c)
@@ -595,11 +676,8 @@ unsafe fn screen_redraw_update(c: *mut client, mut flags: client_flag) -> client
             flags |= client_flag::REDRAWOVERLAY;
         }
 
-        if options_get_number___::<i32>(&*wo, "pane-border-status") != pane_status::PANE_STATUS_OFF as i32
-        {
-            screen_redraw_set_context(c, ctx.as_mut_ptr());
-            let lines = pane_lines::try_from(options_get_number_(wo, "pane-border-lines") as i32)
-                .unwrap_or_default();
+        if (*ctx).pane_status != pane_status::PANE_STATUS_OFF {
+            let lines = (*ctx).pane_lines;
             redraw = 0;
 
             // Safe replacement for TAILQ_FOREACH macro
@@ -608,7 +686,7 @@ unsafe fn screen_redraw_update(c: *mut client, mut flags: client_flag) -> client
                 if screen_redraw_make_pane_status(
                     c,
                     NonNull::new_unchecked(wp),
-                    ctx.as_mut_ptr(),
+                    ctx,
                     lines,
                 ) != 0
                 {
@@ -653,6 +731,9 @@ pub unsafe fn screen_redraw_set_context(c: *mut client, ctx: *mut screen_redraw_
             .try_into()
             .unwrap();
 
+        (*ctx).pane_scrollbars = options_get_number_(wo, "pane-scrollbars") as i32;
+        (*ctx).pane_scrollbars_pos = options_get_number_(wo, "pane-scrollbars-position") as i32;
+
         tty_window_offset(
             &raw mut (*c).tty,
             &raw mut (*ctx).ox,
@@ -686,25 +767,28 @@ pub unsafe fn screen_redraw_screen(c: *mut client) {
             return;
         }
 
-        let flags = screen_redraw_update(c, (*c).flags);
+        screen_redraw_set_context(c, ctx);
+
+        let flags = screen_redraw_update(ctx, (*c).flags);
         if !flags.intersects(CLIENT_ALLREDRAWFLAGS) {
             return;
         }
 
-        screen_redraw_set_context(c, ctx);
         tty_sync_start(&raw mut (*c).tty);
         tty_update_mode(&raw mut (*c).tty, (*c).tty.mode, null_mut());
 
         if flags.intersects(client_flag::REDRAWWINDOW | client_flag::REDRAWBORDERS) {
             log_debug!("{}: redrawing borders", _s((*c).name));
+            screen_redraw_draw_borders(ctx);
             if (*ctx).pane_status != pane_status::PANE_STATUS_OFF {
                 screen_redraw_draw_pane_status(ctx);
             }
-            screen_redraw_draw_borders(ctx);
+            screen_redraw_draw_pane_scrollbars(ctx);
         }
         if flags.intersects(client_flag::REDRAWWINDOW) {
             log_debug!("{}: redrawing panes", _s((*c).name));
             screen_redraw_draw_panes(ctx);
+            screen_redraw_draw_pane_scrollbars(ctx);
         }
         if (*ctx).statuslines != 0
             && flags.intersects(client_flag::REDRAWSTATUS | client_flag::REDRAWSTATUSALWAYS)
@@ -724,7 +808,11 @@ pub unsafe fn screen_redraw_screen(c: *mut client) {
 }
 
 /// Redraw a single pane.
-pub unsafe fn screen_redraw_pane(c: *mut client, wp: *mut window_pane) {
+pub unsafe fn screen_redraw_pane(
+    c: *mut client,
+    wp: *mut window_pane,
+    redraw_scrollbar_only: i32,
+) {
     unsafe {
         let mut ctx = MaybeUninit::<screen_redraw_ctx>::uninit();
 
@@ -736,7 +824,13 @@ pub unsafe fn screen_redraw_pane(c: *mut client, wp: *mut window_pane) {
         tty_sync_start(&raw mut (*c).tty);
         tty_update_mode(&raw mut (*c).tty, (*c).tty.mode, null_mut());
 
-        screen_redraw_draw_pane(ctx.as_mut_ptr(), wp);
+        if redraw_scrollbar_only == 0 {
+            screen_redraw_draw_pane(ctx.as_mut_ptr(), wp);
+        }
+
+        if window_pane_show_scrollbar(wp, (*ctx.as_ptr()).pane_scrollbars) {
+            screen_redraw_draw_pane_scrollbar(ctx.as_mut_ptr(), wp);
+        }
 
         tty_reset(&raw mut (*c).tty);
     }
@@ -803,7 +897,7 @@ pub unsafe fn screen_redraw_draw_borders_cell(ctx: *mut screen_redraw_ctx, i: u3
 
         let mut wp = null_mut();
         let cell_type = screen_redraw_check_cell(ctx, x, y, &raw mut wp);
-        if cell_type == cell_type::CELL_INSIDE {
+        if cell_type == cell_type::CELL_INSIDE || cell_type == cell_type::CELL_SCROLLBAR {
             return;
         }
 
@@ -1033,5 +1127,173 @@ pub unsafe fn screen_redraw_draw_pane(ctx: *mut screen_redraw_ctx, wp: *mut wind
 
         #[cfg(feature = "sixel")]
         crate::tty_::tty_draw_images(c, wp, s);
+    }
+}
+
+/// Draw pane scrollbars.
+unsafe fn screen_redraw_draw_pane_scrollbars(ctx: *mut screen_redraw_ctx) {
+    unsafe {
+        let c = (*ctx).c;
+        let w = (*(*(*c).session).curw).window;
+
+        log_debug!(
+            "{}: {} @{}",
+            "screen_redraw_draw_pane_scrollbars",
+            _s((*c).name),
+            (*w).id,
+        );
+
+        for wp in tailq_foreach::<_, discr_entry>(&raw mut (*w).panes).map(NonNull::as_ptr) {
+            if window_pane_show_scrollbar(wp, (*ctx).pane_scrollbars)
+                && window_pane_visible(wp)
+            {
+                screen_redraw_draw_pane_scrollbar(ctx, wp);
+            }
+        }
+    }
+}
+
+/// Draw a single pane scrollbar.
+pub unsafe fn screen_redraw_draw_pane_scrollbar(
+    ctx: *mut screen_redraw_ctx,
+    wp: *mut window_pane,
+) {
+    unsafe {
+        let s = (*wp).screen;
+        let sb = (*ctx).pane_scrollbars;
+        let sb_pos = (*ctx).pane_scrollbars_pos;
+        let sb_w = (*wp).scrollbar_style.width;
+        let sb_pad = (*wp).scrollbar_style.pad;
+        let sb_h = (*wp).sy;
+        let sb_y = (*wp).yoff as i32 - (*ctx).oy as i32;
+        let xoff = (*wp).xoff as i32;
+        let ox = (*ctx).ox as i32;
+
+        let (slider_h, slider_y);
+
+        if window_pane_mode(wp) == WINDOW_PANE_NO_MODE {
+            if sb == PANE_SCROLLBARS_MODAL {
+                return;
+            }
+            // Show slider at the bottom of the scrollbar.
+            let total_height = screen_size_y(s) + screen_hsize(s);
+            let percent_view = sb_h as f64 / total_height as f64;
+            slider_h = (sb_h as f64 * percent_view) as u32;
+            slider_y = sb_h - slider_h;
+        } else {
+            if tailq_empty(&raw mut (*wp).modes) {
+                return;
+            }
+            let mut cm_y: i32 = 0;
+            let mut cm_size: i32 = 0;
+            if window_copy_get_current_offset(
+                wp,
+                &raw mut cm_y as *mut u32,
+                &raw mut cm_size as *mut u32,
+            ) == 0
+            {
+                return;
+            }
+            let total_height = cm_size as u32 + sb_h;
+            let percent_view = sb_h as f64 / (cm_size as u32 + sb_h) as f64;
+            slider_h = (sb_h as f64 * percent_view) as u32;
+            slider_y =
+                ((sb_h + 1) as f64 * (cm_y as f64 / total_height as f64)) as u32;
+        }
+
+        let sb_x = if sb_pos == PANE_SCROLLBARS_LEFT {
+            xoff - sb_w - sb_pad - ox
+        } else {
+            xoff + (*wp).sx as i32 - ox
+        };
+
+        let slider_h = slider_h.max(1);
+        let slider_y = if slider_y >= sb_h { sb_h - 1 } else { slider_y };
+
+        screen_redraw_draw_scrollbar(ctx, wp, sb_pos, sb_x, sb_y, sb_h, slider_h, slider_y);
+
+        // Store current position and height of the slider.
+        (*wp).sb_slider_y = slider_y;
+        (*wp).sb_slider_h = slider_h;
+    }
+}
+
+/// Draw the actual scrollbar cells.
+unsafe fn screen_redraw_draw_scrollbar(
+    ctx: *mut screen_redraw_ctx,
+    wp: *mut window_pane,
+    sb_pos: i32,
+    sb_x: i32,
+    sb_y: i32,
+    sb_h: u32,
+    slider_h: u32,
+    slider_y: u32,
+) {
+    unsafe {
+        let c = (*ctx).c;
+        let tty = &raw mut (*c).tty;
+        let sb_style = &raw const (*wp).scrollbar_style;
+        let sb_w = (*sb_style).width as u32;
+        let sb_pad = (*sb_style).pad as u32;
+        let ox = (*ctx).ox as i32;
+        let oy = (*ctx).oy as i32;
+        let sx = (*ctx).sx as i32;
+        let sy = (*ctx).sy as i32;
+        let xoff = (*wp).xoff as i32;
+        let yoff = (*wp).yoff as i32;
+
+        // Set up style for slider.
+        let gc: grid_cell = (*sb_style).gc;
+        let slgc: grid_cell = grid_cell {
+            fg: gc.bg,
+            bg: gc.fg,
+            ..gc
+        };
+
+        let mut imax = sb_w + sb_pad;
+        if sb_x + imax as i32 > sx {
+            imax = (sx - sb_x) as u32;
+        }
+        let mut jmax = sb_h;
+        if sb_y + jmax as i32 > sy {
+            jmax = (sy - sb_y) as u32;
+        }
+
+        for j in 0..jmax {
+            let py = sb_y + j as i32;
+            for i in 0..imax {
+                let px = sb_x + i as i32;
+                if px < xoff - ox - sb_w as i32 - sb_pad as i32
+                    || px >= sx
+                    || px < 0
+                    || py < yoff - oy - 1
+                    || py >= sy
+                    || py < 0
+                {
+                    continue;
+                }
+                tty_cursor(tty, px as u32, py as u32);
+                if (sb_pos == PANE_SCROLLBARS_LEFT
+                    && i >= sb_w
+                    && i < sb_w + sb_pad)
+                    || (sb_pos == PANE_SCROLLBARS_RIGHT && i < sb_pad)
+                {
+                    tty_cell(
+                        tty,
+                        &raw const GRID_DEFAULT_CELL,
+                        &raw const GRID_DEFAULT_CELL,
+                        null_mut(),
+                        null_mut(),
+                    );
+                } else {
+                    let gcp = if j >= slider_y && j < slider_y + slider_h {
+                        &raw const slgc
+                    } else {
+                        &raw const gc
+                    };
+                    tty_cell(tty, gcp, &raw const GRID_DEFAULT_CELL, null_mut(), null_mut());
+                }
+            }
+        }
     }
 }

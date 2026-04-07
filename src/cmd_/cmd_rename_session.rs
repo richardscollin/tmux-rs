@@ -39,7 +39,7 @@ unsafe fn cmd_rename_session_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_
         let target = cmdq_get_target(item);
         let s = (*target).s;
 
-        let tmp = format_single_from_target(item, args_string(args, 0));
+        let tmp = format_single_from_target(item, args_string(&*args, 0).unwrap().as_ptr().cast());
         let Some(newname) = session_check_name(tmp) else {
             cmdq_error!(item, "invalid session: {}", _s(tmp));
             free_(tmp);

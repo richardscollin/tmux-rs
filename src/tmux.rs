@@ -17,12 +17,14 @@ use std::sync::OnceLock;
 
 
 use crate::compat::getopt::{OPTARG, OPTIND, getopt};
-use crate::compat::{S_ISDIR, fdforkpty::getptmfd, getprogname::getprogname};
+use crate::compat::{fdforkpty::getptmfd, getprogname::getprogname};
 use crate::libc::{
-    CLOCK_MONOTONIC, CLOCK_REALTIME, CODESET, EEXIST, F_GETFL, F_SETFL, LC_CTYPE, LC_TIME,
-    O_NONBLOCK, S_IRWXO, S_IRWXU, X_OK, access, clock_gettime, fcntl, getpwuid, getuid, lstat,
-    mkdir, nl_langinfo, setlocale, stat, strchr, strcspn, strerror, strncmp, strrchr, timespec,
+    LC_TIME,
+    access, getpwuid, getuid,
+    nl_langinfo, setlocale, strchr, strerror, strncmp, strrchr, timespec,
 };
+#[cfg(not(target_os = "windows"))]
+use crate::libc::fcntl;
 use crate::*;
 use crate::options_::{options, options_create, options_default, options_set_number, options_set_string};
 
@@ -36,19 +38,113 @@ pub static mut START_TIME: timeval = timeval {
     tv_usec: 0,
 };
 
-pub static mut SOCKET_PATH: *const u8 = null_mut();
-
+pub static SOCKET_PATH: std::sync::OnceLock<String> = std::sync::OnceLock::new();
 pub static mut PTM_FD: c_int = -1;
-
 pub static mut SHELL_COMMAND: *mut u8 = null_mut();
 
-pub fn usage() -> ! {
-    eprintln!(
-        "usage: tmux-rs [-2CDlNuVv] [-c shell-command] [-f file] [-L socket-name]\n               [-S socket-path] [-T features] [command [flags]]\n"
-    );
-    std::process::exit(1)
+pub fn usage(status: i32) -> ! {
+    let msg = "usage: tmux-rs [-2CDhlNuVv] [-c shell-command] [-f file] [-L socket-name]\n               [-S socket-path] [-T features] [command [flags]]\n";
+    if status != 0 {
+        eprintln!("{msg}");
+    } else {
+        println!("{msg}");
+    }
+    std::process::exit(status)
 }
 
+#[cfg(target_os = "windows")]
+unsafe fn getshell() -> Cow<'static, CStr> {
+    // 1. Try to detect parent process: use it only if it's a known shell
+    if let Some(parent) = parent_process_exe() {
+        let filename = parent
+            .rsplit(|c| c == '\\' || c == '/')
+            .next()
+            .unwrap_or("")
+            .to_ascii_lowercase();
+        let is_shell = matches!(
+            filename.as_str(),
+            "pwsh.exe"
+                | "powershell.exe"
+                | "cmd.exe"
+                | "bash.exe"
+                | "zsh.exe"
+                | "fish.exe"
+                | "nu.exe"
+        );
+        if is_shell {
+            if let Ok(shell) = CString::new(parent) {
+                return Cow::Owned(shell);
+            }
+        }
+    }
+    // 2. Look for pwsh.exe on PATH
+    if let Ok(path) = std::env::var("PATH") {
+        for dir in path.split(';') {
+            if std::path::Path::new(dir).join("pwsh.exe").exists() {
+                return Cow::Owned(CString::new("pwsh.exe").unwrap());
+            }
+        }
+    }
+    // 3. Fall back to powershell.exe
+    Cow::Owned(CString::new("powershell.exe").unwrap())
+}
+
+/// Detect the parent process's executable path using Win32 Toolhelp + QueryFullProcessImageNameW.
+#[cfg(target_os = "windows")]
+fn parent_process_exe() -> Option<String> {
+    use windows_sys::Win32::Foundation::{CloseHandle, INVALID_HANDLE_VALUE};
+    use windows_sys::Win32::System::Diagnostics::ToolHelp::{
+        CreateToolhelp32Snapshot, Process32FirstW, Process32NextW, PROCESSENTRY32W,
+        TH32CS_SNAPPROCESS,
+    };
+    use windows_sys::Win32::System::Threading::{
+        GetCurrentProcessId, OpenProcess, QueryFullProcessImageNameW,
+        PROCESS_QUERY_LIMITED_INFORMATION,
+    };
+
+    unsafe {
+        let our_pid = GetCurrentProcessId();
+        let snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+        if snapshot == INVALID_HANDLE_VALUE {
+            return None;
+        }
+
+        let mut entry: PROCESSENTRY32W = std::mem::zeroed();
+        entry.dwSize = std::mem::size_of::<PROCESSENTRY32W>() as u32;
+
+        let mut parent_pid = None;
+        if Process32FirstW(snapshot, &mut entry) != 0 {
+            loop {
+                if entry.th32ProcessID == our_pid {
+                    parent_pid = Some(entry.th32ParentProcessID);
+                    break;
+                }
+                if Process32NextW(snapshot, &mut entry) == 0 {
+                    break;
+                }
+            }
+        }
+        CloseHandle(snapshot);
+
+        let parent_pid = parent_pid?;
+        let proc_handle = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, 0, parent_pid);
+        if proc_handle.is_null() {
+            return None;
+        }
+
+        let mut buf = [0u16; 260];
+        let mut len = buf.len() as u32;
+        let ok = QueryFullProcessImageNameW(proc_handle, 0, buf.as_mut_ptr(), &mut len);
+        CloseHandle(proc_handle);
+
+        if ok == 0 {
+            return None;
+        }
+        Some(String::from_utf16_lossy(&buf[..len as usize]))
+    }
+}
+
+#[cfg(not(target_os = "windows"))]
 unsafe fn getshell() -> Cow<'static, CStr> {
     unsafe {
         if let Ok(shell) = std::env::var("SHELL")
@@ -74,12 +170,29 @@ pub unsafe fn checkshell(shell: Option<&CStr>) -> bool {
         let Some(shell) = shell else {
             return false;
         };
-        if shell.to_bytes()[0] != b'/' {
+        let bytes = shell.to_bytes();
+        if bytes.is_empty() {
+            return false;
+        }
+        // On Unix, must be an absolute path (starts with '/')
+        // On Windows, accept drive letters (e.g. C:\) or UNC paths (\\)
+        #[cfg(not(target_os = "windows"))]
+        if bytes[0] != b'/' {
+            return false;
+        }
+        #[cfg(target_os = "windows")]
+        if !(bytes[0] == b'/' || bytes[0] == b'\\' || (bytes.len() >= 3 && bytes[1] == b':')) {
             return false;
         }
         if areshell(shell) {
             return false;
         }
+        // On Windows, _access() doesn't support X_OK; use existence check (0) instead
+        #[cfg(target_os = "windows")]
+        if access(shell.as_ptr().cast(), 0) != 0 {
+            return false;
+        }
+        #[cfg(not(target_os = "windows"))]
         if access(shell.as_ptr().cast(), X_OK) != 0 {
             return false;
         }
@@ -89,20 +202,14 @@ pub unsafe fn checkshell(shell: Option<&CStr>) -> bool {
 
 pub unsafe fn checkshell_(shell: *const u8) -> bool {
     unsafe {
-        if shell.is_null() {
-            return false;
-        }
-        if *shell != b'/' {
-            return false;
-        }
-        if areshell(CStr::from_ptr(shell.cast())) {
-            return false;
-        }
-        if access(shell.cast(), X_OK) != 0 {
-            return false;
-        }
+        let shell = if shell.is_null() {
+            None
+        } else {
+            Some(CStr::from_ptr(shell.cast()))
+        };
+
+        checkshell(shell)
     }
-    true
 }
 
 unsafe fn areshell(shell: &CStr) -> bool {
@@ -155,7 +262,7 @@ unsafe fn expand_path(path: *const u8, home: Option<&CStr>) -> Option<CString> {
     }
 }
 
-unsafe fn expand_paths(s: &str, paths: &mut Vec<CString>, ignore_errors: i32) {
+unsafe fn expand_paths(s: &str, paths: &mut Vec<CString>, no_realpath: bool) {
     unsafe {
         let home = find_home();
         let mut path: CString;
@@ -176,22 +283,22 @@ unsafe fn expand_paths(s: &str, paths: &mut Vec<CString>, ignore_errors: i32) {
                 continue;
             };
 
-            match PathBuf::from(expanded.to_str().unwrap()).canonicalize() {
-                Ok(resolved) => {
-                    path = CString::new(resolved.into_os_string().into_string().unwrap()).unwrap();
-                    // free_(expanded);
-                }
-                Err(_) => {
-                    log_debug!(
-                        "{func}: realpath(\"{}\") failed: {}",
-                        expanded.to_string_lossy(),
-                        strerror(errno!()),
-                    );
-                    if ignore_errors != 0 {
-                        // free_(expanded);
+            if no_realpath {
+                path = expanded;
+            } else {
+                match PathBuf::from(expanded.to_str().unwrap()).canonicalize() {
+                    Ok(resolved) => {
+                        path =
+                            CString::new(resolved.into_os_string().into_string().unwrap()).unwrap();
+                    }
+                    Err(_) => {
+                        log_debug!(
+                            "{func}: realpath(\"{}\") failed: {}",
+                            expanded.to_string_lossy(),
+                            strerror(errno!()),
+                        );
                         continue;
                     }
-                    path = expanded;
                 }
             }
 
@@ -207,61 +314,73 @@ unsafe fn expand_paths(s: &str, paths: &mut Vec<CString>, ignore_errors: i32) {
     }
 }
 
-unsafe fn make_label(mut label: *const u8, cause: *mut *mut u8) -> *const u8 {
+unsafe fn make_label(mut label: *const u8) -> Result<String, String> {
     let mut paths: Vec<CString> = Vec::new();
-    let base: *mut u8;
-    let mut sb: stat = unsafe { zeroed() }; // TODO use uninit
 
     unsafe {
-        'fail: {
-            *cause = null_mut();
-            if label.is_null() {
-                label = c!("default");
-            }
-            let uid = getuid();
-
-            expand_paths(TMUX_SOCK, &mut paths, 1);
-            if paths.is_empty() {
-                *cause = format_nul!("no suitable socket path");
-                return null_mut();
-            }
-
-            paths.truncate(1);
-            let mut path = paths.pop().unwrap(); /* can only have one socket! */
-
-            base = format_nul!("{}/tmux-rs-{}", path.to_string_lossy(), uid);
-            if mkdir(base.cast(), S_IRWXU) != 0 && errno!() != EEXIST {
-                *cause = format_nul!(
-                    "couldn't create directory {} ({})",
-                    _s(base),
-                    strerror(errno!())
-                );
-                break 'fail;
-            }
-            if lstat(base.cast(), &raw mut sb) != 0 {
-                *cause = format_nul!(
-                    "couldn't read directory {} ({})",
-                    _s(base),
-                    strerror(errno!()),
-                );
-                break 'fail;
-            }
-            if !S_ISDIR(sb.st_mode) {
-                *cause = format_nul!("{} is not a directory", _s(base));
-                break 'fail;
-            }
-            if sb.st_uid != uid || (sb.st_mode & S_IRWXO) != 0 {
-                *cause = format_nul!("directory {} has unsafe permissions", _s(base));
-                break 'fail;
-            }
-            path = CString::new(format!("{}/{}", _s(base), _s(label))).unwrap();
-            free_(base);
-            return path.into_raw().cast();
+        if label.is_null() {
+            label = c!("default");
         }
 
-        // fail:
-        free_(base);
-        null_mut()
+        #[cfg(target_os = "windows")]
+        let user_id = std::env::var("USERNAME").unwrap_or_else(|_| "0".to_string());
+        #[cfg(not(target_os = "windows"))]
+        let user_id = getuid();
+
+        #[cfg(target_os = "windows")]
+        {
+            let temp = std::env::temp_dir();
+            let temp_str = temp.to_string_lossy();
+            let path_cstr = CString::new(temp_str.as_ref()).unwrap();
+            paths.push(path_cstr);
+        }
+        #[cfg(not(target_os = "windows"))]
+        {
+            expand_paths(TMUX_SOCK, &mut paths, false);
+        }
+
+        if paths.is_empty() {
+            return Err("no suitable socket path".to_string());
+        }
+
+        paths.truncate(1);
+        let path = paths.pop().unwrap(); /* can only have one socket! */
+
+        let base = format!("{}/tmux-rs-{}", path.to_string_lossy(), user_id);
+        {
+            let mut builder = std::fs::DirBuilder::new();
+            #[cfg(unix)]
+            {
+                use std::os::unix::fs::DirBuilderExt;
+                builder.mode(0o700);
+            }
+            if let Err(mkdir_err) = builder.create(&base) && mkdir_err.kind() != std::io::ErrorKind::AlreadyExists {
+                return Err(format!("couldn't create directory {base} ({mkdir_err:?})"));
+            }
+        }
+
+        match std::fs::symlink_metadata(&base) {
+            Err(err) => {
+                return Err(format!(
+                    "couldn't read directory {base} ({err})",
+                ));
+            }
+            Ok(md) => {
+                if !md.is_dir() {
+                    return Err(format!("{base} is not a directory"));
+                }
+
+                #[cfg(not(target_os = "windows"))]
+                {
+                    use std::os::unix::fs::MetadataExt;
+                    if md.uid() != user_id || (md.mode() & TMUX_SOCK_PERM) != 0 {
+                        return Err(format!("directory {base} has unsafe permissions"));
+                    }
+                }
+            }
+        }
+
+        Ok(format!("{}/{}", base, _s(label)))
     }
 }
 
@@ -283,7 +402,9 @@ pub unsafe fn shell_argv0(shell: *const u8, is_login: c_int) -> *mut u8 {
 }
 
 pub unsafe fn setblocking(fd: c_int, state: c_int) {
+    #[cfg(not(target_os = "windows"))]
     unsafe {
+        use crate::libc::{F_GETFL, F_SETFL, O_NONBLOCK};
         let mut mode = fcntl(fd, F_GETFL);
 
         if mode != -1 {
@@ -295,9 +416,14 @@ pub unsafe fn setblocking(fd: c_int, state: c_int) {
             fcntl(fd, F_SETFL, mode);
         }
     }
+    #[cfg(target_os = "windows")]
+    unsafe {
+        crate::libc::socket_set_nonblocking(fd, state == 0);
+    }
 }
 
 pub unsafe fn get_timer() -> u64 {
+    use crate::libc::{ clock_gettime, CLOCK_MONOTONIC, CLOCK_REALTIME};
     unsafe {
         let mut ts: timespec = zeroed();
         // We want a timestamp in milliseconds suitable for time measurement,
@@ -358,16 +484,26 @@ pub fn getversion() -> &'static str {
 /// This code is work in progress. There is no guarantee that the code is safe.
 /// This function should only be called by the tmux binary crate to start tmux.
 pub unsafe fn tmux_main(mut argc: i32, mut argv: *mut *mut u8, _env: *mut *mut u8) {
-    std::panic::set_hook(Box::new(|_panic_info| {
-        let backtrace = std::backtrace::Backtrace::capture();
-        let err_str = format!("{backtrace:#?}");
-        _ = std::fs::write("client-panic.txt", err_str);
+    use crate::libc::{
+        CODESET, 
+        LC_CTYPE
+    };
+
+    std::panic::set_hook(Box::new(|panic_info| {
+        let backtrace = std::backtrace::Backtrace::force_capture();
+        let mut msg = String::new();
+        use std::fmt::Write;
+        _ = writeln!(msg, "{panic_info}");
+        _ = writeln!(msg);
+        _ = writeln!(msg, "Backtrace:");
+        _ = writeln!(msg, "{backtrace}");
+        eprintln!("{msg}");
+        _ = std::fs::write("client-panic.txt", &msg);
     }));
 
     unsafe {
         // setproctitle_init(argc, argv.cast(), env.cast());
-        let mut cause: *mut u8 = null_mut();
-        let mut path: *const u8 = null_mut();
+        let mut path: Option<String> = None;
         let mut label: *mut u8 = null_mut();
         let mut feat: i32 = 0;
         let mut fflag: i32 = 0;
@@ -396,10 +532,22 @@ pub unsafe fn tmux_main(mut argc: i32, mut argv: *mut *mut u8, _env: *mut *mut u
 
         GLOBAL_ENVIRON = environ_create().as_ptr();
 
-        let mut var = environ;
-        while !(*var).is_null() {
-            environ_put(GLOBAL_ENVIRON, *var, environ_flags::empty());
-            var = var.add(1);
+        #[cfg(not(target_os = "windows"))]
+        {
+            let mut var = environ;
+            while !(*var).is_null() {
+                environ_put(GLOBAL_ENVIRON, *var, environ_flags::empty());
+                var = var.add(1);
+            }
+        }
+        #[cfg(target_os = "windows")]
+        {
+            // On Windows, environ is null. Use std::env::vars() instead.
+            for (key, value) in std::env::vars() {
+                let env_str = std::ffi::CString::new(format!("{key}={value}")).unwrap();
+                let ptr = xstrdup(env_str.as_ptr().cast()).cast().as_ptr();
+                environ_put(GLOBAL_ENVIRON, ptr, environ_flags::empty());
+            }
         }
 
         if let Some(cwd) = find_cwd() {
@@ -411,9 +559,9 @@ pub unsafe fn tmux_main(mut argc: i32, mut argv: *mut *mut u8, _env: *mut *mut u
                 cwd.to_str().unwrap()
             );
         }
-        expand_paths(TMUX_CONF, &mut CFG_FILES.lock().unwrap(), 1);
+        expand_paths(TMUX_CONF, &mut CFG_FILES.lock().unwrap(), true);
 
-        while let Some(opt) = getopt(argc, argv.cast(), c!("2c:CDdf:lL:NqS:T:uUvV")) {
+        while let Some(opt) = getopt(argc, argv.cast(), c!("2c:CDdf:hlL:NqS:T:uUvV")) {
             match opt {
                 b'2' => tty_add_features(&raw mut feat, "256", c!(":,")),
                 b'c' => SHELL_COMMAND = OPTARG.cast(),
@@ -436,6 +584,7 @@ pub unsafe fn tmux_main(mut argc: i32, mut argv: *mut *mut u8, _env: *mut *mut u
                         .push(CString::new(cstr_to_str(OPTARG)).unwrap());
                     CFG_QUIET.store(false, atomic::Ordering::Relaxed);
                 }
+                b'h' => usage(0),
                 b'V' => {
                     println!("tmux-rs {}", getversion());
                     std::process::exit(0);
@@ -448,23 +597,22 @@ pub unsafe fn tmux_main(mut argc: i32, mut argv: *mut *mut u8, _env: *mut *mut u
                 b'N' => flags |= client_flag::NOSTARTSERVER,
                 b'q' => (),
                 b'S' => {
-                    free(path as _);
-                    path = xstrdup(OPTARG.cast()).cast().as_ptr();
+                    path = Some(cstr_to_str(OPTARG.cast()).to_string());
                 }
                 b'T' => tty_add_features(&raw mut feat, cstr_to_str(OPTARG.cast()), c!(":,")),
                 b'u' => flags |= client_flag::UTF8,
                 b'v' => log_add_level(),
-                _ => usage(),
+                _ => usage(1),
             }
         }
         argc -= OPTIND;
         argv = argv.add(OPTIND as usize);
 
         if !SHELL_COMMAND.is_null() && argc != 0 {
-            usage();
+            usage(1);
         }
         if flags.intersects(client_flag::NOFORK) && argc != 0 {
-            usage();
+            usage(1);
         }
 
         PTM_FD = getptmfd();
@@ -485,6 +633,12 @@ pub unsafe fn tmux_main(mut argc: i32, mut argv: *mut *mut u8, _env: *mut *mut u
         // UTF-8, it is a safe assumption that either they are using a UTF-8
         // terminal, or if not they know that output from UTF-8-capable
         // programs may be wrong.
+        #[cfg(windows)]
+        {
+            // Windows Terminal / ConPTY always supports UTF-8.
+            flags |= client_flag::UTF8;
+        }
+        #[cfg(not(windows))]
         if std::env::var("TMUX").is_ok() {
             flags |= client_flag::UTF8;
         } else {
@@ -516,14 +670,14 @@ pub unsafe fn tmux_main(mut argc: i32, mut argv: *mut *mut u8, _env: *mut *mut u
         }
 
         // The default shell comes from SHELL or from the user's passwd entry if available.
+        let shell = getshell();
         options_set_string!(
             GLOBAL_S_OPTIONS,
             "default-shell",
             false,
             "{}",
-            getshell().to_string_lossy(),
+            shell.to_string_lossy(),
         );
-
         // Override keys to vi if VISUAL or EDITOR are set.
         if let Ok(s) = std::env::var("VISUAL").or_else(|_| std::env::var("EDITOR")) {
             options_set_string!(GLOBAL_OPTIONS, "editor", false, "{s}");
@@ -546,31 +700,36 @@ pub unsafe fn tmux_main(mut argc: i32, mut argv: *mut *mut u8, _env: *mut *mut u
         // If socket is specified on the command-line with -S or -L, it is
         // used. Otherwise, $TMUX is checked and if that fails "default" is
         // used.
-        if path.is_null()
+        if path.is_none()
             && label.is_null()
             && let Ok(s) = std::env::var("TMUX")
             && !s.is_empty()
             && s.as_bytes()[0] != b','
         {
-            let tmp: *mut u8 = xstrdup__(&s);
-            *tmp.add(strcspn(tmp, c!(","))) = b'\0';
-            path = tmp;
+            path = s.split(',').next().map(std::string::ToString::to_string);
         }
-        if path.is_null() {
-            path = make_label(label.cast(), &raw mut cause);
-            if path.is_null() {
-                if !cause.is_null() {
-                    eprintln!("{}", _s(cause));
-                    free(cause as _);
+        if path.is_none() {
+            match make_label(label.cast()) {
+                Ok(p) => {
+                    path = Some(p);
                 }
-                std::process::exit(1);
+                Err(cause) => {
+                    eprintln!("{cause}");
+                    std::process::exit(1);
+                }
             }
             flags |= client_flag::DEFAULTSOCKET;
         }
-        SOCKET_PATH = path;
+        let _ = SOCKET_PATH.set(path.unwrap());
         free_(label);
 
         // Pass control to the client.
-        std::process::exit(client_main(osdep_event_init(), argc, argv, flags, feat))
+        // With event-tokio, defer event_init to after the fork (in server_start
+        // and client_main) so no tokio state exists at fork time.
+        #[cfg(not(feature = "event-tokio"))]
+        let base = osdep_event_init();
+        #[cfg(feature = "event-tokio")]
+        let base = std::ptr::null_mut();
+        std::process::exit(client_main(base, argc, argv, flags, feat))
     }
 }

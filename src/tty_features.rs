@@ -343,6 +343,7 @@ pub unsafe fn tty_default_features(feat: *mut i32, name: *const u8, version: u32
         entry { name: c"tmux", features: concat!( TTY_FEATURES_BASE_MODERN_XTERM!(), ",ccolour,cstyle,focus,overline,usstyle,hyperlinks"), version: 0, },
         entry { name: c"rxvt-unicode", features: "256,bpaste,ccolour,cstyle,mouse,title,ignorefkeys", version: 0, },
         entry { name: c"iTerm2", features: concat!( TTY_FEATURES_BASE_MODERN_XTERM!(), ",cstyle,extkeys,margins,usstyle,sync,osc7,hyperlinks"), version: 0, },
+        entry { name: c"foot", features: concat!( TTY_FEATURES_BASE_MODERN_XTERM!(), ",cstyle,extkeys"), version: 0, },
         // xterm also supports DECSLRM and DECFRA, but they can be
         // disabled so not set it here - they will be added if
         // secondary DA shows VT420.

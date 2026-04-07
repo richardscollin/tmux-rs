@@ -243,9 +243,15 @@ pub fn cfg_add_cause_(args: std::fmt::Arguments) {
 }
 
 pub unsafe fn cfg_print_causes(item: *mut cmdq_item) {
-    for cause in CFG_CAUSES.lock().unwrap().drain(..) {
-        unsafe {
-            cmdq_print!(item, "{}", cause.to_string_lossy());
+    unsafe {
+        let c = cmdq_get_client(item);
+        for cause in CFG_CAUSES.lock().unwrap().drain(..) {
+            if !c.is_null() && (*c).flags.intersects(client_flag::CONTROL) {
+                control_write!(c, "%config-error {}", cause.to_string_lossy());
+            } else {
+                cmdq_print!(item, "{}", cause.to_string_lossy());
+            }
+            // cause is a CString, dropped here
         }
     }
 }

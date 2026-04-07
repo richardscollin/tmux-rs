@@ -1,6 +1,8 @@
 # Rust build cache and outputs
 target
 
+upstream
+
 # Nix outputs
 /result
 # tmux log files
@@ -8,3 +10,4 @@ tmux-*.log
 
 # github wiki in CI
 /wiki
+.tracey/

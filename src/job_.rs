@@ -11,14 +11,18 @@
 // WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
 // IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 // OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+#[cfg(not(target_os = "windows"))]
 use std::path::Path;
 
-use crate::compat::{closefrom, fdforkpty::fdforkpty};
+#[cfg(not(target_os = "windows"))]
+use crate::compat::fdforkpty::fdforkpty;
+use crate::libc::{SHUT_WR, close, shutdown, winsize};
+#[cfg(not(target_os = "windows"))]
 use crate::libc::{
-    AF_UNIX, O_RDWR, PF_UNSPEC, SHUT_WR, SIG_BLOCK, SIG_SETMASK, SIGCONT, SIGTERM, SIGTTIN,
-    SIGTTOU, SOCK_STREAM, STDERR_FILENO, STDIN_FILENO, STDOUT_FILENO, TIOCSWINSZ, WIFSTOPPED,
-    WSTOPSIG, close, dup2, execl, execvp, fork, ioctl, kill, killpg, memset, open, shutdown,
-    sigfillset, sigprocmask, sigset_t, socketpair, winsize,
+    AF_UNIX, PF_UNSPEC,
+    SOCK_STREAM, STDERR_FILENO, STDIN_FILENO, STDOUT_FILENO, TIOCSWINSZ, WIFSTOPPED,
+    WSTOPSIG, dup2, execl, execvp, fork, kill, killpg, memset,
+    socketpair,
 };
 use crate::*;
 use crate::options_::{options, options_get_string_};
@@ -65,8 +69,9 @@ impl ListEntry<job, ()> for job {
 }
 
 type joblist = list_head<job>;
-static mut ALL_JOBS: joblist = list_head_initializer();
+pub(crate) static mut ALL_JOBS: joblist = list_head_initializer();
 
+#[cfg(target_os = "windows")]
 pub unsafe fn job_run(
     cmd: *const u8,
     argc: c_int,
@@ -84,15 +89,158 @@ pub unsafe fn job_run(
 ) -> *mut job {
     let __func__ = "job_run";
     unsafe {
+        let env: *mut environ;
+        let mut shell: *const u8;
+        let oo: *mut options;
+
+        env = environ_for_session(s, !CFG_FINISHED.load(atomic::Ordering::Acquire) as i32);
+        if !e.is_null() {
+            environ_copy(e, env);
+        }
+
+        if !flags.intersects(job_flag::JOB_DEFAULTSHELL) {
+            shell = _PATH_BSHELL;
+        } else {
+            if !s.is_null() {
+                oo = (*s).options;
+            } else {
+                oo = GLOBAL_S_OPTIONS;
+            }
+            shell = options_get_string_(oo, "default-shell");
+            if !checkshell_(shell) {
+                shell = _PATH_BSHELL;
+            }
+        }
+
+        if !cmd.is_null() {
+            log_debug!(
+                "{} cmd={} cwd={} shell={}",
+                __func__,
+                _s(cmd),
+                _s(if cwd.is_null() { c!("") } else { cwd }),
+                _s(shell),
+            );
+        } else {
+            cmd_log_argv!(argc, argv, "{__func__}");
+            log_debug!(
+                "{} cwd={} shell={}",
+                __func__,
+                _s(if cwd.is_null() { c!("") } else { cwd }),
+                _s(shell),
+            );
+        }
+
+        // Build command line
+        let cmd_line = if !cmd.is_null() {
+            // Run via shell: "shell -c cmd"
+            let shell_str = _s(shell);
+            let cmd_str = _s(cmd);
+            format!("{shell_str} -c \"{cmd_str}\"")
+        } else {
+            cmd_stringify_argv(argc, argv)
+        };
+
+        let cwd_str = if !cwd.is_null() {
+            Some(_s(cwd).to_string())
+        } else {
+            None
+        };
+
+        // Spawn via ConPTY for PTY jobs, piped for non-PTY
+        let spawn_result = if flags.intersects(job_flag::JOB_PTY) {
+            crate::conpty::conpty_spawn(
+                &cmd_line,
+                sx as u16,
+                sy as u16,
+                cwd_str.as_deref(),
+                None,
+            )
+        } else {
+            crate::conpty::process_spawn_piped(&cmd_line, cwd_str.as_deref())
+        };
+
+        let (fd, pid) = match spawn_result {
+            Ok(result) => result,
+            Err(err) => {
+                log_debug!("{}: spawn failed: {}", __func__, err);
+                environ_free(env);
+                return null_mut();
+            }
+        };
+
+        environ_free(env);
+
+        let job: *mut job = Box::leak(Box::new(job {
+            state: job_state::JOB_RUNNING,
+            flags,
+            cmd: if !cmd.is_null() {
+                xstrdup(cmd).as_ptr()
+            } else {
+                CString::new(cmd_stringify_argv(argc, argv))
+                    .unwrap()
+                    .into_raw()
+                    .cast()
+            },
+            pid: pid as pid_t,
+            status: 0,
+            fd,
+            ..Default::default()
+        }));
+
+        list_insert_head(&raw mut ALL_JOBS, job);
+
+        (*job).updatecb = updatecb;
+        (*job).completecb = completecb;
+        (*job).freecb = freecb;
+        (*job).data = data;
+
+        setblocking((*job).fd, 0);
+
+        (*job).event = bufferevent_new(
+            (*job).fd,
+            Some(job_read_callback),
+            Some(job_write_callback),
+            Some(job_error_callback),
+            job as *mut c_void,
+        );
+        if (*job).event.is_null() {
+            fatalx("out of memory");
+        }
+        bufferevent_enable((*job).event, EV_READ | EV_WRITE);
+
+        log_debug!("run job {:p}: {} pid {}", job, _s((*job).cmd), (*job).pid);
+        job
+    }
+}
+
+#[cfg(not(target_os = "windows"))]
+pub unsafe fn job_run(
+    cmd: *const u8,
+    argc: c_int,
+    argv: *mut *mut u8,
+    e: *mut environ,
+    s: *mut session,
+    cwd: *const u8,
+    updatecb: job_update_cb,
+    completecb: job_complete_cb,
+    freecb: job_free_cb,
+    data: *mut c_void,
+    flags: job_flag,
+    sx: c_int,
+    sy: c_int,
+) -> *mut job {
+    use crate::compat::closefrom::closefrom;
+
+    let __func__ = "job_run";
+    unsafe {
         let job: *mut job;
         let env: *mut environ;
         let pid: pid_t;
-        let nullfd: i32;
         let mut out: [i32; 2] = [0; 2];
         let mut master: i32 = 0;
         let mut shell: *const u8;
-        let mut set = MaybeUninit::<sigset_t>::uninit();
-        let mut oldset = MaybeUninit::<sigset_t>::uninit();
+        let mut set = MaybeUninit::<libc::sigset_t>::uninit();
+        let mut oldset = MaybeUninit::<libc::sigset_t>::uninit();
         let mut ws = MaybeUninit::<winsize>::uninit();
         let argvp: *mut *mut u8;
         // let mut tty = MaybeUninit::<[c_char; TTY_NAME_MAX]>::uninit();
@@ -121,8 +269,8 @@ pub unsafe fn job_run(
             }
             argv0 = shell_argv0(shell, 0);
 
-            sigfillset(set.as_mut_ptr());
-            sigprocmask(SIG_BLOCK, set.as_mut_ptr(), oldset.as_mut_ptr());
+            libc::sigfillset(set.as_mut_ptr());
+            libc::sigprocmask(libc::SIG_BLOCK, set.as_mut_ptr(), oldset.as_mut_ptr());
 
             if flags.intersects(job_flag::JOB_PTY) {
                 memset(ws.as_mut_ptr().cast(), 0, size_of::<winsize>());
@@ -170,14 +318,25 @@ pub unsafe fn job_run(
                 }
                 0 => {
                     proc_clear_signals(SERVER_PROC, 1);
-                    sigprocmask(SIG_SETMASK, oldset.as_mut_ptr(), null_mut());
+                    libc::sigprocmask(libc::SIG_SETMASK, oldset.as_mut_ptr(), null_mut());
 
-                    if (cwd.is_null() || std::env::set_current_dir(cstr_to_str(cwd)).is_err())
-                        && find_home().is_none_or(|home| {
-                            std::env::set_current_dir(home.to_str().expect("TODO")).is_err()
-                        })
-                        && std::env::set_current_dir(Path::new("/")).is_err()
+                    if !cwd.is_null()
+                        && std::env::set_current_dir(cstr_to_str(cwd)).is_ok()
                     {
+                        environ_set!(env, c!("PWD"), environ_flags::empty(), "{}", _s(cwd));
+                    } else if let Some(home) = find_home()
+                        && std::env::set_current_dir(home.to_str().expect("TODO")).is_ok()
+                    {
+                        environ_set!(
+                            env,
+                            c!("PWD"),
+                            environ_flags::empty(),
+                            "{}",
+                            home.to_str().unwrap()
+                        );
+                    } else if std::env::set_current_dir(Path::new("/")).is_ok() {
+                        environ_set!(env, c!("PWD"), environ_flags::empty(), "/");
+                    } else {
                         fatal("chdir failed");
                     }
 
@@ -185,32 +344,46 @@ pub unsafe fn job_run(
                     environ_free(env);
 
                     if !flags.intersects(job_flag::JOB_PTY) {
+                        let mut do_close = true;
                         if dup2(out[1], STDIN_FILENO) == -1 {
                             fatal("dup2 failed");
                         }
+                        do_close = do_close && out[1] != STDIN_FILENO;
                         if dup2(out[1], STDOUT_FILENO) == -1 {
                             fatal("dup2 failed");
                         }
-                        if out[1] != STDIN_FILENO && out[1] != STDOUT_FILENO {
+                        do_close = do_close && out[1] != STDOUT_FILENO;
+                        if flags.intersects(job_flag::JOB_SHOWSTDERR) {
+                            if dup2(out[1], STDERR_FILENO) == -1 {
+                                fatal("dup2 failed");
+                            }
+                            do_close = do_close && out[1] != STDERR_FILENO;
+                        } else {
+                            use crate::compat::FileIntoRawFd;
+                            let nullfd = std::fs::OpenOptions::new()
+                                .read(true)
+                                .write(true)
+                                .open(PATH_DEVNULL)
+                                .expect("open failed")
+                                .into_fd();
+                            if dup2(nullfd, STDERR_FILENO) == -1 {
+                                fatal("dup2 failed");
+                            }
+                            if nullfd != STDERR_FILENO {
+                                close(nullfd);
+                            }
+                        }
+                        if do_close {
                             close(out[1]);
                         }
                         close(out[0]);
-
-                        nullfd = open(_PATH_DEVNULL, O_RDWR, 0);
-                        if nullfd == -1 {
-                            fatal("open failed");
-                        }
-                        if dup2(nullfd, STDERR_FILENO) == -1 {
-                            fatal("dup2 failed");
-                        }
-                        if nullfd != STDERR_FILENO {
-                            close(nullfd);
-                        }
                     }
                     closefrom(STDERR_FILENO + 1);
 
                     if !cmd.is_null() {
-                        std::env::set_var("SHELL", cstr_to_str(shell));
+                        if flags.intersects(job_flag::JOB_DEFAULTSHELL) {
+                            std::env::set_var("SHELL", cstr_to_str(shell));
+                        }
                         execl(
                             shell.cast(),
                             argv0.cast(),
@@ -228,7 +401,7 @@ pub unsafe fn job_run(
                 _ => (),
             }
 
-            sigprocmask(SIG_SETMASK, oldset.as_ptr(), null_mut());
+            libc::sigprocmask(libc::SIG_SETMASK, oldset.as_ptr(), null_mut());
             environ_free(env);
             free_(argv0);
 
@@ -248,7 +421,9 @@ pub unsafe fn job_run(
                 ..Default::default()
             }));
 
-            strlcpy((*job).tty.as_mut_ptr(), tty.as_ptr().cast(), TTY_NAME_MAX);
+            if flags.intersects(job_flag::JOB_PTY) {
+                strlcpy((*job).tty.as_mut_ptr(), tty.as_ptr().cast(), TTY_NAME_MAX);
+            }
 
             list_insert_head(&raw mut ALL_JOBS, job);
 
@@ -281,7 +456,7 @@ pub unsafe fn job_run(
             return job;
         }
 
-        sigprocmask(SIG_SETMASK, oldset.as_ptr(), null_mut());
+        libc::sigprocmask(libc::SIG_SETMASK, oldset.as_ptr(), null_mut());
         environ_free(env);
         free_(argv0);
         null_mut()
@@ -332,7 +507,10 @@ pub unsafe fn job_free(job: *mut job) {
             freecb((*job).data);
         }
         if (*job).pid != -1 {
-            kill((*job).pid, SIGTERM);
+            #[cfg(not(target_os = "windows"))]
+            kill((*job).pid, libc::SIGTERM);
+            #[cfg(target_os = "windows")]
+            crate::conpty::conpty_kill((*job).pid as u32);
         }
         if !((*job).event).is_null() {
             bufferevent_free((*job).event);
@@ -356,8 +534,16 @@ pub unsafe fn job_resize(job: *mut job, sx: c_uint, sy: c_uint) {
         (*ws).ws_col = sx as u16;
         (*ws).ws_row = sy as u16;
 
-        if ioctl((*job).fd, TIOCSWINSZ, ws) == -1 {
+        #[cfg(not(target_os = "windows"))]
+        if crate::libc::ioctl((*job).fd, TIOCSWINSZ, ws) == -1 {
             fatal("ioctl failed");
+        }
+        #[cfg(target_os = "windows")]
+        {
+            let _ = ws;
+            if let Err(e) = crate::conpty::conpty_resize((*job).pid as u32, sx as u16, sy as u16) {
+                log_debug!("job_resize: {}", e);
+            }
         }
     }
 }
@@ -417,6 +603,7 @@ unsafe extern "C-unwind" fn job_error_callback(
     }
 }
 
+#[cfg(not(target_os = "windows"))]
 pub unsafe fn job_check_died(pid: pid_t, status: i32) {
     unsafe {
         let Some(job) = list_foreach(&raw mut ALL_JOBS).find(|job| pid == (*job.as_ptr()).pid)
@@ -426,10 +613,10 @@ pub unsafe fn job_check_died(pid: pid_t, status: i32) {
         let job = job.as_ptr();
 
         if WIFSTOPPED(status) {
-            if WSTOPSIG(status) == SIGTTIN || WSTOPSIG(status) == SIGTTOU {
+            if WSTOPSIG(status) == libc::SIGTTIN || WSTOPSIG(status) == libc::SIGTTOU {
                 return;
             }
-            killpg((*job).pid, SIGCONT);
+            killpg((*job).pid, libc::SIGCONT);
             return;
         }
         log_debug!(
@@ -469,7 +656,10 @@ pub unsafe fn job_kill_all() {
     unsafe {
         for job in list_foreach(&raw mut ALL_JOBS).map(NonNull::as_ptr) {
             if (*job).pid != -1 {
-                kill((*job).pid, SIGTERM);
+                #[cfg(not(target_os = "windows"))]
+                kill((*job).pid, libc::SIGTERM);
+                #[cfg(target_os = "windows")]
+                crate::conpty::conpty_kill((*job).pid as u32);
             }
         }
     }

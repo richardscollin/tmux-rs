@@ -44,22 +44,28 @@ unsafe fn TTY_BLOCK_STOP(tty: *const tty) -> u32 {
 }
 
 pub unsafe fn tty_create_log() {
-    unsafe {
-        use std::os::fd::IntoRawFd;
-        use std::os::unix::fs::OpenOptionsExt;
+    let mut open_options = std::fs::File::options();
+    let open_options = open_options
+        .write(true)
+        .create(true)
+        .truncate(true);
 
-        if let Ok(file) = std::fs::File::options()
-            .write(true)
-            .create(true)
-            .truncate(true)
-            .mode(0o644)
-            .open(format!("tmux-out-{}.log", std::process::id()))
+    #[cfg(not(target_os = "windows"))]
+    let open_options = {
+        use std::os::unix::fs::OpenOptionsExt;
+        open_options.mode(0o644)
+    };
+
+    unsafe {
+        if let Ok(file) = open_options.open(format!("tmux-out-{}.log", std::process::id()))
         {
-            TTY_LOG_FD = file.into_raw_fd();
+            use crate::compat::FileIntoRawFd;
+            TTY_LOG_FD = file.into_fd();
         } else {
             TTY_LOG_FD = -1;
         }
 
+        #[cfg(not(target_os = "windows"))]
         if TTY_LOG_FD != -1 && libc::fcntl(TTY_LOG_FD, libc::F_SETFD, libc::FD_CLOEXEC) == -1 {
             fatal("fcntl failed");
         }
@@ -88,38 +94,45 @@ pub unsafe fn tty_init(tty: *mut tty, c: *mut client) -> i32 {
     }
 }
 
+#[cfg(not(target_os = "windows"))]
 pub unsafe fn tty_resize(tty: *mut tty) {
     unsafe {
         let c = (*tty).client;
         let mut ws: libc::winsize = zeroed();
-        let mut sx: u32;
-        let mut sy: u32;
+        let sx: u32;
+        let sy: u32;
         let xpixel: u32;
         let ypixel: u32;
 
         if libc::ioctl((*c).fd, libc::TIOCGWINSZ, &raw mut ws) != -1 {
-            sx = ws.ws_col as u32;
-            if sx == 0 {
-                sx = 80;
-                xpixel = 0;
+            sx = if ws.ws_col == 0 { 80 } else { ws.ws_col as u32 };
+            xpixel = if ws.ws_col == 0 {
+                0
             } else {
-                xpixel = ws.ws_xpixel as u32 / sx;
-            }
-            sy = ws.ws_row as u32;
-            if sy == 0 {
-                sy = 24;
-                ypixel = 0;
+                ws.ws_xpixel as u32 / sx
+            };
+            sy = if ws.ws_row == 0 { 24 } else { ws.ws_row as u32 };
+            ypixel = if ws.ws_row == 0 {
+                0
             } else {
-                ypixel = ws.ws_ypixel as u32 / sy;
-            }
+                ws.ws_ypixel as u32 / sy
+            };
         } else {
             sx = 80;
             sy = 24;
             xpixel = 0;
             ypixel = 0;
         }
-        // log_debug("%s: %s now %ux%u (%ux%u)", __func__, (*c).name, sx, sy, xpixel, ypixel);
         tty_set_size(tty, sx, sy, xpixel, ypixel);
+        tty_invalidate(tty);
+    }
+}
+
+#[cfg(target_os = "windows")]
+pub unsafe fn tty_resize(tty: *mut tty) {
+    unsafe {
+        let (sx, sy) = libc::get_console_size();
+        tty_set_size(tty, sx.max(1), sy.max(1), 0, 0);
         tty_invalidate(tty);
     }
 }
@@ -144,6 +157,9 @@ pub unsafe extern "C-unwind" fn tty_read_callback(_fd: i32, _events: i16, data: 
         if nread == 0 || nread == -1 {
             if nread == 0 {
                 log_debug!("{}: read closed", _s(name));
+            } else if errno!() == libc::EAGAIN {
+                log_debug!("{}: read EAGAIN (spurious wakeup)", _s(name));
+                return;
             } else {
                 log_debug!("{}: read error: {}", _s(name), strerror(errno!()));
             }
@@ -250,22 +266,28 @@ pub unsafe extern "C-unwind" fn tty_write_callback(_fd: i32, _events: i16, data:
     }
 }
 
-pub unsafe fn tty_open(tty: *mut tty, cause: *mut *mut u8) -> i32 {
+#[cfg(not(target_os = "windows"))]
+pub unsafe fn tty_open(tty: *mut tty) -> Result<(), String> {
     unsafe {
         let c = (*tty).client;
 
-        (*tty).term = tty_term_create(
+        match tty_term_create(
             tty,
             (*c).term_name,
             (*c).term_caps,
             (*c).term_ncaps,
             &raw mut (*c).term_features,
-            cause,
-        );
-        if (*tty).term.is_null() {
-            tty_close(tty);
-            return -1;
+        ) {
+            Ok(term) => {
+                (*tty).term = term;
+            }
+            Err(cause) => {
+                (*tty).term = null_mut();
+                tty_close(tty);
+                return Err(cause);
+            }
         }
+
         (*tty).flags |= tty_flags::TTY_OPENED;
 
         (*tty).flags &= !(tty_flags::TTY_NOCURSOR
@@ -306,10 +328,200 @@ pub unsafe fn tty_open(tty: *mut tty, cause: *mut *mut u8) -> i32 {
         tty_start_tty(tty);
         tty_keys_build(tty);
 
-        0
+        Ok(())
     }
 }
 
+/// Build hardcoded xterm-256color terminal capabilities for Windows.
+///
+/// Returns a list of "name=value" CStrings that tty_term_create can parse.
+/// These are the standard xterm-256color terminfo entries expressed as
+/// parameterized strings in the terminfo format tmux uses internally.
+#[cfg(target_os = "windows")]
+fn windows_xterm256color_caps() -> Vec<std::ffi::CString> {
+    use std::ffi::CString;
+    // Cap strings must contain raw bytes (actual ESC = 0x1B), not
+    // the terminfo source notation (\033).
+    [
+        // Screen clear and cursor positioning (required by tty_term_create)
+        "clear=\x1b[H\x1b[2J",
+        "cup=\x1b[%i%p1%d;%p2%dH",
+        // Attribute control
+        "sgr0=\x1b(B\x1b[m",
+        "bold=\x1b[1m",
+        "dim=\x1b[2m",
+        "sitm=\x1b[3m",
+        "smul=\x1b[4m",
+        "blink=\x1b[5m",
+        "rev=\x1b[7m",
+        "smxx=\x1b[9m",
+        "ritm=\x1b[23m",
+        "rmul=\x1b[24m",
+        "rmxx=\x1b[29m",
+        // Color
+        "setaf=\x1b[%?%p1%{8}%<%t3%p1%d%e%p1%{16}%<%t9%p1%{8}%-%d%e38;5;%p1%d%;m",
+        "setab=\x1b[%?%p1%{8}%<%t4%p1%d%e%p1%{16}%<%t10%p1%{8}%-%d%e48;5;%p1%d%;m",
+        "op=\x1b[39;49m",
+        "colors=256",
+        "Tc=1",
+        "Setrgbf=\x1b[38;2;%p1%d;%p2%d;%p3%dm",
+        "Setrgbb=\x1b[48;2;%p1%d;%p2%d;%p3%dm",
+        // Alternate screen
+        "smcup=\x1b[?1049h",
+        "rmcup=\x1b[?1049l",
+        // Keypad mode
+        "smkx=\x1b[?1h\x1b=",
+        "rmkx=\x1b[?1l\x1b>",
+        // Cursor visibility
+        "cnorm=\x1b[?12l\x1b[?25h",
+        "civis=\x1b[?25l",
+        "cvvis=\x1b[?12;25h",
+        // Line operations
+        "el=\x1b[K",
+        "el1=\x1b[1K",
+        "ed=\x1b[J",
+        "csr=\x1b[%i%p1%d;%p2%dr",
+        "dl1=\x1b[M",
+        "il1=\x1b[L",
+        "dch1=\x1b[P",
+        "ich1=\x1b[@",
+        "ri=\x1bM",
+        "ind=\n",
+        // Cursor movement
+        "cuf1=\x1b[C",
+        "cub1=\x08",
+        "cuu1=\x1b[A",
+        "cuf=\x1b[%p1%dC",
+        "cub=\x1b[%p1%dD",
+        "cuu=\x1b[%p1%dA",
+        "cud=\x1b[%p1%dB",
+        // Extended features
+        "XT=1",
+        "kmous=\x1b[M",
+        "Sync=\x1bP=%p1%ds\x1b\\",
+        "Smol=\x1b[53m",
+        "Rmol=\x1b[55m",
+        "Smulx=\x1b[4:%p1%dm",
+        "Se=\x1b[2 q",
+        "Ss=\x1b[%p1%d q",
+        "enbp=\x1b[?2004h",
+        "dsbp=\x1b[?2004l",
+        // Insert/delete lines
+        "dl=\x1b[%p1%dM",
+        "il=\x1b[%p1%dL",
+        "dch=\x1b[%p1%dP",
+        "ich=\x1b[%p1%d@",
+        // Repeat
+        "rep=\x1b[%p1%db",
+        // ACS (alternate character set) - use UTF-8 instead
+        "enacs=",
+        // Key codes
+        "kcuu1=\x1bOA",
+        "kcud1=\x1bOB",
+        "kcuf1=\x1bOC",
+        "kcub1=\x1bOD",
+        "khome=\x1bOH",
+        "kend=\x1bOF",
+        "kpp=\x1b[5~",
+        "knp=\x1b[6~",
+        "kdch1=\x1b[3~",
+        "kich1=\x1b[2~",
+        "kf1=\x1bOP",
+        "kf2=\x1bOQ",
+        "kf3=\x1bOR",
+        "kf4=\x1bOS",
+        "kf5=\x1b[15~",
+        "kf6=\x1b[17~",
+        "kf7=\x1b[18~",
+        "kf8=\x1b[19~",
+        "kf9=\x1b[20~",
+        "kf10=\x1b[21~",
+        "kf11=\x1b[23~",
+        "kf12=\x1b[24~",
+    ]
+    .iter()
+    .map(|s| CString::new(*s).unwrap())
+    .collect()
+}
+
+/// Open the tty for a Windows client.
+///
+/// Instead of reading terminfo from the system, we supply hardcoded
+/// xterm-256color capabilities. Output goes to the Windows console via
+/// VT escape sequences (ENABLE_VIRTUAL_TERMINAL_PROCESSING).
+#[cfg(target_os = "windows")]
+pub unsafe fn tty_open(tty: *mut tty) -> Result<(), String> {
+    unsafe {
+        let c = (*tty).client;
+
+        // Build caps and create tty_term
+        let caps = windows_xterm256color_caps();
+        let cap_ptrs: Vec<*mut u8> = caps.iter().map(|c| c.as_ptr() as *mut u8).collect();
+
+        match tty_term_create(
+            tty,
+            (*c).term_name,
+            cap_ptrs.as_ptr() as *mut *mut u8,
+            cap_ptrs.len() as u32,
+            &raw mut (*c).term_features,
+        ) {
+            Ok(term) => {
+                (*tty).term = term;
+            }
+            Err(cause) => {
+                (*tty).term = null_mut();
+                tty_close(tty);
+                return Err(cause);
+            }
+        }
+
+        (*tty).flags |= tty_flags::TTY_OPENED;
+
+        (*tty).flags &= !(tty_flags::TTY_NOCURSOR
+            | tty_flags::TTY_FREEZE
+            | tty_flags::TTY_BLOCK
+            | tty_flags::TTY_TIMER);
+
+        // Set up input event on c.fd (socketpair — stdin reader thread writes here)
+        event_set(
+            &raw mut (*tty).event_in,
+            (*c).fd,
+            EV_PERSIST | EV_READ,
+            Some(tty_read_callback),
+            tty.cast(),
+        );
+        (*tty).in_ = evbuffer_new();
+        if (*tty).in_.is_null() {
+            fatal("out of memory");
+        }
+
+        // Set up output event on c.fd (socketpair — stdout writer thread reads here)
+        event_set(
+            &raw mut (*tty).event_out,
+            (*c).fd,
+            EV_WRITE,
+            Some(tty_write_callback),
+            tty.cast(),
+        );
+        (*tty).out = evbuffer_new();
+        if (*tty).out.is_null() {
+            fatal("out of memory");
+        };
+
+        evtimer_set(
+            &raw mut (*tty).timer,
+            tty_timer_callback,
+            NonNull::new_unchecked(tty),
+        );
+
+        tty_start_tty(tty);
+        tty_keys_build(tty);
+
+        Ok(())
+    }
+}
+
+#[cfg(not(target_os = "windows"))]
 pub unsafe extern "C-unwind" fn tty_start_timer_callback(
     _fd: i32,
     _events: i16,
@@ -320,24 +532,44 @@ pub unsafe extern "C-unwind" fn tty_start_timer_callback(
         let c = (*tty).client;
 
         log_debug!("{}: start timer fired", _s((*c).name));
-        if (*tty)
+
+        if !(*tty)
             .flags
             .intersects(tty_flags::TTY_HAVEDA | tty_flags::TTY_HAVEDA2 | tty_flags::TTY_HAVEXDA)
         {
             tty_update_features(tty);
         }
         (*tty).flags |= TTY_ALL_REQUEST_FLAGS;
+
+        (*tty).flags &= !(tty_flags::TTY_WAITBG | tty_flags::TTY_WAITFG);
     }
 }
 
+#[cfg(not(target_os = "windows"))]
+unsafe fn tty_start_start_timer(tty: *mut tty) {
+    unsafe {
+        let c = (*tty).client;
+        let tv = libc::timeval {
+            tv_sec: TTY_QUERY_TIMEOUT as _,
+            tv_usec: 0,
+        };
+
+        log_debug!("{}: start timer started", _s((*c).name));
+        evtimer_del(&raw mut (*tty).start_timer);
+        evtimer_set(
+            &raw mut (*tty).start_timer,
+            tty_start_timer_callback,
+            NonNull::new_unchecked(tty),
+        );
+        evtimer_add(&raw mut (*tty).start_timer, &raw const tv);
+    }
+}
+
+#[cfg(not(target_os = "windows"))]
 pub unsafe fn tty_start_tty(tty: *mut tty) {
     unsafe {
         let c = (*tty).client;
         let mut tio: libc::termios = zeroed();
-        let tv = libc::timeval {
-            tv_sec: TTY_QUERY_TIMEOUT as i64,
-            tv_usec: 0,
-        };
 
         setblocking((*c).fd, 0);
         event_add(&raw mut (*tty).event_in, null_mut());
@@ -388,12 +620,62 @@ pub unsafe fn tty_start_tty(tty: *mut tty) {
             tty_putcode(tty, tty_code_code::TTYC_ENBP);
         }
 
-        evtimer_set(
-            &raw mut (*tty).start_timer,
-            tty_start_timer_callback,
-            NonNull::new_unchecked(tty),
-        );
-        evtimer_add(&raw mut (*tty).start_timer, &raw const tv);
+        if (*(*tty).term).flags.intersects(term_flags::TERM_VT100LIKE) {
+            // Subscribe to theme changes and request theme now.
+            tty_puts(tty, c!("\x1b[?2031h\x1b[?996n"));
+        }
+
+        tty_start_start_timer(tty);
+
+        (*tty).flags |= tty_flags::TTY_STARTED;
+        tty_invalidate(tty);
+
+        if (*tty).ccolour != -1 {
+            tty_force_cursor_colour(tty, -1);
+        }
+
+        (*tty).mouse_drag_flag = 0;
+        (*tty).mouse_drag_update = None;
+        (*tty).mouse_drag_release = None;
+    }
+}
+
+/// Start the tty on Windows.
+///
+/// Sets console raw mode via SetConsoleMode, enables VT processing,
+/// and emits the same initialization escape sequences as the Unix version.
+#[cfg(target_os = "windows")]
+pub unsafe fn tty_start_tty(tty: *mut tty) {
+    unsafe {
+        let c = (*tty).client;
+
+        // Set console raw mode and enable VT processing
+        libc::enable_vt_processing();
+        libc::set_console_raw_mode();
+
+        // Make the fd non-blocking and start listening for input
+        setblocking((*c).fd, 0);
+        event_add(&raw mut (*tty).event_in, null_mut());
+
+        // Enter alternate screen, enable keypad mode, clear
+        tty_putcode(tty, tty_code_code::TTYC_SMCUP);
+        tty_putcode(tty, tty_code_code::TTYC_SMKX);
+        tty_putcode(tty, tty_code_code::TTYC_CLEAR);
+
+        tty_putcode(tty, tty_code_code::TTYC_CNORM);
+        if tty_term_has((*tty).term, tty_code_code::TTYC_KMOUS) {
+            tty_puts(tty, c!("\x1b[?1000l\x1b[?1002l\x1b[?1003l"));
+            tty_puts(tty, c!("\x1b[?1006l\x1b[?1005l"));
+        }
+        if tty_term_has((*tty).term, tty_code_code::TTYC_ENBP) {
+            tty_putcode(tty, tty_code_code::TTYC_ENBP);
+        }
+
+        // On Windows, we know the terminal capabilities — skip VT probing
+        // (DA, XTVERSION, etc.) by marking all request flags as complete.
+        // This prevents unnecessary queries whose responses can delay initial
+        // rendering and interfere with the key parser.
+        (*tty).flags |= TTY_ALL_REQUEST_FLAGS;
 
         (*tty).flags |= tty_flags::TTY_STARTED;
         tty_invalidate(tty);
@@ -415,7 +697,6 @@ pub unsafe fn tty_send_requests(tty: *mut tty) {
         }
 
         if (*(*tty).term).flags.intersects(term_flags::TERM_VT100LIKE) {
-            // TODO I think the original C code has a bug and it should be as follows, double check
             if !(*tty).flags.intersects(tty_flags::TTY_HAVEDA) {
                 tty_puts(tty, c!("\x1b[c"));
             }
@@ -425,8 +706,15 @@ pub unsafe fn tty_send_requests(tty: *mut tty) {
             if !(*tty).flags.intersects(tty_flags::TTY_HAVEXDA) {
                 tty_puts(tty, c!("\x1b[>q"));
             }
-            tty_puts(tty, c!("\x1b]10;?\x1b\\"));
-            tty_puts(tty, c!("\x1b]11;?\x1b\\"));
+            // ConPTY does not respond to OSC foreground/background color
+            // queries, so skip them on Windows to avoid setting WAITFG/WAITBG
+            // flags that would never be cleared (no timer fallback either),
+            // causing a permanent 500ms escape-time delay on every keystroke.
+            #[cfg(not(target_os = "windows"))]
+            {
+                tty_puts(tty, c!("\x1b]10;?\x1b\\\x1b]11;?\x1b\\"));
+                (*tty).flags |= tty_flags::TTY_WAITBG | tty_flags::TTY_WAITFG;
+            }
         } else {
             (*tty).flags |= TTY_ALL_REQUEST_FLAGS;
         }
@@ -434,26 +722,39 @@ pub unsafe fn tty_send_requests(tty: *mut tty) {
     }
 }
 
-pub unsafe fn tty_repeat_requests(tty: *mut tty) {
+pub unsafe fn tty_repeat_requests(tty: *mut tty, force: bool) {
     unsafe {
+        let c = (*tty).client;
         let t = libc::time(null_mut());
+        let n = (t - (*tty).last_requests) as u32;
 
         if !(*tty).flags.intersects(tty_flags::TTY_STARTED) {
             return;
         }
 
-        if t - (*tty).last_requests <= TTY_REQUEST_LIMIT as i64 {
+        if !force && n <= TTY_REQUEST_LIMIT as u32 {
+            log_debug!("{}: not repeating requests ({} seconds)", _s((*c).name), n);
             return;
         }
+        log_debug!(
+            "{}: {}repeating requests ({} seconds)",
+            _s((*c).name),
+            if force { "(force) " } else { "" },
+            n
+        );
         (*tty).last_requests = t;
 
+        #[cfg(not(target_os = "windows"))]
         if (*(*tty).term).flags.intersects(term_flags::TERM_VT100LIKE) {
-            tty_puts(tty, c!("\x1b]10;?\x1b\\"));
-            tty_puts(tty, c!("\x1b]11;?\x1b\\"));
+            tty_puts(tty, c!("\x1b]10;?\x1b\\\x1b]11;?\x1b\\"));
+            (*tty).flags |= tty_flags::TTY_WAITBG | tty_flags::TTY_WAITFG;
         }
+        #[cfg(not(target_os = "windows"))]
+        tty_start_start_timer(tty);
     }
 }
 
+#[cfg(not(target_os = "windows"))]
 pub unsafe fn tty_stop_tty(tty: *mut tty) {
     unsafe {
         let c = (*tty).client;
@@ -531,6 +832,89 @@ pub unsafe fn tty_stop_tty(tty: *mut tty) {
         }
         tty_raw(tty, tty_term_string((*tty).term, tty_code_code::TTYC_RMCUP));
 
+        if (*(*tty).term).flags.intersects(term_flags::TERM_VT100LIKE) {
+            tty_raw(tty, b"\x1b[?2031l");
+        }
+
+        setblocking((*c).fd, 1);
+    }
+}
+
+/// Stop the tty on Windows.
+///
+/// Restores console mode, emits teardown escape sequences (leave alternate
+/// screen, reset attributes, etc.), and clears TTY_STARTED.
+#[cfg(target_os = "windows")]
+pub unsafe fn tty_stop_tty(tty: *mut tty) {
+    unsafe {
+        let c = (*tty).client;
+
+        if !(*tty).flags.intersects(tty_flags::TTY_STARTED) {
+            return;
+        }
+        (*tty).flags &= !tty_flags::TTY_STARTED;
+
+        evtimer_del(&raw mut (*tty).start_timer);
+
+        event_del(&raw mut (*tty).timer);
+        (*tty).flags &= !tty_flags::TTY_BLOCK;
+
+        event_del(&raw mut (*tty).event_in);
+        event_del(&raw mut (*tty).event_out);
+
+        // Reset scroll region to full screen
+        tty_raw(
+            tty,
+            &tty_term_string_ii(
+                (*tty).term,
+                tty_code_code::TTYC_CSR,
+                0,
+                (*tty).sy as i32 - 1,
+            ),
+        );
+        if tty_acs_needed(tty) {
+            tty_raw(tty, tty_term_string((*tty).term, tty_code_code::TTYC_RMACS));
+        }
+        tty_raw(tty, tty_term_string((*tty).term, tty_code_code::TTYC_SGR0));
+        tty_raw(tty, tty_term_string((*tty).term, tty_code_code::TTYC_RMKX));
+        tty_raw(tty, tty_term_string((*tty).term, tty_code_code::TTYC_CLEAR));
+        if (*tty).cstyle != screen_cursor_style::SCREEN_CURSOR_DEFAULT {
+            if tty_term_has((*tty).term, tty_code_code::TTYC_SE) {
+                tty_raw(tty, tty_term_string((*tty).term, tty_code_code::TTYC_SE));
+            } else if tty_term_has((*tty).term, tty_code_code::TTYC_SS) {
+                tty_raw(
+                    tty,
+                    &tty_term_string_i((*tty).term, tty_code_code::TTYC_SS, 0),
+                );
+            }
+        }
+        if (*tty).ccolour != -1 {
+            tty_raw(tty, tty_term_string((*tty).term, tty_code_code::TTYC_CR));
+        }
+
+        tty_raw(tty, tty_term_string((*tty).term, tty_code_code::TTYC_CNORM));
+        if tty_term_has((*tty).term, tty_code_code::TTYC_KMOUS) {
+            tty_raw(tty, b"\x1b[?1000l\x1b[?1002l\x1b[?1003l");
+            tty_raw(tty, b"\x1b[?1006l\x1b[?1005l");
+        }
+        if tty_term_has((*tty).term, tty_code_code::TTYC_DSBP) {
+            tty_raw(tty, tty_term_string((*tty).term, tty_code_code::TTYC_DSBP));
+        }
+
+        if (*(*tty).term).flags.intersects(term_flags::TERM_VT100LIKE) {
+            tty_raw(tty, b"\x1b[?7727l");
+        }
+        tty_raw(tty, tty_term_string((*tty).term, tty_code_code::TTYC_DSFCS));
+        tty_raw(tty, tty_term_string((*tty).term, tty_code_code::TTYC_DSEKS));
+
+        if tty_use_margin(tty) {
+            tty_raw(tty, tty_term_string((*tty).term, tty_code_code::TTYC_DSMG));
+        }
+        tty_raw(tty, tty_term_string((*tty).term, tty_code_code::TTYC_RMCUP));
+
+        // Restore console mode, codepage, and set fd blocking
+        libc::restore_original_console_mode();
+        libc::restore_console_codepage();
         setblocking((*c).fd, 1);
     }
 }
@@ -596,7 +980,7 @@ pub unsafe fn tty_raw(tty: *mut tty, mut s: &[u8]) {
         let c = (*tty).client;
 
         for _ in 0..5 {
-            let n = libc::write((*c).fd, s.as_ptr().cast(), s.len());
+            let n = libc::write((*c).fd, s.as_ptr().cast(), s.len() as _);
             if n >= 0 {
                 s = &s[n as usize..];
                 if s.is_empty() {
@@ -673,7 +1057,7 @@ pub unsafe fn tty_add(tty: *mut tty, buf: *const u8, len: usize) {
         (*c).written += len;
 
         if TTY_LOG_FD != -1 {
-            libc::write(TTY_LOG_FD, buf.cast(), len);
+            libc::write(TTY_LOG_FD, buf.cast(), len as _);
         }
         if (*tty).flags.intersects(tty_flags::TTY_STARTED) {
             event_add(&raw mut (*tty).event_out, null_mut());
@@ -3322,9 +3706,7 @@ pub unsafe fn tty_attributes(
             tty_set_italics(tty);
         }
         if changed.intersects(GRID_ATTR_ALL_UNDERSCORE) {
-            if (changed.intersects(grid_attr::GRID_ATTR_UNDERSCORE))
-                || !tty_term_has((*tty).term, tty_code_code::TTYC_SMULX)
-            {
+            if changed.intersects(grid_attr::GRID_ATTR_UNDERSCORE) {
                 tty_putcode(tty, tty_code_code::TTYC_SMUL);
             } else if changed.intersects(grid_attr::GRID_ATTR_UNDERSCORE_2) {
                 tty_putcode_i(tty, tty_code_code::TTYC_SMULX, 2);
@@ -3460,13 +3842,23 @@ pub unsafe fn tty_check_fg(tty: *const tty, palette: *const colour_palette, gc: 
         // Is this a 256-colour colour?
         if (*gc).fg & COLOUR_FLAG_256 != 0 {
             // And not a 256 colour mode?
-            if colours < 256 {
-                (*gc).fg = colour_256to16((*gc).fg);
-                if ((*gc).fg & 8) != 0 {
-                    (*gc).fg &= 7;
-                    if colours >= 16 {
-                        (*gc).fg += 90;
-                    }
+            if colours >= 256 {
+                return;
+            }
+            (*gc).fg = colour_256to16((*gc).fg);
+            if (*gc).fg & 8 == 0 {
+                return;
+            }
+            (*gc).fg &= 7;
+            if colours >= 16 {
+                (*gc).fg += 90;
+            } else {
+                // Mapping to black-on-black or white-on-white is not
+                // much use, so change the foreground.
+                if (*gc).fg == 0 && (*gc).bg == 0 {
+                    (*gc).fg = 7;
+                } else if (*gc).fg == 7 && (*gc).bg == 7 {
+                    (*gc).fg = 0;
                 }
             }
             return;
@@ -3514,14 +3906,16 @@ pub unsafe fn tty_check_bg(tty: *const tty, palette: *const colour_palette, gc: 
             // And not a 256 colour mode? Translate to 16-colour
             // palette. Bold background doesn't exist portably, so just
             // discard the bold bit if set.
-            if colours < 256 {
-                (*gc).bg = colour_256to16((*gc).bg);
-                if (*gc).bg & 8 != 0 {
-                    (*gc).bg &= 7;
-                    if colours >= 16 {
-                        (*gc).bg += 90;
-                    }
-                }
+            if colours >= 256 {
+                return;
+            }
+            (*gc).bg = colour_256to16((*gc).bg);
+            if (*gc).bg & 8 == 0 {
+                return;
+            }
+            (*gc).bg &= 7;
+            if colours >= 16 {
+                (*gc).bg += 90;
             }
             return;
         }
@@ -3810,7 +4204,7 @@ pub unsafe extern "C-unwind" fn tty_clipboard_query_callback(
 pub unsafe fn tty_clipboard_query(tty: *mut tty) {
     unsafe {
         let tv = libc::timeval {
-            tv_sec: TTY_QUERY_TIMEOUT as i64,
+            tv_sec: TTY_QUERY_TIMEOUT as _,
             tv_usec: 0,
         };
 

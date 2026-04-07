@@ -34,6 +34,9 @@ impl key_string_table_entry {
 // 	KEYC_ ## name ## _STATUS_LEFT,
 // 	KEYC_ ## name ## _STATUS_RIGHT,
 // 	KEYC_ ## name ## _STATUS_DEFAULT,
+// 	KEYC_ ## name ## _SCROLLBAR_UP,
+// 	KEYC_ ## name ## _SCROLLBAR_SLIDER,
+// 	KEYC_ ## name ## _SCROLLBAR_DOWN,
 // 	KEYC_ ## name ## _BORDER
 // #define KEYC_MOUSE_STRING(name, s)
 // 	{ #s "Pane", KEYC_ ## name ## _PANE },
@@ -41,6 +44,9 @@ impl key_string_table_entry {
 // 	{ #s "StatusLeft", KEYC_ ## name ## _STATUS_LEFT },
 // 	{ #s "StatusRight", KEYC_ ## name ## _STATUS_RIGHT },
 // 	{ #s "StatusDefault", KEYC_ ## name ## _STATUS_DEFAULT },
+// 	{ #s "ScrollbarUp", KEYC_ ## name ## _SCROLLBAR_UP },
+// 	{ #s "ScrollbarSlider", KEYC_ ## name ## _SCROLLBAR_SLIDER },
+// 	{ #s "ScrollbarDown", KEYC_ ## name ## _SCROLLBAR_DOWN },
 // 	{ #s "Border", KEYC_ ## name ## _BORDER }
 macro_rules! KEYC_MOUSE_STRING {
     ($name:ident, $s:literal) => {
@@ -51,6 +57,9 @@ macro_rules! KEYC_MOUSE_STRING {
                 key_string_table_entry{string: concat!($s, "StatusLeft"), key: keyc::[<KEYC_ $name _STATUS_LEFT>] as u64},
                 key_string_table_entry{string: concat!($s, "StatusRight"), key: keyc::[<KEYC_ $name _STATUS_RIGHT>] as u64},
                 key_string_table_entry{string: concat!($s, "StatusDefault"), key: keyc::[<KEYC_ $name _STATUS_DEFAULT>] as u64 },
+                key_string_table_entry{string: concat!($s, "ScrollbarUp"), key: keyc::[<KEYC_ $name _SCROLLBAR_UP>] as u64},
+                key_string_table_entry{string: concat!($s, "ScrollbarSlider"), key: keyc::[<KEYC_ $name _SCROLLBAR_SLIDER>] as u64},
+                key_string_table_entry{string: concat!($s, "ScrollbarDown"), key: keyc::[<KEYC_ $name _SCROLLBAR_DOWN>] as u64},
                 key_string_table_entry{string: concat!($s, "Border"), key: keyc::[<KEYC_ $name _BORDER>] as u64},
             ]
         }
@@ -85,6 +94,9 @@ macro_rules! KEYC_MOUSE_STRING_I {
                 key_string_table_entry{string: concat!($s, $i, "StatusLeft"), key: keyc::[<KEYC_ $name $i _STATUS_LEFT>] as u64},
                 key_string_table_entry{string: concat!($s, $i, "StatusRight"), key: keyc::[<KEYC_ $name $i _STATUS_RIGHT>] as u64},
                 key_string_table_entry{string: concat!($s, $i, "StatusDefault"), key: keyc::[<KEYC_ $name $i _STATUS_DEFAULT>] as u64 },
+                key_string_table_entry{string: concat!($s, $i, "ScrollbarUp"), key: keyc::[<KEYC_ $name $i _SCROLLBAR_UP>] as u64},
+                key_string_table_entry{string: concat!($s, $i, "ScrollbarSlider"), key: keyc::[<KEYC_ $name $i _SCROLLBAR_SLIDER>] as u64},
+                key_string_table_entry{string: concat!($s, $i, "ScrollbarDown"), key: keyc::[<KEYC_ $name $i _SCROLLBAR_DOWN>] as u64},
                 key_string_table_entry{string: concat!($s, $i, "Border"), key: keyc::[<KEYC_ $name $i _BORDER>] as u64},
             ]
         }
@@ -106,10 +118,10 @@ macro_rules! KEYC_MOUSE_STRING11 {
     };
 }
 
-static KEY_STRING_TABLE: [key_string_table_entry; 469] = const {
+static KEY_STRING_TABLE: [key_string_table_entry; 667] = const {
     let mut out_i: usize = 0;
-    let mut out: [key_string_table_entry; 469] =
-        [key_string_table_entry { string: "", key: 0 }; 469];
+    let mut out: [key_string_table_entry; 667] =
+        [key_string_table_entry { string: "", key: 0 }; 667];
 
     let function_keys = [
         key_string_table_entry::new("F1", keyc::KEYC_F1 as u64 | KEYC_IMPLIED_META),

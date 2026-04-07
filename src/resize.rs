@@ -141,7 +141,7 @@ pub unsafe fn clients_calculate_size(
             if type_ == window_size_option::WINDOW_SIZE_LARGEST {
                 *sx = 0;
                 *sy = 0;
-            } else if type_ == window_size_option::WINDOW_SIZE_MANUAL {
+            } else if !w.is_null() && type_ == window_size_option::WINDOW_SIZE_MANUAL {
                 *sx = (*w).manual_sx;
                 *sy = (*w).manual_sy;
                 log_debug!("{}: manual size {}x{}", __func__, *sx, *sy);
@@ -242,7 +242,7 @@ pub unsafe fn clients_calculate_size(
         // skip:
         // Do not allow any size to be larger than the per-client window size
         // if one exists.
-        if w.is_null() {
+        if !w.is_null() {
             for loop_ in tailq_foreach(&raw mut CLIENTS).map(NonNull::as_ptr) {
                 if loop_ != c && ignore_client_size(loop_) != 0 {
                     continue;
@@ -286,7 +286,7 @@ pub unsafe fn clients_calculate_size(
         // Return whether a suitable size was found.
         if type_ == window_size_option::WINDOW_SIZE_MANUAL {
             log_debug!("{}: type_ is manual", __func__);
-            return true;
+            return !w.is_null();
         }
         if type_ == window_size_option::WINDOW_SIZE_LARGEST {
             log_debug!("{}: type_ is largest", __func__);
@@ -303,18 +303,12 @@ pub unsafe fn clients_calculate_size(
 
 pub unsafe fn default_window_size_skip_client(
     loop_: *mut client,
-    type_: window_size_option,
+    _type: window_size_option,
     _current: bool,
     s: *mut session,
     w: *mut window,
 ) -> bool {
     unsafe {
-        // Latest checks separately, so do not check here. Otherwise only
-        // include clients where the session contains the window or where the
-        // session is the given session.
-        if type_ == window_size_option::WINDOW_SIZE_LATEST {
-            return false;
-        }
         if !w.is_null() && !session_has((*loop_).session, w) {
             return true;
         }

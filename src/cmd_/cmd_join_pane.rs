@@ -58,7 +58,7 @@ unsafe fn cmd_join_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retva
         let current = cmdq_get_current(item);
         let target = cmdq_get_target(item);
         let source = cmdq_get_source(item);
-        let mut cause = null_mut();
+
         let mut type_: layout_type;
 
         let mut curval: u32 = 0;
@@ -81,13 +81,13 @@ unsafe fn cmd_join_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retva
         }
 
         type_ = layout_type::LAYOUT_TOPBOTTOM;
-        if args_has(args, 'h') {
+        if args_has(&*args, 'h') {
             type_ = layout_type::LAYOUT_LEFTRIGHT;
         }
 
         // If the 'p' flag is dropped then this bit can be moved into 'l'.
-        if args_has(args, 'l') || args_has(args, 'p') {
-            if args_has(args, 'f') {
+        if args_has(&*args, 'l') || args_has(&*args, 'p') {
+            if args_has(&*args, 'f') {
                 match type_ {
                     layout_type::LAYOUT_TOPBOTTOM => curval = (*dst_w).sy,
                     _ => curval = (*dst_w).sx,
@@ -101,33 +101,29 @@ unsafe fn cmd_join_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retva
         }
 
         let mut size: i32 = -1;
-        if args_has(args, 'l') {
-            size = args_percentage_and_expand(
-                args,
-                b'l',
-                0,
-                i32::MAX as i64,
-                curval as i64,
-                item,
-                &raw mut cause,
-            ) as _;
-        } else if args_has(args, 'p') {
-            size = args_strtonum_and_expand(args, b'l', 0, 100, item, &raw mut cause) as _;
-            if cause.is_null() {
-                size = curval as i32 * size / 100;
+        if args_has(&*args, 'l') {
+            match args_percentage_and_expand(&*args, b'l', 0, i32::MAX as i64, curval as i64, item) {
+                Ok(v) => size = v as _,
+                Err(cause) => {
+                    cmdq_error!(item, "size {}", cause);
+                    return cmd_retval::CMD_RETURN_ERROR;
+                }
             }
-        }
-        if !cause.is_null() {
-            cmdq_error!(item, "size {}", _s(cause));
-            free_(cause);
-            return cmd_retval::CMD_RETURN_ERROR;
+        } else if args_has(&*args, 'p') {
+            match args_strtonum_and_expand(&*args, b'l', 0, 100, item) {
+                Ok(v) => size = curval as i32 * v as i32 / 100,
+                Err(cause) => {
+                    cmdq_error!(item, "size {}", cause);
+                    return cmd_retval::CMD_RETURN_ERROR;
+                }
+            }
         }
 
         let mut flags: spawn_flags = spawn_flags::empty();
-        if args_has(args, 'b') {
+        if args_has(&*args, 'b') {
             flags |= SPAWN_BEFORE;
         }
-        if args_has(args, 'f') {
+        if args_has(&*args, 'f') {
             flags |= SPAWN_FULLSIZE;
         }
 
@@ -145,21 +141,22 @@ unsafe fn cmd_join_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retva
 
         (*src_wp).window = dst_w;
         options_set_parent(&mut *(*src_wp).options, (*dst_w).options);
-        (*src_wp).flags |= window_pane_flags::PANE_STYLECHANGED;
+        (*src_wp).flags |=
+            window_pane_flags::PANE_STYLECHANGED | window_pane_flags::PANE_THEMECHANGED;
         if flags.intersects(SPAWN_BEFORE) {
             tailq_insert_before::<_, discr_entry>(dst_wp, src_wp);
         } else {
             tailq_insert_after::<_, discr_entry>(&raw mut (*dst_w).panes, dst_wp, src_wp);
         }
         layout_assign_pane(lc, src_wp, 0);
-        colour_palette_from_option(Some(&mut (*src_wp).palette), (*src_wp).options);
+        colour_palette_from_option(Some(&mut (*src_wp).palette), &mut *(*src_wp).options);
 
         recalculate_sizes();
 
         server_redraw_window(src_w);
         server_redraw_window(dst_w);
 
-        if !args_has(args, 'd') {
+        if !args_has(&*args, 'd') {
             window_set_active_pane(dst_w, src_wp, 1);
             session_select(dst_s, dst_idx);
             cmd_find_from_session(current, dst_s, cmd_find_flags::empty());

@@ -175,7 +175,7 @@ fn alerts_check_bell(w: &window) -> window_flag {
         }
 
         for wl in tailq_foreach_const::<_, crate::discr_wentry>(&raw const w.winlinks) {
-            (*(*wl.as_ptr()).session).flags &= !SESSION_ALERTED;
+            (*(*wl.as_ptr()).session).flags &= !session_flags::SESSION_ALERTED;
         }
 
         for wl in tailq_foreach_const::<_, crate::discr_wentry>(&raw const w.winlinks)
@@ -193,10 +193,10 @@ fn alerts_check_bell(w: &window) -> window_flag {
             }
             notify_winlink(c"alert-bell", wl);
 
-            if (*s).flags & SESSION_ALERTED != 0 {
+            if (*s).flags.intersects(session_flags::SESSION_ALERTED) {
                 continue;
             }
-            (*s).flags |= SESSION_ALERTED;
+            (*s).flags |= session_flags::SESSION_ALERTED;
 
             alerts_set_message(&*wl, "Bell", "visual-bell");
         }
@@ -216,7 +216,7 @@ fn alerts_check_activity(w: &window) -> window_flag {
         for wl in tailq_foreach_const::<_, crate::discr_wentry>(&raw const w.winlinks)
             .map(NonNull::as_ptr)
         {
-            (*(*wl).session).flags &= !SESSION_ALERTED;
+            (*(*wl).session).flags &= !session_flags::SESSION_ALERTED;
         }
 
         for wl in tailq_foreach_const::<_, crate::discr_wentry>(&raw const w.winlinks)
@@ -232,10 +232,10 @@ fn alerts_check_activity(w: &window) -> window_flag {
             }
             notify_winlink(c"alert-activity", wl);
 
-            if (*s).flags & SESSION_ALERTED != 0 {
+            if (*s).flags.intersects(session_flags::SESSION_ALERTED) {
                 continue;
             }
-            (*s).flags |= SESSION_ALERTED;
+            (*s).flags |= session_flags::SESSION_ALERTED;
 
             alerts_set_message(&*wl, "Activity", "visual-activity");
         }
@@ -255,7 +255,7 @@ fn alerts_check_silence(w: &window) -> window_flag {
         for wl in tailq_foreach_const::<_, crate::discr_wentry>(&raw const w.winlinks)
             .map(NonNull::as_ptr)
         {
-            (*(*wl).session).flags &= !SESSION_ALERTED;
+            (*(*wl).session).flags &= !session_flags::SESSION_ALERTED;
         }
 
         for wl in tailq_foreach_const::<_, crate::discr_wentry>(&raw const w.winlinks)
@@ -274,10 +274,10 @@ fn alerts_check_silence(w: &window) -> window_flag {
             }
             notify_winlink(c"alert-silence", wl);
 
-            if (*s).flags & SESSION_ALERTED != 0 {
+            if (*s).flags.intersects(session_flags::SESSION_ALERTED) {
                 continue;
             }
-            (*s).flags |= SESSION_ALERTED;
+            (*s).flags |= session_flags::SESSION_ALERTED;
 
             alerts_set_message(&*wl, "Silence", "visual-silence");
         }
@@ -306,9 +306,9 @@ fn alerts_set_message(wl: &winlink, type_: &str, option: &str) {
                 continue;
             }
             if std::ptr::eq((*(*c).session).curw, wl) {
-                status_message_set!(c, -1, 1, false, "{type_} in current window",);
+                status_message_set!(c, -1, 1, false, false, "{type_} in current window",);
             } else {
-                status_message_set!(c, -1, 1, false, "{type_} in window {}", wl.idx);
+                status_message_set!(c, -1, 1, false, false, "{type_} in window {}", wl.idx);
             }
         }
     }

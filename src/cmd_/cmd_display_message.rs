@@ -22,8 +22,8 @@ pub static CMD_DISPLAY_MESSAGE_ENTRY: cmd_entry = cmd_entry {
     name: "display-message",
     alias: Some("display"),
 
-    args: args_parse::new("ac:d:lINpt:F:v", 0, 1, None),
-    usage: "[-aIlNpv] [-c target-client] [-d delay] [-F format] [-t target-pane] [message]",
+    args: args_parse::new("aCc:d:lINpt:F:v", 0, 1, None),
+    usage: "[-aCIlNpv] [-c target-client] [-d delay] [-F format] [-t target-pane] [message]",
 
     target: cmd_entry_flag::new(
         b't',
@@ -52,47 +52,47 @@ unsafe fn cmd_display_message_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd
         let s = (*target).s;
         let wl = (*target).wl;
         let wp = (*target).wp;
-        let mut cause: *mut u8 = null_mut();
         let mut delay = -1;
-        let nflag = args_has(args, 'N');
-        let count = args_count(args);
+        let nflag = args_has(&*args, 'N');
+        let cflag = args_has(&*args, 'C');
+        let count = args_count(&*args);
 
-        if args_has(args, 'I') {
+        if args_has(&*args, 'I') {
             if wp.is_null() {
                 return cmd_retval::CMD_RETURN_NORMAL;
             }
-            match window_pane_start_input(wp, item, &raw mut cause) {
-                -1 => {
-                    cmdq_error!(item, "{}", _s(cause));
-                    free_(cause);
+            match window_pane_start_input(wp, item) {
+                Err(cause) => {
+                    cmdq_error!(item, "{}", cause);
                     return cmd_retval::CMD_RETURN_ERROR;
                 }
-                1 => {
+                Ok(1) => {
                     return cmd_retval::CMD_RETURN_NORMAL;
                 }
-                0 => {
+                Ok(0) => {
                     return cmd_retval::CMD_RETURN_WAIT;
                 }
                 _ => (),
             }
         }
 
-        if args_has(args, 'F') && count != 0 {
+        if args_has(&*args, 'F') && count != 0 {
             cmdq_error!(item, "only one of -F or argument must be given");
             return cmd_retval::CMD_RETURN_ERROR;
         }
 
-        if args_has(args, 'd') {
-            delay = args_strtonum(args, b'd', 0, u32::MAX as i64, &raw mut cause);
-            if !cause.is_null() {
-                cmdq_error!(item, "delay {}", _s(cause));
-                free_(cause);
-                return cmd_retval::CMD_RETURN_ERROR;
+        if args_has(&*args, 'd') {
+            match args_strtonum(&*args, b'd', 0, u32::MAX as i64) {
+                Ok(v) => delay = v,
+                Err(cause) => {
+                    cmdq_error!(item, "delay {}", cause);
+                    return cmd_retval::CMD_RETURN_ERROR;
+                }
             }
         }
 
         let mut template = if count != 0 {
-            args_string(args, 0)
+            args_string(&*args, 0).unwrap().as_ptr().cast()
         } else {
             args_get_(args, 'F')
         };
@@ -112,7 +112,7 @@ unsafe fn cmd_display_message_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd
             null_mut()
         };
 
-        let flags = if args_has(args, 'v') {
+        let flags = if args_has(&*args, 'v') {
             format_flags::FORMAT_VERBOSE
         } else {
             format_flags::empty()
@@ -120,12 +120,12 @@ unsafe fn cmd_display_message_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd
         let ft = format_create(cmdq_get_client(item), item, FORMAT_NONE, flags);
         format_defaults(ft, c, NonNull::new(s), NonNull::new(wl), NonNull::new(wp));
 
-        if args_has(args, 'a') {
+        if args_has(&*args, 'a') {
             format_each(ft, cmd_display_message_each, item);
             return cmd_retval::CMD_RETURN_NORMAL;
         }
 
-        let msg = if args_has(args, 'l') {
+        let msg = if args_has(&*args, 'l') {
             xstrdup(template).as_ptr()
         } else {
             format_expand_time(ft, template)
@@ -133,7 +133,7 @@ unsafe fn cmd_display_message_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd
 
         if cmdq_get_client(item).is_null() {
             cmdq_error!(item, "{}", _s(msg));
-        } else if args_has(args, 'p') {
+        } else if args_has(&*args, 'p') {
             cmdq_print!(item, "{}", _s(msg));
         } else if !tc.is_null() && (*tc).flags.intersects(client_flag::CONTROL) {
             let evb = evbuffer_new();
@@ -144,7 +144,7 @@ unsafe fn cmd_display_message_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd
             server_client_print(tc, 0, evb);
             evbuffer_free(evb);
         } else if !tc.is_null() {
-            status_message_set!(tc, delay as i32, 0, nflag, "{}", _s(msg));
+            status_message_set!(tc, delay as i32, 0, nflag, cflag, "{}", _s(msg));
         }
         free_(msg);
 

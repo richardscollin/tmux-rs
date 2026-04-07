@@ -38,7 +38,7 @@ unsafe fn cmd_rename_window_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
         let target = cmdq_get_target(item);
         let wl = (*target).wl;
 
-        let newname = format_single_from_target(item, args_string(args, 0));
+        let newname = format_single_from_target(item, args_string(&*args, 0).unwrap().as_ptr().cast());
         window_set_name((*wl).window, newname);
         options_set_number((*(*wl).window).options, "automatic-rename", 0);
 

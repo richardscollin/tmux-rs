@@ -22,7 +22,7 @@ use crate::*;
 
 // Choice option type lists.
 static OPTIONS_TABLE_MODE_KEYS_LIST: [&str; 2] = ["emacs", "vi"];
-static OPTIONS_TABLE_CLOCK_MODE_STYLE_LIST: [&str; 2] = ["12", "24"];
+static OPTIONS_TABLE_CLOCK_MODE_STYLE_LIST: [&str; 4] = ["12", "24", "12-with-seconds", "24-with-seconds"];
 static OPTIONS_TABLE_STATUS_LIST: [&str; 6] = ["off", "on", "2", "3", "4", "5"];
 static OPTIONS_TABLE_MESSAGE_LINE_LIST: [&str; 5] = ["0", "1", "2", "3", "4"];
 static OPTIONS_TABLE_STATUS_KEYS_LIST: [&str; 2] = ["emacs", "vi"];
@@ -42,11 +42,13 @@ static OPTIONS_TABLE_CURSOR_STYLE_LIST: [&str; 7] = [
 ];
 static OPTIONS_TABLE_PANE_STATUS_LIST: [&str; 3] = ["off", "top", "bottom"];
 static OPTIONS_TABLE_PANE_BORDER_INDICATORS_LIST: [&str; 4] = ["off", "colour", "arrows", "both"];
-static OPTIONS_TABLE_PANE_BORDER_LINES_LIST: [&str; 5] =
-    ["single", "double", "heavy", "simple", "number"];
+static OPTIONS_TABLE_PANE_BORDER_LINES_LIST: [&str; 6] =
+    ["single", "double", "heavy", "simple", "number", "spaces"];
 static OPTIONS_TABLE_POPUP_BORDER_LINES_LIST: [&str; 7] = [
     "single", "double", "heavy", "simple", "rounded", "padded", "none",
 ];
+static OPTIONS_TABLE_PANE_SCROLLBARS_LIST: [&str; 3] = ["off", "modal", "on"];
+static OPTIONS_TABLE_PANE_SCROLLBARS_POSITION_LIST: [&str; 2] = ["right", "left"];
 static OPTIONS_TABLE_SET_CLIPBOARD_LIST: [&str; 3] = ["off", "external", "on"];
 static OPTIONS_TABLE_WINDOW_SIZE_LIST: [&str; 4] = ["largest", "smallest", "manual", "latest"];
 static OPTIONS_TABLE_REMAIN_ON_EXIT_LIST: [&str; 3] = ["off", "on", "failed"];
@@ -59,21 +61,23 @@ static OPTIONS_TABLE_ALLOW_PASSTHROUGH_LIST: [&str; 3] = ["off", "on", "all"];
 
 #[rustfmt::skip]
 /// Map of name conversions.
-pub static OPTIONS_OTHER_NAMES: [options_name_map; 5] = [
+pub static OPTIONS_OTHER_NAMES: [options_name_map; 6] = [
     options_name_map::new("display-panes-color", "display-panes-colour"),
     options_name_map::new("display-panes-active-color", "display-panes-active-colour"),
     options_name_map::new("clock-mode-color", "clock-mode-colour"),
     options_name_map::new("cursor-color", "cursor-colour"),
+    options_name_map::new("prompt-cursor-color", "prompt-cursor-colour"),
     options_name_map::new("pane-colors", "pane-colours"),
 ];
 
 #[rustfmt::skip]
 /// Map of name conversions.
-pub static OPTIONS_OTHER_NAMES_STR: [options_name_map_str; 5] = [
+pub static OPTIONS_OTHER_NAMES_STR: [options_name_map_str; 6] = [
     options_name_map_str::new("display-panes-color", "display-panes-colour"),
     options_name_map_str::new("display-panes-active-color", "display-panes-active-colour"),
     options_name_map_str::new("clock-mode-color", "clock-mode-colour"),
     options_name_map_str::new("cursor-color", "cursor-colour"),
+    options_name_map_str::new("prompt-cursor-color", "prompt-cursor-colour"),
     options_name_map_str::new("pane-colors", "pane-colours"),
 ];
 
@@ -110,7 +114,7 @@ pub const OPTIONS_TABLE_STATUS_FORMAT1: *const u8 = concat!(
     "#{T:window-status-format}",
     "#[pop-default]",
     "#[norange default]",
-    "#{?window_end_flag,,#{window-status-separator}}",
+    "#{?loop_last_flag,,#{window-status-separator}}",
     ",",
     "#[range=window|#{window_index} list=focus ",
     "#{?#{!=:#{E:window-status-current-style},default},",
@@ -137,7 +141,7 @@ pub const OPTIONS_TABLE_STATUS_FORMAT1: *const u8 = concat!(
     "#{T:window-status-current-format}",
     "#[pop-default]",
     "#[norange list=on default]",
-    "#{?window_end_flag,,#{window-status-separator}}",
+    "#{?loop_last_flag,,#{window-status-separator}}",
     "}",
     "#[nolist align=right range=right #{E:status-right-style}]",
     "#[push-default]",
@@ -150,15 +154,68 @@ pub const OPTIONS_TABLE_STATUS_FORMAT1: *const u8 = concat!(
 
 #[expect(clippy::disallowed_methods)]
 pub const OPTIONS_TABLE_STATUS_FORMAT2: *const u8 = concat!(
-    "#[align=centre]#{P:#{?pane_active,#[reverse],}",
-    "#{pane_index}[#{pane_width}x#{pane_height}]#[default] }\0"
+    "#[align=left]#{R: ,#{n:#{session_name}}}P: ",
+    "#[norange default]",
+    "#[list=on align=#{status-justify}]",
+    "#[list=left-marker]<#[list=right-marker]>#[list=on]",
+    "#{P:",
+    "#[range=pane|#{pane_id} ",
+    "#{E:pane-status-style}",
+    "]",
+    "#[push-default]",
+    "#P[#{pane_width}x#{pane_height}]",
+    "#[pop-default]",
+    "#[norange list=on default]  ",
+    ",",
+    "#[range=pane|#{pane_id} list=focus ",
+    "#{?#{!=:#{E:pane-status-current-style},default},",
+    "#{E:pane-status-current-style},",
+    "#{E:pane-status-style}",
+    "}",
+    "]",
+    "#[push-default]",
+    "#P[#{pane_width}x#{pane_height}]*",
+    "#[pop-default]",
+    "#[norange list=on default] ",
+    "}\0",
 )
 .as_ptr()
 .cast();
 
-pub static mut OPTIONS_TABLE_STATUS_FORMAT_DEFAULT: [*const u8; 3] = [
+#[expect(clippy::disallowed_methods)]
+pub const OPTIONS_TABLE_STATUS_FORMAT3: *const u8 = concat!(
+    "#[align=left]#{R: ,#{n:#{session_name}}}S: ",
+    "#[norange default]",
+    "#[list=on align=#{status-justify}]",
+    "#[list=left-marker]<#[list=right-marker]>#[list=on]",
+    "#{S:",
+    "#[range=session|#{session_id} ",
+    "#{E:session-status-style}",
+    "]",
+    "#[push-default]",
+    "#S#{session_alert}",
+    "#[pop-default]",
+    "#[norange list=on default]  ",
+    ",",
+    "#[range=session|#{session_id} list=focus ",
+    "#{?#{!=:#{E:session-status-current-style},default},",
+    "#{E:session-status-current-style},",
+    "#{E:session-status-style}",
+    "}",
+    "]",
+    "#[push-default]",
+    "#S*#{session_alert}",
+    "#[pop-default]",
+    "#[norange list=on default] ",
+    "}\0",
+)
+.as_ptr()
+.cast();
+
+pub static mut OPTIONS_TABLE_STATUS_FORMAT_DEFAULT: [*const u8; 4] = [
     OPTIONS_TABLE_STATUS_FORMAT1,
     OPTIONS_TABLE_STATUS_FORMAT2,
+    OPTIONS_TABLE_STATUS_FORMAT3,
     null(),
 ];
 
@@ -205,7 +262,7 @@ macro_rules! options_table_window_hook {
     };
 }
 
-pub static OPTIONS_TABLE: [options_table_entry; 190] = [
+pub static OPTIONS_TABLE: [options_table_entry; 210] = [
     options_table_entry {
         name: "backspace",
         type_: options_table_type::OPTIONS_TABLE_KEY,
@@ -243,6 +300,16 @@ pub static OPTIONS_TABLE: [options_table_entry; 190] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
+        name: "codepoint-widths",
+        type_: options_table_type::OPTIONS_TABLE_STRING,
+        scope: OPTIONS_TABLE_SERVER,
+        flags: OPTIONS_TABLE_IS_ARRAY,
+        default_str: Some(""),
+        separator: c!(","),
+        text: c!("Array of override widths for Unicode codepoints."),
+        ..options_table_entry::const_default()
+    },
+    options_table_entry {
         name: "copy-command",
         type_: options_table_type::OPTIONS_TABLE_STRING,
         scope: OPTIONS_TABLE_SERVER,
@@ -265,6 +332,14 @@ pub static OPTIONS_TABLE: [options_table_entry; 190] = [
         choices: &OPTIONS_TABLE_CURSOR_STYLE_LIST,
         default_num: 0,
         text: c!("Style of the cursor."),
+        ..options_table_entry::const_default()
+    },
+    options_table_entry {
+        name: "default-client-command",
+        type_: options_table_type::OPTIONS_TABLE_COMMAND,
+        scope: OPTIONS_TABLE_SERVER,
+        default_str: Some("new-session"),
+        text: c!("Default command to run when tmux is run without a command."),
         ..options_table_entry::const_default()
     },
     options_table_entry {
@@ -344,6 +419,16 @@ pub static OPTIONS_TABLE: [options_table_entry; 190] = [
         text: c!(
             "Location of the command prompt history file. Empty does not write a history file."
         ),
+        ..options_table_entry::const_default()
+    },
+    options_table_entry {
+        name: "input-buffer-size",
+        type_: options_table_type::OPTIONS_TABLE_NUMBER,
+        scope: OPTIONS_TABLE_SERVER,
+        minimum: INPUT_BUF_DEFAULT_SIZE as u32,
+        maximum: u32::MAX,
+        default_num: INPUT_BUF_DEFAULT_SIZE as i64,
+        text: c!("Number of bytes accepted in a single input before dropping."),
         ..options_table_entry::const_default()
     },
     options_table_entry {
@@ -462,6 +547,16 @@ pub static OPTIONS_TABLE: [options_table_entry; 190] = [
         separator: c!(","),
         text: c!(
             "User key assignments. Each sequence in the list is translated into a key: 'User0', 'User1' and so on."
+        ),
+        ..options_table_entry::const_default()
+    },
+    options_table_entry {
+        name: "variation-selector-always-wide",
+        type_: options_table_type::OPTIONS_TABLE_FLAG,
+        scope: OPTIONS_TABLE_SERVER,
+        default_num: 1,
+        text: c!(
+            "If the Unicode VS16 codepoint should always be treated as a wide character."
         ),
         ..options_table_entry::const_default()
     },
@@ -604,6 +699,19 @@ pub static OPTIONS_TABLE: [options_table_entry; 190] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
+        name: "initial-repeat-time",
+        type_: options_table_type::OPTIONS_TABLE_NUMBER,
+        scope: OPTIONS_TABLE_SESSION,
+        minimum: 0,
+        maximum: 2000000,
+        default_num: 0,
+        unit: c!("milliseconds"),
+        text: c!(
+            "Time to wait for a key binding to repeat the first time the key is pressed, if it is bound with the '-r' flag. Subsequent presses use the 'repeat-time' option."
+        ),
+        ..options_table_entry::const_default()
+    },
+    options_table_entry {
         name: "key-table",
         type_: options_table_type::OPTIONS_TABLE_STRING,
         scope: OPTIONS_TABLE_SESSION,
@@ -700,7 +808,7 @@ pub static OPTIONS_TABLE: [options_table_entry; 190] = [
         type_: options_table_type::OPTIONS_TABLE_NUMBER,
         scope: OPTIONS_TABLE_SESSION,
         minimum: 0,
-        maximum: i16::MAX as u32,
+        maximum: 2000000,
         default_num: 500,
         unit: c!("milliseconds"),
         text: c!("Time to wait for a key binding to repeat, if it is bound with the '-r' flag."),
@@ -878,12 +986,69 @@ pub static OPTIONS_TABLE: [options_table_entry; 190] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
+        name: "pane-status-current-style",
+        type_: options_table_type::OPTIONS_TABLE_STRING,
+        scope: OPTIONS_TABLE_WINDOW,
+        default_str: Some("default"),
+        flags: OPTIONS_TABLE_IS_STYLE,
+        separator: c!(","),
+        text: c!("Style of the current pane in the status line."),
+        ..options_table_entry::const_default()
+    },
+    options_table_entry {
+        name: "pane-status-style",
+        type_: options_table_type::OPTIONS_TABLE_STRING,
+        scope: OPTIONS_TABLE_WINDOW,
+        default_str: Some("default"),
+        flags: OPTIONS_TABLE_IS_STYLE,
+        separator: c!(","),
+        text: c!("Style of panes in the status line, except the current pane."),
+        ..options_table_entry::const_default()
+    },
+    options_table_entry {
+        name: "prompt-cursor-colour",
+        type_: options_table_type::OPTIONS_TABLE_COLOUR,
+        scope: OPTIONS_TABLE_SESSION,
+        default_num: 6,
+        text: c!("Colour of the cursor when in the command prompt."),
+        ..options_table_entry::const_default()
+    },
+    options_table_entry {
+        name: "prompt-cursor-style",
+        type_: options_table_type::OPTIONS_TABLE_CHOICE,
+        scope: OPTIONS_TABLE_SESSION,
+        choices: &OPTIONS_TABLE_CURSOR_STYLE_LIST,
+        default_num: 0,
+        text: c!("Style of the cursor when in the command prompt."),
+        ..options_table_entry::const_default()
+    },
+    options_table_entry {
+        name: "session-status-current-style",
+        type_: options_table_type::OPTIONS_TABLE_STRING,
+        scope: OPTIONS_TABLE_WINDOW,
+        default_str: Some("default"),
+        flags: OPTIONS_TABLE_IS_STYLE,
+        separator: c!(","),
+        text: c!("Style of the current session in the status line."),
+        ..options_table_entry::const_default()
+    },
+    options_table_entry {
+        name: "session-status-style",
+        type_: options_table_type::OPTIONS_TABLE_STRING,
+        scope: OPTIONS_TABLE_WINDOW,
+        default_str: Some("default"),
+        flags: OPTIONS_TABLE_IS_STYLE,
+        separator: c!(","),
+        text: c!("Style of sessions in the status line, except the current session."),
+        ..options_table_entry::const_default()
+    },
+    options_table_entry {
         name: "update-environment",
         type_: options_table_type::OPTIONS_TABLE_STRING,
         scope: OPTIONS_TABLE_SESSION,
         flags: OPTIONS_TABLE_IS_ARRAY,
         default_str: Some(
-            "DISPLAY KRB5CCNAME SSH_ASKPASS SSH_AUTH_SOCK SSH_AGENT_PID SSH_CONNECTION WINDOWID XAUTHORITY",
+            "DISPLAY KRB5CCNAME MSYSTEM SSH_ASKPASS SSH_AUTH_SOCK SSH_AGENT_PID SSH_CONNECTION WINDOWID XAUTHORITY",
         ),
         text: c!(
             "List of environment variables to update in the session environment when a client is attached."
@@ -1043,6 +1208,41 @@ pub static OPTIONS_TABLE: [options_table_entry; 190] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
+        name: "copy-mode-position-format",
+        type_: options_table_type::OPTIONS_TABLE_STRING,
+        scope: OPTIONS_TABLE_WINDOW | OPTIONS_TABLE_PANE,
+        default_str: Some(
+            "#[align=right]\
+             #{t/p:top_line_time}#{?#{e|>:#{top_line_time},0}, ,}\
+             [#{scroll_position}/#{history_size}]\
+             #{?search_timed_out, (timed out),\
+             #{?search_count, (#{search_count}\
+             #{?search_count_partial,+,} results),}}",
+        ),
+        text: c!("Format of the position indicator in copy mode."),
+        ..options_table_entry::const_default()
+    },
+    options_table_entry {
+        name: "copy-mode-position-style",
+        type_: options_table_type::OPTIONS_TABLE_STRING,
+        scope: OPTIONS_TABLE_WINDOW,
+        default_str: Some("#{E:mode-style}"),
+        flags: OPTIONS_TABLE_IS_STYLE,
+        separator: c!(","),
+        text: c!("Style of position indicator in copy mode."),
+        ..options_table_entry::const_default()
+    },
+    options_table_entry {
+        name: "copy-mode-selection-style",
+        type_: options_table_type::OPTIONS_TABLE_STRING,
+        scope: OPTIONS_TABLE_WINDOW,
+        default_str: Some("#{E:mode-style}"),
+        flags: OPTIONS_TABLE_IS_STYLE,
+        separator: c!(","),
+        text: c!("Style of selection in copy mode."),
+        ..options_table_entry::const_default()
+    },
+    options_table_entry {
         name: "fill-character",
         type_: options_table_type::OPTIONS_TABLE_STRING,
         scope: OPTIONS_TABLE_WINDOW,
@@ -1084,7 +1284,7 @@ pub static OPTIONS_TABLE: [options_table_entry; 190] = [
         type_: options_table_type::OPTIONS_TABLE_STRING,
         scope: OPTIONS_TABLE_WINDOW,
         flags: OPTIONS_TABLE_IS_STYLE,
-        default_str: Some("bg=yellow,fg=black"),
+        default_str: Some("noattr,bg=yellow,fg=black"),
         separator: c!(","),
         text: c!("Style of indicators and highlighting in modes."),
         ..options_table_entry::const_default()
@@ -1214,6 +1414,34 @@ pub static OPTIONS_TABLE: [options_table_entry; 190] = [
         ..options_table_entry::const_default()
     },
     options_table_entry {
+        name: "pane-scrollbars",
+        type_: options_table_type::OPTIONS_TABLE_CHOICE,
+        scope: OPTIONS_TABLE_WINDOW,
+        choices: &OPTIONS_TABLE_PANE_SCROLLBARS_LIST,
+        default_num: PANE_SCROLLBARS_OFF as i64,
+        text: c!("Pane scrollbar state."),
+        ..options_table_entry::const_default()
+    },
+    options_table_entry {
+        name: "pane-scrollbars-style",
+        type_: options_table_type::OPTIONS_TABLE_STRING,
+        scope: OPTIONS_TABLE_WINDOW | OPTIONS_TABLE_PANE,
+        default_str: Some("bg=black,fg=white,width=1,pad=0"),
+        flags: OPTIONS_TABLE_IS_STYLE,
+        separator: c!(","),
+        text: c!("Style of the pane scrollbar."),
+        ..options_table_entry::const_default()
+    },
+    options_table_entry {
+        name: "pane-scrollbars-position",
+        type_: options_table_type::OPTIONS_TABLE_CHOICE,
+        scope: OPTIONS_TABLE_WINDOW,
+        choices: &OPTIONS_TABLE_PANE_SCROLLBARS_POSITION_LIST,
+        default_num: PANE_SCROLLBARS_RIGHT as i64,
+        text: c!("Pane scrollbar position."),
+        ..options_table_entry::const_default()
+    },
+    options_table_entry {
         name: "popup-style",
         type_: options_table_type::OPTIONS_TABLE_STRING,
         scope: OPTIONS_TABLE_WINDOW,
@@ -1283,6 +1511,16 @@ pub static OPTIONS_TABLE: [options_table_entry; 190] = [
         scope: OPTIONS_TABLE_WINDOW | OPTIONS_TABLE_PANE,
         default_num: 0,
         text: c!("Whether typing should be sent to all panes simultaneously."),
+        ..options_table_entry::const_default()
+    },
+    options_table_entry {
+        name: "tiled-layout-max-columns",
+        type_: options_table_type::OPTIONS_TABLE_NUMBER,
+        scope: OPTIONS_TABLE_WINDOW,
+        minimum: 0,
+        maximum: u16::MAX as u32,
+        default_num: 0,
+        text: c!("Maximum number of columns in the 'tiled' layout. A value of 0 means no limit."),
         ..options_table_entry::const_default()
     },
     options_table_entry {
@@ -1457,6 +1695,8 @@ pub static OPTIONS_TABLE: [options_table_entry; 190] = [
     options_table_hook!("client-focus-out", ""),
     options_table_hook!("client-resized", ""),
     options_table_hook!("client-session-changed", ""),
+    options_table_hook!("client-light-theme", ""),
+    options_table_hook!("client-dark-theme", ""),
     options_table_hook!("command-error", ""),
     options_table_pane_hook!("pane-died", ""),
     options_table_pane_hook!("pane-exited", ""),

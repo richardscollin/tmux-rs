@@ -26,7 +26,7 @@ pub static CMD_DISPLAY_MENU_ENTRY: cmd_entry = cmd_entry {
         -1,
         Some(cmd_display_menu_args_parse),
     ),
-    usage: "[-MO] [-b border-lines] [-c target-client] [-C starting-choice] [-H selected-style] [-s style] [-S border-style] [-t target-pane][-T title] [-x position] [-y position] name key command ...",
+    usage: "[-MO] [-b border-lines] [-c target-client] [-C starting-choice] [-H selected-style] [-s style] [-S border-style] [-t target-pane] [-T title] [-x position] [-y position] name [key] [command] ...",
     target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_PANE, cmd_find_flags::empty()),
 
     flags: cmd_flag::CMD_AFTERHOOK.union(cmd_flag::CMD_CLIENT_CFLAG),
@@ -38,8 +38,8 @@ pub static CMD_DISPLAY_POPUP_ENTRY: cmd_entry = cmd_entry {
     name: "display-popup",
     alias: Some("popup"),
 
-    args: args_parse::new("Bb:Cc:d:e:Eh:s:S:t:T:w:x:y:", 0, -1, None),
-    usage: "[-BCE] [-b border-lines] [-c target-client] [-d start-directory] [-e environment] [-h height] [-s style] [-S border-style] [-t target-pane][-T title] [-w width] [-x position] [-y position] [shell-command]",
+    args: args_parse::new("Bb:Cc:d:e:Eh:kNs:S:t:T:w:x:y:", 0, -1, None),
+    usage: "[-BCEkN] [-b border-lines] [-c target-client] [-d start-directory] [-e environment] [-h height] [-s style] [-S border-style] [-t target-pane] [-T title] [-w width] [-x position] [-y position] [shell-command [argument ...]]",
     target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_PANE, cmd_find_flags::empty()),
 
     flags: cmd_flag::CMD_AFTERHOOK.union(cmd_flag::CMD_CLIENT_CFLAG),
@@ -50,7 +50,6 @@ pub static CMD_DISPLAY_POPUP_ENTRY: cmd_entry = cmd_entry {
 unsafe fn cmd_display_menu_args_parse(
     args: *mut args,
     idx: u32,
-    _cause: *mut *mut u8,
 ) -> args_parse_type {
     let mut i: u32 = 0;
 
@@ -62,7 +61,7 @@ unsafe fn cmd_display_menu_args_parse(
         }
 
         unsafe {
-            if *args_string(args, i) == b'\0' {
+            if args_string(&*args, i).unwrap().is_empty() {
                 i += 1;
                 continue;
             }
@@ -84,7 +83,7 @@ unsafe fn cmd_display_menu_args_parse(
     type_
 }
 
-unsafe fn cmd_display_menu_get_position(
+unsafe fn cmd_display_menu_get_pos(
     tc: *mut client,
     item: *mut cmdq_item,
     args: *mut args,
@@ -180,7 +179,7 @@ unsafe fn cmd_display_menu_get_position(
         format_add!(ft, "popup_height", "{h}");
 
         // Position so popup is in the centre.
-        let mut n: c_long = ((*tty).sx - 1) as c_long / 2 - w as c_long / 2;
+        let mut n: i64 = ((*tty).sx - 1) as i64 / 2 - w as i64 / 2;
         if n < 0 {
             format_add!(ft, "popup_centre_x", "0");
         } else {
@@ -195,25 +194,25 @@ unsafe fn cmd_display_menu_get_position(
 
         // Position of popup relative to mouse.
         if (*event).m.valid {
-            n = (*event).m.x as c_long - w as c_long / 2;
+            n = (*event).m.x as i64 - w as i64 / 2;
             if n < 0 {
                 format_add!(ft, "popup_mouse_centre_x", "0");
             } else {
                 format_add!(ft, "popup_mouse_centre_x", "{n}");
             }
             n = ((*event).m.y - h / 2) as i64;
-            if n + h as c_long >= (*tty).sy as i64 {
-                format_add!(ft, "popup_mouse_centre_y", "{}", (*tty).sy - h,);
+            if n + h as i64 >= (*tty).sy as i64 {
+                format_add!(ft, "popup_mouse_centre_y", "{}", (*tty).sy - h);
             } else {
                 format_add!(ft, "popup_mouse_centre_y", "{n}");
             }
-            n = (*event).m.y as c_long + h as c_long;
-            if n >= (*tty).sy as c_long {
-                format_add!(ft, "popup_mouse_top", "{}", (*tty).sy - 1,);
+            n = (*event).m.y as i64 + h as i64;
+            if n >= (*tty).sy as i64 {
+                format_add!(ft, "popup_mouse_top", "{}", (*tty).sy - 1);
             } else {
                 format_add!(ft, "popup_mouse_top", "{n}");
             }
-            n = ((*event).m.y - h) as c_long;
+            n = ((*event).m.y - h) as i64;
             if n < 0 {
                 format_add!(ft, "popup_mouse_bottom", "0");
             } else {
@@ -242,7 +241,7 @@ unsafe fn cmd_display_menu_get_position(
             top + (*wp).yoff as i32 + (*wp).sy as i32 - oy as i32,
         );
         format_add!(ft, "popup_pane_left", "{}", (*wp).xoff - ox,);
-        n = (*wp).xoff as c_long + (*wp).sx as i64 - ox as i64 - w as i64;
+        n = (*wp).xoff as i64 + (*wp).sx as i64 - ox as i64 - w as i64;
         if n < 0 {
             format_add!(ft, "popup_pane_right", "0");
         } else {
@@ -272,7 +271,7 @@ unsafe fn cmd_display_menu_get_position(
         *px = n as u32;
         log_debug!(
             "{}: -x: {} = {} = {} (-w {})",
-            "cmd_display_menu_get_position",
+            "cmd_display_menu_get_pos",
             _s(xp),
             _s(p),
             *px,
@@ -308,7 +307,7 @@ unsafe fn cmd_display_menu_get_position(
         *py = n as u32;
         log_debug!(
             "{}: -y: {} = {} = {} (-h {})",
-            "cmd_display_menu_get_position",
+            "cmd_display_menu_get_pos",
             _s(yp),
             _s(p),
             *py,
@@ -333,34 +332,33 @@ unsafe fn cmd_display_menu_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
         let selected_style = args_get_(args, 'H');
         let lines = box_lines::BOX_LINES_DEFAULT;
 
-        let mut cause = null_mut();
         let mut flags = menu_flags::empty();
         let mut starting_choice: i32 = 0;
         let mut px: u32 = 0;
         let mut py: u32 = 0;
-        let count = args_count(args);
+        let count = args_count(&*args);
         let o = (*(*(*(*target).s).curw).window).options;
 
         if (*tc).overlay_draw.is_some() {
             return cmd_retval::CMD_RETURN_NORMAL;
         }
 
-        if args_has(args, 'C') {
-            if streq_(args_get(args, b'C'), "-") {
+        if args_has(&*args, 'C') {
+            if streq_(args_get(&*args, b'C'), "-") {
                 starting_choice = -1;
             } else {
-                starting_choice =
-                    args_strtonum(args, b'C', 0, u32::MAX as i64, &raw mut cause) as i32;
-                if !cause.is_null() {
-                    cmdq_error!(item, "starting choice {}", _s(cause));
-                    free_(cause);
-                    return cmd_retval::CMD_RETURN_ERROR;
+                match args_strtonum(&*args, b'C', 0, u32::MAX as i64) {
+                    Ok(v) => starting_choice = v as i32,
+                    Err(cause) => {
+                        cmdq_error!(item, "starting choice {}", cause);
+                        return cmd_retval::CMD_RETURN_ERROR;
+                    }
                 }
             }
         }
 
-        let title = if args_has(args, 'T') {
-            format_single_from_target(item, args_get(args, b'T'))
+        let title = if args_has(&*args, 'T') {
+            format_single_from_target(item, args_get(&*args, b'T'))
         } else {
             xstrdup__("")
         };
@@ -369,7 +367,7 @@ unsafe fn cmd_display_menu_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
 
         let mut i: u32 = 0;
         while i != count {
-            let name = args_string(args, i);
+            let name = args_string(&*args, i).unwrap().as_ptr().cast();
             i += 1;
             if *name == b'\0' {
                 menu_add_item(menu, None, item, tc, target);
@@ -381,13 +379,13 @@ unsafe fn cmd_display_menu_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
                 menu_free(menu);
                 return cmd_retval::CMD_RETURN_ERROR;
             }
-            let key = args_string(args, i);
+            let key = args_string(&*args, i).unwrap().as_ptr().cast();
             i += 1;
 
             let menu_item: menu_item = menu_item {
                 name: Cow::Borrowed(cstr_to_str::<'static>(name)),
                 key: key_string_lookup_string(key),
-                command: SyncCharPtr::from_ptr(args_string(args, i)),
+                command: SyncCharPtr::from_ptr(args_string(&*args, i).unwrap().as_ptr().cast()),
             };
             i += 1;
 
@@ -401,7 +399,7 @@ unsafe fn cmd_display_menu_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
             menu_free(menu);
             return cmd_retval::CMD_RETURN_NORMAL;
         }
-        if cmd_display_menu_get_position(
+        if cmd_display_menu_get_pos(
             tc,
             item,
             args,
@@ -424,10 +422,10 @@ unsafe fn cmd_display_menu_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
             }
         }
 
-        if args_has(args, 'O') {
+        if args_has(&*args, 'O') {
             flags |= menu_flags::MENU_STAYOPEN;
         }
-        if !(*event).m.valid && !args_has(args, 'M') {
+        if !(*event).m.valid && !args_has(&*args, 'M') {
             flags |= menu_flags::MENU_NOMOUSE;
         }
         if menu_display(
@@ -460,71 +458,72 @@ unsafe fn cmd_display_popup_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
         let s = (*target).s;
         let tc = cmdq_get_target_client(item);
         let tty = &raw mut (*tc).tty;
-        let style = args_get(args, b's');
-        let border_style = args_get(args, b'S');
-        let mut cause: *mut u8 = null_mut();
+        let style = args_get(&*args, b's');
+        let border_style = args_get(&*args, b'S');
+        let mut cwd: *mut u8 = null_mut();
         let mut argc = 0;
         let mut lines = box_lines::BOX_LINES_DEFAULT as i32;
         let mut px = 0;
         let mut py = 0;
-        let count = args_count(args);
+        let mut w: u32 = 0;
+        let mut h: u32 = 0;
+        let count = args_count(&*args);
         let mut env = null_mut();
+        let modify = popup_present(tc);
+        let mut flags: i32 = -1;
         let o = (*(*(*s).curw).window).options;
 
-        if args_has(args, 'C') {
+        if args_has(&*args, 'C') {
             server_client_clear_overlay(tc);
             return cmd_retval::CMD_RETURN_NORMAL;
         }
-        if (*tc).overlay_draw.is_some() {
+        if !modify && (*tc).overlay_draw.is_some() {
             return cmd_retval::CMD_RETURN_NORMAL;
         }
 
-        let mut h: u32 = (*tty).sy / 2;
-        if args_has(args, 'h') {
-            h = args_percentage(
-                args,
-                b'h',
-                1,
-                (*tty).sy as i64,
-                (*tty).sy as i64,
-                &raw mut cause,
-            ) as u32;
-            if !cause.is_null() {
-                cmdq_error!(item, "height {}", _s(cause));
-                free_(cause);
-                return cmd_retval::CMD_RETURN_ERROR;
+        if !modify {
+            h = (*tty).sy / 2;
+            if args_has(&*args, 'h') {
+                match args_percentage(&*args, b'h', 1, (*tty).sy as i64, (*tty).sy as i64) {
+                    Ok(v) => h = v as u32,
+                    Err(cause) => {
+                        cmdq_error!(item, "height {}", cause);
+                        return cmd_retval::CMD_RETURN_ERROR;
+                    }
+                }
             }
-        }
 
-        let mut w = (*tty).sx / 2;
-        if args_has(args, 'w') {
-            w = args_percentage(
-                args,
-                b'w',
-                1,
-                (*tty).sx as i64,
-                (*tty).sx as i64,
-                &raw mut cause,
-            ) as u32;
-            if !cause.is_null() {
-                cmdq_error!(item, "width {}", _s(cause));
-                free_(cause);
-                return cmd_retval::CMD_RETURN_ERROR;
+            w = (*tty).sx / 2;
+            if args_has(&*args, 'w') {
+                match args_percentage(&*args, b'w', 1, (*tty).sx as i64, (*tty).sx as i64) {
+                    Ok(v) => w = v as u32,
+                    Err(cause) => {
+                        cmdq_error!(item, "width {}", cause);
+                        return cmd_retval::CMD_RETURN_ERROR;
+                    }
+                }
             }
+
+            if w > (*tty).sx {
+                w = (*tty).sx;
+            }
+            if h > (*tty).sy {
+                h = (*tty).sy;
+            }
+            if cmd_display_menu_get_pos(tc, item, args, &raw mut px, &raw mut py, w, h) == 0 {
+                return cmd_retval::CMD_RETURN_NORMAL;
+            }
+
+            let value = args_get(&*args, b'd');
+            cwd = if !value.is_null() {
+                format_single_from_target(item, value)
+            } else {
+                xstrdup(server_client_get_cwd(tc, s)).as_ptr()
+            };
         }
 
-        if w > (*tty).sx {
-            w = (*tty).sx;
-        }
-        if h > (*tty).sy {
-            h = (*tty).sy;
-        }
-        if cmd_display_menu_get_position(tc, item, args, &raw mut px, &raw mut py, w, h) == 0 {
-            return cmd_retval::CMD_RETURN_NORMAL;
-        }
-
-        let mut value = args_get(args, b'b');
-        if args_has(args, 'B') {
+        let value = args_get(&*args, b'b');
+        if args_has(&*args, 'B') {
             lines = box_lines::BOX_LINES_NONE as i32;
         } else if !value.is_null() {
             let oe = options_get(&mut *o, "popup-border-lines");
@@ -537,17 +536,51 @@ unsafe fn cmd_display_popup_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
             };
         }
 
-        value = args_get(args, b'd');
-        let cwd = if !value.is_null() {
-            format_single_from_target(item, value)
+        let title = if args_has(&*args, 'T') {
+            format_single_from_target(item, args_get(&*args, b'T'))
         } else {
-            xstrdup(server_client_get_cwd(tc, s)).as_ptr()
+            xstrdup_(c"").as_ptr()
         };
+
+        if args_has(&*args, 'N') || !modify {
+            flags = 0;
+        }
+        if args_has_count(&*args, b'E') > 1 {
+            if flags == -1 {
+                flags = 0;
+            }
+            flags |= popup_flag::POPUP_CLOSEEXITZERO.bits();
+        } else if args_has(&*args, 'E') {
+            if flags == -1 {
+                flags = 0;
+            }
+            flags |= popup_flag::POPUP_CLOSEEXIT.bits();
+        }
+        if args_has(&*args, 'k') {
+            if flags == -1 {
+                flags = 0;
+            }
+            flags |= popup_flag::POPUP_CLOSEANYKEY.bits();
+        }
+
+        if modify {
+            popup_modify(
+                tc,
+                title,
+                style,
+                border_style,
+                box_lines::try_from(lines).unwrap(),
+                flags,
+            );
+            free_(title);
+            return cmd_retval::CMD_RETURN_NORMAL;
+        }
+
         let mut shellcmd = null();
         if count == 0 {
             shellcmd = options_get_string_((*s).options, "default-command");
         } else if count == 1 {
-            shellcmd = args_string(args, 0);
+            shellcmd = args_string(&*args, 0).unwrap().as_ptr().cast();
         }
 
         let mut argv = null_mut();
@@ -563,28 +596,16 @@ unsafe fn cmd_display_popup_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
             args_to_vector(args, &raw mut argc, &raw mut argv);
         }
 
-        if args_has(args, 'e') {
+        if args_has(&*args, 'e') {
             env = environ_create().as_ptr();
-            let mut av = args_first_value(args, b'e');
-            while !av.is_null() {
-                environ_put(env, (*av).union_.string, environ_flags::empty());
-                av = args_next_value(av);
+            for av in args_entry_values(&*args, b'e') {
+                let args_value::String { string } = av else { continue };
+                environ_put(env, string.as_ptr().cast(), environ_flags::empty());
             }
         }
 
-        let title = if args_has(args, 'T') {
-            format_single_from_target(item, args_get(args, b'T'))
-        } else {
-            xstrdup_(c"").as_ptr()
-        };
-        let mut flags = popup_flag::empty();
-        if args_has_count(args, b'E') > 1 {
-            flags |= popup_flag::POPUP_CLOSEEXITZERO;
-        } else if args_has(args, 'E') {
-            flags |= popup_flag::POPUP_CLOSEEXIT;
-        }
         if popup_display(
-            flags,
+            popup_flag::from_bits_truncate(flags),
             box_lines::try_from(lines).unwrap(),
             item,
             px,

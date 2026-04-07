@@ -83,7 +83,7 @@ impl session {
         unsafe {
             let mut s: Box<session> = Box::new(zeroed());
             s.references = 1;
-            s.flags = 0;
+            s.flags = session_flags::empty();
 
             s.cwd = xstrdup(cwd).as_ptr();
 
@@ -121,9 +121,7 @@ impl session {
 
             log_debug!("new session {} ${}", s.name, s.id);
 
-            if libc::gettimeofday(&raw mut s.creation_time, null_mut()) != 0 {
-                fatal("gettimeofday failed");
-            }
+            s.creation_time = libc::gettimeofday_();
             session_update_activity(s.as_mut(), &raw mut s.creation_time);
 
             s
@@ -280,23 +278,18 @@ pub unsafe extern "C-unwind" fn session_lock_timer(_fd: i32, _events: i16, s: No
 /// Update activity time.
 pub unsafe fn session_update_activity(s: *mut session, from: *mut timeval) {
     unsafe {
-        let last = &raw mut (*s).last_activity_time;
-
-        memcpy__(last, &raw mut (*s).activity_time);
         if from.is_null() {
-            libc::gettimeofday(&raw mut (*s).activity_time, null_mut());
+            (*s).activity_time = libc::gettimeofday_();
         } else {
             memcpy__(&raw mut (*s).activity_time, from);
         }
 
         log_debug!(
-            "session ${} {} activity {}.{:06} (last {}.{:06})",
+            "session ${} {} activity {}.{:06}",
             (*s).id,
             (*s).name,
             (*s).activity_time.tv_sec,
             (*s).activity_time.tv_usec,
-            (*last).tv_sec,
-            (*last).tv_usec,
         );
 
         if evtimer_initialized(&raw mut (*s).lock_timer) {
@@ -311,7 +304,7 @@ pub unsafe fn session_update_activity(s: *mut session, from: *mut timeval) {
 
         if (*s).attached != 0 {
             let tv = timeval {
-                tv_sec: options_get_number_((*s).options, "lock-after-time"),
+                tv_sec: options_get_number_((*s).options, "lock-after-time") as _,
                 tv_usec: 0,
             };
 
@@ -364,21 +357,19 @@ pub unsafe fn session_attach(
     s: *mut session,
     w: *mut window,
     idx: i32,
-    cause: *mut *mut u8,
-) -> *mut winlink {
+) -> Result<*mut winlink, String> {
     unsafe {
         let wl = winlink_add(&raw mut (*s).windows, idx);
 
         if wl.is_null() {
-            *cause = format_nul!("index in use: {}", idx);
-            return null_mut();
+            return Err(format!("index in use: {idx}"));
         }
         (*wl).session = s;
         winlink_set_window(wl, w);
         notify_session_window(c"window-linked", s, w);
 
         session_group_synchronize_from(s);
-        wl
+        Ok(wl)
     }
 }
 
@@ -793,6 +784,22 @@ pub unsafe fn session_renumber_windows(s: *mut session) {
         // Free the old winlinks (reducing window references too).
         for wl in rb_foreach(old_wins.as_mut_ptr()).map(std::ptr::NonNull::as_ptr) {
             winlink_remove(old_wins.as_mut_ptr(), wl);
+        }
+    }
+}
+
+/// Set the `PANE_THEMECHANGED` flag for every pane in this session.
+pub unsafe fn session_theme_changed(s: *mut session) {
+    unsafe {
+        if s.is_null() {
+            return;
+        }
+        for wl in rb_foreach(&raw mut (*s).windows).map(NonNull::as_ptr) {
+            for wp in
+                tailq_foreach::<_, discr_entry>(&raw mut (*(*wl).window).panes).map(NonNull::as_ptr)
+            {
+                (*wp).flags |= window_pane_flags::PANE_THEMECHANGED;
+            }
         }
     }
 }

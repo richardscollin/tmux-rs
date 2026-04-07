@@ -193,13 +193,13 @@ pub unsafe fn strnvis(mut dst: *mut u8, mut src: *const u8, dlen: usize, flag: v
 
 pub unsafe fn stravis(outp: *mut *mut u8, src: *const u8, flag: vis_flags) -> i32 {
     unsafe {
-        let buf: *mut u8 = libc::calloc(4, crate::libc::strlen(src) + 1).cast();
+        let buf: *mut u8 = crate::libc::calloc(4, crate::libc::strlen(src) + 1).cast();
         if buf.is_null() {
             return -1;
         }
         let len = strvis(buf, src, flag);
         let serrno = crate::errno!();
-        *outp = libc::realloc(buf.cast(), len as usize + 1).cast();
+        *outp = crate::libc::realloc(buf.cast(), len as usize + 1).cast();
         if (*outp).is_null() {
             *outp = buf;
             crate::errno!() = serrno;

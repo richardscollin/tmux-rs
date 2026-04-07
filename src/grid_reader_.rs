@@ -178,16 +178,7 @@ pub unsafe fn grid_reader_handle_wrap(gr: *mut grid_reader, xx: *mut u32, yy: *m
 }
 
 pub unsafe fn grid_reader_in_set(gr: *mut grid_reader, set: *const u8) -> bool {
-    unsafe {
-        let mut gc = MaybeUninit::<grid_cell>::uninit();
-        let gc = gc.as_mut_ptr();
-
-        grid_get_cell((*gr).gd, (*gr).cx, (*gr).cy, gc);
-        if (*gc).flags.intersects(grid_flag::PADDING) {
-            return false;
-        }
-        utf8_cstrhas(set, &raw mut (*gc).data)
-    }
+    unsafe { grid_in_set((*gr).gd, (*gr).cx, (*gr).cy, set) }
 }
 
 pub unsafe fn grid_reader_cursor_next_word(gr: *mut grid_reader, separators: *const u8) {
@@ -222,7 +213,7 @@ pub unsafe fn grid_reader_cursor_next_word(gr: *mut grid_reader, separators: *co
                 loop {
                     (*gr).cx += 1;
                     if !(grid_reader_handle_wrap(gr, &raw mut xx, &raw mut yy) != 0
-                        && (!grid_reader_in_set(gr, separators)
+                        && !(grid_reader_in_set(gr, separators)
                             || grid_reader_in_set(gr, WHITESPACE)))
                     {
                         break;
@@ -230,10 +221,12 @@ pub unsafe fn grid_reader_cursor_next_word(gr: *mut grid_reader, separators: *co
                 }
             }
         }
-        while grid_reader_handle_wrap(gr, &raw mut xx, &raw mut yy) != 0
-            && grid_reader_in_set(gr, WHITESPACE)
-        {
-            (*gr).cx += 1;
+        let mut width;
+        while grid_reader_handle_wrap(gr, &raw mut xx, &raw mut yy) != 0 && {
+            width = grid_in_set_width((*gr).gd, (*gr).cx, (*gr).cy, WHITESPACE);
+            width != 0
+        } {
+            (*gr).cx += width;
         }
     }
 }
@@ -355,6 +348,29 @@ pub unsafe fn grid_reader_cursor_previous_word(
     }
 }
 
+/// Compare grid cell to UTF-8 data. Return true if equal.
+unsafe fn grid_reader_cell_equals_data(gc: *const grid_cell, ud: *const utf8_data) -> bool {
+    unsafe {
+        if (*gc).flags.intersects(grid_flag::PADDING) {
+            return false;
+        }
+        if (*gc).flags.intersects(grid_flag::TAB)
+            && (*ud).size == 1
+            && (*ud).data[0] == b'\t'
+        {
+            return true;
+        }
+        if (*gc).data.size != (*ud).size {
+            return false;
+        }
+        memcmp(
+            (*gc).data.data.as_ptr().cast(),
+            (*ud).data.as_ptr().cast(),
+            (*gc).data.size as usize,
+        ) == 0
+    }
+}
+
 pub unsafe fn grid_reader_cursor_jump(gr: *mut grid_reader, jc: *const utf8_data) -> i32 {
     unsafe {
         let mut gc = MaybeUninit::<grid_cell>::uninit();
@@ -368,14 +384,7 @@ pub unsafe fn grid_reader_cursor_jump(gr: *mut grid_reader, jc: *const utf8_data
             let xx = grid_line_length((*gr).gd, py);
             while px < xx {
                 grid_get_cell((*gr).gd, px, py, gc);
-                if !(*gc).flags.intersects(grid_flag::PADDING)
-                    && (*gc).data.size == (*jc).size
-                    && memcmp(
-                        (*gc).data.data.as_ptr().cast(),
-                        (*jc).data.as_ptr().cast(),
-                        (*gc).data.size as usize,
-                    ) == 0
-                {
+                if grid_reader_cell_equals_data(gc, jc) {
                     (*gr).cx = px;
                     (*gr).cy = py;
                     return 1;
@@ -410,14 +419,7 @@ pub unsafe fn grid_reader_cursor_jump_back(gr: *mut grid_reader, jc: *mut utf8_d
             px = xx;
             while px > 0 {
                 grid_get_cell((*gr).gd, px - 1, py - 1, gc);
-                if !((*gc).flags.intersects(grid_flag::PADDING)
-                    && (*gc).data.size == (*jc).size
-                    && memcmp(
-                        (*gc).data.data.as_ptr().cast(),
-                        (*jc).data.as_ptr().cast(),
-                        (*gc).data.size as usize,
-                    ) == 0)
-                {
+                if grid_reader_cell_equals_data(gc, jc) {
                     (*gr).cx = px - 1;
                     (*gr).cy = py - 1;
                     return 1;
@@ -454,7 +456,10 @@ pub unsafe fn grid_reader_cursor_back_to_indentation(gr: *mut grid_reader) {
             let xx = grid_line_length((*gr).gd, py);
             for px in 0..xx {
                 grid_get_cell((*gr).gd, px, py, gc);
-                if (*gc).data.size != 1 || (*gc).data.data[0] != b' ' {
+                if ((*gc).data.size != 1 || (*gc).data.data[0] != b' ')
+                    && !(*gc).flags.intersects(grid_flag::TAB)
+                    && !(*gc).flags.intersects(grid_flag::PADDING)
+                {
                     (*gr).cx = px;
                     (*gr).cy = py;
                     return;

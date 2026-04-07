@@ -27,6 +27,7 @@
 
 // generated using c2rust on unvis.c
 // TODO refactor
+use std::ffi::c_int;
 
 #[expect(
     clippy::char_lit_as_u8,
@@ -52,7 +53,7 @@ pub unsafe fn unvis(cp: *mut u8, c: u8, astate: *mut i32, flag: i32) -> i32 {
                 1
             }
             1 => {
-                match c as libc::c_int {
+                match c as c_int {
                     92 => {
                         *cp = c;
                         *astate = 0;
@@ -144,16 +145,16 @@ pub unsafe fn unvis(cp: *mut u8, c: u8, astate: *mut i32, flag: i32) -> i32 {
             }
             4 => {
                 if c == b'?' {
-                    *cp = (*cp as libc::c_int | 0o177 as libc::c_int) as u8;
+                    *cp = (*cp as c_int | 0o177 as c_int) as u8;
                 } else {
-                    *cp = (*cp as libc::c_int | c as libc::c_int & 0o37 as libc::c_int) as u8;
+                    *cp = (*cp as c_int | c as c_int & 0o37 as c_int) as u8;
                 }
                 *astate = 0;
                 1
             }
             5 => {
                 if (b'0'..=b'7').contains(&c) {
-                    *cp = (((*cp as libc::c_int) << 3 as libc::c_int) + (c - b'0') as i32) as u8;
+                    *cp = (((*cp as c_int) << 3 as c_int) + (c - b'0') as i32) as u8;
                     *astate = 6;
                     return 0;
                 }
@@ -161,9 +162,9 @@ pub unsafe fn unvis(cp: *mut u8, c: u8, astate: *mut i32, flag: i32) -> i32 {
                 2
             }
             6 => {
-                *astate = 0 as libc::c_int;
+                *astate = 0 as c_int;
                 if (b'0'..=b'7').contains(&c) {
-                    *cp = (((*cp as libc::c_int) << 3 as libc::c_int) + (c - b'0') as i32) as u8;
+                    *cp = (((*cp as c_int) << 3 as c_int) + (c - b'0') as i32) as u8;
                     return 1;
                 }
                 2
@@ -189,7 +190,7 @@ pub unsafe fn strunvis(mut dst: *mut u8, mut src: *const u8) -> i32 {
                 break;
             }
             loop {
-                match unvis(dst, c, &mut state, 0 as libc::c_int) {
+                match unvis(dst, c, &mut state, 0 as c_int) {
                     1 => {
                         dst = dst.add(1);
                         break;
@@ -207,7 +208,7 @@ pub unsafe fn strunvis(mut dst: *mut u8, mut src: *const u8) -> i32 {
                 }
             }
         }
-        if unvis(dst, c, &mut state, 1 as libc::c_int) == 1 as libc::c_int {
+        if unvis(dst, c, &mut state, 1 as c_int) == 1 as c_int {
             dst = dst.add(1);
         }
         *dst = b'\0';

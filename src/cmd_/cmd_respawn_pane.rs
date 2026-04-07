@@ -19,7 +19,7 @@ pub static CMD_RESPAWN_PANE_ENTRY: cmd_entry = cmd_entry {
     alias: Some("respawnp"),
 
     args: args_parse::new("c:e:kt:", 0, -1, None),
-    usage: "[-k] [-c start-directory] [-e environment] [-t target-pane] [shell-command]",
+    usage: "[-k] [-c start-directory] [-e environment] [-t target-pane] [shell-command [argument ...]]",
 
     target: cmd_entry_flag::new(b't', cmd_find_type::CMD_FIND_PANE, cmd_find_flags::empty()),
 
@@ -36,8 +36,6 @@ unsafe fn cmd_respawn_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
         let s = (*target).s;
         let wl = (*target).wl;
         let wp = (*target).wp;
-        let mut cause = null_mut();
-
         sc.item = item;
         sc.s = s;
         sc.wl = wl;
@@ -47,23 +45,21 @@ unsafe fn cmd_respawn_pane_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
         args_to_vector(args, &raw mut sc.argc, &raw mut sc.argv);
         sc.environ = environ_create().as_ptr();
 
-        let mut av = args_first_value(args, b'e');
-        while !av.is_null() {
-            environ_put(sc.environ, (*av).union_.string, environ_flags::empty());
-            av = args_next_value(av);
+        for av in args_entry_values(&*args, b'e') {
+            let args_value::String { string } = av else { continue };
+            environ_put(sc.environ, string.as_ptr().cast(), environ_flags::empty());
         }
 
         sc.idx = -1;
-        sc.cwd = args_get(args, b'c');
+        sc.cwd = args_get(&*args, b'c');
 
         sc.flags = SPAWN_RESPAWN;
-        if args_has(args, 'k') {
+        if args_has(&*args, 'k') {
             sc.flags |= SPAWN_KILL;
         }
 
-        if spawn_pane(&raw mut sc, &raw mut cause).is_null() {
-            cmdq_error!(item, "respawn pane failed: {}", _s(cause));
-            free_(cause);
+        if let Err(cause) = spawn_pane(&raw mut sc) {
+            cmdq_error!(item, "respawn pane failed: {}", cause);
             if !sc.argv.is_null() {
                 cmd_free_argv(sc.argc, sc.argv);
             }

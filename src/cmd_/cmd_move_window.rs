@@ -55,12 +55,10 @@ unsafe fn cmd_move_window_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
         let args = cmd_get_args(self_);
         let source = cmdq_get_source(item);
         let mut target = zeroed();
-        let tflag = args_get(args, b't');
+        let tflag = args_get(&*args, b't');
         let src = (*source).s;
         let wl = (*source).wl;
-        let mut cause = null_mut();
-
-        if args_has(args, 'r') {
+        if args_has(&*args, 'r') {
             if cmd_find_target(
                 &raw mut target,
                 item,
@@ -91,12 +89,12 @@ unsafe fn cmd_move_window_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
         let dst = target.s;
         let mut idx = target.idx;
 
-        let kflag = args_has(args, 'k');
-        let dflag = args_has(args, 'd');
-        let sflag = args_has(args, 's');
+        let kflag = args_has(&*args, 'k');
+        let dflag = args_has(&*args, 'd');
+        let sflag = args_has(&*args, 's');
 
-        let before = args_has(args, 'b');
-        if args_has(args, 'a') || before {
+        let before = args_has(&*args, 'b');
+        if args_has(&*args, 'a') || before {
             if !target.wl.is_null() {
                 idx = winlink_shuffle_up(dst, target.wl, before);
             } else {
@@ -107,9 +105,8 @@ unsafe fn cmd_move_window_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
             }
         }
 
-        if server_link_window(src, wl, dst, idx, kflag, !dflag, &raw mut cause) != 0 {
-            cmdq_error!(item, "{}", _s(cause));
-            free_(cause);
+        if let Err(cause) = server_link_window(src, wl, dst, idx, kflag, !dflag) {
+            cmdq_error!(item, "{}", cause);
             return cmd_retval::CMD_RETURN_ERROR;
         }
         if std::ptr::eq(cmd_get_entry(self_), &CMD_MOVE_WINDOW_ENTRY) {

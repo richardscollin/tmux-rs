@@ -19,12 +19,8 @@ const WINDOW_BUFFER_DEFAULT_FORMAT: &str = "#{t/p:buffer_created}: #{buffer_samp
 const WINDOW_BUFFER_DEFAULT_KEY_FORMAT: &str = concat!(
     "#{?#{e|<:#{line},10},", //
     "#{line}",
-    ",",
-    "#{?#{e|<:#{line},36},",
+    ",#{e|<:#{line},36},",
     "M-#{a:#{e|+:97,#{e|-:#{line},10}}}",
-    ",",
-    "",
-    "}",
     "}"
 );
 
@@ -54,6 +50,7 @@ pub static WINDOW_BUFFER_MODE: window_mode = window_mode {
     key_table: None,
     command: None,
     formats: None,
+    get_screen: None,
 };
 
 #[derive(num_enum::TryFromPrimitive)]
@@ -192,7 +189,7 @@ pub unsafe fn window_buffer_build(
 
             if !filter.is_null() {
                 let cp = format_expand(ft, filter);
-                if !format_true(cp) {
+                if !format_true(cstr_to_str_(cp)) {
                     free_(cp);
                     format_free(ft);
                     continue;
@@ -271,25 +268,70 @@ pub unsafe fn window_buffer_draw(
     }
 }
 
+unsafe fn window_buffer_find(
+    data: *const u8,
+    datalen: usize,
+    find: *const u8,
+    findlen: usize,
+    icase: i32,
+) -> bool {
+    unsafe {
+        if findlen == 0 || datalen < findlen {
+            return false;
+        }
+        for i in 0..=(datalen - findlen) {
+            let mut matched = true;
+            for j in 0..findlen {
+                if icase == 0 && *data.add(i + j) != *find.add(j) {
+                    matched = false;
+                    break;
+                }
+                if icase != 0
+                    && libc::tolower(*data.add(i + j) as i32)
+                        != libc::tolower(*find.add(j) as i32)
+                {
+                    matched = false;
+                    break;
+                }
+            }
+            if matched {
+                return true;
+            }
+        }
+        false
+    }
+}
+
 pub unsafe fn window_buffer_search(
     _modedata: *mut c_void,
     itemdata: NonNull<c_void>,
     ss: *const u8,
+    icase: i32,
 ) -> bool {
     unsafe {
         let item: NonNull<window_buffer_itemdata> = itemdata.cast();
         let Some(pb) = NonNull::new(paste_get_name(Some(&(*item.as_ptr()).name))) else {
             return false;
         };
-        if (*item.as_ptr()).name.contains(cstr_to_str(ss)) {
-            return true;
+        if icase != 0 {
+            if (*item.as_ptr())
+                .name
+                .to_ascii_lowercase()
+                .contains(&cstr_to_str(ss).to_ascii_lowercase())
+            {
+                return true;
+            }
+            let mut bufsize = 0;
+            let bufdata = paste_buffer_data_(pb, &mut bufsize);
+            window_buffer_find(bufdata, bufsize, ss, strlen(ss), icase)
+        } else {
+            if (*item.as_ptr()).name.contains(cstr_to_str(ss)) {
+                return true;
+            }
+            let mut bufsize = 0;
+            let bufdata = paste_buffer_data_(pb, &mut bufsize);
+            window_buffer_find(bufdata, bufsize, ss, strlen(ss), icase)
         }
-        let mut bufsize = 0;
-        let bufdata = paste_buffer_data_(pb, &mut bufsize);
-        let buf = std::slice::from_raw_parts(bufdata, bufsize);
-        let s = std::slice::from_raw_parts(ss, strlen(ss));
-
-        memchr::memmem::find(buf, s).is_some()
     }
 }
 
@@ -354,20 +396,20 @@ pub unsafe fn window_buffer_init(
         data.wp = wp;
         cmd_find_copy_state(&raw mut data.fs, fs);
 
-        if args.is_null() || !args_has(args, 'F') {
+        if args.is_null() || !args_has(&*args, 'F') {
             data.format = xstrdup__(WINDOW_BUFFER_DEFAULT_FORMAT);
         } else {
             data.format = xstrdup(args_get_(args, 'F')).as_ptr();
         }
-        if args.is_null() || !args_has(args, 'K') {
+        if args.is_null() || !args_has(&*args, 'K') {
             data.key_format = xstrdup__(WINDOW_BUFFER_DEFAULT_KEY_FORMAT);
         } else {
             data.key_format = xstrdup(args_get_(args, 'K')).as_ptr();
         }
-        if args.is_null() || args_count(args) == 0 {
+        if args.is_null() || args_count(&*args) == 0 {
             data.command = xstrdup__(WINDOW_BUFFER_DEFAULT_COMMAND);
         } else {
-            data.command = xstrdup(args_string(args, 0)).as_ptr();
+            data.command = xstrdup(args_string(&*args, 0).unwrap().as_ptr().cast()).as_ptr();
         }
 
         data.data = mode_tree_start(
@@ -379,6 +421,7 @@ pub unsafe fn window_buffer_init(
             Some(window_buffer_menu),
             None,
             Some(window_buffer_get_key),
+            None,
             data as *mut window_buffer_modedata as *mut c_void,
             WINDOW_BUFFER_MENU_ITEMS.as_slice(),
             &WINDOW_BUFFER_SORT_LIST,

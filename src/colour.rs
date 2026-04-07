@@ -18,7 +18,7 @@ use crate::*;
 use crate::options_::{options, options_array_first, options_array_item_index, options_array_item_value, options_array_next, options_get};
 
 const COLOUR_FLAG_256: i32 = 0x01000000;
-const COLOUR_FLAG_RGB: i32 = 0x02000000;
+pub const COLOUR_FLAG_RGB: i32 = 0x02000000;
 
 fn colour_dist_sq(r1: i32, g1: i32, b1: i32, r2: i32, g2: i32, b2: i32) -> i32 {
     (r1 - r2) * (r1 - r2) + (g1 - g2) * (g1 - g2) + (b1 - b2) * (b1 - b2)
@@ -151,6 +151,43 @@ pub fn colour_tostring(c: i32) -> Cow<'static, str> {
     })
 }
 
+/// Convert background colour to theme.
+pub fn colour_totheme(c: i32) -> client_theme {
+    if c == -1 {
+        return client_theme::THEME_UNKNOWN;
+    }
+
+    if c & COLOUR_FLAG_RGB != 0 {
+        let r = (c >> 16) & 0xff;
+        let g = (c >> 8) & 0xff;
+        let b = c & 0xff;
+
+        let brightness = r + g + b;
+        if brightness > 382 {
+            return client_theme::THEME_LIGHT;
+        }
+        return client_theme::THEME_DARK;
+    }
+
+    if c & COLOUR_FLAG_256 != 0 {
+        return colour_totheme(colour_256_to_rgb(c));
+    }
+
+    match c {
+        0 | 90 => client_theme::THEME_DARK,
+        7 | 97 => client_theme::THEME_LIGHT,
+        _ => {
+            if (0..=7).contains(&c) {
+                return colour_totheme(colour_256_to_rgb(c));
+            }
+            if (90..=97).contains(&c) {
+                return colour_totheme(colour_256_to_rgb(8 + c - 90));
+            }
+            client_theme::THEME_UNKNOWN
+        }
+    }
+}
+
 /// Convert colour from string.
 pub fn colour_fromstring(s: &str) -> i32 {
     if s.chars().next().is_some_and(|c| c == '#') && s.len() == 7 {
@@ -173,14 +210,14 @@ pub fn colour_fromstring(s: &str) -> i32 {
         }
     }
 
-    if s.len() > 6 && s[..6].eq_ignore_ascii_case("colour") {
+    if s.len() > 6 && s.is_char_boundary(6) && s[..6].eq_ignore_ascii_case("colour") {
         let Ok(n) = strtonum_(&s[6..], 0i32, 255) else {
             return -1;
         };
         return n | COLOUR_FLAG_256;
     }
 
-    if s.len() > 5 && s[..5].eq_ignore_ascii_case("color") {
+    if s.len() > 5 && s.is_char_boundary(5) && s[..5].eq_ignore_ascii_case("color") {
         let Ok(n) = strtonum_(&s[5..], 0i32, 255) else {
             return -1;
         };
@@ -870,15 +907,18 @@ pub fn colour_byname(name: &str) -> i32 {
         ("yellow4", 0x8b8b00),
     ];
 
-    if name.starts_with("grey") || name.starts_with("gray") {
+    if name.len() >= 4
+        && name.is_char_boundary(4)
+        && (name[..4].eq_ignore_ascii_case("grey") || name[..4].eq_ignore_ascii_case("gray"))
+    {
         if name.len() == 4 {
-            return -1;
+            return 0xbebebe | COLOUR_FLAG_RGB;
         }
 
         let Ok(c) = strtonum_(&name[4..], 0, 100) else {
             return -1;
         };
-        let c = (2.55f32 * (c as f32)).round() as i32;
+        let c = (2.55f64 * (c as f64)).round() as i32;
 
         if !(0..=255).contains(&c) {
             return -1;
@@ -983,13 +1023,13 @@ pub fn colour_palette_set(p: Option<&mut colour_palette>, n: i32, c: i32) -> i32
     1
 }
 
-pub unsafe fn colour_palette_from_option(p: Option<&mut colour_palette>, oo: *mut options) {
+pub fn colour_palette_from_option(p: Option<&mut colour_palette>, oo: &mut options) {
     unsafe {
         let Some(p) = p else {
             return;
         };
 
-        let o = options_get(&mut *oo, "pane-colours");
+        let o = options_get(oo, "pane-colours");
 
         let mut a = options_array_first(o);
         if a.is_null() {
@@ -1013,107 +1053,160 @@ pub unsafe fn colour_palette_from_option(p: Option<&mut colour_palette>, oo: *mu
     }
 }
 
-// below has the auto generated code I haven't bothered to translate yet
-pub unsafe fn colour_parse_x11(mut p: *const u8) -> i32 {
-    unsafe {
-        let mut c: f64 = 0.0;
-        let mut m: f64 = 0.0;
-        let mut y: f64 = 0.0;
-        let mut k: f64 = 0.0;
+/// Parse 3 hex components of equal width. Returns the colour, or None.
+fn parse_hex_rgb(rs: &str, gs: &str, bs: &str) -> Option<i32> {
+    let d = rs.len();
+    if (d != 2 && d != 4) || gs.len() != d || bs.len() != d {
+        return None;
+    }
+    let r = u32::from_str_radix(rs, 16).ok()?;
+    let g = u32::from_str_radix(gs, 16).ok()?;
+    let b = u32::from_str_radix(bs, 16).ok()?;
+    let shift = if d == 4 { 8 } else { 0 };
+    Some(colour_join_rgb((r >> shift) as u8, (g >> shift) as u8, (b >> shift) as u8))
+}
 
-        let mut r: u32 = 0;
-        let mut g: u32 = 0;
-        let mut b: u32 = 0;
+/// Parse an X11 colour specification string.
+pub fn colour_parse_x11(s: &str) -> i32 {
+    // rgb:XX/XX/XX or rgb:XXXX/XXXX/XXXX
+    if let Some(rest) = s.strip_prefix("rgb:") {
+        let mut it = rest.splitn(3, '/');
+        if let (Some(r), Some(g), Some(b)) = (it.next(), it.next(), it.next())
+            && let Some(c) = parse_hex_rgb(r, g, b) {
+                return c;
+            }
+    }
 
-        let mut len = strlen(p);
-        let colour: i32;
-        let copy: *mut u8;
-        if len == 12
-            && sscanf(
-                p.cast(),
-                c"rgb:%02x/%02x/%02x".as_ptr(),
-                &raw mut r,
-                &raw mut g,
-                &raw mut b,
-            ) == 3
-            || len == 7
-                && sscanf(
-                    p.cast(),
-                    c"#%02x%02x%02x".as_ptr(),
-                    &raw mut r,
-                    &raw mut g,
-                    &raw mut b,
-                ) == 3
-            || sscanf(
-                p.cast(),
-                c"%d,%d,%d".as_ptr(),
-                &raw mut r,
-                &raw mut g,
-                &raw mut b,
-            ) == 3
-        {
-            colour = colour_join_rgb(r as u8, g as u8, b as u8);
-        } else if len == 18
-            && sscanf(
-                p.cast(),
-                c"rgb:%04x/%04x/%04x".as_ptr(),
-                &raw mut r,
-                &raw mut g,
-                &raw mut b,
-            ) == 3
-            || len == 13
-                && sscanf(
-                    p.cast(),
-                    c"#%04x%04x%04x".as_ptr(),
-                    &raw mut r,
-                    &raw mut g,
-                    &raw mut b,
-                ) == 3
-        {
-            colour = colour_join_rgb((r >> 8) as u8, (g >> 8) as u8, (b >> 8) as u8);
-        } else if (sscanf(
-            p.cast(),
-            c"cmyk:%lf/%lf/%lf/%lf".as_ptr(),
-            &raw mut c,
-            &raw mut m,
-            &raw mut y,
-            &raw mut k,
-        ) == 4
-            || sscanf(
-                p.cast(),
-                c"cmy:%lf/%lf/%lf".as_ptr(),
-                &raw mut c,
-                &raw mut m,
-                &raw mut y,
-            ) == 3)
-            && (0.0..=1.0).contains(&c)
-            && (0.0..=1.0).contains(&m)
-            && (0.0..=1.0).contains(&y)
-            && (0.0..=1.0).contains(&k)
-        {
-            colour = colour_join_rgb(
-                ((1f64 - c) * (1f64 - k) * 255f64) as u8,
-                ((1f64 - m) * (1f64 - k) * 255f64) as u8,
-                ((1f64 - y) * (1f64 - k) * 255f64) as u8,
-            );
-        } else {
-            while len != 0 && *p == b' ' {
-                p = p.add(1);
-                len = len.wrapping_sub(1);
+    // #XXXXXX or #XXXXXXXXXXXX
+    if let Some(hex) = s.strip_prefix('#') {
+        let d = hex.len() / 3;
+        if hex.len() == d * 3
+            && let (Some(r), Some(g), Some(b)) = (hex.get(..d), hex.get(d..d * 2), hex.get(d * 2..))
+                && let Some(c) = parse_hex_rgb(r, g, b) {
+                    return c;
+                }
+    }
+
+    // R,G,B decimal
+    {
+        let mut it = s.splitn(3, ',');
+        if let (Some(r), Some(g), Some(b)) = (it.next(), it.next(), it.next())
+            && let (Ok(r), Ok(g), Ok(b)) = (r.parse::<i32>(), g.parse::<i32>(), b.parse::<i32>()) {
+                return colour_join_rgb(r as u8, g as u8, b as u8);
             }
-            while len != 0 && *p.add(len - 1) == b' ' {
-                len = len.wrapping_sub(1);
+    }
+
+    // cmyk:C/M/Y/K or cmy:C/M/Y
+    if let Some((rest, has_k)) = s
+        .strip_prefix("cmyk:")
+        .map(|r| (r, true))
+        .or_else(|| s.strip_prefix("cmy:").map(|r| (r, false)))
+    {
+        let mut it = rest.splitn(5, '/');
+        let mut next_f = || -> Option<f64> {
+            let v: f64 = it.next()?.parse().ok()?;
+            (0.0..=1.0).contains(&v).then_some(v)
+        };
+        if let (Some(c), Some(m), Some(y)) = (next_f(), next_f(), next_f()) {
+            let k = if has_k { next_f() } else { Some(0.0) };
+            if let Some(k) = k {
+                return colour_join_rgb(
+                    ((1.0 - c) * (1.0 - k) * 255.0) as u8,
+                    ((1.0 - m) * (1.0 - k) * 255.0) as u8,
+                    ((1.0 - y) * (1.0 - k) * 255.0) as u8,
+                );
             }
-            copy = xstrndup(p, len).cast().as_ptr();
-            colour = colour_byname(cstr_to_str(copy));
-            free(copy as _);
         }
-        log_debug!(
-            "{}: {} = {}",
-            "colour_parseX11",
-            _s(p),
-            colour_tostring(colour)
-        );
-        colour
+    }
+
+    // Trim ASCII spaces and try colour name lookup
+    colour_byname(s.trim_matches(' '))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use proptest::prelude::*;
+
+    #[test]
+    fn parse_x11_str() {
+        let rgb = colour_join_rgb;
+        let cases: &[(&str, i32)] = &[
+            ("rgb:ff/00/80", rgb(0xff, 0x00, 0x80)),
+            ("rgb:00/00/00", rgb(0, 0, 0)),
+            ("rgb:FF/AB/CD", rgb(0xff, 0xab, 0xcd)),
+            ("#ff0080", rgb(0xff, 0x00, 0x80)),
+            ("#000000", rgb(0, 0, 0)),
+            ("#ffffff", rgb(0xff, 0xff, 0xff)),
+            ("255,0,128", rgb(255, 0, 128)),
+            ("0,0,0", rgb(0, 0, 0)),
+            ("256,512,1024", rgb(0, 0, 0)), // truncated to u8
+            ("rgb:ffff/0000/8080", rgb(0xff, 0x00, 0x80)),
+            ("rgb:ff00/ff00/ff00", rgb(0xff, 0xff, 0xff)),
+            ("#ffff00008080", rgb(0xff, 0x00, 0x80)),
+            ("cmyk:0.0/0.0/0.0/1.0", rgb(0, 0, 0)),
+            ("cmyk:0.0/0.0/0.0/0.0", rgb(255, 255, 255)),
+            ("cmyk:0.0/1.0/1.0/0.0", rgb(255, 0, 0)),
+            ("cmyk:1.5/0.0/0.0/0.0", -1),
+            ("cmy:0.0/0.0/0.0", rgb(255, 255, 255)),
+            ("cmy:1.0/0.0/0.0", rgb(0, 255, 255)),
+            ("red", 0xff0000 | COLOUR_FLAG_RGB),
+            ("  red  ", 0xff0000 | COLOUR_FLAG_RGB),
+            ("notacolour", -1),
+            ("", -1),
+        ];
+        for &(input, expected) in cases {
+            assert_eq!(colour_parse_x11(input), expected, "input: {input:?}");
+        }
+    }
+
+    proptest! {
+        #[test]
+        fn proptest_rgb_8bit(r in 0u8..=255, g in 0u8..=255, b in 0u8..=255) {
+            let expected = colour_join_rgb(r, g, b);
+            prop_assert_eq!(colour_parse_x11(&format!("rgb:{r:02x}/{g:02x}/{b:02x}")), expected);
+            prop_assert_eq!(colour_parse_x11(&format!("#{r:02x}{g:02x}{b:02x}")), expected);
+            prop_assert_eq!(colour_parse_x11(&format!("{},{},{}", r, g, b)), expected);
+        }
+
+        #[test]
+        fn proptest_rgb_16bit(r in 0u32..=0xffff, g in 0u32..=0xffff, b in 0u32..=0xffff) {
+            let expected = colour_join_rgb((r >> 8) as u8, (g >> 8) as u8, (b >> 8) as u8);
+            prop_assert_eq!(colour_parse_x11(&format!("rgb:{r:04x}/{g:04x}/{b:04x}")), expected);
+            prop_assert_eq!(colour_parse_x11(&format!("#{r:04x}{g:04x}{b:04x}")), expected);
+        }
+
+        #[test]
+        fn proptest_cmyk(c in 0.0f64..=1.0, m in 0.0f64..=1.0, y in 0.0f64..=1.0, k in 0.0f64..=1.0) {
+            let expected = colour_join_rgb(
+                ((1.0 - c) * (1.0 - k) * 255.0) as u8,
+                ((1.0 - m) * (1.0 - k) * 255.0) as u8,
+                ((1.0 - y) * (1.0 - k) * 255.0) as u8,
+            );
+            prop_assert_eq!(colour_parse_x11(&format!("cmyk:{c}/{m}/{y}/{k}")), expected);
+        }
+
+        #[test]
+        fn proptest_cmy(c in 0.0f64..=1.0, m in 0.0f64..=1.0, y in 0.0f64..=1.0) {
+            let expected = colour_join_rgb(
+                ((1.0 - c) * 255.0) as u8,
+                ((1.0 - m) * 255.0) as u8,
+                ((1.0 - y) * 255.0) as u8,
+            );
+            prop_assert_eq!(colour_parse_x11(&format!("cmy:{c}/{m}/{y}")), expected);
+        }
+
+        #[test]
+        fn proptest_roundtrip_split_join(r in 0u8..=255, g in 0u8..=255, b in 0u8..=255) {
+            let c = colour_join_rgb(r, g, b);
+            let (r2, g2, b2) = colour_split_rgb(c);
+            prop_assert_eq!((r, g, b), (r2, g2, b2));
+        }
+
+        #[test]
+        fn proptest_no_panic(s in "\\PC{0,30}") {
+            // Must never panic on arbitrary input
+            let _ = colour_parse_x11(&s);
+        }
     }
 }

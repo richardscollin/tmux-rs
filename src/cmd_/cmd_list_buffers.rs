@@ -31,11 +31,11 @@ unsafe fn cmd_list_buffers_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
     unsafe {
         let args = cmd_get_args(self_);
 
-        let mut template: *const u8 = args_get(args, b'F');
+        let mut template: *const u8 = args_get(&*args, b'F');
         if template.is_null() {
             template = c!("#{buffer_name}: #{buffer_size} bytes: \"#{buffer_sample}\"");
         }
-        let filter = args_get(args, b'f');
+        let filter = args_get(&*args, b'f');
 
         let mut pb = null_mut();
         while {
@@ -53,7 +53,7 @@ unsafe fn cmd_list_buffers_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_re
             let flag;
             if !filter.is_null() {
                 let expanded = format_expand(ft, filter);
-                flag = format_true(expanded);
+                flag = format_true(cstr_to_str_(expanded));
                 free_(expanded);
             } else {
                 flag = true;

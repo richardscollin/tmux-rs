@@ -28,7 +28,6 @@ macro_rules! cmdq_get_callback {
 }
 pub(crate) use cmdq_get_callback;
 
-use crate::libc::{getpwuid, getuid};
 
 // Command queue flags.
 pub const CMDQ_FIRED: i32 = 0x1;
@@ -376,8 +375,6 @@ pub unsafe fn cmdq_insert_hook_(
         let state = (*item).state;
         let cmd = (*item).cmd;
         let args = cmd_get_args(cmd);
-        let mut ae: *mut args_entry = null_mut();
-        let mut flag: u8;
         const SIZEOF_TMP: usize = 32;
         let mut buf: [u8; 32] = zeroed();
         let tmp = &raw mut buf as *mut u8;
@@ -411,17 +408,16 @@ pub unsafe fn cmdq_insert_hook_(
         );
         cmdq_add_format!(new_state, c!("hook"), "{}", name);
 
-        let arguments = args_print(args);
-        cmdq_add_format!(new_state, c!("hook_arguments"), "{}", _s(arguments),);
-        free_(arguments);
+        let arguments = args_print(&*args);
+        cmdq_add_format!(new_state, c!("hook_arguments"), "{}", arguments);
 
-        for i in 0..args_count(args) {
+        for i in 0..args_count(&*args) {
             _ = xsnprintf_!(tmp, SIZEOF_TMP, "hook_argument_{}", i);
-            cmdq_add_format!(new_state, tmp, "{}", _s(args_string(args, i)));
+            cmdq_add_format!(new_state, tmp, "{}", _s(args_string(&*args, i).unwrap().as_ptr()));
         }
-        flag = args_first(args, &raw mut ae);
-        while flag != 0 {
-            let value = args_get(args, flag);
+        for entry in (*args).tree.values() {
+            let flag = entry.flag;
+            let value = args_get(&*args, flag);
             if value.is_null() {
                 _ = xsnprintf_!(tmp, SIZEOF_TMP, "hook_flag_{}", flag as char);
                 cmdq_add_format!(new_state, tmp, "1");
@@ -430,16 +426,11 @@ pub unsafe fn cmdq_insert_hook_(
                 cmdq_add_format!(new_state, tmp, "{}", _s(value));
             }
 
-            let mut i = 0;
-            let mut av = args_first_value(args, flag);
-            while !av.is_null() {
+            for (i, av) in args_entry_values(&*args, flag).iter().enumerate() {
+                let args_value::String { string } = av else { continue };
                 _ = xsnprintf_!(tmp, SIZEOF_TMP, "hook_flag_{}_{}", flag as char, i);
-                cmdq_add_format!(new_state, tmp, "{}", _s((*av).union_.string));
-                i += 1;
-                av = args_next_value(av);
+                cmdq_add_format!(new_state, tmp, "{}", _s(string.as_ptr()));
             }
-
-            flag = args_next(&raw mut ae);
         }
 
         let mut a = options_array_first(o);
@@ -567,7 +558,7 @@ pub unsafe fn cmdq_find_flag(
             return cmd_retval::CMD_RETURN_NORMAL;
         }
 
-        let value = args_get(cmd_get_args((*item).cmd), (*flag).flag);
+        let value = args_get(&*cmd_get_args((*item).cmd), (*flag).flag);
         if cmd_find_target(fs, item, cstr_to_str_(value), (*flag).type_, (*flag).flags) != 0 {
             cmd_find_clear_state(fs, cmd_find_flags::empty());
             return cmd_retval::CMD_RETURN_ERROR;
@@ -578,6 +569,8 @@ pub unsafe fn cmdq_find_flag(
 }
 
 pub unsafe fn cmdq_add_message(item: *mut cmdq_item) {
+    use crate::libc::{getpwuid, getuid};
+
     unsafe {
         let c = (*item).client;
         let state = (*item).state;
@@ -863,9 +856,9 @@ pub unsafe fn cmdq_guard(item: *mut cmdq_item, guard: *const u8, flags: bool) {
     }
 }
 
-pub unsafe fn cmdq_print_data(item: *mut cmdq_item, parse: i32, evb: *mut evbuffer) {
+pub unsafe fn cmdq_print_data(item: *mut cmdq_item, evb: *mut evbuffer) {
     unsafe {
-        server_client_print((*item).client, parse, evb);
+        server_client_print((*item).client, 1, evb);
     }
 }
 
@@ -884,7 +877,7 @@ pub unsafe fn cmdq_print_(item: *mut cmdq_item, args: std::fmt::Arguments) {
 
         evbuffer_add_vprintf(evb, args);
 
-        cmdq_print_data(item, 0, evb);
+        cmdq_print_data(item, evb);
         evbuffer_free(evb);
     }
 }
@@ -926,7 +919,7 @@ pub unsafe fn cmdq_error_(item: *mut cmdq_item, args: std::fmt::Arguments) {
             (*c).retval = 1;
         } else {
             *msg = (*msg).to_ascii_uppercase();
-            status_message_set!(c, -1, 1, false, "{}", _s(msg));
+            status_message_set!(c, -1, 1, false, false, "{}", _s(msg));
         }
 
         free_(msg);

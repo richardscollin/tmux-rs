@@ -23,7 +23,7 @@ pub static CMD_NEW_SESSION_ENTRY: cmd_entry = cmd_entry {
     alias: Some("new"),
 
     args: args_parse::new("Ac:dDe:EF:f:n:Ps:t:x:Xy:", 0, -1, None),
-    usage: "[-AdDEPX] [-c start-directory] [-e environment] [-F format] [-f flags] [-n window-name] [-s session-name] [-t target-session] [-x width] [-y height] [shell-command]",
+    usage: "[-AdDEPX] [-c start-directory] [-e environment] [-F format] [-f flags] [-n window-name] [-s session-name] [-t target-session] [-x width] [-y height] [shell-command [argument ...]]",
 
     target: cmd_entry_flag::new(
         b't',
@@ -74,7 +74,6 @@ unsafe fn cmd_new_session_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
         let errstr: *const u8 = null();
         let group: *const u8;
         let mut tmp: *const u8;
-        let mut cause = null_mut();
         let mut cwd = null_mut();
         let cp;
         let name;
@@ -86,10 +85,9 @@ unsafe fn cmd_new_session_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
         let mut sy = 0u32;
         let mut dsx;
         let mut dsy;
-        let count = args_count(args);
+        let count = args_count(&*args);
         let mut sc: spawn_context = zeroed();
         let retval;
-        let mut av: *mut args_value;
 
         'fail: {
             if std::ptr::eq(cmd_get_entry(self_), &CMD_HAS_SESSION_ENTRY) {
@@ -98,7 +96,7 @@ unsafe fn cmd_new_session_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
                 return cmd_retval::CMD_RETURN_NORMAL;
             }
 
-            if args_has(args, 't') && (count != 0 || args_has(args, 'n')) {
+            if args_has(&*args, 't') && (count != 0 || args_has(&*args, 'n')) {
                 cmdq_error!(item, "command or window name given with target");
                 return cmd_retval::CMD_RETURN_ERROR;
             }
@@ -114,7 +112,7 @@ unsafe fn cmd_new_session_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
                     return cmd_retval::CMD_RETURN_ERROR;
                 }
             }
-            if args_has(args, 'A') {
+            if args_has(&*args, 'A') {
                 as_ = if let Some(nn) = newname.as_deref() {
                     session_find(nn)
                 } else {
@@ -124,12 +122,12 @@ unsafe fn cmd_new_session_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
                     retval = cmd_attach_session(
                         item,
                         Some(&(*as_).name),
-                        args_has(args, 'D'),
-                        args_has(args, 'X'),
+                        args_has(&*args, 'D'),
+                        args_has(&*args, 'X'),
                         false,
                         null(),
-                        args_has(args, 'E'),
-                        args_get(args, b'f'),
+                        args_has(&*args, 'E'),
+                        args_get(&*args, b'f'),
                     );
                     return retval;
                 }
@@ -166,7 +164,7 @@ unsafe fn cmd_new_session_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
             }
 
             // Set -d if no client.
-            detached = args_has(args, 'd');
+            detached = args_has(&*args, 'd');
             if c.is_null() {
                 detached = true;
             } else if (*c).flags.intersects(client_flag::CONTROL) {
@@ -215,14 +213,14 @@ unsafe fn cmd_new_session_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
             }
 
             // Open the terminal if necessary.
-            if !detached && !already_attached && server_client_open(c, &raw mut cause) != 0 {
-                cmdq_error!(item, "open terminal failed: {}", _s(cause));
-                free_(cause);
+            if !detached && !already_attached &&
+                    let Err(cause) = server_client_open(c) {
+                cmdq_error!(item, "open terminal failed: {}", cause);
                 break 'fail;
             }
 
             // Get default session size.
-            dsx = if args_has(args, 'x') {
+            dsx = if args_has(&*args, 'x') {
                 tmp = args_get_(args, 'x');
                 if streq_(tmp, "-") {
                     if !c.is_null() { (*c).tty.sx } else { 80 }
@@ -237,7 +235,7 @@ unsafe fn cmd_new_session_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
                 80
             };
 
-            dsy = if args_has(args, 'y') {
+            dsy = if args_has(&*args, 'y') {
                 tmp = args_get_(args, 'y');
                 if streq_(tmp, "-") {
                     if !c.is_null() { (*c).tty.sy } else { 24 }
@@ -267,10 +265,10 @@ unsafe fn cmd_new_session_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
                     sx = dsx;
                     sy = dsy;
                 } else {
-                    if args_has(args, 'x') {
+                    if args_has(&*args, 'x') {
                         sx = dsx;
                     }
-                    if args_has(args, 'y') {
+                    if args_has(&*args, 'y') {
                         sy = dsy;
                     }
                 }
@@ -284,23 +282,22 @@ unsafe fn cmd_new_session_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
 
             // Create the new session.
             oo = options_create(GLOBAL_S_OPTIONS);
-            if args_has(args, 'x') || args_has(args, 'y') {
-                if !args_has(args, 'x') {
+            if args_has(&*args, 'x') || args_has(&*args, 'y') {
+                if !args_has(&*args, 'x') {
                     dsx = sx;
                 }
-                if !args_has(args, 'y') {
+                if !args_has(&*args, 'y') {
                     dsy = sy;
                 }
                 options_set_string!(oo, "default-size", false, "{dsx}x{dsy}");
             }
             env = environ_create().as_ptr();
-            if !c.is_null() && !args_has(args, 'E') {
+            if !c.is_null() && !args_has(&*args, 'E') {
                 environ_update(GLOBAL_S_OPTIONS, (*c).environ, env);
             }
-            av = args_first_value(args, b'e');
-            while !av.is_null() {
-                environ_put(env, (*av).union_.string, environ_flags::empty());
-                av = args_next_value(av);
+            for av in args_entry_values(&*args, b'e') {
+                let args_value::String { string } = av else { continue };
+                environ_put(env, string.as_ptr().cast(), environ_flags::empty());
             }
             s = session_create(prefix, newname.as_deref(), cwd, env, oo, tiop);
 
@@ -319,10 +316,9 @@ unsafe fn cmd_new_session_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
 
             sc.flags = spawn_flags::empty();
 
-            if spawn_window(&raw mut sc, &raw mut cause).is_null() {
+            if let Err(cause) = spawn_window(&raw mut sc) {
                 session_destroy(s, 0, __func__);
-                cmdq_error!(item, "create window failed: {}", _s(cause));
-                free_(cause);
+                cmdq_error!(item, "create window failed: {}", cause);
                 break 'fail;
             }
 
@@ -346,7 +342,7 @@ unsafe fn cmd_new_session_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
             // Set the client to the new session. If a command client exists, it is
             // taking this session and needs to get MSG_READY and stay around.
             if !detached {
-                if args_has(args, 'f') {
+                if args_has(&*args, 'f') {
                     server_client_set_flags(c, args_get_(args, 'f'));
                 }
                 if !already_attached {
@@ -363,7 +359,7 @@ unsafe fn cmd_new_session_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
             }
 
             // Print if requested.
-            if args_has(args, 'P') {
+            if args_has(&*args, 'P') {
                 let mut template: *const u8 = args_get_(args, 'F');
                 if template.is_null() {
                     template = NEW_SESSION_TEMPLATE;
@@ -376,7 +372,7 @@ unsafe fn cmd_new_session_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_ret
             if !detached {
                 (*c).flags |= client_flag::ATTACHED;
             }
-            if !args_has(args, 'd') {
+            if !args_has(&*args, 'd') {
                 cmd_find_from_session(current, s, cmd_find_flags::empty());
             }
 

@@ -14,25 +14,34 @@
 use crate::compat::imsg::{IMSG_HEADER_SIZE, MAX_IMSGSIZE};
 use crate::errno;
 use crate::libc::{
-    BUFSIZ, E2BIG, EBADF, EINVAL, EIO, ENOMEM, O_APPEND, O_CREAT, O_NONBLOCK, O_RDONLY, O_WRONLY,
+    BUFSIZ, E2BIG, EBADF, EINVAL, EIO, ENOMEM, O_NONBLOCK,
     STDERR_FILENO, STDIN_FILENO, STDOUT_FILENO, close, dup, fclose, ferror, fopen, fread, fwrite,
-    memcpy, open,
+    memcpy,
 };
+use crate::tmux_protocol::FileOpenFlags;
 use crate::*;
 
 pub static FILE_NEXT_STREAM: atomic::AtomicI32 = atomic::AtomicI32::new(3);
 
 pub unsafe fn file_get_path(c: *mut client, file: *const u8) -> NonNull<u8> {
     unsafe {
-        if *file == b'/' {
+        let path = if libc::strncmp(file.cast(), c!("~/").cast(), 2) != 0 {
             xstrdup(file)
         } else {
-            NonNull::new(format_nul!(
+            let home = find_home().map_or(c!(""), |h| h.as_ptr().cast());
+            NonNull::new(format_nul!("{}{}", _s(home), _s(file.add(1)))).unwrap()
+        };
+        if *path.as_ptr() == b'/' {
+            path
+        } else {
+            let full_path = NonNull::new(format_nul!(
                 "{}/{}",
                 _s(server_client_get_cwd(c, null_mut())),
-                _s(file)
+                _s(path.as_ptr())
             ))
-            .unwrap()
+            .unwrap();
+            free_(path.as_ptr());
+            full_path
         }
     }
 }
@@ -196,7 +205,7 @@ pub unsafe fn file_vprint(c: *mut client, args: std::fmt::Arguments) {
 
             msg.stream = 1;
             msg.fd = STDOUT_FILENO;
-            msg.flags = 0;
+            msg.flags = FileOpenFlags::None;
             proc_send(
                 (*c).peer,
                 msgtype::MSG_WRITE_OPEN,
@@ -231,7 +240,7 @@ pub unsafe fn file_print_buffer(c: *mut client, data: *mut c_void, size: usize) 
 
             msg.stream = 1;
             msg.fd = STDOUT_FILENO;
-            msg.flags = 0;
+            msg.flags = FileOpenFlags::None;
             proc_send(
                 (*c).peer,
                 msgtype::MSG_WRITE_OPEN,
@@ -271,7 +280,7 @@ pub unsafe fn file_error_(c: *mut client, args: std::fmt::Arguments) {
 
             msg.stream = 2;
             msg.fd = STDERR_FILENO;
-            msg.flags = 0;
+            msg.flags = FileOpenFlags::None;
             proc_send(
                 (*c).peer,
                 msgtype::MSG_WRITE_OPEN,
@@ -289,7 +298,7 @@ pub unsafe fn file_error_(c: *mut client, args: std::fmt::Arguments) {
 pub unsafe fn file_write(
     c: *mut client,
     path: *const u8,
-    flags: c_int,
+    flags: FileOpenFlags,
     bdata: *const c_void,
     bsize: usize,
     cb: client_file_cb,
@@ -325,7 +334,7 @@ pub unsafe fn file_write(
                 (*cf).path = file_get_path(c, path).as_ptr();
 
                 if c.is_null() || (*c).flags.intersects(client_flag::ATTACHED) {
-                    if flags & O_APPEND != 0 {
+                    if flags == FileOpenFlags::Append {
                         mode = c!("ab");
                     } else {
                         mode = c!("wb");
@@ -388,7 +397,7 @@ pub unsafe fn file_read(
         let msglen: usize;
         let mut fd: i32 = -1;
         let stream: u32 = FILE_NEXT_STREAM.fetch_add(1, atomic::Ordering::Relaxed) as u32;
-        let f: *mut FILE;
+        let mut f: *mut FILE = null_mut();
         let mut size: usize;
         let mut buffer = MaybeUninit::<[u8; BUFSIZ as usize]>::uninit();
         'done: {
@@ -431,7 +440,6 @@ pub unsafe fn file_read(
                         (*cf).error = EIO;
                         break 'done;
                     }
-                    fclose(f);
                     break 'done;
                 }
             }
@@ -460,6 +468,9 @@ pub unsafe fn file_read(
         }
 
         // done:
+        if !f.is_null() {
+            fclose(f);
+        }
         file_fire_done(cf);
         null_mut()
     }
@@ -632,7 +643,6 @@ pub unsafe fn file_write_open(
         let msglen = (*imsg).hdr.len as usize - IMSG_HEADER_SIZE;
         let path: *const u8;
         let mut find: client_file = zeroed();
-        let flags = O_NONBLOCK | O_WRONLY | O_CREAT;
         let mut error: i32 = 0;
         'reply: {
             if msglen < size_of::<msg_write_open>() {
@@ -658,7 +668,20 @@ pub unsafe fn file_write_open(
 
             (*cf).fd = -1;
             if (*msg).fd == -1 {
-                (*cf).fd = open(path, (*msg).flags | flags, 0o644);
+                use crate::compat::FileIntoRawFd;
+                let mut opts = std::fs::OpenOptions::from((*msg).flags);
+                #[cfg(unix)]
+                {
+                    use std::os::unix::fs::OpenOptionsExt;
+                    opts.custom_flags(O_NONBLOCK).mode(0o644);
+                }
+                (*cf).fd = match opts.open(cstr_to_str(path)) {
+                    Ok(file) => file.into_fd(),
+                    Err(e) => {
+                        errno!() = e.raw_os_error().unwrap_or(EINVAL);
+                        -1
+                    }
+                };
             } else if allow_streams != 0 {
                 if (*msg).fd != STDOUT_FILENO && (*msg).fd != STDERR_FILENO {
                     errno!() = EBADF;
@@ -846,7 +869,6 @@ pub unsafe fn file_read_open(
         let msglen = (*imsg).hdr.len as usize - IMSG_HEADER_SIZE;
         let path: *const u8;
         let cf: *mut client_file;
-        let flags = O_NONBLOCK | O_RDONLY;
         let error;
 
         let mut find = MaybeUninit::<client_file>::uninit();
@@ -875,7 +897,21 @@ pub unsafe fn file_read_open(
 
             (*cf).fd = -1;
             if (*msg).fd == -1 {
-                (*cf).fd = open(path, flags, 0);
+                use crate::compat::FileIntoRawFd;
+                let mut opts = std::fs::OpenOptions::new();
+                opts.read(true);
+                #[cfg(unix)]
+                {
+                    use std::os::unix::fs::OpenOptionsExt;
+                    opts.custom_flags(O_NONBLOCK);
+                }
+                (*cf).fd = match opts.open(cstr_to_str(path)) {
+                    Ok(file) => file.into_fd(),
+                    Err(e) => {
+                        errno!() = e.raw_os_error().unwrap_or(EINVAL);
+                        -1
+                    }
+                };
             } else if allow_streams != 0 {
                 if (*msg).fd != STDIN_FILENO {
                     errno!() = EBADF;

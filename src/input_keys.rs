@@ -47,12 +47,14 @@ RB_GENERATE!(
 );
 static mut INPUT_KEY_TREE: input_key_tree = rb_initializer();
 
-const INPUT_KEY_DEFAULTS_LEN: usize = 83;
+const INPUT_KEY_DEFAULTS_LEN: usize = 87;
 
-static mut INPUT_KEY_DEFAULTS: [input_key_entry; 83] = [
+static mut INPUT_KEY_DEFAULTS: [input_key_entry; 87] = [
     // Paste keys.
     input_key_entry::new(keyc::KEYC_PASTE_START as u64, c"\x1b[200~"),
+    input_key_entry::new(keyc::KEYC_PASTE_START as u64 | KEYC_IMPLIED_META, c"\x1b[200~"),
     input_key_entry::new(keyc::KEYC_PASTE_END as u64, c"\x1b[201~"),
+    input_key_entry::new(keyc::KEYC_PASTE_END as u64 | KEYC_IMPLIED_META, c"\x1b[201~"),
     // Function keys.
     input_key_entry::new(keyc::KEYC_F1 as u64, c"\x1bOP"),
     input_key_entry::new(keyc::KEYC_F2 as u64, c"\x1bOQ"),
@@ -138,6 +140,8 @@ static mut INPUT_KEY_DEFAULTS: [input_key_entry; 83] = [
     input_key_entry::new(keyc::KEYC_NPAGE as u64 | KEYC_BUILD_MODIFIERS, c"\x1b[6;_~"),
     input_key_entry::new(keyc::KEYC_IC as u64 | KEYC_BUILD_MODIFIERS, c"\x1b[2;_~"),
     input_key_entry::new(keyc::KEYC_DC as u64 | KEYC_BUILD_MODIFIERS, c"\x1b[3;_~"),
+    input_key_entry::new(keyc::KEYC_REPORT_DARK_THEME as u64, c"\x1b[?997;1n"),
+    input_key_entry::new(keyc::KEYC_REPORT_LIGHT_THEME as u64, c"\x1b[?997;2n"),
 ];
 
 static INPUT_KEY_MODIFIERS: [key_code; 9] = [
@@ -201,16 +205,9 @@ pub unsafe extern "C-unwind" fn input_key_build() {
             }
         }
 
-        for ike in rb_foreach(&raw mut INPUT_KEY_TREE).map(NonNull::as_ptr) {
-            log_debug!(
-                "{}:{} : 0x{:x} ({}) is {}",
-                file!(),
-                line!(),
-                (*ike).key,
-                _s(key_string_lookup_key((*ike).key, 1)),
-                _s((*ike).data)
-            );
-        }
+        // for ike in rb_foreach(&raw mut INPUT_KEY_TREE).map(NonNull::as_ptr) {
+            // log_debug!( "{}:{} : 0x{:x} ({}) is {}", file!(), line!(), (*ike).key, _s(key_string_lookup_key((*ike).key, 1)), _s((*ike).data));
+        // }
     }
 }
 
@@ -343,9 +340,9 @@ pub unsafe fn input_key_vt10x(bev: *mut bufferevent, mut key: key_code) -> i32 {
             return 0;
         }
 
-        /* Prevent TAB and RET from being swallowed by C0 remapping logic. */
+        // Prevent TAB, CR and LF from being swallowed by C0 remapping logic.
         let onlykey: key_code = key & KEYC_MASK_KEY;
-        if onlykey == b'\r' as u64 || onlykey == b'\t' as u64 {
+        if onlykey == b'\r' as u64 || onlykey == b'\n' as u64 || onlykey == b'\t' as u64 {
             key &= !KEYC_CTRL;
         }
 
@@ -387,9 +384,14 @@ pub unsafe fn input_key_mode1(bev: *mut bufferevent, key: key_code) -> i32 {
     unsafe {
         log_debug!("{}: key in {}", "input_key_mode1", key);
 
+        // A regular or shifted key + Meta.
+        if (key & (KEYC_CTRL | KEYC_META)) == KEYC_META {
+            return input_key_vt10x(bev, key);
+        }
+
         // As per https://invisible-island.net/xterm/modified-keys-us-pc105.html.
         let onlykey = key & KEYC_MASK_KEY;
-        if (key & (KEYC_META | KEYC_CTRL)) == KEYC_CTRL
+        if (key & KEYC_CTRL) != 0
             && (onlykey == ' ' as u64
                 || onlykey == '/' as u64
                 || onlykey == '@' as u64
@@ -397,11 +399,6 @@ pub unsafe fn input_key_mode1(bev: *mut bufferevent, key: key_code) -> i32 {
                 || (onlykey >= '2' as u64 && onlykey <= '8' as u64)
                 || (onlykey >= '@' as u64 && onlykey <= '~' as u64))
         {
-            return input_key_vt10x(bev, key);
-        }
-
-        // A regular key + Meta. In the absence of a standard to back this, we mimic what iTerm 2 does.
-        if (key & (KEYC_CTRL | KEYC_META)) == KEYC_META {
             return input_key_vt10x(bev, key);
         }
     }
@@ -430,16 +427,37 @@ pub unsafe fn input_key(s: *mut screen, bev: *mut bufferevent, mut key: key_code
 
         // Is this backspace?
         if (key & KEYC_MASK_KEY) == keyc::KEYC_BSPACE as u64 {
-            let mut newkey = options_get_number_(GLOBAL_OPTIONS, "backspace") as key_code;
-            if newkey >= 0x7f {
-                newkey = '\x7f' as u64;
+            let newkey = options_get_number_(GLOBAL_OPTIONS, "backspace") as key_code;
+            log_debug!(
+                "input_key: key 0x{:x} is backspace -> 0x{:x}",
+                key,
+                newkey
+            );
+            if (key & KEYC_MASK_MODIFIERS) == 0 {
+                ud.data[0] = 255;
+                if (newkey & KEYC_MASK_MODIFIERS) == 0 {
+                    ud.data[0] = newkey as u8;
+                } else if (newkey & KEYC_MASK_MODIFIERS) == KEYC_CTRL {
+                    let nk = newkey & KEYC_MASK_KEY;
+                    if nk == b'?' as u64 {
+                        ud.data[0] = 0x7f;
+                    } else if nk >= b'@' as u64 && nk <= b'_' as u64 {
+                        ud.data[0] = (nk - 0x40) as u8;
+                    } else if nk >= b'a' as u64 && nk <= b'z' as u64 {
+                        ud.data[0] = (nk - 0x60) as u8;
+                    }
+                }
+                if ud.data[0] != 255 {
+                    input_key_write(__func__, bev, ud.data.as_ptr().cast(), 1);
+                }
+                return 0;
             }
-            key = newkey | (key & (KEYC_MASK_MODIFIERS | KEYC_MASK_FLAGS));
+            key = newkey | (key & (KEYC_MASK_FLAGS | KEYC_MASK_MODIFIERS));
         }
 
         // Is this backtab?
         if (key & KEYC_MASK_KEY) == keyc::KEYC_BTAB as u64 {
-            if (*s).mode.intersects(EXTENDED_KEY_MODES) {
+            if (*s).mode.intersects(mode_flag::MODE_KEYS_EXTENDED_2) {
                 // When in xterm extended mode, remap into S-Tab.
                 key = '\x09' as u64 | (key & !KEYC_MASK_KEY) | KEYC_SHIFT;
             } else {
@@ -495,7 +513,7 @@ pub unsafe fn input_key(s: *mut screen, bev: *mut bufferevent, mut key: key_code
                 key,
                 _s((*ike).data)
             );
-            if (key == keyc::KEYC_PASTE_START as u64 || key == keyc::KEYC_PASTE_END as u64)
+            if KEYC_IS_PASTE(key)
                 && !(*s).mode.intersects(mode_flag::MODE_BRACKETPASTE)
             {
                 return 0;

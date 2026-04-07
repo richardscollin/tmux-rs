@@ -1,58 +1,73 @@
 #![allow(clippy::disallowed_types)]
 
 // reexport everything in libc from this module, then override things we want to change the interface for
-pub use ::libc::*;
+#[cfg(not(target_os = "windows"))]
+pub use ::libc_sys::*;
+
+#[cfg(target_os = "windows")]
+mod windows;
+// On Windows, pub use windows::* re-exports items for consumers but we also need them in local scope
+#[cfg(target_os = "windows")]
+use core::ffi::{c_int, c_void};
+
+#[cfg(target_os = "windows")]
+pub use windows::mode_t;
+#[cfg(target_os = "windows")]
+pub use windows::*;
 
 pub type wchar_t = core::ffi::c_int;
 
+#[cfg(not(target_os = "windows"))]
 unsafe extern "C" {
     pub static mut environ: *mut *mut u8;
     pub fn strsep(_: *mut *mut u8, _delim: *const u8) -> *mut u8;
 }
 
 pub unsafe fn free_<T>(p: *mut T) {
-    unsafe { ::libc::free(p as *mut c_void) }
-}
-
-#[allow(clippy::allow_attributes)]
-#[allow(
-    clippy::unnecessary_cast,
-    reason = "mode_t is u16 on macos so cast is required for some platforms only (should be allow, not expect)"
-)]
-pub unsafe fn open(path: *const u8, oflag: i32, mode: libc::mode_t) -> i32 {
-    unsafe { ::libc::open(path.cast(), oflag, mode as u32) }
+    unsafe { ::libc_sys::free(p as *mut c_void) }
 }
 
 pub unsafe fn fopen(filename: *const u8, mode: *const u8) -> *mut FILE {
-    unsafe { ::libc::fopen(filename.cast(), mode.cast()) }
+    unsafe { ::libc_sys::fopen(filename.cast(), mode.cast()) }
 }
 
+#[cfg(not(target_os = "windows"))]
 pub unsafe fn fnmatch(pattern: *const u8, name: *const u8, flags: c_int) -> c_int {
-    unsafe { ::libc::fnmatch(pattern.cast(), name.cast(), flags) }
+    unsafe { ::libc_sys::fnmatch(pattern.cast(), name.cast(), flags) }
 }
 
+#[cfg(not(target_os = "windows"))]
 pub unsafe fn gethostname(name: *mut u8, len: size_t) -> c_int {
-    unsafe { ::libc::gethostname(name.cast(), len) }
+    unsafe { ::libc_sys::gethostname(name.cast(), len) }
 }
 
 pub unsafe fn memcpy_<T>(dest: *mut T, src: *const T, n: usize) -> *mut T {
-    unsafe { ::libc::memcpy(dest as *mut c_void, src as *const c_void, n).cast() }
+    unsafe { ::libc_sys::memcpy(dest as *mut c_void, src as *const c_void, n).cast() }
 }
 
 pub unsafe fn memcpy__<T>(dest: *mut T, src: *const T) -> *mut T {
-    unsafe { ::libc::memcpy(dest as *mut c_void, src as *const c_void, size_of::<T>()).cast() }
+    unsafe { ::libc_sys::memcpy(dest as *mut c_void, src as *const c_void, size_of::<T>()).cast() }
 }
 
 pub unsafe fn setlocale(category: i32, locale: *const u8) -> *mut u8 {
-    unsafe { ::libc::setlocale(category, locale.cast()).cast() }
+    unsafe { ::libc_sys::setlocale(category, locale.cast()).cast() }
 }
 
+#[cfg(not(target_os = "windows"))]
 pub unsafe fn strftime(s: *mut u8, max: usize, format: *const u8, tm: *const tm) -> usize {
-    unsafe { ::libc::strftime(s.cast(), max, format.cast(), tm.cast()) }
+    unsafe { ::libc_sys::strftime(s.cast(), max, format.cast(), tm.cast()) }
 }
 
+#[cfg(not(target_os = "windows"))]
 pub unsafe fn strdup(cs: *const u8) -> *mut u8 {
-    unsafe { ::libc::strdup(cs.cast()).cast() }
+    unsafe { ::libc_sys::strdup(cs.cast()).cast() }
+}
+#[cfg(target_os = "windows")]
+pub unsafe fn strdup(cs: *const u8) -> *mut u8 {
+    unsafe extern "C" {
+        fn _strdup(s: *const core::ffi::c_char) -> *mut core::ffi::c_char;
+    }
+    unsafe { _strdup(cs.cast()).cast() }
 }
 
 pub unsafe fn strndup(cs: *const u8, n: usize) -> *mut u8 {
@@ -70,51 +85,180 @@ pub unsafe fn strndup(cs: *const u8, n: usize) -> *mut u8 {
 }
 
 pub unsafe fn strlen(cs: *const u8) -> usize {
-    unsafe { ::libc::strlen(cs.cast()) }
+    unsafe { ::libc_sys::strlen(cs.cast()) }
 }
 
 pub unsafe fn strnlen(cs: *const u8, maxlen: usize) -> usize {
-    unsafe { ::libc::strnlen(cs.cast(), maxlen) }
+    unsafe { ::libc_sys::strnlen(cs.cast(), maxlen) }
 }
 
 pub unsafe fn strspn(cs: *const u8, ct: *const u8) -> usize {
-    unsafe { ::libc::strspn(cs.cast(), ct.cast()) }
+    unsafe { ::libc_sys::strspn(cs.cast(), ct.cast()) }
 }
 
 pub unsafe fn strpbrk(cs: *const u8, ct: *const u8) -> *mut u8 {
-    unsafe { ::libc::strpbrk(cs.cast(), ct.cast()).cast() }
+    unsafe { ::libc_sys::strpbrk(cs.cast(), ct.cast()).cast() }
 }
 
 pub unsafe fn strcspn(cs: *const u8, ct: *const u8) -> usize {
-    unsafe { ::libc::strcspn(cs.cast(), ct.cast()) }
+    unsafe { ::libc_sys::strcspn(cs.cast(), ct.cast()) }
 }
 
 pub unsafe fn strrchr(cs: *const u8, c: c_int) -> *mut u8 {
-    unsafe { ::libc::strrchr(cs.cast(), c).cast() }
+    unsafe { ::libc_sys::strrchr(cs.cast(), c).cast() }
 }
 
 pub unsafe fn strchr(cs: *const u8, c: i32) -> *mut u8 {
-    unsafe { ::libc::strchr(cs.cast(), c).cast() }
+    unsafe { ::libc_sys::strchr(cs.cast(), c).cast() }
 }
 
 pub unsafe fn strchr_(cs: *const u8, c: char) -> *mut u8 {
-    unsafe { ::libc::strchr(cs.cast(), c as i32).cast() }
+    unsafe { ::libc_sys::strchr(cs.cast(), c as i32).cast() }
 }
 
 pub unsafe fn strstr(cs: *const u8, ct: *const u8) -> *mut u8 {
-    unsafe { ::libc::strstr(cs.cast(), ct.cast()).cast() }
+    unsafe { ::libc_sys::strstr(cs.cast(), ct.cast()).cast() }
+}
+
+pub unsafe fn strcasestr(cs: *const u8, ct: *const u8) -> *mut u8 {
+    unsafe {
+        let haystack = core::ffi::CStr::from_ptr(cs.cast());
+        let needle = core::ffi::CStr::from_ptr(ct.cast());
+        let h = haystack.to_bytes();
+        let n = needle.to_bytes();
+        if n.is_empty() {
+            return cs as *mut u8;
+        }
+        for i in 0..h.len() {
+            if h.len() - i < n.len() {
+                break;
+            }
+            if h[i..i + n.len()].eq_ignore_ascii_case(n) {
+                return cs.add(i) as *mut u8;
+            }
+        }
+        core::ptr::null_mut()
+    }
+}
+
+/// Idiomatic Rust version of strtol - parses an i64 from a string and returns remaining string
+pub fn strtol_(s: &str, base: i32) -> (i64, &str) {
+    let mut chars = s.chars();
+
+    // Skip leading whitespace
+    let mut pos = 0;
+    while let Some(c) = chars.clone().next() {
+        if !c.is_ascii_whitespace() {
+            break;
+        }
+        chars.next();
+        pos += c.len_utf8();
+    }
+
+    let after_whitespace = &s[pos..];
+
+    // Handle sign
+    let (negative, after_sign) = match after_whitespace.as_bytes().first() {
+        Some(b'-') => (true, &after_whitespace[1..]),
+        Some(b'+') => (false, &after_whitespace[1..]),
+        _ => (false, after_whitespace),
+    };
+
+    // Determine actual base and skip prefix if needed
+    let (actual_base, after_prefix) = if base == 0 {
+        if after_sign.starts_with("0x") || after_sign.starts_with("0X") {
+            (16, &after_sign[2..])
+        } else if after_sign.starts_with('0') {
+            (8, after_sign)
+        } else {
+            (10, after_sign)
+        }
+    } else if base == 16 && (after_sign.starts_with("0x") || after_sign.starts_with("0X")) {
+        (16, &after_sign[2..])
+    } else {
+        (base, after_sign)
+    };
+
+    if !(2..=36).contains(&actual_base) {
+        return (0, s);
+    }
+
+    // Find end of valid digits
+    let digit_end = after_prefix
+        .bytes()
+        .position(|b| {
+            let digit_val = match b {
+                b'0'..=b'9' => b - b'0',
+                b'a'..=b'z' => b - b'a' + 10,
+                b'A'..=b'Z' => b - b'A' + 10,
+                _ => return true, // Not a digit character
+            };
+            digit_val >= actual_base as u8
+        })
+        .unwrap_or(after_prefix.len());
+
+    if digit_end == 0 {
+        // No valid digits found
+        return (0, s);
+    }
+
+    let digit_str = &after_prefix[..digit_end];
+    let remaining = &after_prefix[digit_end..];
+
+    // Parse using from_str_radix
+    let result = i64::from_str_radix(digit_str, actual_base as u32).unwrap_or({
+        // Overflow
+        if negative { i64::MIN } else { i64::MAX }
+    });
+
+    let final_result = if negative {
+        result.checked_neg().unwrap_or(i64::MIN)
+    } else {
+        result
+    };
+
+    (final_result, remaining)
 }
 
 pub unsafe fn strtol(s: *const u8, endp: *mut *mut u8, base: i32) -> i64 {
-    unsafe { ::libc::strtol(s.cast(), endp.cast(), base) }
+    unsafe {
+        if s.is_null() {
+            if !endp.is_null() {
+                *endp = s.cast_mut();
+            }
+            return 0;
+        }
+
+        let s_str = crate::cstr_to_str(s);
+        let (result, remaining) = strtol_(s_str, base);
+
+        if !endp.is_null() {
+            let consumed = s_str.len() - remaining.len();
+            *endp = s.add(consumed).cast_mut();
+        }
+
+        result
+    }
 }
 
 pub unsafe fn strtoul(s: *const u8, endp: *mut *mut u8, base: i32) -> u64 {
-    unsafe { ::libc::strtoul(s.cast(), endp.cast(), base) }
+    unsafe { ::libc_sys::strtoul(s.cast(), endp.cast(), base) as u64 }
 }
 
 pub unsafe fn strtod(s: *const u8, endp: *mut *mut u8) -> f64 {
-    unsafe { ::libc::strtod(s.cast(), endp.cast()) }
+    unsafe { ::libc_sys::strtod(s.cast(), endp.cast()) }
+}
+
+#[inline]
+pub fn gettimeofday_() -> timeval {
+    let duration = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap();
+
+    timeval {
+        tv_sec: duration.as_secs() as _,
+        tv_usec: duration.subsec_micros() as _,
+    }
 }
 
 pub fn time(t: *mut time_t) -> time_t {
@@ -126,27 +270,46 @@ pub fn time(t: *mut time_t) -> time_t {
         .as_secs() as time_t
 }
 
+#[cfg(not(target_os = "windows"))]
 pub unsafe fn tzset() {
     unsafe extern "C" {
         fn tzset();
     }
     unsafe { tzset() }
 }
+#[cfg(target_os = "windows")]
+pub unsafe fn tzset() {
+    unsafe extern "C" {
+        fn _tzset();
+    }
+    unsafe { _tzset() }
+}
 
 pub unsafe fn unlink(c: *const u8) -> i32 {
-    unsafe { ::libc::unlink(c.cast()) }
+    unsafe { ::libc_sys::unlink(c.cast()) }
 }
 
 #[cfg(target_os = "linux")]
 macro_rules! errno {
     () => {
-        *::libc::__errno_location()
+        *::libc_sys::__errno_location()
     };
 }
 #[cfg(target_os = "macos")]
 macro_rules! errno {
     () => {
-        *::libc::__error()
+        *::libc_sys::__error()
+    };
+}
+#[cfg(target_os = "windows")]
+macro_rules! errno {
+    () => {
+        *{
+            unsafe extern "C" {
+                unsafe fn _errno() -> *mut i32;
+            }
+            _errno()
+        }
     };
 }
 pub(crate) use errno;
@@ -171,30 +334,47 @@ pub fn MB_CUR_MAX() -> usize {
     unsafe { ___mb_cur_max() as usize }
 }
 
+#[cfg(target_os = "windows")]
+#[expect(non_snake_case)]
+#[inline]
+pub fn MB_CUR_MAX() -> usize {
+    unsafe extern "C" {
+        fn ___mb_cur_max_func() -> core::ffi::c_int;
+    }
+    unsafe { ___mb_cur_max_func() as usize }
+}
+
+#[cfg(not(target_os = "windows"))]
 unsafe extern "C" {
     pub fn wcwidth(c: wchar_t) -> i32;
+}
+
+unsafe extern "C" {
     pub fn mbtowc(pwc: *mut wchar_t, s: *const u8, n: usize) -> i32;
     pub fn wctomb(s: *mut u8, wc: wchar_t) -> i32;
 }
 
 #[inline]
 pub unsafe fn memset0<T>(dest: *mut T) -> *mut T {
-    unsafe { libc::memset(dest.cast(), 0, size_of::<T>()).cast() }
+    unsafe { ::libc_sys::memset(dest.cast(), 0, size_of::<T>()).cast() }
 }
 
+#[cfg(not(target_os = "windows"))]
 pub unsafe fn regcomp(preg: *mut regex_t, pattern: *const u8, cflags: i32) -> i32 {
-    unsafe { ::libc::regcomp(preg, pattern.cast(), cflags) }
+    unsafe { ::libc_sys::regcomp(preg, pattern.cast(), cflags) }
 }
 
+#[cfg(not(target_os = "windows"))]
 pub unsafe fn glob(
     pattern: *const u8,
     flags: i32,
     errfunc: Option<extern "C" fn(epath: *const c_char, errno: c_int) -> c_int>,
     pglob: *mut glob_t,
 ) -> i32 {
-    unsafe { ::libc::glob(pattern.cast(), flags, errfunc, pglob) }
+    unsafe { ::libc_sys::glob(pattern.cast(), flags, errfunc, pglob) }
 }
 
+#[cfg(not(target_os = "windows"))]
 pub unsafe fn regexec(
     preg: *const regex_t,
     input: *const u8,
@@ -202,7 +382,7 @@ pub unsafe fn regexec(
     pmatch: *mut regmatch_t,
     eflags: i32,
 ) -> i32 {
-    unsafe { ::libc::regexec(preg, input.cast(), nmatch, pmatch, eflags) }
+    unsafe { ::libc_sys::regexec(preg, input.cast(), nmatch, pmatch, eflags) }
 }
 
 #[inline]
@@ -228,9 +408,9 @@ pub unsafe fn timersub(a: *const timeval, b: *const timeval, result: *mut timeva
     }
 }
 
-pub struct timer(*const libc::timeval);
+pub struct timer(*const ::libc_sys::timeval);
 impl timer {
-    pub unsafe fn new(ptr: *const libc::timeval) -> Self {
+    pub unsafe fn new(ptr: *const ::libc_sys::timeval) -> Self {
         Self(ptr)
     }
 }
@@ -258,11 +438,11 @@ impl PartialOrd for timer {
 }
 
 pub unsafe fn strcmp(cs: *const u8, ct: *const u8) -> i32 {
-    unsafe { ::libc::strcmp(cs.cast(), ct.cast()) }
+    unsafe { ::libc_sys::strcmp(cs.cast(), ct.cast()) }
 }
 
 pub unsafe fn strncmp(cs: *const u8, ct: *const u8, n: usize) -> i32 {
-    unsafe { ::libc::strncmp(cs.cast(), ct.cast(), n) }
+    unsafe { ::libc_sys::strncmp(cs.cast(), ct.cast(), n) }
 }
 
 pub unsafe fn strcmp_(left: *const u8, right: &str) -> std::cmp::Ordering {
@@ -292,8 +472,9 @@ pub unsafe fn streq_(left: *const u8, right: &str) -> bool {
     unsafe { matches!(strcmp_(left, right), std::cmp::Ordering::Equal) }
 }
 
+#[cfg(not(target_os = "windows"))]
 pub unsafe fn strncasecmp(s1: *const u8, s2: *const u8, n: usize) -> i32 {
-    unsafe { ::libc::strncasecmp(s1.cast(), s2.cast(), n) }
+    unsafe { ::libc_sys::strncasecmp(s1.cast(), s2.cast(), n) }
 }
 
 pub unsafe fn strcasecmp_(left: *const u8, right: &'static str) -> std::cmp::Ordering {
@@ -324,11 +505,12 @@ pub unsafe fn strcaseeq_(left: *const u8, right: &'static str) -> bool {
 }
 
 pub unsafe fn strerror<'a>(n: c_int) -> &'a str {
-    unsafe { crate::cstr_to_str(::libc::strerror(n).cast()) }
+    unsafe { crate::cstr_to_str(::libc_sys::strerror(n).cast()) }
 }
 
+#[cfg(not(target_os = "windows"))]
 pub unsafe fn ttyname(fd: i32) -> *mut u8 {
-    unsafe { ::libc::ttyname(fd).cast() }
+    unsafe { ::libc_sys::ttyname(fd).cast() }
 }
 
 pub(crate) fn basename(path: &str) -> &str {

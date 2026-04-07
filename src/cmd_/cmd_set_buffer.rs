@@ -18,7 +18,7 @@ pub static CMD_SET_BUFFER_ENTRY: cmd_entry = cmd_entry {
     alias: Some("setb"),
 
     args: args_parse::new("ab:t:n:w", 0, 1, None),
-    usage: "[-aw] [-b buffer-name] [-n new-buffer-name] [-t target-client] data",
+    usage: "[-aw] [-b buffer-name] [-n new-buffer-name] [-t target-client] [data]",
 
     flags: cmd_flag::CMD_AFTERHOOK
         .union(cmd_flag::CMD_CLIENT_TFLAG)
@@ -46,19 +46,18 @@ unsafe fn cmd_set_buffer_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retv
         let args = cmd_get_args(self_);
         let tc = cmdq_get_target_client(item);
         let mut pb;
-        let mut cause = null_mut();
         let olddata;
 
-        let mut bufname = cstr_to_str_(args_get_(args, 'b'));
+        let mut bufname = cstr_to_str_(args_get_(args, 'b')).map(|s| s.to_string());
         if bufname.is_none() {
             pb = null_mut();
         } else {
-            pb = paste_get_name(bufname);
+            pb = paste_get_name(bufname.as_deref());
         }
 
         if std::ptr::eq(cmd_get_entry(self_), &CMD_DELETE_BUFFER_ENTRY) {
             if pb.is_null() {
-                if let Some(bufname) = bufname {
+                if let Some(bufname) = &bufname {
                     cmdq_error!(item, "unknown buffer: {}", bufname);
                     return cmd_retval::CMD_RETURN_ERROR;
                 }
@@ -72,9 +71,9 @@ unsafe fn cmd_set_buffer_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retv
             return cmd_retval::CMD_RETURN_NORMAL;
         }
 
-        if args_has(args, 'n') {
+        if args_has(&*args, 'n') {
             if pb.is_null() {
-                if let Some(bufname) = bufname {
+                if let Some(bufname) = &bufname {
                     cmdq_error!(item, "unknown buffer: {}", bufname);
                     return cmd_retval::CMD_RETURN_ERROR;
                 }
@@ -84,19 +83,18 @@ unsafe fn cmd_set_buffer_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retv
                 cmdq_error!(item, "no buffer");
                 return cmd_retval::CMD_RETURN_ERROR;
             }
-            if paste_rename(bufname, cstr_to_str_(args_get_(args, 'n')), &raw mut cause) != 0 {
-                cmdq_error!(item, "{}", _s(cause));
-                free_(cause);
+            if let Err(cause) = paste_rename(bufname.as_deref(), cstr_to_str_(args_get_(args, 'n'))) {
+                cmdq_error!(item, "{}", cause);
                 return cmd_retval::CMD_RETURN_ERROR;
             }
             return cmd_retval::CMD_RETURN_NORMAL;
         }
 
-        if args_count(args) != 1 {
+        if args_count(&*args) != 1 {
             cmdq_error!(item, "no data specified");
             return cmd_retval::CMD_RETURN_ERROR;
         }
-        let newsize = strlen(args_string(args, 0));
+        let newsize = strlen(args_string(&*args, 0).unwrap().as_ptr().cast());
         if newsize == 0 {
             return cmd_retval::CMD_RETURN_NORMAL;
         }
@@ -105,7 +103,7 @@ unsafe fn cmd_set_buffer_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retv
         let mut bufdata = null_mut();
 
         if let Some(pb_non_null) = NonNull::new(pb)
-            && args_has(args, 'a')
+            && args_has(&*args, 'a')
         {
             olddata = paste_buffer_data_(pb_non_null, &mut bufsize);
             bufdata = xmalloc(bufsize).as_ptr().cast();
@@ -113,16 +111,15 @@ unsafe fn cmd_set_buffer_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_retv
         }
 
         bufdata = xrealloc_(bufdata, bufsize + newsize).as_ptr();
-        memcpy_(bufdata.add(bufsize), args_string(args, 0), newsize);
+        memcpy_(bufdata.add(bufsize), args_string(&*args, 0).unwrap().as_ptr().cast(), newsize);
         bufsize += newsize;
 
-        if paste_set(bufdata, bufsize, bufname, &raw mut cause) != 0 {
-            cmdq_error!(item, "{}", _s(cause));
+        if let Err(cause) = paste_set(bufdata, bufsize, bufname.as_deref()) {
+            cmdq_error!(item, "{}", cause);
             free_(bufdata);
-            free_(cause);
             return cmd_retval::CMD_RETURN_ERROR;
         }
-        if args_has(args, 'w') && !tc.is_null() {
+        if args_has(&*args, 'w') && !tc.is_null() {
             tty_set_selection(&raw mut (*tc).tty, c!(""), bufdata, bufsize);
         }
 

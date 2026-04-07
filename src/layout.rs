@@ -1201,7 +1201,7 @@ pub unsafe fn layout_spread_cell(w: *mut window, parent: *mut layout_cell) -> c_
         }
         // Remaining space after assigning that which can be evenly
         // distributed.
-        let mut remainder = size - (number * (each + 1)) + 1;
+        let mut remainder = (size - (number - 1)) % number;
 
         let mut changed = 0;
         for lc in tailq_foreach(&raw mut (*parent).cells).map(NonNull::as_ptr) {

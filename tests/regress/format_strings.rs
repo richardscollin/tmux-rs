@@ -340,6 +340,9 @@ fn format_strings() {
     // Create a second window for loop tests
     tmux.run(&["new-window"]);
     assert_format(&tmux, "#{W:#{window_index}}", "01");
+    // Ensure both windows have the same name so name-sort preserves index order
+    tmux.run(&["rename-window", "-t", "0", "win"]);
+    tmux.run(&["rename-window", "-t", "1", "win"]);
     assert_format(&tmux, "#{W/n:#{window_index}}", "01"); // sort by name
 
     // Pane loop

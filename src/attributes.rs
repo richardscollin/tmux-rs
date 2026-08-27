@@ -21,7 +21,7 @@ pub fn attributes_tostring(attr: grid_attr) -> Cow<'static, str> {
         return Cow::Borrowed("none");
     }
 
-    Cow::Owned(format!(
+    let mut s = format!(
         "{}{}{}{}{}{}{}{}{}{}{}{}{}{}",
         if attr.intersects(grid_attr::GRID_ATTR_CHARSET) { "acs," } else { "" },
         if attr.intersects(grid_attr::GRID_ATTR_BRIGHT) { "bright," } else { "" },
@@ -37,7 +37,9 @@ pub fn attributes_tostring(attr: grid_attr) -> Cow<'static, str> {
         if attr.intersects(grid_attr::GRID_ATTR_UNDERSCORE_4) { "dotted-underscore," } else { "" },
         if attr.intersects(grid_attr::GRID_ATTR_UNDERSCORE_5) { "dashed-underscore," } else { "" },
         if attr.intersects(grid_attr::GRID_ATTR_OVERLINE) { "overline," } else { "" },
-    ))
+    );
+    s.pop();
+    Cow::Owned(s)
 }
 
 pub fn attributes_fromstring(str: &str) -> Result<grid_attr, ()> {
